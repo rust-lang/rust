@@ -97,6 +97,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
@@ -149,7 +150,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
-        // Some checks below need the extra metainfo of the local declaration.
+        // Some checks below need the extra meta info of the local declaration.
         let decl = &self.body.local_decls[place.local];
 
         // Check the base local: it might be an unsafe-to-access static. We only check derefs of the

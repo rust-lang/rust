@@ -2,14 +2,13 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
+use pulldown_cmark::LinkType;
 use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
-use rustc_hir::def::{
-    DefKind,
-    Namespace::{self, *},
-    PerNS,
-};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
+use rustc_hir::def::Namespace::*;
+use rustc_hir::def::{DefKind, Namespace, PerNS};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_session::lint::Lint;
@@ -18,10 +17,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use pulldown_cmark::LinkType;
-
 use std::borrow::Cow;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::Write;
 use std::mem;
 use std::ops::Range;
@@ -130,7 +126,7 @@ impl Res {
             DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
                 "const"
             }
-            DefKind::Static => "static",
+            DefKind::Static(_) => "static",
             DefKind::Macro(MacroKind::Derive) => "derive",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
@@ -467,7 +463,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Option<(Res, ItemFragment)> {
         let tcx = self.cx.tcx;
 
-        prim_ty.impls(tcx).into_iter().find_map(|&impl_| {
+        prim_ty.impls(tcx).find_map(|impl_| {
             tcx.associated_items(impl_)
                 .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
                 .map(|item| {
@@ -486,25 +482,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         item_id: ItemId,
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
-        self.cx.enter_resolver(|resolver| {
-            // NOTE: this needs 2 separate lookups because `resolve_rustdoc_path` doesn't take
-            // lexical scope into account (it ignores all macros not defined at the mod-level)
-            debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
-            if let Some(res) = resolver.resolve_rustdoc_path(path_str, MacroNS, module_id) {
-                // don't resolve builtins like `#[derive]`
-                if let Ok(res) = res.try_into() {
-                    return Ok(res);
-                }
-            }
-            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.try_into().unwrap());
-            }
-            Err(ResolutionFailure::NotResolved {
+        self.resolve_path(path_str, MacroNS, item_id, module_id).ok_or_else(|| {
+            ResolutionFailure::NotResolved {
                 item_id,
                 module_id,
                 partial_res: None,
                 unresolved: path_str.into(),
-            })
+            }
         })
     }
 
@@ -538,6 +522,21 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
     }
 
+    /// HACK: Try to search the macro name in the list of all `macro_rules` items in the crate.
+    /// Used when nothing else works, may often give an incorrect result.
+    fn resolve_macro_rules(&self, path_str: &str, ns: Namespace) -> Option<Res> {
+        if ns != MacroNS {
+            return None;
+        }
+
+        self.cx
+            .resolver_caches
+            .all_macro_rules
+            .get(&Symbol::intern(path_str))
+            .copied()
+            .and_then(|res| res.try_into().ok())
+    }
+
     /// Convenience wrapper around `resolve_rustdoc_path`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -559,7 +558,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .cx
             .enter_resolver(|resolver| resolver.resolve_rustdoc_path(path_str, ns, module_id))
             .and_then(|res| res.try_into().ok())
-            .or_else(|| resolve_primitive(path_str, ns));
+            .or_else(|| resolve_primitive(path_str, ns))
+            .or_else(|| self.resolve_macro_rules(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         result
     }
@@ -1042,16 +1042,11 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // so we know which module it came from.
         for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
             debug!("combined_docs={}", doc);
-
-            let (krate, parent_node) = if let Some(id) = parent_module {
-                (id.krate, Some(id))
-            } else {
-                (item.def_id.krate(), parent_node)
-            };
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
+            let parent_node = parent_module.or(parent_node);
             for md_link in markdown_links(&doc) {
-                let link = self.resolve_link(&item, &doc, parent_node, krate, md_link);
+                let link = self.resolve_link(&item, &doc, parent_node, md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
                 }
@@ -1186,7 +1181,6 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         dox: &str,
         parent_node: Option<DefId>,
-        krate: CrateNum,
         ori_link: MarkdownLink,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
@@ -1198,7 +1192,7 @@ impl LinkCollector<'_, '_> {
             link_range: ori_link.range.clone(),
         };
 
-        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
+        let PreprocessingInfo { ref path_str, disambiguator, extra_fragment, link_text } =
             match preprocess_link(&ori_link)? {
                 Ok(x) => x,
                 Err(err) => {
@@ -1220,7 +1214,6 @@ impl LinkCollector<'_, '_> {
                     return None;
                 }
             };
-        let mut path_str = &*path_str;
 
         let inner_docs = item.inner_docs(self.cx.tcx);
 
@@ -1238,7 +1231,7 @@ impl LinkCollector<'_, '_> {
         let base_node =
             if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
-        let Some(mut module_id) = base_node else {
+        let Some(module_id) = base_node else {
             // This is a bug.
             debug!("attempting to resolve item without parent module: {}", path_str);
             resolution_failure(
@@ -1250,26 +1243,6 @@ impl LinkCollector<'_, '_> {
             );
             return None;
         };
-
-        let resolved_self;
-        let is_lone_crate = path_str == "crate";
-        if path_str.starts_with("crate::") || is_lone_crate {
-            use rustc_span::def_id::CRATE_DEF_INDEX;
-
-            // HACK(jynelson): rustc_resolve thinks that `crate` is the crate currently being documented.
-            // But rustdoc wants it to mean the crate this item was originally present in.
-            // To work around this, remove it and resolve relative to the crate root instead.
-            // HACK(jynelson)(2): If we just strip `crate::` then suddenly primitives become ambiguous
-            // (consider `crate::char`). Instead, change it to `self::`. This works because 'self' is now the crate root.
-            // FIXME(#78696): This doesn't always work.
-            if is_lone_crate {
-                path_str = "self";
-            } else {
-                resolved_self = format!("self::{}", &path_str["crate::".len()..]);
-                path_str = &resolved_self;
-            }
-            module_id = DefId { krate, index: CRATE_DEF_INDEX };
-        }
 
         let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
@@ -1737,7 +1710,7 @@ impl Disambiguator {
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
                 "const" | "constant" => Kind(DefKind::Const),
-                "static" => Kind(DefKind::Static),
+                "static" => Kind(DefKind::Static(Mutability::Not)),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
                 "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
                 "type" => NS(Namespace::TypeNS),
@@ -2091,7 +2064,7 @@ fn resolution_failure(
                                 return;
                             }
                             Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
-                            | Static => "associated item",
+                            | Static(_) => "associated item",
                             Impl | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {

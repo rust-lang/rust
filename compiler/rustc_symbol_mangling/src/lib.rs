@@ -97,7 +97,6 @@
 extern crate rustc_middle;
 
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
@@ -168,17 +167,14 @@ fn compute_symbol_name<'tcx>(
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(def_id) = def_id.as_local() {
+    if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let stable_crate_id = tcx.sess.local_stable_crate_id();
             return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
         }
-        matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(_))
-    } else {
-        tcx.is_foreign_item(def_id)
-    };
+    }
 
+    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let attrs = tcx.codegen_fn_attrs(def_id);
 
     // Foreign items by default use no mangling for their symbol name. There's a
@@ -197,7 +193,7 @@ fn compute_symbol_name<'tcx>(
     //   show up in the `wasm-import-name` custom attribute in LLVM IR.
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
-    if is_foreign
+    if tcx.is_foreign_item(def_id)
         && (!tcx.sess.target.is_like_wasm
             || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
     {

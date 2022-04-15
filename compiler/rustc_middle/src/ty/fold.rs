@@ -1243,15 +1243,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
-    #[instrument(level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
-        debug!(
-            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
-            t,
-            t.flags(),
-            self.flags
-        );
-        if t.flags().intersects(self.flags) {
+    #[instrument(skip(self), level = "trace")]
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = t.flags();
+        trace!(t.flags=?t.flags());
+        if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1380,6 +1376,53 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
                 self.regions.insert(br.kind);
             }
         }
+        ControlFlow::CONTINUE
+    }
+}
+
+/// Finds the max universe present
+pub struct MaxUniverse {
+    max_universe: ty::UniverseIndex,
+}
+
+impl MaxUniverse {
+    pub fn new() -> Self {
+        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
+    }
+
+    pub fn max_universe(self) -> ty::UniverseIndex {
+        self.max_universe
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::Placeholder(placeholder) = t.kind() {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: ty::consts::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::ConstKind::Placeholder(placeholder) = c.val() {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
+        c.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::RePlaceholder(placeholder) = *r {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
         ControlFlow::CONTINUE
     }
 }

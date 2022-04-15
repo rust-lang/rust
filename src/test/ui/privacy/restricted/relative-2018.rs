@@ -7,7 +7,7 @@ mod m {
     pub(in ::core) struct S4;
     //~^ ERROR visibilities can only be restricted to ancestor modules
     pub(in a::b) struct S5;
-    //~^ ERROR relative paths are not supported in visibilities on 2018 edition
+    //~^ ERROR relative paths are not supported in visibilities in 2018 edition or later
 }
 
 fn main() {}

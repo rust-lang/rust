@@ -1,8 +1,11 @@
 use crate::rmeta::*;
 
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encoder as _;
+use rustc_span::hygiene::MacroKind;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
@@ -13,66 +16,173 @@ use tracing::debug;
 /// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
 /// but this has no impact on safety.
 pub(super) trait FixedSizeEncoding: Default {
-    const BYTE_LEN: usize;
+    /// This should be `[u8; BYTE_LEN]`;
+    type ByteArray;
 
-    // FIXME(eddyb) convert to and from `[u8; Self::BYTE_LEN]` instead,
-    // once that starts being allowed by the compiler (i.e. lazy normalization).
-    fn from_bytes(b: &[u8]) -> Self;
-    fn write_to_bytes(self, b: &mut [u8]);
-
-    // FIXME(eddyb) make these generic functions, or at least defaults here.
-    // (same problem as above, needs `[u8; Self::BYTE_LEN]`)
-    // For now, a macro (`fixed_size_encoding_byte_len_and_defaults`) is used.
-
-    /// Read a `Self` value (encoded as `Self::BYTE_LEN` bytes),
-    /// from `&b[i * Self::BYTE_LEN..]`, returning `None` if `i`
-    /// is not in bounds, or `Some(Self::from_bytes(...))` otherwise.
-    fn maybe_read_from_bytes_at(b: &[u8], i: usize) -> Option<Self>;
-    /// Write a `Self` value (encoded as `Self::BYTE_LEN` bytes),
-    /// at `&mut b[i * Self::BYTE_LEN..]`, using `Self::write_to_bytes`.
-    fn write_to_bytes_at(self, b: &mut [u8], i: usize);
-}
-
-// HACK(eddyb) this shouldn't be needed (see comments on the methods above).
-macro_rules! fixed_size_encoding_byte_len_and_defaults {
-    ($byte_len:expr) => {
-        const BYTE_LEN: usize = $byte_len;
-        fn maybe_read_from_bytes_at(b: &[u8], i: usize) -> Option<Self> {
-            const BYTE_LEN: usize = $byte_len;
-            // HACK(eddyb) ideally this would be done with fully safe code,
-            // but slicing `[u8]` with `i * N..` is optimized worse, due to the
-            // possibility of `i * N` overflowing, than indexing `[[u8; N]]`.
-            let b = unsafe {
-                std::slice::from_raw_parts(b.as_ptr() as *const [u8; BYTE_LEN], b.len() / BYTE_LEN)
-            };
-            b.get(i).map(|b| FixedSizeEncoding::from_bytes(b))
-        }
-        fn write_to_bytes_at(self, b: &mut [u8], i: usize) {
-            const BYTE_LEN: usize = $byte_len;
-            // HACK(eddyb) ideally this would be done with fully safe code,
-            // see similar comment in `read_from_bytes_at` for why it can't yet.
-            let b = unsafe {
-                std::slice::from_raw_parts_mut(
-                    b.as_mut_ptr() as *mut [u8; BYTE_LEN],
-                    b.len() / BYTE_LEN,
-                )
-            };
-            self.write_to_bytes(&mut b[i]);
-        }
-    };
+    fn from_bytes(b: &Self::ByteArray) -> Self;
+    fn write_to_bytes(self, b: &mut Self::ByteArray);
 }
 
 impl FixedSizeEncoding for u32 {
-    fixed_size_encoding_byte_len_and_defaults!(4);
+    type ByteArray = [u8; 4];
 
-    fn from_bytes(b: &[u8]) -> Self {
-        let mut bytes = [0; Self::BYTE_LEN];
-        bytes.copy_from_slice(&b[..Self::BYTE_LEN]);
-        Self::from_le_bytes(bytes)
+    #[inline]
+    fn from_bytes(b: &[u8; 4]) -> Self {
+        Self::from_le_bytes(*b)
     }
 
-    fn write_to_bytes(self, b: &mut [u8]) {
-        b[..Self::BYTE_LEN].copy_from_slice(&self.to_le_bytes());
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 4]) {
+        *b = self.to_le_bytes();
+    }
+}
+
+macro_rules! fixed_size_enum {
+    ($ty:ty { $(($($pat:tt)*))* }) => {
+        impl FixedSizeEncoding for Option<$ty> {
+            type ByteArray = [u8;1];
+
+            #[inline]
+            fn from_bytes(b: &[u8;1]) -> Self {
+                use $ty::*;
+                if b[0] == 0 {
+                    return None;
+                }
+                match b[0] - 1 {
+                    $(${index()} => Some($($pat)*),)*
+                    _ => panic!("Unexpected ImplPolarity code: {:?}", b[0]),
+                }
+            }
+
+            #[inline]
+            fn write_to_bytes(self, b: &mut [u8;1]) {
+                use $ty::*;
+                b[0] = match self {
+                    None => 0,
+                    $(Some($($pat)*) => 1 + ${index()},)*
+                }
+            }
+        }
+    }
+}
+
+fixed_size_enum! {
+    DefKind {
+        ( Mod                                      )
+        ( Struct                                   )
+        ( Union                                    )
+        ( Enum                                     )
+        ( Variant                                  )
+        ( Trait                                    )
+        ( TyAlias                                  )
+        ( ForeignTy                                )
+        ( TraitAlias                               )
+        ( AssocTy                                  )
+        ( TyParam                                  )
+        ( Fn                                       )
+        ( Const                                    )
+        ( ConstParam                               )
+        ( AssocFn                                  )
+        ( AssocConst                               )
+        ( ExternCrate                              )
+        ( Use                                      )
+        ( ForeignMod                               )
+        ( AnonConst                                )
+        ( InlineConst                              )
+        ( OpaqueTy                                 )
+        ( Field                                    )
+        ( LifetimeParam                            )
+        ( GlobalAsm                                )
+        ( Impl                                     )
+        ( Closure                                  )
+        ( Generator                                )
+        ( Static(ast::Mutability::Not)             )
+        ( Static(ast::Mutability::Mut)             )
+        ( Ctor(CtorOf::Struct, CtorKind::Fn)       )
+        ( Ctor(CtorOf::Struct, CtorKind::Const)    )
+        ( Ctor(CtorOf::Struct, CtorKind::Fictive)  )
+        ( Ctor(CtorOf::Variant, CtorKind::Fn)      )
+        ( Ctor(CtorOf::Variant, CtorKind::Const)   )
+        ( Ctor(CtorOf::Variant, CtorKind::Fictive) )
+        ( Macro(MacroKind::Bang)                   )
+        ( Macro(MacroKind::Attr)                   )
+        ( Macro(MacroKind::Derive)                 )
+    }
+}
+
+fixed_size_enum! {
+    ty::ImplPolarity {
+        ( Positive    )
+        ( Negative    )
+        ( Reservation )
+    }
+}
+
+fixed_size_enum! {
+    hir::Constness {
+        ( NotConst )
+        ( Const    )
+    }
+}
+
+fixed_size_enum! {
+    hir::Defaultness {
+        ( Final                        )
+        ( Default { has_value: false } )
+        ( Default { has_value: true }  )
+    }
+}
+
+fixed_size_enum! {
+    hir::IsAsync {
+        ( NotAsync )
+        ( Async    )
+    }
+}
+
+// We directly encode `DefPathHash` because a `Lazy` would encur a 25% cost.
+impl FixedSizeEncoding for Option<DefPathHash> {
+    type ByteArray = [u8; 16];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 16]) -> Self {
+        Some(DefPathHash(Fingerprint::from_le_bytes(*b)))
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 16]) {
+        let Some(DefPathHash(fingerprint)) = self else {
+            panic!("Trying to encode absent DefPathHash.")
+        };
+        *b = fingerprint.to_le_bytes();
+    }
+}
+
+// We directly encode RawDefId because using a `Lazy` would incur a 50% overhead in the worst case.
+impl FixedSizeEncoding for Option<RawDefId> {
+    type ByteArray = [u8; 8];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 8]) -> Self {
+        let krate = u32::from_le_bytes(b[0..4].try_into().unwrap());
+        let index = u32::from_le_bytes(b[4..8].try_into().unwrap());
+        if krate == 0 {
+            return None;
+        }
+        Some(RawDefId { krate: krate - 1, index })
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 8]) {
+        match self {
+            None => *b = [0; 8],
+            Some(RawDefId { krate, index }) => {
+                // CrateNum is less than `CrateNum::MAX_AS_U32`.
+                debug_assert!(krate < u32::MAX);
+                b[0..4].copy_from_slice(&(1 + krate).to_le_bytes());
+                b[4..8].copy_from_slice(&index.to_le_bytes());
+            }
+        }
     }
 }
 
@@ -80,44 +190,51 @@ impl FixedSizeEncoding for u32 {
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.
 impl<T> FixedSizeEncoding for Option<Lazy<T>> {
-    fixed_size_encoding_byte_len_and_defaults!(u32::BYTE_LEN);
+    type ByteArray = [u8; 4];
 
-    fn from_bytes(b: &[u8]) -> Self {
-        Some(Lazy::from_position(NonZeroUsize::new(u32::from_bytes(b) as usize)?))
+    #[inline]
+    fn from_bytes(b: &[u8; 4]) -> Self {
+        let position = NonZeroUsize::new(u32::from_bytes(b) as usize)?;
+        Some(Lazy::from_position(position))
     }
 
-    fn write_to_bytes(self, b: &mut [u8]) {
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 4]) {
         let position = self.map_or(0, |lazy| lazy.position.get());
         let position: u32 = position.try_into().unwrap();
-
         position.write_to_bytes(b)
     }
 }
 
 impl<T> FixedSizeEncoding for Option<Lazy<[T]>> {
-    fixed_size_encoding_byte_len_and_defaults!(u32::BYTE_LEN * 2);
+    type ByteArray = [u8; 8];
 
-    fn from_bytes(b: &[u8]) -> Self {
-        Some(Lazy::from_position_and_meta(
-            <Option<Lazy<T>>>::from_bytes(b)?.position,
-            u32::from_bytes(&b[u32::BYTE_LEN..]) as usize,
-        ))
+    #[inline]
+    fn from_bytes(b: &[u8; 8]) -> Self {
+        let ([ref position_bytes, ref meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        let position = NonZeroUsize::new(u32::from_bytes(position_bytes) as usize)?;
+        let len = u32::from_bytes(meta_bytes) as usize;
+        Some(Lazy::from_position_and_meta(position, len))
     }
 
-    fn write_to_bytes(self, b: &mut [u8]) {
-        self.map(|lazy| Lazy::<T>::from_position(lazy.position)).write_to_bytes(b);
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 8]) {
+        let ([ref mut position_bytes, ref mut meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
+
+        let position = self.map_or(0, |lazy| lazy.position.get());
+        let position: u32 = position.try_into().unwrap();
+        position.write_to_bytes(position_bytes);
 
         let len = self.map_or(0, |lazy| lazy.meta);
         let len: u32 = len.try_into().unwrap();
-
-        len.write_to_bytes(&mut b[u32::BYTE_LEN..]);
+        len.write_to_bytes(meta_bytes);
     }
 }
 
 /// Random-access table (i.e. offering constant-time `get`/`set`), similar to
 /// `Vec<Option<T>>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
-/// A total of `(max_idx + 1) * <Option<T> as FixedSizeEncoding>::BYTE_LEN` bytes
+/// A total of `(max_idx + 1)` times `Option<T> as FixedSizeEncoding>::ByteArray`
 /// are used for a table, where `max_idx` is the largest index passed to
 /// `TableBuilder::set`.
 pub(super) struct Table<I: Idx, T>
@@ -135,12 +252,8 @@ pub(super) struct TableBuilder<I: Idx, T>
 where
     Option<T>: FixedSizeEncoding,
 {
-    // FIXME(eddyb) use `IndexVec<I, [u8; <Option<T>>::BYTE_LEN]>` instead of
-    // `Vec<u8>`, once that starts working (i.e. lazy normalization).
-    // Then again, that has the downside of not allowing `TableBuilder::encode` to
-    // obtain a `&[u8]` entirely in safe code, for writing the bytes out.
-    bytes: Vec<u8>,
-    _marker: PhantomData<(fn(&I), T)>,
+    blocks: IndexVec<I, <Option<T> as FixedSizeEncoding>::ByteArray>,
+    _marker: PhantomData<T>,
 }
 
 impl<I: Idx, T> Default for TableBuilder<I, T>
@@ -148,7 +261,7 @@ where
     Option<T>: FixedSizeEncoding,
 {
     fn default() -> Self {
-        TableBuilder { bytes: vec![], _marker: PhantomData }
+        TableBuilder { blocks: Default::default(), _marker: PhantomData }
     }
 }
 
@@ -156,25 +269,29 @@ impl<I: Idx, T> TableBuilder<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
-    pub(crate) fn set(&mut self, i: I, value: T) {
+    pub(crate) fn set<const N: usize>(&mut self, i: I, value: T)
+    where
+        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+    {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
         // > trick (i.e. divide things into buckets of 32 or 64 items and then
         // > store bit-masks of which item in each bucket is actually serialized).
-        let i = i.index();
-        let needed = (i + 1) * <Option<T>>::BYTE_LEN;
-        if self.bytes.len() < needed {
-            self.bytes.resize(needed, 0);
-        }
-
-        Some(value).write_to_bytes_at(&mut self.bytes, i);
+        self.blocks.ensure_contains_elem(i, || [0; N]);
+        Some(value).write_to_bytes(&mut self.blocks[i]);
     }
 
-    pub(crate) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
+    pub(crate) fn encode<const N: usize>(&self, buf: &mut Encoder) -> Lazy<Table<I, T>>
+    where
+        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+    {
         let pos = buf.position();
-        buf.emit_raw_bytes(&self.bytes).unwrap();
-        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), self.bytes.len())
+        for block in &self.blocks {
+            buf.emit_raw_bytes(block).unwrap();
+        }
+        let num_bytes = self.blocks.len() * N;
+        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), num_bytes)
     }
 }
 
@@ -182,6 +299,7 @@ impl<I: Idx, T> LazyMeta for Table<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
+    /// Number of bytes in the data stream.
     type Meta = usize;
 }
 
@@ -191,16 +309,28 @@ where
 {
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> Option<T> {
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>, const N: usize>(
+        &self,
+        metadata: M,
+        i: I,
+    ) -> Option<T>
+    where
+        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+    {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
         let start = self.position.get();
         let bytes = &metadata.blob()[start..start + self.meta];
-        <Option<T>>::maybe_read_from_bytes_at(bytes, i.index())?
+        let (bytes, []) = bytes.as_chunks::<N>() else { panic!() };
+        let bytes = bytes.get(i.index())?;
+        FixedSizeEncoding::from_bytes(bytes)
     }
 
     /// Size of the table in entries, including possible gaps.
-    pub(super) fn size(&self) -> usize {
-        self.meta / <Option<T>>::BYTE_LEN
+    pub(super) fn size<const N: usize>(&self) -> usize
+    where
+        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+    {
+        self.meta / N
     }
 }

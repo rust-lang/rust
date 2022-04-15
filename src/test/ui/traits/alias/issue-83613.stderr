@@ -1,8 +1,8 @@
 error: cannot implement trait on type alias impl trait
-  --> $DIR/issue-83613.rs:10:1
+  --> $DIR/issue-83613.rs:10:23
    |
 LL | impl AnotherTrait for OpaqueType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^
    |
 note: type alias impl trait defined here
   --> $DIR/issue-83613.rs:4:19
@@ -10,13 +10,13 @@ note: type alias impl trait defined here
 LL | type OpaqueType = impl OpaqueTrait;
    |                   ^^^^^^^^^^^^^^^^
 
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `impl OpaqueTrait`
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `OpaqueType`
   --> $DIR/issue-83613.rs:10:1
    |
 LL | impl<T: Send> AnotherTrait for T {}
    | -------------------------------- first implementation here
 LL | impl AnotherTrait for OpaqueType {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `impl OpaqueTrait`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `OpaqueType`
 
 error: aborting due to 2 previous errors
 

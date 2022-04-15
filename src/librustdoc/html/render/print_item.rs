@@ -141,7 +141,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
 
     item_vars.render_into(buf).unwrap();
 
-    match *item.kind {
+    match &*item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
         clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
             item_function(buf, cx, item, f)
@@ -150,7 +150,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
         clean::StructItem(ref s) => item_struct(buf, cx, item, s),
         clean::UnionItem(ref s) => item_union(buf, cx, item, s),
         clean::EnumItem(ref e) => item_enum(buf, cx, item, e),
-        clean::TypedefItem(ref t, is_associated) => item_typedef(buf, cx, item, t, is_associated),
+        clean::TypedefItem(ref t) => item_typedef(buf, cx, item, t),
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
@@ -365,8 +365,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 }
 
                 let unsafety_flag = match *myitem.kind {
-                    clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
-                        if func.header.unsafety == hir::Unsafety::Unsafe =>
+                    clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
+                        if myitem.fn_header(cx.tcx()).unwrap().unsafety
+                            == hir::Unsafety::Unsafe =>
                     {
                         "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
                     }
@@ -376,17 +377,26 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
+                let visibility_emoji = match myitem.visibility {
+                    clean::Visibility::Restricted(_) => {
+                        "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                    }
+                    _ => "",
+                };
+
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
-                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
-                             {unsafety_flag}\
-                             {stab_tags}\
+                            <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                            {visibility_emoji}\
+                            {unsafety_flag}\
+                            {stab_tags}\
                      </div>\
                      <div class=\"item-right docblock-short\">{docs}</div>",
                     name = myitem.name.unwrap(),
+                    visibility_emoji = visibility_emoji,
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
@@ -453,16 +463,17 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
-    let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
-    let asyncness = f.header.asyncness.print_with_space();
-    let unsafety = f.header.unsafety.print_with_space();
-    let abi = print_abi_with_space(f.header.abi).to_string();
+    let header = it.fn_header(cx.tcx()).expect("printing a function which isn't a function");
+    let constness = print_constness_with_space(&header.constness, it.const_stability(cx.tcx()));
+    let unsafety = header.unsafety.print_with_space();
+    let abi = print_abi_with_space(header.abi).to_string();
+    let asyncness = header.asyncness.print_with_space();
+    let visibility = it.visibility.print_with_space(it.def_id, cx).to_string();
     let name = it.name.unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
     let header_len = "fn ".len()
-        + vis.len()
+        + visibility.len()
         + constness.len()
         + asyncness.len()
         + unsafety.len()
@@ -478,7 +489,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 w,
                 "{vis}{constness}{asyncness}{unsafety}{abi}fn \
                  {name}{generics}{decl}{notable_traits}{where_clause}",
-                vis = vis,
+                vis = visibility,
                 constness = constness,
                 asyncness = asyncness,
                 unsafety = unsafety,
@@ -486,7 +497,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, true),
-                decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
@@ -496,13 +507,15 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
 
 fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let bounds = bounds(&t.bounds, false, cx);
-    let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
-    let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
-    let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
-    let provided = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
-    let count_types = types.len();
-    let count_consts = consts.len();
-    let count_methods = required.len() + provided.len();
+    let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
+    let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
+    let required_consts = t.items.iter().filter(|m| m.is_ty_associated_const()).collect::<Vec<_>>();
+    let provided_consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
+    let required_methods = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
+    let provided_methods = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
+    let count_types = required_types.len() + provided_types.len();
+    let count_consts = required_consts.len() + provided_consts.len();
+    let count_methods = required_methods.len() + provided_methods.len();
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
@@ -543,16 +556,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                         ),
                     );
                 }
-                for t in &types {
-                    render_assoc_item(
-                        w,
-                        t,
-                        AssocItemLink::Anchor(None),
-                        ItemType::Trait,
-                        cx,
-                        RenderMode::Normal,
-                    );
-                    w.write_str(";\n");
+                for types in [&required_types, &provided_types] {
+                    for t in types {
+                        render_assoc_item(
+                            w,
+                            t,
+                            AssocItemLink::Anchor(None),
+                            ItemType::Trait,
+                            cx,
+                            RenderMode::Normal,
+                        );
+                        w.write_str(";\n");
+                    }
                 }
                 // If there are too many associated constants, hide everything after them
                 // We also do this if the types + consts is large because otherwise we could
@@ -571,28 +586,30 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                         ),
                     );
                 }
-                if !types.is_empty() && !consts.is_empty() {
+                if count_types != 0 && (count_consts != 0 || count_methods != 0) {
                     w.write_str("\n");
                 }
-                for t in &consts {
-                    render_assoc_item(
-                        w,
-                        t,
-                        AssocItemLink::Anchor(None),
-                        ItemType::Trait,
-                        cx,
-                        RenderMode::Normal,
-                    );
-                    w.write_str(";\n");
+                for consts in [&required_consts, &provided_consts] {
+                    for c in consts {
+                        render_assoc_item(
+                            w,
+                            c,
+                            AssocItemLink::Anchor(None),
+                            ItemType::Trait,
+                            cx,
+                            RenderMode::Normal,
+                        );
+                        w.write_str(";\n");
+                    }
                 }
                 if !toggle && should_hide_fields(count_methods) {
                     toggle = true;
                     toggle_open(w, format_args!("{} methods", count_methods));
                 }
-                if !consts.is_empty() && !required.is_empty() {
+                if count_consts != 0 && count_methods != 0 {
                     w.write_str("\n");
                 }
-                for (pos, m) in required.iter().enumerate() {
+                for (pos, m) in required_methods.iter().enumerate() {
                     render_assoc_item(
                         w,
                         m,
@@ -603,14 +620,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     );
                     w.write_str(";\n");
 
-                    if pos < required.len() - 1 {
-                        w.write_str("<div class=\"item-spacer\"></div>");
+                    if pos < required_methods.len() - 1 {
+                        w.write_str("<span class=\"item-spacer\"></span>");
                     }
                 }
-                if !required.is_empty() && !provided.is_empty() {
+                if !required_methods.is_empty() && !provided_methods.is_empty() {
                     w.write_str("\n");
                 }
-                for (pos, m) in provided.iter().enumerate() {
+                for (pos, m) in provided_methods.iter().enumerate() {
                     render_assoc_item(
                         w,
                         m,
@@ -629,8 +646,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                             w.write_str(" { ... }\n");
                         }
                     }
-                    if pos < provided.len() - 1 {
-                        w.write_str("<div class=\"item-spacer\"></div>");
+
+                    if pos < provided_methods.len() - 1 {
+                        w.write_str("<span class=\"item-spacer\"></span>");
                     }
                 }
                 if toggle {
@@ -692,53 +710,77 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
     }
 
-    if !types.is_empty() {
+    if !required_types.is_empty() {
         write_small_section_header(
             w,
-            "associated-types",
-            "Associated Types",
+            "required-associated-types",
+            "Required Associated Types",
             "<div class=\"methods\">",
         );
-        for t in types {
+        for t in required_types {
+            trait_item(w, cx, t, it);
+        }
+        w.write_str("</div>");
+    }
+    if !provided_types.is_empty() {
+        write_small_section_header(
+            w,
+            "provided-associated-types",
+            "Provided Associated Types",
+            "<div class=\"methods\">",
+        );
+        for t in provided_types {
             trait_item(w, cx, t, it);
         }
         w.write_str("</div>");
     }
 
-    if !consts.is_empty() {
+    if !required_consts.is_empty() {
         write_small_section_header(
             w,
-            "associated-const",
-            "Associated Constants",
+            "required-associated-consts",
+            "Required Associated Constants",
             "<div class=\"methods\">",
         );
-        for t in consts {
+        for t in required_consts {
+            trait_item(w, cx, t, it);
+        }
+        w.write_str("</div>");
+    }
+    if !provided_consts.is_empty() {
+        write_small_section_header(
+            w,
+            "provided-associated-consts",
+            "Provided Associated Constants",
+            "<div class=\"methods\">",
+        );
+        for t in provided_consts {
             trait_item(w, cx, t, it);
         }
         w.write_str("</div>");
     }
 
     // Output the documentation for each function individually
-    if !required.is_empty() {
+    if !required_methods.is_empty() {
         write_small_section_header(
             w,
             "required-methods",
-            "Required methods",
+            "Required Methods",
             "<div class=\"methods\">",
         );
-        for m in required {
+        for m in required_methods {
             trait_item(w, cx, m, it);
         }
         w.write_str("</div>");
     }
-    if !provided.is_empty() {
+    if !provided_methods.is_empty() {
         write_small_section_header(
             w,
             "provided-methods",
-            "Provided methods",
+            "Provided Methods",
             "<div class=\"methods\">",
         );
-        for m in provided {
+        for m in provided_methods {
             trait_item(w, cx, m, it);
         }
         w.write_str("</div>");
@@ -922,25 +964,11 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
     render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_typedef(
-    w: &mut Buffer,
-    cx: &Context<'_>,
-    it: &clean::Item,
-    t: &clean::Typedef,
-    is_associated: bool,
-) {
-    fn write_content(
-        w: &mut Buffer,
-        cx: &Context<'_>,
-        it: &clean::Item,
-        t: &clean::Typedef,
-        is_associated: bool,
-    ) {
+fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
+    fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, "typedef", |w| {
             render_attributes_in_pre(w, it, "");
-            if !is_associated {
-                write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
-            }
+            write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
             write!(
                 w,
                 "type {}{}{where_clause} = {type_};",
@@ -952,14 +980,7 @@ fn item_typedef(
         });
     }
 
-    // If this is an associated typedef, we don't want to wrap it into a docblock.
-    if is_associated {
-        write_content(w, cx, it, t, is_associated);
-    } else {
-        wrap_into_docblock(w, |w| {
-            write_content(w, cx, it, t, is_associated);
-        });
-    }
+    wrap_into_docblock(w, |w| write_content(w, cx, it, t));
 
     document(w, cx, it, None, HeadingOffset::H2);
 
@@ -1758,7 +1779,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
 
                     let tag_size = if let TagEncoding::Niche { .. } = tag_encoding {
                         0
-                    } else if let Primitive::Int(i, _) = tag.value {
+                    } else if let Primitive::Int(i, _) = tag.primitive() {
                         i.size().bytes()
                     } else {
                         span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")

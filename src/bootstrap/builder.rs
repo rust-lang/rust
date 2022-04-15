@@ -231,10 +231,10 @@ impl StepDescription {
         }
 
         if !builder.config.exclude.is_empty() {
-            eprintln!(
+            builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
-            );
+            ));
         }
         false
     }
@@ -594,7 +594,7 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
-                // perceive their dependencies (see #93033) which would invaliate fingerprints
+                // perceive their dependencies (see #93033) which would invalidate fingerprints
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
@@ -621,9 +621,9 @@ impl<'a> Builder<'a> {
 
     pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
         let kind = match subcommand {
-            "build" => Kind::Build,
-            "doc" => Kind::Doc,
-            "test" => Kind::Test,
+            "build" | "b" => Kind::Build,
+            "doc" | "d" => Kind::Doc,
+            "test" | "t" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
             "install" => Kind::Install,
@@ -835,6 +835,18 @@ impl<'a> Builder<'a> {
         }
     }
 
+    pub fn rustc_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
+        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
+
+        // Ensure that the downloaded LLVM libraries can be found.
+        if self.config.llvm_from_ci {
+            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
+            dylib_dirs.push(ci_llvm_lib);
+        }
+
+        dylib_dirs
+    }
+
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
     pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
@@ -845,15 +857,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
-
-        // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_from_ci {
-            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
-            dylib_dirs.push(ci_llvm_lib);
-        }
-
-        add_dylib_path(dylib_dirs, cmd);
+        add_dylib_path(self.rustc_lib_paths(compiler), cmd);
     }
 
     /// Gets a path to the compiler specified.

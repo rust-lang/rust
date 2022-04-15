@@ -2,11 +2,10 @@
 
 use crate::build::Builder;
 use crate::thir::constant::parse_float;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::interpret::{
-    Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
-};
+use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::mir::interpret::{ConstValue, LitToConstError, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::subst::SubstsRef;
@@ -32,11 +31,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Literal { lit, neg } => {
                 let literal =
-                    match lit_to_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
+                    match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
                         Ok(c) => c,
                         Err(LitToConstError::Reported) => ConstantKind::Ty(tcx.const_error(ty)),
                         Err(LitToConstError::TypeError) => {
-                            bug!("encountered type error in `lit_to_constant")
+                            bug!("encountered type error in `lit_to_mir_constant")
                         }
                     };
 
@@ -90,7 +89,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-crate fn lit_to_constant<'tcx>(
+#[instrument(skip(tcx, lit_input))]
+fn lit_to_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> Result<ConstantKind<'tcx>, LitToConstError> {

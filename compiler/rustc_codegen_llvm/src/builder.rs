@@ -484,14 +484,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 bx.noundef_metadata(load);
             }
 
-            match scalar.value {
+            match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
-                        bx.range_metadata(load, scalar.valid_range);
+                        bx.range_metadata(load, scalar.valid_range(bx));
                     }
                 }
                 abi::Pointer => {
-                    if !scalar.valid_range.contains(0) {
+                    if !scalar.valid_range(bx).contains(0) {
                         bx.nonnull_metadata(load);
                     }
 
@@ -525,7 +525,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             });
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
         } else if let abi::Abi::ScalarPair(a, b) = place.layout.abi {
-            let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+            let b_offset = a.size(self).align_to(b.align(self).abi);
             let pair_ty = place.layout.llvm_type(self);
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
@@ -1452,7 +1452,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoint_sat_broken_in_llvm(&self) -> bool {
-        match self.tcx.sess.target.arch.as_str() {
+        match self.tcx.sess.target.arch.as_ref() {
             // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
             "riscv64" => llvm_util::get_version() < (13, 0, 0),
             _ => false,

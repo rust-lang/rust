@@ -21,8 +21,8 @@ async fn dummy() {}
 async fn suggest_await_in_async_fn_return() {
     dummy()
     //~^ ERROR mismatched types [E0308]
-    //~| HELP consider using a semicolon here
     //~| HELP consider `await`ing on the `Future`
+    //~| HELP consider using a semicolon here
     //~| SUGGESTION .await
 }
 

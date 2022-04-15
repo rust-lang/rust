@@ -290,7 +290,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
-    /// Constraints on associated typess are created from `create_assoc_bindings_for_generic_args`.
+    /// Constraints on associated types are created from `create_assoc_bindings_for_generic_args`.
     ///
     /// Example:
     ///
@@ -1435,7 +1435,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
                         //
-                        // The "classicaly useful" case is the following:
+                        // The "classically useful" case is the following:
                         // ```
                         //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
                         //         type MyOutput;
@@ -1620,8 +1620,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
-        let param_hir_id = tcx.hir().local_def_id_to_hir_id(ty_param_def_id);
-        let param_name = tcx.hir().ty_param_name(param_hir_id);
+        let param_name = tcx.hir().ty_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(
             || {
                 traits::transitive_bounds_that_define_assoc_type(
@@ -1768,7 +1767,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // Will fail except for `T::A` and `Self::A`; i.e., if `qself_ty`/`qself_def` are not a type
     // parameter or `Self`.
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
-    // it should also start reportint the `BARE_TRAIT_OBJECTS` lint.
+    // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
     pub fn associated_path_to_ty(
         &self,
         hir_ref_id: hir::HirId,
@@ -2186,7 +2185,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             // Case 3. Reference to a top-level value.
-            DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static => {
+            DefKind::Fn | DefKind::Const | DefKind::ConstParam | DefKind::Static(_) => {
                 path_segs.push(PathSeg(def_id, last));
             }
 
@@ -2265,12 +2264,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
 
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
+                let def_id = def_id.expect_local();
+                let item_def_id = tcx.hir().ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_ty_param(index, tcx.hir().name(hir_id))
+                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+                tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
             }
             Res::SelfTy { trait_: Some(_), alias_to: None } => {
                 // `Self` in trait or type alias.
@@ -2462,8 +2460,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
-                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
-                tcx.type_of(tcx.hir().local_def_id(e.hir_id))
+                let ty = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let span = ast_ty.span;
+                tcx.sess.emit_err(TypeofReservedKeywordUsed {
+                    span,
+                    ty,
+                    opt_sugg: Some((span, Applicability::MachineApplicable))
+                        .filter(|_| ty.is_suggestable()),
+                });
+
+                ty
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return

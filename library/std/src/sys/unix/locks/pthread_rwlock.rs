@@ -1,20 +1,20 @@
 use crate::cell::UnsafeCell;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct RWLock {
+pub struct RwLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,
     write_locked: UnsafeCell<bool>, // guarded by the `inner` RwLock
     num_readers: AtomicUsize,
 }
 
-pub type MovableRWLock = Box<RWLock>;
+pub type MovableRwLock = Box<RwLock>;
 
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {}
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {}
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock {
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock {
             inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER),
             write_locked: UnsafeCell::new(false),
             num_readers: AtomicUsize::new(0),

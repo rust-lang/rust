@@ -50,6 +50,6 @@ fn main() {
         // impls for the correct trait where the path is not misleading.
         a::try_foo(other_variant_implements_correct_trait);
         //~^ ERROR E0277
-        //~| the following implementations were found:
+        //~| the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
     }
 }

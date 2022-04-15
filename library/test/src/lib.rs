@@ -19,10 +19,8 @@
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
-#![feature(termination_trait_lib)]
-#![feature(process_exitcode_placeholder)]
+#![feature(process_exitcode_internals)]
 #![feature(test)]
-#![feature(total_cmp)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};

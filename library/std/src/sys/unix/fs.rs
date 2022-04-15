@@ -1535,12 +1535,12 @@ mod remove_dir_impl {
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
 
-    #[cfg(not(all(target_os = "macos", target_arch = "x86_64"),))]
+    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64")),))]
     use libc::{fdopendir, openat, unlinkat};
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     use macos_weak::{fdopendir, openat, unlinkat};
 
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     mod macos_weak {
         use crate::sys::weak::weak;
         use libc::{c_char, c_int, DIR};
@@ -1562,6 +1562,9 @@ mod remove_dir_impl {
         }
 
         pub unsafe fn fdopendir(fd: c_int) -> *mut DIR {
+            #[cfg(all(target_os = "macos", target_arch = "x86"))]
+            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64$UNIX2003");
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
             weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
             fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
                 crate::sys::unix::os::set_errno(libc::ENOSYS);
@@ -1699,12 +1702,12 @@ mod remove_dir_impl {
         }
     }
 
-    #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
+    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64"))))]
     pub fn remove_dir_all(p: &Path) -> io::Result<()> {
         remove_dir_all_modern(p)
     }
 
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     pub fn remove_dir_all(p: &Path) -> io::Result<()> {
         if macos_weak::has_openat() {
             // openat() is available with macOS 10.10+, just like unlinkat() and fdopendir()

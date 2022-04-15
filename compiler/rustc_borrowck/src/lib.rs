@@ -7,6 +7,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
@@ -22,7 +23,6 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::Node;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -125,8 +125,9 @@ fn mir_borrowck<'tcx>(
 ) -> &'tcx BorrowCheckResult<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
+    let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
-    let opt_closure_req = tcx.infer_ctxt().with_opaque_type_inference(def.did).enter(|infcx| {
+    let opt_closure_req = tcx.infer_ctxt().with_opaque_type_inference(hir_owner).enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
         do_mir_borrowck(&infcx, input_body, promoted, false).0
@@ -141,7 +142,7 @@ fn mir_borrowck<'tcx>(
 /// If `return_body_with_facts` is true, then return the body with non-erased
 /// region ids on which the borrow checking was performed together with Polonius
 /// facts.
-#[instrument(skip(infcx, input_body, input_promoted), level = "debug")]
+#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.with_opt_param().as_local().unwrap()), level = "debug")]
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
@@ -154,7 +155,6 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);
-    let id = tcx.hir().local_def_id_to_hir_id(def.did);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -224,7 +224,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
-    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
+    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def.did).is_fn_or_closure();
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
@@ -287,13 +287,16 @@ fn do_mir_borrowck<'a, 'tcx>(
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
-    let movable_generator = !matches!(
-        tcx.hir().get(id),
-        Node::Expr(&hir::Expr {
-            kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
-            ..
-        })
-    );
+    let movable_generator =
+        // The first argument is the generator type passed by value
+        if let Some(local) = body.local_decls.raw.get(1)
+        // Get the interior types and substs which typeck computed
+        && let ty::Generator(_, _, hir::Movability::Static) = local.ty.kind()
+    {
+        false
+    } else {
+        true
+    };
 
     for (idx, move_data_results) in promoted_errors {
         let promoted_body = &promoted[idx];
@@ -383,7 +386,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
-            _ => id,
+            _ => tcx.hir().local_def_id_to_hir_id(def.did),
         };
 
         // Span and message don't matter; we overwrite them below anyway
@@ -623,9 +626,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::SetDiscriminant { place, variant_index: _ } => {
-                self.mutate_place(location, (**place, span), Shallow(None), flow_state);
-            }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ..
             }) => {
@@ -650,6 +650,9 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
+            }
+            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+                bug!("Statement not allowed in this MIR phase")
             }
         }
     }
@@ -1046,7 +1049,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // borrow); so don't check if they interfere.
                 //
                 // NOTE: *reservations* do conflict with themselves;
-                // thus aren't injecting unsoundenss w/ this check.)
+                // thus aren't injecting unsoundness w/ this check.)
                 (Activation(_, activating), _) if activating == borrow_index => {
                     debug!(
                         "check_access_for_conflict place_span: {:?} sd: {:?} rw: {:?} \
@@ -1105,7 +1108,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                     // rust-lang/rust#56254 - This was previously permitted on
                     // the 2018 edition so we emit it as a warning. We buffer
-                    // these sepately so that we only emit a warning if borrow
+                    // these separately so that we only emit a warning if borrow
                     // checking was otherwise successful.
                     this.reservation_warnings
                         .insert(bi, (place_span.0, place_span.1, location, bk, borrow.clone()));
@@ -1586,7 +1589,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         debug!("check_if_reassignment_to_immutable_state({:?})", local);
 
-        // Check if any of the initializiations of `local` have happened yet:
+        // Check if any of the initializations of `local` have happened yet:
         if let Some(init_index) = self.is_local_ever_initialized(local, flow_state) {
             // And, if so, report an error.
             let init = &self.move_data.inits[init_index];

@@ -8,7 +8,6 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
-use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
@@ -168,8 +167,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 "#![feature(generic_const_exprs)]\n".to_string(),
                 rustc_errors::Applicability::MaybeIncorrect,
             )
-            .emit();
-        rustc_errors::FatalError.raise();
+            .emit()
     }
 
     debug!(?concrete, "is_const_evaluatable");
@@ -409,20 +407,18 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     }
 
     /// Builds the abstract const by walking the thir and bailing out when
-    /// encountering an unspported operation.
+    /// encountering an unsupported operation.
     fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorGuaranteed> {
         debug!("Abstractconstbuilder::build: body={:?}", &*self.body);
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const(Interned(
-                ty::ConstS { val: ty::ConstKind::Unevaluated(ct), ty: _ },
-                _,
-            ))) = n
-            {
-                // `AbstractConst`s should not contain any promoteds as they require references which
-                // are not allowed.
-                assert_eq!(ct.promoted, None);
+            if let Node::Leaf(ct) = n {
+                if let ty::ConstKind::Unevaluated(ct) = ct.val() {
+                    // `AbstractConst`s should not contain any promoteds as they require references which
+                    // are not allowed.
+                    assert_eq!(ct.promoted, None);
+                }
             }
         }
 
@@ -638,6 +634,7 @@ pub(super) fn thir_abstract_const<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
@@ -702,7 +699,7 @@ struct ConstUnifyCtxt<'tcx> {
 
 impl<'tcx> ConstUnifyCtxt<'tcx> {
     // Substitutes generics repeatedly to allow AbstractConsts to unify where a
-    // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
+    // ConstKind::Unevaluated could be turned into an AbstractConst that would unify e.g.
     // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
     #[inline]
     #[instrument(skip(self), level = "debug")]

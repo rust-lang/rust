@@ -3,7 +3,7 @@
 #![warn(clippy::iter_nth_zero)]
 use std::collections::HashSet;
 
-struct Foo {}
+struct Foo;
 
 impl Foo {
     fn nth(&self, index: usize) -> usize {

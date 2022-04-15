@@ -17,11 +17,13 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
@@ -156,6 +158,89 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+/// Information for emitting suggestions and recovering from
+/// C-style `i++`, `--i`, etc.
+#[derive(Debug, Copy, Clone)]
+struct IncDecRecovery {
+    /// Is this increment/decrement its own statement?
+    standalone: IsStandalone,
+    /// Is this an increment or decrement?
+    op: IncOrDec,
+    /// Is this pre- or postfix?
+    fixity: UnaryFixity,
+}
+
+/// Is an increment or decrement expression its own statement?
+#[derive(Debug, Copy, Clone)]
+enum IsStandalone {
+    /// It's standalone, i.e., its own statement.
+    Standalone,
+    /// It's a subexpression, i.e., *not* standalone.
+    Subexpr,
+    /// It's maybe standalone; we're not sure.
+    Maybe,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum IncOrDec {
+    Inc,
+    // FIXME: `i--` recovery isn't implemented yet
+    #[allow(dead_code)]
+    Dec,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum UnaryFixity {
+    Pre,
+    Post,
+}
+
+impl IncOrDec {
+    fn chr(&self) -> char {
+        match self {
+            Self::Inc => '+',
+            Self::Dec => '-',
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Inc => "increment",
+            Self::Dec => "decrement",
+        }
+    }
+}
+
+impl std::fmt::Display for UnaryFixity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pre => write!(f, "prefix"),
+            Self::Post => write!(f, "postfix"),
+        }
+    }
+}
+
+struct MultiSugg {
+    msg: String,
+    patches: Vec<(Span, String)>,
+    applicability: Applicability,
+}
+
+impl MultiSugg {
+    fn emit<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
+        err.multipart_suggestion(&self.msg, self.patches, self.applicability);
+    }
+
+    /// Overrides individual messages and applicabilities.
+    fn emit_many<G: EmissionGuarantee>(
+        err: &mut DiagnosticBuilder<'_, G>,
+        msg: &str,
+        applicability: Applicability,
+        suggestions: impl Iterator<Item = Self>,
+    ) {
+        err.multipart_suggestions(msg, suggestions.map(|s| s.patches), applicability);
+    }
+}
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -190,12 +275,12 @@ impl<'a> Parser<'a> {
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        m: &str,
+        m: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<DiagnosticMessage>) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
@@ -203,11 +288,15 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    /// Relace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
+    /// Replace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
     /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
         self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
+    }
+
+    pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
+        &self.unclosed_delims
     }
 
     /// Create a snapshot of the `Parser`.
@@ -497,16 +586,22 @@ impl<'a> Parser<'a> {
                     //     field: value,
                     // } }
                     err.delay_as_bug();
-                    self.struct_span_err(expr.span, "struct literal body without path")
-                        .multipart_suggestion(
-                            "you might have forgotten to add the struct literal inside the block",
-                            vec![
-                                (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
-                                (expr.span.shrink_to_hi(), " }".to_string()),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                    self.struct_span_err(
+                        expr.span,
+                        DiagnosticMessage::fluent("parser-struct-literal-body-without-path"),
+                    )
+                    .multipart_suggestion(
+                        DiagnosticMessage::fluent_attr(
+                            "parser-struct-literal-body-without-path",
+                            "suggestion",
+                        ),
+                        vec![
+                            (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
+                            (expr.span.shrink_to_hi(), " }".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
@@ -1165,6 +1260,135 @@ impl<'a> Parser<'a> {
         }
         err.emit();
         Ok(())
+    }
+
+    pub(super) fn recover_from_prefix_increment(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        prev_is_semi: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let standalone =
+            if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr };
+        let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
+
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
+
+    pub(super) fn recover_from_postfix_increment(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+    ) -> PResult<'a, P<Expr>> {
+        let kind = IncDecRecovery {
+            standalone: IsStandalone::Maybe,
+            op: IncOrDec::Inc,
+            fixity: UnaryFixity::Post,
+        };
+
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
+
+    fn recover_from_inc_dec(
+        &mut self,
+        base: P<Expr>,
+        kind: IncDecRecovery,
+        op_span: Span,
+    ) -> PResult<'a, P<Expr>> {
+        let mut err = self.struct_span_err(
+            op_span,
+            &format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
+        );
+        err.span_label(op_span, &format!("not a valid {} operator", kind.fixity));
+
+        let help_base_case = |mut err: DiagnosticBuilder<'_, _>, base| {
+            err.help(&format!("use `{}= 1` instead", kind.op.chr()));
+            err.emit();
+            Ok(base)
+        };
+
+        // (pre, post)
+        let spans = match kind.fixity {
+            UnaryFixity::Pre => (op_span, base.span.shrink_to_hi()),
+            UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
+        };
+
+        match kind.standalone {
+            IsStandalone::Standalone => self.inc_dec_standalone_suggest(kind, spans).emit(&mut err),
+            IsStandalone::Subexpr => {
+                let Ok(base_src) = self.span_to_snippet(base.span)
+                    else { return help_base_case(err, base) };
+                match kind.fixity {
+                    UnaryFixity::Pre => {
+                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                    }
+                    UnaryFixity::Post => {
+                        self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                    }
+                }
+            }
+            IsStandalone::Maybe => {
+                let Ok(base_src) = self.span_to_snippet(base.span)
+                    else { return help_base_case(err, base) };
+                let sugg1 = match kind.fixity {
+                    UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, kind, spans),
+                    UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, kind, spans),
+                };
+                let sugg2 = self.inc_dec_standalone_suggest(kind, spans);
+                MultiSugg::emit_many(
+                    &mut err,
+                    "use `+= 1` instead",
+                    Applicability::Unspecified,
+                    [sugg1, sugg2].into_iter(),
+                )
+            }
+        }
+        Err(err)
+    }
+
+    fn prefix_inc_dec_suggest(
+        &mut self,
+        base_src: String,
+        kind: IncDecRecovery,
+        (pre_span, post_span): (Span, Span),
+    ) -> MultiSugg {
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![
+                (pre_span, "{ ".to_string()),
+                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
+            ],
+            applicability: Applicability::MachineApplicable,
+        }
+    }
+
+    fn postfix_inc_dec_suggest(
+        &mut self,
+        base_src: String,
+        kind: IncDecRecovery,
+        (pre_span, post_span): (Span, Span),
+    ) -> MultiSugg {
+        let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![
+                (pre_span, format!("{{ let {} = ", tmp_var)),
+                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
+            ],
+            applicability: Applicability::HasPlaceholders,
+        }
+    }
+
+    fn inc_dec_standalone_suggest(
+        &mut self,
+        kind: IncDecRecovery,
+        (pre_span, post_span): (Span, Span),
+    ) -> MultiSugg {
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
+            applicability: Applicability::MachineApplicable,
+        }
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
@@ -2367,6 +2591,34 @@ impl<'a> Parser<'a> {
             }
         }
         Err(err)
+    }
+
+    crate fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
+        let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
+        let qself_position = qself.as_ref().map(|qself| qself.position);
+        for (i, segments) in path.segments.windows(2).enumerate() {
+            if qself_position.map(|pos| i < pos).unwrap_or(false) {
+                continue;
+            }
+            if let [a, b] = segments {
+                let (a_span, b_span) = (a.span(), b.span());
+                let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
+                if self.span_to_snippet(between_span).as_ref().map(|a| &a[..]) == Ok(":: ") {
+                    let mut err = self.struct_span_err(
+                        path.span.shrink_to_hi(),
+                        "expected `:` followed by trait or lifetime",
+                    );
+                    err.span_suggestion(
+                        between_span,
+                        "use single colon",
+                        ": ".to_owned(),
+                        Applicability::MachineApplicable,
+                    );
+                    return Err(err);
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Parse and throw away a parenthesized comma separated

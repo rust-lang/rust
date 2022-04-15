@@ -33,7 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
@@ -46,7 +46,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::sym;
-use rustc_span::{BytePos, MultiSpan, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::stable_map::FxHashMap;
@@ -304,7 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
-        // and unify the upvar tupe type in the closure with it:
+        // and unify the upvar tuple type in the closure with it:
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
@@ -335,11 +335,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // Returns a list of `Ty`s for each upvar.
     fn final_upvar_tys(&self, closure_id: DefId) -> Vec<Ty<'tcx>> {
-        // Presently an unboxed closure type cannot "escape" out of a
-        // function, so we will only encounter ones that originated in the
-        // local crate or were inlined into it along with some function.
-        // This may change if abstract return types of some sort are
-        // implemented.
         self.typeck_results
             .borrow()
             .closure_min_captures_flattened(closure_id)
@@ -550,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // capture information.
             //
             // - if descendant is found, remove it from the list, and update the current place's
-            // capture information to account for the descendants's capture kind.
+            // capture information to account for the descendant's capture kind.
             //
             // We can never be in a case where the list contains both an ancestor and a descendant
             // Also there can only be ancestor but in case of descendants there might be
@@ -666,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Now that we have the minimized list of captures, sort the captures by field id.
         // This causes the closure to capture the upvars in the same order as the fields are
         // declared which is also the drop order. Thus, in situations where we capture all the
-        // fields of some type, the obserable drop order will remain the same as it previously
+        // fields of some type, the observable drop order will remain the same as it previously
         // was even though we're dropping each capture individually.
         // See https://github.com/rust-lang/project-rfc-2229/issues/42 and
         // `src/test/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
@@ -1401,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Observations:
             // - `captured_by_move_projs` is not empty. Therefore we can call
             //   `captured_by_move_projs.first().unwrap()` safely.
-            // - All entries in `captured_by_move_projs` have atleast one projection.
+            // - All entries in `captured_by_move_projs` have at least one projection.
             //   Therefore we can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
 
             // We don't capture derefs in case of move captures, which would have be applied to
@@ -1617,7 +1612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We don't capture derefs of raw ptrs
                 ty::RawPtr(_) => unreachable!(),
 
-                // Derefencing a mut-ref allows us to mut the Place if we don't deref
+                // Dereferencing a mut-ref allows us to mut the Place if we don't deref
                 // an immut-ref after on top of this.
                 ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
 
@@ -1878,7 +1873,7 @@ fn restrict_precision_for_unsafe<'tcx>(
         }
 
         if proj.ty.is_union() {
-            // Don't capture preicse fields of a union.
+            // Don't capture precise fields of a union.
             truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
             break;
         }
@@ -1890,7 +1885,7 @@ fn restrict_precision_for_unsafe<'tcx>(
 /// Truncate projections so that following rules are obeyed by the captured `place`:
 /// - No Index projections are captured, since arrays are captured completely.
 /// - No unsafe block is required to capture `place`
-/// Returns the truncated place and updated cature mode.
+/// Returns the truncated place and updated capture mode.
 fn restrict_capture_precision<'tcx>(
     place: Place<'tcx>,
     curr_mode: ty::UpvarCapture,
@@ -2064,7 +2059,7 @@ fn migration_suggestion_for_2229(
 /// It is the caller's duty to figure out which path_expr_id to use.
 ///
 /// If both the CaptureKind and Expression are considered to be equivalent,
-/// then `CaptureInfo` A is preferred. This can be useful in cases where we want to priortize
+/// then `CaptureInfo` A is preferred. This can be useful in cases where we want to prioritize
 /// expressions reported back to the user as part of diagnostics based on which appears earlier
 /// in the closure. This can be achieved simply by calling
 /// `determine_capture_info(existing_info, current_info)`. This works out because the

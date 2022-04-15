@@ -59,19 +59,20 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self,
     error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
     Binder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -333,6 +334,9 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         )
         | (&ty::Infer(ty::InferTy::TyVar(_)), _)
         | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
+        (&ty::Ref(reg_a, ty_a, mut_a), &ty::Ref(reg_b, ty_b, mut_b)) => {
+            reg_a == reg_b && mut_a == mut_b && same_type_modulo_infer(*ty_a, *ty_b)
+        }
         _ => a == b,
     }
 }
@@ -602,7 +606,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match *cause.code() {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
                 let ty = self.resolve_vars_if_possible(root_ty);
-                if ty.is_suggestable() {
+                if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
+                {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
@@ -1086,7 +1091,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
+    pub fn cmp(
+        &self,
+        t1: Ty<'tcx>,
+        t2: Ty<'tcx>,
+    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions
@@ -1159,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let len = sub1.len() - common_default_params;
                     let consts_offset = len - sub1.consts().count();
 
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal("<");
                         values.1.push_normal("<");
@@ -1240,7 +1249,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     // Close the type argument bracket.
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal(">");
                         values.1.push_normal(">");
@@ -1732,6 +1741,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             if should_suggest_fixes {
+                self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
@@ -1762,6 +1772,73 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_error_origin(diag, cause, exp_found, terr);
     }
 
+    fn suggest_tuple_pattern(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
+        // some modifications due to that being in typeck and this being in infer.
+        if let ObligationCauseCode::Pattern { .. } = cause.code() {
+            if let ty::Adt(expected_adt, substs) = exp_found.expected.kind() {
+                let compatible_variants: Vec<_> = expected_adt
+                    .variants()
+                    .iter()
+                    .filter(|variant| {
+                        variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                    })
+                    .filter_map(|variant| {
+                        let sole_field = &variant.fields[0];
+                        let sole_field_ty = sole_field.ty(self.tcx, substs);
+                        if same_type_modulo_infer(sole_field_ty, exp_found.found) {
+                            let variant_path =
+                                with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                            // FIXME #56861: DRYer prelude filtering
+                            if let Some(path) = variant_path.strip_prefix("std::prelude::") {
+                                if let Some((_, path)) = path.split_once("::") {
+                                    return Some(path.to_string());
+                                }
+                            }
+                            Some(variant_path)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                match &compatible_variants[..] {
+                    [] => {}
+                    [variant] => {
+                        diag.multipart_suggestion_verbose(
+                            &format!("try wrapping the pattern in `{}`", variant),
+                            vec![
+                                (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                (cause.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {
+                        // More than one matching variant.
+                        diag.multipart_suggestions(
+                            &format!(
+                                "try wrapping the pattern in a variant of `{}`",
+                                self.tcx.def_path_str(expected_adt.did())
+                            ),
+                            compatible_variants.into_iter().map(|variant| {
+                                vec![
+                                    (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                    (cause.span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
@@ -1784,7 +1861,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     })
                     .transpose();
                 if output.is_some() {
-                    // We don't account for multiple `Future::Output = Ty` contraints.
+                    // We don't account for multiple `Future::Output = Ty` constraints.
                     return output;
                 }
             }
@@ -1998,7 +2075,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         {
                             diag.span_suggestion(
                                 span,
-                                msg,
+                                *msg,
                                 format!("{}.as_ref()", snippet),
                                 Applicability::MachineApplicable,
                             );

@@ -348,7 +348,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
             // The primitive for this algorithm.
             Abi::Scalar(scalar) => {
-                let kind = match scalar.value {
+                let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
                 };
@@ -482,7 +482,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
             Abi::ScalarPair(a, b) => PassMode::Pair(
                 scalar_attrs(&layout, a, Size::ZERO),
-                scalar_attrs(&layout, b, a.value.size(cx).align_to(b.value.align(cx).abi)),
+                scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
@@ -534,7 +534,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let Abi::Scalar(scalar) = self.layout.abi {
-            if let abi::Int(i, signed) = scalar.value {
+            if let abi::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
                         if signed {

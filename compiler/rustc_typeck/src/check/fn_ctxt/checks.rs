@@ -11,7 +11,7 @@ use crate::check::{
 
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticId};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -21,7 +21,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
-use rustc_span::{self, MultiSpan, Span};
+use rustc_span::{self, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
 use crate::structured_errors::StructuredDiagnostic;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
-                    // our input typs to err_args so we don't blow up the error messages
+                    // our input types to err_args so we don't blow up the error messages
                     struct_span_err!(
                         tcx.sess,
                         call_span,
@@ -774,57 +774,68 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let prev_diverges = self.diverges.get();
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
-        let (ctxt, ()) =
-            self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-                for (pos, s) in blk.stmts.iter().enumerate() {
-                    self.check_stmt(s, blk.stmts.len() - 1 == pos);
-                }
+        let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
+            for (pos, s) in blk.stmts.iter().enumerate() {
+                self.check_stmt(s, blk.stmts.len() - 1 == pos);
+            }
 
-                // check the tail expression **without** holding the
-                // `enclosing_breakables` lock below.
-                let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
+            // check the tail expression **without** holding the
+            // `enclosing_breakables` lock below.
+            let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
 
-                let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                let ctxt = enclosing_breakables.find_breakable(blk.hir_id);
-                let coerce = ctxt.coerce.as_mut().unwrap();
-                if let Some(tail_expr_ty) = tail_expr_ty {
-                    let tail_expr = tail_expr.unwrap();
-                    let span = self.get_expr_coercion_span(tail_expr);
-                    let cause =
-                        self.cause(span, ObligationCauseCode::BlockTailExpression(blk.hir_id));
-                    coerce.coerce(self, &cause, tail_expr, tail_expr_ty);
-                } else {
-                    // Subtle: if there is no explicit tail expression,
-                    // that is typically equivalent to a tail expression
-                    // of `()` -- except if the block diverges. In that
-                    // case, there is no value supplied from the tail
-                    // expression (assuming there are no other breaks,
-                    // this implies that the type of the block will be
-                    // `!`).
-                    //
-                    // #41425 -- label the implicit `()` as being the
-                    // "found type" here, rather than the "expected type".
-                    if !self.diverges.get().is_always() {
-                        // #50009 -- Do not point at the entire fn block span, point at the return type
-                        // span, as it is the cause of the requirement, and
-                        // `consider_hint_about_removing_semicolon` will point at the last expression
-                        // if it were a relevant part of the error. This improves usability in editors
-                        // that highlight errors inline.
-                        let mut sp = blk.span;
-                        let mut fn_span = None;
-                        if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
-                            let ret_sp = decl.output.span();
-                            if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
-                                // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
-                                // output would otherwise be incorrect and even misleading. Make sure
-                                // the span we're aiming at correspond to a `fn` body.
-                                if block_sp == blk.span {
-                                    sp = ret_sp;
-                                    fn_span = Some(ident.span);
-                                }
+            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+            let ctxt = enclosing_breakables.find_breakable(blk.hir_id);
+            let coerce = ctxt.coerce.as_mut().unwrap();
+            if let Some(tail_expr_ty) = tail_expr_ty {
+                let tail_expr = tail_expr.unwrap();
+                let span = self.get_expr_coercion_span(tail_expr);
+                let cause = self.cause(span, ObligationCauseCode::BlockTailExpression(blk.hir_id));
+                let ty_for_diagnostic = coerce.merged_ty();
+                // We use coerce_inner here because we want to augment the error
+                // suggesting to wrap the block in square brackets if it might've
+                // been mistaken array syntax
+                coerce.coerce_inner(
+                    self,
+                    &cause,
+                    Some(tail_expr),
+                    tail_expr_ty,
+                    Some(&mut |diag: &mut Diagnostic| {
+                        self.suggest_block_to_brackets(diag, blk, tail_expr_ty, ty_for_diagnostic);
+                    }),
+                    false,
+                );
+            } else {
+                // Subtle: if there is no explicit tail expression,
+                // that is typically equivalent to a tail expression
+                // of `()` -- except if the block diverges. In that
+                // case, there is no value supplied from the tail
+                // expression (assuming there are no other breaks,
+                // this implies that the type of the block will be
+                // `!`).
+                //
+                // #41425 -- label the implicit `()` as being the
+                // "found type" here, rather than the "expected type".
+                if !self.diverges.get().is_always() {
+                    // #50009 -- Do not point at the entire fn block span, point at the return type
+                    // span, as it is the cause of the requirement, and
+                    // `consider_hint_about_removing_semicolon` will point at the last expression
+                    // if it were a relevant part of the error. This improves usability in editors
+                    // that highlight errors inline.
+                    let mut sp = blk.span;
+                    let mut fn_span = None;
+                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
+                        let ret_sp = decl.output.span();
+                        if let Some(block_sp) = self.parent_item_span(blk.hir_id) {
+                            // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
+                            // output would otherwise be incorrect and even misleading. Make sure
+                            // the span we're aiming at correspond to a `fn` body.
+                            if block_sp == blk.span {
+                                sp = ret_sp;
+                                fn_span = Some(ident.span);
                             }
                         }
-                        coerce.coerce_forced_unit(
+                    }
+                    coerce.coerce_forced_unit(
                         self,
                         &self.misc(sp),
                         &mut |err| {
@@ -837,21 +848,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // Our block must be a `assign desugar local; assignment`
                                     if let Some(hir::Node::Block(hir::Block {
                                         stmts:
-                                            [hir::Stmt {
-                                                kind:
-                                                    hir::StmtKind::Local(hir::Local {
-                                                        source: hir::LocalSource::AssignDesugar(_),
-                                                        ..
-                                                    }),
-                                                ..
-                                            }, hir::Stmt {
-                                                kind:
-                                                    hir::StmtKind::Expr(hir::Expr {
-                                                        kind: hir::ExprKind::Assign(..),
-                                                        ..
-                                                    }),
-                                                ..
-                                            }],
+                                            [
+                                                hir::Stmt {
+                                                    kind:
+                                                        hir::StmtKind::Local(hir::Local {
+                                                            source:
+                                                                hir::LocalSource::AssignDesugar(_),
+                                                            ..
+                                                        }),
+                                                    ..
+                                                },
+                                                hir::Stmt {
+                                                    kind:
+                                                        hir::StmtKind::Expr(hir::Expr {
+                                                            kind: hir::ExprKind::Assign(..),
+                                                            ..
+                                                        }),
+                                                    ..
+                                                },
+                                            ],
                                         ..
                                     })) = self.tcx.hir().find(blk.hir_id)
                                     {
@@ -871,9 +886,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                         false,
                     );
-                    }
                 }
-            });
+            }
+        });
 
         if ctxt.may_break {
             // If we can break from the block, then the block's exit is always reachable
@@ -921,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion_short(
                     span_semi,
-                    "consider removing this semicolon",
+                    "remove this semicolon",
                     String::new(),
                     Applicability::MachineApplicable,
                 );

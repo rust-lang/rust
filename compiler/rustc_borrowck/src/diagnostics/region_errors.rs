@@ -176,7 +176,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // FIXME. We should handle this case better. It
                         // indicates that we have e.g., some region variable
                         // whose value is like `'a+'b` where `'a` and `'b` are
-                        // distinct unrelated univesal regions that are not
+                        // distinct unrelated universal regions that are not
                         // known to outlive one another. It'd be nice to have
                         // some examples where this arises to decide how best
                         // to report it; we could probably handle it by
@@ -330,14 +330,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ty::RawPtr(ty_mut) => {
                         assert_eq!(ty_mut.mutbl, rustc_hir::Mutability::Mut);
                         (
-                            format!("a mutable pointer to {}", ty_mut.ty),
+                            format!("a mutable pointer to `{}`", ty_mut.ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
                         assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
                         (
-                            format!("a mutable reference to {}", inner_ty),
+                            format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"
                                 .to_string(),
                         )
@@ -351,10 +351,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let adt_desc = adt.descr();
 
                         let desc = format!(
-                            "the type {ty}, which makes the generic argument {generic_arg} invariant"
+                            "the type `{ty}`, which makes the generic argument `{generic_arg}` invariant"
                         );
                         let note = format!(
-                            "the {adt_desc} {base_ty} is invariant over the parameter {base_generic_arg}"
+                            "the {adt_desc} `{base_ty}` is invariant over the parameter `{base_generic_arg}`"
+                        );
+                        (desc, note)
+                    }
+                    ty::FnDef(def_id, _) => {
+                        let name = self.infcx.tcx.item_name(*def_id);
+                        let identity_substs =
+                            InternalSubsts::identity_for_item(self.infcx.tcx, *def_id);
+                        let desc = format!("a function pointer to `{name}`");
+                        let note = format!(
+                            "the function `{name}` is invariant over the parameter `{}`",
+                            identity_substs[param_index as usize]
                         );
                         (desc, note)
                     }
@@ -512,10 +523,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(
                 outlived_fr_span,
-                format!(
-                    "`{}` declared here, outside of the {} body",
-                    outlived_fr_name, escapes_from
-                ),
+                format!("`{outlived_fr_name}` declared here, outside of the {escapes_from} body",),
             );
         }
 
@@ -523,12 +531,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             diag.span_label(
                 fr_span,
                 format!(
-                    "`{}` is a reference that is only valid in the {} body",
-                    fr_name, escapes_from
+                    "`{fr_name}` is a reference that is only valid in the {escapes_from} body",
                 ),
             );
 
-            diag.span_label(*span, format!("`{}` escapes the {} body here", fr_name, escapes_from));
+            diag.span_label(*span, format!("`{fr_name}` escapes the {escapes_from} body here"));
         }
 
         // Only show an extra note if we can find an 'error region' for both of the region
@@ -600,9 +607,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 diag.span_label(
                     *span,
                     format!(
-                        "{} was supposed to return data with lifetime `{}` but it is returning \
-                         data with lifetime `{}`",
-                        mir_def_name, outlived_fr_name, fr_name
+                        "{mir_def_name} was supposed to return data with lifetime `{outlived_fr_name}` but it is returning \
+                         data with lifetime `{fr_name}`",
                     ),
                 );
             }
@@ -687,7 +693,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // If there is a static predicate, then the only sensible suggestion is to replace
                 // fr with `'static`.
                 if has_static_predicate {
-                    diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str));
+                    diag.help(&format!("consider replacing `{fr_name}` with `{static_str}`"));
                 } else {
                     // Otherwise, we should suggest adding a constraint on the return type.
                     let span = self.infcx.tcx.def_span(did);
@@ -703,14 +709,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         } else {
                             span
                         };
-                        let suggestion = format!(" + {}", suggestable_fr_name);
+                        let suggestion = format!(" + {suggestable_fr_name}");
                         let span = span.shrink_to_hi();
                         diag.span_suggestion(
                             span,
                             &format!(
                                 "to allow this `impl Trait` to capture borrowed data with lifetime \
-                                 `{}`, add `{}` as a bound",
-                                fr_name, suggestable_fr_name,
+                                 `{fr_name}`, add `{suggestable_fr_name}` as a bound",
                             ),
                             suggestion,
                             Applicability::MachineApplicable,

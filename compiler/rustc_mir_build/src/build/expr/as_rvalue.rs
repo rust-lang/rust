@@ -322,7 +322,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
                     span: expr_span,
                     user_ty: None,
-                    literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit).into(),
+                    literal: ConstantKind::zero_sized(this.tcx.types.unit),
                 }))))
             }
             ExprKind::Yield { .. }
@@ -552,7 +552,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let size = self.tcx.layout_of(param_ty).unwrap().size;
-        let literal = ty::Const::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
+        let literal = ConstantKind::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
 
         self.literal_operand(span, literal)
     }
@@ -563,7 +563,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
-        let literal = ty::Const::from_bits(self.tcx, n, param_ty);
+        let literal = ConstantKind::from_bits(self.tcx, n, param_ty);
 
         self.literal_operand(span, literal)
     }

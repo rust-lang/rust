@@ -530,6 +530,7 @@ impl<'a> Conflicts<'a> {
             StatementKind::Assign(_) => {}
 
             StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag(..)

@@ -65,7 +65,7 @@ fn unused_generic_params<'tcx>(
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
     debug!(?unused_parameters, "(after default)");
 
-    // Visit MIR and accumululate used generic parameters.
+    // Visit MIR and accumulate used generic parameters.
     let body = match tcx.hir().body_const_context(def_id.expect_local()) {
         // Const functions are actually called and should thus be considered for polymorphization
         // via their runtime MIR.
@@ -158,7 +158,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Fn
         | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static
+        | DefKind::Static(_)
         | DefKind::Ctor(_, _)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -201,7 +201,7 @@ fn emit_unused_generic_params_error<'tcx>(
         return;
     }
 
-    let fn_span = match tcx.opt_item_name(def_id) {
+    let fn_span = match tcx.opt_item_ident(def_id) {
         Some(ident) => ident.span,
         _ => tcx.def_span(def_id),
     };

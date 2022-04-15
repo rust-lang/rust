@@ -77,15 +77,6 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
     }
 }
 
-fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    if let hir::ItemKind::Impl(impl_) = &item.kind {
-        impl_.constness
-    } else {
-        bug!("`impl_constness` called on {:?}", item);
-    }
-}
-
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
@@ -423,12 +414,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     let node = tcx.hir().get_by_def_id(def_id.expect_local());
-
-    let fn_kind = node.fn_kind().unwrap_or_else(|| {
-        bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
-    });
-
-    fn_kind.asyncness()
+    if let Some(fn_kind) = node.fn_kind() { fn_kind.asyncness() } else { hir::IsAsync::NotAsync }
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
@@ -498,7 +484,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
-        impl_constness,
         conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };

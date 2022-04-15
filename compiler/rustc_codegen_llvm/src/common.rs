@@ -147,6 +147,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.type_i1(), val as u64)
     }
 
+    fn const_i16(&self, i: i16) -> &'ll Value {
+        self.const_int(self.type_i16(), i as i64)
+    }
+
     fn const_i32(&self, i: i32) -> &'ll Value {
         self.const_int(self.type_i32(), i as i64)
     }
@@ -217,16 +221,16 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
-        let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
+        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.value.size(self).bytes());
+                assert_eq!(0, layout.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             }
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.value.size(self));
+                let data = int.assert_bits(layout.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if layout.value == Pointer {
+                if layout.primitive() == Pointer {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -265,7 +269,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         1,
                     )
                 };
-                if layout.value != Pointer {
+                if layout.primitive() != Pointer {
                     unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)

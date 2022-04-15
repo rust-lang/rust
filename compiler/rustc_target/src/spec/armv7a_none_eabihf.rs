@@ -9,10 +9,10 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        abi: "eabihf".to_string(),
+        abi: "eabihf".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        linker: Some("rust-lld".to_owned()),
-        features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".to_string(),
+        linker: Some("rust-lld".into()),
+        features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".into(),
         executables: true,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
@@ -24,10 +24,10 @@ pub fn target() -> Target {
         ..Default::default()
     };
     Target {
-        llvm_target: "armv7a-none-eabihf".to_string(),
+        llvm_target: "armv7a-none-eabihf".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
-        arch: "arm".to_string(),
+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+        arch: "arm".into(),
         options: opts,
     }
 }

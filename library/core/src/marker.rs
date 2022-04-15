@@ -797,16 +797,9 @@ impl<T: ?Sized> Unpin for *mut T {}
 /// This should be used for `~const` bounds,
 /// as non-const bounds will always hold for every type.
 #[unstable(feature = "const_trait_impl", issue = "67792")]
-#[cfg_attr(not(bootstrap), lang = "destruct")]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg,)
-)]
+#[lang = "destruct"]
+#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 pub trait Destruct {}
-
-#[cfg(bootstrap)]
-#[unstable(feature = "const_trait_impl", issue = "67792")]
-impl<T: ?Sized> const Destruct for T {}
 
 /// Implementations of `Copy` for primitive types.
 ///

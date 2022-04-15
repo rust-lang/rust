@@ -1717,7 +1717,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
     }
 
-    /// Interescts `row` with `set`. `set` can be either `BitSet` or
+    /// Intersects `row` with `set`. `set` can be either `BitSet` or
     /// `HybridBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.

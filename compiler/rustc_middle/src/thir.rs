@@ -19,11 +19,11 @@ use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{
-    BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
+    self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, Const, Ty, UpvarSubsts, UserType};
+use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
 use rustc_middle::ty::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
@@ -375,7 +375,7 @@ pub enum ExprKind<'tcx> {
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: ExprId,
-        count: Const<'tcx>,
+        count: ty::Const<'tcx>,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
@@ -522,7 +522,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
         span: Span,
     },
     SymFn {
@@ -656,7 +656,7 @@ pub enum PatKind<'tcx> {
     /// One of the following:
     /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
     ///   checking will detect if you use the same string twice in different patterns.
-    /// * integer, bool, char or float, which will be handled by exhaustivenes to cover exactly
+    /// * integer, bool, char or float, which will be handled by exhaustiveness to cover exactly
     ///   its own value, similar to `&str`, but these values are much simpler.
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.

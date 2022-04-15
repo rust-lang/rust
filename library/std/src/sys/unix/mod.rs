@@ -215,6 +215,7 @@ where
     }
 }
 
+#[allow(dead_code)] // Not used on all platforms.
 pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }

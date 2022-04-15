@@ -14,22 +14,26 @@ use std::iter::TrustedLen;
 /// (lhs as Variant).field1 = arg1;
 /// discriminant(lhs) = variant_index;  // If lhs is an enum or generator.
 pub fn expand_aggregate<'tcx>(
-    mut lhs: Place<'tcx>,
+    orig_lhs: Place<'tcx>,
     operands: impl Iterator<Item = (Operand<'tcx>, Ty<'tcx>)> + TrustedLen,
     kind: AggregateKind<'tcx>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
 ) -> impl Iterator<Item = Statement<'tcx>> + TrustedLen {
+    let mut lhs = orig_lhs;
     let mut set_discriminant = None;
     let active_field_index = match kind {
         AggregateKind::Adt(adt_did, variant_index, _, _, active_field_index) => {
             let adt_def = tcx.adt_def(adt_did);
             if adt_def.is_enum() {
                 set_discriminant = Some(Statement {
-                    kind: StatementKind::SetDiscriminant { place: Box::new(lhs), variant_index },
+                    kind: StatementKind::SetDiscriminant {
+                        place: Box::new(orig_lhs),
+                        variant_index,
+                    },
                     source_info,
                 });
-                lhs = tcx.mk_place_downcast(lhs, adt_def, variant_index);
+                lhs = tcx.mk_place_downcast(orig_lhs, adt_def, variant_index);
             }
             active_field_index
         }
@@ -38,7 +42,7 @@ pub fn expand_aggregate<'tcx>(
             // variant 0 (Unresumed).
             let variant_index = VariantIdx::new(0);
             set_discriminant = Some(Statement {
-                kind: StatementKind::SetDiscriminant { place: Box::new(lhs), variant_index },
+                kind: StatementKind::SetDiscriminant { place: Box::new(orig_lhs), variant_index },
                 source_info,
             });
 
@@ -50,27 +54,24 @@ pub fn expand_aggregate<'tcx>(
         _ => None,
     };
 
-    operands
-        .enumerate()
-        .map(move |(i, (op, ty))| {
-            let lhs_field = if let AggregateKind::Array(_) = kind {
-                let offset = u64::try_from(i).unwrap();
-                tcx.mk_place_elem(
-                    lhs,
-                    ProjectionElem::ConstantIndex {
-                        offset,
-                        min_length: offset + 1,
-                        from_end: false,
-                    },
-                )
-            } else {
-                let field = Field::new(active_field_index.unwrap_or(i));
-                tcx.mk_place_field(lhs, field, ty)
-            };
-            Statement {
-                source_info,
-                kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
-            }
-        })
+    let operands = operands.enumerate().map(move |(i, (op, ty))| {
+        let lhs_field = if let AggregateKind::Array(_) = kind {
+            let offset = u64::try_from(i).unwrap();
+            tcx.mk_place_elem(
+                lhs,
+                ProjectionElem::ConstantIndex { offset, min_length: offset + 1, from_end: false },
+            )
+        } else {
+            let field = Field::new(active_field_index.unwrap_or(i));
+            tcx.mk_place_field(lhs, field, ty)
+        };
+        Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
+        }
+    });
+    [Statement { source_info, kind: StatementKind::Deinit(Box::new(orig_lhs)) }]
+        .into_iter()
+        .chain(operands)
         .chain(set_discriminant)
 }

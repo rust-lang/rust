@@ -136,7 +136,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
             ($($n:literal,)+) => {
                 $(
                     if start[$n] == needle {
-                        return Some((&start[$n] as *const u16 as usize - ptr as usize) / 2);
+                        return Some(((&start[$n] as *const u16).addr() - ptr.addr()) / 2);
                     }
                 )+
             }
@@ -149,7 +149,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
     for c in start {
         if *c == needle {
-            return Some((c as *const u16 as usize - ptr as usize) / 2);
+            return Some(((c as *const u16).addr() - ptr.addr()) / 2);
         }
     }
     None
@@ -289,6 +289,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 /// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
+    #[allow(unused)]
     const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
     #[cfg(not(miri))] // inline assembly does not work in Miri
     unsafe {

@@ -124,7 +124,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Records the type of every item.
+    /// Returns the [`Ty`][rustc_middle::ty::Ty] of the given [`DefId`]. If the [`DefId`] points
+    /// to an alias, it will "skip" this alias to return the aliased type.
+    ///
+    /// [`DefId`]: rustc_hir::def_id::DefId
     query type_of(key: DefId) -> Ty<'tcx> {
         desc { |tcx|
             "{action} `{path}`",
@@ -514,10 +517,7 @@ rustc_queries! {
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(key: (DefId, LocalDefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {
-        desc { |tcx| "computing the bounds for type parameter `{}`", {
-            let id = tcx.hir().local_def_id_to_hir_id(key.1);
-            tcx.hir().ty_param_name(id)
-        }}
+        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
     }
 
     query trait_def(key: DefId) -> ty::TraitDef {
@@ -559,7 +559,7 @@ rustc_queries! {
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
     /// `is_const_fn` function.
-    query is_const_fn_raw(key: DefId) -> bool {
+    query impl_constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -583,12 +583,6 @@ rustc_queries! {
     /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
     query is_foreign_item(key: DefId) -> bool {
         desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
-        separate_provide_extern
-    }
-
-    /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
-    query static_mutability(def_id: DefId) -> Option<hir::Mutability> {
-        desc { |tcx| "looking up static mutability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
@@ -682,6 +676,10 @@ rustc_queries! {
     query inherent_impls(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         separate_provide_extern
+    }
+
+    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+        desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
     /// The result of unsafety-checking this `LocalDefId`.
@@ -1331,11 +1329,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query impl_constness(def_id: DefId) -> hir::Constness {
-        desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
-        separate_provide_extern
-    }
-
     query check_item_well_formed(key: LocalDefId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
@@ -1469,6 +1462,15 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Collects all incoherent impls for the given crate and type.
+    ///
+    /// Do not call this directly, but instead use the `incoherent_impls` query.
+    /// This query is only used to get the data necessary for that query.
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+        desc { |tcx| "collecting all impls for a type in a crate" }
+        separate_provide_extern
+    }
+
     query is_dllimport_foreign_item(def_id: DefId) -> bool {
         desc { |tcx| "is_dllimport_foreign_item({})", tcx.def_path_str(def_id) }
     }
@@ -1500,8 +1502,7 @@ rustc_queries! {
         Option<&'tcx FxHashMap<ItemLocalId, Region>> {
         desc { "looking up a named region" }
     }
-    query is_late_bound_map(_: LocalDefId) ->
-        Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+    query is_late_bound_map(_: LocalDefId) -> Option<(LocalDefId, &'tcx FxHashSet<LocalDefId>)> {
         desc { "testing if a region is late bound" }
     }
     /// For a given item (like a struct), gets the default lifetimes to be used

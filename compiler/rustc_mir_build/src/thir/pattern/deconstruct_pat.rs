@@ -55,7 +55,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
@@ -136,7 +136,7 @@ impl IntRange {
     fn from_const<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: Const<'tcx>,
+        value: ty::Const<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
@@ -146,7 +146,7 @@ impl IntRange {
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
                     // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size) {
+                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size).unwrap() {
                         return Some(bits);
                     }
                 }
@@ -829,7 +829,8 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             (Str(self_val), Str(other_val)) => {
-                // FIXME: there's probably a more direct way of comparing for equality
+                // FIXME Once valtrees are available we can directly use the bytes
+                // in the `Str` variant of the valtree for the comparison here.
                 match compare_const_vals(
                     pcx.cx.tcx,
                     *self_val,
@@ -1007,7 +1008,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
                 smallvec![NonExhaustive]
             }
             &ty::Int(ity) => {
@@ -1650,7 +1651,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     }
 
                     // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a suple
+                    // get the names of the fields. Instead we just display everything as a tuple
                     // struct, which should be good enough.
                     write!(f, "(")?;
                     for p in self.iter_fields() {

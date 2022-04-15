@@ -103,7 +103,9 @@ pub fn check(build: &mut Build) {
         .take()
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
-        .or_else(|| Some(cmd_finder.must_have("python")));
+        .or_else(|| cmd_finder.maybe_have("python"))
+        .or_else(|| cmd_finder.maybe_have("python3"))
+        .or_else(|| cmd_finder.maybe_have("python2"));
 
     build.config.nodejs = build
         .config

@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::default::Default;
+use std::fmt;
 use std::hash::Hash;
+use std::iter;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -13,6 +15,7 @@ use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
+use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -21,6 +24,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -29,6 +33,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -351,7 +356,7 @@ crate enum ExternalLocation {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 crate struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
@@ -364,6 +369,27 @@ crate struct Item {
     crate def_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
+}
+
+/// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
+/// If you want to see the debug output for attributes and the `kind` as well, use `{:#?}` instead of `{:?}`.
+impl fmt::Debug for Item {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alternate = f.alternate();
+        // hand-picked fields that don't bloat the logs too much
+        let mut fmt = f.debug_struct("Item");
+        fmt.field("name", &self.name)
+            .field("visibility", &self.visibility)
+            .field("def_id", &self.def_id);
+        // allow printing the full item if someone really wants to
+        if alternate {
+            fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
+        } else {
+            fmt.field("kind", &self.type_());
+            fmt.field("docs", &self.doc_value());
+        }
+        fmt.finish()
+    }
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -467,14 +493,17 @@ impl Item {
     ) -> Item {
         trace!("name={:?}, def_id={:?}", name, def_id);
 
-        Item {
-            def_id: def_id.into(),
-            kind: box kind,
-            name,
-            attrs,
-            visibility: cx.tcx.visibility(def_id).clean(cx),
-            cfg,
-        }
+        // Primitives and Keywords are written in the source code as private modules.
+        // The modules need to be private so that nobody actually uses them, but the
+        // keywords and primitives that they are documenting are public.
+        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
+        {
+            Visibility::Public
+        } else {
+            cx.tcx.visibility(def_id).clean(cx)
+        };
+
+        Item { def_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -548,10 +577,16 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     crate fn is_associated_type(&self) -> bool {
-        self.type_() == ItemType::AssocType
+        matches!(&*self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+    }
+    crate fn is_ty_associated_type(&self) -> bool {
+        matches!(&*self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
     }
     crate fn is_associated_const(&self) -> bool {
-        self.type_() == ItemType::AssocConst
+        matches!(&*self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+    }
+    crate fn is_ty_associated_const(&self) -> bool {
+        matches!(&*self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
     }
     crate fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -641,6 +676,48 @@ impl Item {
             _ => false,
         }
     }
+
+    /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
+    crate fn fn_header(&self, tcx: TyCtxt<'_>) -> Option<hir::FnHeader> {
+        fn build_fn_header(
+            def_id: DefId,
+            tcx: TyCtxt<'_>,
+            asyncness: hir::IsAsync,
+        ) -> hir::FnHeader {
+            let sig = tcx.fn_sig(def_id);
+            let constness =
+                if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
+                };
+            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+        }
+        let header = match *self.kind {
+            ItemKind::ForeignFunctionItem(_) => {
+                let abi = tcx.fn_sig(self.def_id.as_def_id().unwrap()).abi();
+                hir::FnHeader {
+                    unsafety: if abi == Abi::RustIntrinsic {
+                        intrinsic_operation_unsafety(self.name.unwrap())
+                    } else {
+                        hir::Unsafety::Unsafe
+                    },
+                    abi,
+                    constness: hir::Constness::NotConst,
+                    asyncness: hir::IsAsync::NotAsync,
+                }
+            }
+            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) => {
+                let def_id = self.def_id.as_def_id().unwrap();
+                build_fn_header(def_id, tcx, tcx.asyncness(def_id))
+            }
+            ItemKind::TyMethodItem(_) => {
+                build_fn_header(self.def_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
+            }
+            _ => return None,
+        };
+        Some(header)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -655,17 +732,18 @@ crate enum ItemKind {
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
-    TypedefItem(Typedef, bool /* is associated type */),
+    TypedefItem(Typedef),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
     ImplItem(Impl),
-    /// A method signature only. Used for required methods in traits (ie,
-    /// non-default-methods).
+    /// A required method in a trait declaration meaning it's only a function signature.
     TyMethodItem(Function),
-    /// A method with a body.
+    /// A method in a trait impl or a provided method in a trait declaration.
+    ///
+    /// Compared to [TyMethodItem], it also contains a method body.
     MethodItem(Function, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
@@ -678,12 +756,16 @@ crate enum ItemKind {
     MacroItem(Macro),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
-    AssocConstItem(Type, Option<ConstantKind>),
-    /// An associated item in a trait or trait impl.
+    /// A required associated constant in a trait declaration.
+    TyAssocConstItem(Type),
+    /// An associated associated constant in a trait impl or a provided one in a trait declaration.
+    AssocConstItem(Type, ConstantKind),
+    /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    /// The `Option<Type>` is the default concrete type (e.g. `trait Trait { type Target = usize; }`)
-    AssocTypeItem(Box<Generics>, Vec<GenericBound>, Option<Type>),
+    TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
+    /// An associated type in a trait impl or a provided one in a trait declaration.
+    AssocTypeItem(Typedef, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem(Symbol),
@@ -705,7 +787,7 @@ impl ItemKind {
             ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypedefItem(_, _)
+            | TypedefItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
@@ -720,7 +802,9 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
+            | TyAssocConstItem(_)
             | AssocConstItem(_, _)
+            | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem(_) => [].iter(),
@@ -1253,7 +1337,6 @@ crate struct Generics {
 crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
-    crate header: hir::FnHeader,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1582,6 +1665,7 @@ crate enum PrimitiveType {
     Never,
 }
 
+type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 2>>;
 impl PrimitiveType {
     crate fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
         use ast::{FloatTy, IntTy, UintTy};
@@ -1637,66 +1721,66 @@ impl PrimitiveType {
         }
     }
 
-    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<DefId, 4> {
-        Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
-    }
+    crate fn simplified_types() -> &'static SimplifiedTypes {
+        use ty::fast_reject::SimplifiedTypeGen::*;
+        use ty::{FloatTy, IntTy, UintTy};
+        use PrimitiveType::*;
+        static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
-    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<DefId, 4>> {
-        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<DefId, 4>>> = OnceCell::new();
-
+        let single = |x| iter::once(x).collect();
         CELL.get_or_init(move || {
-            use self::PrimitiveType::*;
-
-            let single = |a: Option<DefId>| a.into_iter().collect();
-            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_, 4> {
-                a.into_iter().chain(b).collect()
-            };
-
-            let lang_items = tcx.lang_items();
             map! {
-                Isize => single(lang_items.isize_impl()),
-                I8 => single(lang_items.i8_impl()),
-                I16 => single(lang_items.i16_impl()),
-                I32 => single(lang_items.i32_impl()),
-                I64 => single(lang_items.i64_impl()),
-                I128 => single(lang_items.i128_impl()),
-                Usize => single(lang_items.usize_impl()),
-                U8 => single(lang_items.u8_impl()),
-                U16 => single(lang_items.u16_impl()),
-                U32 => single(lang_items.u32_impl()),
-                U64 => single(lang_items.u64_impl()),
-                U128 => single(lang_items.u128_impl()),
-                F32 => both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-                F64 => both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
-                Char => single(lang_items.char_impl()),
-                Bool => single(lang_items.bool_impl()),
-                Str => both(lang_items.str_impl(), lang_items.str_alloc_impl()),
-                Slice => {
-                    lang_items
-                        .slice_impl()
-                        .into_iter()
-                        .chain(lang_items.slice_u8_impl())
-                        .chain(lang_items.slice_alloc_impl())
-                        .chain(lang_items.slice_u8_alloc_impl())
-                        .collect()
-                },
-                Array => single(lang_items.array_impl()),
-                Tuple => ArrayVec::new(),
-                Unit => ArrayVec::new(),
-                RawPointer => {
-                    lang_items
-                        .const_ptr_impl()
-                        .into_iter()
-                        .chain(lang_items.mut_ptr_impl())
-                        .chain(lang_items.const_slice_ptr_impl())
-                        .chain(lang_items.mut_slice_ptr_impl())
-                        .collect()
-                },
-                Reference => ArrayVec::new(),
+                Isize => single(IntSimplifiedType(IntTy::Isize)),
+                I8 => single(IntSimplifiedType(IntTy::I8)),
+                I16 => single(IntSimplifiedType(IntTy::I16)),
+                I32 => single(IntSimplifiedType(IntTy::I32)),
+                I64 => single(IntSimplifiedType(IntTy::I64)),
+                I128 => single(IntSimplifiedType(IntTy::I128)),
+                Usize => single(UintSimplifiedType(UintTy::Usize)),
+                U8 => single(UintSimplifiedType(UintTy::U8)),
+                U16 => single(UintSimplifiedType(UintTy::U16)),
+                U32 => single(UintSimplifiedType(UintTy::U32)),
+                U64 => single(UintSimplifiedType(UintTy::U64)),
+                U128 => single(UintSimplifiedType(UintTy::U128)),
+                F32 => single(FloatSimplifiedType(FloatTy::F32)),
+                F64 => single(FloatSimplifiedType(FloatTy::F64)),
+                Str => single(StrSimplifiedType),
+                Bool => single(BoolSimplifiedType),
+                Char => single(CharSimplifiedType),
+                Array => single(ArraySimplifiedType),
+                Slice => single(SliceSimplifiedType),
+                // FIXME: If we ever add an inherent impl for tuples
+                // with different lengths, they won't show in rustdoc.
+                //
+                // Either manually update this arrayvec at this point
+                // or start with a more complex refactoring.
+                Tuple => [TupleSimplifiedType(2), TupleSimplifiedType(3)].into(),
+                Unit => single(TupleSimplifiedType(0)),
+                RawPointer => [PtrSimplifiedType(Mutability::Not), PtrSimplifiedType(Mutability::Mut)].into(),
+                Reference => [RefSimplifiedType(Mutability::Not), RefSimplifiedType(Mutability::Mut)].into(),
+                // FIXME: This will be wrong if we ever add inherent impls
+                // for function pointers.
                 Fn => ArrayVec::new(),
-                Never => ArrayVec::new(),
+                Never => single(NeverSimplifiedType),
             }
         })
+    }
+
+    crate fn impls<'tcx>(&self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = DefId> + 'tcx {
+        Self::simplified_types()
+            .get(self)
+            .into_iter()
+            .flatten()
+            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .copied()
+    }
+
+    crate fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> + '_ {
+        Self::simplified_types()
+            .values()
+            .flatten()
+            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .copied()
     }
 
     crate fn as_sym(&self) -> Symbol {

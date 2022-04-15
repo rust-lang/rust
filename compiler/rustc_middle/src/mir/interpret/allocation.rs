@@ -15,8 +15,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
 
@@ -58,7 +58,7 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct ConstAllocation<'tcx, Tag = AllocId, Extra = ()>(
     pub Interned<'tcx, Allocation<Tag, Extra>>,
 );
@@ -81,6 +81,8 @@ impl<'tcx, Tag, Extra> ConstAllocation<'tcx, Tag, Extra> {
 /// is added when converting to `InterpError`.
 #[derive(Debug)]
 pub enum AllocError {
+    /// A scalar had the wrong size.
+    ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Partially overwriting a pointer.
@@ -90,10 +92,19 @@ pub enum AllocError {
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
+impl From<ScalarSizeMismatch> for AllocError {
+    fn from(s: ScalarSizeMismatch) -> Self {
+        AllocError::ScalarSizeMismatch(s)
+    }
+}
+
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
         use AllocError::*;
         match self {
+            ScalarSizeMismatch(s) => {
+                InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
+            }
             ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
             PartialPointerOverwrite(offset) => InterpError::Unsupported(
                 UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
@@ -164,14 +175,14 @@ impl<Tag> Allocation<Tag> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-determinstic here because all uses of const
+            // deterministic. However, we can be non-deterministic here because all uses of const
             // evaluation (including ConstProp!) will make compilation fail (via hard error
             // or ICE) upon encountering a `MemoryExhausted` error.
             if panic_on_fail {
                 panic!("Allocation::uninit called with panic_on_fail had allocation failure")
             }
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
@@ -425,7 +436,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.
-        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Err(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))

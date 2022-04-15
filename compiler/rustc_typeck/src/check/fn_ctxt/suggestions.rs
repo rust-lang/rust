@@ -2,9 +2,7 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_span::{self, MultiSpan, Span};
-
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -13,12 +11,14 @@ use rustc_hir::{
     WherePredicate,
 };
 use rustc_infer::infer::{self, TyCtxtInferExt};
-
+use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, Ty};
-use rustc_span::symbol::{kw, sym};
-
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, Binder, ToPredicate, Ty};
+use rustc_span::symbol::{kw, sym};
+use rustc_span::Span;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -521,6 +521,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         can_suggest: bool,
         fn_id: hir::HirId,
     ) -> bool {
+        let found =
+            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
@@ -528,13 +530,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
-                    format!("-> {} ", self.resolve_vars_with_obligations(found)),
+                    format!("-> {} ", found),
                     Applicability::MachineApplicable,
                 );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                err.span_label(span, "possibly return type missing here?");
+                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
+                // that.
+                err.span_suggestion(
+                    span,
+                    "a return type might be missing here",
+                    "-> _ ".to_string(),
+                    Applicability::HasPlaceholders,
+                );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
@@ -757,6 +766,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Given an expression type mismatch, peel any `&` expressions until we get to
+    /// a block expression, and then suggest replacing the braces with square braces
+    /// if it was possibly mistaken array syntax.
+    pub(crate) fn suggest_block_to_brackets_peeling_refs(
+        &self,
+        diag: &mut Diagnostic,
+        mut expr: &hir::Expr<'_>,
+        mut expr_ty: Ty<'tcx>,
+        mut expected_ty: Ty<'tcx>,
+    ) {
+        loop {
+            match (&expr.kind, expr_ty.kind(), expected_ty.kind()) {
+                (
+                    hir::ExprKind::AddrOf(_, _, inner_expr),
+                    ty::Ref(_, inner_expr_ty, _),
+                    ty::Ref(_, inner_expected_ty, _),
+                ) => {
+                    expr = *inner_expr;
+                    expr_ty = *inner_expr_ty;
+                    expected_ty = *inner_expected_ty;
+                }
+                (hir::ExprKind::Block(blk, _), _, _) => {
+                    self.suggest_block_to_brackets(diag, *blk, expr_ty, expected_ty);
+                    break;
+                }
+                _ => break,
+            }
+        }
+    }
+
+    /// Suggest wrapping the block in square brackets instead of curly braces
+    /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
+    pub(crate) fn suggest_block_to_brackets(
+        &self,
+        diag: &mut Diagnostic,
+        blk: &hir::Block<'_>,
+        blk_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if let ty::Slice(elem_ty) | ty::Array(elem_ty, _) = expected_ty.kind() {
+            if self.can_coerce(blk_ty, *elem_ty)
+                && blk.stmts.is_empty()
+                && blk.rules == hir::BlockCheckMode::DefaultBlock
+            {
+                let source_map = self.tcx.sess.source_map();
+                if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
+                    if snippet.starts_with('{') && snippet.ends_with('}') {
+                        diag.multipart_suggestion_verbose(
+                            "to create an array, use square brackets instead of curly braces",
+                            vec![
+                                (
+                                    blk.span
+                                        .shrink_to_lo()
+                                        .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
+                                    "[".to_string(),
+                                ),
+                                (
+                                    blk.span
+                                        .shrink_to_hi()
+                                        .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
+                                    "]".to_string(),
+                                ),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn is_loop(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
         matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
@@ -765,5 +845,54 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_local_statement(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
         matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
+    }
+
+    /// Suggest that `&T` was cloned instead of `T` because `T` does not implement `Clone`,
+    /// which is a side-effect of autoref.
+    pub(crate) fn note_type_is_not_clone(
+        &self,
+        diag: &mut Diagnostic,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+    ) {
+        let hir::ExprKind::MethodCall(segment, &[ref callee_expr], _) = expr.kind else { return; };
+        let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
+        let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
+        let results = self.typeck_results.borrow();
+        // First, look for a `Clone::clone` call
+        if segment.ident.name == sym::clone
+            && results.type_dependent_def_id(expr.hir_id).map_or(
+                false,
+                |did| {
+                    self.tcx.associated_item(did).container
+                        == ty::AssocItemContainer::TraitContainer(clone_trait_did)
+                },
+            )
+            // If that clone call hasn't already dereferenced the self type (i.e. don't give this
+            // diagnostic in cases where we have `(&&T).clone()` and we expect `T`).
+            && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
+            // Check that we're in fact trying to clone into the expected type
+            && self.can_coerce(*pointee_ty, expected_ty)
+            // And the expected type doesn't implement `Clone`
+            && !self.predicate_must_hold_considering_regions(&traits::Obligation {
+                cause: traits::ObligationCause::dummy(),
+                param_env: self.param_env,
+                recursion_depth: 0,
+                predicate: ty::Binder::dummy(ty::TraitRef {
+                    def_id: clone_trait_did,
+                    substs: self.tcx.mk_substs([expected_ty.into()].iter()),
+                })
+                .without_const()
+                .to_predicate(self.tcx),
+            })
+        {
+            diag.span_note(
+                callee_expr.span,
+                &format!(
+                    "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
+                ),
+            );
+        }
     }
 }

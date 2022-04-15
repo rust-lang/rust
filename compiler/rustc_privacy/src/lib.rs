@@ -553,15 +553,15 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         }
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const | DefKind::Static | DefKind::TraitAlias | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static(_) | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                     self.update(def_id, level);
                 }
             }
 
-            // Hygine isn't really implemented for `macro_rules!` macros at the
+            // Hygiene isn't really implemented for `macro_rules!` macros at the
             // moment. Accordingly, marking them as reachable is unwise. `macro` macros
-            // have normal  hygine, so we can treat them like other items without type
+            // have normal hygiene, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
                 let item = self.tcx.hir().expect_item(def_id);
@@ -1243,12 +1243,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static(_)
             )
         });
         if let Some((kind, def_id)) = def {
             let is_local_static =
-                if let DefKind::Static = kind { def_id.is_local() } else { false };
+                if let DefKind::Static(_) = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let sess = self.tcx.sess;
                 let sm = sess.source_map();
@@ -1539,7 +1539,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // 3. mentioned in the associated types of the impl
                             //
                             // Those in 1. can only occur if the trait is in
-                            // this crate and will've been warned about on the
+                            // this crate and will have been warned about on the
                             // trait definition (there's no need to warn twice
                             // so we don't check the methods).
                             //
@@ -1999,7 +1999,7 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
                 }
                 // - AST lowering may clone `use` items and the clones don't
                 //   get their entries in the resolver's visibility table.
-                // - AST lowering also creates opaque type items with inherited visibilies.
+                // - AST lowering also creates opaque type items with inherited visibilities.
                 //   Visibility on them should have no effect, but to avoid the visibility
                 //   query failing on some items, we provide it for opaque types as well.
                 Node::Item(hir::Item {

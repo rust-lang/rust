@@ -6,6 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::ItemLocalId;
 use rustc_macros::HashStable;
+use rustc_span::symbol::Symbol;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
@@ -23,7 +24,7 @@ pub enum Region {
 pub enum LifetimeScopeForPath {
     // Contains all lifetime names that are in scope and could possibly be used in generics
     // arguments of path.
-    NonElided(Vec<String>),
+    NonElided(Vec<Symbol>),
 
     // Information that allows us to suggest args of the form `<'_>` in case
     // no generic arguments were provided for a path.
@@ -63,7 +64,7 @@ pub struct ResolveLifetimes {
     /// Set of lifetime def ids that are late-bound; a region can
     /// be late-bound if (a) it does NOT appear in a where-clause and
     /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
+    pub late_bound: FxHashMap<LocalDefId, FxHashSet<LocalDefId>>,
 
     pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

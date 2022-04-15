@@ -444,7 +444,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // we lower the guard.
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
-            // We keep a stack of all of the bindings and type asciptions
+            // We keep a stack of all of the bindings and type ascriptions
             // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
             traverse_candidate(

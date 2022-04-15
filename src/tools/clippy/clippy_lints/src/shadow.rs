@@ -139,14 +139,20 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.push(FxHashMap::default());
         }
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.pop();
         }
     }

@@ -60,7 +60,7 @@
 use crate::convert::TryFrom;
 use crate::ptr;
 use crate::sync::atomic::{
-    AtomicI8, AtomicUsize,
+    AtomicI8, AtomicPtr,
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::{c, dur2timeout};
@@ -217,8 +217,8 @@ impl Parker {
 }
 
 fn keyed_event_handle() -> c::HANDLE {
-    const INVALID: usize = !0;
-    static HANDLE: AtomicUsize = AtomicUsize::new(INVALID);
+    const INVALID: c::HANDLE = ptr::invalid_mut(!0);
+    static HANDLE: AtomicPtr<libc::c_void> = AtomicPtr::new(INVALID);
     match HANDLE.load(Relaxed) {
         INVALID => {
             let mut handle = c::INVALID_HANDLE_VALUE;
@@ -233,7 +233,7 @@ fn keyed_event_handle() -> c::HANDLE {
                     r => panic!("Unable to create keyed event handle: error {r}"),
                 }
             }
-            match HANDLE.compare_exchange(INVALID, handle as usize, Relaxed, Relaxed) {
+            match HANDLE.compare_exchange(INVALID, handle, Relaxed, Relaxed) {
                 Ok(_) => handle,
                 Err(h) => {
                     // Lost the race to another thread initializing HANDLE before we did.
@@ -241,10 +241,10 @@ fn keyed_event_handle() -> c::HANDLE {
                     unsafe {
                         c::CloseHandle(handle);
                     }
-                    h as c::HANDLE
+                    h
                 }
             }
         }
-        handle => handle as c::HANDLE,
+        handle => handle,
     }
 }

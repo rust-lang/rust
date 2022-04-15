@@ -61,11 +61,13 @@ LL |     #[inline]
 LL |     type T;
    |     ------- not a function or closure
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/inline-trait-and-foreign-items.rs:26:14
    |
 LL |     type U = impl Trait;
    |              ^^^^^^^^^^
+   |
+   = note: `U` must be used in combination with a concrete type within the same module
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 

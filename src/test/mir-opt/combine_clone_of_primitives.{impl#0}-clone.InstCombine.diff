@@ -63,6 +63,7 @@
       }
   
       bb3: {
+          Deinit(_0);                      // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.0: T) = move _5;             // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.1: u64) = move _8;           // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.2: [f32; 3]) = move _11;     // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15

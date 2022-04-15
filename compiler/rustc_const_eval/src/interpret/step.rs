@@ -39,7 +39,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
     ///
-    /// This is marked `#inline(always)` to work around adverserial codegen when `opt-level = 3`
+    /// This is marked `#inline(always)` to work around adversarial codegen when `opt-level = 3`
     #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack().is_empty() {
@@ -88,6 +88,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
                 self.write_discriminant(*variant_index, &dest)?;
+            }
+
+            Deinit(place) => {
+                let dest = self.eval_place(**place)?;
+                self.write_uninit(&dest)?;
             }
 
             // Mark locals as alive
@@ -225,7 +230,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 if length == 0 {
                     // Nothing to copy... but let's still make sure that `dest` as a place is valid.
-                    self.get_alloc_mut(&dest)?;
+                    self.get_place_alloc_mut(&dest)?;
                 } else {
                     // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
@@ -241,7 +246,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // that place might be more aligned than its type mandates (a `u8` array could
                     // be 4-aligned if it sits at the right spot in a struct). Instead we use
                     // `first.layout.align`, i.e., the alignment given by the type.
-                    self.memory.copy_repeatedly(
+                    self.mem_copy_repeatedly(
                         first_ptr,
                         first.align,
                         rest_ptr,

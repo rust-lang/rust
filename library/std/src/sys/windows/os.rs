@@ -134,7 +134,7 @@ impl Drop for Env {
 pub fn env() -> Env {
     unsafe {
         let ch = c::GetEnvironmentStringsW();
-        if ch as usize == 0 {
+        if ch.is_null() {
             panic!("failure getting env string from OS: {}", io::Error::last_os_error());
         }
         Env { base: ch, cur: ch }

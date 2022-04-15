@@ -970,7 +970,7 @@ impl<'a> Parser<'a> {
         }
         if fixed_crate_name {
             let fixed_name_sp = ident.span.to(idents.last().unwrap().span);
-            let mut fixed_name = format!("{}", ident.name);
+            let mut fixed_name = ident.name.to_string();
             for part in idents {
                 fixed_name.push_str(&format!("_{}", part.name));
             }
@@ -1010,7 +1010,8 @@ impl<'a> Parser<'a> {
                 let current_qual_sp = self.prev_token.span;
                 let current_qual_sp = current_qual_sp.to(sp_start);
                 if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
-                    if err.message() == "expected `{`, found keyword `unsafe`" {
+                    // FIXME(davidtwco): avoid depending on the error message text
+                    if err.message[0].0.expect_str() == "expected `{`, found keyword `unsafe`" {
                         let invalid_qual_sp = self.token.uninterpolated_span();
                         let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
 

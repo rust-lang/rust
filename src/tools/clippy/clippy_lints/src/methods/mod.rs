@@ -9,6 +9,7 @@ mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
+mod err_expect;
 mod expect_fun_call;
 mod expect_used;
 mod extend_with_drain;
@@ -40,6 +41,7 @@ mod map_collect_result_unit;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
+mod needless_option_as_deref;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -360,6 +362,29 @@ declare_clippy_lint! {
     pub OK_EXPECT,
     style,
     "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.err().expect()` calls on the `Result` type.
+    ///
+    /// ### Why is this bad?
+    /// `.expect_err()` can be called directly to avoid the extra type conversion from `err()`.
+    ///
+    /// ### Example
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.err().expect("Testing err().expect()");
+    /// ```
+    /// Use instead:
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err");
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ERR_EXPECT,
+    style,
+    r#"using `.err().expect("")` when `.expect_err("")` can be used"#
 }
 
 declare_clippy_lint! {
@@ -2055,7 +2080,7 @@ declare_clippy_lint! {
     /// Checks for use of `.collect::<Vec<String>>().join("")` on iterators.
     ///
     /// ### Why is this bad?
-    /// `.collect::<String>()` is more concise and usually more performant
+    /// `.collect::<String>()` is more concise and might be more performant
     ///
     /// ### Example
     /// ```rust
@@ -2070,13 +2095,40 @@ declare_clippy_lint! {
     /// println!("{}", output);
     /// ```
     /// ### Known problems
-    /// While `.collect::<String>()` is more performant in most cases, there are cases where
+    /// While `.collect::<String>()` is sometimes more performant, there are cases where
     /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
     /// will prevent loop unrolling and will result in a negative performance impact.
+    ///
+    /// Additionlly, differences have been observed between aarch64 and x86_64 assembly output,
+    /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
     #[clippy::version = "1.61.0"]
     pub UNNECESSARY_JOIN,
     pedantic,
     "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for no-op uses of `Option::{as_deref, as_deref_mut}`,
+    /// for example, `Option<&T>::as_deref()` returns the same type.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code and improving readability.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let a = Some(&1);
+    /// let b = a.as_deref(); // goes from Option<&i32> to Option<&i32>
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let a = Some(&1);
+    /// let b = a;
+    /// ```
+    #[clippy::version = "1.57.0"]
+    pub NEEDLESS_OPTION_AS_DEREF,
+    complexity,
+    "no-op use of `deref` or `deref_mut` method to `Option`."
 }
 
 pub struct Methods {
@@ -2165,6 +2217,8 @@ impl_lint_pass!(Methods => [
     NEEDLESS_SPLITN,
     UNNECESSARY_TO_OWNED,
     UNNECESSARY_JOIN,
+    ERR_EXPECT,
+    NEEDLESS_OPTION_AS_DEREF,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2397,6 +2451,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                 }
             },
+            ("as_deref" | "as_deref_mut", []) => {
+                needless_option_as_deref::check(cx, expr, recv, name);
+            },
             ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
             ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
@@ -2428,6 +2485,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("expect", [_]) => match method_call(recv) {
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
+                Some(("err", [recv], err_span)) => err_expect::check(cx, expr, recv, msrv, span, err_span),
                 _ => expect_used::check(cx, expr, recv),
             },
             ("extend", [arg]) => {
@@ -2472,7 +2530,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     }
                 }
             },
-            ("map", [m_arg]) => {
+            (name @ ("map" | "map_err"), [m_arg]) => {
                 if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                     match (name, args) {
                         ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
@@ -2484,7 +2542,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         _ => {},
                     }
                 }
-                map_identity::check(cx, expr, recv, m_arg, span);
+                map_identity::check(cx, expr, recv, m_arg, name, span);
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
             (name @ "next", args @ []) => {

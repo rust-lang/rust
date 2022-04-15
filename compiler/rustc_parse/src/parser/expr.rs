@@ -41,7 +41,7 @@ macro_rules! maybe_whole_expr {
                     return Ok(e);
                 }
                 token::NtPath(path) => {
-                    let path = path.clone();
+                    let path = (**path).clone();
                     $p.bump();
                     return Ok($p.mk_expr(
                         $p.prev_token.span,
@@ -267,6 +267,17 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
+            if self.prev_token == token::BinOp(token::Plus)
+                && self.token == token::BinOp(token::Plus)
+                && self.prev_token.span.between(self.token.span).is_empty()
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `+`
+                self.bump();
+                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
+                continue;
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -276,7 +287,7 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
                 continue;
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
-                // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
+                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
                 lhs = self.parse_range_expr(prec, lhs, op, cur_op_span)?;
                 break;
@@ -580,6 +591,19 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.parse_prefix_expr(None)
             } // `+expr`
+            // Recover from `++x`:
+            token::BinOp(token::Plus)
+                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
+            {
+                let prev_is_semi = this.prev_token == token::Semi;
+                let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
+                // Eat both `+`s.
+                this.bump();
+                this.bump();
+
+                let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
+                this.recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+            }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
@@ -1679,7 +1703,7 @@ impl<'a> Parser<'a> {
                     if matches!(expr.kind, ExprKind::Err) {
                         let mut err = self
                             .diagnostic()
-                            .struct_span_err(self.token.span, &"invalid interpolated expression");
+                            .struct_span_err(self.token.span, "invalid interpolated expression");
                         err.downgrade_to_delayed_bug();
                         return err;
                     }
@@ -1796,7 +1820,7 @@ impl<'a> Parser<'a> {
                 } else if let Some(fixed) = fix_base_capitalisation(suf) {
                     let msg = "invalid base prefix for number literal";
 
-                    self.struct_span_err(span, &msg)
+                    self.struct_span_err(span, msg)
                         .note("base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase")
                         .span_suggestion(
                             span,
@@ -1919,17 +1943,13 @@ impl<'a> Parser<'a> {
         match snapshot.parse_array_or_repeat_expr(attrs, token::Brace) {
             Ok(arr) => {
                 let hi = snapshot.prev_token.span;
-                self.struct_span_err(
-                    arr.span,
-                    "this code is interpreted as a block expression, not an array",
-                )
-                .multipart_suggestion(
-                    "try using [] instead of {}",
-                    vec![(lo, "[".to_owned()), (hi, "]".to_owned())],
-                    Applicability::MaybeIncorrect,
-                )
-                .note("to define an array, one would use square brackets instead of curly braces")
-                .emit();
+                self.struct_span_err(arr.span, "this is a block expression, not an array")
+                    .multipart_suggestion(
+                        "to make an array, use square brackets instead of curly braces",
+                        vec![(lo, "[".to_owned()), (hi, "]".to_owned())],
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
 
                 self.restore_snapshot(snapshot);
                 Some(self.mk_expr_err(arr.span))

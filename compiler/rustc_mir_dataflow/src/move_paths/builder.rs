@@ -296,10 +296,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::StorageDead(local) => {
                 self.gather_move(Place::from(*local));
             }
-            StatementKind::SetDiscriminant { .. } => {
+            StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
                 span_bug!(
                     stmt.source_info.span,
-                    "SetDiscriminant should not exist during borrowck"
+                    "SetDiscriminant/Deinit should not exist during borrowck"
                 );
             }
             StatementKind::Retag { .. }

@@ -297,6 +297,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     Some(TypeNS),
                     parent_scope,
                     if finalize { Finalize::SimplePath(id, path.span) } else { Finalize::No },
+                    None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -701,8 +702,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(..) => {
-                let res = Res::Def(DefKind::Static, def_id);
+            ItemKind::Static(_, mt, _) => {
+                let res = Res::Def(DefKind::Static(mt), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -907,7 +908,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let def_id = local_def_id.to_def_id();
         let (def_kind, ns) = match item.kind {
             ForeignItemKind::Fn(..) => (DefKind::Fn, ValueNS),
-            ForeignItemKind::Static(..) => (DefKind::Static, ValueNS),
+            ForeignItemKind::Static(_, mt, _) => (DefKind::Static(mt), ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(_) => unreachable!(),
         };
@@ -963,7 +964,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Static
+                | DefKind::Static(_)
                 | DefKind::Const
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
@@ -1124,12 +1125,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.resolve_ident_in_module(
+                let result = self.r.maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
                     &self.parent_scope,
-                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span);
@@ -1248,7 +1248,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
-            self.r.all_macros.insert(ident.name, res);
+            self.r.all_macro_rules.insert(ident.name, res);
             if is_macro_export {
                 let module = self.r.graph_root;
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));

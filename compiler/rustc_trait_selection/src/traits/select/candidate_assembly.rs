@@ -256,6 +256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
+            debug!(ty = ?obligation.predicate.skip_binder().self_ty(), "ambiguous inference var or opaque type");
             // Self is a type variable (e.g., `_: AsRef<str>`).
             //
             // This is somewhat problematic, as the current scheme can't really
@@ -306,17 +307,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-            } else if lang_items.drop_trait() == Some(def_id)
-                && obligation.predicate.is_const_if_const()
-            {
-                // holds to make it easier to transition
-                // FIXME(fee1-dead): add a note for selection error of `~const Drop`
-                // when beta is bumped
-                // FIXME: remove this when beta is bumped
-                #[cfg(bootstrap)]
-                {}
-
-                candidates.vec.push(SelectionCandidate::ConstDestructCandidate(None))
             } else if lang_items.destruct_trait() == Some(def_id) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
             } else {

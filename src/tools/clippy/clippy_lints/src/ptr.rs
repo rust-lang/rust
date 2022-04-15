@@ -5,7 +5,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, paths};
 use if_chain::if_chain;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -16,11 +16,11 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocItems, AssocKind, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, MultiSpan};
 use std::fmt;
 use std::iter;
 
@@ -308,7 +308,6 @@ struct PtrArg<'tcx> {
     method_renames: &'static [(&'static str, &'static str)],
     ref_prefix: RefPrefix,
     deref_ty: DerefTy<'tcx>,
-    deref_assoc_items: Option<(DefId, &'tcx AssocItems<'tcx>)>,
 }
 impl PtrArg<'_> {
     fn build_msg(&self) -> String {
@@ -411,7 +410,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
 
                 then {
-                    let (method_renames, deref_ty, deref_impl_id) = match cx.tcx.get_diagnostic_name(adt.did()) {
+                    let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
                         Some(sym::Vec) => (
                             [("clone", ".to_owned()")].as_slice(),
                             DerefTy::Slice(
@@ -424,17 +423,14 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     }),
                                 substs.type_at(0),
                             ),
-                            cx.tcx.lang_items().slice_impl()
                         ),
                         Some(sym::String) => (
                             [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
                             DerefTy::Str,
-                            cx.tcx.lang_items().str_impl()
                         ),
                         Some(sym::PathBuf) => (
                             [("clone", ".to_path_buf()"), ("as_path", "")].as_slice(),
                             DerefTy::Path,
-                            None,
                         ),
                         Some(sym::Cow) if mutability == Mutability::Not => {
                             let ty_name = name.args
@@ -470,7 +466,6 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             mutability,
                         },
                         deref_ty,
-                        deref_assoc_items: deref_impl_id.map(|id| (id, cx.tcx.associated_items(id))),
                     });
                 }
             }
@@ -606,16 +601,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             },
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
-                            ty::Adt(def, _)
-                                if def.did() == args.ty_did
-                                    && (i != 0
-                                        || self.cx.tcx.trait_of_item(id).is_some()
-                                        || !args.deref_assoc_items.map_or(false, |(id, items)| {
-                                            items
-                                                .find_by_name_and_kind(self.cx.tcx, name.ident, AssocKind::Fn, id)
-                                                .is_some()
-                                        })) =>
-                            {
+                            ty::Adt(def, _) if def.did() == args.ty_did => {
                                 set_skip_flag();
                             },
                             _ => (),

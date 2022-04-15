@@ -13,9 +13,6 @@
 #![crate_name = "unused_attr_duplicate"]
 #![crate_name = "unused_attr_duplicate2"] //~ ERROR unused attribute
 //~^ WARN this was previously accepted
-#![crate_type = "bin"]
-#![crate_type = "rlib"] //~ ERROR unused attribute
-//~^ WARN this was previously accepted
 #![recursion_limit = "128"]
 #![recursion_limit = "256"] //~ ERROR unused attribute
 //~^ WARN this was previously accepted

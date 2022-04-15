@@ -178,13 +178,13 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
 
     for item in items {
         let target = match *item.kind {
-            ItemKind::TypedefItem(ref t, true) => &t.type_,
+            ItemKind::AssocTypeItem(ref t, _) => &t.type_,
             _ => continue,
         };
 
         if let Some(prim) = target.primitive_type() {
             let _prof_timer = cx.tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
-            for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
+            for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
             }
         } else if let Type::Path { path } = target {
@@ -397,7 +397,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         // These should be added to the cache using `record_extern_fqn`.
         Res::Def(
             kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
-            | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
+            | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
         // This is part of a trait definition or trait impl; document the trait.

@@ -1,8 +1,8 @@
 #[global_allocator]
 static A: usize = 0;
-//~^ the trait bound `usize:
-//~| the trait bound `usize:
-//~| the trait bound `usize:
-//~| the trait bound `usize:
+//~^ ERROR E0277
+//~| ERROR E0277
+//~| ERROR E0277
+//~| ERROR E0277
 
 fn main() {}

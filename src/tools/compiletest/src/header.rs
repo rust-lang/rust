@@ -189,6 +189,8 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
+    // This isn't a real directive, just one that is probably mistyped often
+    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
 
 impl TestProps {
@@ -281,6 +283,9 @@ impl TestProps {
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
+                }
+                if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
+                    panic!("`compiler-flags` directive should be spelled `compile-flags`");
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {
@@ -806,8 +811,7 @@ pub fn make_test_description<R: Read>(
     cfg: Option<&str>,
 ) -> test::TestDesc {
     let mut ignore = false;
-    #[cfg(not(bootstrap))]
-    let ignore_message: Option<String> = None;
+    let ignore_message = None;
     let mut should_fail = false;
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
@@ -879,7 +883,6 @@ pub fn make_test_description<R: Read>(
     test::TestDesc {
         name,
         ignore,
-        #[cfg(not(bootstrap))]
         ignore_message,
         should_panic,
         compile_fail: false,

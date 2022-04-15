@@ -19,7 +19,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::AttributesData;
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -33,10 +33,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
@@ -150,7 +150,7 @@ pub struct Parser<'a> {
     pub current_closure: Option<ClosureSpans>,
 }
 
-/// Stores span informations about a closure.
+/// Stores span information about a closure.
 #[derive(Clone)]
 pub struct ClosureSpans {
     pub whole_closure: Span,
@@ -1289,7 +1289,7 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |x| x);
+        maybe_whole!(self, NtVis, |x| x.into_inner());
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
         if self.is_crate_vis() {
@@ -1506,4 +1506,10 @@ pub enum FlatToken {
     /// to an `AttrAnnotatedTokenStream`. This is used to simplify the
     /// handling of replace ranges.
     Empty,
+}
+
+#[derive(Debug)]
+pub enum NtOrTt {
+    Nt(Nonterminal),
+    Tt(TokenTree),
 }

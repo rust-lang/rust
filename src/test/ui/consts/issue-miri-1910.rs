@@ -1,6 +1,5 @@
 // error-pattern unable to turn pointer into raw bytes
 #![feature(const_ptr_read)]
-#![feature(const_ptr_offset)]
 
 const C: () = unsafe {
     let foo = Some(&42 as *const i32);

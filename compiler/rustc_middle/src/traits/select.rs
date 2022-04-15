@@ -13,12 +13,19 @@ use rustc_hir::def_id::DefId;
 use rustc_query_system::cache::Cache;
 
 pub type SelectionCache<'tcx> = Cache<
-    ty::ParamEnvAnd<'tcx, ty::TraitPredicate<'tcx>>,
+    // This cache does not use `ParamEnvAnd` in its keys because `ParamEnv::and` can replace
+    // caller bounds with an empty list if the `TraitPredicate` looks global, which may happen
+    // after erasing lifetimes from the predicate.
+    (ty::ParamEnv<'tcx>, ty::TraitPredicate<'tcx>),
     SelectionResult<'tcx, SelectionCandidate<'tcx>>,
 >;
 
-pub type EvaluationCache<'tcx> =
-    Cache<ty::ParamEnvAnd<'tcx, ty::PolyTraitPredicate<'tcx>>, EvaluationResult>;
+pub type EvaluationCache<'tcx> = Cache<
+    // See above: this cache does not use `ParamEnvAnd` in its keys due to sometimes incorrectly
+    // caching with the wrong `ParamEnv`.
+    (ty::ParamEnv<'tcx>, ty::PolyTraitPredicate<'tcx>),
+    EvaluationResult,
+>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes

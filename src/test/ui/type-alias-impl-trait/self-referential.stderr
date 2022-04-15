@@ -1,0 +1,57 @@
+error[E0277]: can't compare `&i32` with `Bar<'b, 'a>`
+  --> $DIR/self-referential.rs:6:5
+   |
+LL |     i
+   |     ^ no implementation for `&i32 == Bar<'b, 'a>`
+   |
+   = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+           and 6 others
+
+error[E0277]: can't compare `&i32` with `(i32, &i32)`
+  --> $DIR/self-referential.rs:12:10
+   |
+LL |     (42, i)
+   |          ^ no implementation for `&i32 == (i32, &i32)`
+   |
+   = help: the trait `PartialEq<(i32, &i32)>` is not implemented for `&i32`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+           and 6 others
+
+error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0})`
+  --> $DIR/self-referential.rs:18:10
+   |
+LL |     (42, i)
+   |          ^ no implementation for `&i32 == (i32, Moo<'b, 'a>::{opaque#0})`
+   |
+   = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0})>` is not implemented for `&i32`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+           and 6 others
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

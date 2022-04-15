@@ -243,13 +243,12 @@
 //! ```
 //!
 //! While many collections offer `iter()`, not all offer `iter_mut()`. For
-//! example, mutating the keys of a [`HashSet<T>`] or [`HashMap<K, V>`] could
-//! put the collection into an inconsistent state if the key hashes change, so
-//! these collections only offer `iter()`.
+//! example, mutating the keys of a [`HashSet<T>`] could put the collection
+//! into an inconsistent state if the key hashes change, so this collection
+//! only offers `iter()`.
 //!
 //! [`into_iter()`]: IntoIterator::into_iter
 //! [`HashSet<T>`]: ../../std/collections/struct.HashSet.html
-//! [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 //!
 //! # Adapters
 //!

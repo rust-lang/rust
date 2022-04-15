@@ -8,12 +8,9 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     config.save_toolstates = None;
     config.dry_run = true;
     config.ninja_in_file = false;
-    config.out = PathBuf::from(env::var_os("BOOTSTRAP_OUTPUT_DIRECTORY").unwrap());
-    config.initial_rustc = PathBuf::from(env::var_os("RUSTC").unwrap());
-    config.initial_cargo = PathBuf::from(env::var_os("BOOTSTRAP_INITIAL_CARGO").unwrap());
     // try to avoid spurious failures in dist where we create/delete each others file
-    let dir = config
-        .out
+    // HACK: rather than pull in `tempdir`, use the one that cargo has conveniently created for us
+    let dir = Path::new(env!("OUT_DIR"))
         .join("tmp-rustbuild-tests")
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));

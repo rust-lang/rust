@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
 
         maybe_whole!(self, NtPath, |path| {
             reject_generics_if_mod_style(self, &path);
-            path
+            path.into_inner()
         });
 
         if let token::Interpolated(nt) = &self.token.kind {
@@ -272,7 +272,23 @@ impl<'a> Parser<'a> {
                         lo,
                         ty_generics,
                     )?;
-                    self.expect_gt()?;
+                    self.expect_gt().map_err(|mut err| {
+                        // Attempt to find places where a missing `>` might belong.
+                        if let Some(arg) = args
+                            .iter()
+                            .rev()
+                            .skip_while(|arg| matches!(arg, AngleBracketedArg::Constraint(_)))
+                            .next()
+                        {
+                            err.span_suggestion_verbose(
+                                arg.span().shrink_to_hi(),
+                                "you might have meant to end the type parameters here",
+                                ">".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        err
+                    })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
                 } else {
@@ -462,6 +478,23 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {
+                if self.token.kind == token::Semi
+                    && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
+                {
+                    // Add `>` to the list of expected tokens.
+                    self.check(&token::Gt);
+                    // Handle `,` to `;` substitution
+                    let mut err = self.unexpected::<()>().unwrap_err();
+                    self.bump();
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.token.span),
+                        "use a comma to separate type parameters",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    continue;
+                }
                 if !self.token.kind.should_end_const_arg() {
                     if self.handle_ambiguous_unbraced_const_arg(&mut args)? {
                         // We've managed to (partially) recover, so continue trying to parse
@@ -485,10 +518,20 @@ impl<'a> Parser<'a> {
         match arg {
             Some(arg) => {
                 if self.check(&token::Colon) | self.check(&token::Eq) {
-                    let (ident, gen_args) = match self.get_ident_from_generic_arg(arg) {
+                    let arg_span = arg.span();
+                    let (binder, ident, gen_args) = match self.get_ident_from_generic_arg(&arg) {
                         Ok(ident_gen_args) => ident_gen_args,
-                        Err(arg) => return Ok(Some(AngleBracketedArg::Arg(arg))),
+                        Err(()) => return Ok(Some(AngleBracketedArg::Arg(arg))),
                     };
+                    if binder.is_some() {
+                        // FIXME(compiler-errors): this could be improved by suggesting lifting
+                        // this up to the trait, at least before this becomes real syntax.
+                        // e.g. `Trait<for<'a> Assoc = Ty>` -> `for<'a> Trait<Assoc = Ty>`
+                        return Err(self.struct_span_err(
+                            arg_span,
+                            "`for<...>` is not allowed on associated type bounds",
+                        ));
+                    }
                     let kind = if self.eat(&token::Colon) {
                         // Parse associated type constraint bound.
 
@@ -667,18 +710,32 @@ impl<'a> Parser<'a> {
         Ok(Some(arg))
     }
 
+    /// Given a arg inside of generics, we try to destructure it as if it were the LHS in
+    /// `LHS = ...`, i.e. an associated type binding.
+    /// This returns (optionally, if they are present) any `for<'a, 'b>` binder args, the
+    /// identifier, and any GAT arguments.
     fn get_ident_from_generic_arg(
         &self,
-        gen_arg: GenericArg,
-    ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
-        if let GenericArg::Type(ty) = &gen_arg
-            && let ast::TyKind::Path(qself, path) = &ty.kind
-            && qself.is_none()
-            && path.segments.len() == 1
-        {
-            let seg = &path.segments[0];
-            return Ok((seg.ident, seg.args.as_deref().cloned()));
+        gen_arg: &GenericArg,
+    ) -> Result<(Option<Vec<ast::GenericParam>>, Ident, Option<GenericArgs>), ()> {
+        if let GenericArg::Type(ty) = gen_arg {
+            if let ast::TyKind::Path(qself, path) = &ty.kind
+                && qself.is_none()
+                && let [seg] = path.segments.as_slice()
+            {
+                return Ok((None, seg.ident, seg.args.as_deref().cloned()));
+            } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
+                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
+                    bounds.as_slice()
+                && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
+            {
+                return Ok((
+                    Some(trait_ref.bound_generic_params.clone()),
+                    seg.ident,
+                    seg.args.as_deref().cloned(),
+                ));
+            }
         }
-        Err(gen_arg)
+        Err(())
     }
 }

@@ -1,7 +1,6 @@
 //! Inlining pass for MIR functions
 
 use rustc_attr::InlineAttr;
-use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -59,11 +58,10 @@ impl<'tcx> MirPass<'tcx> for Inline {
 }
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let def_id = body.source.def_id();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let def_id = body.source.def_id().expect_local();
 
     // Only do inlining into fn bodies.
-    if !tcx.hir().body_owner_kind(hir_id).is_fn_or_closure() {
+    if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
         return false;
     }
     if body.source.promoted.is_some() {
@@ -77,9 +75,10 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let param_env = rustc_trait_selection::traits::normalize_param_env_or_error(
         tcx,
-        def_id,
+        def_id.to_def_id(),
         param_env,
         ObligationCause::misc(body.span, hir_id),
     );
@@ -88,7 +87,6 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         tcx,
         param_env,
         codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
-        hir_id,
         history: Vec::new(),
         changed: false,
     };
@@ -102,8 +100,6 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Caller HirID.
-    hir_id: hir::HirId,
     /// Stack of inlined Instances.
     history: Vec<ty::Instance<'tcx>>,
     /// Indicates that the caller body has been modified.
@@ -179,7 +175,9 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &Body<'tcx>,
         callee: &Instance<'tcx>,
     ) -> Result<(), &'static str> {
-        if callee.def_id() == caller_body.source.def_id() {
+        let caller_def_id = caller_body.source.def_id();
+        let callee_def_id = callee.def_id();
+        if callee_def_id == caller_def_id {
             return Err("self-recursion");
         }
 
@@ -188,7 +186,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If there is no MIR available (either because it was not in metadata or
                 // because it has no MIR because it's an extern function), then the inliner
                 // won't cause cycles on this.
-                if !self.tcx.is_mir_available(callee.def_id()) {
+                if !self.tcx.is_mir_available(callee_def_id) {
                     return Err("item MIR unavailable");
                 }
             }
@@ -208,29 +206,26 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
-        if self.tcx.is_constructor(callee.def_id()) {
+        if self.tcx.is_constructor(callee_def_id) {
             trace!("constructors always have MIR");
             // Constructor functions cannot cause a query cycle.
             return Ok(());
         }
 
-        if let Some(callee_def_id) = callee.def_id().as_local() {
-            let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
+        if callee_def_id.is_local() {
             // Avoid a cycle here by only using `instance_mir` only if we have
-            // a lower `HirId` than the callee. This ensures that the callee will
-            // not inline us. This trick only works without incremental compilation.
-            // So don't do it if that is enabled.
-            if !self.tcx.dep_graph.is_fully_enabled() && self.hir_id.index() < callee_hir_id.index()
+            // a lower `DefPathHash` than the callee. This ensures that the callee will
+            // not inline us. This trick even works with incremental compilation,
+            // since `DefPathHash` is stable.
+            if self.tcx.def_path_hash(caller_def_id).local_hash()
+                < self.tcx.def_path_hash(callee_def_id).local_hash()
             {
                 return Ok(());
             }
 
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
-            if self
-                .tcx
-                .mir_callgraph_reachable((*callee, caller_body.source.def_id().expect_local()))
-            {
+            if self.tcx.mir_callgraph_reachable((*callee, caller_def_id.expect_local())) {
                 return Err("caller might be reachable from callee (query cycle avoidance)");
             }
 
@@ -374,6 +369,7 @@ impl<'tcx> Inliner<'tcx> {
                 match stmt.kind {
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
+                    | StatementKind::Deinit(_)
                     | StatementKind::Nop => {}
                     _ => cost += INSTR_COST,
                 }
@@ -698,7 +694,7 @@ impl<'tcx> Inliner<'tcx> {
             // The `closure_ref` in our example above.
             let closure_ref_arg = iter::once(self_);
 
-            // The `tmp0`, `tmp1`, and `tmp2` in our example abonve.
+            // The `tmp0`, `tmp1`, and `tmp2` in our example above.
             let tuple_tmp_args = tuple_tys.iter().enumerate().map(|(i, ty)| {
                 // This is e.g., `tuple_tmp.0` in our example above.
                 let tuple_field = Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty));

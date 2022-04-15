@@ -8,7 +8,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, Field, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -491,7 +491,11 @@ impl<'tcx> Cx<'tcx> {
                             hir::InlineAsmOperand::Const { ref anon_const } => {
                                 let anon_const_def_id =
                                     self.tcx.hir().local_def_id(anon_const.hir_id);
-                                let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                                let value = mir::ConstantKind::from_anon_const(
+                                    self.tcx,
+                                    anon_const_def_id,
+                                    self.param_env,
+                                );
                                 let span = self.tcx.hir().span(anon_const.hir_id);
 
                                 InlineAsmOperand::Const { value, span }
@@ -523,7 +527,7 @@ impl<'tcx> Cx<'tcx> {
                                         }
                                     }
 
-                                    Res::Def(DefKind::Static, def_id) => {
+                                    Res::Def(DefKind::Static(_), def_id) => {
                                         InlineAsmOperand::SymStatic { def_id }
                                     }
 
@@ -901,7 +905,7 @@ impl<'tcx> Cx<'tcx> {
 
             // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
             // a constant reference (or constant raw pointer for `static mut`) in MIR
-            Res::Def(DefKind::Static, id) => {
+            Res::Def(DefKind::Static(_), id) => {
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {

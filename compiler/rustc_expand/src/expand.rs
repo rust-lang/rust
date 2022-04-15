@@ -83,9 +83,7 @@ macro_rules! ast_fragments {
                 }
                 match self {
                     $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
-                        // We are repeating through arguments with `many`, to do that we have to
-                        // mention some macro variable from those arguments even if it's not used.
-                        macro _repeating($flat_map_ast_elt) {}
+                        ${ignore(flat_map_ast_elt)}
                         placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*
                     _ => panic!("unexpected AST fragment kind")
@@ -1847,7 +1845,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if node.is_expr() {
             // The only way that we can end up with a `MacCall` expression statement,
             // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
-            // traiing expression in a block (e.g. `fn foo() { my_macro!() }`).
+            // trailing expression in a block (e.g. `fn foo() { my_macro!() }`).
             // Record this information, so that we can report a more specific
             // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
             // See #78991 for an investigation of treating macros in this position

@@ -38,6 +38,7 @@
           _6 = ((_1 as Err).0: usize);     // scope 0 at $DIR/separate_const_switch.rs:17:17: 17:18
           StorageLive(_7);                 // scope 2 at $DIR/separate_const_switch.rs:17:42: 17:43
           _7 = _6;                         // scope 2 at $DIR/separate_const_switch.rs:17:42: 17:43
+          Deinit(_2);                      // scope 2 at $DIR/separate_const_switch.rs:17:23: 17:44
           ((_2 as Break).0: usize) = move _7; // scope 2 at $DIR/separate_const_switch.rs:17:23: 17:44
           discriminant(_2) = 1;            // scope 2 at $DIR/separate_const_switch.rs:17:23: 17:44
           StorageDead(_7);                 // scope 2 at $DIR/separate_const_switch.rs:17:43: 17:44
@@ -52,6 +53,7 @@
           _4 = ((_1 as Ok).0: i32);        // scope 0 at $DIR/separate_const_switch.rs:16:16: 16:17
           StorageLive(_5);                 // scope 1 at $DIR/separate_const_switch.rs:16:44: 16:45
           _5 = _4;                         // scope 1 at $DIR/separate_const_switch.rs:16:44: 16:45
+          Deinit(_2);                      // scope 1 at $DIR/separate_const_switch.rs:16:22: 16:46
           ((_2 as Continue).0: i32) = move _5; // scope 1 at $DIR/separate_const_switch.rs:16:22: 16:46
           discriminant(_2) = 0;            // scope 1 at $DIR/separate_const_switch.rs:16:22: 16:46
           StorageDead(_5);                 // scope 1 at $DIR/separate_const_switch.rs:16:45: 16:46
@@ -69,6 +71,7 @@
 +     bb3: {
           StorageLive(_11);                // scope 0 at $DIR/separate_const_switch.rs:21:28: 21:29
           _11 = ((_2 as Break).0: usize);  // scope 0 at $DIR/separate_const_switch.rs:21:28: 21:29
+          Deinit(_0);                      // scope 4 at $DIR/separate_const_switch.rs:21:34: 21:38
           discriminant(_0) = 0;            // scope 4 at $DIR/separate_const_switch.rs:21:34: 21:38
           StorageDead(_11);                // scope 0 at $DIR/separate_const_switch.rs:21:37: 21:38
 -         goto -> bb6;                     // scope 0 at $DIR/separate_const_switch.rs:21:37: 21:38
@@ -81,6 +84,7 @@
           _9 = ((_2 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:20:31: 20:32
           StorageLive(_10);                // scope 3 at $DIR/separate_const_switch.rs:20:42: 20:43
           _10 = _9;                        // scope 3 at $DIR/separate_const_switch.rs:20:42: 20:43
+          Deinit(_0);                      // scope 3 at $DIR/separate_const_switch.rs:20:37: 20:44
           ((_0 as Some).0: i32) = move _10; // scope 3 at $DIR/separate_const_switch.rs:20:37: 20:44
           discriminant(_0) = 1;            // scope 3 at $DIR/separate_const_switch.rs:20:37: 20:44
           StorageDead(_10);                // scope 3 at $DIR/separate_const_switch.rs:20:43: 20:44

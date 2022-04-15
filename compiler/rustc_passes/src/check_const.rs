@@ -99,7 +99,7 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
                         } = *trait_item
                         {
                             // we can ignore functions that do not have default bodies:
-                            // if those are unimplemented it will be catched by typeck.
+                            // if those are unimplemented it will be caught by typeck.
                             if !defaultness.has_value()
                                 || self
                                     .tcx

@@ -999,6 +999,15 @@ impl<'tcx> PolyTraitRef<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         })
     }
+
+    /// Same as [`PolyTraitRef::to_poly_trait_predicate`] but sets a negative polarity instead.
+    pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Negative,
+        })
+    }
 }
 
 /// An existential reference to a trait, where `Self` is erased.
@@ -1880,10 +1889,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_slice(self) -> bool {
-        match self.kind() {
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_) | Str),
-            _ => false,
-        }
+        matches!(self.kind(), Slice(_))
     }
 
     #[inline]
@@ -1913,6 +1919,13 @@ impl<'tcx> Ty<'tcx> {
             Array(ty, _) | Slice(ty) => *ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
+        }
+    }
+
+    pub fn expect_opaque_type(self) -> ty::OpaqueTypeKey<'tcx> {
+        match *self.kind() {
+            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
+            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
         }
     }
 

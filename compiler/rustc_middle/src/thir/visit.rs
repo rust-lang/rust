@@ -24,6 +24,15 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn visit_pat(&mut self, pat: &Pat<'tcx>) {
         walk_pat(self, pat);
     }
+
+    // Note: We don't have visitors for `ty::Const` and `mir::ConstantKind`
+    // (even though these types occur in THIR) for consistency and to reduce confusion,
+    // since the lazy creation of constants during thir construction causes most
+    // 'constants' to not be of type `ty::Const` or `mir::ConstantKind` at that
+    // stage (they are mostly still identified by `DefId` or `hir::Lit`, see
+    // the variants `Literal`, `NonHirLiteral` and `NamedConst` in `thir::ExprKind`).
+    // You have to manually visit `ty::Const` and `mir::ConstantKind` through the
+    // other `visit*` functions.
 }
 
 pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {

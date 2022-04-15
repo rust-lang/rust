@@ -93,9 +93,9 @@ pub fn add_field_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {

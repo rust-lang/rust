@@ -179,6 +179,7 @@ macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
         #[cfg_attr(not(windows), inline(always))] // see comments below
+        #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
         ) -> $crate::option::Option<&'static $t> {
@@ -193,7 +194,7 @@ macro_rules! __thread_local_inner {
             #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
             {
                 static mut VAL: $t = INIT_EXPR;
-                Some(&VAL)
+                unsafe { $crate::option::Option::Some(&VAL) }
             }
 
             // If the platform has support for `#[thread_local]`, use it.
@@ -209,7 +210,7 @@ macro_rules! __thread_local_inner {
                 // just get going.
                 if !$crate::mem::needs_drop::<$t>() {
                     unsafe {
-                        return Some(&VAL)
+                        return $crate::option::Option::Some(&VAL)
                     }
                 }
 
@@ -217,13 +218,13 @@ macro_rules! __thread_local_inner {
                 // 1 == dtor registered, dtor not run
                 // 2 == dtor registered and is running or has run
                 #[thread_local]
-                static mut STATE: u8 = 0;
+                static mut STATE: $crate::primitive::u8 = 0;
 
-                unsafe extern "C" fn destroy(ptr: *mut u8) {
+                unsafe extern "C" fn destroy(ptr: *mut $crate::primitive::u8) {
                     let ptr = ptr as *mut $t;
 
                     unsafe {
-                        debug_assert_eq!(STATE, 1);
+                        $crate::debug_assert_eq!(STATE, 1);
                         STATE = 2;
                         $crate::ptr::drop_in_place(ptr);
                     }
@@ -235,18 +236,18 @@ macro_rules! __thread_local_inner {
                         //   so now.
                         0 => {
                             $crate::thread::__FastLocalKeyInner::<$t>::register_dtor(
-                                $crate::ptr::addr_of_mut!(VAL) as *mut u8,
+                                $crate::ptr::addr_of_mut!(VAL) as *mut $crate::primitive::u8,
                                 destroy,
                             );
                             STATE = 1;
-                            Some(&VAL)
+                            $crate::option::Option::Some(&VAL)
                         }
                         // 1 == the destructor is registered and the value
                         //   is valid, so return the pointer.
-                        1 => Some(&VAL),
+                        1 => $crate::option::Option::Some(&VAL),
                         // otherwise the destructor has already run, so we
                         // can't give access.
-                        _ => None,
+                        _ => $crate::option::Option::None,
                     }
                 }
             }
@@ -269,7 +270,7 @@ macro_rules! __thread_local_inner {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
                             } else if $crate::cfg!(debug_assertions) {
-                                unreachable!("missing initial value");
+                                $crate::unreachable!("missing initial value");
                             }
                         }
                         __init()
@@ -344,7 +345,7 @@ macro_rules! __thread_local_inner {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
                             } else if $crate::cfg!(debug_assertions) {
-                                unreachable!("missing default value");
+                                $crate::unreachable!("missing default value");
                             }
                         }
                         __init()
@@ -980,7 +981,7 @@ pub mod fast {
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             // SAFETY: See comment above (this function doc).
             if !mem::needs_drop::<T>() || unsafe { self.try_register_dtor() } {
-                // SAFETY: See comment above (his function doc).
+                // SAFETY: See comment above (this function doc).
                 Some(unsafe { self.inner.initialize(init) })
             } else {
                 None
@@ -1071,7 +1072,7 @@ pub mod os {
         pub unsafe fn get(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
             // SAFETY: See the documentation for this method.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
-            if ptr as usize > 1 {
+            if ptr.addr() > 1 {
                 // SAFETY: the check ensured the pointer is safe (its destructor
                 // is not running) + it is coming from a trusted source (self).
                 if let Some(ref value) = unsafe { (*ptr).inner.get() } {
@@ -1090,7 +1091,7 @@ pub mod os {
             // SAFETY: No mutable references are ever handed out meaning getting
             // the value is ok.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
-            if ptr as usize == 1 {
+            if ptr.addr() == 1 {
                 // destructor is running
                 return None;
             }
@@ -1130,7 +1131,7 @@ pub mod os {
         unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
-            key.os.set(1 as *mut u8);
+            key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
         }

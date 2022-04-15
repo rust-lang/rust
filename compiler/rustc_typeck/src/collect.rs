@@ -85,7 +85,6 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        static_mutability,
         generator_kind,
         codegen_fn_attrs,
         asm_target_features,
@@ -559,10 +558,10 @@ fn type_param_predicates(
     // `where T: Foo`.
 
     let param_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_owner = tcx.hir().ty_param_owner(param_id);
+    let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
+    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner.to_def_id() {
@@ -1219,8 +1218,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     } else {
         ty::trait_def::TraitSpecializationKind::None
     };
-    let def_path_hash = tcx.def_path_hash(def_id);
-
     let must_implement_one_of = tcx
         .get_attrs(def_id)
         .iter()
@@ -1327,7 +1324,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         is_marker,
         skip_array_during_method_dispatch,
         spec_kind,
-        def_path_hash,
         must_implement_one_of,
     )
 }
@@ -1392,6 +1388,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     fn has_late_bound_regions<'tcx>(
         tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
@@ -1400,9 +1397,14 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
+        let late_bound_map = tcx.is_late_bound_map(def_id);
+        let is_late_bound = |id| {
+            let id = tcx.hir().local_def_id(id);
+            late_bound_map.map_or(false, |(_, set)| set.contains(&id))
+        };
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
-                if tcx.is_late_bound(param.hir_id) {
+                if is_late_bound(param.hir_id) {
                     return Some(param.span);
                 }
             }
@@ -1414,25 +1416,25 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     match node {
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
+                has_late_bound_regions(tcx, item.def_id, &item.generics, sig.decl)
             }
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(fn_decl, _, ref generics) => {
-                has_late_bound_regions(tcx, generics, fn_decl)
+                has_late_bound_regions(tcx, item.def_id, generics, fn_decl)
             }
             _ => None,
         },
         Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
-                has_late_bound_regions(tcx, generics, sig.decl)
+                has_late_bound_regions(tcx, item.def_id, generics, sig.decl)
             }
             _ => None,
         },
@@ -1681,7 +1683,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params.push(opt_self);
     }
 
-    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
+    let early_lifetimes = early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
@@ -2038,10 +2040,23 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
     generics: &'a hir::Generics<'a>,
 ) -> impl Iterator<Item = &'a hir::GenericParam<'a>> + Captures<'tcx> {
+    let late_bound_map = if generics.params.is_empty() {
+        // This function may be called on `def_id == CRATE_DEF_ID`,
+        // which makes `is_late_bound_map` ICE.  Don't even try if there
+        // is no generic parameter.
+        None
+    } else {
+        tcx.is_late_bound_map(def_id)
+    };
+    let is_late_bound = move |hir_id| {
+        let id = tcx.hir().local_def_id(hir_id);
+        late_bound_map.map_or(false, |(_, set)| set.contains(&id))
+    };
     generics.params.iter().filter(move |param| match param.kind {
-        GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
+        GenericParamKind::Lifetime { .. } => !is_late_bound(param.hir_id),
         _ => false,
     })
 }
@@ -2225,7 +2240,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // well. In the case of parameters declared on a fn or method, we
     // have to be careful to only iterate over early-bound regions.
     let mut index = parent_count + has_own_self as u32;
-    for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
+    for param in early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics) {
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
             index,
@@ -2602,20 +2617,6 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> {
-    match tcx.hir().get_if_local(def_id) {
-        Some(
-            Node::Item(&hir::Item { kind: hir::ItemKind::Static(_, mutbl, _), .. })
-            | Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Static(_, mutbl),
-                ..
-            }),
-        ) => Some(mutbl),
-        Some(_) => None,
-        _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
-    }
-}
-
 fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Expr(&rustc_hir::Expr {
@@ -2718,7 +2719,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
     // Rust code in the first place but allow them anyway and trust that the
-    // user knows what s/he's doing. Who knows, unanticipated use cases may pop
+    // user knows what they're doing. Who knows, unanticipated use cases may pop
     // up in the future.
     //
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
@@ -2928,7 +2929,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     // The `#[target_feature]` attribute is allowed on
                     // WebAssembly targets on all functions, including safe
                     // ones. Other targets require that `#[target_feature]` is
-                    // only applied to unsafe funtions (pending the
+                    // only applied to unsafe functions (pending the
                     // `target_feature_11` feature) because on most targets
                     // execution of instructions that are not supported is
                     // considered undefined behavior. For WebAssembly which is a

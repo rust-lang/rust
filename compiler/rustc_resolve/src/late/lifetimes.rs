@@ -261,7 +261,7 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// When we have nested trait refs, we concanetate late bound vars for inner
+    /// When we have nested trait refs, we concatenate late bound vars for inner
     /// trait refs from outer ones. But we also need to include any HRTB
     /// lifetimes encountered when identifying the trait that an associated type
     /// is declared on.
@@ -282,8 +282,8 @@ enum BinderScopeType {
     /// Any non-concatenating binder scopes.
     Normal,
     /// Within a syntactic trait ref, there may be multiple poly trait refs that
-    /// are nested (under the `associcated_type_bounds` feature). The binders of
-    /// the innner poly trait refs are extended from the outer poly trait refs
+    /// are nested (under the `associated_type_bounds` feature). The binders of
+    /// the inner poly trait refs are extended from the outer poly trait refs
     /// and don't increase the late bound depth. If you had
     /// `T: for<'a>  Foo<Bar: for<'b> Baz<'a, 'b>>`, then the `for<'b>` scope
     /// would be `Concatenating`. This also used in trait refs in where clauses
@@ -427,7 +427,7 @@ fn resolve_lifetimes_trait_definition(
     tcx: TyCtxt<'_>,
     local_def_id: LocalDefId,
 ) -> ResolveLifetimes {
-    convert_named_region_map(do_resolve(tcx, local_def_id, true, false))
+    convert_named_region_map(tcx, do_resolve(tcx, local_def_id, true, false))
 }
 
 /// Computes the `ResolveLifetimes` map that contains data for an entire `Item`.
@@ -435,7 +435,7 @@ fn resolve_lifetimes_trait_definition(
 /// `named_region_map`, `is_late_bound_map`, etc.
 #[tracing::instrument(level = "debug", skip(tcx))]
 fn resolve_lifetimes(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> ResolveLifetimes {
-    convert_named_region_map(do_resolve(tcx, local_def_id, false, false))
+    convert_named_region_map(tcx, do_resolve(tcx, local_def_id, false, false))
 }
 
 fn do_resolve(
@@ -468,7 +468,7 @@ fn do_resolve(
     named_region_map
 }
 
-fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetimes {
+fn convert_named_region_map(tcx: TyCtxt<'_>, named_region_map: NamedRegionMap) -> ResolveLifetimes {
     let mut rl = ResolveLifetimes::default();
 
     for (hir_id, v) in named_region_map.defs {
@@ -477,7 +477,8 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
     }
     for hir_id in named_region_map.late_bound {
         let map = rl.late_bound.entry(hir_id.owner).or_default();
-        map.insert(hir_id.local_id);
+        let def_id = tcx.hir().local_def_id(hir_id);
+        map.insert(def_id);
     }
     for (hir_id, v) in named_region_map.late_bound_vars {
         let map = rl.late_bound_vars.entry(hir_id.owner).or_default();
@@ -537,7 +538,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
 fn is_late_bound_map<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+) -> Option<(LocalDefId, &'tcx FxHashSet<LocalDefId>)> {
     match tcx.def_kind(def_id) {
         DefKind::AnonConst | DefKind::InlineConst => {
             let mut def_id = tcx
@@ -587,7 +588,7 @@ fn get_lifetime_scopes_for_path(mut scope: &Scope<'_>) -> LifetimeScopeForPath {
         match scope {
             Scope::Binder { lifetimes, s, .. } => {
                 available_lifetimes.extend(lifetimes.keys().filter_map(|p| match p {
-                    hir::ParamName::Plain(ident) => Some(ident.name.to_string()),
+                    hir::ParamName::Plain(ident) => Some(ident.name),
                     _ => None,
                 }));
                 scope = s;
@@ -774,8 +775,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 });
                             }
                             for (&owner, late_bound) in resolved_lifetimes.late_bound.iter() {
-                                late_bound.iter().for_each(|&local_id| {
-                                    self.map.late_bound.insert(hir::HirId { owner, local_id });
+                                late_bound.iter().for_each(|&id| {
+                                    let hir_id = self.tcx.local_def_id_to_hir_id(id);
+                                    debug_assert_eq!(owner, hir_id.owner);
+                                    self.map.late_bound.insert(hir_id);
                                 });
                             }
                             for (&owner, late_bound_vars) in
@@ -2930,7 +2933,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 path_span: Span,
                 generic_args: &'v hir::GenericArgs<'v>,
             ) {
-                // parenthesized args enter a new elison scope
+                // parenthesized args enter a new elision scope
                 if generic_args.parenthesized {
                     return;
                 }

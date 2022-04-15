@@ -18,21 +18,21 @@ fn main() {
         int: u32,
         chr: char,
     }
-    let _invalid_char = const { InvalidChar { int: 0x110001 } };
+    let _invalid_char = unsafe { InvalidChar { int: 0x110001 }.chr };
 
     // An enum with an invalid tag. Regression test for #93688.
     union InvalidTag {
         int: u32,
         e: E,
     }
-    let _invalid_tag = [InvalidTag { int: 4 }];
+    let _invalid_tag = [unsafe { InvalidTag { int: 4 }.e }];
 
     // An enum without variants. Regression test for #94073.
     union NoVariants {
         int: u32,
         empty: Empty,
     }
-    let _enum_without_variants = [NoVariants { int: 0 }];
+    let _enum_without_variants = [unsafe { NoVariants { int: 0 }.empty }];
 
     // A non-UTF-8 string slice. Regression test for #75763 and #78520.
     struct Str<const S: &'static str>;

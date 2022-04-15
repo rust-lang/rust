@@ -3,7 +3,7 @@ use std::cmp;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, DiagnosticId, EmissionGuarantee, ErrorGuaranteed,
+    Diagnostic, DiagnosticBuilder, DiagnosticId, EmissionGuarantee, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
@@ -14,7 +14,7 @@ use rustc_session::lint::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
+use rustc_span::source_map::{DesugaringKind, ExpnKind};
 use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
 /// How a lint level was set.
@@ -340,7 +340,7 @@ pub fn struct_lint_level<'s, 'd>(
             (Level::Expect(expect_id), _) => {
                 // This case is special as we actually allow the lint itself in this context, but
                 // we can't return early like in the case for `Level::Allow` because we still
-                // need the lint diagnostic to be emitted to `rustc_error::HanderInner`.
+                // need the lint diagnostic to be emitted to `rustc_error::HandlerInner`.
                 //
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply

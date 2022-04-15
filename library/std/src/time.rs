@@ -101,7 +101,9 @@ pub use core::time::FromFloatSecsError;
 /// ```
 ///
 /// # Underlying System calls
-/// Currently, the following system calls are being used to get the current time using `now()`:
+///
+/// The following system calls are [currently] being used by `now()` to find out
+/// the current time:
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
@@ -113,6 +115,7 @@ pub use core::time::FromFloatSecsError;
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
+/// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
@@ -203,7 +206,8 @@ pub struct Instant(time::Instant);
 /// For example, on Windows the time is represented in 100 nanosecond intervals whereas Linux
 /// can represent nanosecond intervals.
 ///
-/// Currently, the following system calls are being used to get the current time using `now()`:
+/// The following system calls are [currently] being used by `now()` to find out
+/// the current time:
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
@@ -215,6 +219,7 @@ pub struct Instant(time::Instant);
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
 ///
+/// [currently]: crate::io#platform-specific-behavior
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [gettimeofday]: https://man7.org/linux/man-pages/man2/gettimeofday.2.html

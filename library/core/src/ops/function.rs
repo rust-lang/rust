@@ -53,11 +53,18 @@
 /// ```
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Fn"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
+    ),
+    on(
+        _Self = "unsafe fn",
+        note = "unsafe function cannot be called generically without an unsafe block",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
+        label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
     label = "expected an `Fn<{Args}>` closure, found `{Self}`"
@@ -133,11 +140,18 @@ pub trait Fn<Args>: FnMut<Args> {
 /// ```
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FnMut"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
+    ),
+    on(
+        _Self = "unsafe fn",
+        note = "unsafe function cannot be called generically without an unsafe block",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
+        label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
@@ -205,11 +219,18 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// ```
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FnOnce"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
         Args = "()",
         note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
+    ),
+    on(
+        _Self = "unsafe fn",
+        note = "unsafe function cannot be called generically without an unsafe block",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
+        label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"

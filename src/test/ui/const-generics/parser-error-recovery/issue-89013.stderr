@@ -29,7 +29,7 @@ note: trait defined here, with 1 generic parameter: `N`
   --> $DIR/issue-89013.rs:1:7
    |
 LL | trait Foo<const N: usize> {
-   |       ^^^       -
+   |       ^^^ --------------
 help: add missing generic argument
    |
 LL | impl Foo<N, N = const 3> for Bar {

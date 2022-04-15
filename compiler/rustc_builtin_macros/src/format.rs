@@ -7,11 +7,11 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{token, BlockCheckMode, UnsafeSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{InnerSpan, MultiSpan, Span};
+use rustc_span::{InnerSpan, Span};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
@@ -446,7 +446,9 @@ impl<'a, 'b> Context<'a, 'b> {
                                 .iter()
                                 .filter(|fmt| fmt.precision_span.is_some())
                                 .count();
-                        e.span_label(span, &format!(
+                        e.span_label(
+                            span,
+                            &format!(
                             "this precision flag adds an extra required argument at position {}, \
                              which is why there {} expected",
                             pos,
@@ -455,7 +457,8 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 format!("are {} arguments", count)
                             },
-                        ));
+                        ),
+                        );
                         if let Some(arg) = self.args.get(pos) {
                             e.span_label(
                                 arg.span,

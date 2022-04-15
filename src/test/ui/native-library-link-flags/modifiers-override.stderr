@@ -1,0 +1,32 @@
+error: same modifier is used multiple times in a single `modifiers` argument
+  --> $DIR/modifiers-override.rs:9:5
+   |
+LL |     modifiers = "+whole-archive,-whole-archive",
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `modifiers` arguments in a single `#[link]` attribute
+  --> $DIR/modifiers-override.rs:6:1
+   |
+LL | / #[link(
+LL | |     name = "bar",
+LL | |     kind = "static",
+LL | |     modifiers = "+whole-archive,-whole-archive",
+LL | |
+LL | |     modifiers = "+bundle"
+LL | | )]
+   | |__^
+
+error: overriding linking modifiers from command line is not supported
+  --> $DIR/modifiers-override.rs:13:1
+   |
+LL | extern "C" {}
+   | ^^^^^^^^^^^^^
+
+error: overriding linking modifiers from command line is not supported
+  --> $DIR/modifiers-override.rs:13:1
+   |
+LL | extern "C" {}
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

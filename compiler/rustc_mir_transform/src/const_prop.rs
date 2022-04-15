@@ -71,8 +71,9 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let is_fn_like = tcx.hir().get_by_def_id(def_id).fn_kind().is_some();
-        let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
+        let def_kind = tcx.def_kind(def_id);
+        let is_fn_like = def_kind.is_fn_like();
+        let is_assoc_const = def_kind == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
@@ -184,8 +185,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     type MemoryKind = !;
 
-    type MemoryExtra = ();
-
     fn load_mir(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _instance: ty::InstanceDef<'tcx>,
@@ -267,7 +266,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn before_access_global(
-        _memory_extra: &(),
+        _tcx: TyCtxt<'tcx>,
+        _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
@@ -377,7 +377,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             span,
             param_env,
             ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
-            (),
         );
 
         let ret = ecx
@@ -634,7 +633,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    // Attempt to use albegraic identities to eliminate constant expressions
+    // Attempt to use algebraic identities to eliminate constant expressions
     fn eval_rvalue_with_identities(
         &mut self,
         rvalue: &Rvalue<'tcx>,
@@ -898,8 +897,10 @@ impl Visitor<'_> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
+            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
-            | MutatingUse(MutatingUseContext::Store) => {
+            | MutatingUse(MutatingUseContext::Store)
+            | MutatingUse(MutatingUseContext::SetDiscriminant) => {
                 if !self.found_assignment.insert(local) {
                     match &mut self.can_const_prop[local] {
                         // If the local can only get propagated in its own block, then we don't have

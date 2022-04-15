@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue-30906.rs:18:5
+  --> $DIR/issue-30906.rs:22:5
    |
 LL |     test(Compose(f, |_| {}));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough

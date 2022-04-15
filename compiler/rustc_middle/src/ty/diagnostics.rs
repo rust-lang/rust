@@ -8,11 +8,17 @@ use crate::ty::{
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_span::Span;
+
+impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        format!("{}", self).into_diagnostic_arg()
+    }
+}
 
 impl<'tcx> Ty<'tcx> {
     /// Similar to `Ty::is_primitive`, but also considers inferred numeric values to be primitive.
@@ -139,7 +145,7 @@ pub fn suggest_arbitrary_trait_bound(
         (Some(_), "Self") => return false,
         _ => {}
     }
-    // Suggest a where clause bound for a non-type paremeter.
+    // Suggest a where clause bound for a non-type parameter.
     let (action, prefix) = if generics.where_clause.predicates.is_empty() {
         ("introducing a", " where ")
     } else {
@@ -330,10 +336,14 @@ pub fn suggest_constraining_type_params<'a>(
         }
 
         let constraint = constraints.iter().map(|&(c, _)| c).collect::<Vec<_>>().join(" + ");
-        let mut suggest_restrict = |span| {
+        let mut suggest_restrict = |span, bound_list_non_empty| {
             suggestions.push((
                 span,
-                format!(" + {}", constraint),
+                if bound_list_non_empty {
+                    format!(" + {}", constraint)
+                } else {
+                    format!(" {}", constraint)
+                },
                 SuggestChangingConstraintsMessage::RestrictBoundFurther,
             ))
         };
@@ -354,7 +364,10 @@ pub fn suggest_constraining_type_params<'a>(
             //             |
             //             replace with: `impl Foo + Bar`
 
-            suggest_restrict(param.span.shrink_to_hi());
+            // `impl Trait` must have at least one trait in the list
+            let bound_list_non_empty = true;
+
+            suggest_restrict(param.span.shrink_to_hi(), bound_list_non_empty);
             continue;
         }
 
@@ -377,15 +390,25 @@ pub fn suggest_constraining_type_params<'a>(
                 //          --
                 //          |
                 //          replace with: `T: Bar +`
-                suggest_restrict(span);
+
+                // `bounds_span_for_suggestions` returns `None` if the list is empty
+                let bound_list_non_empty = true;
+
+                suggest_restrict(span, bound_list_non_empty);
             } else {
+                let (colon, span) = match param.colon_span_for_suggestions(tcx.sess.source_map()) {
+                    // If there is already a colon after generic, do not suggest adding it again
+                    Some(sp) => ("", sp.shrink_to_hi()),
+                    None => (":", param.span.shrink_to_hi()),
+                };
+
                 // If user hasn't provided any bounds, suggest adding a new one:
                 //
                 //   fn foo<T>(t: T) { ... }
                 //          - help: consider restricting this type parameter with `T: Foo`
                 suggestions.push((
-                    param.span.shrink_to_hi(),
-                    format!(": {}", constraint),
+                    span,
+                    format!("{colon} {constraint}"),
                     SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
                 ));
             }
@@ -453,17 +476,21 @@ pub fn suggest_constraining_type_params<'a>(
                 ));
             } else {
                 let mut param_spans = Vec::new();
+                let mut non_empty = false;
 
                 for predicate in generics.where_clause.predicates {
                     if let WherePredicate::BoundPredicate(WhereBoundPredicate {
                         span,
                         bounded_ty,
+                        bounds,
                         ..
                     }) = predicate
                     {
                         if let TyKind::Path(QPath::Resolved(_, path)) = &bounded_ty.kind {
                             if let Some(segment) = path.segments.first() {
                                 if segment.ident.to_string() == param_name {
+                                    non_empty = !bounds.is_empty();
+
                                     param_spans.push(span);
                                 }
                             }
@@ -472,7 +499,7 @@ pub fn suggest_constraining_type_params<'a>(
                 }
 
                 match param_spans[..] {
-                    [&param_span] => suggest_restrict(param_span.shrink_to_hi()),
+                    [&param_span] => suggest_restrict(param_span.shrink_to_hi(), non_empty),
                     _ => {
                         suggestions.push((
                             generics.where_clause.tail_span_for_suggestion(),

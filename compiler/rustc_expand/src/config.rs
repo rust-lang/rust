@@ -414,7 +414,7 @@ impl<'a> StripUnconfigured<'a> {
             };
             trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
         }
-        // We don't really have a good span to use for the syntheized `[]`
+        // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrAnnotatedTokenTree::Delimited(
             DelimSpan::from_single(pound_span),

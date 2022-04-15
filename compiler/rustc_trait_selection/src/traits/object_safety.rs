@@ -14,7 +14,7 @@ use crate::infer::TyCtxtInferExt;
 use crate::traits::const_evaluatable::{self, AbstractConst};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc_errors::FatalError;
+use rustc_errors::{FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use smallvec::SmallVec;
 
 use std::iter;
@@ -131,16 +131,18 @@ fn object_safety_violations_for_trait(
             }),
     );
 
-    violations.extend(
-        tcx.associated_items(trait_def_id)
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Type)
-            .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
-            .map(|item| {
-                let ident = item.ident(tcx);
-                ObjectSafetyViolation::GAT(ident.name, ident.span)
-            }),
-    );
+    if !tcx.features().generic_associated_types_extended {
+        violations.extend(
+            tcx.associated_items(trait_def_id)
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Type)
+                .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+                .map(|item| {
+                    let ident = item.ident(tcx);
+                    ObjectSafetyViolation::GAT(ident.name, ident.span)
+                }),
+        );
+    }
 
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
@@ -167,10 +169,7 @@ fn lint_object_unsafe_trait(
         let node = tcx.hir().get_if_local(trait_def_id);
         let mut spans = MultiSpan::from_span(span);
         if let Some(hir::Node::Item(item)) = node {
-            spans.push_span_label(
-                item.ident.span,
-                "this trait cannot be made into an object...".into(),
-            );
+            spans.push_span_label(item.ident.span, "this trait cannot be made into an object...");
             spans.push_span_label(span, format!("...because {}", violation.error_msg()));
         } else {
             spans.push_span_label(

@@ -5,6 +5,7 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
+use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{Region, RegionVid, Term};
 
@@ -87,11 +88,29 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let trait_pred = ty::Binder::dummy(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_negative(&infcx, true);
+            let mut selcx = SelectionContext::new(&infcx);
             let result = selcx.select(&Obligation::new(
                 ObligationCause::dummy(),
                 orig_env,
                 trait_pred.to_poly_trait_predicate(),
+            ));
+
+            match result {
+                Ok(Some(ImplSource::UserDefined(_))) => {
+                    debug!(
+                        "find_auto_trait_generics({:?}): \
+                         manual impl found, bailing out",
+                        trait_ref
+                    );
+                    return true;
+                }
+                _ => {}
+            }
+
+            let result = selcx.select(&Obligation::new(
+                ObligationCause::dummy(),
+                orig_env,
+                trait_pred.to_poly_trait_predicate_negative_polarity(),
             ));
 
             match result {
@@ -270,14 +289,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
-        // Don't try to proess any nested obligations involving predicates
+        // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
         for predicate in param_env.caller_bounds() {
             fresh_preds.insert(self.clean_pred(infcx, predicate));
         }
 
-        let mut select = SelectionContext::with_negative(&infcx, true);
+        let mut select = SelectionContext::new(&infcx);
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
@@ -665,12 +684,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         && is_new_pred
                     {
                         debug!(
-                            "evaluate_nested_obligations: adding projection predicate\
+                            "evaluate_nested_obligations: adding projection predicate \
                             to computed_preds: {:?}",
                             predicate
                         );
 
-                        // Under unusual circumstances, we can end up with a self-refeential
+                        // Under unusual circumstances, we can end up with a self-referential
                         // projection predicate. For example:
                         // <T as MyType>::Value == <T as MyType>::Value
                         // Not only is displaying this to the user pointless,
@@ -733,7 +752,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
                     match project::poly_project_and_unify_type(select, &obligation.with(p)) {
-                        Err(e) => {
+                        ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
                                  '{:?}' '{:?}', bailing out",
@@ -741,15 +760,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             );
                             return false;
                         }
-                        Ok(Err(project::InProgress)) => {
+                        ProjectAndUnifyResult::Recursive => {
                             debug!("evaluate_nested_obligations: recursive projection predicate");
                             return false;
                         }
-                        Ok(Ok(Some(v))) => {
+                        ProjectAndUnifyResult::Holds(v) => {
                             // We only care about sub-obligations
                             // when we started out trying to unify
                             // some inference variables. See the comment above
-                            // for more infomration
+                            // for more information
                             if p.term().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
@@ -764,9 +783,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 }
                             }
                         }
-                        Ok(Ok(None)) => {
+                        ProjectAndUnifyResult::FailedNormalization => {
                             // It's ok not to make progress when have no inference variables -
-                            // in that case, we were only performing unifcation to check if an
+                            // in that case, we were only performing unification to check if an
                             // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
                             // However, we should always make progress (either by generating

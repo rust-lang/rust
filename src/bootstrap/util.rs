@@ -63,7 +63,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
-/// If The dylib_path_par is already set for this cmd, the old value will be overwritten!
+/// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
 pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
     let mut list = dylib_path();
     for path in path {
@@ -308,10 +308,10 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     let abs_path = builder.src.join(path);
     let exists = abs_path.is_dir() || abs_path.is_file();
     if !exists {
-        if let Some(p) = abs_path.to_str() {
-            builder.info(&format!("Warning: Skipping \"{}\": not a regular file or directory", p));
-        }
-        return None;
+        panic!(
+            "Invalid test suite filter \"{}\": file or directory does not exist",
+            abs_path.display()
+        );
     }
     // Since test suite paths are themselves directories, if we don't
     // specify a directory or file, we'll get an empty string here

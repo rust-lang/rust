@@ -199,6 +199,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
     use clean::ItemKind::*;
     let name = item.name;
     let is_crate = item.is_crate();
+    let header = item.fn_header(tcx);
+
     match *item.kind {
         ModuleItem(m) => ItemEnum::Module(Module { is_crate, items: ids(m.items) }),
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
@@ -207,30 +209,33 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(f.into_tcx(tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(f.into_tcx(tcx)),
+        FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
+        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
         TraitItem(t) => ItemEnum::Trait(t.into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
-        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, tcx)),
-        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, tcx)),
+        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
+        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl(i.into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
-        TypedefItem(t, _) => ItemEnum::Typedef(t.into_tcx(tcx)),
+        TypedefItem(t) => ItemEnum::Typedef(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         ConstantItem(c) => ItemEnum::Constant(c.into_tcx(tcx)),
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
         PrimitiveItem(p) => ItemEnum::PrimitiveType(p.as_sym().to_string()),
+        TyAssocConstItem(ty) => ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None },
         AssocConstItem(ty, default) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: default.map(|c| c.expr(tcx)) }
+            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
-        AssocTypeItem(g, b, t) => ItemEnum::AssocType {
+        TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: (*g).into_tcx(tcx),
             bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            default: t.map(|x| x.into_tcx(tcx)),
+            default: None,
         },
+        // FIXME: do not map to Typedef but to a custom variant
+        AssocTypeItem(t, _) => ItemEnum::Typedef(t.into_tcx(tcx)),
         // `convert_item` early returns `None` for striped items
         StrippedItem(_) => unreachable!(),
         KeywordItem(_) => {
@@ -297,17 +302,6 @@ fn convert_abi(a: RustcAbi) -> Abi {
         RustcAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
         RustcAbi::System { unwind } => Abi::System { unwind },
         _ => Abi::Other(a.to_string()),
-    }
-}
-
-impl FromWithTcx<clean::Function> for Function {
-    fn from_tcx(function: clean::Function, tcx: TyCtxt<'_>) -> Self {
-        let clean::Function { decl, generics, header } = function;
-        Function {
-            decl: decl.into_tcx(tcx),
-            generics: generics.into_tcx(tcx),
-            header: from_fn_header(&header),
-        }
     }
 }
 
@@ -555,12 +549,26 @@ impl FromWithTcx<clean::Impl> for Impl {
     }
 }
 
+crate fn from_function(
+    function: clean::Function,
+    header: rustc_hir::FnHeader,
+    tcx: TyCtxt<'_>,
+) -> Function {
+    let clean::Function { decl, generics } = function;
+    Function {
+        decl: decl.into_tcx(tcx),
+        generics: generics.into_tcx(tcx),
+        header: from_fn_header(&header),
+    }
+}
+
 crate fn from_function_method(
     function: clean::Function,
     has_body: bool,
+    header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Method {
-    let clean::Function { header, decl, generics } = function;
+    let clean::Function { decl, generics } = function;
     Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),

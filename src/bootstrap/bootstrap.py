@@ -70,7 +70,11 @@ def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error
     try:
         if do_verify:
             if url not in checksums:
-                raise RuntimeError("src/stage0.json doesn't contain a checksum for {}".format(url))
+                raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
+                                    "Pre-built artifacts might not available for this "
+                                    "target at this time, see https://doc.rust-lang.org/nightly"
+                                    "/rustc/platform-support.html for more information.")
+                                   .format(url))
             sha256 = checksums[url]
             if os.path.exists(path):
                 if verify(path, sha256, False):
@@ -122,6 +126,7 @@ def _download(path, url, probably_big, verbose, exception, help_on_error=None):
             option = "-s"
         require(["curl", "--version"])
         run(["curl", option,
+             "-L", # Follow redirect.
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
@@ -678,7 +683,7 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(line.strip() == "ID=nixos" for line in f):
+                    if not any(l.strip() in ["ID=nixos", "ID='nixos'", 'ID="nixos"'] for l in f):
                         return
             except FileNotFoundError:
                 return
@@ -1097,8 +1102,19 @@ class RustBuild(object):
 
     def update_submodules(self):
         """Update submodules"""
-        if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
-                self.get_toml('submodules') == "false":
+        has_git = os.path.exists(os.path.join(self.rust_root, ".git"))
+        # This just arbitrarily checks for cargo, but any workspace member in
+        # a submodule would work.
+        has_submodules = os.path.exists(os.path.join(self.rust_root, "src/tools/cargo/Cargo.toml"))
+        if not has_git and not has_submodules:
+            print("This is not a git repository, and the requisite git submodules were not found.")
+            print("If you downloaded the source from https://github.com/rust-lang/rust/releases,")
+            print("those sources will not work. Instead, consider downloading from the source")
+            print("releases linked at")
+            print("https://forge.rust-lang.org/infra/other-installation-methods.html#source-code")
+            print("or clone the repository at https://github.com/rust-lang/rust/.")
+            raise SystemExit(1)
+        if not has_git or self.get_toml('submodules') == "false":
             return
 
         default_encoding = sys.getdefaultencoding()
@@ -1161,9 +1177,9 @@ class RustBuild(object):
         """Check that vendoring is configured properly"""
         vendor_dir = os.path.join(self.rust_root, 'vendor')
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
-            if os.environ.get('USER') != os.environ['SUDO_USER']:
+            if os.getuid() == 0:
                 self.use_vendored_sources = True
-                print('info: looks like you are running this command under `sudo`')
+                print('info: looks like you\'re trying to run this command as root')
                 print('      and so in order to preserve your $HOME this will now')
                 print('      use vendored sources by default.')
                 if not os.path.exists(vendor_dir):

@@ -215,6 +215,10 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
+    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
+    (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
+    /// Allows specifying the whole-archive link modifier
+    (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
     /// Allows using `#![no_std]`.
     (accepted, no_std, "1.6.0", None, None),
     /// Allows defining identifiers beyond ASCII.

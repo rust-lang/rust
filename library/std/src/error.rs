@@ -516,6 +516,14 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[unstable(feature = "thin_box", issue = "92791")]
+impl<T: ?Sized + crate::error::Error> crate::error::Error for crate::boxed::ThinBox<T> {
+    fn source(&self) -> Option<&(dyn crate::error::Error + 'static)> {
+        use core::ops::Deref;
+        self.deref().source()
+    }
+}
+
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]

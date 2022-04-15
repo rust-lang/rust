@@ -116,7 +116,7 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = cx.sess().target.mcount.as_str();
+        let mcount_name = cx.sess().target.mcount.as_ref();
 
         Some(llvm::CreateAttrStringValue(
             cx.llcx,

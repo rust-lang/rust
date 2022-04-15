@@ -180,6 +180,9 @@ symbols! {
         Error,
         File,
         FileType,
+        Fn,
+        FnMut,
+        FnOnce,
         FormatSpec,
         Formatter,
         From,
@@ -248,6 +251,7 @@ symbols! {
         RustcEncodable,
         Send,
         SeqCst,
+        SliceIndex,
         Some,
         String,
         StructuralEq,
@@ -272,6 +276,7 @@ symbols! {
         __D,
         __H,
         __S,
+        __awaitee,
         __try_var,
         _d,
         _e,
@@ -494,11 +499,9 @@ symbols! {
         const_panic,
         const_panic_fmt,
         const_precise_live_drops,
-        const_ptr,
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_refs_to_cell,
-        const_slice_ptr,
         const_trait_bound_opt_out,
         const_trait_impl,
         const_transmute,
@@ -655,9 +658,7 @@ symbols! {
         f,
         f16c_target_feature,
         f32,
-        f32_runtime,
         f64,
-        f64_runtime,
         fabsf32,
         fabsf64,
         fadd_fast,
@@ -726,6 +727,7 @@ symbols! {
         generators,
         generic_arg_infer,
         generic_associated_types,
+        generic_associated_types_extended,
         generic_const_exprs,
         generic_param_attrs,
         get_context,
@@ -913,8 +915,6 @@ symbols! {
         mul_with_overflow,
         must_not_suspend,
         must_use,
-        mut_ptr,
-        mut_slice_ptr,
         naked,
         naked_functions,
         name,
@@ -1024,7 +1024,6 @@ symbols! {
         pattern_parentheses,
         phantom_data,
         pin,
-        pinned,
         platform_intrinsics,
         plugin,
         plugin_registrar,
@@ -1160,10 +1159,12 @@ symbols! {
         rustc_allocator,
         rustc_allocator_nounwind,
         rustc_allow_const_fn_unstable,
+        rustc_allow_incoherent_impl,
         rustc_attrs,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,
+        rustc_coherence_is_core,
         rustc_const_stable,
         rustc_const_unstable,
         rustc_conversion_suggestion,
@@ -1312,11 +1313,8 @@ symbols! {
         sized,
         skip,
         slice,
-        slice_alloc,
         slice_len_fn,
         slice_patterns,
-        slice_u8,
-        slice_u8_alloc,
         slicing_syntax,
         soft,
         specialization,
@@ -1346,11 +1344,11 @@ symbols! {
         stop_after_dataflow,
         store,
         str,
-        str_alloc,
         str_split_whitespace,
         str_trim,
         str_trim_end,
         str_trim_start,
+        strict_provenance,
         stringify,
         stringify_macro,
         struct_field_attributes,
@@ -1645,7 +1643,7 @@ impl fmt::Display for Ident {
 /// hygiene data, most importantly name of the crate it refers to.
 /// As a result we print `$crate` as `crate` if it refers to the local crate
 /// and as `::other_crate_name` if it refers to some other crate.
-/// Note, that this is only done if the ident token is printed from inside of AST pretty-pringing,
+/// Note, that this is only done if the ident token is printed from inside of AST pretty-printing,
 /// but not otherwise. Pretty-printing is the only way for proc macros to discover token contents,
 /// so we should not perform this lossy conversion if the top level call to the pretty-printer was
 /// done for a token stream or a single token.
@@ -1820,7 +1818,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // revisited after further improvements to `indexmap`.
 //
 // This type is private to prevent accidentally constructing more than one
-// `Interner` on the same thread, which makes it easy to mixup `Symbol`s
+// `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
 #[derive(Default)]
 struct InternerInner {

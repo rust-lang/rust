@@ -7,11 +7,6 @@ fn main() {}
 type Two<T, U> = impl Debug;
 //~^ ERROR `T` doesn't implement `Debug`
 
-fn two<T: Debug>(t: T) -> Two<T, u32> {
-    //~^ ERROR non-defining opaque type use in defining scope
-    (t, 4i8)
-}
-
 fn three<T: Debug, U>(t: T) -> Two<T, U> {
     (t, 5i8)
 }
@@ -27,8 +22,8 @@ impl Bar for u32 {
 }
 
 fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-    //~^ ERROR concrete type differs from previous
     (t, <U as Bar>::FOO)
+    //~^ ERROR concrete type differs from previous
 }
 
 fn is_sync<T: Sync>() {}

@@ -31,7 +31,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -49,7 +49,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
+use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
@@ -1571,7 +1571,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                         lint.build("bounds on generic parameters are not enforced in type aliases");
                     let msg = "the bound will not be checked when the type alias is used, \
                                    and should be removed";
-                    err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
+                    err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     if !suggested_changing_assoc_types {
                         TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                         suggested_changing_assoc_types = true;
@@ -2548,7 +2548,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
         fn ty_find_init_error<'tcx>(
-            tcx: TyCtxt<'tcx>,
+            cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
@@ -2575,7 +2575,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     // First check if this ADT has a layout attribute (like `NonNull` and friends).
                     use std::ops::Bound;
-                    match tcx.layout_scalar_valid_range(adt_def.did()) {
+                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
                         // We exploit here that `layout_scalar_valid_range` will never
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
@@ -2603,12 +2603,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             // Proceed recursively, check all fields.
                             let variant = &adt_def.variant(VariantIdx::from_u32(0));
                             variant.fields.iter().find_map(|field| {
-                                ty_find_init_error(tcx, field.ty(tcx, substs), init).map(
+                                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(
                                     |(mut msg, span)| {
                                         if span.is_none() {
                                             // Point to this field, should be helpful for figuring
                                             // out where the source of the error is.
-                                            let span = tcx.def_span(field.did);
+                                            let span = cx.tcx.def_span(field.did);
                                             write!(
                                                 &mut msg,
                                                 " (in this {} field)",
@@ -2627,7 +2627,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         // Multi-variant enum.
                         _ => {
                             if init == InitKind::Uninit && is_multi_variant(*adt_def) {
-                                let span = tcx.def_span(adt_def.did());
+                                let span = cx.tcx.def_span(adt_def.did());
                                 Some((
                                     "enums have to be initialized to a variant".to_string(),
                                     Some(span),
@@ -2642,7 +2642,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().iter().find_map(|field| ty_find_init_error(tcx, field, init))
+                    ty.tuple_fields().iter().find_map(|field| ty_find_init_error(cx, field, init))
+                }
+                Array(ty, len) => {
+                    if matches!(len.try_eval_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
+                        // Array length known at array non-empty -- recurse.
+                        ty_find_init_error(cx, *ty, init)
+                    } else {
+                        // Empty array or size unknown.
+                        None
+                    }
                 }
                 // Conservative fallback.
                 _ => None,
@@ -2655,7 +2664,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some((msg, span)) =
-                with_no_trimmed_paths!(ty_find_init_error(cx.tcx, conjured_ty, init))
+                with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(

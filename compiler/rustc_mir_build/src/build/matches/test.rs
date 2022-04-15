@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 } else if let [success, fail] = *make_target_blocks(self) {
                     assert_eq!(value.ty(), ty);
-                    let expect = self.literal_operand(test.span, value);
+                    let expect = self.literal_operand(test.span, value.into());
                     let val = Operand::Copy(place);
                     self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                 } else {
@@ -277,8 +277,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target_blocks = make_target_blocks(self);
 
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
-                let lo = self.literal_operand(test.span, lo);
-                let hi = self.literal_operand(test.span, hi);
+                let lo = self.literal_operand(test.span, lo.into());
+                let hi = self.literal_operand(test.span, hi.into());
                 let val = Operand::Copy(place);
 
                 let [success, fail] = *target_blocks else {
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        let mut expect = self.literal_operand(source_info.span, value);
+        let mut expect = self.literal_operand(source_info.span, value.into());
         let mut val = Operand::Copy(place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
@@ -823,7 +823,7 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
-) -> ty::Const<'tcx> {
+) -> ConstantKind<'tcx> {
     let substs = tcx.mk_substs_trait(self_ty, params);
 
     // The unhygienic comparison here is acceptable because this is only
@@ -836,5 +836,6 @@ fn trait_method<'tcx>(
 
     let method_ty = tcx.type_of(item.def_id);
     let method_ty = method_ty.subst(tcx, substs);
-    ty::Const::zero_sized(tcx, method_ty)
+
+    ConstantKind::zero_sized(method_ty)
 }

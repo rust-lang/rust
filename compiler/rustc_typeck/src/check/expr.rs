@@ -32,6 +32,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -589,7 +590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let opt_coerce_to = {
                     // We should release `enclosing_breakables` before the `check_expr_with_hint`
                     // below, so can't move this block of code to the enclosing scope and share
-                    // `ctxt` with the second `encloding_breakables` borrow below.
+                    // `ctxt` with the second `enclosing_breakables` borrow below.
                     let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
                     match enclosing_breakables.opt_find_breakable(target_id) {
                         Some(ctxt) => ctxt.coerce.as_ref().map(|coerce| coerce.expected_ty()),
@@ -792,7 +793,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.types.never
     }
 
-    /// `explicit_return` is `true` if we're checkng an explicit `return expr`,
+    /// `explicit_return` is `true` if we're checking an explicit `return expr`,
     /// and `false` if we're checking a trailing expression.
     pub(super) fn check_return_expr(
         &self,
@@ -964,8 +965,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let else_diverges = self.diverges.get();
 
-            let opt_suggest_box_span =
-                self.opt_suggest_box_span(else_expr.span, else_ty, orig_expected);
+            let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);
             let if_cause =
                 self.if_cause(sp, then_expr, else_expr, then_ty, else_ty, opt_suggest_box_span);
 
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
             Ok(method) => {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
-                // trigger this codepath causing `structuraly_resolved_type` to emit an error.
+                // trigger this codepath causing `structurally_resolved_type` to emit an error.
 
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
@@ -1556,7 +1556,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if inaccessible_remaining_fields {
                 self.report_inaccessible_fields(adt_ty, span);
             } else {
-                self.report_missing_fields(adt_ty, span, remaining_fields);
+                self.report_missing_fields(
+                    adt_ty,
+                    span,
+                    remaining_fields,
+                    variant,
+                    ast_fields,
+                    substs,
+                );
             }
         }
     }
@@ -1590,6 +1597,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adt_ty: Ty<'tcx>,
         span: Span,
         remaining_fields: FxHashMap<Ident, (usize, &ty::FieldDef)>,
+        variant: &'tcx ty::VariantDef,
+        ast_fields: &'tcx [hir::ExprField<'tcx>],
+        substs: SubstsRef<'tcx>,
     ) {
         let len = remaining_fields.len();
 
@@ -1615,7 +1625,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        struct_span_err!(
+        let mut err = struct_span_err!(
             self.tcx.sess,
             span,
             E0063,
@@ -1624,9 +1634,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             remaining_fields_names,
             truncated_fields_error,
             adt_ty
-        )
-        .span_label(span, format!("missing {}{}", remaining_fields_names, truncated_fields_error))
-        .emit();
+        );
+        err.span_label(
+            span,
+            format!("missing {}{}", remaining_fields_names, truncated_fields_error),
+        );
+
+        // If the last field is a range literal, but it isn't supposed to be, then they probably
+        // meant to use functional update syntax.
+        //
+        // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
+        if let Some((
+            last,
+            ExprKind::Struct(
+                QPath::LangItem(LangItem::Range, ..),
+                &[ref range_start, ref range_end],
+                _,
+            ),
+        )) = ast_fields.last().map(|last| (last, &last.expr.kind)) &&
+        let variant_field =
+            variant.fields.iter().find(|field| field.ident(self.tcx) == last.ident) &&
+        let range_def_id = self.tcx.lang_items().range_struct() &&
+        variant_field
+            .and_then(|field| field.ty(self.tcx, substs).ty_adt_def())
+            .map(|adt| adt.did())
+            != range_def_id
+        {
+            let instead = self
+                .tcx
+                .sess
+                .source_map()
+                .span_to_snippet(range_end.expr.span)
+                .map(|s| format!(" from `{s}`"))
+                .unwrap_or(String::new());
+            err.span_suggestion(
+                range_start.span.shrink_to_hi(),
+                &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
+                ",".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        err.emit();
     }
 
     /// Report an error for a struct field expression when there are invisible fields.
@@ -2146,7 +2195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => return,
         };
         let param_span = self.tcx.hir().span(param_hir_id);
-        let param_name = self.tcx.hir().ty_param_name(param_hir_id);
+        let param_name = self.tcx.hir().ty_param_name(param_def_id.expect_local());
 
         err.span_label(param_span, &format!("type parameter '{}' declared here", param_name));
     }

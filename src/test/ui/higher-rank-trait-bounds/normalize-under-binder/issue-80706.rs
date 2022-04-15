@@ -1,4 +1,4 @@
-// check-pass
+// build-pass
 // edition:2018
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output=T>>>;
@@ -65,6 +65,7 @@ async fn run<S>(dep: &str)
 where
     S: Storage,
     for<'a> SaveUser<'a>: StorageRequest<S>,
+    for<'a> SaveUser<'a>: StorageRequestReturnType,
 {
     User { dep }.save().await;
 }

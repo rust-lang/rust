@@ -5,6 +5,7 @@ use crate::check::FnCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,7 +18,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, MultiSpan, Span};
+use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -110,7 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             for (idx, source) in sources.iter().take(limit).enumerate() {
                 match *source {
-                    CandidateSource::ImplSource(impl_did) => {
+                    CandidateSource::Impl(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
                         let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
@@ -193,7 +194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    CandidateSource::TraitSource(trait_did) => {
+                    CandidateSource::Trait(trait_did) => {
                         let Some(item) = self.associated_value(trait_did, item_name) else { continue };
                         let item_span = self
                             .tcx
@@ -270,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (None, true) => "variant",
                     }
                 };
-                // FIXME(eddyb) this intendation is probably unnecessary.
+                // FIXME(eddyb) this indentation is probably unnecessary.
                 let mut err = {
                     // Suggest clamping down the type if the method that is being attempted to
                     // be used exists at all, and the type is an ambiguous numeric type
@@ -279,27 +280,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .into_iter()
                         .filter_map(|info| self.associated_value(info.def_id, item_name));
                     // There are methods that are defined on the primitive types and won't be
-                    // found when exploring `all_traits`, but we also need them to be acurate on
+                    // found when exploring `all_traits`, but we also need them to be accurate on
                     // our suggestions (#47759).
-                    let fund_assoc = |opt_def_id: Option<DefId>| {
-                        opt_def_id.and_then(|id| self.associated_value(id, item_name)).is_some()
+                    let found_assoc = |ty: Ty<'tcx>| {
+                        simplify_type(tcx, ty, TreatParams::AsPlaceholders)
+                            .and_then(|simp| {
+                                tcx.incoherent_impls(simp)
+                                    .iter()
+                                    .find_map(|&id| self.associated_value(id, item_name))
+                            })
+                            .is_some()
                     };
-                    let lang_items = tcx.lang_items();
                     let found_candidate = candidates.next().is_some()
-                        || fund_assoc(lang_items.i8_impl())
-                        || fund_assoc(lang_items.i16_impl())
-                        || fund_assoc(lang_items.i32_impl())
-                        || fund_assoc(lang_items.i64_impl())
-                        || fund_assoc(lang_items.i128_impl())
-                        || fund_assoc(lang_items.u8_impl())
-                        || fund_assoc(lang_items.u16_impl())
-                        || fund_assoc(lang_items.u32_impl())
-                        || fund_assoc(lang_items.u64_impl())
-                        || fund_assoc(lang_items.u128_impl())
-                        || fund_assoc(lang_items.f32_impl())
-                        || fund_assoc(lang_items.f32_runtime_impl())
-                        || fund_assoc(lang_items.f64_impl())
-                        || fund_assoc(lang_items.f64_runtime_impl());
+                        || found_assoc(tcx.types.i8)
+                        || found_assoc(tcx.types.i16)
+                        || found_assoc(tcx.types.i32)
+                        || found_assoc(tcx.types.i64)
+                        || found_assoc(tcx.types.i128)
+                        || found_assoc(tcx.types.u8)
+                        || found_assoc(tcx.types.u16)
+                        || found_assoc(tcx.types.u32)
+                        || found_assoc(tcx.types.u64)
+                        || found_assoc(tcx.types.u128)
+                        || found_assoc(tcx.types.f32)
+                        || found_assoc(tcx.types.f32);
                     if let (true, false, SelfSource::MethodCall(expr), true) = (
                         actual.is_numeric(),
                         actual.has_concrete_skeleton(),
@@ -512,23 +516,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_sources.len() == 1 {
-                    let ty_str = if let Some(CandidateSource::ImplSource(impl_did)) =
-                        static_sources.get(0)
-                    {
-                        // When the "method" is resolved through dereferencing, we really want the
-                        // original type that has the associated function for accurate suggestions.
-                        // (#61411)
-                        let ty = tcx.at(span).type_of(*impl_did);
-                        match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
-                            (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
-                                // Use `actual` as it will have more `substs` filled in.
-                                self.ty_to_value_string(actual.peel_refs())
+                    let ty_str =
+                        if let Some(CandidateSource::Impl(impl_did)) = static_sources.get(0) {
+                            // When the "method" is resolved through dereferencing, we really want the
+                            // original type that has the associated function for accurate suggestions.
+                            // (#61411)
+                            let ty = tcx.at(span).type_of(*impl_did);
+                            match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
+                                (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
+                                    // Use `actual` as it will have more `substs` filled in.
+                                    self.ty_to_value_string(actual.peel_refs())
+                                }
+                                _ => self.ty_to_value_string(ty.peel_refs()),
                             }
-                            _ => self.ty_to_value_string(ty.peel_refs()),
-                        }
-                    } else {
-                        self.ty_to_value_string(actual.peel_refs())
-                    };
+                        } else {
+                            self.ty_to_value_string(actual.peel_refs())
+                        };
                     if let SelfSource::MethodCall(expr) = source {
                         err.span_suggestion(
                             expr.span.to(span),
@@ -1877,9 +1880,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                             let sp = hir.span(id);
                             let sp = if let Some(first_bound) = has_bounds {
-                                // `sp` only covers `T`, change it so that it covers
-                                // `T:` when appropriate
                                 sp.until(first_bound.span())
+                            } else if let Some(colon_sp) =
+                                // If the generic param is declared with a colon but without bounds:
+                                // fn foo<T:>(t: T) { ... }
+                                param.colon_span_for_suggestions(
+                                    self.inh.tcx.sess.source_map(),
+                                )
+                            {
+                                sp.to(colon_sp)
                             } else {
                                 sp
                             };

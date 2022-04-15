@@ -68,9 +68,9 @@ impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by `Inherited::build(...)`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(Inherited<'b, 'tcx>)`.
+/// A temporary returned by `Inherited::build(...)`. This is necessary
+/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// without using `Rc` or something similar.
 pub struct InheritedBuilder<'tcx> {
     infcx: infer::InferCtxtBuilder<'tcx>,
     def_id: LocalDefId,
@@ -119,8 +119,8 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
-        debug!("register_predicate({:?})", obligation);
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }

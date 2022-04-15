@@ -119,9 +119,21 @@ impl<'tcx> ClosureKind {
     /// See `Ty::to_opt_closure_kind` for more details.
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            ty::ClosureKind::Fn => tcx.types.i8,
-            ty::ClosureKind::FnMut => tcx.types.i16,
-            ty::ClosureKind::FnOnce => tcx.types.i32,
+            ClosureKind::Fn => tcx.types.i8,
+            ClosureKind::FnMut => tcx.types.i16,
+            ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
+    pub fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ClosureKind> {
+        if Some(def_id) == tcx.lang_items().fn_once_trait() {
+            Some(ClosureKind::FnOnce)
+        } else if Some(def_id) == tcx.lang_items().fn_mut_trait() {
+            Some(ClosureKind::FnMut)
+        } else if Some(def_id) == tcx.lang_items().fn_trait() {
+            Some(ClosureKind::Fn)
+        } else {
+            None
         }
     }
 }

@@ -41,7 +41,7 @@ crate fn mir_built<'tcx>(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let body_owner_kind = tcx.hir().body_owner_kind(def.did);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
@@ -802,7 +802,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(hir_id),
+            tcx.hir().body_owner_kind(def.did),
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
         );
 

@@ -7,7 +7,7 @@ use crate::errors::{
 };
 use crate::require_same_types;
 
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
@@ -43,7 +43,6 @@ fn equate_intrinsic_type<'tcx>(
                 span,
                 found,
                 expected,
-                expected_pluralize: pluralize!(expected),
                 descr,
             });
             false

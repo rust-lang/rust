@@ -510,7 +510,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
 
     for (region_a, region_a_idx) in &regions {
         // Ignore `'static` lifetimes for the purpose of this lint: it's
-        // because we know it outlives everything and so doesn't give meaninful
+        // because we know it outlives everything and so doesn't give meaningful
         // clues
         if let ty::ReStatic = **region_a {
             continue;
@@ -677,9 +677,9 @@ fn resolve_regions_with_wf_tys<'tcx>(
 struct GATSubstCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     gat: DefId,
-    // Which region appears and which parameter index its subsituted for
+    // Which region appears and which parameter index its substituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
-    // Which params appears and which parameter index its subsituted for
+    // Which params appears and which parameter index its substituted for
     types: FxHashSet<(Ty<'tcx>, usize)>,
 }
 
@@ -816,16 +816,69 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
 
-            let err_ty_str;
-            let mut is_ptr = true;
-            let err = if tcx.features().adt_const_params {
-                match ty.peel_refs().kind() {
+            if tcx.features().adt_const_params {
+                let err = match ty.peel_refs().kind() {
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
                     _ => None,
+                };
+
+                if let Some(unsupported_type) = err {
+                    tcx.sess.span_err(
+                        hir_ty.span,
+                        &format!(
+                            "using {} as const generic parameters is forbidden",
+                            unsupported_type
+                        ),
+                    );
+                }
+
+                if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
+                    // We use the same error code in both branches, because this is really the same
+                    // issue: we just special-case the message for type parameters to make it
+                    // clearer.
+                    if let ty::Param(_) = ty.peel_refs().kind() {
+                        // Const parameters may not have type parameters as their types,
+                        // because we cannot be sure that the type parameter derives `PartialEq`
+                        // and `Eq` (just implementing them is not enough for `structural_match`).
+                        struct_span_err!(
+                            tcx.sess,
+                            hir_ty.span,
+                            E0741,
+                            "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
+                            used as the type of a const parameter",
+                            ty,
+                        )
+                        .span_label(
+                            hir_ty.span,
+                            format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
+                        )
+                        .note(
+                            "it is not currently possible to use a type parameter as the type of a \
+                            const parameter",
+                        )
+                        .emit();
+                    } else {
+                        struct_span_err!(
+                            tcx.sess,
+                            hir_ty.span,
+                            E0741,
+                            "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
+                            the type of a const parameter",
+                            ty,
+                        )
+                        .span_label(
+                            hir_ty.span,
+                            format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
+                        )
+                        .emit();
+                    }
                 }
             } else {
-                match ty.kind() {
+                let err_ty_str;
+                let mut is_ptr = true;
+
+                let err = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
@@ -834,74 +887,33 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         err_ty_str = format!("`{}`", ty);
                         Some(err_ty_str.as_str())
                     }
-                }
-            };
-            if let Some(unsupported_type) = err {
-                if is_ptr {
-                    tcx.sess.span_err(
-                        hir_ty.span,
-                        &format!(
-                            "using {} as const generic parameters is forbidden",
-                            unsupported_type
-                        ),
-                    );
-                } else {
-                    let mut err = tcx.sess.struct_span_err(
-                        hir_ty.span,
-                        &format!(
-                            "{} is forbidden as the type of a const generic parameter",
-                            unsupported_type
-                        ),
-                    );
-                    err.note("the only supported types are integers, `bool` and `char`");
-                    if tcx.sess.is_nightly_build() {
-                        err.help(
+                };
+
+                if let Some(unsupported_type) = err {
+                    if is_ptr {
+                        tcx.sess.span_err(
+                            hir_ty.span,
+                            &format!(
+                                "using {} as const generic parameters is forbidden",
+                                unsupported_type
+                            ),
+                        );
+                    } else {
+                        let mut err = tcx.sess.struct_span_err(
+                            hir_ty.span,
+                            &format!(
+                                "{} is forbidden as the type of a const generic parameter",
+                                unsupported_type
+                            ),
+                        );
+                        err.note("the only supported types are integers, `bool` and `char`");
+                        if tcx.sess.is_nightly_build() {
+                            err.help(
                             "more complex types are supported with `#![feature(adt_const_params)]`",
                         );
+                        }
+                        err.emit();
                     }
-                    err.emit();
-                }
-            };
-
-            if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
-                // We use the same error code in both branches, because this is really the same
-                // issue: we just special-case the message for type parameters to make it
-                // clearer.
-                if let ty::Param(_) = ty.peel_refs().kind() {
-                    // Const parameters may not have type parameters as their types,
-                    // because we cannot be sure that the type parameter derives `PartialEq`
-                    // and `Eq` (just implementing them is not enough for `structural_match`).
-                    struct_span_err!(
-                        tcx.sess,
-                        hir_ty.span,
-                        E0741,
-                        "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                            used as the type of a const parameter",
-                        ty,
-                    )
-                    .span_label(
-                        hir_ty.span,
-                        format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
-                    )
-                    .note(
-                        "it is not currently possible to use a type parameter as the type of a \
-                            const parameter",
-                    )
-                    .emit();
-                } else {
-                    struct_span_err!(
-                        tcx.sess,
-                        hir_ty.span,
-                        E0741,
-                        "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                            the type of a const parameter",
-                        ty,
-                    )
-                    .span_label(
-                        hir_ty.span,
-                        format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
-                    )
-                    .emit();
                 }
             }
         }
@@ -940,7 +952,7 @@ fn check_associated_item(
                     item.ident(fcx.tcx).span,
                     sig,
                     hir_sig.decl,
-                    item.def_id,
+                    item.def_id.expect_local(),
                     &mut implied_bounds,
                 );
                 check_method_receiver(fcx, hir_sig, item, self_ty);
@@ -1068,7 +1080,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         // No implied bounds in a struct definition.
         FxHashSet::default()
@@ -1096,7 +1108,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
     // FIXME: this shouldn't use an `FnCtxt` at all.
     for_item(tcx, item).with_fcx(|fcx| {
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         FxHashSet::default()
     });
@@ -1144,7 +1156,7 @@ fn check_item_fn(
     for_id(tcx, def_id, span).with_fcx(|fcx| {
         let sig = tcx.fn_sig(def_id);
         let mut implied_bounds = FxHashSet::default();
-        check_fn_or_method(fcx, ident.span, sig, decl, def_id.to_def_id(), &mut implied_bounds);
+        check_fn_or_method(fcx, ident.span, sig, decl, def_id, &mut implied_bounds);
         implied_bounds
     })
 }
@@ -1238,7 +1250,7 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         fcx.impl_implied_bounds(item.def_id.to_def_id(), item.span)
     });
@@ -1249,7 +1261,7 @@ fn check_impl<'tcx>(
 fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
-    def_id: DefId,
+    def_id: LocalDefId,
     return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     let tcx = fcx.tcx;
@@ -1317,7 +1329,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
     // First we build the defaulted substitution.
-    let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
+    let substs = InternalSubsts::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
@@ -1411,8 +1423,11 @@ fn check_where_clauses<'tcx, 'fcx>(
             // below: there, we are not trying to prove those predicates
             // to be *true* but merely *well-formed*.
             let pred = fcx.normalize_associated_types_in(sp, pred);
-            let cause =
-                traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
+            let cause = traits::ObligationCause::new(
+                sp,
+                fcx.body_id,
+                traits::ItemObligation(def_id.to_def_id()),
+            );
             traits::Obligation::new(cause, fcx.param_env, pred)
         });
 
@@ -1445,10 +1460,10 @@ fn check_fn_or_method<'fcx, 'tcx>(
     span: Span,
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
-    def_id: DefId,
+    def_id: LocalDefId,
     implied_bounds: &mut FxHashSet<Ty<'tcx>>,
 ) {
-    let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
+    let sig = fcx.tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -1462,7 +1477,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
                 span,
                 ty,
                 WellFormedLoc::Param {
-                    function: def_id.expect_local(),
+                    function: def_id,
                     // Note that the `param_idx` of the output type is
                     // one greater than the index of the last input type.
                     param_idx: i.try_into().unwrap(),
@@ -1485,7 +1500,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
             input_ty.into(),
             ty.span,
             ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
-                function: def_id.expect_local(),
+                function: def_id,
                 param_idx: i.try_into().unwrap(),
             })),
         );
@@ -1654,7 +1669,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            // If he receiver already has errors reported due to it, consider it valid to avoid
+            // If the receiver already has errors reported due to it, consider it valid to avoid
             // unnecessary errors (#58712).
             return receiver_ty.references_error();
         }

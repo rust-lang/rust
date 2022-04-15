@@ -1,0 +1,10 @@
+error: casting the result of `i32::abs()` to u32
+  --> $DIR/cast_abs_to_unsigned.rs:6:18
+   |
+LL |     let y: u32 = x.abs() as u32;
+   |                  ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
+   |
+   = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
+
+error: aborting due to previous error
+

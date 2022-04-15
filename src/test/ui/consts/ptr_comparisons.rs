@@ -7,7 +7,6 @@
 #![feature(
     core_intrinsics,
     const_raw_ptr_comparison,
-    const_ptr_offset,
 )]
 
 const FOO: &usize = &42;

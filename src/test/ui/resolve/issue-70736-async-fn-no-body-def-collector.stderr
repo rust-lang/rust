@@ -44,25 +44,16 @@ LL |     async fn associated();
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
-error[E0053]: method `associated` has an incompatible type for trait
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:26
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
    |
 LL |     async fn associated();
-   |                          ^
-   |                          |
-   |                          checked the `Output` of this `async fn`, found opaque type
-   |                          expected `()`, found opaque type
-   |
-   = note: while checking the return type of the `async fn`
-note: type in trait
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:11:26
-   |
+   |     ---------------------- definition of `associated` from trait
+...
 LL |     async fn associated();
-   |                          ^
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl Future<Output = ()>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `(): Future`
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0053, E0706.
-For more information about an error, try `rustc --explain E0053`.
+Some errors have detailed explanations: E0276, E0706.
+For more information about an error, try `rustc --explain E0276`.

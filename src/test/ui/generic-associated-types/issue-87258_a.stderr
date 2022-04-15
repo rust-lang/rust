@@ -1,11 +1,10 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-87258_a.rs:19:21
+error: unconstrained opaque type
+  --> $DIR/issue-87258_a.rs:18:26
    |
-LL |     fn foo<'a>() -> Self::FooFuture<'a> {
-   |                     ^^^^^^^^^^^^^^^^^^^
+LL |     type FooFuture<'a> = impl Trait1;
+   |                          ^^^^^^^^^^^
    |
-   = note: hidden type `Struct<'_>` captures lifetime '_#7r
+   = note: `FooFuture` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0700`.

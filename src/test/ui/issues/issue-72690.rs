@@ -10,7 +10,6 @@ fn err() {
 
 fn arg_pat_closure_err() {
     |x| String::from("x".as_ref()); //~ ERROR type annotations needed
-    //~^ ERROR type annotations needed
     //~| ERROR type annotations needed
 }
 

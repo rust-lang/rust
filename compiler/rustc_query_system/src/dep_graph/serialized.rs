@@ -7,7 +7,7 @@
 //! The serialisation is performed on-demand when each node is emitted. Using this
 //! scheme, we do not need to keep the current graph in memory.
 //!
-//! The deserisalisation is performed manually, in order to convert from the stored
+//! The deserialization is performed manually, in order to convert from the stored
 //! sequence of NodeInfos to the different arrays in SerializedDepGraph.  Since the
 //! node and edge count are stored at the end of the file, all the arrays can be
 //! pre-allocated with the right length.
@@ -181,7 +181,6 @@ impl<K: DepKind> EncoderState<K> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, record_graph))]
     fn encode_node(
         &mut self,
         node: &NodeInfo<K>,
@@ -208,7 +207,6 @@ impl<K: DepKind> EncoderState<K> {
             stat.edge_counter += edge_count as u64;
         }
 
-        debug!(?index, ?node);
         let encoder = &mut self.encoder;
         if self.result.is_ok() {
             self.result = node.encode(encoder);

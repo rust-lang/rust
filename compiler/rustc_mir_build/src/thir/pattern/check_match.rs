@@ -8,7 +8,7 @@ use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed,
+    ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -21,7 +21,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, MultiSpan, Span};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {

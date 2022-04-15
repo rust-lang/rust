@@ -53,6 +53,7 @@ mod const_prop_lint;
 mod coverage;
 mod deaggregator;
 mod deduplicate_blocks;
+mod deref_separator;
 mod dest_prop;
 pub mod dump_mir;
 mod early_otherwise_branch;
@@ -365,7 +366,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
 
     let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
-    let is_fn_like = tcx.hir().get_by_def_id(def.did).fn_kind().is_some();
+    let is_fn_like = tcx.def_kind(def.did).is_fn_like();
     if is_fn_like {
         let did = def.did.to_def_id();
         let def = ty::WithOptConstParam::unknown(did);
@@ -431,6 +432,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
         // and it can help optimizations.
         &deaggregator::Deaggregator,
+        &deref_separator::Derefer,
         &Lint(const_prop_lint::ConstProp),
     ];
 

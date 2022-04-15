@@ -1,13 +1,13 @@
 // ignore-compare-mode-chalk
+// check-pass
 #![feature(type_alias_impl_trait)]
 use std::fmt::Debug;
 
 type Foo = impl Debug;
-//~^ ERROR could not find defining uses
 
 struct Bar(Foo);
 fn define() -> Bar {
-    Bar(42) //~ ERROR mismatched types
+    Bar(42)
 }
 
 type Foo2 = impl Debug;
@@ -17,21 +17,18 @@ fn define2() {
 }
 
 type Foo3 = impl Debug;
-//~^ ERROR could not find defining uses
 
 fn define3(x: Foo3) {
-    let y: i32 = x; //~ ERROR mismatched types
+    let y: i32 = x;
 }
 fn define3_1() {
-    define3(42) //~ ERROR mismatched types
+    define3(42)
 }
 
 type Foo4 = impl Debug;
-//~^ ERROR could not find defining uses
 
 fn define4() {
     let y: Foo4 = 42;
-    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {}

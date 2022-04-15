@@ -173,7 +173,7 @@ pub const PROGRESS_CONTINUE: DWORD = 0;
 
 pub const E_NOTIMPL: HRESULT = 0x80004001u32 as HRESULT;
 
-pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
+pub const INVALID_HANDLE_VALUE: HANDLE = ptr::invalid_mut(!0);
 
 pub const FACILITY_NT_BIT: DWORD = 0x1000_0000;
 
@@ -274,6 +274,9 @@ pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 pub const STATUS_DELETE_PENDING: NTSTATUS = 0xc0000056_u32 as _;
 pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 
+pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
+pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
+
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
 pub fn nt_success(status: NTSTATUS) -> bool {
@@ -316,15 +319,33 @@ impl Default for OBJECT_ATTRIBUTES {
     }
 }
 #[repr(C)]
-pub struct IO_STATUS_BLOCK {
-    pub Pointer: *mut c_void,
-    pub Information: usize,
+union IO_STATUS_BLOCK_union {
+    Status: NTSTATUS,
+    Pointer: *mut c_void,
 }
-impl Default for IO_STATUS_BLOCK {
+impl Default for IO_STATUS_BLOCK_union {
     fn default() -> Self {
-        Self { Pointer: ptr::null_mut(), Information: 0 }
+        Self { Pointer: ptr::null_mut() }
     }
 }
+#[repr(C)]
+#[derive(Default)]
+pub struct IO_STATUS_BLOCK {
+    u: IO_STATUS_BLOCK_union,
+    pub Information: usize,
+}
+
+pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
+    dwErrorCode: DWORD,
+    dwNumberOfBytesTransfered: DWORD,
+    lpOverlapped: *mut OVERLAPPED,
+);
+
+type IO_APC_ROUTINE = unsafe extern "system" fn(
+    ApcContext: *mut c_void,
+    IoStatusBlock: *mut IO_STATUS_BLOCK,
+    Reserved: ULONG,
+);
 
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
@@ -891,6 +912,7 @@ extern "system" {
     pub fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
     pub fn SwitchToThread() -> BOOL;
     pub fn Sleep(dwMilliseconds: DWORD);
+    pub fn SleepEx(dwMilliseconds: DWORD, bAlertable: BOOL) -> DWORD;
     pub fn GetProcessId(handle: HANDLE) -> DWORD;
     pub fn CopyFileExW(
         lpExistingFileName: LPCWSTR,
@@ -957,12 +979,19 @@ extern "system" {
         lpNumberOfBytesRead: LPDWORD,
         lpOverlapped: LPOVERLAPPED,
     ) -> BOOL;
-    pub fn WriteFile(
+    pub fn ReadFileEx(
+        hFile: BorrowedHandle<'_>,
+        lpBuffer: LPVOID,
+        nNumberOfBytesToRead: DWORD,
+        lpOverlapped: LPOVERLAPPED,
+        lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
+    ) -> BOOL;
+    pub fn WriteFileEx(
         hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
         nNumberOfBytesToWrite: DWORD,
-        lpNumberOfBytesWritten: LPDWORD,
         lpOverlapped: LPOVERLAPPED,
+        lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
     ) -> BOOL;
     pub fn CloseHandle(hObject: HANDLE) -> BOOL;
     pub fn MoveFileExW(lpExistingFileName: LPCWSTR, lpNewFileName: LPCWSTR, dwFlags: DWORD)
@@ -1246,6 +1275,32 @@ compat_fn! {
         EaLength: ULONG
     ) -> NTSTATUS {
         panic!("`NtCreateFile` not available");
+    }
+    pub fn NtReadFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *mut crate::mem::MaybeUninit<u8>,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtReadFile` not available");
+    }
+    pub fn NtWriteFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *const u8,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtWriteFile` not available");
     }
     pub fn RtlNtStatusToDosError(
         Status: NTSTATUS

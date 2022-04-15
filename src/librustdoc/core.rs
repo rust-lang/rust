@@ -1,3 +1,4 @@
+use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
@@ -17,7 +18,7 @@ use rustc_session::lint;
 use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::{source_map, Span};
+use rustc_span::{source_map, Span, Symbol};
 
 use std::cell::RefCell;
 use std::lazy::SyncLazy;
@@ -38,6 +39,7 @@ crate struct ResolverCaches {
     crate traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     crate all_traits: Option<Vec<DefId>>,
     crate all_trait_impls: Option<Vec<DefId>>,
+    crate all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
 }
 
 crate struct DocContext<'tcx> {
@@ -143,6 +145,8 @@ crate fn new_handler(
     source_map: Option<Lrc<source_map::SourceMap>>,
     debugging_opts: &DebuggingOptions,
 ) -> rustc_errors::Handler {
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -150,6 +154,8 @@ crate fn new_handler(
                 EmitterWriter::stderr(
                     color_config,
                     source_map.map(|sm| sm as _),
+                    None,
+                    fallback_bundle,
                     short,
                     debugging_opts.teach,
                     debugging_opts.terminal_width,
@@ -166,6 +172,8 @@ crate fn new_handler(
                 JsonEmitter::stderr(
                     None,
                     source_map,
+                    None,
+                    fallback_bundle,
                     pretty,
                     json_rendered,
                     debugging_opts.terminal_width,

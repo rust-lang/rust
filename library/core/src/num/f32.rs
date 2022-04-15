@@ -370,7 +370,6 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-#[lang = "f32"]
 #[cfg(not(test))]
 impl f32 {
     /// The radix or base of the internal representation of `f32`.
@@ -1040,7 +1039,6 @@ impl f32 {
     /// # Example
     ///
     /// ```
-    /// #![feature(total_cmp)]
     /// struct GoodBoy {
     ///     name: String,
     ///     weight: f32,
@@ -1060,7 +1058,7 @@ impl f32 {
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f32::INFINITY, f32::NAN].iter())
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
-    #[unstable(feature = "total_cmp", issue = "72599")]
+    #[stable(feature = "total_cmp", since = "1.62.0")]
     #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {

@@ -4,8 +4,7 @@ error[E0277]: the trait bound `Foo<String>: Copy` is not satisfied
 LL |     [Foo(String::new()); 4];
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Foo<String>`
    |
-   = help: the following implementations were found:
-             <Foo<T> as Copy>
+   = help: the trait `Copy` is implemented for `Foo<T>`
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error: aborting due to previous error

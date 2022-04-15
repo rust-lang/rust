@@ -14,7 +14,7 @@ note: required by a bound in `is_thin`
 LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`
 
-error[E0271]: type mismatch resolving `<impl Debug + ?Sized as Pointee>::Metadata == ()`
+error[E0271]: type mismatch resolving `<Opaque as Pointee>::Metadata == ()`
   --> $DIR/pointee-tail-is-generic-errors.rs:16:5
    |
 LL | type Opaque = impl std::fmt::Debug + ?Sized;
@@ -24,13 +24,13 @@ LL |     is_thin::<Opaque>();
    |     ^^^^^^^^^^^^^^^^^ expected `()`, found associated type
    |
    = note:    expected unit type `()`
-           found associated type `<impl Debug + ?Sized as Pointee>::Metadata`
+           found associated type `<Opaque as Pointee>::Metadata`
 note: required by a bound in `is_thin`
   --> $DIR/pointee-tail-is-generic-errors.rs:20:33
    |
 LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`
-help: consider constraining the associated type `<impl Debug + ?Sized as Pointee>::Metadata` to `()`
+help: consider constraining the associated type `<Opaque as Pointee>::Metadata` to `()`
    |
 LL | type Opaque = impl std::fmt::Debug<Metadata = ()> + ?Sized;
    |                                   +++++++++++++++

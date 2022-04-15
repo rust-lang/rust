@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
 
 /// Finds the indices of all characters that have been processed and differ between the actual
 /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
-/// in order to properly synthethise the intra-string `Span`s for error diagnostics.
+/// in order to properly synthesise the intra-string `Span`s for error diagnostics.
 fn find_skips_from_snippet(
     snippet: Option<string::String>,
     str_style: Option<usize>,

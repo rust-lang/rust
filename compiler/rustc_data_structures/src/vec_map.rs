@@ -30,6 +30,11 @@ where
         }
     }
 
+    /// Removes the entry from the map and returns the removed value
+    pub fn remove(&mut self, k: &K) -> Option<V> {
+        self.0.iter().position(|(k2, _)| k2 == k).map(|pos| self.0.remove(pos).1)
+    }
+
     /// Gets a reference to the value in the entry.
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
@@ -37,6 +42,15 @@ where
         Q: Eq,
     {
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
+    }
+
+    /// Gets a mutable reference to the value in the entry.
+    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Eq,
+    {
+        self.0.iter_mut().find(|(key, _)| k == key.borrow()).map(|elem| &mut elem.1)
     }
 
     /// Returns the any value corresponding to the supplied predicate filter.
@@ -58,7 +72,7 @@ where
         // This should return just one element, otherwise it's a bug
         assert!(
             filter.next().is_none(),
-            "Collection {:?} should have just one matching element",
+            "Collection {:#?} should have just one matching element",
             self
         );
         Some(value)
@@ -130,7 +144,7 @@ impl<'a, K, V> IntoIterator for &'a VecMap<K, V> {
     }
 }
 
-impl<'a, K, V> IntoIterator for &'a mut VecMap<K, V> {
+impl<'a, K: 'a, V: 'a> IntoIterator for &'a mut VecMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = impl Iterator<Item = Self::Item>;
 

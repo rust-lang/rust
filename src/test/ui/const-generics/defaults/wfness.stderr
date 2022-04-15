@@ -10,8 +10,7 @@ error[E0277]: the trait bound `(): Trait<2_u8>` is not satisfied
 LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
    |                                               ^^^^^^^^ the trait `Trait<2_u8>` is not implemented for `()`
    |
-   = help: the following implementations were found:
-             <() as Trait<3_u8>>
+   = help: the trait `Trait<3_u8>` is implemented for `()`
 
 error[E0277]: the trait bound `(): Trait<1_u8>` is not satisfied
   --> $DIR/wfness.rs:14:13
@@ -19,8 +18,7 @@ error[E0277]: the trait bound `(): Trait<1_u8>` is not satisfied
 LL | fn foo() -> DependentDefaultWfness {
    |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<1_u8>` is not implemented for `()`
    |
-   = help: the following implementations were found:
-             <() as Trait<3_u8>>
+   = help: the trait `Trait<3_u8>` is implemented for `()`
 note: required by a bound in `WhereClause`
   --> $DIR/wfness.rs:6:47
    |

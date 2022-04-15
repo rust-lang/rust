@@ -65,9 +65,10 @@
 //! For reference, the `std` library requires `AtomicBool`s and pointer-sized atomics, although
 //! `core` does not.
 //!
-//! Currently you'll need to use `#[cfg(target_arch)]` primarily to
-//! conditionally compile in code with atomics. There is an unstable
-//! `#[cfg(target_has_atomic)]` as well which may be stabilized in the future.
+//! The `#[cfg(target_has_atomic)]` attribute can be used to conditionally
+//! compile based on the target's supported bit widths. It is a key-value
+//! option set for each supported size, with values "8", "16", "32", "64",
+//! "128", and "ptr" for pointer-sized atomics.
 //!
 //! [lock-free]: https://en.wikipedia.org/wiki/Non-blocking_algorithm
 //!
@@ -2497,7 +2498,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "isize",
             "",
@@ -2517,7 +2518,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "usize",
             "",

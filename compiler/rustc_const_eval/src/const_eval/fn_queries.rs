@@ -1,7 +1,8 @@
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
@@ -16,44 +17,47 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
 }
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_node(hir_id);
-    matches!(
-        tcx.hir().get(parent_id),
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
-            ..
-        })
-    )
+    let parent_id = tcx.local_parent(def_id).unwrap();
+    tcx.def_kind(parent_id) == DefKind::Impl
+        && tcx.impl_constness(parent_id) == hir::Constness::Const
 }
 
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
 /// said intrinsic has a `rustc_const_{un,}stable` attribute.
-fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
     let def_id = def_id.expect_local();
     let node = tcx.hir().get_by_def_id(def_id);
 
-    if let hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) =
-        node
-    {
-        // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
-        // foreign items cannot be evaluated at compile-time.
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = tcx.hir().get_foreign_abi(hir_id) {
-            tcx.lookup_const_stability(def_id).is_some()
-        } else {
-            false
+    match node {
+        hir::Node::Ctor(_) => hir::Constness::Const,
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
+        hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
+            // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
+            // foreign items cannot be evaluated at compile-time.
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+            let is_const = if let Abi::RustIntrinsic | Abi::PlatformIntrinsic =
+                tcx.hir().get_foreign_abi(hir_id)
+            {
+                tcx.lookup_const_stability(def_id).is_some()
+            } else {
+                false
+            };
+            if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
         }
-    } else if let Some(fn_kind) = node.fn_kind() {
-        if fn_kind.constness() == hir::Constness::Const {
-            return true;
-        }
+        _ => {
+            if let Some(fn_kind) = node.fn_kind() {
+                if fn_kind.constness() == hir::Constness::Const {
+                    return hir::Constness::Const;
+                }
 
-        // If the function itself is not annotated with `const`, it may still be a `const fn`
-        // if it resides in a const trait impl.
-        is_parent_const_impl_raw(tcx, def_id)
-    } else {
-        matches!(node, hir::Node::Ctor(_))
+                // If the function itself is not annotated with `const`, it may still be a `const fn`
+                // if it resides in a const trait impl.
+                let is_const = is_parent_const_impl_raw(tcx, def_id);
+                if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
+            } else {
+                hir::Constness::NotConst
+            }
+        }
     }
 }
 
@@ -77,5 +81,5 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { is_const_fn_raw, is_promotable_const_fn, ..*providers };
+    *providers = Providers { impl_constness, is_promotable_const_fn, ..*providers };
 }

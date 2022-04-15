@@ -10,6 +10,16 @@ error[E0277]: the trait bound `bool: Step` is not satisfied
 LL |     for i in false..true {}
    |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
    |
+   = help: the following other types implement trait `Step`:
+             char
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
+             u128
+           and 5 others
    = note: required because of the requirements on the impl of `Iterator` for `std::ops::Range<bool>`
    = note: required because of the requirements on the impl of `IntoIterator` for `std::ops::Range<bool>`
 

@@ -69,4 +69,18 @@ where
     (t, t) //~ use of moved value: `t`
 }
 
+#[rustfmt::skip]
+fn existing_colon<T:>(t: T) {
+    //~^ HELP consider restricting type parameter `T`
+    [t, t]; //~ use of moved value: `t`
+}
+
+fn existing_colon_in_where<T>(t: T)
+where
+    T:,
+    //~^ HELP consider further restricting this bound
+{
+    [t, t]; //~ use of moved value: `t`
+}
+
 fn main() {}

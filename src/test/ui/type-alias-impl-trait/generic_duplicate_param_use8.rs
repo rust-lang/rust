@@ -12,6 +12,6 @@ fn two<T: Debug, U: Debug>(t: T, _: U) -> Two<T, U> {
 }
 
 fn three<T: Debug, U: Debug>(_: T, u: U) -> Two<T, U> {
-    //~^ concrete type differs from previous
     (u, 4u32)
+    //~^ concrete type differs from previous
 }
