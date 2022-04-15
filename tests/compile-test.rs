@@ -35,7 +35,6 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "tokio",
     "parking_lot",
     "rustc_semver",
-    "tracing",
 ];
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
@@ -60,9 +59,6 @@ extern crate rustc_semver;
 extern crate syn;
 #[allow(unused_extern_crates)]
 extern crate tokio;
-#[allow(unused_extern_crates, unused_imports)]
-#[macro_use]
-extern crate tracing;
 
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
