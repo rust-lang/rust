@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepKind, DepNode, TaskDepsRef};
+use crate::dep_graph::TaskDepsRef;
 use crate::query::QueryJobId;
 use rustc_data_structures::sync::{self, Lock};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -10,20 +10,11 @@ use std::cell::Cell;
 #[cfg(parallel_compiler)]
 use rustc_rayon_core as rayon_core;
 
-type FakeDepKind = u16;
-impl DepKind for FakeDepKind {
-    const NULL: Self = 0;
-
-    fn debug_node(_: &DepNode<Self>, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        panic!()
-    }
-}
-
 /// This is the implicit state of rustc. It contains the current
 /// query. It is updated when
 /// executing a new query.
-#[derive(Clone)]
-struct ImplicitCtxt<'a, K: DepKind> {
+#[derive(Clone, Default)]
+struct ImplicitCtxt<'a> {
     /// The current query job, if any. This is updated by `JobOwner::start` in
     /// `ty::query::plumbing` when executing a query.
     query: Option<QueryJobId>,
@@ -37,18 +28,7 @@ struct ImplicitCtxt<'a, K: DepKind> {
 
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
-    task_deps: TaskDepsRef<'a, K>,
-}
-
-impl<'a, K: DepKind> Default for ImplicitCtxt<'a, K> {
-    fn default() -> Self {
-        ImplicitCtxt {
-            query: None,
-            diagnostics: None,
-            layout_depth: 0,
-            task_deps: TaskDepsRef::Ignore,
-        }
-    }
+    task_deps: TaskDepsRef<'a>,
 }
 
 /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
@@ -95,9 +75,8 @@ fn get_tlv() -> usize {
 
 /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
 #[inline]
-fn enter_context<'a, K, F, R>(context: &ImplicitCtxt<'a, K>, f: F) -> R
+fn enter_context<'a, F, R>(context: &ImplicitCtxt<'a>, f: F) -> R
 where
-    K: DepKind + sync::Send + sync::Sync,
     F: FnOnce() -> R,
 {
     set_tlv(context as *const _ as usize, || f())
@@ -105,21 +84,17 @@ where
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
 #[inline]
-fn with_context_opt<K, F, R>(f: F) -> R
+fn with_context_opt<F, R>(f: F) -> R
 where
-    K: DepKind + sync::Send + sync::Sync,
-    F: for<'a> FnOnce(Option<&ImplicitCtxt<'a, K>>) -> R,
+    F: for<'a> FnOnce(Option<&ImplicitCtxt<'a>>) -> R,
 {
     // We could get a `ImplicitCtxt` pointer from another thread.
     // Ensure that `ImplicitCtxt` is `Sync`.
-    sync::assert_sync::<ImplicitCtxt<'_, K>>();
+    sync::assert_sync::<ImplicitCtxt<'_>>();
 
     let context = get_tlv();
-    let context = if context == 0 {
-        None
-    } else {
-        unsafe { Some(&*(context as *const ImplicitCtxt<'_, K>)) }
-    };
+    let context =
+        if context == 0 { None } else { unsafe { Some(&*(context as *const ImplicitCtxt<'_>)) } };
     f(context)
 }
 
@@ -127,7 +102,7 @@ where
 /// in `rustc_middle` otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
 pub fn track_diagnostic(diagnostic: &Diagnostic) {
-    with_context_opt::<FakeDepKind, _, _>(|icx| {
+    with_context_opt(|icx| {
         if let Some(icx) = icx {
             if let Some(ref diagnostics) = icx.diagnostics {
                 let mut diagnostics = diagnostics.lock();
@@ -137,11 +112,7 @@ pub fn track_diagnostic(diagnostic: &Diagnostic) {
     })
 }
 
-pub fn with_deps<K, OP, R>(task_deps: TaskDepsRef<'_, K>, op: OP) -> R
-where
-    K: Clone + DepKind + sync::Send + sync::Sync,
-    OP: FnOnce() -> R,
-{
+pub fn with_deps<R>(task_deps: TaskDepsRef<'_>, op: impl FnOnce() -> R) -> R {
     crate::tls::with_context_opt(|icx| {
         let icx = crate::tls::ImplicitCtxt { task_deps, ..icx.cloned().unwrap_or_default() };
 
@@ -149,18 +120,14 @@ where
     })
 }
 
-pub fn read_deps<K, OP>(op: OP)
-where
-    K: DepKind + sync::Send + sync::Sync,
-    OP: FnOnce(TaskDepsRef<'_, K>),
-{
+pub fn read_deps(op: impl FnOnce(TaskDepsRef<'_>)) {
     crate::tls::with_context_opt(|icx| if let Some(icx) = icx { op(icx.task_deps) } else { return })
 }
 
 /// Get the query information from the TLS context.
 #[inline(always)]
 pub fn current_query_job() -> Option<QueryJobId> {
-    with_context_opt::<FakeDepKind, _, _>(|icx| icx?.query)
+    with_context_opt(|icx| icx?.query)
 }
 
 /// Executes a job by changing the `ImplicitCtxt` to point to the
@@ -172,7 +139,7 @@ pub fn start_query<R>(
     diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
     compute: impl FnOnce() -> R,
 ) -> R {
-    with_context_opt::<FakeDepKind, _, _>(move |current_icx| {
+    with_context_opt(move |current_icx| {
         let task_deps = current_icx.map_or(TaskDepsRef::Ignore, |icx| icx.task_deps);
         let layout_depth = current_icx.map_or(0, |icx| icx.layout_depth);
 
@@ -185,7 +152,7 @@ pub fn start_query<R>(
 }
 
 pub fn with_increased_layout_depth<R>(f: impl FnOnce(usize) -> R) -> R {
-    with_context_opt::<FakeDepKind, _, _>(|icx| {
+    with_context_opt(|icx| {
         let layout_depth = icx.map_or(0, |icx| icx.layout_depth);
 
         // Update the ImplicitCtxt to increase the layout_depth

@@ -1,5 +1,6 @@
 //! Query configuration and description traits.
 
+use crate::dep_graph::DepKind;
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ich::StableHashingContext;
@@ -21,7 +22,7 @@ pub trait QueryConfig {
 
 pub struct QueryVtable<CTX: QueryContext, K, V> {
     pub anon: bool,
-    pub dep_kind: CTX::DepKind,
+    pub dep_kind: DepKind,
     pub eval_always: bool,
     pub cache_on_disk: bool,
 
@@ -32,7 +33,7 @@ pub struct QueryVtable<CTX: QueryContext, K, V> {
 }
 
 impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
-    pub(crate) fn to_dep_node(&self, tcx: CTX::DepContext, key: &K) -> DepNode<CTX::DepKind>
+    pub(crate) fn to_dep_node(&self, tcx: CTX::DepContext, key: &K) -> DepNode
     where
         K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     {

@@ -63,11 +63,8 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
-use rustc_query_system::dep_graph::FingerprintStyle;
+use rustc_query_system::dep_graph::{DepKind, DepNode, DepNodeParams, FingerprintStyle};
 use rustc_span::symbol::Symbol;
-use std::hash::Hash;
-
-pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 
 /// This struct stores metadata about each DepKind.
 ///
@@ -88,6 +85,9 @@ pub struct DepKindStruct {
     /// Whether the query key can be recovered from the hashed fingerprint.
     /// See [DepNodeParams] trait for the behaviour of each key type.
     pub fingerprint_style: FingerprintStyle,
+
+    /// Name of the query for pretty-printing.
+    pub label: &'static str,
 
     /// The red/green evaluation system will try to mark a specific DepNode in the
     /// dependency graph as green by recursively trying to mark the dependencies of
@@ -130,15 +130,20 @@ pub struct DepKindStruct {
     pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'_>, DepNode)>,
 }
 
-impl DepKind {
+impl TyCtxt<'_> {
     #[inline(always)]
-    pub fn fingerprint_style(self, tcx: TyCtxt<'_>) -> FingerprintStyle {
+    crate fn query_fingerprint_style(self, dep_kind: DepKind) -> FingerprintStyle {
         // Only fetch the DepKindStruct once.
-        let data = tcx.query_kind(self);
+        let data = self.query_kind(dep_kind);
         if data.is_anon {
             return FingerprintStyle::Opaque;
         }
         data.fingerprint_style
+    }
+
+    #[inline(always)]
+    pub fn query_name(self, dep_kind: DepKind) -> &'static str {
+        self.query_kind(dep_kind).label
     }
 }
 
@@ -151,38 +156,40 @@ macro_rules! define_dep_nodes {
     ) => (
         #[macro_export]
         macro_rules! make_dep_kind_array {
-            ($mod:ident) => {[ $($mod::$variant()),* ]};
+            ($mod:ident) => {[ $mod::NULL(), $($mod::$variant()),* ]};
         }
 
-        /// This enum serves as an index into arrays built by `make_dep_kind_array`.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-        #[allow(non_camel_case_types)]
-        pub enum DepKind {
-            $($variant),*
+        /// Definition of the `DepKind`s for the known queries.
+        /// The constants are indices in the arrays produced by `make_dep_kind_array`,
+        /// and should be kept in sync.
+        #[allow(non_upper_case_globals)]
+        pub mod dep_kind {
+            use super::DepKind;
+
+            /// We use this for most things when incr. comp. is turned off.
+            pub const NULL: DepKind = DepKind::NULL;
+            $(pub const $variant: DepKind = DepKind::new(1 + ${index()});)*
         }
 
         fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
-                $(stringify!($variant) => Ok(DepKind::$variant),)*
+                "NULL" => Ok(dep_kind::NULL),
+                $(stringify!($variant) => Ok(dep_kind::$variant),)*
                 _ => Err(()),
             }
         }
 
         /// Contains variant => str representations for constructing
         /// DepNode groups for tests.
-        #[allow(dead_code, non_upper_case_globals)]
+        #[allow(non_upper_case_globals)]
         pub mod label_strs {
-           $(
-                pub const $variant: &str = stringify!($variant);
-            )*
+            pub const NULL: &str = "NULL";
+           $(pub const $variant: &str = stringify!($variant);)*
         }
     );
 }
 
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
-    // We use this for most things when incr. comp. is turned off.
-    [] Null,
-
     [anon] TraitSelect,
 
     // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
@@ -196,27 +203,14 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
 crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
-    DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
+    DepNode::construct(tcx, dep_kind::CompileCodegenUnit, &name)
 }
 
 // WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
 // Be very careful changing this type signature!
 crate fn make_compile_mono_item<'tcx>(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
-    DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
+    DepNode::construct(tcx, dep_kind::CompileMonoItem, mono_item)
 }
-
-pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
-
-// We keep a lot of `DepNode`s in memory during compilation. It's not
-// required that their size stay the same, but we don't want to change
-// it inadvertently. This assert just ensures we're aware of any change.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-static_assert_size!(DepNode, 18);
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-static_assert_size!(DepNode, 24);
-
-static_assert_size!(DepKind, 2);
 
 pub trait DepNodeExt: Sized {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
@@ -252,7 +246,7 @@ impl DepNodeExt for DepNode {
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
     fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash);
+        debug_assert!(tcx.query_fingerprint_style(kind) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 
@@ -267,7 +261,7 @@ impl DepNodeExt for DepNode {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-        if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
+        if tcx.query_fingerprint_style(self.kind) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
                 panic!("Failed to extract DefId: {:?} {}", self.kind, self.hash)
             }))
@@ -284,7 +278,7 @@ impl DepNodeExt for DepNode {
     ) -> Result<DepNode, ()> {
         let kind = dep_kind_from_label_string(label)?;
 
-        match kind.fingerprint_style(tcx) {
+        match tcx.query_fingerprint_style(kind) {
             FingerprintStyle::Opaque => Err(()),
             FingerprintStyle::Unit => Ok(DepNode::new_no_params(tcx, kind)),
             FingerprintStyle::DefPathHash => {

@@ -42,35 +42,52 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 
-use super::{DepContext, DepKind, FingerprintStyle};
+use super::{DepContext, FingerprintStyle};
 use crate::ich::StableHashingContext;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::AtomicRef;
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct DepNode<K> {
-    pub kind: K,
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub struct DepKind(u16);
+
+impl DepKind {
+    /// We use this for most things when incr. comp. is turned off.
+    pub const NULL: Self = DepKind(0);
+
+    pub const fn new(index: u16) -> Self {
+        DepKind(index)
+    }
+
+    pub const fn index(self) -> u16 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub struct DepNode {
+    pub kind: DepKind,
     pub hash: PackedFingerprint,
 }
 
-impl<K: DepKind> DepNode<K> {
+impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: K) -> DepNode<K>
+    pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: DepKind) -> DepNode
     where
-        Ctxt: super::DepContext<DepKind = K>,
+        Ctxt: super::DepContext,
     {
         debug_assert_eq!(tcx.fingerprint_style(kind), FingerprintStyle::Unit);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
-    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: DepKind, arg: &Key) -> DepNode
     where
-        Ctxt: super::DepContext<DepKind = K>,
+        Ctxt: super::DepContext,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -90,11 +107,42 @@ impl<K: DepKind> DepNode<K> {
     }
 }
 
-impl<K: DepKind> fmt::Debug for DepNode<K> {
+impl fmt::Debug for DepKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        K::debug_node(self, f)
+        (*KIND_DEBUG)(self, f)
     }
 }
+
+pub static KIND_DEBUG: AtomicRef<fn(&DepKind, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_kind_debug as _));
+
+fn default_kind_debug(kind: &DepKind, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}", kind.0)
+}
+
+impl fmt::Debug for DepNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (*NODE_DEBUG)(self, f)
+    }
+}
+
+pub static NODE_DEBUG: AtomicRef<fn(&DepNode, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_node_debug as _));
+
+fn default_node_debug(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}({})", node.kind.0, node.hash)
+}
+
+// We keep a lot of `DepNode`s in memory during compilation. It's not
+// required that their size stay the same, but we don't want to change
+// it inadvertently. This assert just ensures we're aware of any change.
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+static_assert_size!(DepNode, 18);
+
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+static_assert_size!(DepNode, 24);
+
+static_assert_size!(DepKind, 2);
 
 pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     fn fingerprint_style() -> FingerprintStyle;
@@ -117,7 +165,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// `fingerprint_style()` is not `FingerprintStyle::Opaque`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
+    fn recover(tcx: Ctxt, dep_node: &DepNode) -> Option<Self>;
 }
 
 impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
@@ -145,7 +193,7 @@ where
     }
 
     #[inline(always)]
-    default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
+    default fn recover(_: Ctxt, _: &DepNode) -> Option<Self> {
         None
     }
 }

@@ -29,7 +29,6 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
 }
 
 impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
-    type DepKind = rustc_middle::dep_graph::DepKind;
     type DepContext = TyCtxt<'tcx>;
 
     #[inline]
@@ -225,7 +224,7 @@ macro_rules! define_queries {
             $(#[allow(nonstandard_style)] $(#[$attr])*
             pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> QueryStackFrame {
                 opt_remap_env_constness!([$($modifiers)*][key]);
-                let kind = dep_graph::DepKind::$name;
+                let kind = dep_graph::dep_kind::$name;
                 let name = stringify!($name);
                 // Disable visible paths printing for performance reasons.
                 // Showing visible path instead of any path is not that important in production.
@@ -240,7 +239,7 @@ macro_rules! define_queries {
                 } else {
                     description
                 };
-                let span = if kind == dep_graph::DepKind::def_span {
+                let span = if kind == dep_graph::dep_kind::def_span {
                     // The `def_span` query is used to calculate `default_span`,
                     // so exit to avoid infinite recursion.
                     None
@@ -255,7 +254,7 @@ macro_rules! define_queries {
                 let hash = || {
                     let mut hcx = tcx.create_stable_hashing_context();
                     let mut hasher = StableHasher::new();
-                    std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+                    kind.index().hash_stable(&mut hcx, &mut hasher);
                     key.hash_stable(&mut hcx, &mut hasher);
                     hasher.finish::<u64>()
                 };
@@ -308,7 +307,7 @@ macro_rules! define_queries {
                 QueryVtable {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
-                    dep_kind: dep_graph::DepKind::$name,
+                    dep_kind: dep_graph::dep_kind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: |tcx, mut error| handle_cycle_error!([$($modifiers)*][tcx, error]),
                     compute,
@@ -328,8 +327,9 @@ macro_rules! define_queries {
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
-            pub fn Null() -> DepKindStruct {
+            pub fn NULL() -> DepKindStruct {
                 DepKindStruct {
+                    label: label_strs::NULL,
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -340,6 +340,7 @@ macro_rules! define_queries {
 
             pub fn TraitSelect() -> DepKindStruct {
                 DepKindStruct {
+                    label: label_strs::TraitSelect,
                     is_anon: true,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Unit,
@@ -350,6 +351,7 @@ macro_rules! define_queries {
 
             pub fn CompileCodegenUnit() -> DepKindStruct {
                 DepKindStruct {
+                    label: label_strs::CompileCodegenUnit,
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -360,6 +362,7 @@ macro_rules! define_queries {
 
             pub fn CompileMonoItem() -> DepKindStruct {
                 DepKindStruct {
+                    label: label_strs::CompileMonoItem,
                     is_anon: false,
                     is_eval_always: false,
                     fingerprint_style: FingerprintStyle::Opaque,
@@ -377,6 +380,7 @@ macro_rules! define_queries {
 
                 if is_anon || !fingerprint_style.reconstructible() {
                     return DepKindStruct {
+                        label: label_strs::$name,
                         is_anon,
                         is_eval_always,
                         fingerprint_style,
@@ -410,6 +414,7 @@ macro_rules! define_queries {
                 }
 
                 DepKindStruct {
+                    label: stringify!($name),
                     is_anon,
                     is_eval_always,
                     fingerprint_style,

@@ -43,6 +43,7 @@
 #![feature(once_cell)]
 #![feature(let_chains)]
 #![feature(let_else)]
+#![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]

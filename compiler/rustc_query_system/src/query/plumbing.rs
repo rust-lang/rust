@@ -330,7 +330,7 @@ fn try_execute_query<CTX, C>(
     cache: &C,
     span: Span,
     key: C::Key,
-    dep_node: Option<DepNode<CTX::DepKind>>,
+    dep_node: Option<DepNode>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
@@ -367,7 +367,7 @@ where
 fn execute_job<CTX, K, V>(
     tcx: CTX,
     key: K,
-    mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
+    mut dep_node_opt: Option<DepNode>,
     query: &QueryVtable<CTX, K, V>,
     job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
@@ -437,11 +437,11 @@ where
 fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
     key: &K,
-    dep_node: &DepNode<CTX::DepKind>,
+    dep_node: &DepNode,
     query: &QueryVtable<CTX, K, V>,
 ) -> Option<(V, DepNodeIndex)>
 where
-    K: Clone,
+    K: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
     V: Debug,
 {
@@ -528,7 +528,7 @@ where
 fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
-    dep_node: &DepNode<CTX::DepKind>,
+    dep_node: &DepNode,
     query: &QueryVtable<CTX, K, V>,
 ) where
     CTX: QueryContext,
@@ -643,7 +643,7 @@ fn ensure_must_run<CTX, K, V>(
     tcx: CTX,
     key: &K,
     query: &QueryVtable<CTX, K, V>,
-) -> (bool, Option<DepNode<CTX::DepKind>>)
+) -> (bool, Option<DepNode>)
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
@@ -714,7 +714,7 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode)
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
