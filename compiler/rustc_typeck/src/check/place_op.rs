@@ -74,9 +74,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(ty);
         let mut err = self.tcx.sess.struct_span_err(
             span,
-            &format!("negative integers cannot be used to index on a `{}`", ty),
+            &format!("negative integers cannot be used to index on a `{ty}`"),
         );
-        err.span_label(span, &format!("cannot use a negative integer for indexing on `{}`", ty));
+        err.span_label(span, &format!("cannot use a negative integer for indexing on `{ty}`"));
         if let (hir::ExprKind::Path(..), Ok(snippet)) =
             (&base_expr.kind, self.tcx.sess.source_map().span_to_snippet(base_expr.span))
         {
@@ -84,10 +84,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_lo(),
                 &format!(
-                    "to access an element starting from the end of the `{}`, compute the index",
-                    ty,
+                    "to access an element starting from the end of the `{ty}`, compute the index",
                 ),
-                format!("{}.len() ", snippet),
+                format!("{snippet}.len() "),
                 Applicability::MachineApplicable,
             );
         }
@@ -314,32 +313,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.typeck_results.borrow_mut().adjustments_mut().remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 for adjustment in &mut adjustments {
-                    if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
-                        if let Some(ok) = self.try_mutable_overloaded_place_op(
+                    if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind
+                        && let Some(ok) = self.try_mutable_overloaded_place_op(
                             expr.span,
                             source,
                             &[],
                             PlaceOp::Deref,
-                        ) {
-                            let method = self.register_infer_ok_obligations(ok);
-                            if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
-                                *deref = OverloadedDeref { region, mutbl, span: deref.span };
-                            }
-                            // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
-                            // This helps avoid accidental drops.
-                            if inside_union
-                                && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
-                            {
-                                let mut err = self.tcx.sess.struct_span_err(
-                                    expr.span,
-                                    "not automatically applying `DerefMut` on `ManuallyDrop` union field",
-                                );
-                                err.help(
-                                    "writing to this reference calls the destructor for the old value",
-                                );
-                                err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
-                                err.emit();
-                            }
+                        )
+                    {
+                        let method = self.register_infer_ok_obligations(ok);
+                        if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
+                            *deref = OverloadedDeref { region, mutbl, span: deref.span };
+                        }
+                        // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
+                        // This helps avoid accidental drops.
+                        if inside_union
+                            && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
+                        {
+                            let mut err = self.tcx.sess.struct_span_err(
+                                expr.span,
+                                "not automatically applying `DerefMut` on `ManuallyDrop` union field",
+                            );
+                            err.help(
+                                "writing to this reference calls the destructor for the old value",
+                            );
+                            err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
+                            err.emit();
                         }
                     }
                     source = adjustment.target;

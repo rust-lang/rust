@@ -43,8 +43,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
                 tcx.sess,
                 span,
                 E0570,
-                "`{}` is not a supported ABI for the current target",
-                abi
+                "`{abi}` is not a supported ABI for the current target",
             )
             .emit();
         }
@@ -249,84 +248,84 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.demand_suptype(span, declared_ret_ty, actual_return_ty);
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
-        if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
-            if let Some(panic_info_did) = tcx.lang_items().panic_info() {
-                if *declared_ret_ty.kind() != ty::Never {
-                    sess.span_err(decl.output.span(), "return type should be `!`");
-                }
-
-                let inputs = fn_sig.inputs();
-                let span = hir.span(fn_id);
-                if inputs.len() == 1 {
-                    let arg_is_panic_info = match *inputs[0].kind() {
-                        ty::Ref(region, ty, mutbl) => match *ty.kind() {
-                            ty::Adt(ref adt, _) => {
-                                adt.did() == panic_info_did
-                                    && mutbl == hir::Mutability::Not
-                                    && !region.is_static()
-                            }
-                            _ => false,
-                        },
-                        _ => false,
-                    };
-
-                    if !arg_is_panic_info {
-                        sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
-                    }
-
-                    if let Node::Item(item) = hir.get(fn_id)
-                        && let ItemKind::Fn(_, ref generics, _) = item.kind
-                        && !generics.params.is_empty()
-                    {
-                                sess.span_err(span, "should have no type parameters");
-                            }
-                } else {
-                    let span = sess.source_map().guess_head_span(span);
-                    sess.span_err(span, "function should have one argument");
-                }
-            } else {
-                sess.err("language item required, but not found: `panic_info`");
+    if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
+        && panic_impl_did == hir.local_def_id(fn_id).to_def_id()
+    {
+        if let Some(panic_info_did) = tcx.lang_items().panic_info() {
+            if *declared_ret_ty.kind() != ty::Never {
+                sess.span_err(decl.output.span(), "return type should be `!`");
             }
+
+            let inputs = fn_sig.inputs();
+            let span = hir.span(fn_id);
+            if inputs.len() == 1 {
+                let arg_is_panic_info = match *inputs[0].kind() {
+                    ty::Ref(region, ty, mutbl) => match *ty.kind() {
+                        ty::Adt(ref adt, _) => {
+                            adt.did() == panic_info_did
+                                && mutbl == hir::Mutability::Not
+                                && !region.is_static()
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                };
+
+                if !arg_is_panic_info {
+                    sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
+                }
+
+                if let Node::Item(item) = hir.get(fn_id)
+                    && let ItemKind::Fn(_, ref generics, _) = item.kind
+                    && !generics.params.is_empty()
+                {
+                            sess.span_err(span, "should have no type parameters");
+                        }
+            } else {
+                let span = sess.source_map().guess_head_span(span);
+                sess.span_err(span, "function should have one argument");
+            }
+        } else {
+            sess.err("language item required, but not found: `panic_info`");
         }
     }
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
-    if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
-        if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
-            if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
-                if *declared_ret_ty.kind() != ty::Never {
-                    sess.span_err(decl.output.span(), "return type should be `!`");
-                }
-
-                let inputs = fn_sig.inputs();
-                let span = hir.span(fn_id);
-                if inputs.len() == 1 {
-                    let arg_is_alloc_layout = match inputs[0].kind() {
-                        ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
-                        _ => false,
-                    };
-
-                    if !arg_is_alloc_layout {
-                        sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
-                    }
-
-                    if let Node::Item(item) = hir.get(fn_id)
-                        && let ItemKind::Fn(_, ref generics, _) = item.kind
-                        && !generics.params.is_empty()
-                    {
-                                sess.span_err(
-                                    span,
-                            "`#[alloc_error_handler]` function should have no type parameters",
-                                );
-                            }
-                } else {
-                    let span = sess.source_map().guess_head_span(span);
-                    sess.span_err(span, "function should have one argument");
-                }
-            } else {
-                sess.err("language item required, but not found: `alloc_layout`");
+    if let Some(alloc_error_handler_did) = tcx.lang_items().oom()
+        && alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id()
+    {
+        if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
+            if *declared_ret_ty.kind() != ty::Never {
+                sess.span_err(decl.output.span(), "return type should be `!`");
             }
+
+            let inputs = fn_sig.inputs();
+            let span = hir.span(fn_id);
+            if inputs.len() == 1 {
+                let arg_is_alloc_layout = match inputs[0].kind() {
+                    ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
+                    _ => false,
+                };
+
+                if !arg_is_alloc_layout {
+                    sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
+                }
+
+                if let Node::Item(item) = hir.get(fn_id)
+                    && let ItemKind::Fn(_, ref generics, _) = item.kind
+                    && !generics.params.is_empty()
+                {
+                            sess.span_err(
+                                span,
+                        "`#[alloc_error_handler]` function should have no type parameters",
+                            );
+                        }
+            } else {
+                let span = sess.source_map().guess_head_span(span);
+                sess.span_err(span, "function should have one argument");
+            }
+        } else {
+            sess.err("language item required, but not found: `alloc_layout`");
         }
     }
 
@@ -670,7 +669,7 @@ fn check_opaque_meets_bounds<'tcx>(
             Err(ty_err) => {
                 tcx.sess.delay_span_bug(
                     span,
-                    &format!("could not unify `{}` with revealed type:\n{}", hidden_type, ty_err,),
+                    &format!("could not unify `{hidden_type}` with revealed type:\n{ty_err}"),
                 );
             }
         }
@@ -817,10 +816,9 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                             tcx.sess,
                             item.span,
                             E0044,
-                            "foreign items may not have {} parameters",
-                            kinds,
+                            "foreign items may not have {kinds} parameters",
                         )
-                        .span_label(item.span, &format!("can't have {} parameters", kinds))
+                        .span_label(item.span, &format!("can't have {kinds} parameters"))
                         .help(
                             // FIXME: once we start storing spans for type arguments, turn this
                             // into a suggestion.
@@ -1065,68 +1063,67 @@ pub(super) fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalD
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id);
-    if let ty::Adt(def, substs) = t.kind() {
-        if def.is_struct() {
-            let fields = &def.non_enum_variant().fields;
-            if fields.is_empty() {
+    if let ty::Adt(def, substs) = t.kind()
+        && def.is_struct()
+    {
+        let fields = &def.non_enum_variant().fields;
+        if fields.is_empty() {
+            struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
+            return;
+        }
+        let e = fields[0].ty(tcx, substs);
+        if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
+            struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
+                .span_label(sp, "SIMD elements must have the same type")
+                .emit();
+            return;
+        }
+
+        let len = if let ty::Array(_ty, c) = e.kind() {
+            c.try_eval_usize(tcx, tcx.param_env(def.did()))
+        } else {
+            Some(fields.len() as u64)
+        };
+        if let Some(len) = len {
+            if len == 0 {
                 struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
                 return;
-            }
-            let e = fields[0].ty(tcx, substs);
-            if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
-                struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
-                    .span_label(sp, "SIMD elements must have the same type")
-                    .emit();
+            } else if len > MAX_SIMD_LANES {
+                struct_span_err!(
+                    tcx.sess,
+                    sp,
+                    E0075,
+                    "SIMD vector cannot have more than {MAX_SIMD_LANES} elements",
+                )
+                .emit();
                 return;
             }
+        }
 
-            let len = if let ty::Array(_ty, c) = e.kind() {
-                c.try_eval_usize(tcx, tcx.param_env(def.did()))
-            } else {
-                Some(fields.len() as u64)
-            };
-            if let Some(len) = len {
-                if len == 0 {
-                    struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
-                    return;
-                } else if len > MAX_SIMD_LANES {
-                    struct_span_err!(
-                        tcx.sess,
-                        sp,
-                        E0075,
-                        "SIMD vector cannot have more than {} elements",
-                        MAX_SIMD_LANES,
-                    )
-                    .emit();
-                    return;
-                }
-            }
-
-            // Check that we use types valid for use in the lanes of a SIMD "vector register"
-            // These are scalar types which directly match a "machine" type
-            // Yes: Integers, floats, "thin" pointers
-            // No: char, "fat" pointers, compound types
-            match e.kind() {
-                ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
-                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
-                ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
-                ty::Array(t, _clen)
-                    if matches!(
-                        t.kind(),
-                        ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)
-                    ) =>
-                { /* struct([f32; 4]) is ok */ }
-                _ => {
-                    struct_span_err!(
-                        tcx.sess,
-                        sp,
-                        E0077,
-                        "SIMD vector element type should be a \
-                         primitive scalar (integer/float/pointer) type"
-                    )
-                    .emit();
-                    return;
-                }
+        // Check that we use types valid for use in the lanes of a SIMD "vector register"
+        // These are scalar types which directly match a "machine" type
+        // Yes: Integers, floats, "thin" pointers
+        // No: char, "fat" pointers, compound types
+        match e.kind() {
+            ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
+            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
+            ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
+            ty::Array(t, _clen)
+                if matches!(
+                    t.kind(),
+                    ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)
+                ) =>
+            { /* struct([f32; 4]) is ok */ }
+            _ => {
+                struct_span_err!(
+                    tcx.sess,
+                    sp,
+                    E0077,
+                    "SIMD vector element type should be a \
+                        primitive scalar (integer/float/pointer) type"
+                )
+                .emit();
+                return;
             }
         }
     }
@@ -1189,7 +1186,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                                     ident
                                 )
                             } else {
-                                format!("...which contains a field of type `{}`", ident)
+                                format!("...which contains a field of type `{ident}`")
                             },
                         );
                         first = false;
@@ -1215,13 +1212,12 @@ pub(super) fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
-                    if !stack.contains(&def.did()) {
-                        if let Some(mut defs) = check_packed_inner(tcx, def.did(), stack) {
-                            defs.push((def.did(), field.ident(tcx).span));
-                            return Some(defs);
-                        }
-                    }
+                if let ty::Adt(def, _) = field.ty(tcx, substs).kind()
+                    && !stack.contains(&def.did())
+                    && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)
+                {
+                    defs.push((def.did(), field.ident(tcx).span));
+                    return Some(defs);
                 }
             }
             stack.pop();
@@ -1370,8 +1366,8 @@ fn check_enum<'tcx>(
                 "discriminant value `{}` already exists",
                 discr.val,
             )
-            .span_label(i_span, format!("first use of {}", display_discr_i))
-            .span_label(span, format!("enum already has {}", display_discr))
+            .span_label(i_span, format!("first use of {display_discr_i}"))
+            .span_label(span, format!("enum already has {display_discr}"))
             .emit();
         }
         disr_vals.push(discr);
@@ -1393,7 +1389,7 @@ fn display_discriminant_value<'tcx>(
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
             && evaluated != *lit_value
         {
-                    return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
+                    return format!("`{evaluated}` (overflowed from `{lit_value}`)");
         }
     }
     format!("`{}`", evaluated)
@@ -1422,28 +1418,28 @@ pub(super) fn check_type_params_are_used<'tcx>(
     }
 
     for leaf in ty.walk() {
-        if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
-            if let ty::Param(param) = leaf_ty.kind() {
-                debug!("found use of ty param {:?}", param);
-                params_used.insert(param.index);
-            }
+        if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
+            && let ty::Param(param) = leaf_ty.kind()
+        {
+            debug!("found use of ty param {:?}", param);
+            params_used.insert(param.index);
         }
     }
 
     for param in &generics.params {
-        if !params_used.contains(param.index) {
-            if let ty::GenericParamDefKind::Type { .. } = param.kind {
-                let span = tcx.def_span(param.def_id);
-                struct_span_err!(
-                    tcx.sess,
-                    span,
-                    E0091,
-                    "type parameter `{}` is unused",
-                    param.name,
-                )
-                .span_label(span, "unused type parameter")
-                .emit();
-            }
+        if !params_used.contains(param.index)
+            && let ty::GenericParamDefKind::Type { .. } = param.kind
+        {
+            let span = tcx.def_span(param.def_id);
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0091,
+                "type parameter `{}` is unused",
+                param.name,
+            )
+            .span_label(span, "unused type parameter")
+            .emit();
         }
     }
 }
@@ -1534,10 +1530,10 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                 for def_id in visitor.0 {
                     let ty_span = tcx.def_span(def_id);
                     if !seen.contains(&ty_span) {
-                        err.span_label(ty_span, &format!("returning this opaque type `{}`", ty));
+                        err.span_label(ty_span, &format!("returning this opaque type `{ty}`"));
                         seen.insert(ty_span);
                     }
-                    err.span_label(sp, &format!("returning here with type `{}`", ty));
+                    err.span_label(sp, &format!("returning here with type `{ty}`"));
                 }
             }
         }

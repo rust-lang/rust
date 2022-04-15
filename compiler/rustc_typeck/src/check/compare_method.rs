@@ -315,7 +315,7 @@ fn compare_predicate_entailment<'tcx>(
                         ExplicitSelf::ByReference(_, hir::Mutability::Mut) => {
                             "&mut self".to_owned()
                         }
-                        _ => format!("self: {}", ty),
+                        _ => format!("self: {ty}"),
                     };
 
                     // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
@@ -526,7 +526,7 @@ fn compare_self_type<'tcx>(
                 ExplicitSelf::ByValue => "self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                _ => format!("self: {}", self_arg_ty),
+                _ => format!("self: {self_arg_ty}"),
             }
         })
     };
@@ -544,9 +544,9 @@ fn compare_self_type<'tcx>(
                 trait_m.name,
                 self_descr
             );
-            err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
+            err.span_label(impl_m_span, format!("`{self_descr}` used in impl"));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
-                err.span_label(span, format!("trait method declared without `{}`", self_descr));
+                err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
                 err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
@@ -564,9 +564,9 @@ fn compare_self_type<'tcx>(
                 trait_m.name,
                 self_descr
             );
-            err.span_label(impl_m_span, format!("expected `{}` in impl", self_descr));
+            err.span_label(impl_m_span, format!("expected `{self_descr}` in impl"));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
-                err.span_label(span, format!("`{}` used in trait", self_descr));
+                err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
                 err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
@@ -668,7 +668,7 @@ fn compare_number_of_generics<'tcx>(
                     err.span_label(*span, "");
                 }
             } else {
-                suffix = Some(format!(", expected {}", trait_count));
+                suffix = Some(format!(", expected {trait_count}"));
             }
 
             if let Some(span) = span {
@@ -873,12 +873,10 @@ fn compare_synthetic_generics<'tcx>(
                                 intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
                                     ty.kind
+                                    && let Res::Def(DefKind::TyParam, def_id) = path.res
+                                    && def_id == self.1
                                 {
-                                    if let Res::Def(DefKind::TyParam, def_id) = path.res {
-                                        if def_id == self.1 {
-                                            self.0 = Some(ty.span);
-                                        }
-                                    }
+                                    self.0 = Some(ty.span);
                                 }
                             }
                         }
@@ -908,7 +906,7 @@ fn compare_synthetic_generics<'tcx>(
                                 // delete generic parameters
                                 (impl_m.generics.span, String::new()),
                                 // replace param usage with `impl Trait`
-                                (span, format!("impl {}", bounds)),
+                                (span, format!("impl {bounds}")),
                             ],
                             Applicability::MaybeIncorrect,
                         );
@@ -972,7 +970,7 @@ fn compare_const_param_types<'tcx>(
                 &format!(
                     "the const parameter{} has type `{}`, but the declaration \
                               in trait `{}` has type `{}`",
-                    &impl_ident.map_or_else(|| "".to_string(), |ident| format!(" `{}`", ident)),
+                    &impl_ident.map_or_else(|| "".to_string(), |ident| format!(" `{ident}`")),
                     impl_ty,
                     tcx.def_path_str(trait_m.def_id),
                     trait_ty

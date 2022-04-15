@@ -405,16 +405,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(_), .. }) = lt.kind {
             let expected = self.structurally_resolved_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = expected.kind() {
-                if matches!(inner_ty.kind(), ty::Slice(_)) {
-                    let tcx = self.tcx;
-                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
-                    self.typeck_results
-                        .borrow_mut()
-                        .treat_byte_string_as_slice
-                        .insert(lt.hir_id.local_id);
-                    pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
-                }
+            if let ty::Ref(_, inner_ty, _) = expected.kind()
+                && matches!(inner_ty.kind(), ty::Slice(_))
+            {
+                let tcx = self.tcx;
+                trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                self.typeck_results
+                    .borrow_mut()
+                    .treat_byte_string_as_slice
+                    .insert(lt.hir_id.local_id);
+                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
             }
         }
 
@@ -481,14 +481,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Unify each side with `expected`.
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let demand_eqtype = |x: &mut _, y| {
-            if let Some((ref mut fail, x_ty, x_span)) = *x {
-                if let Some(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti) {
-                    if let Some((_, y_ty, y_span)) = y {
-                        self.endpoint_has_type(&mut err, y_span, y_ty);
-                    }
-                    err.emit();
-                    *fail = true;
-                };
+            if let Some((ref mut fail, x_ty, x_span)) = *x
+                && let Some(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti)
+            {
+                if let Some((_, y_ty, y_span)) = y {
+                    self.endpoint_has_type(&mut err, y_span, y_ty);
+                }
+                err.emit();
+                *fail = true;
             }
         };
         demand_eqtype(&mut lhs, rhs);
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
             let hir = self.tcx.hir();
             let var_ty = self.resolve_vars_with_obligations(var_ty);
-            let msg = format!("first introduced with type `{}` here", var_ty);
+            let msg = format!("first introduced with type `{var_ty}` here");
             err.span_label(hir.span(var_id), msg);
             let in_match = hir.parent_iter(var_id).any(|(_, n)| {
                 matches!(
@@ -665,8 +665,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     err.span_suggestion(
                         *span,
-                        &format!("did you mean `{}`", snippet),
-                        format!(" &{}", expected),
+                        &format!("did you mean `{snippet}`"),
+                        format!(" &{expected}"),
                         Applicability::MachineApplicable,
                     );
                 }
@@ -701,7 +701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "type `{}` cannot be dereferenced",
                         type_str
                     );
-                    err.span_label(span, format!("type `{}` cannot be dereferenced", type_str));
+                    err.span_label(span, format!("type `{type_str}` cannot be dereferenced"));
                     if self.tcx.sess.teach(&err.get_code().unwrap()) {
                         err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
                     }
@@ -918,7 +918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 path_str
             );
 
-            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
+            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{msg}");
             match res {
                 Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
                     err.span_label(pat.span, "`fn` calls are not allowed in patterns");
@@ -1396,8 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     pat.span,
                     E0769,
-                    "tuple variant `{}` written as struct variant",
-                    path
+                    "tuple variant `{path}` written as struct variant",
                 );
                 err.span_suggestion_verbose(
                     qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
@@ -1422,8 +1421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sess,
             pat.span,
             E0638,
-            "`..` required with {} marked as non-exhaustive",
-            descr
+            "`..` required with {descr} marked as non-exhaustive",
         );
         err.span_suggestion_verbose(
             sp_comma,
@@ -1442,8 +1440,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "field `{}` bound multiple times in the pattern",
             ident
         )
-        .span_label(span, format!("multiple uses of `{}` in pattern", ident))
-        .span_label(other_field, format!("first use of `{}`", ident))
+        .span_label(span, format!("multiple uses of `{ident}` in pattern"))
+        .span_label(other_field, format!("first use of `{ident}`"))
         .emit();
     }
 

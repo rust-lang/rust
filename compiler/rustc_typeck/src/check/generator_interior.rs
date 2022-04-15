@@ -567,7 +567,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
                 _ => None,
             };
             for (i, ty) in fields.iter().enumerate() {
-                let descr_post = &format!(" in tuple element {}", i);
+                let descr_post = &format!(" in tuple element {i}");
                 let span = comps.and_then(|c| c.get(i)).map(|e| e.span).unwrap_or(data.source_span);
                 if check_must_not_suspend_ty(
                     fcx,

@@ -241,13 +241,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We are pointing at the binding's type or initializer value, but it's pattern
                     // is in a different line, so we point at both.
                     err.span_label(secondary_span, "expected due to the type of this binding");
-                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                    err.span_label(primary_span, &format!("expected due to this{post_message}"));
                 } else if post_message == "" {
                     // We are pointing at either the assignment lhs or the binding def pattern.
                     err.span_label(primary_span, "expected due to the type of this binding");
                 } else {
                     // We are pointing at the binding's type or initializer value.
-                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                    err.span_label(primary_span, &format!("expected due to this{post_message}"));
                 }
 
                 if !lhs.is_syntactic_place_expr() {
@@ -321,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     "try adding an expression at the end of the block",
                                     return_suggestions
                                         .into_iter()
-                                        .map(|r| format!("{}\n{}{}", semicolon, indent, r)),
+                                        .map(|r| format!("{semicolon}\n{indent}{r}")),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -344,10 +344,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
                         // FIXME #56861: DRYer prelude filtering
-                        if let Some(path) = variant_path.strip_prefix("std::prelude::") {
-                            if let Some((_, path)) = path.split_once("::") {
-                                return Some(path.to_string());
-                            }
+                        if let Some(path) = variant_path.strip_prefix("std::prelude::")
+                            && let Some((_, path)) = path.split_once("::")
+                        {
+                            return Some(path.to_string());
                         }
                         Some(variant_path)
                     } else {
@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                Some(ident) => format!("{}: ", ident),
+                Some(ident) => format!("{ident}: "),
                 None => String::new(),
             };
 
@@ -366,9 +366,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [variant] => {
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
-                        &format!("try wrapping the expression in `{}`", variant),
+                        &format!("try wrapping the expression in `{variant}`"),
                         vec![
-                            (expr.span.shrink_to_lo(), format!("{}{}(", prefix, variant)),
+                            (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                             (expr.span.shrink_to_hi(), ")".to_string()),
                         ],
                         Applicability::MaybeIncorrect,
@@ -383,7 +383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         compatible_variants.into_iter().map(|variant| {
                             vec![
-                                (expr.span.shrink_to_lo(), format!("{}{}(", prefix, variant)),
+                                (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                                 (expr.span.shrink_to_hi(), ")".to_string()),
                             ]
                         }),
@@ -680,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ if is_range_literal(expr) => true,
                             _ => false,
                         };
-                        let sugg_expr = if needs_parens { format!("({})", src) } else { src };
+                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
 
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some((
@@ -693,7 +693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
 
                         let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                            Some(ident) => format!("{}: ", ident),
+                            Some(ident) => format!("{ident}: "),
                             None => String::new(),
                         };
 
@@ -727,14 +727,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             hir::Mutability::Mut => (
                                 sp,
                                 "consider mutably borrowing here".to_string(),
-                                format!("{}&mut {}", prefix, sugg_expr),
+                                format!("{prefix}&mut {sugg_expr}"),
                                 Applicability::MachineApplicable,
                                 false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
                                 "consider borrowing here".to_string(),
-                                format!("{}&{}", prefix, sugg_expr),
+                                format!("{prefix}&{sugg_expr}"),
                                 Applicability::MachineApplicable,
                                 false,
                             ),
@@ -758,29 +758,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(call_span) =
                         iter::successors(Some(expr.span), |s| s.parent_callsite())
                             .find(|&s| sp.contains(s))
+                        && sm.span_to_snippet(call_span).is_ok()
                     {
-                        if sm.span_to_snippet(call_span).is_ok() {
-                            return Some((
-                                sp.with_hi(call_span.lo()),
-                                "consider removing the borrow".to_string(),
-                                String::new(),
-                                Applicability::MachineApplicable,
-                                true,
-                            ));
-                        }
-                    }
-                    return None;
-                }
-                if sp.contains(expr.span) {
-                    if sm.span_to_snippet(expr.span).is_ok() {
                         return Some((
-                            sp.with_hi(expr.span.lo()),
+                            sp.with_hi(call_span.lo()),
                             "consider removing the borrow".to_string(),
                             String::new(),
                             Applicability::MachineApplicable,
                             true,
                         ));
                     }
+                    return None;
+                }
+                if sp.contains(expr.span)
+                    && sm.span_to_snippet(expr.span).is_ok()
+                {
+                    return Some((
+                        sp.with_hi(expr.span.lo()),
+                        "consider removing the borrow".to_string(),
+                        String::new(),
+                        Applicability::MachineApplicable,
+                        true,
+                    ));
                 }
             }
             (
@@ -788,66 +787,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }),
                 &ty::Ref(_, ty_a, mutbl_a),
             ) => {
-                if let Some(steps) = self.deref_steps(ty_a, ty_b) {
+                if let Some(steps) = self.deref_steps(ty_a, ty_b)
                     // Only suggest valid if dereferencing needed.
-                    if steps > 0 {
-                        // The pointer type implements `Copy` trait so the suggestion is always valid.
-                        if let Ok(src) = sm.span_to_snippet(sp) {
-                            let derefs = "*".repeat(steps);
-                            if let Some((span, src, applicability)) = match mutbl_b {
+                    && steps > 0
+                    // The pointer type implements `Copy` trait so the suggestion is always valid.
+                    && let Ok(src) = sm.span_to_snippet(sp)
+                {
+                    let derefs = "*".repeat(steps);
+                    if let Some((span, src, applicability)) = match mutbl_b {
+                        hir::Mutability::Mut => {
+                            let new_prefix = "&mut ".to_owned() + &derefs;
+                            match mutbl_a {
                                 hir::Mutability::Mut => {
-                                    let new_prefix = "&mut ".to_owned() + &derefs;
-                                    match mutbl_a {
-                                        hir::Mutability::Mut => {
-                                            replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                                let pos = sp.lo() + BytePos(5);
-                                                let sp = sp.with_lo(pos).with_hi(pos);
-                                                (sp, derefs, Applicability::MachineApplicable)
-                                            })
-                                        }
-                                        hir::Mutability::Not => {
-                                            replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                                let pos = sp.lo() + BytePos(1);
-                                                let sp = sp.with_lo(pos).with_hi(pos);
-                                                (
-                                                    sp,
-                                                    format!("mut {}", derefs),
-                                                    Applicability::Unspecified,
-                                                )
-                                            })
-                                        }
-                                    }
+                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
+                                        let pos = sp.lo() + BytePos(5);
+                                        let sp = sp.with_lo(pos).with_hi(pos);
+                                        (sp, derefs, Applicability::MachineApplicable)
+                                    })
                                 }
                                 hir::Mutability::Not => {
-                                    let new_prefix = "&".to_owned() + &derefs;
-                                    match mutbl_a {
-                                        hir::Mutability::Mut => {
-                                            replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                                let lo = sp.lo() + BytePos(1);
-                                                let hi = sp.lo() + BytePos(5);
-                                                let sp = sp.with_lo(lo).with_hi(hi);
-                                                (sp, derefs, Applicability::MachineApplicable)
-                                            })
-                                        }
-                                        hir::Mutability::Not => {
-                                            replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                                let pos = sp.lo() + BytePos(1);
-                                                let sp = sp.with_lo(pos).with_hi(pos);
-                                                (sp, derefs, Applicability::MachineApplicable)
-                                            })
-                                        }
-                                    }
+                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
+                                        let pos = sp.lo() + BytePos(1);
+                                        let sp = sp.with_lo(pos).with_hi(pos);
+                                        (
+                                            sp,
+                                            format!("mut {derefs}"),
+                                            Applicability::Unspecified,
+                                        )
+                                    })
                                 }
-                            } {
-                                return Some((
-                                    span,
-                                    "consider dereferencing".to_string(),
-                                    src,
-                                    applicability,
-                                    true,
-                                ));
                             }
                         }
+                        hir::Mutability::Not => {
+                            let new_prefix = "&".to_owned() + &derefs;
+                            match mutbl_a {
+                                hir::Mutability::Mut => {
+                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
+                                        let lo = sp.lo() + BytePos(1);
+                                        let hi = sp.lo() + BytePos(5);
+                                        let sp = sp.with_lo(lo).with_hi(hi);
+                                        (sp, derefs, Applicability::MachineApplicable)
+                                    })
+                                }
+                                hir::Mutability::Not => {
+                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
+                                        let pos = sp.lo() + BytePos(1);
+                                        let sp = sp.with_lo(pos).with_hi(pos);
+                                        (sp, derefs, Applicability::MachineApplicable)
+                                    })
+                                }
+                            }
+                        }
+                    } {
+                        return Some((
+                            span,
+                            "consider dereferencing".to_string(),
+                            src,
+                            applicability,
+                            true,
+                        ));
                     }
                 }
             }
@@ -908,7 +906,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Suggest removing `&` if we have removed any, otherwise suggest just
                         // dereferencing the remaining number of steps.
                         let message = if remove.is_empty() {
-                            format!("consider {}", deref_kind)
+                            format!("consider {deref_kind}")
                         } else {
                             format!(
                                 "consider removing the `{}` and {} instead",
@@ -918,7 +916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
 
                         let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                            Some(ident) => format!("{}: ", ident),
+                            Some(ident) => format!("{ident}: "),
                             None => String::new(),
                         };
 
@@ -994,35 +992,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if let hir::ExprKind::Call(path, args) = &expr.kind {
-            if let (hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)), 1) =
+        if let hir::ExprKind::Call(path, args) = &expr.kind
+            && let (hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)), 1) =
                 (&path.kind, args.len())
-            {
-                // `expr` is a conversion like `u32::from(val)`, do not suggest anything (#63697).
-                if let (hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)), sym::from) =
-                    (&base_ty.kind, path_segment.ident.name)
-                {
-                    if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
-                        match ident.name {
-                            sym::i128
-                            | sym::i64
-                            | sym::i32
-                            | sym::i16
-                            | sym::i8
-                            | sym::u128
-                            | sym::u64
-                            | sym::u32
-                            | sym::u16
-                            | sym::u8
-                            | sym::isize
-                            | sym::usize
-                                if base_ty_path.segments.len() == 1 =>
-                            {
-                                return false;
-                            }
-                            _ => {}
-                        }
+            // `expr` is a conversion like `u32::from(val)`, do not suggest anything (#63697).
+            && let (hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)), sym::from) =
+                (&base_ty.kind, path_segment.ident.name)
+        {
+            if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
+                match ident.name {
+                    sym::i128
+                    | sym::i64
+                    | sym::i32
+                    | sym::i16
+                    | sym::i8
+                    | sym::u128
+                    | sym::u64
+                    | sym::u32
+                    | sym::u16
+                    | sym::u8
+                    | sym::isize
+                    | sym::usize
+                        if base_ty_path.segments.len() == 1 =>
+                    {
+                        return false;
                     }
+                    _ => {}
                 }
             }
         }
@@ -1042,8 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected_ty,
         );
         let lit_msg = format!(
-            "change the type of the numeric literal from `{}` to `{}`",
-            checked_ty, expected_ty,
+            "change the type of the numeric literal from `{checked_ty}` to `{expected_ty}`",
         );
 
         let close_paren = if expr.precedence().order() < PREC_POSTFIX {
@@ -1054,10 +1048,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut cast_suggestion = sugg.clone();
-        cast_suggestion
-            .push((expr.span.shrink_to_hi(), format!("{} as {}", close_paren, expected_ty)));
+        cast_suggestion.push((expr.span.shrink_to_hi(), format!("{close_paren} as {expected_ty}")));
         let mut into_suggestion = sugg.clone();
-        into_suggestion.push((expr.span.shrink_to_hi(), format!("{}.into()", close_paren)));
+        into_suggestion.push((expr.span.shrink_to_hi(), format!("{close_paren}.into()")));
         let mut suffix_suggestion = sugg.clone();
         suffix_suggestion.push((
             if matches!(
@@ -1074,7 +1067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             if expr.precedence().order() < PREC_POSTFIX {
                 // Readd `)`
-                format!("{})", expected_ty)
+                format!("{expected_ty})")
             } else {
                 expected_ty.to_string()
             },
@@ -1108,20 +1101,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (lhs_expr_and_src, exp_to_found_is_fallible)
                 {
                     let msg = format!(
-                        "you can convert `{}` from `{}` to `{}`, matching the type of `{}`",
-                        lhs_src, expected_ty, checked_ty, src
+                        "you can convert `{lhs_src}` from `{expected_ty}` to `{checked_ty}`, matching the type of `{src}`",
                     );
                     let suggestion = vec![
-                        (lhs_expr.span.shrink_to_lo(), format!("{}::from(", checked_ty)),
+                        (lhs_expr.span.shrink_to_lo(), format!("{checked_ty}::from(")),
                         (lhs_expr.span.shrink_to_hi(), ")".to_string()),
                     ];
                     (msg, suggestion)
                 } else {
-                    let msg = format!("{} and panic if the converted value doesn't fit", msg);
+                    let msg = format!("{msg} and panic if the converted value doesn't fit");
                     let mut suggestion = sugg.clone();
                     suggestion.push((
                         expr.span.shrink_to_hi(),
-                        format!("{}.try_into().unwrap()", close_paren),
+                        format!("{close_paren}.try_into().unwrap()"),
                     ));
                     (msg, suggestion)
                 };
@@ -1151,7 +1143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We now know that converting either the lhs or rhs is fallible. Before we
                     // suggest a fallible conversion, check if the value can never fit in the
                     // expected type.
-                    let msg = format!("`{}` cannot fit into type `{}`", src, expected_ty);
+                    let msg = format!("`{src}` cannot fit into type `{expected_ty}`");
                     err.note(&msg);
                     return;
                 } else if in_const_context {
@@ -1229,7 +1221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if can_cast {
                     // Missing try_into implementation for `f64` to `f32`
                     err.multipart_suggestion_verbose(
-                        &format!("{}, producing the closest possible value", cast_msg),
+                        &format!("{cast_msg}, producing the closest possible value"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
                     );
@@ -1246,7 +1238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if can_cast {
                     // Missing try_into implementation for `{float}` to `{integer}`
                     err.multipart_suggestion_verbose(
-                        &format!("{}, rounding the float towards zero", msg),
+                        &format!("{msg}, rounding the float towards zero"),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
                     );
@@ -1258,8 +1250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
                         &format!(
-                            "{}, producing the floating point representation of the integer",
-                            msg,
+                            "{msg}, producing the floating point representation of the integer",
                         ),
                         into_suggestion,
                         Applicability::MachineApplicable,
@@ -1274,9 +1265,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Missing try_into implementation for `{integer}` to `{float}`
                     err.multipart_suggestion_verbose(
                         &format!(
-                            "{}, producing the floating point representation of the integer, \
+                            "{cast_msg}, producing the floating point representation of the integer, \
                                  rounded if necessary",
-                            cast_msg,
                         ),
                         cast_suggestion,
                         Applicability::MaybeIncorrect, // lossy conversion
@@ -1321,7 +1311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &ty::Char,
             ) => {
                 err.multipart_suggestion_verbose(
-                    &format!("{}, since a `char` always occupies 4 bytes", cast_msg,),
+                    &format!("{cast_msg}, since a `char` always occupies 4 bytes"),
                     cast_suggestion,
                     Applicability::MachineApplicable,
                 );
@@ -1333,22 +1323,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // Report the type inferred by the return statement.
     fn report_closure_inferred_return_type(&self, err: &mut Diagnostic, expected: Ty<'tcx>) {
-        if let Some(sp) = self.ret_coercion_span.get() {
+        if let Some(sp) = self.ret_coercion_span.get()
             // If the closure has an explicit return type annotation, or if
             // the closure's return type has been inferred from outside
             // requirements (such as an Fn* trait bound), then a type error
             // may occur at the first return expression we see in the closure
             // (if it conflicts with the declared return type). Skip adding a
             // note in this case, since it would be incorrect.
-            if !self.return_type_pre_known {
-                err.span_note(
-                    sp,
-                    &format!(
-                        "return type inferred to be `{}` here",
-                        self.resolve_vars_if_possible(expected)
-                    ),
-                );
-            }
+            && !self.return_type_pre_known
+        {
+            err.span_note(
+                sp,
+                &format!(
+                    "return type inferred to be `{}` here",
+                    self.resolve_vars_if_possible(expected)
+                ),
+            );
         }
     }
 }

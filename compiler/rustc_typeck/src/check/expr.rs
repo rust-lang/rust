@@ -181,13 +181,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // make this code only run with -Zverbose because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                 if !lint_str.contains('\n') {
-                    debug!("expr text: {}", lint_str);
+                    debug!("expr text: {lint_str}");
                 } else {
                     let mut lines = lint_str.lines();
                     if let Some(line0) = lines.next() {
                         let remaining_lines = lines.count();
-                        debug!("expr text: {}", line0);
-                        debug!("expr text: ...(and {} more lines)", remaining_lines);
+                        debug!("expr text: {line0}");
+                        debug!("expr text: ...(and {remaining_lines} more lines)");
                     }
                 }
             }
@@ -375,8 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             expr.span,
                             oprnd_t,
                             E0614,
-                            "type `{}` cannot be dereferenced",
-                            oprnd_t,
+                            "type `{oprnd_t}` cannot be dereferenced",
                         );
                         let sp = tcx.sess.source_map().start_point(expr.span);
                         if let Some(sp) =
@@ -652,7 +651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_suggestion(
                                     expr.span,
                                     "give it a value of the expected type",
-                                    format!("break{} {}", label, val),
+                                    format!("break{label} {val}"),
                                     Applicability::HasPlaceholders,
                                 );
                             }
@@ -780,7 +779,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                             db.span_label(
                                 span,
-                                format!("expected `{}` because of this return type", snippet),
+                                format!("expected `{snippet}` because of this return type"),
                             );
                         }
                     },
@@ -1611,15 +1610,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut truncated_fields_error = String::new();
         let remaining_fields_names = match &displayable_field_names[..] {
             [field1] => format!("`{}`", field1),
-            [field1, field2] => format!("`{}` and `{}`", field1, field2),
-            [field1, field2, field3] => format!("`{}`, `{}` and `{}`", field1, field2, field3),
+            [field1, field2] => format!("`{field1}` and `{field2}`"),
+            [field1, field2, field3] => format!("`{field1}`, `{field2}` and `{field3}`"),
             _ => {
                 truncated_fields_error =
                     format!(" and {} other field{}", len - 3, pluralize!(len - 3));
                 displayable_field_names
                     .iter()
                     .take(3)
-                    .map(|n| format!("`{}`", n))
+                    .map(|n| format!("`{n}`"))
                     .collect::<Vec<_>>()
                     .join(", ")
             }
@@ -1635,10 +1634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             truncated_fields_error,
             adt_ty
         );
-        err.span_label(
-            span,
-            format!("missing {}{}", remaining_fields_names, truncated_fields_error),
-        );
+        err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
 
         // If the last field is a range literal, but it isn't supposed to be, then they probably
         // meant to use functional update syntax.
@@ -1693,8 +1689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.sess.span_err(
             span,
             &format!(
-                "cannot construct `{}` with struct literal syntax due to inaccessible fields",
-                adt_ty,
+                "cannot construct `{adt_ty}` with struct literal syntax due to inaccessible fields",
             ),
         );
     }
@@ -1807,7 +1802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 err.span_label(
                                     field.ident.span,
-                                    format!("`{}` does not have this field", ty),
+                                    format!("`{ty}` does not have this field"),
                                 );
                             }
                             let available_field_names =
@@ -1973,8 +1968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 field.span,
                 expr_t,
                 E0610,
-                "`{}` is a primitive type and therefore doesn't have fields",
-                expr_t
+                "`{expr_t}` is a primitive type and therefore doesn't have fields",
             )
             .emit();
         }
@@ -2018,7 +2012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if add_label {
-            err.span_label(field_ident.span, &format!("field not found in `{}`", ty));
+            err.span_label(field_ident.span, &format!("field not found in `{ty}`"));
         }
     }
 
@@ -2077,10 +2071,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx().sess,
             field.span,
             E0616,
-            "field `{}` of {} `{}` is private",
-            field,
-            kind_name,
-            struct_path
+            "field `{field}` of {kind_name} `{struct_path}` is private",
         );
         err.span_label(field.span, "private field");
         // Also check if an accessible method exists, which is often what is meant.
@@ -2088,7 +2079,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.suggest_method_call(
                 &mut err,
-                &format!("a method `{}` also exists, call it with parentheses", field),
+                &format!("a method `{field}` also exists, call it with parentheses"),
                 field,
                 expr_t,
                 expr,
@@ -2104,9 +2095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field.span,
             expr_t,
             E0615,
-            "attempted to take value of method `{}` on type `{}`",
-            field,
-            expr_t
+            "attempted to take value of method `{field}` on type `{expr_t}`",
         );
         err.span_label(field.span, "method, not a field");
         let expr_is_call =
@@ -2150,27 +2139,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let mut found = false;
 
-            if let ty::RawPtr(ty_and_mut) = expr_t.kind() {
-                if let ty::Adt(adt_def, _) = ty_and_mut.ty.kind() {
-                    if adt_def.variants().len() == 1
-                        && adt_def
-                            .variants()
-                            .iter()
-                            .next()
-                            .unwrap()
-                            .fields
-                            .iter()
-                            .any(|f| f.ident(self.tcx) == field)
-                    {
-                        if let Some(dot_loc) = expr_snippet.rfind('.') {
-                            found = true;
-                            err.span_suggestion(
-                                expr.span.with_hi(expr.span.lo() + BytePos::from_usize(dot_loc)),
-                                "to access the field, dereference first",
-                                format!("(*{})", &expr_snippet[0..dot_loc]),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+            if let ty::RawPtr(ty_and_mut) = expr_t.kind()
+                && let ty::Adt(adt_def, _) = ty_and_mut.ty.kind()
+            {
+                if adt_def.variants().len() == 1
+                    && adt_def
+                        .variants()
+                        .iter()
+                        .next()
+                        .unwrap()
+                        .fields
+                        .iter()
+                        .any(|f| f.ident(self.tcx) == field)
+                {
+                    if let Some(dot_loc) = expr_snippet.rfind('.') {
+                        found = true;
+                        err.span_suggestion(
+                            expr.span.with_hi(expr.span.lo() + BytePos::from_usize(dot_loc)),
+                            "to access the field, dereference first",
+                            format!("(*{})", &expr_snippet[0..dot_loc]),
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 }
             }
@@ -2197,7 +2186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let param_span = self.tcx.hir().span(param_hir_id);
         let param_name = self.tcx.hir().ty_param_name(param_def_id.expect_local());
 
-        err.span_label(param_span, &format!("type parameter '{}' declared here", param_name));
+        err.span_label(param_span, &format!("type parameter '{param_name}' declared here"));
     }
 
     fn suggest_fields_on_recordish(
@@ -2239,17 +2228,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
+            && let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
         {
-            if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
-                let help = "instead of using tuple indexing, use array indexing";
-                let suggestion = format!("{}[{}]", base, field);
-                let applicability = if len < user_index {
-                    Applicability::MachineApplicable
-                } else {
-                    Applicability::MaybeIncorrect
-                };
-                err.span_suggestion(expr.span, help, suggestion, applicability);
-            }
+            let help = "instead of using tuple indexing, use array indexing";
+            let suggestion = format!("{base}[{field}]");
+            let applicability = if len < user_index {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+            err.span_suggestion(expr.span, help, suggestion, applicability);
         }
     }
 
@@ -2261,8 +2249,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
     ) {
         if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
-            let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
-            let suggestion = format!("(*{}).{}", base, field);
+            let msg = format!("`{base}` is a raw pointer; try dereferencing it");
+            let suggestion = format!("(*{base}).{field}");
             err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
         }
     }
@@ -2281,9 +2269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field.span,
             expr_t,
             E0609,
-            "no field `{}` on type `{}`",
-            field,
-            expr_t
+            "no field `{field}` on type `{expr_t}`",
         );
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
@@ -2307,7 +2293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         field.span.shrink_to_lo(),
                         "one of the expressions' fields has a field of the same name",
-                        format!("{}.", field_path_str),
+                        format!("{field_path_str}."),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -2419,8 +2405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.span,
                         base_t,
                         E0608,
-                        "cannot index into a value of type `{}`",
-                        base_t
+                        "cannot index into a value of type `{base_t}`",
                     );
                     // Try to give some advice about indexing tuples.
                     if let ty::Tuple(..) = base_t.kind() {
@@ -2434,7 +2419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     err.span_suggestion(
                                         expr.span,
                                         "to access tuple elements, use",
-                                        format!("{}.{}", snip, i),
+                                        format!("{snip}.{i}"),
                                         Applicability::MachineApplicable,
                                     );
                                     needs_note = false;
