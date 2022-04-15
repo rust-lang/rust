@@ -196,7 +196,7 @@ impl<'a> LintExtractor<'a> {
             };
             // These lints are specifically undocumented. This should be reserved
             // for internal rustc-lints only.
-            if name == "deprecated_in_future" {
+            if name == "deprecated_in_future" || name == "deprecated_safe_in_future" {
                 continue;
             }
             // Read the level.

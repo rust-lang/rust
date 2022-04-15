@@ -164,7 +164,11 @@ pub fn main() {
     }
 
     rustc_driver::set_sigpipe_handler();
-    rustc_driver::install_ice_hook();
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    // FIXME(skippy) are there definitely zero threads here? other functions have been called
+    unsafe {
+        rustc_driver::install_ice_hook();
+    }
 
     // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
     // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid

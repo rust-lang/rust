@@ -1,0 +1,444 @@
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:27:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-safe-future-staged.rs:9:9
+   |
+LL | #![warn(deprecated_safe_in_future, unused_unsafe)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:27:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:27:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:27:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:33:14
+   |
+LL | fn foo4() -> impl FnOnce() {
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:33:14
+   |
+LL | fn foo4() -> impl FnOnce() {
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:33:28
+   |
+LL |   fn foo4() -> impl FnOnce() {
+   |  ____________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:49:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_future);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:49:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_future);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:49:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_future);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:52:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe_future);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:52:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe_future);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:54:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe_future);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:54:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe_future);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:59:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_future);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:60:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe_future);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:61:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe_future);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:64:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_future));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:65:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_future));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:66:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_future));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:69:5
+   |
+LL |     fn_taking_fn_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:70:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:71:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:78:42
+   |
+LL |     let depr_safe_generic_fn_ptr: fn() = depr_safe_future;
+   |                                          ^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:82:42
+   |
+LL |     let depr_safe_generic_fn_ptr: fn() = depr_safe_future;
+   |                                          ^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:83:52
+   |
+LL |     let depr_safe_generic_fn_impl: Box<dyn Fn()> = Box::new(depr_safe_future);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:84:62
+   |
+LL |     let mut depr_safe_generic_fnmut_impl: Box<dyn FnMut()> = Box::new(depr_safe_future);
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:85:60
+   |
+LL |     let depr_safe_generic_fnonce_impl: Box<dyn FnOnce()> = Box::new(depr_safe_future);
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:95:22
+   |
+LL |     fn_taking_fn_ptr(depr_safe_future);
+   |                      ^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:96:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_future));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:97:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_future));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:98:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_future));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:99:5
+   |
+LL |     fn_taking_fn_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:100:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:101:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_future);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:39:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:39:5
+   |
+LL |     depr_safe_future
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:19:13
+   |
+LL | type Tait = impl FnOnce();
+   |             ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:19:13
+   |
+LL | type Tait = impl FnOnce();
+   |             ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:33:14
+   |
+LL | fn foo4() -> impl FnOnce() {
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:33:14
+   |
+LL | fn foo4() -> impl FnOnce() {
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:74:5
+   |
+LL |     depr_safe_future();
+   |     ^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-future-staged.rs:75:5
+   |
+LL |     depr_safe_future();
+   |     ^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: 43 warnings emitted
+

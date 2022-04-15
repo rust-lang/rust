@@ -55,7 +55,11 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
 
 fn main() {
     rustc_driver::init_rustc_env_logger();
-    rustc_driver::install_ice_hook();
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    // FIXME(skippy) are there definitely zero threads here? other functions have been called
+    unsafe {
+        rustc_driver::install_ice_hook();
+    }
     let exit_code = rustc_driver::catch_with_exit_code(|| {
         let mut use_clif = false;
 

@@ -22,7 +22,8 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 // the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
 // perfect -- we might actually want to see something from Cargo's added library paths -- but
 // for now it works.
-fn restore_library_path() {
+// SAFETY: must not be called when any other thread could be reading or writing the environment
+unsafe fn restore_library_path() {
     let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
     if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
         env::set_var(&key, &env);
@@ -81,7 +82,10 @@ fn main() {
         return;
     }
 
-    restore_library_path();
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    unsafe {
+        restore_library_path();
+    }
 
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config =

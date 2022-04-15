@@ -1,0 +1,46 @@
+error[E0543]: invalid 'unsafe_edition' specified
+  --> $DIR/deprecated-safe-attr-staged.rs:17:1
+   |
+LL | #[deprecated_safe(since = "1.61.0", unsafe_edition = "BAD", note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: invalid 'unsafe_edition' specified
+  --> $DIR/deprecated-safe-attr-staged.rs:20:1
+   |
+LL | #[deprecated_safe(since = "TBD", unsafe_edition = "BAD", note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/deprecated-safe-attr-staged.rs:23:1
+   |
+LL | #[deprecated_safe]
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/deprecated-safe-attr-staged.rs:26:1
+   |
+LL | #[deprecated_safe = "hi"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: missing 'note'
+  --> $DIR/deprecated-safe-attr-staged.rs:29:1
+   |
+LL | #[deprecated_safe(since = "1.61.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/deprecated-safe-attr-staged.rs:32:1
+   |
+LL | #[deprecated_safe(note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: this `#[deprecated_safe]` annotation has no effect
+  --> $DIR/deprecated-safe-attr-staged.rs:37:5
+   |
+LL |     #[deprecated_safe(since = "1.61.0", note = "reason")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0542, E0543.
+For more information about an error, try `rustc --explain E0542`.

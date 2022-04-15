@@ -4,23 +4,27 @@
 pub use self::StabilityLevel::*;
 
 use crate::ty::{self, DefIdTree, TyCtxt};
-use rustc_ast::NodeId;
+use rustc_ast::{Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
+use rustc_session::lint::builtin::{
+    DEPRECATED, DEPRECATED_IN_FUTURE, DEPRECATED_SAFE, DEPRECATED_SAFE_IN_FUTURE, SOFT_UNSTABLE,
+};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::num::NonZeroU32;
+use std::str::FromStr;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -109,20 +113,20 @@ pub fn report_unstable(
 /// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
-    let is_since_rustc_version = depr.is_since_rustc_version;
-    let since = depr.since.as_ref().map(Symbol::as_str);
+    deprecation_since_in_effect(depr.is_since_rustc_version, depr.since)
+}
 
+fn deprecation_since_in_effect(is_since_rustc_version: bool, since: Option<Symbol>) -> bool {
     fn parse_version(ver: &str) -> Vec<u32> {
         // We ignore non-integer components of the version (e.g., "nightly").
         ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
     }
-
     if !is_since_rustc_version {
-        // The `since` field doesn't have semantic purpose in the stable `deprecated`
-        // attribute, only in `rustc_deprecated`.
+        // The `since` field only has semantic purpose in libstd usages of
+        // the `deprecated`/`deprecated_safe` attributes.
         return true;
     }
-
+    let since = since.as_ref().map(Symbol::as_str);
     if let Some(since) = since {
         if since == "TBD" {
             return false;
@@ -132,14 +136,13 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
             let since: Vec<u32> = parse_version(&since);
             let rustc: Vec<u32> = parse_version(rustc);
             // We simply treat invalid `since` attributes as relating to a previous
-            // Rust version, thus always displaying the warning.
+            // Rust version, thus always being in effect.
             if since.len() != 3 {
                 return true;
             }
             return since <= rustc;
         }
     };
-
     // Assume deprecation is in effect if "since" field is missing
     // or if we can't determine the current Rust version.
     true
@@ -245,6 +248,362 @@ fn late_report_deprecation(
         }
         diag.emit();
     });
+}
+
+// FIXME(skippy) specifically needs reviewer feedback
+// FIXME(skippy) is stability::* the right place for all this stuff?
+#[derive(Copy, Debug, Clone)]
+pub struct DeprecationAsSafe {
+    pub since: Option<Symbol>,
+    /// The note to issue a reason.
+    pub note: Option<Symbol>,
+
+    /// The edition where the item is treated as fully unsafe with
+    /// safe usage erroring instead of emitting a deprecated_safe lint
+    pub unsafe_edition: Option<Edition>,
+
+    /// Whether to treat the since attribute as being a Rust version identifier
+    /// (rather than an opaque string).
+    pub is_since_rustc_version: bool,
+}
+
+pub enum DeprecationAsSafeKind {
+    FnCall { unsafe_op_in_unsafe_fn_allowed: bool },
+    FnPointerCoercion,
+    FnTraitCoercion,
+    TraitImpl,
+    TraitFnImpl,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum DeprecationAsSafeState {
+    None,
+    InEffect { in_future: bool },
+}
+
+impl DeprecationAsSafeState {
+    pub fn is_in_effect(&self) -> bool {
+        matches!(self, DeprecationAsSafeState::InEffect { .. })
+    }
+
+    pub fn is_in_effect_in_future(&self) -> bool {
+        matches!(self, DeprecationAsSafeState::InEffect { in_future: true, .. })
+    }
+}
+
+// check whether this item should be treated as an unsafe item marked with #[deprecated_safe]
+// - in stable usage the item will always be marked unsafe
+// - in unstable usage the item will not be marked unsafe, but it will behave as if it is
+//   within libstd
+pub fn check_deprecation_as_safe(
+    tcx: TyCtxt<'_>,
+    unsafety: hir::Unsafety,
+    def_id: DefId,
+    span: Span,
+) -> DeprecationAsSafeState {
+    // #[deprecated_safe] is unstable, ignore it completely on stable rust
+    if !tcx.sess.is_nightly_build() {
+        return DeprecationAsSafeState::None;
+    }
+    // if the item isn't unsafe yet and we're not within libstd then return early
+    // the attribute can't be in effect so no need to look it up
+    else if unsafety == hir::Unsafety::Normal && !tcx.features().staged_api {
+        return DeprecationAsSafeState::None;
+    }
+
+    // look up the atttribute
+    let Some(attr) = tcx.get_attrs(def_id).iter().find(|x| x.has_name(sym::deprecated_safe)) else {
+        return DeprecationAsSafeState::None;
+    };
+    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, def_id, attr) else {
+        bug!("invalid #[deprecated_safe] attribute during reporting");
+    };
+
+    let in_effect = deprecation_as_safe_in_effect(&depr_as_safe);
+    let in_future = tcx.features().staged_api && !in_effect;
+
+    // if the `unsafe_edition` has been reached, #[deprecated_safe] ceases to exist
+    // and the function/trait behaves fully unsafe with no escape hatch
+    // note: `unsafe_edition` is only checked once the ```since``` version is in effect
+    if in_effect && let Some(unsafe_edition) = depr_as_safe.unsafe_edition
+        && span.edition() >= unsafe_edition
+    {
+        return DeprecationAsSafeState::None;
+    }
+
+    // if #[deprecated_safe] isn't in effect yet, must treat the function/trait as if it is still safe
+    // but always consider #[deprecated_safe] in effect within libstd itself
+    if in_effect || in_future {
+        return DeprecationAsSafeState::InEffect { in_future };
+    }
+
+    DeprecationAsSafeState::None
+}
+
+pub fn parse_deprecation_as_safe(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    attr: &Attribute,
+) -> Option<DeprecationAsSafe> {
+    let Some(meta_kind) = attr.meta_kind() else {
+        return None;
+    };
+
+    let is_rustc = tcx.features().staged_api || tcx.lookup_stability(def_id).is_some();
+    let mut since = None;
+    let mut note = None;
+    let mut unsafe_edition = None;
+
+    match &meta_kind {
+        MetaItemKind::Word => {}
+        MetaItemKind::NameValue(..) => note = attr.value_str(),
+        MetaItemKind::List(list) => {
+            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
+                if item.is_some() {
+                    struct_span_err!(
+                        tcx.sess,
+                        attr.span,
+                        E0538,
+                        "multiple '{}' items",
+                        &meta.name_or_empty()
+                    )
+                    .emit();
+                    return false;
+                }
+                if let Some(v) = meta.value_str() {
+                    *item = Some(v);
+                    true
+                } else {
+                    if let Some(lit) = meta.name_value_literal() {
+                        struct_span_err!(
+                            tcx.sess,
+                            lit.span,
+                            E0565,
+                            "literal in `deprecated_safe` value must be a string",
+                        )
+                        .emit();
+                    } else {
+                        struct_span_err!(
+                            tcx.sess,
+                            meta.span,
+                            E0551,
+                            "incorrect meta item '{}'",
+                            meta.name_or_empty()
+                        )
+                        .emit();
+                    }
+
+                    false
+                }
+            };
+
+            for meta in list {
+                match meta {
+                    NestedMetaItem::MetaItem(mi) => match mi.name_or_empty() {
+                        sym::since => {
+                            if !get(mi, &mut since) {
+                                return None;
+                            }
+                        }
+                        sym::note => {
+                            if !get(mi, &mut note) {
+                                return None;
+                            }
+                        }
+                        sym::unsafe_edition => {
+                            if !get(mi, &mut unsafe_edition) {
+                                return None;
+                            }
+                        }
+                        _ => {
+                            struct_span_err!(
+                                tcx.sess,
+                                mi.span,
+                                E0541,
+                                "unknown meta item '{}'",
+                                mi.name_or_empty()
+                            )
+                            .emit();
+                            return None;
+                        }
+                    },
+                    NestedMetaItem::Literal(lit) => {
+                        struct_span_err!(
+                            tcx.sess,
+                            lit.span,
+                            E0565,
+                            "item in `deprecated_safe` must be a key/value pair",
+                        )
+                        .emit();
+                        return None;
+                    }
+                }
+            }
+        }
+    }
+
+    if is_rustc {
+        if since.is_none() {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                // FIXME(skippy) wrong error code, need to create a new one
+                E0542,
+                "missing 'since'"
+            )
+            .emit();
+            return None;
+        }
+
+        if note.is_none() {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                // FIXME(skippy) wrong error code, need to create a new one
+                E0543,
+                "missing 'note'"
+            )
+            .emit();
+            return None;
+        }
+    } else {
+        if unsafe_edition.is_some() {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                // FIXME(skippy) wrong error code, need to create a new one
+                E0543,
+                "'unsafe_edition' is invalid outside of rustc"
+            )
+            .emit();
+            return None;
+        }
+    }
+
+    let mut unsafe_edition_parsed = None;
+    if let Some(unsafe_edition) = unsafe_edition {
+        if let Ok(unsafe_edition) = Edition::from_str(unsafe_edition.as_str()) {
+            unsafe_edition_parsed = Some(unsafe_edition);
+        } else {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                // FIXME(skippy) wrong error code, need to create a new one
+                E0543,
+                "invalid 'unsafe_edition' specified"
+            )
+            .emit();
+            return None;
+        }
+    }
+
+    Some(DeprecationAsSafe {
+        since,
+        note,
+        unsafe_edition: unsafe_edition_parsed,
+        is_since_rustc_version: is_rustc,
+    })
+}
+
+/// Checks whether an item marked with `deprecated_safe(since="X")` is currently
+/// deprecated as safe (i.e., whether X is not greater than the current rustc version).
+pub fn deprecation_as_safe_in_effect(depr: &DeprecationAsSafe) -> bool {
+    deprecation_since_in_effect(depr.is_since_rustc_version, depr.since)
+}
+
+pub fn report_deprecation_as_safe<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    kind: DeprecationAsSafeKind,
+    def_id: DefId,
+    lint_root: HirId,
+    span: Span,
+) {
+    let def_path = with_no_trimmed_paths!(tcx.def_path_str(def_id));
+    let def_kind = tcx.def_kind(def_id).descr(def_id);
+
+    // look up the atttribute
+    let Some(attr) = tcx.get_attrs(def_id).iter().find(|x| x.has_name(sym::deprecated_safe)) else {
+        bug!("missing #[deprecated_safe] attribute during reporting");
+    };
+    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, def_id, attr) else {
+        bug!("invalid #[deprecated_safe] attribute during reporting");
+    };
+
+    let depr_as_safe_in_effect = deprecation_as_safe_in_effect(&depr_as_safe);
+
+    let (message, span_label) = match kind {
+        DeprecationAsSafeKind::FnCall { unsafe_op_in_unsafe_fn_allowed } => {
+            let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
+            (
+                format!(
+                    "use of {} `{}` without an unsafe{} block has been deprecated as it is now an unsafe {}",
+                    def_kind, def_path, fn_sugg, def_kind
+                ),
+                Some("call to unsafe function"),
+            )
+        }
+        DeprecationAsSafeKind::FnPointerCoercion => (
+            format!(
+                "use of {} `{}` as a normal fn pointer has been deprecated as it is now an unsafe {}",
+                def_kind, def_path, def_kind
+            ),
+            Some("expected normal fn pointer, found unsafe fn pointer"),
+        ),
+        DeprecationAsSafeKind::FnTraitCoercion => (
+            format!(
+                "use of {} `{}` as a closure has been deprecated as it is now an unsafe {}",
+                def_kind, def_path, def_kind
+            ),
+            None,
+        ),
+        DeprecationAsSafeKind::TraitImpl => (
+            format!(
+                "use of {} `{}` without an `unsafe impl` declaration has been deprecated as it is now an unsafe {}",
+                def_kind, def_path, def_kind
+            ),
+            None,
+        ),
+        DeprecationAsSafeKind::TraitFnImpl => (
+            format!(
+                "use of {} `{}` without an `unsafe fn` declaration has been deprecated as it is now an unsafe {}",
+                def_kind, def_path, def_kind
+            ),
+            None,
+        ),
+    };
+
+    tcx.struct_span_lint_hir(
+        if depr_as_safe_in_effect { DEPRECATED_SAFE } else { DEPRECATED_SAFE_IN_FUTURE },
+        lint_root,
+        span,
+        |lint| {
+            let mut diag = lint.build(&message);
+            if let Some(span_label) = span_label {
+                diag.span_label(span, span_label);
+            }
+
+            let since_message = if let Some(since) = depr_as_safe.since {
+                format!(" since {}", since)
+            } else {
+                "".to_owned()
+            };
+            diag.note(&format!(
+                "this {} was previously not marked unsafe, but has been marked unsafe{}",
+                def_kind, since_message,
+            ));
+
+            diag.note(&format!(
+                "consult the {}'s documentation for information on how to avoid undefined behavior",
+                def_kind
+            ));
+
+            if let Some(note) = depr_as_safe.note {
+                diag.note(note.as_str());
+            }
+
+            diag.emit();
+        },
+    );
 }
 
 /// Result of `TyCtxt::eval_stability`.

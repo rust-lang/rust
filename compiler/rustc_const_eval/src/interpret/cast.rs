@@ -74,6 +74,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
+            Pointer(PointerCast::DeprecatedSafeFnPointer) => {
+                let src = self.read_immediate(src)?;
+                match cast_ty.kind() {
+                    ty::FnPtr(_) => {
+                        // No change to value
+                        self.write_immediate(*src, dest)?;
+                    }
+                    _ => span_bug!(self.cur_span(), "unsafe fn to fn cast on {:?}", cast_ty),
+                }
+            }
+
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {

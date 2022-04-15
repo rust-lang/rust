@@ -586,6 +586,11 @@ fn codegen_stmt<'tcx>(
                     to_ty,
                 )
                 | Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::DeprecatedSafeFnPointer),
+                    ref operand,
+                    to_ty,
+                )
+                | Rvalue::Cast(
                     CastKind::Pointer(PointerCast::MutToConstPointer),
                     ref operand,
                     to_ty,

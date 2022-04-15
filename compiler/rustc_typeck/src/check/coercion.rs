@@ -46,6 +46,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -720,17 +721,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(coercion)
     }
 
-    fn coerce_from_safe_fn<F, G>(
+    fn coerce_from_safe_fn<F, G, H>(
         &self,
         a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
         to_unsafe: F,
         normal: G,
+        fn_def_id_a: Option<DefId>,
+        to_safe: H,
     ) -> CoerceResult<'tcx>
     where
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
+        H: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
         if let ty::FnPtr(fn_ty_b) = b.kind() {
             if let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
@@ -738,6 +742,26 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                 return self.unify_and(unsafe_a, b, to_unsafe);
+            }
+            // check if this is a coercion from a #[deprecated_safe] fn() pointer
+            // to a safe fn() pointer and lint if so
+            else if fn_ty_b.unsafety() == hir::Unsafety::Normal
+                && let Some(fn_def_id_a) = fn_def_id_a
+                && stability::check_deprecation_as_safe(self.tcx(), fn_ty_a.unsafety(), fn_def_id_a, self.cause.span).is_in_effect()
+            {
+                stability::report_deprecation_as_safe(
+                    self.tcx(),
+                    DeprecationAsSafeKind::FnPointerCoercion,
+                    fn_def_id_a,
+                    self.cause.body_id,
+                    self.cause.span,
+                );
+
+                // only apply the unsafe coercion if the function truly is ```unsafe``` in source
+                if fn_ty_a.unsafety() == hir::Unsafety::Unsafe {
+                    let safe_a = self.tcx.unsafe_to_safe_fn_ty(fn_ty_a);
+                    return self.unify_and(safe_a, b, to_safe);
+                }
             }
         }
         self.unify_and(a, b, normal)
@@ -762,6 +786,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             b,
             simple(Adjust::Pointer(PointerCast::UnsafeFnPointer)),
             identity,
+            None,
+            |_| unreachable!(),
         )
     }
 
@@ -796,6 +822,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
+                let a_fn_def_id =
+                    if let ty::FnDef(def_id, _) = *a.kind() { Some(def_id) } else { None };
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
                     a_fn_pointer,
                     a_sig,
@@ -813,6 +841,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         ]
                     },
                     simple(Adjust::Pointer(PointerCast::ReifyFnPointer)),
+                    a_fn_def_id,
+                    |safe_ty| {
+                        vec![
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
+                                target: a_fn_pointer,
+                            },
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::DeprecatedSafeFnPointer),
+                                target: safe_ty,
+                            },
+                        ]
+                    },
                 )?;
 
                 obligations.extend(o2);

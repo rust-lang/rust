@@ -1,4 +1,5 @@
 use crate::build::ExprCategory;
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
 use rustc_middle::thir::visit::{self, Visitor};
 
 use rustc_errors::struct_span_err;
@@ -72,16 +73,28 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     fn requires_unsafe(&mut self, span: Span, kind: UnsafeOpKind) {
         let (description, note) = kind.description_and_note();
         let unsafe_op_in_unsafe_fn_allowed = self.unsafe_op_in_unsafe_fn_allowed();
-        match self.safety_context {
-            SafetyContext::BuiltinUnsafeBlock => {}
-            SafetyContext::UnsafeBlock { ref mut used, .. } => {
+        match (&mut self.safety_context, kind) {
+            (SafetyContext::BuiltinUnsafeBlock, _) => {}
+            (SafetyContext::UnsafeBlock { ref mut used, .. }, _) => {
                 if !self.body_unsafety.is_unsafe() || !unsafe_op_in_unsafe_fn_allowed {
                     // Mark this block as useful
                     *used = true;
                 }
             }
-            SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
-            SafetyContext::UnsafeFn => {
+            (SafetyContext::UnsafeFn, _) if unsafe_op_in_unsafe_fn_allowed => {}
+            // check if this is a call to a #[deprecated_safe] fn() and lint if so
+            // instead of erroring
+            (
+                SafetyContext::UnsafeFn | SafetyContext::Safe,
+                CallToDeprecatedSafeFunction { depr_as_safe },
+            ) => stability::report_deprecation_as_safe(
+                self.tcx,
+                DeprecationAsSafeKind::FnCall { unsafe_op_in_unsafe_fn_allowed },
+                depr_as_safe,
+                self.hir_context,
+                span,
+            ),
+            (SafetyContext::UnsafeFn, _) => {
                 // unsafe_op_in_unsafe_fn is disallowed
                 self.tcx.struct_span_lint_hir(
                     UNSAFE_OP_IN_UNSAFE_FN,
@@ -98,7 +111,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     },
                 )
             }
-            SafetyContext::Safe => {
+            (SafetyContext::Safe, _) => {
                 let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
                 struct_span_err!(
                     self.tcx.sess,
@@ -349,9 +362,22 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 return; // don't visit the whole expression
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if self.thir[fun].ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
+                let fun_ty = self.thir[fun].ty;
+                let fun_sig = fun_ty.fn_sig(self.tcx);
+                // check if this is a call to a #[deprecated_safe] fn() and lint if so
+                // instead of erroring
+                if let ty::FnDef(func_id, _) = fun_ty.kind()
+                    && stability::check_deprecation_as_safe(self.tcx, fun_sig.unsafety(), *func_id, expr.span).is_in_effect()
+                {
+                    self.requires_unsafe(
+                        expr.span,
+                        CallToDeprecatedSafeFunction { depr_as_safe: *func_id },
+                    );
+                } else if fun_sig.unsafety() == hir::Unsafety::Unsafe {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
-                } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
+                }
+
+                if let &ty::FnDef(func_did, _) = fun_ty.kind() {
                     // If the called function has target features the calling function hasn't,
                     // the call requires `unsafe`. Don't check this on wasm
                     // targets, though. For more information on wasm see the
@@ -524,6 +550,7 @@ impl BodyUnsafety {
 #[derive(Clone, Copy, PartialEq)]
 enum UnsafeOpKind {
     CallToUnsafeFunction,
+    CallToDeprecatedSafeFunction { depr_as_safe: DefId },
     UseOfInlineAssembly,
     InitializingTypeWith,
     UseOfMutableStatic,
@@ -546,6 +573,8 @@ impl UnsafeOpKind {
                 "consult the function's documentation for information on how to avoid undefined \
                  behavior",
             ),
+            // unused, report_deprecation_as_safe is used instead
+            CallToDeprecatedSafeFunction { .. } => ("", ""),
             UseOfInlineAssembly => (
                 "use of inline assembly",
                 "inline assembly is entirely unchecked and can cause undefined behavior",

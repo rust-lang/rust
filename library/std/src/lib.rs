@@ -204,6 +204,7 @@
 // Don't link to std. We are std.
 #![no_std]
 #![warn(deprecated_in_future)]
+#![cfg_attr(not(bootstrap), warn(deprecated_safe_in_future))]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
@@ -231,6 +232,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
+#![cfg_attr(not(bootstrap), feature(deprecated_safe))]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]

@@ -11,6 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
+use rustc_middle::middle::stability;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_target::spec::abi::Abi;
@@ -495,22 +496,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ..
                 } = self_ty.fn_sig(self.tcx()).skip_binder()
                 {
-                    candidates.vec.push(FnPointerCandidate { is_const: false });
+                    candidates.vec.push(FnPointerCandidate { is_const: false, depr_as_safe: None });
                 }
             }
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
             ty::FnDef(def_id, _) => {
-                if let ty::FnSig {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: Abi::Rust,
-                    c_variadic: false,
-                    ..
-                } = self_ty.fn_sig(self.tcx()).skip_binder()
+                if let ty::FnSig { unsafety, abi: Abi::Rust, c_variadic: false, .. } =
+                    self_ty.fn_sig(self.tcx()).skip_binder()
                 {
                     if self.tcx().codegen_fn_attrs(def_id).target_features.is_empty() {
-                        candidates
-                            .vec
-                            .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
+                        // check if a #[deprecated_safe] fn() is being used as a closure, a
+                        // deprecated_safe lint must be emitted if this candidate is used
+                        if stability::check_deprecation_as_safe(
+                            self.tcx(),
+                            unsafety,
+                            def_id,
+                            obligation.cause.span,
+                        )
+                        .is_in_effect()
+                        {
+                            candidates.vec.push(FnPointerCandidate {
+                                is_const: self.tcx().is_const_fn(def_id),
+                                depr_as_safe: Some(def_id),
+                            });
+                        } else if unsafety == hir::Unsafety::Normal {
+                            candidates.vec.push(FnPointerCandidate {
+                                is_const: self.tcx().is_const_fn(def_id),
+                                depr_as_safe: None,
+                            });
+                        }
                     }
                 }
             }
@@ -792,7 +806,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let principal_def_id_b = data_b.principal_def_id();
                     if principal_def_id_a == principal_def_id_b {
                         // no cyclic
-                        candidates.vec.push(BuiltinUnsizeCandidate);
+                        candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: None });
                     } else if principal_def_id_a.is_some() && principal_def_id_b.is_some() {
                         // not casual unsizing, now check whether this is trait upcasting coercion.
                         let principal_a = data_a.principal().unwrap();
@@ -834,8 +848,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => {
-                candidates.vec.push(BuiltinUnsizeCandidate);
+            (from, &ty::Dynamic(to_preds, ..)) => {
+                // check if a #[deprecated_safe] fn() is being used as a closure, a
+                // deprecated_safe lint must be emitted if this candidate is used
+                if let ty::FnDef(def_id, _) = *from
+                    && let Some(trait_def_id) = to_preds.principal_def_id()
+                    && self.tcx().fn_trait_kind_from_lang_item(trait_def_id).is_some()
+                    && stability::check_deprecation_as_safe(
+                        self.tcx(),
+                        source.fn_sig(self.tcx()).unsafety(),
+                        def_id,
+                        obligation.cause.span,
+                    ).is_in_effect()
+                {
+                    candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: Some(def_id) });
+                } else {
+                    candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: None });
+                }
             }
 
             // Ambiguous handling is below `T` -> `Trait`, because inference
@@ -848,20 +877,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `[T; n]` -> `[T]`
             (&ty::Array(..), &ty::Slice(_)) => {
-                candidates.vec.push(BuiltinUnsizeCandidate);
+                candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: None });
             }
 
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def_id_a, _), &ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
                 if def_id_a == def_id_b {
-                    candidates.vec.push(BuiltinUnsizeCandidate);
+                    candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: None });
                 }
             }
 
             // `(.., T)` -> `(.., U)`
             (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
                 if tys_a.len() == tys_b.len() {
-                    candidates.vec.push(BuiltinUnsizeCandidate);
+                    candidates.vec.push(BuiltinUnsizeCandidate { depr_as_safe: None });
                 }
             }
 

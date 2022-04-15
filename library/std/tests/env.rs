@@ -19,6 +19,8 @@ fn eq(a: Option<OsString>, b: Option<&str>) {
 #[test]
 fn test_set_var() {
     let n = make_rand_name();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "VALUE");
     eq(var_os(&n), Some("VALUE"));
 }
@@ -26,7 +28,11 @@ fn test_set_var() {
 #[test]
 fn test_remove_var() {
     let n = make_rand_name();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "VALUE");
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     remove_var(&n);
     eq(var_os(&n), None);
 }
@@ -34,9 +40,15 @@ fn test_remove_var() {
 #[test]
 fn test_set_var_overwrite() {
     let n = make_rand_name();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "1");
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "2");
     eq(var_os(&n), Some("2"));
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "");
     eq(var_os(&n), Some(""));
 }
@@ -51,6 +63,8 @@ fn test_var_big() {
         i += 1;
     }
     let n = make_rand_name();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, &s);
     eq(var_os(&n), Some(&s));
 }
@@ -60,8 +74,12 @@ fn test_var_big() {
 fn test_env_set_get_huge() {
     let n = make_rand_name();
     let s = "x".repeat(10000);
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, &s);
     eq(var_os(&n), Some(&s));
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     remove_var(&n);
     eq(var_os(&n), None);
 }
@@ -71,6 +89,8 @@ fn test_env_set_var() {
     let n = make_rand_name();
 
     let mut e = vars_os();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var(&n, "VALUE");
     assert!(!e.any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
 
@@ -95,9 +115,13 @@ fn env_home_dir() {
         if #[cfg(unix)] {
             let oldhome = var_to_os_string(var("HOME"));
 
+            // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+            #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
             set_var("HOME", "/home/MountainView");
             assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
+            // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+            #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
             remove_var("HOME");
             if cfg!(target_os = "android") {
                 assert!(home_dir().is_none());
@@ -108,33 +132,59 @@ fn env_home_dir() {
                 assert_ne!(home_dir(), Some(PathBuf::from("/home/MountainView")));
             }
 
+            // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+            #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
             if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
         } else if #[cfg(windows)] {
             let oldhome = var_to_os_string(var("HOME"));
             let olduserprofile = var_to_os_string(var("USERPROFILE"));
 
-            remove_var("HOME");
-            remove_var("USERPROFILE");
+            // SAFETY: inside a cfg!(windows) section, remove_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                remove_var("HOME");
+                remove_var("USERPROFILE");
+            }
 
             assert!(home_dir().is_some());
 
             set_var("HOME", "/home/MountainView");
             assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
-            remove_var("HOME");
+            // SAFETY: inside a cfg!(windows) section, remove_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                remove_var("HOME");
+            }
 
-            set_var("USERPROFILE", "/home/MountainView");
+            // SAFETY: inside a cfg!(windows) section, set_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                set_var("USERPROFILE", "/home/MountainView");
+            }
             assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
-            set_var("HOME", "/home/MountainView");
-            set_var("USERPROFILE", "/home/PaloAlto");
+            // SAFETY: inside a cfg!(windows) section, set_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                set_var("HOME", "/home/MountainView");
+                set_var("USERPROFILE", "/home/PaloAlto");
+            }
             assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
-            remove_var("HOME");
-            remove_var("USERPROFILE");
+            // SAFETY: inside a cfg!(windows) section, remove_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                remove_var("HOME");
+                remove_var("USERPROFILE");
+            }
 
-            if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
-            if let Some(olduserprofile) = olduserprofile { set_var("USERPROFILE", olduserprofile); }
+            // SAFETY: inside a cfg!(windows) section, set_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
+                if let Some(olduserprofile) = olduserprofile { set_var("USERPROFILE", olduserprofile); }
+            }
         }
     }
 }

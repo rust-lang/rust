@@ -1,0 +1,52 @@
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe-trait-fn.rs:15:5
+   |
+LL |     fn depr_safe_fn(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_generic` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe-trait-fn.rs:16:5
+   |
+LL |     fn depr_safe_fn_generic<K: AsRef<OsStr>, V: AsRef<OsStr>>(&self, key: K, value: V) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error[E0053]: method `depr_safe_fn_future` has an incompatible type for trait
+  --> $DIR/deprecated-safe-trait-fn.rs:17:5
+   |
+LL |     unsafe fn depr_safe_fn_future(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
+   |
+   = note: expected fn pointer `fn(&BadImpls)`
+              found fn pointer `unsafe fn(&BadImpls)`
+
+error[E0053]: method `depr_safe_fn_2015` has an incompatible type for trait
+  --> $DIR/deprecated-safe-trait-fn.rs:18:5
+   |
+LL |     fn depr_safe_fn_2015(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected unsafe fn, found normal fn
+   |
+   = note: expected fn pointer `unsafe fn(&BadImpls)`
+              found fn pointer `fn(&BadImpls)`
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_2018` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe-trait-fn.rs:19:5
+   |
+LL |     fn depr_safe_fn_2018(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error: aborting due to 2 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0053`.
