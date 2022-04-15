@@ -3,7 +3,8 @@
 
 // min-lldb-version: 310
 
-// compile-flags:-g
+// no-prefer-dynamic
+// compile-flags:-g -C lto
 // gdb-command:run
 // gdbg-command:print 'basic_types_globals::B'
 // gdbr-command:print B
