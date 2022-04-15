@@ -98,7 +98,7 @@ fn punctuation(sema: &Semantics<RootDatabase>, token: SyntaxToken, kind: SyntaxK
             }
         }
         (T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.], _) => HlOperator::Other.into(),
-        (T![!], MACRO_CALL) => HlPunct::MacroBang.into(),
+        (T![!], MACRO_CALL | MACRO_RULES) => HlPunct::MacroBang.into(),
         (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
         (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
         (T![*], PTR_TYPE) => HlTag::Keyword.into(),

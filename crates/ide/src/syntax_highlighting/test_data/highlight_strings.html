@@ -42,20 +42,20 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">println</span> <span class="brace">{</span>
+<pre><code><span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">println</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>arg<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="brace">{</span>
         <span class="punctuation">$</span>crate<span class="colon">:</span><span class="colon">:</span>io<span class="colon">:</span><span class="colon">:</span>_print<span class="parenthesis">(</span><span class="punctuation">$</span>crate<span class="colon">:</span><span class="colon">:</span>format_args_nl<span class="punctuation">!</span><span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>arg<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="brace">}</span><span class="parenthesis">)</span>
 <span class="brace">}</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">macro_export</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">format_args</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">format_args</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">macro_export</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">const_format_args</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">const_format_args</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">macro_export</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">format_args_nl</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">format_args_nl</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">mod</span> <span class="module declaration">panic</span> <span class="brace">{</span>
     <span class="keyword">pub</span> <span class="keyword">macro</span> <span class="macro declaration">panic_2015</span> <span class="brace">{</span>
@@ -81,13 +81,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="parenthesis attribute">(</span><span class="none attribute">std_panic</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">macro_export</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">panic</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">panic</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">assert</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">assert</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">rustc_builtin_macro</span><span class="attribute_bracket attribute">]</span>
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">asm</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">asm</span> <span class="brace">{</span><span class="brace">}</span>
 
-<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">toho</span> <span class="brace">{</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">toho</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>crate<span class="colon">:</span><span class="colon">:</span>panic<span class="punctuation">!</span><span class="parenthesis">(</span><span class="string_literal">"not yet implemented"</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>arg<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">+</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>crate<span class="colon">:</span><span class="colon">:</span>panic<span class="punctuation">!</span><span class="parenthesis">(</span><span class="string_literal">"not yet implemented: {}"</span><span class="comma">,</span> <span class="punctuation">$</span>crate<span class="colon">:</span><span class="colon">:</span>format_args<span class="punctuation">!</span><span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>arg<span class="parenthesis">)</span><span class="punctuation">+</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
