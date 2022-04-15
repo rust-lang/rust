@@ -486,7 +486,7 @@ fn augment_param_env<'tcx>(
         tcx.mk_predicates(param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()));
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
+    ty::ParamEnv::new(bounds, param_env.reveal())
 }
 
 /// We use the following trait as an example throughout this function.
@@ -1698,14 +1698,10 @@ fn receiver_is_implemented<'tcx>(
 ) -> bool {
     let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id: receiver_trait_def_id,
-        substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
+        substs: fcx.tcx.mk_substs_trait(receiver_ty, &[], ty::ConstnessArg::Not),
     });
 
-    let obligation = traits::Obligation::new(
-        cause,
-        fcx.param_env,
-        trait_ref.without_const().to_predicate(fcx.tcx),
-    );
+    let obligation = traits::Obligation::new(cause, fcx.param_env, trait_ref.to_predicate(fcx.tcx));
 
     if fcx.predicate_must_hold_modulo_regions(&obligation) {
         true

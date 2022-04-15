@@ -180,7 +180,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => continue,
+                    GenericParamDefKind::Lifetime | GenericParamDefKind::Constness => continue,
                 };
                 let name = param.name;
                 flags.push((name, Some(value)));
