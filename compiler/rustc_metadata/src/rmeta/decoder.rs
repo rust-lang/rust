@@ -1,6 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::creader::CrateMetadataRef;
+use crate::creader::{CStore, CrateMetadataRef};
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
@@ -1737,6 +1737,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 impl CrateMetadata {
     crate fn new(
         sess: &Session,
+        cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot<'static>,
         raw_proc_macros: Option<&'static [ProcMacro]>,
@@ -1752,11 +1753,6 @@ impl CrateMetadata {
             .decode((&blob, sess))
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
-        let incoherent_impls = root
-            .incoherent_impls
-            .decode((&blob, sess))
-            .map(|incoherent_impls| (incoherent_impls.self_ty, incoherent_impls.impls))
-            .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
         let dependencies = Lock::new(cnum_map.iter().cloned().collect());
@@ -1765,11 +1761,11 @@ impl CrateMetadata {
         // that does not copy any data. It just does some data verification.
         let def_path_hash_map = root.def_path_hash_map.decode(&blob);
 
-        CrateMetadata {
+        let mut cdata = CrateMetadata {
             blob,
             root,
             trait_impls,
-            incoherent_impls,
+            incoherent_impls: Default::default(),
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
             def_path_hash_map,
@@ -1786,7 +1782,17 @@ impl CrateMetadata {
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
             def_path_hash_cache: Default::default(),
-        }
+        };
+
+        // Need `CrateMetadataRef` to decode `DefId`s in simplified types.
+        cdata.incoherent_impls = cdata
+            .root
+            .incoherent_impls
+            .decode(CrateMetadataRef { cdata: &cdata, cstore })
+            .map(|incoherent_impls| (incoherent_impls.self_ty, incoherent_impls.impls))
+            .collect();
+
+        cdata
     }
 
     crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {

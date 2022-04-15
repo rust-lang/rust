@@ -23,7 +23,7 @@ pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
-pub const CSTRING_AS_C_STR: [&str; 5] = ["std", "ffi", "c_str", "CString", "as_c_str"];
+pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
 /// Preferably use the diagnostic item `sym::deref_method` where possible

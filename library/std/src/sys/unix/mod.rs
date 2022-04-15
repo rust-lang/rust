@@ -3,7 +3,6 @@
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]

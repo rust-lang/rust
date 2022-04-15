@@ -14,6 +14,11 @@ use crate::marker::PhantomData;
 use crate::num::*;
 use crate::ops::{Deref, DerefMut};
 
+#[unstable(feature = "core_c_str", issue = "94079")]
+pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
+
+mod c_str;
+
 macro_rules! type_alias_no_nz {
     {
       $Docfile:tt, $Alias:ident = $Real:ty;

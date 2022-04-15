@@ -26,6 +26,7 @@ use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
 use crate::fmt::{self, Debug, Display, Write};
+use crate::io;
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -611,6 +612,48 @@ impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
 impl Error for time::FromFloatSecsError {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for alloc::ffi::NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for io::Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`io::Error`].
+    fn from(_: alloc::ffi::NulError) -> io::Error {
+        io::const_io_error!(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for core::ffi::FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for core::ffi::FromBytesUntilNulError {}
+
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl Error for alloc::ffi::FromVecWithNulError {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl Error for alloc::ffi::IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(self.__source())
+    }
+}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
