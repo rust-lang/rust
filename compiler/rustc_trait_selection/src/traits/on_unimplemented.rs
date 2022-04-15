@@ -258,7 +258,7 @@ impl<'tcx> OnUnimplementedDirective {
                 enclosing_scope = Some(enclosing_scope_.clone());
             }
 
-            append_const_msg = command.append_const_msg.clone();
+            append_const_msg = command.append_const_msg;
         }
 
         OnUnimplementedNote {

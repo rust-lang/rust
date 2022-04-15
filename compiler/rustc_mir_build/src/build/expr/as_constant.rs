@@ -39,7 +39,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     };
 
-                Constant { span, user_ty: None, literal: literal.into() }
+                Constant { span, user_ty: None, literal }
             }
             ExprKind::NonHirLiteral { lit, user_ty } => {
                 let user_ty = user_ty.map(|user_ty| {

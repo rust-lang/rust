@@ -553,13 +553,13 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id()) {
-        if alloc.inner().relocations().len() != 0 {
-            let msg = "statics with a custom `#[link_section]` must be a \
-                           simple list of bytes on the wasm target with no \
-                           extra levels of indirection such as references";
-            tcx.sess.span_err(span, msg);
-        }
+    if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
+        && alloc.inner().relocations().len() != 0
+    {
+        let msg = "statics with a custom `#[link_section]` must be a \
+                        simple list of bytes on the wasm target with no \
+                        extra levels of indirection such as references";
+        tcx.sess.span_err(span, msg);
     }
 }
 
@@ -587,7 +587,7 @@ fn report_forbidden_specialization(
             ));
         }
         Err(cname) => {
-            err.note(&format!("parent implementation is in crate `{}`", cname));
+            err.note(&format!("parent implementation is in crate `{cname}`"));
         }
     }
 
@@ -610,10 +610,9 @@ fn missing_items_err(
         tcx.sess,
         impl_span,
         E0046,
-        "not all trait items implemented, missing: `{}`",
-        missing_items_msg
+        "not all trait items implemented, missing: `{missing_items_msg}`",
     );
-    err.span_label(impl_span, format!("missing `{}` in implementation", missing_items_msg));
+    err.span_label(impl_span, format!("missing `{missing_items_msg}` in implementation"));
 
     // `Span` before impl block closing brace.
     let hi = full_impl_span.hi() - BytePos(1);
@@ -628,7 +627,7 @@ fn missing_items_err(
     for trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);
         let code = format!("{}{}\n{}", padding, snippet, padding);
-        let msg = format!("implement the missing item: `{}`", snippet);
+        let msg = format!("implement the missing item: `{snippet}`");
         let appl = Applicability::HasPlaceholders;
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             err.span_label(span, format!("`{}` from trait", trait_item.name));
@@ -653,10 +652,9 @@ fn missing_items_must_implement_one_of_err(
         tcx.sess,
         impl_span,
         E0046,
-        "not all trait items implemented, missing one of: `{}`",
-        missing_items_msg
+        "not all trait items implemented, missing one of: `{missing_items_msg}`",
     );
-    err.span_label(impl_span, format!("missing one of `{}` in implementation", missing_items_msg));
+    err.span_label(impl_span, format!("missing one of `{missing_items_msg}` in implementation"));
 
     if let Some(annotation_span) = annotation_span {
         err.span_note(annotation_span, "required because of this annotation");
@@ -749,9 +747,10 @@ fn fn_sig_suggestion<'tcx>(
             Some(match ty.kind() {
                 ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
-                    let reg = match &format!("{}", reg)[..] {
-                        "'_" | "" => String::new(),
-                        reg => format!("{} ", reg),
+                    let reg = format!("{reg} ");
+                    let reg = match &reg[..] {
+                        "'_ " | " " => "",
+                        reg => reg,
                     };
                     if assoc.fn_has_self_parameter {
                         match ref_ty.kind() {
@@ -759,17 +758,17 @@ fn fn_sig_suggestion<'tcx>(
                                 format!("&{}{}self", reg, mutability.prefix_str())
                             }
 
-                            _ => format!("self: {}", ty),
+                            _ => format!("self: {ty}"),
                         }
                     } else {
-                        format!("_: {}", ty)
+                        format!("_: {ty}")
                     }
                 }
                 _ => {
                     if assoc.fn_has_self_parameter && i == 0 {
-                        format!("self: {}", ty)
+                        format!("self: {ty}")
                     } else {
-                        format!("_: {}", ty)
+                        format!("_: {ty}")
                     }
                 }
             })
@@ -779,7 +778,7 @@ fn fn_sig_suggestion<'tcx>(
         .collect::<Vec<String>>()
         .join(", ");
     let output = sig.output();
-    let output = if !output.is_unit() { format!(" -> {}", output) } else { String::new() };
+    let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
     let unsafety = sig.unsafety.prefix_str();
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
@@ -789,10 +788,7 @@ fn fn_sig_suggestion<'tcx>(
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
-    format!(
-        "{}fn {}{}({}){}{} {{ todo!() }}",
-        unsafety, ident, generics, args, output, where_clauses
-    )
+    format!("{unsafety}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 
 /// Return placeholder code for the given associated item.
@@ -830,7 +826,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
         .collect();
     let msg = format!("needs exactly one variant, but has {}", adt.variants().len(),);
-    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
+    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {msg}");
     err.span_label(sp, &msg);
     if let [start @ .., end] = &*variant_spans {
         for variant_span in start {
@@ -850,7 +846,7 @@ fn bad_non_zero_sized_fields<'tcx>(
     field_spans: impl Iterator<Item = Span>,
     sp: Span,
 ) {
-    let msg = format!("needs at most one non-zero-sized field, but has {}", field_count);
+    let msg = format!("needs at most one non-zero-sized field, but has {field_count}");
     let mut err = struct_span_err!(
         tcx.sess,
         sp,
@@ -877,7 +873,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
         tcx.sess
             .source_map()
             .span_to_snippet(span)
-            .map_or_else(|_| String::new(), |s| format!(" `{}`", s)),
+            .map_or_else(|_| String::new(), |s| format!(" `{s}`",)),
     )
     .emit();
 }

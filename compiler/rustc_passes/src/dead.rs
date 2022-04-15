@@ -158,7 +158,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
-            tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
             lhs: &'tcx hir::Expr<'tcx>,
             rhs: &'tcx hir::Expr<'tcx>,
@@ -177,7 +176,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 (hir::ExprKind::Field(lhs_l, ident_l), hir::ExprKind::Field(lhs_r, ident_r)) => {
                     if ident_l == ident_r {
-                        return check_for_self_assign_helper(tcx, typeck_results, lhs_l, lhs_r);
+                        return check_for_self_assign_helper(typeck_results, lhs_l, lhs_r);
                     }
                     return false;
                 }
@@ -188,7 +187,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind {
-            if check_for_self_assign_helper(self.tcx, self.typeck_results(), lhs, rhs)
+            if check_for_self_assign_helper(self.typeck_results(), lhs, rhs)
                 && !assign.span.from_expansion()
             {
                 let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));

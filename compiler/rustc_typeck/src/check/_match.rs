@@ -260,10 +260,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut |err| {
                 if let Some((span, msg)) = &ret_reason {
                     err.span_label(*span, msg.as_str());
-                } else if let ExprKind::Block(block, _) = &then_expr.kind {
-                    if let Some(expr) = &block.expr {
-                        err.span_label(expr.span, "found here".to_string());
-                    }
+                } else if let ExprKind::Block(block, _) = &then_expr.kind
+                    && let Some(expr) = &block.expr
+                {
+                    err.span_label(expr.span, "found here".to_string());
                 }
                 err.note("`if` expressions without `else` evaluate to `()`");
                 err.help("consider adding an `else` block that evaluates to the expected type");
@@ -293,7 +293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
                         let span = fn_decl.output.span();
                         let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                        Some((span, format!("expected `{}` because of this return type", snippet)))
+                        Some((span, format!("expected `{snippet}` because of this return type")))
                     });
                 }
             }

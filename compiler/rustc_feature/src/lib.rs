@@ -11,7 +11,7 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
-#![feature(derive_default_enum)]
+#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(once_cell)]
 
 mod accepted;

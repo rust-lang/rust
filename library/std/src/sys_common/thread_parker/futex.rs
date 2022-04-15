@@ -1,14 +1,14 @@
-use crate::sync::atomic::AtomicI32;
+use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sys::futex::{futex_wait, futex_wake};
 use crate::time::Duration;
 
-const PARKED: i32 = -1;
-const EMPTY: i32 = 0;
-const NOTIFIED: i32 = 1;
+const PARKED: u32 = u32::MAX;
+const EMPTY: u32 = 0;
+const NOTIFIED: u32 = 1;
 
 pub struct Parker {
-    state: AtomicI32,
+    state: AtomicU32,
 }
 
 // Notes about memory ordering:
@@ -34,7 +34,7 @@ pub struct Parker {
 impl Parker {
     #[inline]
     pub const fn new() -> Self {
-        Parker { state: AtomicI32::new(EMPTY) }
+        Parker { state: AtomicU32::new(EMPTY) }
     }
 
     // Assumes this is only called by the thread that owns the Parker,

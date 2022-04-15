@@ -238,7 +238,7 @@ impl Session {
             }
             diag.emit();
             // If we should err, make sure we did.
-            if must_err && !self.has_errors().is_some() {
+            if must_err && self.has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
@@ -989,6 +989,11 @@ impl Session {
     /// Are we allowed to use features from the Rust 2021 edition?
     pub fn rust_2021(&self) -> bool {
         self.opts.edition >= Edition::Edition2021
+    }
+
+    /// Are we allowed to use features from the Rust 2024 edition?
+    pub fn rust_2024(&self) -> bool {
+        self.opts.edition >= Edition::Edition2024
     }
 
     pub fn edition(&self) -> Edition {

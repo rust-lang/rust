@@ -632,11 +632,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
                         if let (ty::Dynamic(ref data_a, ..), ty::Dynamic(ref data_b, ..)) =
                             (self_ty.kind(), unsize_ty.kind())
+                            && data_a.principal_def_id() != data_b.principal_def_id()
                         {
-                            if data_a.principal_def_id() != data_b.principal_def_id() {
-                                debug!("coerce_unsized: found trait upcasting coercion");
-                                has_trait_upcasting_coercion = true;
-                            }
+                            debug!("coerce_unsized: found trait upcasting coercion");
+                            has_trait_upcasting_coercion = true;
                         }
                         if let ty::Tuple(..) = unsize_ty.kind() {
                             debug!("coerce_unsized: found unsized tuple coercion");
@@ -732,13 +731,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
-        if let ty::FnPtr(fn_ty_b) = b.kind() {
-            if let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
+        if let ty::FnPtr(fn_ty_b) = b.kind()
+            && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
                 (fn_ty_a.unsafety(), fn_ty_b.unsafety())
-            {
-                let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                return self.unify_and(unsafe_a, b, to_unsafe);
-            }
+        {
+            let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+            return self.unify_and(unsafe_a, b, to_unsafe);
         }
         self.unify_and(a, b, normal)
     }
@@ -783,12 +781,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
-                if let ty::FnDef(def_id, _) = *a.kind() {
-                    if b_sig.unsafety() == hir::Unsafety::Normal
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
-                    {
-                        return Err(TypeError::TargetFeatureCast(def_id));
-                    }
+                if let ty::FnDef(def_id, _) = *a.kind()
+                    && b_sig.unsafety() == hir::Unsafety::Normal
+                    && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    return Err(TypeError::TargetFeatureCast(def_id));
                 }
 
                 let InferOk { value: a_sig, obligations: o1 } =
@@ -1540,11 +1537,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fcx.tcx.hir().get_if_cause(expr.hir_id),
                 expected.is_unit(),
                 pointing_at_return_type,
-            ) {
+            )
                 // If the block is from an external macro or try (`?`) desugaring, then
                 // do not suggest adding a semicolon, because there's nowhere to put it.
                 // See issues #81943 and #87051.
-                if matches!(
+                && matches!(
                     cond_expr.span.desugaring_kind(),
                     None | Some(DesugaringKind::WhileLoop)
                 ) && !in_external_macro(fcx.tcx.sess, cond_expr.span)
@@ -1552,11 +1549,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         cond_expr.kind,
                         hir::ExprKind::Match(.., hir::MatchSource::TryDesugar)
                     )
-                {
-                    err.span_label(cond_expr.span, "expected this to be `()`");
-                    if expr.can_have_side_effects() {
-                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
-                    }
+            {
+                err.span_label(cond_expr.span, "expected this to be `()`");
+                if expr.can_have_side_effects() {
+                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
@@ -1636,28 +1632,27 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
         // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
         let mut is_object_safe = false;
-        if let hir::FnRetTy::Return(ty) = fn_output {
+        if let hir::FnRetTy::Return(ty) = fn_output
             // Get the return type.
-            if let hir::TyKind::OpaqueDef(..) = ty.kind {
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
-                // Get the `impl Trait`'s `DefId`.
-                if let ty::Opaque(def_id, _) = ty.kind() {
-                    // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
-                    // get the `Trait`'s `DefId`.
-                    if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =
-                        fcx.tcx.hir().expect_item(def_id.expect_local()).kind
-                    {
-                        // Are of this `impl Trait`'s traits object safe?
-                        is_object_safe = bounds.iter().all(|bound| {
-                            bound
-                                .trait_ref()
-                                .and_then(|t| t.trait_def_id())
-                                .map_or(false, |def_id| {
-                                    fcx.tcx.object_safety_violations(def_id).is_empty()
-                                })
+            && let hir::TyKind::OpaqueDef(..) = ty.kind
+        {
+            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
+            // Get the `impl Trait`'s `DefId`.
+            if let ty::Opaque(def_id, _) = ty.kind()
+                // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
+                // get the `Trait`'s `DefId`.
+                && let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =
+                    fcx.tcx.hir().expect_item(def_id.expect_local()).kind
+            {
+                // Are of this `impl Trait`'s traits object safe?
+                is_object_safe = bounds.iter().all(|bound| {
+                    bound
+                        .trait_ref()
+                        .and_then(|t| t.trait_def_id())
+                        .map_or(false, |def_id| {
+                            fcx.tcx.object_safety_violations(def_id).is_empty()
                         })
-                    }
-                }
+                })
             }
         };
         if has_impl {
@@ -1703,7 +1698,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             && let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty)
             && let ty::Dynamic(..) = ty.kind()
         {
-                    return true;
+            return true;
         }
         false
     }

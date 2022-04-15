@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(derive_default_enum)]
-
 // nb: does not impl Default
 #[derive(Debug, PartialEq)]
 struct NotDefault;

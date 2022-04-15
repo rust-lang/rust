@@ -17,7 +17,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(derive_default_enum)]
+#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(extend_one)]
 #![feature(label_break_value)]
 #![feature(let_chains)]

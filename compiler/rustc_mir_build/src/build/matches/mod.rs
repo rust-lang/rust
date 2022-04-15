@@ -701,8 +701,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
-        let region_scope = self.region_scope_tree.var_scope(var.local_id);
-        if schedule_drop {
+        // Altough there is almost always scope for given variable in corner cases
+        // like #92893 we might get variable with no scope.
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) && schedule_drop{
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
         Place::from(local_id)
@@ -710,8 +711,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     crate fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
-        let region_scope = self.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, local_id, DropKind::Value);
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) {
+            self.schedule_drop(span, region_scope, local_id, DropKind::Value);
+        }
     }
 
     /// Visit all of the primary bindings in a patterns, that is, visit the
