@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub LET_UNIT_VALUE,
-    pedantic,
+    style,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 

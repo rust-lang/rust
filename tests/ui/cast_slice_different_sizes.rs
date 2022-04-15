@@ -1,3 +1,5 @@
+#![allow(clippy::let_unit_value)]
+
 fn main() {
     let x: [i32; 3] = [1_i32, 2, 3];
     let r_x = &x;

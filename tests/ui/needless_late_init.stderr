@@ -1,5 +1,5 @@
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:4:5
+  --> $DIR/needless_late_init.rs:5:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -21,7 +21,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:13:5
+  --> $DIR/needless_late_init.rs:14:5
    |
 LL |     let b;
    |     ^^^^^^
@@ -42,7 +42,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:20:5
+  --> $DIR/needless_late_init.rs:21:5
    |
 LL |     let c;
    |     ^^^^^^
@@ -63,7 +63,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:27:5
+  --> $DIR/needless_late_init.rs:28:5
    |
 LL |     let d;
    |     ^^^^^^
@@ -84,7 +84,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:35:5
+  --> $DIR/needless_late_init.rs:36:5
    |
 LL |     let e;
    |     ^^^^^^
@@ -105,7 +105,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:42:5
+  --> $DIR/needless_late_init.rs:43:5
    |
 LL |     let f;
    |     ^^^^^^
@@ -121,7 +121,7 @@ LL +         1 => "three",
    | 
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:48:5
+  --> $DIR/needless_late_init.rs:49:5
    |
 LL |     let g: usize;
    |     ^^^^^^^^^^^^^
@@ -141,7 +141,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:63:5
+  --> $DIR/needless_late_init.rs:64:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -162,7 +162,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:80:5
+  --> $DIR/needless_late_init.rs:81:5
    |
 LL |     let a;
    |     ^^^^^^

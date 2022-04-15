@@ -1,6 +1,6 @@
 // run-rustfix
 #![deny(clippy::internal)]
-#![allow(clippy::missing_clippy_version_attribute)]
+#![allow(clippy::missing_clippy_version_attribute, clippy::let_unit_value)]
 #![feature(rustc_private)]
 
 extern crate rustc_span;

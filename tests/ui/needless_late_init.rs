@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::let_unit_value)]
 
 fn main() {
     let a;

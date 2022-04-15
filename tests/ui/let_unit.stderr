@@ -34,5 +34,74 @@ LL +         .map(|_| ())
 LL +         .next()
  ...
 
-error: aborting due to 3 previous errors
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:80:5
+   |
+LL |     let x: () = f(); // Lint.
+   |     ^^^^-^^^^^^^^^^^
+   |         |
+   |         help: use a wild (`_`) binding: `_`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:83:5
+   |
+LL |     let x: () = f2(0i32); // Lint.
+   |     ^^^^-^^^^^^^^^^^^^^^^
+   |         |
+   |         help: use a wild (`_`) binding: `_`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:85:5
+   |
+LL |     let _: () = f3(()); // Lint
+   |     ^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f3(());`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:86:5
+   |
+LL |     let x: () = f3(()); // Lint
+   |     ^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f3(());`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:88:5
+   |
+LL |     let _: () = f4(vec![()]); // Lint
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f4(vec![()]);`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:89:5
+   |
+LL |     let x: () = f4(vec![()]); // Lint
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f4(vec![()]);`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:98:5
+   |
+LL |     let x: () = if true { f() } else { f2(0) }; // Lint
+   |     ^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: use a wild (`_`) binding: `_`
+
+error: this let-binding has unit value
+  --> $DIR/let_unit.rs:109:5
+   |
+LL | /     let _: () = match Some(0) {
+LL | |         None => f2(1),
+LL | |         Some(0) => f(),
+LL | |         Some(1) => f2(3),
+LL | |         Some(_) => (),
+LL | |     };
+   | |______^
+   |
+help: omit the `let` binding
+   |
+LL ~     match Some(0) {
+LL +         None => f2(1),
+LL +         Some(0) => f(),
+LL +         Some(1) => f2(3),
+LL +         Some(_) => (),
+LL +     };
+   |
+
+error: aborting due to 11 previous errors
 
