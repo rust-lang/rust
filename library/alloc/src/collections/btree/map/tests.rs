@@ -1947,6 +1947,30 @@ fn test_pop_first_last() {
 }
 
 #[test]
+fn test_get_key_value() {
+    let mut map = BTreeMap::new();
+
+    assert!(map.is_empty());
+    assert_eq!(map.get_key_value(&1), None);
+    assert_eq!(map.get_key_value(&2), None);
+
+    map.insert(1, 10);
+    map.insert(2, 20);
+    map.insert(3, 30);
+
+    assert_eq!(map.len(), 3);
+    assert_eq!(map.get_key_value(&1), Some((&1, &10)));
+    assert_eq!(map.get_key_value(&3), Some((&3, &30)));
+    assert_eq!(map.get_key_value(&4), None);
+
+    map.remove(&3);
+
+    assert_eq!(map.len(), 2);
+    assert_eq!(map.get_key_value(&3), None);
+    assert_eq!(map.get_key_value(&2), Some((&2, &20)));
+}
+
+#[test]
 fn test_insert_into_full_height_0() {
     let size = node::CAPACITY;
     for pos in 0..=size {
