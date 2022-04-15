@@ -317,13 +317,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
-        let fn_sig = {
-            match self.typeck_results.borrow().liberated_fn_sigs().get(id) {
-                Some(f) => *f,
-                None => {
-                    bug!("No fn-sig entry for id={:?}", id);
-                }
-            }
+        let Some(fn_sig) = self.typeck_results.borrow().liberated_fn_sigs().get(id) else {
+            bug!("No fn-sig entry for id={:?}", id);
         };
 
         // Collect the types from which we create inferred bounds.
@@ -642,12 +637,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id, .. }| {
                 // `ref x` pattern
-                if let PatKind::Binding(..) = kind {
-                    if let Some(ty::BindByReference(mutbl)) =
-                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
-                    {
-                        self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
-                    }
+                if let PatKind::Binding(..) = kind
+                    && let Some(ty::BindByReference(mutbl)) = mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span) {
+                    self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
                 }
             })
         }));

@@ -43,7 +43,7 @@ pub fn check_legal_trait_for_method_call(
         let (sp, suggestion) = receiver
             .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
             .filter(|snippet| !snippet.is_empty())
-            .map(|snippet| (expr_span, format!("drop({})", snippet)))
+            .map(|snippet| (expr_span, format!("drop({snippet})")))
             .unwrap_or_else(|| (span, "drop".to_string()));
 
         err.span_suggestion(
@@ -315,17 +315,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::Tup(exp),
             hir::ExprKind::Call(_, args),
         ) = (parent_node, &callee_expr.kind, &call_expr.kind)
+            && args.len() == exp.len()
         {
-            if args.len() == exp.len() {
-                let start = callee_expr.span.shrink_to_hi();
-                err.span_suggestion(
-                    start,
-                    "consider separating array elements with a comma",
-                    ",".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-                return true;
-            }
+            let start = callee_expr.span.shrink_to_hi();
+            err.span_suggestion(
+                start,
+                "consider separating array elements with a comma",
+                ",".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
         }
         false
     }
@@ -373,15 +372,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ref t => {
                 let mut unit_variant = None;
                 let mut removal_span = call_expr.span;
-                if let ty::Adt(adt_def, ..) = t {
-                    if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(expr, _) = call_expr.kind {
-                            removal_span =
-                                expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-                            unit_variant =
-                                self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
-                        }
-                    }
+                if let ty::Adt(adt_def, ..) = t
+                    && adt_def.is_enum()
+                    && let hir::ExprKind::Call(expr, _) = call_expr.kind
+                {
+                    removal_span =
+                        expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+                    unit_variant =
+                        self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                 }
 
                 let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -392,8 +390,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     E0618,
                     "expected function, found {}",
                     match unit_variant {
-                        Some(ref path) => format!("enum variant `{}`", path),
-                        None => format!("`{}`", callee_ty),
+                        Some(ref path) => format!("enum variant `{path}`"),
+                        None => format!("`{callee_ty}`"),
                     }
                 );
 
@@ -408,8 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         removal_span,
                         &format!(
-                            "`{}` is a unit variant, you need to write it without the parentheses",
-                            path
+                            "`{path}` is a unit variant, you need to write it without the parentheses",
                         ),
                         String::new(),
                         Applicability::MachineApplicable,
@@ -452,14 +449,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(span) = self.tcx.hir().res_span(def) {
                     let callee_ty = callee_ty.to_string();
                     let label = match (unit_variant, inner_callee_path) {
-                        (Some(path), _) => Some(format!("`{}` defined here", path)),
+                        (Some(path), _) => Some(format!("`{path}` defined here")),
                         (_, Some(hir::QPath::Resolved(_, path))) => self
                             .tcx
                             .sess
                             .source_map()
                             .span_to_snippet(path.span)
                             .ok()
-                            .map(|p| format!("`{}` defined here returns `{}`", p, callee_ty)),
+                            .map(|p| format!("`{p}` defined here returns `{callee_ty}`")),
                         _ => {
                             match def {
                                 // Emit a different diagnostic for local variables, as they are not
@@ -475,7 +472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.tcx.def_path_str(def_id),
                                     ))
                                 }
-                                _ => Some(format!("`{}` defined here", callee_ty)),
+                                _ => Some(format!("`{callee_ty}` defined here")),
                             }
                         }
                     };

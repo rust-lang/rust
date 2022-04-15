@@ -322,7 +322,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             err.span_suggestion(
                                 self.span,
                                 "compare with zero instead",
-                                format!("{} != 0", snippet),
+                                format!("{snippet} != 0"),
                                 Applicability::MachineApplicable,
                             );
                         }
@@ -373,8 +373,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
-                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind() {
-                        if fcx
+                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind()
+                        && fcx
                             .try_coerce(
                                 self.expr,
                                 fcx.tcx.mk_ref(
@@ -386,27 +386,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 None,
                             )
                             .is_ok()
-                        {
-                            sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
-                        }
-                    } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind() {
-                        if expr_mutbl == Mutability::Not
-                            && mutbl == Mutability::Mut
-                            && fcx
-                                .try_coerce(
-                                    self.expr,
-                                    fcx.tcx.mk_ref(
-                                        expr_reg,
-                                        TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
-                                    ),
-                                    self.cast_ty,
-                                    AllowTwoPhase::No,
-                                    None,
-                                )
-                                .is_ok()
-                        {
-                            sugg_mutref = true;
-                        }
+                    {
+                        sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
+                    } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
+                        && expr_mutbl == Mutability::Not
+                        && mutbl == Mutability::Mut
+                        && fcx
+                            .try_coerce(
+                                self.expr,
+                                fcx.tcx.mk_ref(
+                                    expr_reg,
+                                    TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
+                                ),
+                                self.cast_ty,
+                                AllowTwoPhase::No,
+                                None,
+                            )
+                            .is_ok()
+                    {
+                        sugg_mutref = true;
                     }
 
                     if !sugg_mutref
@@ -423,8 +421,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind() {
-                    if fcx
+                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
+                    && fcx
                         .try_coerce(
                             self.expr,
                             fcx.tcx.mk_ref(
@@ -436,9 +434,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             None,
                         )
                         .is_ok()
-                    {
-                        sugg = Some((format!("&{}", mutbl.prefix_str()), false));
-                    }
+                {
+                    sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                 }
                 if sugg_mutref {
                     err.span_label(self.span, "invalid cast");
@@ -483,28 +480,28 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 ) {
                     let mut label = true;
                     // Check `impl From<self.expr_ty> for self.cast_ty {}` for accurate suggestion:
-                    if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span) {
-                        if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From) {
-                            let ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                            // Erase regions to avoid panic in `prove_value` when calling
-                            // `type_implements_trait`.
-                            let ty = fcx.tcx.erase_regions(ty);
-                            let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                            let expr_ty = fcx.tcx.erase_regions(expr_ty);
-                            let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
-                            if fcx
-                                .infcx
-                                .type_implements_trait(from_trait, ty, ty_params, fcx.param_env)
-                                .must_apply_modulo_regions()
-                            {
-                                label = false;
-                                err.span_suggestion(
-                                    self.span,
-                                    "consider using the `From` trait instead",
-                                    format!("{}::from({})", self.cast_ty, snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+                    if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span)
+                        && let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From)
+                    {
+                        let ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                        // Erase regions to avoid panic in `prove_value` when calling
+                        // `type_implements_trait`.
+                        let ty = fcx.tcx.erase_regions(ty);
+                        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                        let expr_ty = fcx.tcx.erase_regions(expr_ty);
+                        let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
+                        if fcx
+                            .infcx
+                            .type_implements_trait(from_trait, ty, ty_params, fcx.param_env)
+                            .must_apply_modulo_regions()
+                        {
+                            label = false;
+                            err.span_suggestion(
+                                self.span,
+                                "consider using the `From` trait instead",
+                                format!("{}::from({})", self.cast_ty, snippet),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                     }
                     let msg = "an `as` expression can only be used to convert between primitive \
@@ -627,10 +624,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         }
                     }
                 } else {
-                    let msg = &format!(
-                        "consider using an implicit coercion to `&{}{}` instead",
-                        mtstr, tstr
-                    );
+                    let msg =
+                        &format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
                     err.span_help(self.span, msg);
                 }
             }
@@ -640,14 +635,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         err.span_suggestion(
                             self.cast_span,
                             "you can cast to a `Box` instead",
-                            format!("Box<{}>", s),
+                            format!("Box<{s}>"),
                             Applicability::MachineApplicable,
                         );
                     }
                     Err(_) => {
                         err.span_help(
                             self.cast_span,
-                            &format!("you might have meant `Box<{}>`", tstr),
+                            &format!("you might have meant `Box<{tstr}>`"),
                         );
                     }
                 }
@@ -678,8 +673,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             ))
             .help(&format!(
                 "cast can be replaced by coercion; this might \
-                                   require {}a temporary variable",
-                type_asc_or
+                                   require {type_asc_or}a temporary variable"
             ))
             .emit();
         });
@@ -969,21 +963,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn cenum_impl_drop_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        if let ty::Adt(d, _) = self.expr_ty.kind() {
-            if d.has_dtor(fcx.tcx) {
-                fcx.tcx.struct_span_lint_hir(
-                    lint::builtin::CENUM_IMPL_DROP_CAST,
-                    self.expr.hir_id,
-                    self.span,
-                    |err| {
-                        err.build(&format!(
-                            "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
-                            self.expr_ty, self.cast_ty
-                        ))
-                        .emit();
-                    },
-                );
-            }
+        if let ty::Adt(d, _) = self.expr_ty.kind()
+            && d.has_dtor(fcx.tcx)
+        {
+            fcx.tcx.struct_span_lint_hir(
+                lint::builtin::CENUM_IMPL_DROP_CAST,
+                self.expr.hir_id,
+                self.span,
+                |err| {
+                    err.build(&format!(
+                        "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
+                        self.expr_ty, self.cast_ty
+                    ))
+                    .emit();
+                },
+            );
         }
     }
 
@@ -1007,7 +1001,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     err.span_suggestion(
                         self.span,
                         msg,
-                        format!("({}).addr(){}", snippet, scalar_cast),
+                        format!("({snippet}).addr(){scalar_cast}"),
                         Applicability::MaybeIncorrect
                     );
                 } else {
@@ -1038,7 +1032,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     err.span_suggestion(
                         self.span,
                         msg,
-                        format!("(...).with_addr({})", snippet),
+                        format!("(...).with_addr({snippet})"),
                         Applicability::HasPlaceholders,
                     );
                 } else {

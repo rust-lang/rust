@@ -862,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
                                 &diagnostic_msg,
-                                format!("\n{}{};", indent, migration_string),
+                                format!("\n{indent}{migration_string};"),
                                 Applicability::MachineApplicable,
                             );
                         } else if line1.starts_with('{') {
@@ -873,7 +873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
                                 &diagnostic_msg,
-                                format!(" {};", migration_string),
+                                format!(" {migration_string};"),
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -882,7 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.multipart_suggestion(
                                 &diagnostic_msg,
                                 vec![
-                                    (closure_body_span.shrink_to_lo(), format!("{{ {}; ", migration_string)),
+                                    (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
                                     (closure_body_span.shrink_to_hi(), " }".to_string()),
                                 ],
                                 Applicability::MachineApplicable
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.sess.struct_span_err(closure_span, "First Pass analysis includes:");
             for (place, capture_info) in capture_information {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
-                let output_str = format!("Capturing {}", capture_str);
+                let output_str = format!("Capturing {capture_str}");
 
                 let span =
                     capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         let capture_str =
                             construct_capture_info_string(self.tcx, place, capture_info);
-                        let output_str = format!("Min Capture {}", capture_str);
+                        let output_str = format!("Min Capture {capture_str}");
 
                         if capture.info.path_expr_id != capture.info.capture_kind_expr_id {
                             let path_span = capture_info
@@ -1969,7 +1969,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
         projections_str.push_str(proj.as_str());
     }
 
-    format!("{}[{}]", variable_name, projections_str)
+    format!("{variable_name}[{projections_str}]")
 }
 
 fn construct_capture_kind_reason_string<'tcx>(
@@ -1984,13 +1984,13 @@ fn construct_capture_kind_reason_string<'tcx>(
         ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
     };
 
-    format!("{} captured as {} here", place_str, capture_kind_str)
+    format!("{place_str} captured as {capture_kind_str} here")
 }
 
 fn construct_path_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     let place_str = construct_place_string(tcx, place);
 
-    format!("{} used here", place_str)
+    format!("{place_str} used here")
 }
 
 fn construct_capture_info_string<'tcx>(
@@ -2004,7 +2004,7 @@ fn construct_capture_info_string<'tcx>(
         ty::UpvarCapture::ByValue => "ByValue".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
     };
-    format!("{} -> {}", place_str, capture_kind_str)
+    format!("{place_str} -> {capture_kind_str}")
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
@@ -2035,16 +2035,16 @@ fn migration_suggestion_for_2229(
         .collect::<Vec<_>>();
 
     let migration_ref_concat =
-        need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");
+        need_migrations_variables.iter().map(|v| format!("&{v}")).collect::<Vec<_>>().join(", ");
 
     let migration_string = if 1 == need_migrations.len() {
-        format!("let _ = {}", migration_ref_concat)
+        format!("let _ = {migration_ref_concat}")
     } else {
-        format!("let _ = ({})", migration_ref_concat)
+        format!("let _ = ({migration_ref_concat})")
     };
 
     let migrated_variables_concat =
-        need_migrations_variables.iter().map(|v| format!("`{}`", v)).collect::<Vec<_>>().join(", ");
+        need_migrations_variables.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
 
     (migration_string, migrated_variables_concat)
 }
