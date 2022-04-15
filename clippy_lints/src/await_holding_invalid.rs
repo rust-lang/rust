@@ -144,21 +144,21 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// The `tracing` library has types which should not be held across `await`
-    /// points.
+    /// Strings are, of course, safe to hold across await points. This example
+    /// exists only to show how this lint might be configured for third-party
+    /// crates.
     ///
     /// ```toml
     /// await-holding-invalid-types = [
-    ///   "tracing::span::Entered",
-    ///   "tracing::span::EnteredSpan",
+    ///   "std::string::String",
     /// ]
     /// ```
     ///
     /// ```rust
     /// # async fn baz() {}
     /// async fn foo() {
-    ///   let _entered = tracing::info_span!("baz").entered();
-    ///   baz().await;
+    ///   let _x = String::from("hello!");
+    ///   baz().await; // Lint violation
     /// }
     /// ```
     #[clippy::version = "1.49.0"]
