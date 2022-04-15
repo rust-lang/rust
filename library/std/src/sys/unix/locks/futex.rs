@@ -1,6 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::sync::atomic::{
-    AtomicI32, AtomicUsize,
+    AtomicU32, AtomicUsize,
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
@@ -13,13 +13,13 @@ pub struct Mutex {
     /// 0: unlocked
     /// 1: locked, no other threads waiting
     /// 2: locked, and other threads waiting (contended)
-    futex: AtomicI32,
+    futex: AtomicU32,
 }
 
 impl Mutex {
     #[inline]
     pub const fn new() -> Self {
-        Self { futex: AtomicI32::new(0) }
+        Self { futex: AtomicU32::new(0) }
     }
 
     #[inline]
@@ -71,7 +71,7 @@ impl Mutex {
         }
     }
 
-    fn spin(&self) -> i32 {
+    fn spin(&self) -> u32 {
         let mut spin = 100;
         loop {
             // We only use `load` (and not `swap` or `compare_exchange`)
@@ -110,13 +110,13 @@ pub struct Condvar {
     // The value of this atomic is simply incremented on every notification.
     // This is used by `.wait()` to not miss any notifications after
     // unlocking the mutex and before waiting for notifications.
-    futex: AtomicI32,
+    futex: AtomicU32,
 }
 
 impl Condvar {
     #[inline]
     pub const fn new() -> Self {
-        Self { futex: AtomicI32::new(0) }
+        Self { futex: AtomicU32::new(0) }
     }
 
     #[inline]
