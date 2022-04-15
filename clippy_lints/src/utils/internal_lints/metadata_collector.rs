@@ -117,7 +117,7 @@ const APPLICABILITY_NAME_INDEX: usize = 2;
 /// This applicability will be set for unresolved applicability values.
 const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
 /// The version that will be displayed if none has been defined
-const VERION_DEFAULT_STR: &str = "Unknown";
+const VERSION_DEFAULT_STR: &str = "Unknown";
 
 declare_clippy_lint! {
     /// ### What it does
@@ -571,7 +571,7 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
 
 fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
     extract_clippy_version_value(cx, item).map_or_else(
-        || VERION_DEFAULT_STR.to_string(),
+        || VERSION_DEFAULT_STR.to_string(),
         |version| version.as_str().to_string(),
     )
 }
@@ -872,7 +872,7 @@ impl<'a, 'hir> IsMultiSpanScanner<'a, 'hir> {
         self.suggestion_count += 2;
     }
 
-    /// Checks if the suggestions include multiple spanns
+    /// Checks if the suggestions include multiple spans
     fn is_multi_part(&self) -> bool {
         self.suggestion_count > 1
     }

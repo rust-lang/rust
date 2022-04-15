@@ -87,7 +87,7 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
             let res = check.do_check(&fn_ctxt);
 
             // do_check's documentation says that it might return Ok and create
-            // errors in the fcx instead of returing Err in some cases. Those cases
+            // errors in the fcx instead of returning Err in some cases. Those cases
             // should be filtered out before getting here.
             assert!(
                 !fn_ctxt.errors_reported_since_creation(),

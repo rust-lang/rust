@@ -240,7 +240,7 @@ fn check<'tcx>(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(
                         local_stmt.span,
@@ -265,7 +265,7 @@ fn check<'tcx>(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 
@@ -296,7 +296,7 @@ fn check<'tcx>(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 

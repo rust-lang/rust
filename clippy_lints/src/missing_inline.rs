@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// pub struct PubBaz;
     /// impl PubBaz {
     ///    fn private() {} // ok
-    ///    pub fn not_ptrivate() {} // missing #[inline]
+    ///    pub fn not_private() {} // missing #[inline]
     /// }
     ///
     /// impl Bar for PubBaz {

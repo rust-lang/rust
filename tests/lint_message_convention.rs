@@ -66,7 +66,7 @@ fn lint_message_convention() {
 
     // make sure that lint messages:
     // * are not capitalized
-    // * don't have puncuation at the end of the last sentence
+    // * don't have punctuation at the end of the last sentence
 
     // these directories have interesting tests
     let test_dirs = ["ui", "ui-cargo", "ui-internal", "ui-toml"]

@@ -7,7 +7,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
-mod infalliable_detructuring_match;
+mod infallible_destructuring_match;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -694,7 +694,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        self.infallible_destructuring_match_linted |= infalliable_detructuring_match::check(cx, local);
+        self.infallible_destructuring_match_linted |= infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
