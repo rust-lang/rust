@@ -629,11 +629,15 @@ fn write_out_deps(
         });
         files.extend(extra_tracked_files);
 
-        if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
-            files.push(backend.to_string());
-        }
-
         if sess.binary_dep_depinfo() {
+            if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
+                if backend.contains('.') {
+                    // If the backend name contain a `.`, it is the path to an external dynamic
+                    // library. If not, it is not a path.
+                    files.push(backend.to_string());
+                }
+            }
+
             boxed_resolver.borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
