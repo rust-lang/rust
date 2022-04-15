@@ -1,0 +1,22 @@
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+  --> $DIR/deprecated-safe-unsafe-edition-call.rs:18:5
+   |
+LL |     depr_safe_2015();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: use of function `deprecated_safe::depr_safe_2018` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition-call.rs:19:5
+   |
+LL |     depr_safe_2018();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0133`.

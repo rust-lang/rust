@@ -1,0 +1,58 @@
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/deprecated-safe-trait-impl.rs:24:13
+   |
+LL | unsafe impl !DeprSafe for D {}
+   | ------      -^^^^^^^^
+   | |           |
+   | |           negative because of this
+   | unsafe because of this
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/deprecated-safe-trait-impl.rs:36:13
+   |
+LL | unsafe impl !DeprSafe2015 for L {}
+   | ------      -^^^^^^^^^^^^
+   | |           |
+   | |           negative because of this
+   | unsafe because of this
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/deprecated-safe-trait-impl.rs:48:13
+   |
+LL | unsafe impl !DeprSafe2018 for T {}
+   | ------      -^^^^^^^^^^^^
+   | |           |
+   | |           negative because of this
+   | unsafe because of this
+
+warning: use of trait `deprecated_safe::DeprSafe` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-trait-impl.rs:15:1
+   |
+LL | impl DeprSafe for A {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error[E0200]: the trait `DeprSafe2015` requires an `unsafe impl` declaration
+  --> $DIR/deprecated-safe-trait-impl.rs:27:1
+   |
+LL | impl DeprSafe2015 for I {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of trait `deprecated_safe::DeprSafe2018` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-trait-impl.rs:39:1
+   |
+LL | impl DeprSafe2018 for M {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0198, E0200.
+For more information about an error, try `rustc --explain E0198`.
