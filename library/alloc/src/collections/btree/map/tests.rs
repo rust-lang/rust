@@ -791,11 +791,7 @@ fn test_range_finding_ill_order_in_range_ord() {
     impl Ord for EvilTwin {
         fn cmp(&self, other: &Self) -> Ordering {
             let ord = self.0.cmp(&other.0);
-            if COMPARES.fetch_add(1, SeqCst) > 0 {
-                ord.reverse()
-            } else {
-                ord
-            }
+            if COMPARES.fetch_add(1, SeqCst) > 0 { ord.reverse() } else { ord }
         }
     }
 
@@ -947,12 +943,13 @@ mod test_drain_filter {
     fn mutating_and_keeping() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        assert!(map
-            .drain_filter(|_, v| {
+        assert!(
+            map.drain_filter(|_, v| {
                 *v += 6;
                 false
             })
-            .eq(iter::empty()));
+            .eq(iter::empty())
+        );
         assert!(map.keys().copied().eq(0..3));
         assert!(map.values().copied().eq(6..9));
         map.check();
@@ -963,12 +960,13 @@ mod test_drain_filter {
     fn mutating_and_removing() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        assert!(map
-            .drain_filter(|_, v| {
+        assert!(
+            map.drain_filter(|_, v| {
                 *v += 6;
                 true
             })
-            .eq((0..3).map(|i| (i, i + 6))));
+            .eq((0..3).map(|i| (i, i + 6)))
+        );
         assert!(map.is_empty());
         map.check();
     }
