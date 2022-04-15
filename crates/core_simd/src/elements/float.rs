@@ -83,7 +83,7 @@ pub trait SimdFloat: Sized + Sealed {
 
     /// Returns each lane with the magnitude of `self` and the sign of `sign`.
     ///
-    /// If any lane is a `NAN`, then a `NAN` with the sign of `sign` is returned.
+    /// For any lane containing a `NAN`, a `NAN` with the sign of `sign` is returned.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn copysign(self, sign: Self) -> Self;
 
