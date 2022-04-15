@@ -4,7 +4,7 @@
     all(target_os = "emscripten", target_feature = "atomics")
 ))]
 
-use crate::sync::atomic::AtomicI32;
+use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
 
 /// Wait for a futex_wake operation to wake us.
@@ -13,7 +13,7 @@ use crate::time::Duration;
 ///
 /// Returns false on timeout, and true in all other cases.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -> bool {
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
@@ -35,7 +35,7 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -
         let r = unsafe {
             libc::syscall(
                 libc::SYS_futex,
-                futex as *const AtomicI32,
+                futex as *const AtomicU32,
                 libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                 expected,
                 timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
@@ -53,10 +53,10 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) {
     extern "C" {
         fn emscripten_futex_wait(
-            addr: *const AtomicI32,
+            addr: *const AtomicU32,
             val: libc::c_uint,
             max_wait_ms: libc::c_double,
         ) -> libc::c_int;
@@ -64,10 +64,8 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
 
     unsafe {
         emscripten_futex_wait(
-            futex as *const AtomicI32,
-            // `val` is declared unsigned to match the Emscripten headers, but since it's used as
-            // an opaque value, we can ignore the meaning of signed vs. unsigned and cast here.
-            expected as libc::c_uint,
+            futex,
+            expected,
             timeout.map_or(crate::f64::INFINITY, |d| d.as_secs_f64() * 1000.0),
         );
     }
@@ -78,11 +76,11 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake(futex: &AtomicI32) -> bool {
+pub fn futex_wake(futex: &AtomicU32) -> bool {
     unsafe {
         libc::syscall(
             libc::SYS_futex,
-            futex as *const AtomicI32,
+            futex as *const AtomicU32,
             libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
             1,
         ) > 0
@@ -91,11 +89,11 @@ pub fn futex_wake(futex: &AtomicI32) -> bool {
 
 /// Wake up all threads that are waiting on futex_wait on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake_all(futex: &AtomicI32) {
+pub fn futex_wake_all(futex: &AtomicU32) {
     unsafe {
         libc::syscall(
             libc::SYS_futex,
-            futex as *const AtomicI32,
+            futex as *const AtomicU32,
             libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
             i32::MAX,
         );
@@ -103,10 +101,10 @@ pub fn futex_wake_all(futex: &AtomicI32) {
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wake(futex: &AtomicI32) -> bool {
+pub fn futex_wake(futex: &AtomicU32) -> bool {
     extern "C" {
-        fn emscripten_futex_wake(addr: *const AtomicI32, count: libc::c_int) -> libc::c_int;
+        fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
     }
 
-    unsafe { emscripten_futex_wake(futex as *const AtomicI32, 1) > 0 }
+    unsafe { emscripten_futex_wake(futex, 1) > 0 }
 }
