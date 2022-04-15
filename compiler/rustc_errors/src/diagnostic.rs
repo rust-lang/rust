@@ -1,12 +1,11 @@
 use crate::snippet::Style;
 use crate::{
     CodeSuggestion, DiagnosticMessage, Level, MultiSpan, Substitution, SubstitutionPart,
-    SuggestionStyle, ToolMetadata,
+    SuggestionStyle,
 };
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_serialize::json::Json;
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -554,7 +553,6 @@ impl Diagnostic {
             msg: msg.into(),
             style,
             applicability,
-            tool_metadata: Default::default(),
         });
         self
     }
@@ -582,7 +580,6 @@ impl Diagnostic {
             msg: msg.into(),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
-            tool_metadata: Default::default(),
         });
         self
     }
@@ -637,7 +634,6 @@ impl Diagnostic {
             msg: msg.into(),
             style,
             applicability,
-            tool_metadata: Default::default(),
         });
         self
     }
@@ -680,7 +676,6 @@ impl Diagnostic {
             msg: msg.into(),
             style: SuggestionStyle::ShowCode,
             applicability,
-            tool_metadata: Default::default(),
         });
         self
     }
@@ -705,7 +700,6 @@ impl Diagnostic {
             msg: msg.into(),
             style: SuggestionStyle::ShowCode,
             applicability,
-            tool_metadata: Default::default(),
         });
         self
     }
@@ -772,23 +766,6 @@ impl Diagnostic {
             SuggestionStyle::CompletelyHidden,
         );
         self
-    }
-
-    /// Adds a suggestion intended only for a tool. The intent is that the metadata encodes
-    /// the suggestion in a tool-specific way, as it may not even directly involve Rust code.
-    pub fn tool_only_suggestion_with_metadata(
-        &mut self,
-        msg: impl Into<DiagnosticMessage>,
-        applicability: Applicability,
-        tool_metadata: Json,
-    ) {
-        self.push_suggestion(CodeSuggestion {
-            substitutions: vec![],
-            msg: msg.into(),
-            style: SuggestionStyle::CompletelyHidden,
-            applicability,
-            tool_metadata: ToolMetadata::new(tool_metadata),
-        })
     }
 
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
