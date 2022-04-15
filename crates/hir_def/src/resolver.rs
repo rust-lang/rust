@@ -448,7 +448,13 @@ impl Resolver {
     }
 
     pub fn krate(&self) -> CrateId {
-        self.module_scope().0.krate()
+        self.scopes
+            .get(0)
+            .and_then(|scope| match scope {
+                Scope::ModuleScope(m) => Some(m.def_map.krate()),
+                _ => None,
+            })
+            .expect("module scope invariant violated")
     }
 
     pub fn where_predicates_in_scope(
