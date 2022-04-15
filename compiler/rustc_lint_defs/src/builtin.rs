@@ -1141,6 +1141,7 @@ declare_lint! {
     "detects unaligned references to fields of packed structs",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #82523 <https://github.com/rust-lang/rust/issues/82523>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
     report_in_external_macro
 }
