@@ -1956,6 +1956,25 @@ where
     }
 }
 
+#[stable(feature = "shared_from_str", since = "1.61.0")]
+impl From<Rc<str>> for Rc<[u8]> {
+    /// Converts a reference-counted string slice into a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let string: Rc<str> = Rc::from("eggplant");
+    /// let bytes: Rc<[u8]> = Rc::from(string);
+    /// assert_eq!("eggplant".as_bytes(), bytes.as_ref());
+    /// ```
+    #[inline]
+    fn from(rc: Rc<str>) -> Self {
+        // SAFETY: `str` has the same layout as `[u8]`.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const [u8]) }
+    }
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
     type Error = Rc<[T]>;

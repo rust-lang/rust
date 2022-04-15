@@ -2556,6 +2556,25 @@ where
     }
 }
 
+#[stable(feature = "shared_from_str", since = "1.61.0")]
+impl From<Arc<str>> for Arc<[u8]> {
+    /// Converts an atomically reference-counted string slice into a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let string: Arc<str> = Arc::from("eggplant");
+    /// let bytes: Arc<[u8]> = Arc::from(string);
+    /// assert_eq!("eggplant".as_bytes(), bytes.as_ref());
+    /// ```
+    #[inline]
+    fn from(rc: Arc<str>) -> Self {
+        // SAFETY: `str` has the same layout as `[u8]`.
+        unsafe { Arc::from_raw(Arc::into_raw(rc) as *const [u8]) }
+    }
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
     type Error = Arc<[T]>;
