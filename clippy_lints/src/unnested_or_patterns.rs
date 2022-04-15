@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// *disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*.
     ///
     /// ### Why is this bad?
-    /// In the example above, `Some` is repeated, which unncessarily complicates the pattern.
+    /// In the example above, `Some` is repeated, which unnecessarily complicates the pattern.
     ///
     /// ### Example
     /// ```rust

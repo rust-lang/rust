@@ -108,7 +108,7 @@ pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
     true
 }
 
-/// Returns the positon just before rarrow
+/// Returns the position just before rarrow
 ///
 /// ```rust,ignore
 /// fn into(self) -> () {}

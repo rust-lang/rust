@@ -118,7 +118,7 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 }
 
 /// Manually check for coercion casting by checking if the type of the match operand or let expr
-/// differs with the assigned local variable or the funtion return type.
+/// differs with the assigned local variable or the function return type.
 fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>) -> bool {
     if let Some(p_node) = get_parent_node(cx.tcx, p_expr.hir_id) {
         match p_node {

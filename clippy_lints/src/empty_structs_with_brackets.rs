@@ -66,7 +66,7 @@ fn has_no_fields(cx: &EarlyContext<'_>, var_data: &VariantData, braces_span: Spa
     }
 
     // there might still be field declarations hidden from the AST
-    // (conditionaly compiled code using #[cfg(..)])
+    // (conditionally compiled code using #[cfg(..)])
 
     let Some(braces_span_str) = snippet_opt(cx, braces_span) else {
         return false;

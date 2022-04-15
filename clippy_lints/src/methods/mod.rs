@@ -1266,7 +1266,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.55.0"]
     pub EXTEND_WITH_DRAIN,
     perf,
-    "using vec.append(&mut vec) to move the full range of a vecor to another"
+    "using vec.append(&mut vec) to move the full range of a vector to another"
 }
 
 declare_clippy_lint! {
@@ -2100,7 +2100,7 @@ declare_clippy_lint! {
     /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
     /// will prevent loop unrolling and will result in a negative performance impact.
     ///
-    /// Additionlly, differences have been observed between aarch64 and x86_64 assembly output,
+    /// Additionally, differences have been observed between aarch64 and x86_64 assembly output,
     /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
     #[clippy::version = "1.61.0"]
     pub UNNECESSARY_JOIN,

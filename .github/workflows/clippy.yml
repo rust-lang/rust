@@ -6,14 +6,14 @@ on:
     branches-ignore:
       - auto
       - try
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
     - '**.md'
     - '**.txt'
   pull_request:
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'

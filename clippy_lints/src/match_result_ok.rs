@@ -24,7 +24,7 @@ declare_clippy_lint! {
     ///     vec.push(value)
     /// }
     ///
-    /// if let Some(valie) = iter.next().ok() {
+    /// if let Some(value) = iter.next().ok() {
     ///     vec.push(value)
     /// }
     /// ```
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
         if_chain! {
             if let ExprKind::MethodCall(ok_path, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
             if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
-            if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
+            if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() method use std::marker::Sized;
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(result_types_0), sym::Result);
             if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";
 
