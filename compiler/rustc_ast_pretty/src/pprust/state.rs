@@ -959,7 +959,7 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
-                    Term::Const(c) => self.print_expr_anon_const(c),
+                    Term::Const(c) => self.print_expr_anon_const(c, &[]),
                 }
             }
             ast::AssocConstraintKind::Bound { bounds } => self.print_type_bounds(":", &*bounds),
