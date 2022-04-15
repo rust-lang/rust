@@ -130,6 +130,10 @@ pub enum SelectionCandidate<'tcx> {
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate {
         is_const: bool,
+        // if a #[deprecated_safe] fn() is being used as a closure, this points
+        // to the FnDef of that fn(). a deprecated_safe lint must be emitted
+        // if this candidate is used
+        depr_as_safe: Option<DefId>,
     },
 
     /// Builtin implementation of `DiscriminantKind`.
@@ -152,7 +156,12 @@ pub enum SelectionCandidate<'tcx> {
 
     BuiltinObjectCandidate,
 
-    BuiltinUnsizeCandidate,
+    BuiltinUnsizeCandidate {
+        // if a #[deprecated_safe] fn() is being used as a closure, this points
+        // to the FnDef of that fn(). a deprecated_safe lint must be emitted
+        // if this candidate is used
+        depr_as_safe: Option<DefId>,
+    },
 
     /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
     ConstDestructCandidate(Option<DefId>),

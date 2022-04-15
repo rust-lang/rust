@@ -5,6 +5,7 @@ use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome}
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_middle::middle::stability;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -674,8 +675,30 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx();
-        if obligation.predicate.is_global() {
-            // no type variables present, can use evaluation for better caching.
+        let is_global = obligation.predicate.is_global();
+
+        // FIXME(skippy) specifically needs reviewer feedback
+        // check if this predicate can't be treated as global due to this being a
+        // #[deprecated_safe] fn() to closure coercion, if evaluation is used there
+        // won't be a proper cause span to lint against
+        let mut is_depr_safe_fn_closure = false;
+        if is_global && let trait_ty = trait_obligation.self_ty().skip_binder()
+            && let ty::FnDef(func_id, _) = trait_ty.kind()
+            && self.selcx.tcx().fn_trait_kind_from_lang_item(
+                trait_obligation.predicate.skip_binder().trait_ref.def_id
+            ).is_some()
+            && stability::check_deprecation_as_safe(
+                self.selcx.tcx(),
+                *func_id,
+                obligation.cause.span,
+            )
+        {
+            is_depr_safe_fn_closure = true;
+        }
+
+        if is_global && !is_depr_safe_fn_closure {
+            // no type variables present and not a #[deprecated_safe] fn() to closure coercion,
+            // can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
                 debug!(
@@ -728,8 +751,31 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
 
-        if obligation.predicate.is_global() {
-            // no type variables present, can use evaluation for better caching.
+        let is_global = obligation.predicate.is_global();
+
+        // FIXME(skippy) specifically needs reviewer feedback
+        // check if this predicate can't be treated as global due to this being a
+        // #[deprecated_safe] fn() to closure coercion, if evaluation is used there
+        // won't be a proper cause span to lint against
+        let mut is_depr_safe_fn_closure = false;
+
+        if is_global && let trait_ty = project_obligation.predicate.skip_binder().projection_ty.self_ty()
+            && let ty::FnDef(func_id, _) = trait_ty.kind()
+            && self.selcx.tcx().fn_trait_kind_from_lang_item(
+                project_obligation.predicate.trait_def_id(self.selcx.tcx())
+            ).is_some()
+            && stability::check_deprecation_as_safe(
+                self.selcx.tcx(),
+                *func_id,
+                obligation.cause.span,
+            )
+        {
+            is_depr_safe_fn_closure = true;
+        }
+
+        if is_global && !is_depr_safe_fn_closure {
+            // no type variables present and not a #[deprecated_safe] fn() to closure coercion,
+            // can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
                 if let Some(key) = ProjectionCacheKey::from_poly_projection_predicate(

@@ -9,8 +9,10 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::{InferOk, TraitQueryMode};
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
+use rustc_middle::traits;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
@@ -115,8 +117,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::Generator(vtable_generator))
             }
 
-            FnPointerCandidate { .. } => {
+            FnPointerCandidate { depr_as_safe, .. } => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
+                // FIXME(skippy) specifically needs reviewer feedback
+                // FIXME(skippy) the self.infcx.query_mode == TraitQueryMode::Standard is to
+                //               prevent lints during mir_borrowck, when there will be
+                //               DUMMY_SP cause spans
+                // FIXME(skippy) the param_env.reveal() == traits::Reveal::UserFacing is to prevent
+                //               lints during codegen, when there will be DUMMY_SP cause spans
+                // FIXME(skippy) this is all very ad-hoc
+                // emit deprecated_safe lint if this candidate is from a #[deprecated_safe] fn()
+                // to closure coercion
+                if let Some(depr_as_safe) = depr_as_safe
+                    && self.infcx.query_mode == TraitQueryMode::Standard
+                    && obligation.param_env.reveal() == traits::Reveal::UserFacing
+                {
+                    stability::report_deprecation_as_safe(
+                        self.tcx(),
+                        DeprecationAsSafeKind::FnTraitCoercion,
+                        depr_as_safe,
+                        obligation.cause.body_id,
+                        obligation.cause.span,
+                    );
+                }
                 Ok(ImplSource::FnPointer(data))
             }
 
@@ -138,8 +161,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst))
             }
 
-            BuiltinUnsizeCandidate => {
+            BuiltinUnsizeCandidate { depr_as_safe } => {
                 let data = self.confirm_builtin_unsize_candidate(obligation)?;
+                // FIXME(skippy) specifically needs reviewer feedback
+                // FIXME(skippy) the self.infcx.query_mode == TraitQueryMode::Standard is to
+                //               prevent lints during mir_borrowck, when there will be
+                //               DUMMY_SP cause spans
+                // FIXME(skippy) the param_env.reveal() == traits::Reveal::UserFacing is to prevent
+                //               lints during codegen, when there will be DUMMY_SP cause spans
+                // FIXME(skippy) this is all very ad-hoc
+                // emit deprecated_safe lint if this candidate is from a #[deprecated_safe] fn()
+                // to closure coercion
+                if let Some(depr_as_safe) = depr_as_safe
+                    && self.infcx.query_mode == TraitQueryMode::Standard
+                    && obligation.param_env.reveal() == traits::Reveal::UserFacing
+                {
+                    stability::report_deprecation_as_safe(
+                        self.tcx(),
+                        DeprecationAsSafeKind::FnTraitCoercion,
+                        depr_as_safe,
+                        obligation.cause.body_id,
+                        obligation.cause.span,
+                    );
+                }
                 Ok(ImplSource::Builtin(data))
             }
 
