@@ -319,7 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         self.expr_count += 1;
 
         if let PatKind::Binding(..) = pat.kind {
-            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
+            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
             self.record(ty, pat.hir_id, Some(scope), None, pat.span, false);
         }
