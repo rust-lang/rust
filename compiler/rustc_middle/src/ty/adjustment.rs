@@ -14,6 +14,10 @@ pub enum PointerCast {
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
 
+    /// Go from an unsafe fn pointer to a safe fn pointer.
+    /// This is unsound, but used for backwards compatibility by `#[deprecated_safe]`.
+    DeprecatedSafeFnPointer,
+
     /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
     ClosureFnPointer(hir::Unsafety),

@@ -63,14 +63,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Pointer(PointerCast::UnsafeFnPointer) => {
+            Pointer(
+                ptr_cast @ (PointerCast::UnsafeFnPointer | PointerCast::DeprecatedSafeFnPointer),
+            ) => {
                 let src = self.read_immediate(src)?;
                 match cast_ty.kind() {
                     ty::FnPtr(_) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "fn to unsafe fn cast on {:?}", cast_ty),
+                    _ => {
+                        match ptr_cast {
+                            PointerCast::UnsafeFnPointer => {
+                                span_bug!(self.cur_span(), "fn to unsafe fn cast on {:?}", cast_ty)
+                            }
+                            PointerCast::DeprecatedSafeFnPointer => {
+                                span_bug!(self.cur_span(), "unsafe fn to fn cast on {:?}", cast_ty)
+                            }
+                            // parent match arm matches only these two variants
+                            _ => unreachable!(),
+                        };
+                    }
                 }
             }
 

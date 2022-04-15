@@ -77,6 +77,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
+            query_mode: self.query_mode.clone(),
         }
     }
 }

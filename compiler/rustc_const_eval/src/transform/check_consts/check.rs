@@ -545,6 +545,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Cast(
                 CastKind::Pointer(
                     PointerCast::UnsafeFnPointer
+                    | PointerCast::DeprecatedSafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
                     | PointerCast::ReifyFnPointer,
                 ),

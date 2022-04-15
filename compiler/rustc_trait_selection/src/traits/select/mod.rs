@@ -16,7 +16,7 @@ use super::wf;
 use super::{
     DerivedObligationCause, ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause,
     Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitObligation, TraitQueryMode,
+    Selection, SelectionError, SelectionResult, TraitObligation,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -29,7 +29,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::{LateBoundRegionConversionTime, TraitQueryMode};
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
@@ -1159,7 +1159,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
                     // FnDef where the function is const
-                    FnPointerCandidate { is_const: true } => {}
+                    FnPointerCandidate { is_const: true, .. } => {}
                     ConstDestructCandidate(_) => {}
                     _ => {
                         // reject all other types of candidates
@@ -1623,7 +1623,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => true,
+            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false, .. }) => true,
 
             // If obligation is a sized predicate or the where-clause bound is
             // global, prefer the projection or object candidate. See issue
@@ -1647,7 +1647,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
@@ -1658,7 +1658,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),
@@ -1688,7 +1688,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
@@ -1700,7 +1700,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
@@ -1781,7 +1781,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),
@@ -1790,7 +1790,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
+                | BuiltinUnsizeCandidate { .. }
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
                 | TraitAliasCandidate(..),

@@ -1,0 +1,453 @@
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:23:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_2015);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn Fn()`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:24:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe_2015);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnMut()`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:25:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe_2015);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnOnce()`
+
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:28:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_2015));
+   |     --------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn Fn()`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:29:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_2015));
+   |     ------------------------ ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnMut()`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:30:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_2015));
+   |     ------------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnOnce()`
+
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:33:23
+   |
+LL |     fn_taking_fn_impl(depr_safe_2015);
+   |     ----------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fn_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:109:30
+   |
+LL | fn fn_taking_fn_impl(_: impl Fn()) {}
+   |                              ^^^^ required by this bound in `fn_taking_fn_impl`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:34:26
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_2015);
+   |     -------------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fnmut_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:110:33
+   |
+LL | fn fn_taking_fnmut_impl(_: impl FnMut()) {}
+   |                                 ^^^^^^^ required by this bound in `fn_taking_fnmut_impl`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:35:27
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_2015);
+   |     --------------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fnonce_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:111:34
+   |
+LL | fn fn_taking_fnonce_impl(_: impl FnOnce()) {}
+   |                                  ^^^^^^^^ required by this bound in `fn_taking_fnonce_impl`
+
+error[E0308]: mismatched types
+  --> $DIR/deprecated-safe-unsafe-edition.rs:39:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe_2015;
+   |                           ----   ^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
+   |                           |
+   |                           expected due to this
+   |
+   = note: expected fn pointer `fn()`
+                 found fn item `unsafe fn() {depr_safe_2015}`
+
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:40:44
+   |
+LL |     let depr_safe_fn_impl: Box<dyn Fn()> = Box::new(depr_safe_2015);
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn Fn()`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:41:54
+   |
+LL | ...impl: Box<dyn FnMut()> = Box::new(depr_safe_2015);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnMut()`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:42:52
+   |
+LL |     let depr_safe_fnonce_impl: Box<dyn FnOnce()> = Box::new(depr_safe_2015);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnOnce()`
+
+error[E0308]: mismatched types
+  --> $DIR/deprecated-safe-unsafe-edition.rs:52:22
+   |
+LL |     fn_taking_fn_ptr(depr_safe_2015);
+   |                      ^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
+   |
+   = note: expected fn pointer `fn()`
+                 found fn item `unsafe fn() {depr_safe_2015}`
+
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:53:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_2015));
+   |     --------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn Fn()`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:54:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_2015));
+   |     ------------------------ ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnMut()`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:55:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_2015));
+   |     ------------------------- ^^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn FnOnce()`
+
+error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:56:23
+   |
+LL |     fn_taking_fn_impl(depr_safe_2015);
+   |     ----------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fn_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:109:30
+   |
+LL | fn fn_taking_fn_impl(_: impl Fn()) {}
+   |                              ^^^^ required by this bound in `fn_taking_fn_impl`
+
+error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:57:26
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_2015);
+   |     -------------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fnmut_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:110:33
+   |
+LL | fn fn_taking_fnmut_impl(_: impl FnMut()) {}
+   |                                 ^^^^^^^ required by this bound in `fn_taking_fnmut_impl`
+
+error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {depr_safe_2015}`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:58:27
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_2015);
+   |     --------------------- ^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {depr_safe_2015}`
+   = note: wrap the `unsafe fn() {depr_safe_2015}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `fn_taking_fnonce_impl`
+  --> $DIR/deprecated-safe-unsafe-edition.rs:111:34
+   |
+LL | fn fn_taking_fnonce_impl(_: impl FnOnce()) {}
+   |                                  ^^^^^^^^ required by this bound in `fn_taking_fnonce_impl`
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:64:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe_2018);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:65:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe_2018);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:66:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe_2018);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:69:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_2018));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:70:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_2018));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:71:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_2018));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:74:5
+   |
+LL |     fn_taking_fn_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:75:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:76:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:80:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe_2018;
+   |                                  ^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:81:44
+   |
+LL |     let depr_safe_fn_impl: Box<dyn Fn()> = Box::new(depr_safe_2018);
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:82:54
+   |
+LL |     let mut depr_safe_fnmut_impl: Box<dyn FnMut()> = Box::new(depr_safe_2018);
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:83:52
+   |
+LL |     let depr_safe_fnonce_impl: Box<dyn FnOnce()> = Box::new(depr_safe_2018);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:93:22
+   |
+LL |     fn_taking_fn_ptr(depr_safe_2018);
+   |                      ^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:94:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe_2018));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:95:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe_2018));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:96:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe_2018));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:97:5
+   |
+LL |     fn_taking_fn_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:98:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-edition.rs:99:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe_2018);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error: aborting due to 20 previous errors; 20 warnings emitted
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

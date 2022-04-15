@@ -142,7 +142,7 @@ fn check_rvalue<'tcx>(
         },
         Rvalue::Cast(
             CastKind::Pointer(
-                PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
+                PointerCast::UnsafeFnPointer | PointerCast::DeprecatedSafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
             ),
             _,
             _,

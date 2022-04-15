@@ -3221,6 +3221,7 @@ declare_lint_pass! {
         UNEXPECTED_CFGS,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         TEST_UNSTABLE_LINT,
+        DEPRECATED_SAFE,
     ]
 }
 
@@ -3885,4 +3886,48 @@ declare_lint! {
     Deny,
     "this unstable lint is only for testing",
     @feature_gate = sym::test_unstable_lint;
+}
+
+declare_lint! {
+    /// The `deprecated_safe` lint detects safe, unsound usage of items that are now marked ```[unsafe]```,
+    /// with safe usage being deprecated.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(deprecated_safe)]
+    ///
+    /// #[deprecated_safe(since = "1.61.0", note = "reason")]
+    /// unsafe fn previously_safe_function() {}
+    ///
+    /// fn main() {
+    ///     previously_safe_function();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// FIXME(skippy) broken link: [`deprecated_safe` attribute]
+    /// Items may be marked "deprecated_safe" with the [`deprecated_safe` attribute] to
+    /// indicate that they should no longer be used. Usually the attribute
+    /// should include a note on what to use instead, or check the
+    /// documentation.
+    ///
+    /// [`deprecated_safe` attribute]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-deprecated_safe-attribute
+    /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
+    /// [`unsafe` trait]: https://doc.rust-lang.org/reference/items/traits.html#unsafe-traits
+    /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
+    /// [unsafe]: https://doc.rust-lang.org/reference/unsafety.html
+    pub DEPRECATED_SAFE,
+    Warn,
+    "detects unsound use of items that are now marked unsafe, when safe use is deprecated",
+    report_in_external_macro
+    // FIXME(skippy) use future_incompatible?
+    /*
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #94978 <https://github.com/rust-lang/rust/issues/94978>",
+    };
+    */
 }

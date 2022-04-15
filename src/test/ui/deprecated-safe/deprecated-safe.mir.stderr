@@ -1,0 +1,1238 @@
+warning: use of trait `deprecated_safe::DeprSafe` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe.rs:108:1
+   |
+LL | impl DeprSafe for DeprSafeImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:54:5
+   |
+LL |     depr_safe
+   |     ^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:57:14
+   |
+LL | fn foo2() -> impl FnOnce() {
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:57:28
+   |
+LL |   fn foo2() -> impl FnOnce() {
+   |  ____________________________^
+LL | |
+LL | |
+LL | |     depr_safe
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:64:5
+   |
+LL |     depr_safe_params
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:67:14
+   |
+LL | fn foo4() -> impl FnOnce(u32, u64) {
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:67:36
+   |
+LL |   fn foo4() -> impl FnOnce(u32, u64) {
+   |  ____________________________________^
+LL | |
+LL | |
+LL | |     depr_safe_params
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:74:5
+   |
+LL |     depr_safe_generic
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:77:14
+   |
+LL | fn foo6() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:77:46
+   |
+LL |   fn foo6() -> impl FnOnce(OsString, OsString) {
+   |  ______________________________________________^
+LL | |
+LL | |
+LL | |     depr_safe_generic
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:84:5
+   |
+LL |     Box::new(depr_safe)
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:88:5
+   |
+LL |     Box::new(depr_safe)
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:92:5
+   |
+LL |     Box::new(depr_safe_params)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:96:5
+   |
+LL |     Box::new(depr_safe_params)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:100:5
+   |
+LL |     Box::new(depr_safe_generic)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:104:5
+   |
+LL |     Box::new(depr_safe_generic)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:174:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe);
+   |                                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:175:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe);
+   |                                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:176:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe);
+   |                                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:179:34
+   |
+LL |     let fn_impl: Box<dyn Fn()> = Box::new(depr_safe);
+   |                                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:180:37
+   |
+LL |     let fn_impl: Box<dyn FnMut()> = Box::new(depr_safe);
+   |                                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:181:38
+   |
+LL |     let fn_impl: Box<dyn FnOnce()> = Box::new(depr_safe);
+   |                                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:184:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe));
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:185:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe));
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:186:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe));
+   |                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:189:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe));
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:190:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe));
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:191:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe));
+   |                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:194:5
+   |
+LL |     fn_taking_fn_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:195:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:196:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:199:5
+   |
+LL |     fn_taking_fn_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:200:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:201:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:208:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe;
+   |                                  ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:211:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe;
+   |                                  ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:215:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe;
+   |                                  ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:216:44
+   |
+LL |     let depr_safe_fn_impl: Box<dyn Fn()> = Box::new(depr_safe);
+   |                                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:217:54
+   |
+LL |     let mut depr_safe_fnmut_impl: Box<dyn FnMut()> = Box::new(depr_safe);
+   |                                                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:218:52
+   |
+LL |     let depr_safe_fnonce_impl: Box<dyn FnOnce()> = Box::new(depr_safe);
+   |                                                    ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:221:34
+   |
+LL |     let depr_safe_fn_ptr: fn() = depr_safe;
+   |                                  ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:222:44
+   |
+LL |     let depr_safe_fn_impl: Box<dyn Fn()> = Box::new(depr_safe);
+   |                                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:223:54
+   |
+LL |     let mut depr_safe_fnmut_impl: Box<dyn FnMut()> = Box::new(depr_safe);
+   |                                                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:224:52
+   |
+LL |     let depr_safe_fnonce_impl: Box<dyn FnOnce()> = Box::new(depr_safe);
+   |                                                    ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:234:22
+   |
+LL |     fn_taking_fn_ptr(depr_safe);
+   |                      ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:235:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe));
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:236:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe));
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:237:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe));
+   |                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:238:5
+   |
+LL |     fn_taking_fn_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:239:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:240:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:243:22
+   |
+LL |     fn_taking_fn_ptr(depr_safe);
+   |                      ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:244:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(depr_safe));
+   |                           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:245:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(depr_safe));
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:246:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(depr_safe));
+   |                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:247:5
+   |
+LL |     fn_taking_fn_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:248:5
+   |
+LL |     fn_taking_fnmut_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:249:5
+   |
+LL |     fn_taking_fnonce_impl(depr_safe);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:253:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:254:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:255:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:258:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:259:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:260:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:263:35
+   |
+LL |     fn_taking_dyn_fn_impl_generic(Box::new(depr_safe_generic));
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:264:38
+   |
+LL |     fn_taking_dyn_fnmut_impl_generic(Box::new(depr_safe_generic));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:265:39
+   |
+LL |     fn_taking_dyn_fnonce_impl_generic(Box::new(depr_safe_generic));
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:268:35
+   |
+LL |     fn_taking_dyn_fn_impl_generic(Box::new(depr_safe_generic));
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:269:38
+   |
+LL |     fn_taking_dyn_fnmut_impl_generic(Box::new(depr_safe_generic));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:270:39
+   |
+LL |     fn_taking_dyn_fnonce_impl_generic(Box::new(depr_safe_generic));
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:273:5
+   |
+LL |     fn_taking_fn_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:274:5
+   |
+LL |     fn_taking_fnmut_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:275:5
+   |
+LL |     fn_taking_fnonce_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:278:5
+   |
+LL |     fn_taking_fn_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:279:5
+   |
+LL |     fn_taking_fnmut_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:280:5
+   |
+LL |     fn_taking_fnonce_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:287:42
+   |
+LL |     let depr_safe_generic_fn_ptr: fn() = depr_safe;
+   |                                          ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:290:42
+   |
+LL |     let depr_safe_generic_fn_ptr: fn() = depr_safe;
+   |                                          ^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:294:60
+   |
+LL |     let depr_safe_generic_fn_ptr: fn(OsString, OsString) = depr_safe_generic;
+   |                                                            ^^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:295:70
+   |
+LL |     let depr_safe_generic_fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:297:9
+   |
+LL | ...   Box::new(depr_safe_generic);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:299:9
+   |
+LL | ...   Box::new(depr_safe_generic);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:302:60
+   |
+LL |     let depr_safe_generic_fn_ptr: fn(OsString, OsString) = depr_safe_generic;
+   |                                                            ^^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:303:70
+   |
+LL |     let depr_safe_generic_fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(depr_safe_generic);
+   |                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:305:9
+   |
+LL | ...   Box::new(depr_safe_generic);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:307:9
+   |
+LL | ...   Box::new(depr_safe_generic);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:317:30
+   |
+LL |     fn_taking_fn_ptr_generic(depr_safe_generic);
+   |                              ^^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:318:35
+   |
+LL |     fn_taking_dyn_fn_impl_generic(Box::new(depr_safe_generic));
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:319:38
+   |
+LL |     fn_taking_dyn_fnmut_impl_generic(Box::new(depr_safe_generic));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:320:39
+   |
+LL |     fn_taking_dyn_fnonce_impl_generic(Box::new(depr_safe_generic));
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:321:5
+   |
+LL |     fn_taking_fn_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:322:5
+   |
+LL |     fn_taking_fnmut_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:323:5
+   |
+LL |     fn_taking_fnonce_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:326:30
+   |
+LL |     fn_taking_fn_ptr_generic(depr_safe_generic);
+   |                              ^^^^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:327:35
+   |
+LL |     fn_taking_dyn_fn_impl_generic(Box::new(depr_safe_generic));
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:328:38
+   |
+LL |     fn_taking_dyn_fnmut_impl_generic(Box::new(depr_safe_generic));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:329:39
+   |
+LL |     fn_taking_dyn_fnonce_impl_generic(Box::new(depr_safe_generic));
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:330:5
+   |
+LL |     fn_taking_fn_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:331:5
+   |
+LL |     fn_taking_fnmut_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:332:5
+   |
+LL |     fn_taking_fnonce_impl_generic(depr_safe_generic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:23:14
+   |
+LL | type Tait1 = impl FnOnce();
+   |              ^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:24:14
+   |
+LL | type Tait2 = impl FnOnce(u32, u64);
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:25:14
+   |
+LL | type Tait3 = impl FnOnce(OsString, OsString);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:60:5
+   |
+LL |     depr_safe
+   |     ^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_params` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:70:5
+   |
+LL |     depr_safe_params
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:80:5
+   |
+LL |     depr_safe_generic
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:133:5
+   |
+LL |     fn depr_safe_fn(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_params` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:135:5
+   |
+LL |     fn depr_safe_params(&self, _: u32, _: u64) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_generic` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:137:5
+   |
+LL |     fn depr_safe_fn_generic<K: AsRef<OsStr>, V: AsRef<OsStr>>(&self, key: K, value: V) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_2018` without an `unsafe fn` declaration has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:141:5
+   |
+LL |     fn depr_safe_fn_2018(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:146:5
+   |
+LL |     good.depr_safe_fn();
+   |     ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_params` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:147:5
+   |
+LL |     good.depr_safe_params(0, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_generic` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:148:5
+   |
+LL |     good.depr_safe_fn_generic("", "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_2018` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:152:5
+   |
+LL |     good.depr_safe_fn_2018();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:155:5
+   |
+LL |     bad.depr_safe_fn();
+   |     ^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_params` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:156:5
+   |
+LL |     bad.depr_safe_params(0, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_generic` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:157:5
+   |
+LL |     bad.depr_safe_fn_generic("", "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of associated function `deprecated_safe::DeprSafeFns::depr_safe_fn_2018` without an unsafe function or block has been deprecated as it is now an unsafe associated function
+  --> $DIR/deprecated-safe.rs:161:5
+   |
+LL |     bad.depr_safe_fn_2018();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this associated function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the associated function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:204:5
+   |
+LL |     depr_safe();
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:205:5
+   |
+LL |     depr_safe();
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:283:5
+   |
+LL |     depr_safe_generic("", "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_generic` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe.rs:284:5
+   |
+LL |     depr_safe_generic("", "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: 122 warnings emitted
+
