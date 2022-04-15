@@ -1,6 +1,6 @@
 -include ../../run-make-fulldeps/tools.mk
 
-# ignore-windows
+# only-linux
 # ignore-cross-compile
 
 all: main.rs

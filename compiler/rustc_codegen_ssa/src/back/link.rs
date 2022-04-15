@@ -1856,15 +1856,15 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, link_output_kind, crt_objects_fallback);
 
-    // Sanitizer libraries.
-    add_sanitizer_libraries(sess, crate_type, cmd);
-
     add_linked_symbol_object(
         cmd,
         sess,
         tmpdir,
         &codegen_results.crate_info.linked_symbols[&crate_type],
     );
+
+    // Sanitizer libraries.
+    add_sanitizer_libraries(sess, crate_type, cmd);
 
     // Object code from the current crate.
     // Take careful note of the ordering of the arguments we pass to the linker
