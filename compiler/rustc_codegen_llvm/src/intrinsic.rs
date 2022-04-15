@@ -1839,6 +1839,27 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_neg: Int => neg, Float => fneg;
     }
 
+    if name == sym::simd_arith_offset {
+        // This also checks that the first operand is a ptr type.
+        let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {
+            span_bug!(span, "must be called with a vector of pointer types as first argument")
+        });
+        let layout = bx.layout_of(pointee.ty);
+        let ptrs = args[0].immediate();
+        // The second argument must be a ptr-sized integer.
+        // (We don't care about the signedness, this is wrapping anyway.)
+        let (_offsets_len, offsets_elem) = arg_tys[1].simd_size_and_type(bx.tcx());
+        if !matches!(offsets_elem.kind(), ty::Int(ty::IntTy::Isize) | ty::Uint(ty::UintTy::Usize)) {
+            span_bug!(
+                span,
+                "must be called with a vector of pointer-sized integers as second argument"
+            );
+        }
+        let offsets = args[1].immediate();
+
+        return Ok(bx.gep(bx.backend_type(layout), ptrs, &[offsets]));
+    }
+
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
