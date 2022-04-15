@@ -83,6 +83,12 @@ from_str_radix_bench!(bench_u64_from_str_radix_10, u64, 10);
 from_str_radix_bench!(bench_u64_from_str_radix_16, u64, 16);
 from_str_radix_bench!(bench_u64_from_str_radix_36, u64, 36);
 
+from_str_bench!(bench_u128_from_str, u128);
+from_str_radix_bench!(bench_u128_from_str_radix_2, u128, 2);
+from_str_radix_bench!(bench_u128_from_str_radix_10, u128, 10);
+from_str_radix_bench!(bench_u128_from_str_radix_16, u128, 16);
+from_str_radix_bench!(bench_u128_from_str_radix_36, u128, 36);
+
 from_str_bench!(bench_i8_from_str, i8);
 from_str_radix_bench!(bench_i8_from_str_radix_2, i8, 2);
 from_str_radix_bench!(bench_i8_from_str_radix_10, i8, 10);
@@ -106,3 +112,9 @@ from_str_radix_bench!(bench_i64_from_str_radix_2, i64, 2);
 from_str_radix_bench!(bench_i64_from_str_radix_10, i64, 10);
 from_str_radix_bench!(bench_i64_from_str_radix_16, i64, 16);
 from_str_radix_bench!(bench_i64_from_str_radix_36, i64, 36);
+
+from_str_bench!(bench_i128_from_str, i128);
+from_str_radix_bench!(bench_i128_from_str_radix_2, i128, 2);
+from_str_radix_bench!(bench_i128_from_str_radix_10, i128, 10);
+from_str_radix_bench!(bench_i128_from_str_radix_16, i128, 16);
+from_str_radix_bench!(bench_i128_from_str_radix_36, i128, 36);

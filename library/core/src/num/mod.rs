@@ -1014,15 +1014,15 @@ macro_rules! impl_helper_for {
 }
 impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
-/// Determins if a string of text of that length of that radix could be guaranteed to be
-/// stored in the given type T.
+/// Determins length of text of a particular radix that could be guaranteed to be
+/// stored in the given type T without overflow.
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
 /// is done at runtime.
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
-pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
-    radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
+pub fn safe_width<T>(radix: u32, is_signed_ty: bool) -> usize {
+    if radix > 16 { 0 } else { mem::size_of::<T>() * 2 - is_signed_ty as usize }
 }
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
@@ -1035,10 +1035,6 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         radix
     );
 
-    if src.is_empty() {
-        return Err(PIE { kind: Empty });
-    }
-
     let is_signed_ty = T::from_u32(0) > T::MIN;
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
@@ -1047,29 +1043,52 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     // of multi-byte sequences
     let src = src.as_bytes();
 
-    let (is_positive, digits) = match src[0] {
-        b'+' | b'-' if src[1..].is_empty() => {
-            return Err(PIE { kind: InvalidDigit });
+    let (first, mut digits) = (*src.get(0).ok_or_else(|| PIE { kind: Empty })?, &src[1..]);
+
+    let (is_positive, mut result) = match first {
+        b'+' => {
+            let first = digits.get(0).ok_or_else(|| PIE { kind: InvalidDigit })?;
+            digits = &digits[1..];
+            (
+                true,
+                T::from_u32(
+                    (*first as char).to_digit(radix).ok_or_else(|| PIE { kind: InvalidDigit })?,
+                ),
+            )
         }
-        b'+' => (true, &src[1..]),
-        b'-' if is_signed_ty => (false, &src[1..]),
-        _ => (true, src),
+        b'-' if is_signed_ty => {
+            let first = digits.get(0).ok_or_else(|| PIE { kind: InvalidDigit })?;
+            digits = &digits[1..];
+            (
+                false,
+                T::from_u32(0)
+                    - T::from_u32(
+                        (*first as char)
+                            .to_digit(radix)
+                            .ok_or_else(|| PIE { kind: InvalidDigit })?,
+                    ),
+            )
+        }
+        val => (
+            true,
+            T::from_u32((val as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?),
+        ),
     };
 
-    let mut result = T::from_u32(0);
-
-    if can_not_overflow::<T>(radix, is_signed_ty, digits) {
+    if mem::size_of::<T>() > 2 {
         // If the len of the str is short compared to the range of the type
         // we are parsing into, then we can be certain that an overflow will not occur.
         // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
-        // above is a faster (conservative) approximation of this.
+        // in `safe_width` is a faster (conservative) approximation of this.
         //
         // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
         // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
         // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
+        let safe_width = safe_width::<T>(radix, is_signed_ty);
+        
         macro_rules! run_unchecked_loop {
             ($unchecked_additive_op:expr) => {
-                for &c in digits {
+                for &c in digits.iter().take(safe_width) {
                     result = result * T::from_u32(radix);
                     let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
                     result = $unchecked_additive_op(result, T::from_u32(x));
@@ -1081,32 +1100,37 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         } else {
             run_unchecked_loop!(<T as core::ops::Sub>::sub)
         };
-    } else {
-        macro_rules! run_checked_loop {
-            ($checked_additive_op:ident, $overflow_err:expr) => {
-                for &c in digits {
-                    // When `radix` is passed in as a literal, rather than doing a slow `imul`
-                    // the compiler can use shifts if `radix` can be expressed as a
-                    // sum of powers of 2 (x*10 can be written as x*8 + x*2).
-                    // When the compiler can't use these optimisations,
-                    // the latency of the multiplication can be hidden by issuing it
-                    // before the result is needed to improve performance on
-                    // modern out-of-order CPU as multiplication here is slower
-                    // than the other instructions, we can get the end result faster
-                    // doing multiplication first and let the CPU spends other cycles
-                    // doing other computation and get multiplication result later.
-                    let mul = result.checked_mul(radix);
-                    let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-                    result = mul.ok_or_else($overflow_err)?;
-                    result = T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
-                }
-            };
+        if safe_width >= digits.len() {
+            return Ok(result);
         }
-        if is_positive {
-            run_checked_loop!(checked_add, || PIE { kind: PosOverflow })
-        } else {
-            run_checked_loop!(checked_sub, || PIE { kind: NegOverflow })
+        digits = &digits[safe_width..];
+    }
+
+    macro_rules! run_checked_loop {
+        ($checked_additive_op:ident, $overflow_err:expr) => {
+            for &c in digits {
+                // When `radix` is passed in as a literal, rather than doing a slow `imul`
+                // the compiler can use shifts if `radix` can be expressed as a
+                // sum of powers of 2 (x*10 can be written as x*8 + x*2).
+                // When the compiler can't use these optimisations,
+                // the latency of the multiplication can be hidden by issuing it
+                // before the result is needed to improve performance on
+                // modern out-of-order CPU as multiplication here is slower
+                // than the other instructions, we can get the end result faster
+                // doing multiplication first and let the CPU spends other cycles
+                // doing other computation and get multiplication result later.
+                let mul = result.checked_mul(radix);
+                let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                result = mul.ok_or_else($overflow_err)?;
+                result = T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
+            }
         };
     }
+    if is_positive {
+        run_checked_loop!(checked_add, || PIE { kind: PosOverflow })
+    } else {
+        run_checked_loop!(checked_sub, || PIE { kind: NegOverflow })
+    };
+
     Ok(result)
 }

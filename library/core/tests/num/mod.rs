@@ -2,7 +2,7 @@ use core::cmp::PartialEq;
 use core::convert::{TryFrom, TryInto};
 use core::fmt::Debug;
 use core::marker::Copy;
-use core::num::{can_not_overflow, IntErrorKind, ParseIntError, TryFromIntError};
+use core::num::{safe_width, IntErrorKind, ParseIntError, TryFromIntError};
 use core::ops::{Add, Div, Mul, Rem, Sub};
 use core::option::Option;
 use core::option::Option::None;
@@ -126,15 +126,15 @@ fn test_can_not_overflow() {
     where
         T: std::convert::TryFrom<i8>,
     {
-        !can_not_overflow::<T>(radix, T::try_from(-1_i8).is_ok(), input.as_bytes())
+        safe_width::<T>(radix, T::try_from(-1_i8).is_ok()) < input.len()
     }
 
     // Positive tests:
-    assert!(!can_overflow::<i8>(16, "F"));
-    assert!(!can_overflow::<u8>(16, "FF"));
+    assert!(!can_overflow::<i32>(16, "FFFFFFF"));
+    assert!(!can_overflow::<u32>(16, "FFFFFFFF"));
 
-    assert!(!can_overflow::<i8>(10, "9"));
-    assert!(!can_overflow::<u8>(10, "99"));
+    assert!(!can_overflow::<i32>(10, "9"));
+    assert!(!can_overflow::<u32>(10, "99"));
 
     // Negative tests:
 
