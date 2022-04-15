@@ -108,10 +108,8 @@ impl VClock {
 
     /// Set the element at the current index of the vector
     pub fn set_at_index(&mut self, other: &Self, idx: VectorIdx) {
-        let idx = idx.index();
-        let mut_slice = self.get_mut_with_min_len(idx + 1);
-        let slice = other.as_slice();
-        mut_slice[idx] = slice[idx];
+        let mut_slice = self.get_mut_with_min_len(idx.index() + 1);
+        mut_slice[idx.index()] = other[idx];
     }
 
     /// Set the vector to the all-zero vector
