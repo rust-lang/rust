@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::ty::TyCtxt;
 
@@ -29,7 +29,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     }
 
     crate fn visit_lib(&mut self, cnum: CrateNum) {
-        let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let did = cnum.as_def_id();
         self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);
     }

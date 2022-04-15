@@ -11,7 +11,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -370,8 +370,7 @@ impl<'tcx> TyCtxt<'tcx> {
             };
         }
 
-        let is_staged_api =
-            self.lookup_stability(DefId { index: CRATE_DEF_INDEX, ..def_id }).is_some();
+        let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
         if !is_staged_api {
             return EvalResult::Allow;
         }
