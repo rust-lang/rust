@@ -1996,6 +1996,21 @@ fn test_insert_into_full_height_1() {
     }
 }
 
+#[test]
+fn test_try_insert() {
+    let mut map = BTreeMap::new();
+
+    assert!(map.is_empty());
+
+    assert_eq!(map.try_insert(1, 10).unwrap(), &10);
+    assert_eq!(map.try_insert(2, 20).unwrap(), &20);
+
+    let err = map.try_insert(2, 200).unwrap_err();
+    assert_eq!(err.entry.key(), &2);
+    assert_eq!(err.entry.get(), &20);
+    assert_eq!(err.value, 200);
+}
+
 macro_rules! create_append_test {
     ($name:ident, $len:expr) => {
         #[test]
