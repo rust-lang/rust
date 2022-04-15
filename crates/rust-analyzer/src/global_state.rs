@@ -180,7 +180,7 @@ impl GlobalState {
         // A file was added or deleted
         let mut has_structure_changes = false;
 
-        let change = {
+        let (change, changed_files) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
             let changed_files = vfs.take_changes();
@@ -188,17 +188,7 @@ impl GlobalState {
                 return false;
             }
 
-            for file in changed_files {
-                if !file.is_created_or_deleted() {
-                    // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/11357
-                    let crates = self.analysis_host.raw_database().relevant_crates(file.file_id);
-                    let crate_graph = self.analysis_host.raw_database().crate_graph();
-
-                    if crates.iter().any(|&krate| !crate_graph[krate].proc_macro.is_empty()) {
-                        self.proc_macro_changed = true;
-                    }
-                }
-
+            for file in &changed_files {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
@@ -212,14 +202,11 @@ impl GlobalState {
 
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
-                    match String::from_utf8(bytes).ok() {
-                        Some(text) => {
-                            let (text, line_endings) = LineEndings::normalize(text);
-                            line_endings_map.insert(file.file_id, line_endings);
-                            Some(Arc::new(text))
-                        }
-                        None => None,
-                    }
+                    String::from_utf8(bytes).ok().and_then(|text| {
+                        let (text, line_endings) = LineEndings::normalize(text);
+                        line_endings_map.insert(file.file_id, line_endings);
+                        Some(Arc::new(text))
+                    })
                 } else {
                     None
                 };
@@ -229,10 +216,19 @@ impl GlobalState {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
-            change
+            (change, changed_files)
         };
 
         self.analysis_host.apply_change(change);
+
+        let raw_database = &self.analysis_host.raw_database();
+        self.proc_macro_changed =
+            changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
+                let crates = raw_database.relevant_crates(file.file_id);
+                let crate_graph = raw_database.crate_graph();
+
+                crates.iter().any(|&krate| !crate_graph[krate].is_proc_macro)
+            });
         true
     }
 
