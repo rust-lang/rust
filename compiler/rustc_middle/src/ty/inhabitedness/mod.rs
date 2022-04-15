@@ -191,7 +191,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> DefIdForest<'tcx> {
-        tcx.type_uninhabited_from(param_env.and(self)).clone()
+        tcx.type_uninhabited_from(param_env.and(self))
     }
 }
 
