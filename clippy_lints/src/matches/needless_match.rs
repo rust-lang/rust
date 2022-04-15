@@ -83,7 +83,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
             return false;
         }
 
-        // Recurrsively check for each `else if let` phrase,
+        // Recursively check for each `else if let` phrase,
         if let Some(ref nested_if_let) = higher::IfLet::hir(cx, if_else) {
             return check_if_let(cx, nested_if_let);
         }
