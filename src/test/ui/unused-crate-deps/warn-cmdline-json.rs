@@ -1,4 +1,4 @@
-// Check for unused crate dep, no path
+// Check for unused crate dep, warn, json event, expect pass
 
 // edition:2018
 // check-pass

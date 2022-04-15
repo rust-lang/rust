@@ -970,7 +970,13 @@ impl Handler {
     }
 
     pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
-        self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
+        let mut inner = self.inner.borrow_mut();
+
+        if lint_level == "deny" || lint_level == "forbid" {
+            inner.bump_err_count();
+        }
+
+        inner.emit_unused_externs(lint_level, unused_externs)
     }
 
     pub fn update_unstable_expectation_id(
