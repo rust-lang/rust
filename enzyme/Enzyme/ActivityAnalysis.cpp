@@ -79,19 +79,53 @@ cl::opt<bool>
 #include <unordered_map>
 
 const char *KnownInactiveFunctionsStartingWith[] = {
-    "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io", "$ss5print",
+    "_ZN4core3fmt",
+    "_ZN3std2io5stdio6_print",
+    "f90io",
+    "$ss5print",
     "_ZNSt7__cxx1112basic_string",
+    "_ZNSt7__cxx1118basic_string",
     // ostream generic <<
-    "_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_",
-    "_ZSt16__ostream_insert", "_ZNSo9_M_insert",
+    "_ZStlsISt11char_traitsIcEERSt13basic_ostream",
+    "_ZSt16__ostream_insert",
+    "_ZStlsIwSt11char_traitsIwEERSt13basic_ostream",
+    "_ZNSo9_M_insert",
+    // ostream wchar
+    "_ZNSt13basic_ostream",
     // ostream put
     "_ZNSo3put",
+    // std::istream: widen_init, get, getline, >>, sync, ignore
+    "_ZNKSt5ctypeIcE13_M_widen_init",
+    "_ZNSi3get",
+    "_ZNSi7getline",
+    "_ZNSirsER",
+    "_ZNSt7__cxx1115basic_stringbuf",
+    "_ZNSi6ignore",
+    // std::ios_base
+    "_ZNSt8ios_base",
+    "_ZNSt9basic_ios",
+    "_ZStorSt13_Ios_OpenmodeS_",
+    // std::local
+    "_ZNSt6locale",
+    "_ZNKSt6locale4name",
+    // init
+    "_ZStL8__ioinit"
+    "_ZNSt9basic_ios",
     // std::cout
     "_ZSt4cout",
+    // std::cin
+    "_ZSt3cin",
+    "_ZNSi10_M_extract",
     // generic <<
     "_ZNSolsE",
+    // std::flush
+    "_ZSt5flush",
+    "_ZNSo5flush",
     // std::endl
-    "_ZNSo5flushEv", "_ZSt4endl"};
+    "_ZSt4endl",
+    // std::allocator
+    "_ZNSaIcE",
+};
 
 const char *KnownInactiveFunctionsContains[] = {
     "__enzyme_float", "__enzyme_double", "__enzyme_integer",
@@ -104,6 +138,22 @@ const std::set<std::string> InactiveGlobals = {
     "stderr",
     "stdout",
     "stdin",
+    "_ZSt3cin",
+    "_ZSt4cout",
+    "_ZSt5wcout",
+    "_ZSt4cerr",
+    "_ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE",
+    "_ZTVSt15basic_streambufIcSt11char_traitsIcEE",
+    "_ZTVSt9basic_iosIcSt11char_traitsIcEE",
+    // istream
+    "_ZTVNSt7__cxx1119basic_istringstreamIcSt11char_traitsIcESaIcEEE",
+    "_ZTTNSt7__cxx1119basic_istringstreamIcSt11char_traitsIcESaIcEEE",
+    // ostream
+    "_ZTVNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE",
+    "_ZTTNSt7__cxx1119basic_ostringstreamIcSt11char_traitsIcESaIcEEE",
+    // stringstream
+    "_ZTVNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE",
+    "_ZTTNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE",
 };
 
 const std::map<std::string, size_t> MPIInactiveCommAllocators = {
@@ -861,7 +911,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // If this global is unchanging and the internal constant data
     // is inactive, the global is inactive
-    if (GI->isConstant() && isConstantValue(TR, GI->getInitializer())) {
+    if (GI->isConstant() && GI->hasInitializer() &&
+        isConstantValue(TR, GI->getInitializer())) {
       InsertConstantValue(TR, Val);
       if (EnzymePrintActivity)
         llvm::errs() << " VALUE const global " << *Val
@@ -1136,10 +1187,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
           // If requesting empty unknown functions to be considered inactive,
           // abide by those rules
-          if (!isCertainPrintMallocOrFree(called) && called->empty() &&
+          if (EnzymeEmptyFnInactive && called->empty() &&
               !hasMetadata(called, "enzyme_gradient") &&
               !hasMetadata(called, "enzyme_derivative") &&
-              !isa<IntrinsicInst>(op) && EnzymeEmptyFnInactive) {
+              !isAllocationFunction(*called, TLI) &&
+              !isDeallocationFunction(*called, TLI) &&
+              !isa<IntrinsicInst>(op)) {
             InsertConstantValue(TR, Val);
             insertConstantsFrom(TR, *UpHypothesis);
             return true;
@@ -1816,10 +1869,11 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 
       // If requesting empty unknown functions to be considered inactive, abide
       // by those rules
-      if (!isCertainPrintMallocOrFree(called) && called->empty() &&
+      if (EnzymeEmptyFnInactive && called->empty() &&
           !hasMetadata(called, "enzyme_gradient") &&
           !hasMetadata(called, "enzyme_derivative") &&
-          !isa<IntrinsicInst>(op) && EnzymeEmptyFnInactive) {
+          !isAllocationFunction(*called, TLI) &&
+          !isDeallocationFunction(*called, TLI) && !isa<IntrinsicInst>(op)) {
         if (EnzymePrintActivity)
           llvm::errs() << "constant(" << (int)directions << ") up-emptyconst "
                        << *inst << "\n";
