@@ -15,10 +15,10 @@ use deprecated_safe::DeprSafeFns;
 #[deprecated_safe(since = "1.61.0", unsafe_edition = "2015", note = "reason")] //~ ERROR 'unsafe_edition' is invalid outside of rustc
 unsafe fn foo0() {}
 
-#[deprecated_safe(since = "1.61.0", unsafe_edition = "BAD", note = "reason")] //~ ERROR 'unsafe_edition' is invalid outside of rustc
+#[deprecated_safe(since = "1.61.0", unsafe_edition = "BAD", note = "reason")] //~ ERROR invalid 'unsafe_edition' specified
 unsafe fn foo1() {}
 
-#[deprecated_safe(since = "TBD", unsafe_edition = "BAD", note = "reason")] //~ ERROR 'unsafe_edition' is invalid outside of rustc
+#[deprecated_safe(since = "TBD", unsafe_edition = "BAD", note = "reason")] //~ ERROR invalid 'unsafe_edition' specified
 unsafe fn foo2() {}
 
 #[deprecated_safe]

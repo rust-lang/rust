@@ -4,13 +4,13 @@ error[E0543]: 'unsafe_edition' is invalid outside of rustc
 LL | #[deprecated_safe(since = "1.61.0", unsafe_edition = "2015", note = "reason")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0543]: 'unsafe_edition' is invalid outside of rustc
+error[E0543]: invalid 'unsafe_edition' specified
   --> $DIR/deprecated-safe-attr.rs:18:1
    |
 LL | #[deprecated_safe(since = "1.61.0", unsafe_edition = "BAD", note = "reason")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0543]: 'unsafe_edition' is invalid outside of rustc
+error[E0543]: invalid 'unsafe_edition' specified
   --> $DIR/deprecated-safe-attr.rs:21:1
    |
 LL | #[deprecated_safe(since = "TBD", unsafe_edition = "BAD", note = "reason")]

@@ -286,7 +286,7 @@ pub fn check_deprecation_as_safe(tcx: TyCtxt<'_>, def_id: DefId, span: Span) -> 
     let Some(attr) = tcx.get_attrs(def_id).iter().find(|x| x.has_name(sym::deprecated_safe)) else {
         return false;
     };
-    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, def_id, attr) else {
+    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, attr) else {
         bug!("invalid #[deprecated_safe] attribute during reporting");
     };
 
@@ -302,11 +302,7 @@ pub fn check_deprecation_as_safe(tcx: TyCtxt<'_>, def_id: DefId, span: Span) -> 
     true
 }
 
-pub fn parse_deprecation_as_safe(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-    attr: &Attribute,
-) -> Option<DeprecationAsSafe> {
+pub fn parse_deprecation_as_safe(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<DeprecationAsSafe> {
     let Some(meta_kind) = attr.meta_kind() else {
         return None;
     };
@@ -403,45 +399,6 @@ pub fn parse_deprecation_as_safe(
         }
     }
 
-    let is_rustc = tcx.features().staged_api || tcx.lookup_stability(def_id).is_some();
-    if is_rustc {
-        if since.is_none() {
-            struct_span_err!(
-                tcx.sess,
-                attr.span,
-                // FIXME(skippy) wrong error code, need to create a new one
-                E0542,
-                "missing 'since'"
-            )
-            .emit();
-            return None;
-        }
-
-        if note.is_none() {
-            struct_span_err!(
-                tcx.sess,
-                attr.span,
-                // FIXME(skippy) wrong error code, need to create a new one
-                E0543,
-                "missing 'note'"
-            )
-            .emit();
-            return None;
-        }
-    } else {
-        if unsafe_edition.is_some() {
-            struct_span_err!(
-                tcx.sess,
-                attr.span,
-                // FIXME(skippy) wrong error code, need to create a new one
-                E0543,
-                "'unsafe_edition' is invalid outside of rustc"
-            )
-            .emit();
-            return None;
-        }
-    }
-
     let mut unsafe_edition_parsed = None;
     if let Some(unsafe_edition) = unsafe_edition {
         if let Ok(unsafe_edition) = Edition::from_str(unsafe_edition.as_str()) {
@@ -476,7 +433,7 @@ pub fn report_deprecation_as_safe<'tcx>(
     let Some(attr) = tcx.get_attrs(def_id).iter().find(|x| x.has_name(sym::deprecated_safe)) else {
         bug!("missing #[deprecated_safe] attribute during reporting");
     };
-    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, def_id, attr) else {
+    let Some(depr_as_safe) = parse_deprecation_as_safe(tcx, attr) else {
         bug!("invalid #[deprecated_safe] attribute during reporting");
     };
 

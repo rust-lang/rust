@@ -2018,9 +2018,10 @@ impl CheckAttrVisitor<'_> {
         span: Span,
         _target: Target,
     ) -> bool {
-        let mut unsafety = None;
-
         let node = self.tcx.hir().get(hir_id);
+        let def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
+
+        let mut unsafety = None;
         if let hir::Node::Item(item) = node {
             if let Some(fn_sig) = node.fn_sig() {
                 unsafety = Some(fn_sig.header.unsafety);
@@ -2045,11 +2046,7 @@ impl CheckAttrVisitor<'_> {
             return false;
         };
 
-        if let Some(_depr_as_safe) = stability::parse_deprecation_as_safe(
-            self.tcx,
-            self.tcx.hir().local_def_id(hir_id).to_def_id(),
-            attr,
-        ) {
+        if let Some(depr_as_safe) = stability::parse_deprecation_as_safe(self.tcx, attr) {
             if unsafety == hir::Unsafety::Normal {
                 struct_span_err!(
                     self.tcx.sess,
@@ -2060,6 +2057,46 @@ impl CheckAttrVisitor<'_> {
                 )
                 .emit();
                 return false;
+            }
+
+            let is_rustc =
+                self.tcx.features().staged_api || self.tcx.lookup_stability(def_id).is_some();
+            if is_rustc {
+                if depr_as_safe.since.is_none() {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        // FIXME(skippy) wrong error code, need to create a new one
+                        E0542,
+                        "missing 'since'"
+                    )
+                    .emit();
+                    return false;
+                }
+
+                if depr_as_safe.note.is_none() {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        // FIXME(skippy) wrong error code, need to create a new one
+                        E0543,
+                        "missing 'note'"
+                    )
+                    .emit();
+                    return false;
+                }
+            } else {
+                if depr_as_safe.unsafe_edition.is_some() {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        // FIXME(skippy) wrong error code, need to create a new one
+                        E0543,
+                        "'unsafe_edition' is invalid outside of rustc"
+                    )
+                    .emit();
+                    return false;
+                }
             }
 
             true
