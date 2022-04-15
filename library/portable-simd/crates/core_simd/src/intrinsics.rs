@@ -61,6 +61,10 @@ extern "platform-intrinsic" {
     /// xor
     pub(crate) fn simd_xor<T>(x: T, y: T) -> T;
 
+    /// getelementptr (without inbounds)
+    #[cfg(not(bootstrap))]
+    pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
+
     /// fptoui/fptosi/uitofp/sitofp
     /// casting floats to integers is truncating, so it is safe to convert values like e.g. 1.5
     /// but the truncated value must fit in the target type or the result is poison.
