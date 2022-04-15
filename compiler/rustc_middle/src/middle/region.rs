@@ -362,12 +362,9 @@ impl ScopeTree {
         self.parent_map.get(&id).cloned().map(|(p, _)| p)
     }
 
-    /// Returns the lifetime of the local variable `var_id`
-    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Scope {
-        self.var_map
-            .get(&var_id)
-            .cloned()
-            .unwrap_or_else(|| bug!("no enclosing scope for id {:?}", var_id))
+    /// Returns the lifetime of the local variable `var_id`, if any.
+    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
+        self.var_map.get(&var_id).cloned()
     }
 
     /// Returns the scope when the temp created by `expr_id` will be cleaned up.
