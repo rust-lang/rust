@@ -99,7 +99,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
                 if let ExprKind::Path(ref qpath) = ret.kind {
                     return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
                 }
-                return true;
+                return false;
             }
             return eq_expr_value(cx, if_let.let_expr, ret);
         }
