@@ -172,6 +172,7 @@ pub enum Stdio {
     Inherit,
     Null,
     MakePipe,
+    Pipe(AnonPipe),
     Handle(Handle),
 }
 
@@ -528,6 +529,11 @@ impl Stdio {
                 Ok(pipes.theirs.into_handle())
             }
 
+            Stdio::Pipe(ref source) => {
+                let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
+                pipe::spawn_pipe_relay(source, ours_readable, true).map(AnonPipe::into_handle)
+            }
+
             Stdio::Handle(ref handle) => handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS),
 
             // Open up a reference to NUL with appropriate read/write
@@ -552,7 +558,7 @@ impl Stdio {
 
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
-        Stdio::Handle(pipe.into_handle())
+        Stdio::Pipe(pipe)
     }
 }
 

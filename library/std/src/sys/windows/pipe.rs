@@ -165,6 +165,46 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
     }
 }
 
+/// Takes an asynchronous source pipe and returns a synchronous pipe suitable
+/// for sending to a child process.
+///
+/// This is achieved by creating a new set of pipes and spawning a thread that
+/// relays messages between the source and the synchronous pipe.
+pub fn spawn_pipe_relay(
+    source: &AnonPipe,
+    ours_readable: bool,
+    their_handle_inheritable: bool,
+) -> io::Result<AnonPipe> {
+    // We need this handle to live for the lifetime of the thread spawned below.
+    let source = source.duplicate()?;
+
+    // create a new pair of anon pipes.
+    let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
+
+    // Spawn a thread that passes messages from one pipe to the other.
+    // Any errors will simply cause the thread to exit.
+    let (reader, writer) = if ours_readable { (ours, source) } else { (source, ours) };
+    crate::thread::spawn(move || {
+        let mut buf = [0_u8; 4096];
+        'reader: while let Ok(len) = reader.read(&mut buf) {
+            if len == 0 {
+                break;
+            }
+            let mut start = 0;
+            while let Ok(written) = writer.write(&buf[start..len]) {
+                start += written;
+                if start == len {
+                    continue 'reader;
+                }
+            }
+            break;
+        }
+    });
+
+    // Return the pipe that should be sent to the child process.
+    Ok(theirs)
+}
+
 fn random_number() -> usize {
     static N: AtomicUsize = AtomicUsize::new(0);
     loop {
@@ -191,6 +231,9 @@ impl AnonPipe {
     }
     pub fn into_handle(self) -> Handle {
         self.inner
+    }
+    fn duplicate(&self) -> io::Result<Self> {
+        self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| AnonPipe { inner })
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
