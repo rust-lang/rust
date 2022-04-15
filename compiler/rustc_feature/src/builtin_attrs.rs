@@ -454,7 +454,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // lang-team MCP 147
     gated!(
-        deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
+        deprecated_safe, Normal,
+        template!(
+            Word,
+            List: r#"/*opt*/ since = "version", /*opt*/ note = "reason", /*opt*/ unsafe_edition = "edition""#,
+            NameValueStr: "reason"
+        ),
+        ErrorFollowing,
         experimental!(deprecated_safe),
     ),
 
