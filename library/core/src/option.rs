@@ -708,6 +708,9 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// x.expect("fruits are healthy"); // panics with `fruits are healthy`
     /// ```
+    ///
+    /// **Note**: Please refer to the documentation on [`Result::expect`] for further information
+    /// on common message styles.
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]

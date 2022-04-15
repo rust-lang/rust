@@ -1047,8 +1047,8 @@ impl<T, E> Result<T, E> {
     ///     .expect("env variable `IMPORTANT_PATH` is not set");
     /// ```
     ///
-    /// In the latter style, we would instead describe the reason we _expect_ the `Result` will
-    /// always be `Ok`. With this style we would instead write:
+    /// In the "expect as precondition" style, we would instead describe the reason we _expect_ the
+    /// `Result` will always be `Ok`. With this style we would prefer to write:
     ///
     /// ```should_panic
     /// let path = std::env::var("IMPORTANT_PATH")
@@ -1060,7 +1060,7 @@ impl<T, E> Result<T, E> {
     /// `std`.
     ///
     /// ```text
-    /// thread 'expect_as_error_message' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/lib.rs:4:10
+    /// thread 'main' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/main.rs:4:6
     /// ```
     ///
     /// The "expect as precondition" style instead focuses on source code readability, making it
@@ -1069,13 +1069,13 @@ impl<T, E> Result<T, E> {
     /// directly to users with the default `std` panic hook's report format:
     ///
     /// ```text
-    /// thread 'expect_as_precondition' panicked at 'env variable `IMPORTANT_PATH` is always set by `wrapper_script.sh`: NotPresent', src/lib.rs:4:10
+    /// thread 'main' panicked at 'env variable `IMPORTANT_PATH` is always be set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
     /// ```
     ///
     /// This style works best when paired with a custom [panic hook] like the one provided by the
-    /// CLI working group library, [`human-panic`], which redirects panic messages to crash report
-    /// files while showing users a more "Oops, something went wrong!" message with a suggestion to
-    /// send the crash report file back to the developers.
+    /// CLI working group library, [`human-panic`], which dumps the panic messages to a crash
+    /// report file while showing users a more friendly "Oops, something went wrong!" message with
+    /// a suggestion to send the crash report file back to the developers.
     ///
     /// [panic hook]: https://doc.rust-lang.org/stable/std/panic/fn.set_hook.html
     /// [`human-panic`]: https://docs.rs/human-panic
