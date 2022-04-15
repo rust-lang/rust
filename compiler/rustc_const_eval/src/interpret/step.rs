@@ -196,27 +196,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            Aggregate(ref kind, ref operands) => {
-                // active_field_index is for union initialization.
-                let (dest, active_field_index) = match **kind {
-                    mir::AggregateKind::Adt(adt_did, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant(variant_index, &dest)?;
-                        if self.tcx.adt_def(adt_did).is_enum() {
-                            assert!(active_field_index.is_none());
-                            (self.place_downcast(&dest, variant_index)?, None)
-                        } else {
-                            if active_field_index.is_some() {
-                                assert_eq!(operands.len(), 1);
-                            }
-                            (dest, active_field_index)
-                        }
-                    }
-                    _ => (dest, None),
-                };
+            Aggregate(box ref kind, ref operands) => {
+                assert!(matches!(kind, mir::AggregateKind::Array(..)));
 
-                for (i, operand) in operands.iter().enumerate() {
+                for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
-                    let field_index = active_field_index.unwrap_or(i);
                     let field_dest = self.place_field(&dest, field_index)?;
                     self.copy_op(&op, &field_dest)?;
                 }
