@@ -7,6 +7,7 @@ use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::util;
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
 use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -262,8 +263,6 @@ fn compare_predicate_entailment<'tcx>(
         );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, impl_sig);
-        let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
-        debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         // First liberate late bound regions and subst placeholders
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
@@ -272,8 +271,31 @@ fn compare_predicate_entailment<'tcx>(
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
         // Add the resulting inputs and output as well-formed.
         wf_tys.extend(trait_sig.inputs_and_output.iter());
-        let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
 
+        // check if this is an impl of a #[deprecated_safe] trait function
+        // lint if the impl isn't unsafe and match up the FnSig's unsafety
+        // so there won't be an error
+        let impl_sig = if impl_sig.unsafety == hir::Unsafety::Normal
+            && trait_sig.unsafety == hir::Unsafety::Unsafe
+            && stability::check_deprecation_as_safe(tcx, trait_m.def_id, impl_m_span)
+        {
+            stability::report_deprecation_as_safe(
+                tcx,
+                DeprecationAsSafeKind::TraitFnImpl,
+                trait_m.def_id,
+                impl_m_hir_id,
+                impl_m_span,
+            );
+
+            ty::FnSig { unsafety: trait_sig.unsafety, ..impl_sig }
+        } else {
+            impl_sig
+        };
+
+        let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
+        debug!("compare_impl_method: impl_fty={:?}", impl_fty);
+
+        let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
         let sub_result = infcx.at(&cause, param_env).sup(trait_fty, impl_fty).map(
