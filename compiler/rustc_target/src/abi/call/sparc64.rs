@@ -113,11 +113,11 @@ where
             data = arg_scalar(cx, &scalar, offset, data);
         }
         abi::Abi::Aggregate { .. } => {
-            for i in 0..layout.fields.count().clone() {
+            for i in 0..layout.fields.count() {
                 if offset < layout.fields.offset(i) {
                     offset = layout.fields.offset(i);
                 }
-                data = parse_structure(cx, layout.field(cx, i).clone(), data.clone(), offset);
+                data = parse_structure(cx, layout.field(cx, i), data.clone(), offset);
             }
         }
         _ => {
@@ -161,7 +161,7 @@ where
 
             let mut data = parse_structure(
                 cx,
-                arg.layout.clone(),
+                arg.layout,
                 Sdata {
                     prefix: [None; 8],
                     prefix_index: 0,

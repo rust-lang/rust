@@ -539,13 +539,13 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
             UnusedUnsafe::InUnsafeBlock(id) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` block"),
+                    "because it's nested under this `unsafe` block",
                 );
             }
             UnusedUnsafe::InUnsafeFn(id, usage_lint_root) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` fn"),
+                    "because it's nested under this `unsafe` fn",
                 )
                 .note(
                     "this `unsafe` block does contain unsafe operations, \

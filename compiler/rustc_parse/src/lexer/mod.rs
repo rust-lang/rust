@@ -234,13 +234,13 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::InvalidIdent
                 // Do not recover an identifier with emoji if the codepoint is a confusable
                 // with a recoverable substitution token, like `➖`.
-                if UNICODE_ARRAY
+                if !UNICODE_ARRAY
                     .iter()
-                    .find(|&&(c, _, _)| {
+                    .any(|&(c, _, _)| {
                         let sym = self.str_from(start);
                         sym.chars().count() == 1 && c == sym.chars().next().unwrap()
                     })
-                    .is_none() =>
+                     =>
             {
                 let sym = nfc_normalize(self.str_from(start));
                 let span = self.mk_sp(start, self.pos);
