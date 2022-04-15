@@ -1,9 +1,10 @@
+use super::sealed::Sealed;
 use crate::simd::{
     intrinsics, LaneCount, Mask, Simd, SimdElement, SimdPartialOrd, SupportedLaneCount,
 };
 
 /// Operations on SIMD vectors of signed integers.
-pub trait SimdInt: Sized {
+pub trait SimdInt: Sized + Sealed {
     /// Mask type used for manipulating this SIMD vector type.
     type Mask;
 
@@ -167,6 +168,12 @@ pub trait SimdInt: Sized {
 macro_rules! impl_trait {
     { $($ty:ty),* } => {
         $(
+        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+        }
+
         impl<const LANES: usize> SimdInt for Simd<$ty, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,

@@ -1,7 +1,8 @@
+use super::sealed::Sealed;
 use crate::simd::{intrinsics, LaneCount, Simd, SupportedLaneCount};
 
 /// Operations on SIMD vectors of unsigned integers.
-pub trait SimdUint: Sized {
+pub trait SimdUint: Sized + Sealed {
     /// Scalar type contained by this SIMD vector type.
     type Scalar;
 
@@ -61,6 +62,12 @@ pub trait SimdUint: Sized {
 macro_rules! impl_trait {
     { $($ty:ty),* } => {
         $(
+        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+        }
+
         impl<const LANES: usize> SimdUint for Simd<$ty, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,

@@ -1,7 +1,4 @@
 #[macro_use]
-mod reduction;
-
-#[macro_use]
 mod swizzle;
 
 pub(crate) mod intrinsics;
