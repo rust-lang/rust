@@ -117,6 +117,7 @@
 #![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_likely)]
+#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_num_from_num)]

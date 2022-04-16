@@ -350,13 +350,13 @@ impl<T> MaybeUninit<T> {
     /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
     /// let data = read(&mut buf);
     /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
-    #[rustc_const_unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_uninit_array", issue = "96097")]
     #[must_use]
     #[inline(always)]
-    pub const fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+    pub const fn uninit_array<const N: usize>() -> [Self; N] {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-        unsafe { MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init() }
+        unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -942,19 +942,24 @@ impl<T> MaybeUninit<T> {
     ///
     /// assert_eq!(array, [0, 1, 2]);
     /// ```
-    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "80908")]
+    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_array_assume_init", issue = "96097")]
     #[inline(always)]
     #[track_caller]
-    pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
+    pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized
         // * `MaybeUninit<T>` and T are guaranteed to have the same layout
         // * `MaybeUninit` does not drop, so there are no double-frees
         // And thus the conversion is safe
-        unsafe {
+        let ret = unsafe {
             intrinsics::assert_inhabited::<[T; N]>();
             (&array as *const _ as *const [T; N]).read()
-        }
+        };
+
+        // FIXME: required to avoid `~const Destruct` bound
+        super::forget(array);
+        ret
     }
 
     /// Assuming all the elements are initialized, get a slice to them.
