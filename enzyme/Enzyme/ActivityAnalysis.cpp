@@ -103,6 +103,7 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZNSi6ignore",
     // std::ios_base
     "_ZNSt8ios_base",
+    "_ZNKSt9basic_ios",
     "_ZNSt9basic_ios",
     "_ZStorSt13_Ios_OpenmodeS_",
     // std::local
