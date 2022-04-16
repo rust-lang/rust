@@ -1418,11 +1418,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             })
         };
         let lldb_exe = "lldb";
-        let lldb_version = Command::new(lldb_exe)
-            .arg("--version")
-            .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
-            .ok();
+        let lldb_version = run(Command::new(lldb_exe).arg("--version"));
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
             let lldb_python_dir = run(Command::new(lldb_exe).arg("-P"));
