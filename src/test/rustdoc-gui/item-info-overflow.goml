@@ -8,7 +8,7 @@ assert-property: (".item-info", {"scrollWidth": "890"})
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (
     ".item-info",
-    "This is supported on Android or Linux or Emscripten or DragonFly BSD",
+    "Available on Android or Linux or Emscripten or DragonFly BSD",
     STARTS_WITH,
 )
 
@@ -23,6 +23,6 @@ assert-property: ("#impl-SimpleTrait .item-info", {"scrollWidth": "866"})
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (
     "#impl-SimpleTrait .item-info",
-    "This is supported on Android or Linux or Emscripten or DragonFly BSD",
+    "Available on Android or Linux or Emscripten or DragonFly BSD",
     STARTS_WITH,
 )
