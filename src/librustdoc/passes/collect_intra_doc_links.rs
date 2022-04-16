@@ -3,6 +3,7 @@
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
 use pulldown_cmark::LinkType;
+use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::Namespace::*;
@@ -556,7 +557,15 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // Resolver doesn't know about true, false, and types that aren't paths (e.g. `()`).
         let result = self
             .cx
-            .enter_resolver(|resolver| resolver.resolve_rustdoc_path(path_str, ns, module_id))
+            .resolver_caches
+            .doc_link_resolutions
+            .get(&(Symbol::intern(path_str), ns, module_id))
+            .copied()
+            .unwrap_or_else(|| {
+                self.cx.enter_resolver(|resolver| {
+                    resolver.resolve_rustdoc_path(path_str, ns, module_id)
+                })
+            })
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns))
             .or_else(|| self.resolve_macro_rules(path_str, ns));
@@ -1041,16 +1050,29 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
         for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
+            if !may_have_doc_links(&doc) {
+                continue;
+            }
             debug!("combined_docs={}", doc);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let parent_node = parent_module.or(parent_node);
-            for md_link in markdown_links(&doc) {
+            let mut tmp_links = self
+                .cx
+                .resolver_caches
+                .markdown_links
+                .take()
+                .expect("`markdown_links` are already borrowed");
+            if !tmp_links.contains_key(&doc) {
+                tmp_links.insert(doc.clone(), markdown_links(&doc));
+            }
+            for md_link in &tmp_links[&doc] {
                 let link = self.resolve_link(&item, &doc, parent_node, md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
             }
+            self.cx.resolver_caches.markdown_links = Some(tmp_links);
         }
 
         if item.is_mod() {
@@ -1181,7 +1203,7 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         dox: &str,
         parent_node: Option<DefId>,
-        ori_link: MarkdownLink,
+        ori_link: &MarkdownLink,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
@@ -1320,7 +1342,7 @@ impl LinkCollector<'_, '_> {
                 }
 
                 Some(ItemLink {
-                    link: ori_link.link,
+                    link: ori_link.link.clone(),
                     link_text,
                     did: res.def_id(self.cx.tcx),
                     fragment,
@@ -1343,7 +1365,7 @@ impl LinkCollector<'_, '_> {
                     &diag_info,
                 )?;
                 let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
-                Some(ItemLink { link: ori_link.link, link_text, did: id, fragment })
+                Some(ItemLink { link: ori_link.link.clone(), link_text, did: id, fragment })
             }
         }
     }

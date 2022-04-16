@@ -1089,6 +1089,13 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
+        Attributes::from_ast_iter(attrs.iter(), additional_attrs)
+    }
+
+    crate fn from_ast_iter<'a>(
+        attrs: impl Iterator<Item = &'a ast::Attribute>,
+        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+    ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
             if let Some((value, kind)) = attr.doc_str_and_comment_kind() {
@@ -1115,7 +1122,7 @@ impl Attributes {
         let other_attrs = additional_attrs
             .into_iter()
             .flat_map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
-            .chain(attrs.iter().map(|attr| (attr, None)))
+            .chain(attrs.map(|attr| (attr, None)))
             .filter_map(clean_attr)
             .collect();
 
