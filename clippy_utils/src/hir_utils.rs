@@ -675,7 +675,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                             }
                         },
                         InlineAsmOperand::Const { anon_const } => self.hash_body(anon_const.body),
-                        InlineAsmOperand::Sym { expr } => self.hash_expr(expr),
+                        InlineAsmOperand::SymFn { anon_const } => self.hash_body(anon_const.body),
+                        InlineAsmOperand::SymStatic { path, def_id: _ } => self.hash_qpath(path),
                     }
                 }
             },
