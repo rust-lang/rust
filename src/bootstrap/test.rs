@@ -1409,7 +1409,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         let run = |cmd: &mut Command| {
-            cmd.output().map(|output| {
+            cmd.output().ok().filter(|output| output.status.success()).map(|output| {
                 String::from_utf8_lossy(&output.stdout)
                     .lines()
                     .next()
@@ -1425,7 +1425,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             .ok();
         if let Some(ref vers) = lldb_version {
             cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = run(Command::new(lldb_exe).arg("-P")).ok();
+            let lldb_python_dir = run(Command::new(lldb_exe).arg("-P"));
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
             }
