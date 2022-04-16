@@ -74,10 +74,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
-        let _prof_timer = tcx.prof.generic_activity_with_args(
-            "codegen_module",
-            &[cgu_name.to_string(), cgu.size_estimate().to_string()],
-        );
+        let _prof_timer =
+            tcx.prof.generic_activity_with_arg_recorder("codegen_module", |recorder| {
+                recorder.record_arg(cgu_name.to_string());
+                recorder.record_arg(cgu.size_estimate().to_string());
+            });
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
