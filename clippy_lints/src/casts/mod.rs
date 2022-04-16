@@ -487,6 +487,7 @@ declare_clippy_lint! {
     /// let y: u32 = x.abs() as u32;
     /// ```
     /// Use instead:
+    /// ```rust
     /// let x: i32 = -42;
     /// let y: u32 = x.unsigned_abs();
     /// ```
