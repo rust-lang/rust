@@ -5,16 +5,16 @@ use std::io::Read;
 
 fn main() {
     // should fix, because type is String
-    let _ = String::from("foo").bytes().count();
+    let _ = String::from("foo").len();
 
     let s1 = String::from("foo");
-    let _ = s1.bytes().count();
+    let _ = s1.len();
 
     // should fix, because type is &str
-    let _ = "foo".bytes().count();
+    let _ = "foo".len();
 
     let s2 = "foo";
-    let _ = s2.bytes().count();
+    let _ = s2.len();
 
     // make sure using count() normally doesn't trigger warning
     let vector = [0, 1, 2];
