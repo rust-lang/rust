@@ -227,7 +227,7 @@ impl GlobalState {
                 let crates = raw_database.relevant_crates(file.file_id);
                 let crate_graph = raw_database.crate_graph();
 
-                crates.iter().any(|&krate| !crate_graph[krate].is_proc_macro)
+                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
             });
         true
     }
