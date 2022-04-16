@@ -54,6 +54,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _13 = move ((*_6).1: &T);        // scope 2 at $DIR/inline-closure-captures.rs:11:22: 11:23
         _11 = (*_13);                    // scope 2 at $DIR/inline-closure-captures.rs:11:22: 11:23
         StorageDead(_13);                // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
+        Deinit(_0);                      // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
         (_0.0: i32) = move _10;          // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
         (_0.1: T) = move _11;            // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
         StorageDead(_11);                // scope 2 at $DIR/inline-closure-captures.rs:11:23: 11:24

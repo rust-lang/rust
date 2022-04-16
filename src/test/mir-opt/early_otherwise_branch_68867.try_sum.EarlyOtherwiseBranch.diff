@@ -95,6 +95,8 @@
   
       bb2: {
           StorageLive(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:25: 26:27
+          nop;                             // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:25: 26:27
+          Deinit(_0);                      // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:21: 26:28
           nop;                             // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:21: 26:28
           discriminant(_0) = 1;            // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:21: 26:28
           StorageDead(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:26:27: 26:28
@@ -240,6 +242,7 @@
       }
   
       bb10: {
+          Deinit(_0);                      // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:5: 27:7
           ((_0 as Ok).0: ViewportPercentageLength) = move _3; // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:5: 27:7
           discriminant(_0) = 0;            // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:5: 27:7
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:6: 27:7
