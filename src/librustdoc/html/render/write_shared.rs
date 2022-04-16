@@ -535,7 +535,7 @@ pub(super) fn write_shared(
                 //
                 // If the implementation is from another crate then that crate
                 // should add it.
-                if imp.impl_item.def_id.krate() == did.krate || !imp.impl_item.def_id.is_local() {
+                if imp.impl_item.item_id.krate() == did.krate || !imp.impl_item.item_id.is_local() {
                     None
                 } else {
                     Some(Implementor {

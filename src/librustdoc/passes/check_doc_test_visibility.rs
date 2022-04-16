@@ -56,7 +56,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.access_levels.is_public(item.def_id.expect_def_id())
+    if !cx.cache.access_levels.is_public(item.item_id.expect_def_id())
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
@@ -79,7 +79,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
 
     // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
     // would presumably panic if a fake `DefIndex` were passed.
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_def_id().expect_local());
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.item_id.expect_def_id().expect_local());
 
     // check if parent is trait impl
     if let Some(parent_hir_id) = cx.tcx.hir().find_parent_node(hir_id) {
@@ -107,7 +107,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
 }
 
 crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.def_id)
+    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id)
     else {
         // If non-local, no need to check anything.
         return;
@@ -131,7 +131,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
             );
         }
     } else if tests.found_tests > 0
-        && !cx.cache.access_levels.is_exported(item.def_id.expect_def_id())
+        && !cx.cache.access_levels.is_exported(item.item_id.expect_def_id())
     {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,

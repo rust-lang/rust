@@ -222,7 +222,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
+            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
                 if self.current.len() + 1 != names.len()
                     || self.current.iter().zip(names.iter()).any(|(a, b)| a != b)
                 {

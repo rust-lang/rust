@@ -52,7 +52,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
                 if !cx.tcx.is_doc_hidden(def_id) {
                     let impls = get_auto_trait_and_blanket_impls(cx, def_id);
-                    new_items.extend(impls.filter(|i| cx.inlined.insert(i.def_id)));
+                    new_items.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
                 }
             }
         }
@@ -176,9 +176,9 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.is_doc_hidden(i.def_id.expect_def_id()) {
+            if !self.cx.tcx.is_doc_hidden(i.item_id.expect_def_id()) {
                 self.impls
-                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id.expect_def_id()));
+                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.item_id.expect_def_id()));
             }
         }
 
@@ -199,7 +199,7 @@ impl ItemCollector {
 
 impl DocVisitor for ItemCollector {
     fn visit_item(&mut self, i: &Item) {
-        self.items.insert(i.def_id);
+        self.items.insert(i.item_id);
 
         self.visit_item_recur(i)
     }
@@ -225,7 +225,7 @@ impl<'a> BadImplStripper<'a> {
         }
     }
 
-    fn keep_impl_with_def_id(&self, did: ItemId) -> bool {
-        self.items.contains(&did)
+    fn keep_impl_with_def_id(&self, item_id: ItemId) -> bool {
+        self.items.contains(&item_id)
     }
 }

@@ -69,7 +69,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             return;
         }
 
-        let Some(local_id) = item.def_id.as_def_id().and_then(|x| x.as_local())
+        let Some(local_id) = item.item_id.as_def_id().and_then(|x| x.as_local())
         else {
             // We don't need to check the syntax for other crates so returning
             // without doing anything should not be a problem.
@@ -153,7 +153,7 @@ impl<'a, 'tcx> DocVisitor for SyntaxChecker<'a, 'tcx> {
             let sp = item.attr_span(self.cx.tcx);
             let extra = crate::html::markdown::ExtraInfo::new_did(
                 self.cx.tcx,
-                item.def_id.expect_def_id(),
+                item.item_id.expect_def_id(),
                 sp,
             );
             for code_block in markdown::rust_code_blocks(dox, &extra) {

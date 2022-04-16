@@ -105,7 +105,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         name: None,
                         attrs: Default::default(),
                         visibility: Inherited,
-                        def_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
+                        item_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                         kind: box ImplItem(Impl {
                             unsafety: hir::Unsafety::Normal,
                             generics: clean_ty_generics(

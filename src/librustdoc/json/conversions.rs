@@ -27,7 +27,7 @@ impl JsonRenderer<'_> {
         let links = self
             .cache
             .intra_doc_links
-            .get(&item.def_id)
+            .get(&item.item_id)
             .into_iter()
             .flatten()
             .map(|clean::ItemLink { link, did, .. }| (link.clone(), from_item_id((*did).into())))
@@ -40,14 +40,14 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, def_id, cfg: _ } = item;
+        let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
         let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
-            id: from_item_id(def_id),
-            crate_id: def_id.krate().as_u32(),
+            id: from_item_id(item_id),
+            crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: self.convert_span(span),
             visibility: self.convert_visibility(visibility),
@@ -174,7 +174,7 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-crate fn from_item_id(did: ItemId) -> Id {
+crate fn from_item_id(item_id: ItemId) -> Id {
     struct DisplayDefId(DefId);
 
     impl fmt::Display for DisplayDefId {
@@ -183,7 +183,7 @@ crate fn from_item_id(did: ItemId) -> Id {
         }
     }
 
-    match did {
+    match item_id {
         ItemId::DefId(did) => Id(format!("{}", DisplayDefId(did))),
         ItemId::Blanket { for_, impl_id } => {
             Id(format!("b:{}-{}", DisplayDefId(impl_id), DisplayDefId(for_)))
@@ -732,5 +732,5 @@ impl FromWithTcx<ItemType> for ItemKind {
 }
 
 fn ids(items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
-    items.into_iter().filter(|x| !x.is_stripped()).map(|i| from_item_id(i.def_id)).collect()
+    items.into_iter().filter(|x| !x.is_stripped()).map(|i| from_item_id(i.item_id)).collect()
 }

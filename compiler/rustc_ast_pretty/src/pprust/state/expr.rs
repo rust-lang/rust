@@ -88,10 +88,21 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    pub(super) fn print_expr_anon_const(&mut self, expr: &ast::AnonConst) {
+    pub(super) fn print_expr_anon_const(
+        &mut self,
+        expr: &ast::AnonConst,
+        attrs: &[ast::Attribute],
+    ) {
         self.ibox(INDENT_UNIT);
         self.word("const");
-        self.print_expr(&expr.value);
+        self.nbsp();
+        if let ast::ExprKind::Block(block, None) = &expr.value.kind {
+            self.cbox(0);
+            self.ibox(0);
+            self.print_block_with_attrs(block, attrs);
+        } else {
+            self.print_expr(&expr.value);
+        }
         self.end();
     }
 
@@ -275,7 +286,7 @@ impl<'a> State<'a> {
                 self.print_expr_vec(exprs);
             }
             ast::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const);
+                self.print_expr_anon_const(anon_const, attrs);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count);
