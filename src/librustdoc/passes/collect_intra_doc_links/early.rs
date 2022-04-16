@@ -63,7 +63,7 @@ crate fn early_resolve_intra_doc_links(
 }
 
 fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes {
-    let mut attrs = Attributes::from_ast_iter(attrs.filter(|attr| attr.doc_str().is_some()), None);
+    let mut attrs = Attributes::from_ast_iter(attrs.map(|attr| (attr, None)), true);
     attrs.unindent_doc_comments();
     attrs
 }
@@ -201,7 +201,7 @@ impl EarlyDocLinkResolver<'_, '_> {
 
     fn resolve_doc_links(&mut self, attrs: Attributes, module_id: DefId) {
         let mut need_traits_in_scope = false;
-        for (doc_module, doc) in attrs.collapsed_doc_value_by_module_level() {
+        for (doc_module, doc) in attrs.prepare_to_doc_link_resolution() {
             assert_eq!(doc_module, None);
             let links = self
                 .markdown_links

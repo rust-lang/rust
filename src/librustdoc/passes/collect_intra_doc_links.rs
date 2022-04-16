@@ -1050,7 +1050,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
+        for (parent_module, doc) in item.attrs.prepare_to_doc_link_resolution() {
             if !may_have_doc_links(&doc) {
                 continue;
             }
