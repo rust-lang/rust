@@ -1742,6 +1742,39 @@ impl Default for PathBuf {
     }
 }
 
+#[stable(feature = "path_div", since = "1.62.0")]
+/// A convenient syntax for creating cross-platform file paths without unnecessary allocation.
+///
+/// Example:
+/// ```
+/// use std::path::{Path, PathBuf};
+/// let path = PathBuf::from(".rustup") / "toolchains" / "stable-x86_64-unknown-linux-gnu";
+/// assert_eq!(path, Path::new(".rustup/toolchains/stable-x86_64-unknown-linux-gnu"));
+/// ```
+impl<T: ?Sized + AsRef<Path>> core::ops::Div<&T> for PathBuf {
+    type Output = PathBuf;
+    fn div(mut self, rhs: &T) -> Self {
+        self.push(rhs);
+        self
+    }
+}
+
+/// A convenient syntax for creating cross-platform file paths without unnecessary allocation.
+///
+/// Example:
+/// ```
+/// use std::path::Path;
+/// let path = Path::new(".rustup") / "toolchains" / "stable-x86_64-unknown-linux-gnu";
+/// assert_eq!(path, Path::new(".rustup/toolchains/stable-x86_64-unknown-linux-gnu"));
+/// ```
+#[stable(feature = "path_div", since = "1.62.0")]
+impl<T: ?Sized + AsRef<Path>> core::ops::Div<&T> for &Path {
+    type Output = PathBuf;
+    fn div(self, rhs: &T) -> PathBuf {
+        self.join(rhs)
+    }
+}
+
 #[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<&'a Path> for Cow<'a, Path> {
     /// Creates a clone-on-write pointer from a reference to
