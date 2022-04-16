@@ -4,12 +4,8 @@
 use crate::cmp;
 use crate::mem;
 
-const LO_U64: u64 = 0x0101010101010101;
-const HI_U64: u64 = 0x8080808080808080;
-
-// Use truncation.
-const LO_USIZE: usize = LO_U64 as usize;
-const HI_USIZE: usize = HI_U64 as usize;
+const LO_USIZE: usize = usize::repeat_u8(0x01);
+const HI_USIZE: usize = usize::repeat_u8(0x80);
 const USIZE_BYTES: usize = mem::size_of::<usize>();
 
 /// Returns `true` if `x` contains any zero byte.
