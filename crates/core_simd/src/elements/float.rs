@@ -5,7 +5,7 @@ use crate::simd::{
 };
 
 /// Operations on SIMD vectors of floats.
-pub trait SimdFloat: Sized + Sealed {
+pub trait SimdFloat: Copy + Sealed {
     /// Mask type used for manipulating this SIMD vector type.
     type Mask;
 

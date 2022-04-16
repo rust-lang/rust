@@ -2,7 +2,7 @@ use super::sealed::Sealed;
 use crate::simd::{intrinsics, LaneCount, Simd, SupportedLaneCount};
 
 /// Operations on SIMD vectors of unsigned integers.
-pub trait SimdUint: Sized + Sealed {
+pub trait SimdUint: Copy + Sealed {
     /// Scalar type contained by this SIMD vector type.
     type Scalar;
 
