@@ -4,6 +4,7 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::iter_from_generator;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
@@ -1107,21 +1108,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            let direct_children = md.item_ids.iter().map(|item_id| item_id.def_id.local_def_index);
-            // Foreign items are planted into their parent modules from name resolution point of view.
-            let tcx = self.tcx;
-            let foreign_item_children = md
-                .item_ids
-                .iter()
-                .filter_map(|item_id| match tcx.hir().item(*item_id).kind {
-                    hir::ItemKind::ForeignMod { items, .. } => {
-                        Some(items.iter().map(|fi_ref| fi_ref.id.def_id.local_def_index))
+            record!(self.tables.children[def_id] <- iter_from_generator(|| {
+                for item_id in md.item_ids {
+                    match tcx.hir().item(*item_id).kind {
+                        // Foreign items are planted into their parent modules
+                        // from name resolution point of view.
+                        hir::ItemKind::ForeignMod { items, .. } => {
+                            for foreign_item in items {
+                                yield foreign_item.id.def_id.local_def_index;
+                            }
+                        }
+                        // Only encode named non-reexport children, reexports are encoded
+                        // separately and unnamed items are not used by name resolution.
+                        hir::ItemKind::ExternCrate(..) => continue,
+                        _ if tcx.def_key(item_id.def_id.to_def_id()).get_opt_name().is_some() => {
+                            yield item_id.def_id.local_def_index;
+                        }
+                        _ => continue,
                     }
-                    _ => None,
-                })
-                .flatten();
-
-            record!(self.tables.children[def_id] <- direct_children.chain(foreign_item_children));
+                }
+            }));
         }
     }
 
