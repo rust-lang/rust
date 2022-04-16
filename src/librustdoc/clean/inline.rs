@@ -534,7 +534,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: ItemId::Primitive(prim_ty, did.krate),
+                    item_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
