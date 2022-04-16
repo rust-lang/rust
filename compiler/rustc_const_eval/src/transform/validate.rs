@@ -315,9 +315,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     | ty::FnPtr(..)
                             )
                         }
-                        // None of the possible types have lifetimes, so we can just compare
-                        // directly
-                        if a != b {
+                        // The function pointer types can have lifetimes
+                        if !self.mir_assign_valid_types(a, b) {
                             self.fail(
                                 location,
                                 format!("Cannot compare unequal types {:?} and {:?}", a, b),
@@ -464,7 +463,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
                 // since CopyNonOverlapping is parametrized by 1 type,
                 // we only need to check that they are equal and not keep an extra parameter.
-                if op_src_ty != op_dst_ty {
+                if !self.mir_assign_valid_types(op_src_ty, op_dst_ty) {
                     self.fail(location, format!("bad arg ({:?} != {:?})", op_src_ty, op_dst_ty));
                 }
 
