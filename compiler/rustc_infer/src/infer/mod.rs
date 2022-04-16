@@ -385,8 +385,8 @@ impl<'tcx> ValuePairs<'tcx> {
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Debug)]
 pub struct TypeTrace<'tcx> {
-    cause: ObligationCause<'tcx>,
-    values: ValuePairs<'tcx>,
+    pub cause: ObligationCause<'tcx>,
+    pub values: ValuePairs<'tcx>,
 }
 
 /// The origin of a `r1 <= r2` constraint.

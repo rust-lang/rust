@@ -1,9 +1,0 @@
-error[E0308]: mismatched types
-  --> $DIR/arg-type-mismatch.rs:5:30
-   |
-LL | fn main() { let i: (); i = f(()); }
-   |                              ^^ expected `isize`, found `()`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0308`.

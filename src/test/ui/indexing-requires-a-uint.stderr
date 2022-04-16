@@ -12,12 +12,15 @@ error[E0308]: mismatched types
   --> $DIR/indexing-requires-a-uint.rs:12:18
    |
 LL |     bar::<isize>(i);  // i should not be re-coerced back to an isize
-   |                  ^ expected `isize`, found `usize`
+   |     ------------ ^ expected `isize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
    |
-help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
+note: function defined here
+  --> $DIR/indexing-requires-a-uint.rs:5:8
    |
-LL |     bar::<isize>(i.try_into().unwrap());  // i should not be re-coerced back to an isize
-   |                   ++++++++++++++++++++
+LL |     fn bar<T>(_: T) {}
+   |        ^^^    ----
 
 error: aborting due to 2 previous errors
 
