@@ -320,7 +320,7 @@ impl MultiSpan {
 
     /// Returns `true` if any of the primary spans are displayable.
     pub fn has_primary_spans(&self) -> bool {
-        !self.primary_spans.iter().all(|sp| sp.is_dummy())
+        !self.is_dummy()
     }
 
     /// Returns `true` if this contains only a dummy primary span with any hygienic context.
