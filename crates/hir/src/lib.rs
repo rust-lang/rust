@@ -1358,10 +1358,27 @@ impl Function {
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
-        let ret_type = &db.function_data(self.id).ret_type;
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(ret_type);
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let ty = callable_sig.ret().clone();
         Type::new_with_resolver_inner(db, &resolver, ty)
+    }
+
+    pub fn async_ret_type(self, db: &dyn HirDatabase) -> Option<Type> {
+        if !self.is_async(db) {
+            return None;
+        }
+        let resolver = self.id.resolver(db.upcast());
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let ret_ty = callable_sig.ret().clone();
+        for pred in ret_ty.impl_trait_bounds(db).into_iter().flatten() {
+            if let WhereClause::AliasEq(output_eq) = pred.into_value_and_skipped_binders().0 {
+                return Type::new_with_resolver_inner(db, &resolver, output_eq.ty).into();
+            }
+        }
+        never!("Async fn ret_type should be impl Future");
+        None
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
