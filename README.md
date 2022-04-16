@@ -57,8 +57,11 @@ in your program, and cannot run all programs:
   executions.
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to most platform-specific APIs or FFI. A few APIs have been
-  implemented (such as printing to stdout) but most have not: for example, Miri
-  currently does not support SIMD or networking.
+  implemented (such as printing to stdout, accessing environment variables, and
+  basic file system access) but most have not: for example, Miri currently does
+  not support networking. System API support varies between targets; if you run
+  on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
+  better support.
 * Threading support is not finished yet. E.g., weak memory effects are not
   emulated and spin loops (without syscalls) just loop forever. There is no
   threading support on Windows.
