@@ -2537,4 +2537,6 @@ extern "C" {
         remark_passes_len: usize,
     );
 
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 }

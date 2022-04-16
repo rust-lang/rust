@@ -4,7 +4,9 @@ use crate::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::Instance;
 
 pub trait MonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
@@ -56,7 +58,27 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                 );
                                 GlobalAsmOperandRef::Const { string }
                             }
-                            _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
+                            hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                                let ty = cx
+                                    .tcx()
+                                    .typeck_body(anon_const.body)
+                                    .node_type(anon_const.hir_id);
+                                let instance = match ty.kind() {
+                                    &ty::FnDef(def_id, substs) => Instance::new(def_id, substs),
+                                    _ => span_bug!(*op_sp, "asm sym is not a function"),
+                                };
+
+                                GlobalAsmOperandRef::SymFn { instance }
+                            }
+                            hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                                GlobalAsmOperandRef::SymStatic { def_id }
+                            }
+                            hir::InlineAsmOperand::In { .. }
+                            | hir::InlineAsmOperand::Out { .. }
+                            | hir::InlineAsmOperand::InOut { .. }
+                            | hir::InlineAsmOperand::SplitInOut { .. } => {
+                                span_bug!(*op_sp, "invalid operand type for global_asm!")
+                            }
                         })
                         .collect();
 

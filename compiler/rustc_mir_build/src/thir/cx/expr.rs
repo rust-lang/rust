@@ -462,94 +462,55 @@ impl<'tcx> Cx<'tcx> {
                 operands: asm
                     .operands
                     .iter()
-                    .map(|(op, _op_sp)| {
-                        match *op {
-                            hir::InlineAsmOperand::In { reg, ref expr } => {
-                                InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::Out { reg, late, ref expr } => {
-                                InlineAsmOperand::Out {
-                                    reg,
-                                    late,
-                                    expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
-                                }
-                            }
-                            hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
-                                InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::SplitInOut {
+                    .map(|(op, _op_sp)| match *op {
+                        hir::InlineAsmOperand::In { reg, ref expr } => {
+                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                            InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                ref in_expr,
-                                ref out_expr,
-                            } => InlineAsmOperand::SplitInOut {
-                                reg,
-                                late,
-                                in_expr: self.mirror_expr(in_expr),
-                                out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
-                            },
-                            hir::InlineAsmOperand::Const { ref anon_const } => {
-                                let anon_const_def_id =
-                                    self.tcx.hir().local_def_id(anon_const.hir_id);
-                                let value = mir::ConstantKind::from_anon_const(
-                                    self.tcx,
-                                    anon_const_def_id,
-                                    self.param_env,
-                                );
-                                let span = self.tcx.hir().span(anon_const.hir_id);
-
-                                InlineAsmOperand::Const { value, span }
+                                expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
                             }
-                            hir::InlineAsmOperand::Sym { ref expr } => {
-                                let hir::ExprKind::Path(ref qpath) = expr.kind else {
-                                    span_bug!(
-                                        expr.span,
-                                        "asm `sym` operand should be a path, found {:?}",
-                                        expr.kind
-                                    );
-                                };
-                                let temp_lifetime =
-                                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-                                let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
-                                let ty;
-                                match res {
-                                    Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
-                                        ty = self.typeck_results().node_type(expr.hir_id);
-                                        let user_ty =
-                                            self.user_substs_applied_to_res(expr.hir_id, res);
-                                        InlineAsmOperand::SymFn {
-                                            expr: self.thir.exprs.push(Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::zero_sized_literal(user_ty),
-                                            }),
-                                        }
-                                    }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            ref in_expr,
+                            ref out_expr,
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: self.mirror_expr(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                        },
+                        hir::InlineAsmOperand::Const { ref anon_const } => {
+                            let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                            let value = mir::ConstantKind::from_anon_const(
+                                self.tcx,
+                                anon_const_def_id,
+                                self.param_env,
+                            );
+                            let span = self.tcx.hir().span(anon_const.hir_id);
 
-                                    Res::Def(DefKind::Static(_), def_id) => {
-                                        InlineAsmOperand::SymStatic { def_id }
-                                    }
+                            InlineAsmOperand::Const { value, span }
+                        }
+                        hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                            let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                            let value = mir::ConstantKind::from_anon_const(
+                                self.tcx,
+                                anon_const_def_id,
+                                self.param_env,
+                            );
+                            let span = self.tcx.hir().span(anon_const.hir_id);
 
-                                    _ => {
-                                        self.tcx.sess.span_err(
-                                            expr.span,
-                                            "asm `sym` operand must point to a fn or static",
-                                        );
-
-                                        // Not a real fn, but we're not reaching codegen anyways...
-                                        ty = self.tcx.ty_error();
-                                        InlineAsmOperand::SymFn {
-                                            expr: self.thir.exprs.push(Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::zero_sized_literal(None),
-                                            }),
-                                        }
-                                    }
-                                }
-                            }
+                            InlineAsmOperand::SymFn { value, span }
+                        }
+                        hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            InlineAsmOperand::SymStatic { def_id }
                         }
                     })
                     .collect(),

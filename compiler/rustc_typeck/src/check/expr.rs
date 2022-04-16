@@ -2520,12 +2520,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
-                hir::InlineAsmOperand::Const { anon_const } => {
+                hir::InlineAsmOperand::Const { anon_const }
+                | hir::InlineAsmOperand::SymFn { anon_const } => {
                     self.to_const(anon_const);
                 }
-                hir::InlineAsmOperand::Sym { expr } => {
-                    self.check_expr(expr);
-                }
+                hir::InlineAsmOperand::SymStatic { .. } => {}
             }
         }
         if asm.options.contains(ast::InlineAsmOptions::NORETURN) {

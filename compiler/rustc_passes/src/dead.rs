@@ -536,6 +536,10 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
                         .insert(self.tcx.hir().local_def_id(ctor_hir_id), item.def_id);
                 }
             }
+            hir::ItemKind::GlobalAsm(_) => {
+                // global_asm! is always live.
+                self.worklist.push(item.def_id);
+            }
             _ => (),
         }
     }

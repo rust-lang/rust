@@ -1835,3 +1835,9 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
       DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses, Passes));
 }
+
+extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
+  RawRustStringOstream OS(Str);
+  GlobalValue *GV = unwrap<GlobalValue>(V);
+  Mangler().getNameWithPrefix(OS, GV, true);
+}

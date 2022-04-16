@@ -1043,7 +1043,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::Sym { .. } => {}
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
                                 succ = self.write_place(expr, succ, ACC_WRITE);
@@ -1064,8 +1065,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let mut succ = succ;
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
-                        hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Sym { expr, .. } => {
+                        hir::InlineAsmOperand::In { expr, .. } => {
                             succ = self.propagate_through_expr(expr, succ)
                         }
                         hir::InlineAsmOperand::Out { expr, .. } => {
@@ -1082,7 +1082,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             }
                             succ = self.propagate_through_expr(in_expr, succ);
                         }
-                        hir::InlineAsmOperand::Const { .. } => {}
+                        hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }
                 succ

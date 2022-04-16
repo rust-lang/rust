@@ -412,6 +412,13 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
 
+                // The old global has had its name removed but is returned by
+                // get_static since it is in the instance cache. Provide an
+                // alternative lookup that points to the new global so that
+                // global_asm! can compute the correct mangled symbol name
+                // for the global.
+                self.renamed_statics.borrow_mut().insert(def_id, new_g);
+
                 // To avoid breaking any invariants, we leave around the old
                 // global for the moment; we'll replace all references to it
                 // with the new global later. (See base::codegen_backend.)
