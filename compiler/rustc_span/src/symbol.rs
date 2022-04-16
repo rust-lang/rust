@@ -1247,6 +1247,7 @@ symbols! {
         simd,
         simd_add,
         simd_and,
+        simd_arith_offset,
         simd_as,
         simd_bitmask,
         simd_cast,
