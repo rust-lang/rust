@@ -1,19 +1,17 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_lang_ctor, peel_blocks,
     peel_hir_expr_while, CaptureKind,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     def::Res, Arm, BindingAnnotation, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, Path, QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -74,16 +72,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 
-/// Returns true iff the given expression is the result of calling `Result::ok`
-fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(path, &[ref receiver], _) = &expr.kind {
-        path.ident.name.as_str() == "ok"
-            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Result)
-    } else {
-        false
-    }
-}
-
 /// A struct containing information about occurrences of construct that this lint detects
 ///
 /// Such as:
@@ -130,9 +118,8 @@ fn try_get_option_occurence<'tcx>(
         ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
         _ => expr,
     };
+    let inner_pat = try_get_inner_pat(cx, pat)?;
     if_chain! {
-        if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
-        let inner_pat = try_get_inner_pat(cx, pat)?;
         if let PatKind::Binding(bind_annotation, _, id, None) = inner_pat.kind;
         if let Some(some_captures) = can_move_expr_to_closure(cx, if_then);
         if let Some(none_captures) = can_move_expr_to_closure(cx, if_else);
@@ -185,7 +172,7 @@ fn try_get_option_occurence<'tcx>(
 
 fn try_get_inner_pat<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<&'tcx Pat<'tcx>> {
     if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
-        if is_lang_ctor(cx, qpath, OptionSome) {
+        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk) {
             return Some(inner_pat);
         }
     }
@@ -224,9 +211,9 @@ fn try_convert_match<'tcx>(
     arms: &[Arm<'tcx>],
 ) -> Option<(&'tcx Pat<'tcx>, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
     if arms.len() == 2 {
-        return if is_none_arm(cx, &arms[1]) {
+        return if is_none_or_err_arm(cx, &arms[1]) {
             Some((arms[0].pat, arms[0].body, arms[1].body))
-        } else if is_none_arm(cx, &arms[0]) {
+        } else if is_none_or_err_arm(cx, &arms[0]) {
             Some((arms[1].pat, arms[1].body, arms[0].body))
         } else {
             None
@@ -235,9 +222,12 @@ fn try_convert_match<'tcx>(
     None
 }
 
-fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
         PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        PatKind::TupleStruct(ref qpath, [first_pat], _) => {
+            is_lang_ctor(cx, qpath, ResultErr) && matches!(first_pat.kind, PatKind::Wild)
+        },
         PatKind::Wild => true,
         _ => false,
     }

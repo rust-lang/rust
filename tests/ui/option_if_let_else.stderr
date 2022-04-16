@@ -226,5 +226,31 @@ LL | |         None => 5,
 LL | |     };
    | |_____^ help: try: `Some(10).map_or(5, |a| a + 1)`
 
-error: aborting due to 17 previous errors
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:222:13
+   |
+LL |       let _ = match res {
+   |  _____________^
+LL | |         Ok(a) => a + 1,
+LL | |         _ => 1,
+LL | |     };
+   | |_____^ help: try: `res.map_or(1, |a| a + 1)`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:226:13
+   |
+LL |       let _ = match res {
+   |  _____________^
+LL | |         Err(_) => 1,
+LL | |         Ok(a) => a + 1,
+LL | |     };
+   | |_____^ help: try: `res.map_or(1, |a| a + 1)`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:230:13
+   |
+LL |     let _ = if let Ok(a) = res { a + 1 } else { 5 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or(5, |a| a + 1)`
+
+error: aborting due to 20 previous errors
 

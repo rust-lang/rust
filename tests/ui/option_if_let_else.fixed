@@ -185,13 +185,7 @@ fn main() {
     let _ = Some(10).map_or(5, |a| a + 1);
 
     let res: Result<i32, i32> = Ok(5);
-    let _ = match res {
-        Ok(a) => a + 1,
-        _ => 1,
-    };
-    let _ = match res {
-        Err(_) => 1,
-        Ok(a) => a + 1,
-    };
-    let _ = if let Ok(a) = res { a + 1 } else { 5 };
+    let _ = res.map_or(1, |a| a + 1);
+    let _ = res.map_or(1, |a| a + 1);
+    let _ = res.map_or(5, |a| a + 1);
 }
