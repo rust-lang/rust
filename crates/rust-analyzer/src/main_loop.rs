@@ -149,9 +149,9 @@ impl GlobalState {
             );
         }
 
-        self.fetch_workspaces_queue.request_op();
-        if self.fetch_workspaces_queue.should_start_op() {
-            self.fetch_workspaces();
+        self.fetch_workspaces_queue.request_op("startup".to_string());
+        if let Some(cause) = self.fetch_workspaces_queue.should_start_op() {
+            self.fetch_workspaces(cause);
         }
 
         while let Some(event) = self.next_event(&inbox) {
@@ -240,7 +240,8 @@ impl GlobalState {
                                     let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                                     if self.config.run_build_scripts() && workspaces_updated {
-                                        self.fetch_build_data_queue.request_op()
+                                        self.fetch_build_data_queue
+                                            .request_op(format!("workspace updated"));
                                     }
 
                                     (Progress::End, None)
@@ -312,7 +313,8 @@ impl GlobalState {
 
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
-                                self.prime_caches_queue.request_op();
+                                self.prime_caches_queue
+                                    .request_op("restart after cancelation".to_string());
                             }
                         }
                     };
@@ -443,7 +445,7 @@ impl GlobalState {
                     flycheck.update();
                 }
                 if self.config.prefill_caches() {
-                    self.prime_caches_queue.request_op();
+                    self.prime_caches_queue.request_op("became quiescent".to_string());
                 }
             }
 
@@ -493,14 +495,15 @@ impl GlobalState {
         }
 
         if self.config.cargo_autoreload() {
-            if self.fetch_workspaces_queue.should_start_op() {
-                self.fetch_workspaces();
+            if let Some(cause) = self.fetch_workspaces_queue.should_start_op() {
+                self.fetch_workspaces(cause);
             }
         }
-        if self.fetch_build_data_queue.should_start_op() {
-            self.fetch_build_data();
+        if let Some(cause) = self.fetch_build_data_queue.should_start_op() {
+            self.fetch_build_data(cause);
         }
-        if self.prime_caches_queue.should_start_op() {
+        if let Some(cause) = self.prime_caches_queue.should_start_op() {
+            tracing::debug!(%cause, "will prime caches");
             let num_worker_threads = self.config.prime_caches_num_threads();
 
             self.task_pool.handle.spawn_with_sender({
@@ -569,7 +572,7 @@ impl GlobalState {
 
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(|s, ()| {
-                s.fetch_workspaces_queue.request_op();
+                s.fetch_workspaces_queue.request_op("reload workspace request".to_string());
                 Ok(())
             })?
             .on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
@@ -714,7 +717,7 @@ impl GlobalState {
                 }
                 if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
                     if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
-                        this.fetch_workspaces_queue.request_op();
+                        this.fetch_workspaces_queue.request_op(format!("DidSaveTextDocument {}", abs_path.display()));
                     }
                 }
                 Ok(())

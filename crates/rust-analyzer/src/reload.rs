@@ -18,6 +18,7 @@ use crate::{
     global_state::GlobalState,
     lsp_ext,
     main_loop::Task,
+    op_queue::Cause,
 };
 
 #[derive(Debug)]
@@ -49,7 +50,7 @@ impl GlobalState {
             self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
         if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces_queue.request_op()
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_string())
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -92,8 +93,8 @@ impl GlobalState {
         status
     }
 
-    pub(crate) fn fetch_workspaces(&mut self) {
-        tracing::info!("will fetch workspaces");
+    pub(crate) fn fetch_workspaces(&mut self, cause: Cause) {
+        tracing::info!(%cause, "will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
             let linked_projects = self.config.linked_projects();
@@ -144,7 +145,8 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn fetch_build_data(&mut self) {
+    pub(crate) fn fetch_build_data(&mut self, cause: Cause) {
+        tracing::debug!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
         self.task_pool.handle.spawn_with_sender(move |sender| {
