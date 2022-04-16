@@ -637,6 +637,14 @@ impl Error for core::ffi::FromBytesWithNulError {
     }
 }
 
+#[unstable(feature = "todo", issue = "none")]
+impl From<core::ffi::FromBytesWithNulError> for io::Error {
+    /// Converts a [`NulError`] into an [`io::Error`].
+    fn from(e: core::ffi::FromBytesWithNulError) -> io::Error {
+        io::Error::new(io::ErrorKind::InvalidInput, e)
+    }
+}
+
 #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
 impl Error for core::ffi::FromBytesUntilNulError {}
 
