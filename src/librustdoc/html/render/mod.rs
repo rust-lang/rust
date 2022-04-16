@@ -830,7 +830,7 @@ fn assoc_const(
         w,
         "{extra}{vis}const <a{href} class=\"constant\">{name}</a>: {ty}",
         extra = extra,
-        vis = it.visibility.print_with_space(it.def_id, cx),
+        vis = it.visibility.print_with_space(it.item_id, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         ty = ty.print(cx),
@@ -884,7 +884,7 @@ fn assoc_method(
 ) {
     let header = meth.fn_header(cx.tcx()).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
-    let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
+    let vis = meth.visibility.print_with_space(meth.item_id, cx).to_string();
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
@@ -2060,7 +2060,7 @@ fn small_url_encode(s: String) -> String {
 }
 
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
-    let did = it.def_id.expect_def_id();
+    let did = it.item_id.expect_def_id();
     let cache = cx.cache();
 
     if let Some(v) = cache.impls.get(&did) {
@@ -2412,7 +2412,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     );
 
     let cache = cx.cache();
-    if let Some(implementors) = cache.implementors.get(&it.def_id.expect_def_id()) {
+    if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         let mut res = implementors
             .iter()
             .filter(|i| {
@@ -2761,7 +2761,7 @@ const NUM_VISIBLE_LINES: usize = 10;
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
 fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
-    let def_id = item.def_id.expect_def_id();
+    let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
     let Some(call_locations) = cx.shared.call_locations.get(&key) else { return };
 

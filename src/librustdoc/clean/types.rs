@@ -366,7 +366,7 @@ crate struct Item {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
-    crate def_id: ItemId,
+    crate item_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
 }
@@ -380,7 +380,7 @@ impl fmt::Debug for Item {
         let mut fmt = f.debug_struct("Item");
         fmt.field("name", &self.name)
             .field("visibility", &self.visibility)
-            .field("def_id", &self.def_id);
+            .field("item_id", &self.item_id);
         // allow printing the full item if someone really wants to
         if alternate {
             fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
@@ -408,19 +408,19 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 
 impl Item {
     crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
-        self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
+        self.item_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
     crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
-        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
+        self.item_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        self.def_id.as_def_id().and_then(|did| tcx.lookup_deprecation(did))
+        self.item_id.as_def_id().and_then(|did| tcx.lookup_deprecation(did))
     }
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        self.def_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
+        self.item_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -432,14 +432,14 @@ impl Item {
             ItemKind::ModuleItem(Module { span, .. }) => *span,
             ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
             ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
-                if let ItemId::Blanket { impl_id, .. } = self.def_id {
+                if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     rustc_span(impl_id, tcx)
                 } else {
                     panic!("blanket impl item has non-blanket ID")
                 }
             }
             _ => {
-                self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
+                self.item_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
             }
         }
     }
@@ -503,7 +503,7 @@ impl Item {
             cx.tcx.visibility(def_id).clean(cx)
         };
 
-        Item { def_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
+        Item { item_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -517,7 +517,7 @@ impl Item {
 
         cx.cache()
             .intra_doc_links
-            .get(&self.def_id)
+            .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
             .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
@@ -547,7 +547,7 @@ impl Item {
     crate fn link_names(&self, cache: &Cache) -> Vec<RenderedLink> {
         cache
             .intra_doc_links
-            .get(&self.def_id)
+            .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
             .map(|ItemLink { link: s, link_text, .. }| RenderedLink {
@@ -559,7 +559,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id.as_def_id().map_or(false, |did| did.index == CRATE_DEF_INDEX)
+        self.is_mod() && self.item_id.as_def_id().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -695,7 +695,7 @@ impl Item {
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
-                let abi = tcx.fn_sig(self.def_id.as_def_id().unwrap()).abi();
+                let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(self.name.unwrap())
@@ -708,11 +708,11 @@ impl Item {
                 }
             }
             ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) => {
-                let def_id = self.def_id.as_def_id().unwrap();
+                let def_id = self.item_id.as_def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
             ItemKind::TyMethodItem(_) => {
-                build_fn_header(self.def_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
+                build_fn_header(self.item_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
             }
             _ => return None,
         };

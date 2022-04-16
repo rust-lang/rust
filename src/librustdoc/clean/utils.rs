@@ -44,9 +44,9 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                 if it.is_extern_crate()
                     && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.def_id.krate()))
+                        || cx.tcx.is_compiler_builtins(it.item_id.krate()))
                 {
-                    cx.cache.masked_crates.insert(it.def_id.krate());
+                    cx.cache.masked_crates.insert(it.item_id.krate());
                 }
             }
         }

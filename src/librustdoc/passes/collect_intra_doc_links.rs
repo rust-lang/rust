@@ -1025,15 +1025,15 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
 impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         let parent_node =
-            item.def_id.as_def_id().and_then(|did| find_nearest_parent_module(self.cx.tcx, did));
+            item.item_id.as_def_id().and_then(|did| find_nearest_parent_module(self.cx.tcx, did));
         if parent_node.is_some() {
-            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.item_id);
         }
 
         let inner_docs = item.inner_docs(self.cx.tcx);
 
         if item.is_mod() && inner_docs {
-            self.mod_ids.push(item.def_id.expect_def_id());
+            self.mod_ids.push(item.item_id.expect_def_id());
         }
 
         // We want to resolve in the lexical scope of the documentation.
@@ -1048,14 +1048,14 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             for md_link in markdown_links(&doc) {
                 let link = self.resolve_link(&item, &doc, parent_node, md_link);
                 if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
+                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
             }
         }
 
         if item.is_mod() {
             if !inner_docs {
-                self.mod_ids.push(item.def_id.expect_def_id());
+                self.mod_ids.push(item.item_id.expect_def_id());
             }
 
             self.visit_item_recur(item);
@@ -1246,7 +1246,7 @@ impl LinkCollector<'_, '_> {
 
         let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
-                item_id: item.def_id,
+                item_id: item.item_id,
                 module_id,
                 dis: disambiguator,
                 path_str: path_str.to_owned(),
@@ -1302,7 +1302,7 @@ impl LinkCollector<'_, '_> {
                     // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
                     // However I'm not sure how to check that across crates.
                     if prim == PrimitiveType::RawPointer
-                        && item.def_id.is_local()
+                        && item.item_id.is_local()
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
                         self.report_rawptr_assoc_feature_gate(dox, &ori_link, item);
@@ -1386,7 +1386,7 @@ impl LinkCollector<'_, '_> {
             // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
             // would presumably panic if a fake `DefIndex` were passed.
             .and_then(|dst_id| {
-                item.def_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
+                item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
             })
         {
             if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
@@ -1864,7 +1864,7 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>),
 ) {
-    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.def_id)
+    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
     else {
         // If non-local, no need to check anything.
         info!("ignoring warning from parent crate: {}", msg);
