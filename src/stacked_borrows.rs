@@ -125,9 +125,9 @@ struct AllocHistory {
     // The time tags can be compressed down to one bit per event, by just storing a Vec<u8>
     // where each bit is set to indicate if the event was a creation or a retag
     current_time: usize,
-    creations: Vec<Event>,
-    invalidations: Vec<Event>,
-    protectors: Vec<Protection>,
+    creations: smallvec::SmallVec<[Event; 2]>,
+    invalidations: smallvec::SmallVec<[Event; 1]>,
+    protectors: smallvec::SmallVec<[Protection; 1]>,
 }
 
 #[derive(Debug)]
@@ -552,9 +552,9 @@ impl<'tcx> Stack {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
-            self.access_error(access, tag, alloc_id, alloc_range, offset, global)
-        })?;
+        let granting_idx = self
+            .find_granting(access, tag)
+            .ok_or_else(|| self.access_error(access, tag, alloc_id, alloc_range, offset, global))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -852,7 +852,7 @@ impl Stacks {
             let mut state = state.borrow_mut();
             stack.access(AccessKind::Read, tag, (alloc_id, range, offset), &mut state)
         })
-   }
+    }
 
     #[inline(always)]
     pub fn memory_written<'tcx>(

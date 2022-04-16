@@ -165,10 +165,10 @@ pub fn report_error<'tcx, 'mir>(
                     ];
                     match history {
                         Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
-                            let msg = format!("{:?} was created due to a retag at offsets {}", tag, HexRange(*created_range));
+                            let msg = format!("{:?} was created by a retag at offsets {}", tag, HexRange(*created_range));
                             helps.push((Some(created_span.clone()), msg));
                             if let Some((invalidated_range, invalidated_span)) = invalidated {
-                                let msg = format!("{:?} was later invalidated due to a retag at offsets {}", tag, HexRange(*invalidated_range));
+                                let msg = format!("{:?} was later invalidated at offsets {}", tag, HexRange(*invalidated_range));
                                 helps.push((Some(invalidated_span.clone()), msg));
                             }
                             if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {

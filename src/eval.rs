@@ -16,6 +16,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_session::config::EntryFnType;
 
 use std::collections::HashSet;
+use rustc_span::DUMMY_SP;
 
 use crate::*;
 
@@ -283,24 +284,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     Ok((ecx, ret_place))
 }
 
-// This is potentially a performance hazard.
-// Factoring it into its own function lets us keep an eye on how much it shows up in a profile.
-fn set_current_span<'mir, 'tcx: 'mir>(ecx: &mut MiriEvalContext<'mir, 'tcx>) {
-    let current_span = Machine::stack(&ecx)
-        .into_iter()
-        .rev()
-        .find(|frame| {
-            let info =
-                FrameInfo { instance: frame.instance, span: frame.current_span(), lint_root: None };
-            ecx.machine.is_local(&info)
-        })
-        .map(|frame| frame.current_span())
-        .unwrap_or(rustc_span::DUMMY_SP);
-    if let Some(sb) = ecx.machine.stacked_borrows.as_mut() {
-        sb.get_mut().current_span = current_span;
-    }
-}
-
 /// Evaluates the entry function specified by `entry_id`.
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
@@ -328,8 +311,8 @@ pub fn eval_entry<'tcx>(
             let info = ecx.preprocess_diagnostics();
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    if ecx.machine.stacked_borrows.is_some() {
-                        set_current_span(&mut ecx);
+                    if let Some(sb) = ecx.machine.stacked_borrows.as_mut() {
+                        sb.get_mut().current_span = DUMMY_SP;
                     }
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
