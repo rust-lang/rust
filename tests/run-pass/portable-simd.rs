@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-strict-provenance
 #![feature(portable_simd, platform_intrinsics)]
 use std::simd::*;
 

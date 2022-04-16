@@ -437,7 +437,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_fmax"
             | "simd_fmin"
             | "simd_saturating_add"
-            | "simd_saturating_sub" => {
+            | "simd_saturating_sub"
+            | "simd_arith_offset" => {
                 use mir::BinOp;
 
                 let &[ref left, ref right] = check_arg_count(args)?;
@@ -453,6 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     SaturatingOp(BinOp),
                     FMax,
                     FMin,
+                    WrappingOffset,
                 }
                 let which = match intrinsic_name {
                     "simd_add" => Op::MirOp(BinOp::Add),
@@ -475,6 +477,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_fmin" => Op::FMin,
                     "simd_saturating_add" => Op::SaturatingOp(BinOp::Add),
                     "simd_saturating_sub" => Op::SaturatingOp(BinOp::Sub),
+                    "simd_arith_offset" => Op::WrappingOffset,
                     _ => unreachable!(),
                 };
 
@@ -504,14 +507,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 val
                             }
                         }
+                        Op::SaturatingOp(mir_op) => {
+                            this.saturating_arith(mir_op, &left, &right)?
+                        }
+                        Op::WrappingOffset => {
+                            let ptr = this.scalar_to_ptr(left.to_scalar()?)?;
+                            let offset_count = right.to_scalar()?.to_machine_isize(this)?;
+                            let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
+
+                            let pointee_size = i64::try_from(this.layout_of(pointee_ty)?.size.bytes()).unwrap();
+                            let offset_bytes = offset_count.wrapping_mul(pointee_size);
+                            let offset_ptr = ptr.wrapping_signed_offset(offset_bytes, this);
+                            Scalar::from_maybe_pointer(offset_ptr, this)
+                        }
                         Op::FMax => {
                             fmax_op(&left, &right)?
                         }
                         Op::FMin => {
                             fmin_op(&left, &right)?
-                        }
-                        Op::SaturatingOp(mir_op) => {
-                            this.saturating_arith(mir_op, &left, &right)?
                         }
                     };
                     this.write_scalar(val, &dest.into())?;
