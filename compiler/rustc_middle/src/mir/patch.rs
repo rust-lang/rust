@@ -2,6 +2,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+use std::collections::VecDeque;
 
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block
@@ -141,6 +142,9 @@ impl<'tcx> MirPatch<'tcx> {
 
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
+        let mut terminator_targets = Vec::new();
+        let mut inf_and_stmt: VecDeque<(SourceInfo, StatementKind<'_>)> = VecDeque::new();
+
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -149,10 +153,32 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
+
+            // For mir-opt `Derefer` to work in all cases we need to
+            // get terminator's targets and apply the statement to all of them.
+            if loc.statement_index > body[loc.block].statements.len() {
+                let term = body[loc.block].terminator();
+                let successors = term.successors().clone();
+
+                for i in successors {
+                    inf_and_stmt.push_back((source_info, stmt.clone()));
+                    terminator_targets.push(i.clone());
+                }
+                delta += 1;
+                continue;
+            }
+
             body[loc.block]
                 .statements
                 .insert(loc.statement_index, Statement { source_info, kind: stmt });
             delta += 1;
+        }
+
+        for target in terminator_targets.iter() {
+            let inf_and_stmt = inf_and_stmt.pop_front().unwrap();
+            body[*target]
+                .statements
+                .insert(0, Statement { source_info: inf_and_stmt.0, kind: inf_and_stmt.1 });
         }
     }
 

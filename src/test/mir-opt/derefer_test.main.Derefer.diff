@@ -5,8 +5,8 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/derefer_test.rs:2:11: 2:11
       let mut _1: (i32, i32);              // in scope 0 at $DIR/derefer_test.rs:3:9: 3:14
       let mut _3: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test.rs:4:22: 4:28
-+     let mut _6: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test.rs:5:13: 5:26
-+     let mut _7: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test.rs:6:13: 6:26
++     let mut _6: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test.rs:4:9: 4:14
++     let mut _7: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test.rs:4:9: 4:14
       scope 1 {
           debug a => _1;                   // in scope 1 at $DIR/derefer_test.rs:3:9: 3:14
           let mut _2: (i32, &mut (i32, i32)); // in scope 1 at $DIR/derefer_test.rs:4:9: 4:14

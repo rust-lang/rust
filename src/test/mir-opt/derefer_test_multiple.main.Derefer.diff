@@ -7,12 +7,12 @@
       let mut _3: &mut (i32, i32);         // in scope 0 at $DIR/derefer_test_multiple.rs:4:22: 4:28
       let mut _5: &mut (i32, &mut (i32, i32)); // in scope 0 at $DIR/derefer_test_multiple.rs:5:22: 5:28
       let mut _7: &mut (i32, &mut (i32, &mut (i32, i32))); // in scope 0 at $DIR/derefer_test_multiple.rs:6:22: 6:28
-+     let mut _10: &mut (i32, &mut (i32, &mut (i32, i32))); // in scope 0 at $DIR/derefer_test_multiple.rs:7:13: 7:30
-+     let mut _11: &mut (i32, &mut (i32, i32)); // in scope 0 at $DIR/derefer_test_multiple.rs:7:13: 7:30
-+     let mut _12: &mut (i32, i32);        // in scope 0 at $DIR/derefer_test_multiple.rs:7:13: 7:30
-+     let mut _13: &mut (i32, &mut (i32, &mut (i32, i32))); // in scope 0 at $DIR/derefer_test_multiple.rs:8:13: 8:30
-+     let mut _14: &mut (i32, &mut (i32, i32)); // in scope 0 at $DIR/derefer_test_multiple.rs:8:13: 8:30
-+     let mut _15: &mut (i32, i32);        // in scope 0 at $DIR/derefer_test_multiple.rs:8:13: 8:30
++     let mut _10: &mut (i32, &mut (i32, &mut (i32, i32))); // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
++     let mut _11: &mut (i32, &mut (i32, i32)); // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
++     let mut _12: &mut (i32, i32);        // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
++     let mut _13: &mut (i32, &mut (i32, &mut (i32, i32))); // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
++     let mut _14: &mut (i32, &mut (i32, i32)); // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
++     let mut _15: &mut (i32, i32);        // in scope 0 at $DIR/derefer_test_multiple.rs:6:9: 6:14
       scope 1 {
           debug a => _1;                   // in scope 1 at $DIR/derefer_test_multiple.rs:3:9: 3:14
           let mut _2: (i32, &mut (i32, i32)); // in scope 1 at $DIR/derefer_test_multiple.rs:4:9: 4:14
@@ -69,11 +69,11 @@
 +         _10 = move (_6.1: &mut (i32, &mut (i32, &mut (i32, i32)))); // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
 +         StorageLive(_11);                // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
 +         _11 = move ((*_10).1: &mut (i32, &mut (i32, i32))); // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
++         StorageDead(_10);                // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
 +         StorageLive(_12);                // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
 +         _12 = move ((*_11).1: &mut (i32, i32)); // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
++         StorageDead(_11);                // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
 +         _8 = &mut ((*_12).1: i32);       // scope 4 at $DIR/derefer_test_multiple.rs:7:13: 7:30
-+         StorageDead(_10);                // scope 5 at $DIR/derefer_test_multiple.rs:8:9: 8:10
-+         StorageDead(_11);                // scope 5 at $DIR/derefer_test_multiple.rs:8:9: 8:10
 +         StorageDead(_12);                // scope 5 at $DIR/derefer_test_multiple.rs:8:9: 8:10
           StorageLive(_9);                 // scope 5 at $DIR/derefer_test_multiple.rs:8:9: 8:10
 -         _9 = &mut ((*((*((*(_6.1: &mut (i32, &mut (i32, &mut (i32, i32))))).1: &mut (i32, &mut (i32, i32)))).1: &mut (i32, i32))).1: i32); // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
@@ -81,11 +81,11 @@
 +         _13 = move (_6.1: &mut (i32, &mut (i32, &mut (i32, i32)))); // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
 +         StorageLive(_14);                // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
 +         _14 = move ((*_13).1: &mut (i32, &mut (i32, i32))); // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
++         StorageDead(_13);                // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
 +         StorageLive(_15);                // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
 +         _15 = move ((*_14).1: &mut (i32, i32)); // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
++         StorageDead(_14);                // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
 +         _9 = &mut ((*_15).1: i32);       // scope 5 at $DIR/derefer_test_multiple.rs:8:13: 8:30
-+         StorageDead(_13);                // scope 0 at $DIR/derefer_test_multiple.rs:2:12: 9:2
-+         StorageDead(_14);                // scope 0 at $DIR/derefer_test_multiple.rs:2:12: 9:2
 +         StorageDead(_15);                // scope 0 at $DIR/derefer_test_multiple.rs:2:12: 9:2
           _0 = const ();                   // scope 0 at $DIR/derefer_test_multiple.rs:2:12: 9:2
           StorageDead(_9);                 // scope 5 at $DIR/derefer_test_multiple.rs:9:1: 9:2
