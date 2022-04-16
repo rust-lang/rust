@@ -925,7 +925,7 @@ window.initSearch = function(rawSearchIndex) {
           *                     no match, returns `MAX_LEV_DISTANCE + 1`.
           */
         function checkType(row, elem, literalSearch) {
-            if (elem.name.length === 0 || row[NAME].length === 0) {
+            if (row[NAME].length === 0) {
                 // This is a pure "generic" search, no need to run other checks.
                 if (row.length > GENERICS_DATA) {
                     return checkIfInGenerics(row, elem);
