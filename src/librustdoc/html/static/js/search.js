@@ -176,13 +176,11 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("Cannot use literal search when there is more than one element");
         }
         parserState.pos += 1;
-        while (parserState.pos < parserState.length &&
-            parserState.userQuery[parserState.pos] !== "\"")
-        {
-            parserState.pos += 1;
-        }
+        var end = getIdentEndPosition(parserState);
         if (parserState.pos >= parserState.length) {
             throw new Error("Unclosed `\"`");
+        } else if (parserState.userQuery[end] !== "\"") {
+            throw new Error(`Unexpected \`${parserState.userQuery[end]}\` in a string element`);
         }
         // To skip the quote at the end.
         parserState.pos += 1;
@@ -285,6 +283,45 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * This function goes through all characters until it reaches an invalid ident character or the
+     * end of the query. It returns the position of the last character of the ident.
+     *
+     * @param {ParserState} parserState
+     *
+     * @return {integer}
+     */
+    function getIdentEndPosition(parserState) {
+        var end = parserState.pos;
+        while (parserState.pos < parserState.length) {
+            var c = parserState.userQuery[parserState.pos];
+            if (!isIdentCharacter(c)) {
+                if (isErrorCharacter(c)) {
+                    throw new Error(`Unexpected \`${c}\``);
+                } else if (
+                    isStopCharacter(c) ||
+                    isSpecialStartCharacter(c) ||
+                    isSeparatorCharacter(c))
+                {
+                    break;
+                }
+                // If we allow paths ("str::string" for example).
+                else if (c === ":") {
+                    if (!isPathStart(parserState)) {
+                        break;
+                    }
+                    // Skip current ":".
+                    parserState.pos += 1;
+                } else {
+                    throw new Error(`Unexpected \`${c}\``);
+                }
+            }
+            parserState.pos += 1;
+            end = parserState.pos;
+        }
+        return end;
+    }
+
+    /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
@@ -294,39 +331,14 @@ window.initSearch = function(rawSearchIndex) {
         var generics = [];
 
         var start = parserState.pos;
-        var end = start;
+        var end;
         // We handle the strings on their own mostly to make code easier to follow.
         if (parserState.userQuery[parserState.pos] === "\"") {
             start += 1;
             getStringElem(query, parserState, isInGenerics);
             end = parserState.pos - 1;
         } else {
-            while (parserState.pos < parserState.length) {
-                var c = parserState.userQuery[parserState.pos];
-                if (!isIdentCharacter(c)) {
-                    if (isErrorCharacter(c)) {
-                        throw new Error(`Unexpected \`${c}\``);
-                    } else if (
-                        isStopCharacter(c) ||
-                        isSpecialStartCharacter(c) ||
-                        isSeparatorCharacter(c))
-                    {
-                        break;
-                    }
-                    // If we allow paths ("str::string" for example).
-                    else if (c === ":") {
-                        if (!isPathStart(parserState)) {
-                            break;
-                        }
-                        // Skip current ":".
-                        parserState.pos += 1;
-                    } else {
-                        throw new Error(`Unexpected \`${c}\``);
-                    }
-                }
-                parserState.pos += 1;
-                end = parserState.pos;
-            }
+            end = getIdentEndPosition(parserState);
         }
         if (parserState.pos < parserState.length &&
             parserState.userQuery[parserState.pos] === "<")
