@@ -221,7 +221,7 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TargetSelection {
     pub triple: Interned<String>,
     file: Option<Interned<String>>,
@@ -273,6 +273,12 @@ impl fmt::Display for TargetSelection {
             write!(f, "({})", file)?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Debug for TargetSelection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
