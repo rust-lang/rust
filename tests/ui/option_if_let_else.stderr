@@ -206,5 +206,25 @@ LL +         s.len() + x
 LL ~     });
    |
 
-error: aborting due to 15 previous errors
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:212:13
+   |
+LL |       let _ = match s {
+   |  _____________^
+LL | |         Some(string) => string.len(),
+LL | |         None => 1,
+LL | |     };
+   | |_____^ help: try: `s.map_or(1, |string| string.len())`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:216:13
+   |
+LL |       let _ = match Some(10) {
+   |  _____________^
+LL | |         Some(a) => a + 1,
+LL | |         None => 5,
+LL | |     };
+   | |_____^ help: try: `Some(10).map_or(5, |a| a + 1)`
+
+error: aborting due to 17 previous errors
 
