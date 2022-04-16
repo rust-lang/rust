@@ -78,7 +78,7 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
 
     let validate = tcx.sess.opts.debugging_opts.validate_mir;
     let overridden_passes = &tcx.sess.opts.debugging_opts.mir_enable_passes;
-    trace!("Overridden: {:?}", overridden_passes);
+    trace!(?overridden_passes);
 
     if validate {
         validate_body(tcx, body, format!("start of phase transition from {:?}", start_phase));
@@ -89,9 +89,9 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
 
         if let Some((_, polarity)) = overridden_passes.iter().rev().find(|(s, _)| s == &*name) {
             trace!(
-                "{} {} as requested by flag",
+                pass = %name,
+                "{} as requested by flag",
                 if *polarity { "Running" } else { "Not running" },
-                name
             );
             if !polarity {
                 continue;
