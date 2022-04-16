@@ -5,11 +5,40 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::env;
+use std::{collections::HashSet, env};
 
 use bootstrap::{Build, Config, Subcommand, VERSION};
 
 fn main() {
+    if cfg!(windows) {
+        // Normalize PATH on windows, which may present inconsistently depending on the console
+        //  - remove duplicates, retaining order
+        //  - remove "*\Microsoft.WindowsTerminal_*" path that is sometimes injected
+        // This ensures that builds see an effectively identical PATH as actually identical,
+        // which is necessary to avoid a full, non-incremental build
+        if let Ok(full_path) = std::env::var("PATH") {
+            let mut seen = HashSet::new();
+
+            let fixed_path = full_path
+                .split(";")
+                .filter_map(|path| {
+                    let path = path.trim_end_matches(&['\\', '/']).trim();
+                    if !path.is_empty()
+                        && !path.contains("\\WindowsApps\\Microsoft.WindowsTerminal_")
+                        && seen.insert(path)
+                    {
+                        Some(path)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(";");
+
+            std::env::set_var("PATH", fixed_path);
+        }
+    }
+
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
 
