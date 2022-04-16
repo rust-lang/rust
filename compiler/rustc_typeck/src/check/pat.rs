@@ -2044,63 +2044,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.sess,
             span,
             E0529,
-            "expected an array or slice, found `{}`",
-            expected_ty
+            "expected an array or slice, found `{expected_ty}`"
         );
-        if let ty::Ref(_, ty, _) = expected_ty.kind() {
-            if let ty::Array(..) | ty::Slice(..) = ty.kind() {
-                err.help("the semantics of slice patterns changed recently; see issue #62254");
-            }
+        if let ty::Ref(_, ty, _) = expected_ty.kind()
+            && let ty::Array(..) | ty::Slice(..) = ty.kind()
+        {
+            err.help("the semantics of slice patterns changed recently; see issue #62254");
         } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
+            && let (Some(span), true) = (ti.span, ti.origin_expr)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
         {
-            if let (Some(span), true) = (ti.span, ti.origin_expr) {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    let applicability = Autoderef::new(
-                        &self.infcx,
-                        self.param_env,
-                        self.body_id,
-                        span,
-                        self.resolve_vars_if_possible(ti.expected),
-                        span,
-                    )
-                    .find_map(|(ty, _)| {
-                        match ty.kind() {
-                            ty::Adt(adt_def, _)
-                                if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
-                                    || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
-                            {
-                                // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                                err.span_suggestion(
-                                    span,
-                                    "consider using `as_deref` here",
-                                    format!("{}.as_deref()", snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                                Some(None)
-                            }
-
-                            ty::Slice(..) | ty::Array(..) => {
-                                Some(Some(Applicability::MachineApplicable))
-                            }
-
-                            _ => None,
-                        }
-                    })
-                    .unwrap_or(Some(Applicability::MaybeIncorrect));
-
-                    if let Some(applicability) = applicability {
+            let any_target_ty = Autoderef::new(
+                &self.infcx,
+                self.param_env,
+                self.body_id,
+                span,
+                self.resolve_vars_if_possible(ti.expected),
+                span,
+            )
+            .any(|(ty, _)| {
+                debug!("kind={:?}", ty.kind());
+                match ty.kind() {
+                    ty::Adt(adt_def, _)
+                        if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
+                            || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
+                    {
+                        // Slicing won't work here, but `.as_deref()` might (issue #91328).
                         err.span_suggestion(
                             span,
-                            "consider slicing here",
-                            format!("{}[..]", snippet),
-                            applicability,
+                            "consider using `as_deref` here",
+                            format!("{snippet}.as_deref()"),
+                            Applicability::MaybeIncorrect,
                         );
+                        false
                     }
+                    _ => self.is_slice_or_array_or_vector(ty),
                 }
+            });
+
+            if any_target_ty {
+                err.span_suggestion(
+                    span,
+                    "consider slicing here",
+                    format!("{snippet}[..]"),
+                    Applicability::MachineApplicable,
+                );
             }
         }
-        err.span_label(span, format!("pattern cannot match with input type `{}`", expected_ty));
+        err.span_label(span, format!("pattern cannot match with input type `{expected_ty}`"));
         err.emit();
+    }
+
+    fn is_slice_or_array_or_vector(&self, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            ty::Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => true,
+            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(*ty),
+            ty::Slice(..) | ty::Array(..) => true,
+            _ => false,
+        }
     }
 }
