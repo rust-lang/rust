@@ -22,4 +22,7 @@ fn main() {
     missing(); //~ ERROR this function takes
     swapped("", 1); //~ ERROR arguments to this function are incorrect
     permuted(Y {}, Z {}, X {}); //~ ERROR arguments to this function are incorrect
+
+    let closure = |x| x;
+    closure(); //~ ERROR this function takes
 }
