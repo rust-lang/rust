@@ -176,11 +176,14 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("Cannot use literal search when there is more than one element");
         }
         parserState.pos += 1;
+        var start = parserState.pos;
         var end = getIdentEndPosition(parserState);
         if (parserState.pos >= parserState.length) {
             throw new Error("Unclosed `\"`");
         } else if (parserState.userQuery[end] !== "\"") {
             throw new Error(`Unexpected \`${parserState.userQuery[end]}\` in a string element`);
+        } else if (start === end) {
+            throw new Error("Cannot have empty string element");
         }
         // To skip the quote at the end.
         parserState.pos += 1;
@@ -657,11 +660,6 @@ window.initSearch = function(rawSearchIndex) {
             query.literalSearch = parserState.totalElems > 1;
         }
         query.foundElems = query.elems.length + query.returned.length;
-        if (query.foundElems === 0 && parserState.length !== 0) {
-            // In this case, we'll simply keep whatever was entered by the user...
-            query.elems.push(createQueryElement(query, parserState, userQuery, [], false));
-            query.foundElems += 1;
-        }
         return query;
     }
 

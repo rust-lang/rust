@@ -5,6 +5,7 @@ const QUERY = [
     '"a" -> "p"',
     '->"-"',
     '"a',
+    '""',
 ];
 
 const PARSED = [
@@ -73,5 +74,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: '"a',
         error: 'Unclosed `"`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: '""',
+        returned: [],
+        typeFilter: -1,
+        userQuery: '""',
+        error: 'Cannot have empty string element',
     },
 ];

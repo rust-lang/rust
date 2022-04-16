@@ -1,7 +1,13 @@
 // This test is mostly to check that the parser still kinda outputs something
 // (and doesn't enter an infinite loop!) even though the query is completely
 // invalid.
-const QUERY = ['a b', 'a   b', 'a,b(c)', 'aaa,a'];
+const QUERY = [
+    'a b',
+    'a   b',
+    'a,b(c)',
+    'aaa,a',
+    ',,,,',
+];
 
 const PARSED = [
     {
@@ -83,6 +89,15 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: "aaa,a",
+        error: null,
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: ",,,,",
+        returned: [],
+        typeFilter: -1,
+        userQuery: ",,,,",
         error: null,
     },
 ];
