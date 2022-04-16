@@ -298,12 +298,12 @@ export function serverVersion(ctx: Ctx): Cmd {
     };
 }
 
-export function toggleInlayHints(ctx: Ctx): Cmd {
+export function toggleInlayHints(_ctx: Ctx): Cmd {
     return async () => {
-        await vscode
-            .workspace
-            .getConfiguration(`${ctx.config.rootSection}.inlayHints`)
-            .update('enable', !ctx.config.inlayHints.enable, vscode.ConfigurationTarget.Global);
+        const scope = vscode.ConfigurationTarget.Global;
+        const config = vscode.workspace.getConfiguration("editor.inlayHints");
+        const value = !config.get("enabled");
+        await config.update('enabled', value, scope);
     };
 }
 

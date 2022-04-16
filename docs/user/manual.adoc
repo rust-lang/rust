@@ -722,7 +722,7 @@ Just add this to your `settings.json`:
 {
   "editor.inlayHints.fontFamily": "Courier New",
   "editor.inlayHints.fontSize": 11,
-  
+
   "workbench.colorCustomizations": {
     // Name of the theme you are currently using
     "[Default Dark+]": {
@@ -797,8 +797,8 @@ For example:
 [source,json]
 ----
 {
-  "key": "ctrl+i",
-  "command": "rust-analyzer.toggleInlayHints",
+  "key": "ctrl+alt+d",
+  "command": "rust-analyzer.openDocs",
   "when": "inRustProject"
 }
 ----

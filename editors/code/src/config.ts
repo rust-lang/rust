@@ -97,19 +97,6 @@ export class Config {
     get serverExtraEnv() { return this.get<Env | null>("server.extraEnv") ?? {}; }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
 
-    get inlayHints() {
-        return {
-            enable: this.get<boolean>("inlayHints.enable"),
-            typeHints: this.get<boolean>("inlayHints.typeHints"),
-            parameterHints: this.get<boolean>("inlayHints.parameterHints"),
-            chainingHints: this.get<boolean>("inlayHints.chainingHints"),
-            closureReturnTypeHints: this.get<boolean>("inlayHints.closureReturnTypeHints"),
-            hideNamedConstructorHints: this.get<boolean>("inlayHints.hideNamedConstructorHints"),
-            smallerHints: this.get<boolean>("inlayHints.smallerHints"),
-            maxLength: this.get<null | number>("inlayHints.maxLength"),
-        };
-    }
-
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
     }
