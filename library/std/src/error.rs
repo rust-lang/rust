@@ -639,7 +639,7 @@ impl Error for core::ffi::FromBytesWithNulError {
 
 #[unstable(feature = "todo", issue = "none")]
 impl From<core::ffi::FromBytesWithNulError> for io::Error {
-    /// Converts a [`NulError`] into an [`io::Error`].
+    /// Converts a [`NulError`](core::ffi::FromBytesWithNulError) into an [`io::Error`].
     fn from(e: core::ffi::FromBytesWithNulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput, e)
     }
