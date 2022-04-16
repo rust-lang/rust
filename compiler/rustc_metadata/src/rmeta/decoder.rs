@@ -1744,6 +1744,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 adjustments: generator_data.adjustments,
             })
     }
+
+    fn get_may_have_doc_links(self, index: DefIndex) -> bool {
+        self.root.tables.may_have_doc_links.get(self, index).is_some()
+    }
 }
 
 impl CrateMetadata {

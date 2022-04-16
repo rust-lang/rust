@@ -531,6 +531,10 @@ impl CStore {
     ) -> impl Iterator<Item = DefId> + '_ {
         self.get_crate_data(cnum).get_all_incoherent_impls()
     }
+
+    pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
+    }
 }
 
 impl CrateStore for CStore {

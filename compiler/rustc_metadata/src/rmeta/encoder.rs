@@ -977,6 +977,14 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn encode_attrs(&mut self, def_id: DefId) {
+        let attrs = self.tcx.get_attrs(def_id);
+        record!(self.tables.attributes[def_id] <- attrs);
+        if attrs.iter().any(|attr| attr.may_have_doc_links()) {
+            self.tables.may_have_doc_links.set(def_id.index, ());
+        }
+    }
+
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
             return;
@@ -989,7 +997,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let Some(def_kind) = def_kind else { continue };
             self.tables.opt_def_kind.set(def_id.index, def_kind);
             record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
-            record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
+            self.encode_attrs(def_id);
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
@@ -1651,7 +1659,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             self.tables.opt_def_kind.set(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
-            record!(self.tables.attributes[LOCAL_CRATE.as_def_id()] <- tcx.get_attrs(LOCAL_CRATE.as_def_id()));
+            self.encode_attrs(LOCAL_CRATE.as_def_id());
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- tcx.visibility(LOCAL_CRATE.as_def_id()));
             if let Some(stability) = stability {
                 record!(self.tables.lookup_stability[LOCAL_CRATE.as_def_id()] <- stability);
@@ -1692,7 +1700,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_id = id.to_def_id();
                 self.tables.opt_def_kind.set(def_id.index, DefKind::Macro(macro_kind));
                 record!(self.tables.kind[def_id] <- EntryKind::ProcMacro(macro_kind));
-                record!(self.tables.attributes[def_id] <- attrs);
+                self.encode_attrs(def_id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
                 record!(self.tables.def_span[def_id] <- span);
