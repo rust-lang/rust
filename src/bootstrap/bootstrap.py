@@ -952,13 +952,17 @@ class RustBuild(object):
 
     @staticmethod
     def get_string(line):
-        """Return the value between double quotes
+        """Return the value between double quotes inside the string with single quotes or double quotes
 
         >>> RustBuild.get_string('    "devel"   ')
         'devel'
         >>> RustBuild.get_string("    'devel'   ")
         'devel'
+        >>> RustBuild.get_string("  \"devel\"  ")
+        'devel'
         >>> RustBuild.get_string('devel') is None
+        True
+        >>> RustBuild.get_string("devel") is None
         True
         >>> RustBuild.get_string('    "devel   ')
         ''
