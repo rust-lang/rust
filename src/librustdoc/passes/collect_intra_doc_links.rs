@@ -160,7 +160,7 @@ impl TryFrom<ResolveRes> for Res {
 }
 
 /// A link failed to resolve.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum ResolutionFailure<'a> {
     /// This resolved, but with the wrong namespace.
     WrongNamespace {
@@ -200,7 +200,7 @@ enum ResolutionFailure<'a> {
     Dummy,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum MalformedGenerics {
     /// This link has unbalanced angle brackets.
     ///
@@ -253,6 +253,7 @@ impl ResolutionFailure<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
 enum AnchorFailure {
     /// User error: `[std#x#y]` is not valid
     MultipleAnchors,
@@ -1064,7 +1065,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
                 .take()
                 .expect("`markdown_links` are already borrowed");
             if !tmp_links.contains_key(&doc) {
-                tmp_links.insert(doc.clone(), markdown_links(&doc));
+                tmp_links.insert(doc.clone(), preprocessed_markdown_links(&doc));
             }
             for md_link in &tmp_links[&doc] {
                 let link = self.resolve_link(&item, &doc, parent_node, md_link);
@@ -1088,18 +1089,19 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
     }
 }
 
-enum PreprocessingError<'a> {
+enum PreprocessingError {
     Anchor(AnchorFailure),
     Disambiguator(Range<usize>, String),
-    Resolution(ResolutionFailure<'a>, String, Option<Disambiguator>),
+    Resolution(ResolutionFailure<'static>, String, Option<Disambiguator>),
 }
 
-impl From<AnchorFailure> for PreprocessingError<'_> {
+impl From<AnchorFailure> for PreprocessingError {
     fn from(err: AnchorFailure) -> Self {
         Self::Anchor(err)
     }
 }
 
+#[derive(Clone)]
 struct PreprocessingInfo {
     path_str: String,
     disambiguator: Option<Disambiguator>,
@@ -1107,15 +1109,18 @@ struct PreprocessingInfo {
     link_text: String,
 }
 
+// Not a typedef to avoid leaking several private structures from this module.
+crate struct PreprocessedMarkdownLink(Result<PreprocessingInfo, PreprocessingError>, MarkdownLink);
+
 /// Returns:
 /// - `None` if the link should be ignored.
 /// - `Some(Err)` if the link should emit an error
 /// - `Some(Ok)` if the link is valid
 ///
 /// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
-fn preprocess_link<'a>(
-    ori_link: &'a MarkdownLink,
-) -> Option<Result<PreprocessingInfo, PreprocessingError<'a>>> {
+fn preprocess_link(
+    ori_link: &MarkdownLink,
+) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
         return None;
@@ -1194,6 +1199,12 @@ fn preprocess_link<'a>(
     }))
 }
 
+fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
+    markdown_links(s, |link| {
+        preprocess_link(&link).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
+    })
+}
+
 impl LinkCollector<'_, '_> {
     /// This is the entry point for resolving an intra-doc link.
     ///
@@ -1203,8 +1214,9 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         dox: &str,
         parent_node: Option<DefId>,
-        ori_link: &MarkdownLink,
+        link: &PreprocessedMarkdownLink,
     ) -> Option<ItemLink> {
+        let PreprocessedMarkdownLink(pp_link, ori_link) = link;
         trace!("considering link '{}'", ori_link.link);
 
         let diag_info = DiagnosticInfo {
@@ -1214,28 +1226,29 @@ impl LinkCollector<'_, '_> {
             link_range: ori_link.range.clone(),
         };
 
-        let PreprocessingInfo { ref path_str, disambiguator, extra_fragment, link_text } =
-            match preprocess_link(&ori_link)? {
-                Ok(x) => x,
-                Err(err) => {
-                    match err {
-                        PreprocessingError::Anchor(err) => anchor_failure(self.cx, diag_info, err),
-                        PreprocessingError::Disambiguator(range, msg) => {
-                            disambiguator_error(self.cx, diag_info, range, &msg)
-                        }
-                        PreprocessingError::Resolution(err, path_str, disambiguator) => {
-                            resolution_failure(
-                                self,
-                                diag_info,
-                                &path_str,
-                                disambiguator,
-                                smallvec![err],
-                            );
-                        }
+        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } = match pp_link
+        {
+            Ok(x) => x,
+            Err(err) => {
+                match err {
+                    PreprocessingError::Anchor(err) => anchor_failure(self.cx, diag_info, *err),
+                    PreprocessingError::Disambiguator(range, msg) => {
+                        disambiguator_error(self.cx, diag_info, range.clone(), msg)
                     }
-                    return None;
+                    PreprocessingError::Resolution(err, path_str, disambiguator) => {
+                        resolution_failure(
+                            self,
+                            diag_info,
+                            path_str,
+                            *disambiguator,
+                            smallvec![err.clone()],
+                        );
+                    }
                 }
-            };
+                return None;
+            }
+        };
+        let disambiguator = *disambiguator;
 
         let inner_docs = item.inner_docs(self.cx.tcx);
 
@@ -1272,7 +1285,7 @@ impl LinkCollector<'_, '_> {
                 module_id,
                 dis: disambiguator,
                 path_str: path_str.to_owned(),
-                extra_fragment,
+                extra_fragment: extra_fragment.clone(),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
@@ -1343,7 +1356,7 @@ impl LinkCollector<'_, '_> {
 
                 Some(ItemLink {
                     link: ori_link.link.clone(),
-                    link_text,
+                    link_text: link_text.clone(),
                     did: res.def_id(self.cx.tcx),
                     fragment,
                 })
@@ -1365,7 +1378,12 @@ impl LinkCollector<'_, '_> {
                     &diag_info,
                 )?;
                 let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
-                Some(ItemLink { link: ori_link.link.clone(), link_text, did: id, fragment })
+                Some(ItemLink {
+                    link: ori_link.link.clone(),
+                    link_text: link_text.clone(),
+                    did: id,
+                    fragment,
+                })
             }
         }
     }

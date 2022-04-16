@@ -1,7 +1,7 @@
 use crate::clean::Attributes;
 use crate::core::ResolverCaches;
-use crate::html::markdown::{markdown_links, MarkdownLink};
-use crate::passes::collect_intra_doc_links::preprocess_link;
+use crate::passes::collect_intra_doc_links::preprocessed_markdown_links;
+use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
@@ -72,7 +72,7 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
     current_mod: LocalDefId,
     visited_mods: DefIdSet,
-    markdown_links: FxHashMap<String, Vec<MarkdownLink>>,
+    markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
     doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<ast::NodeId>>>,
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_traits: Vec<DefId>,
@@ -203,9 +203,12 @@ impl EarlyDocLinkResolver<'_, '_> {
         let mut need_traits_in_scope = false;
         for (doc_module, doc) in attrs.collapsed_doc_value_by_module_level() {
             assert_eq!(doc_module, None);
-            for link in self.markdown_links.entry(doc).or_insert_with_key(|doc| markdown_links(doc))
-            {
-                if let Some(Ok(pinfo)) = preprocess_link(&link) {
+            let links = self
+                .markdown_links
+                .entry(doc)
+                .or_insert_with_key(|doc| preprocessed_markdown_links(doc));
+            for PreprocessedMarkdownLink(pp_link, _) in links {
+                if let Ok(pinfo) = pp_link {
                     // FIXME: Resolve the path in all namespaces and resolve its prefixes too.
                     let ns = TypeNS;
                     self.doc_link_resolutions
