@@ -993,20 +993,33 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 ));
 
                 let msg = "use `.addr()` to obtain the address of a pointer";
-                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span) {
-                    let scalar_cast = match t_c {
-                        ty::cast::IntTy::U(ty::UintTy::Usize) => String::new(),
-                        _ => format!(" as {}", self.cast_ty),
-                    };
-                    err.span_suggestion(
-                        self.span,
-                        msg,
-                        format!("({snippet}).addr(){scalar_cast}"),
-                        Applicability::MaybeIncorrect
-                    );
+
+                let expr_prec = self.expr.precedence().order();
+                let needs_parens = expr_prec < rustc_ast::util::parser::PREC_POSTFIX;
+
+                let scalar_cast = match t_c {
+                    ty::cast::IntTy::U(ty::UintTy::Usize) => String::new(),
+                    _ => format!(" as {}", self.cast_ty),
+                };
+
+                let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
+
+                if needs_parens {
+                    let suggestions = vec![
+                        (self.expr_span.shrink_to_lo(), String::from("(")),
+                        (cast_span, format!(").addr(){scalar_cast}")),
+                    ];
+
+                    err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
                 } else {
-                    err.help(msg);
+                    err.span_suggestion(
+                        cast_span,
+                        msg,
+                        format!(".addr(){scalar_cast}"),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
+
                 err.help(
                     "if you can't comply with strict provenance and need to expose the pointer \
                     provenance you can use `.expose_addr()` instead"
@@ -1028,16 +1041,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.expr_ty, self.cast_ty
                 ));
                 let msg = "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address";
-                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr_span) {
-                    err.span_suggestion(
-                        self.span,
-                        msg,
-                        format!("(...).with_addr({snippet})"),
-                        Applicability::HasPlaceholders,
-                    );
-                } else {
-                    err.help(msg);
-                }
+                let suggestions = vec![
+                    (self.expr_span.shrink_to_lo(), String::from("(...).with_addr(")),
+                    (self.expr_span.shrink_to_hi().to(self.cast_span), String::from(")")),
+                ];
+
+                err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
                 err.help(
                     "if you can't comply with strict provenance and don't have a pointer with \
                     the correct provenance you can use `std::ptr::from_exposed_addr()` instead"
