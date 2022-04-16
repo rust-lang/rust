@@ -661,7 +661,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target: _,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
@@ -670,9 +671,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 for arg in args {
                     self.consume_operand(loc, (arg, span), flow_state);
                 }
-                if let Some((dest, _ /*bb*/)) = *destination {
-                    self.mutate_place(loc, (dest, span), Deep, flow_state);
-                }
+                self.mutate_place(loc, (destination, span), Deep, flow_state);
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);

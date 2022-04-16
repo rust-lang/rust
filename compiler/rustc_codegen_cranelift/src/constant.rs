@@ -542,8 +542,8 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => unreachable!(),
                     TerminatorKind::InlineAsm { .. } => return None,
-                    TerminatorKind::Call { destination: Some((call_place, _)), .. }
-                        if call_place == place =>
+                    TerminatorKind::Call { destination, target: Some(_), .. }
+                        if destination == place =>
                     {
                         return None;
                     }

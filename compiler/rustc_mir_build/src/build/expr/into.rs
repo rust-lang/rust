@@ -255,18 +255,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         func: fun,
                         args,
                         cleanup: None,
+                        destination,
                         // The presence or absence of a return edge affects control-flow sensitive
                         // MIR checks and ultimately whether code is accepted or not. We can only
                         // omit the return edge if a return type is visibly uninhabited to a module
                         // that makes the call.
-                        destination: if this.tcx.is_ty_uninhabited_from(
+                        target: if this.tcx.is_ty_uninhabited_from(
                             this.parent_module,
                             expr.ty,
                             this.param_env,
                         ) {
                             None
                         } else {
-                            Some((destination, success))
+                            Some(success)
                         },
                         from_hir_call,
                         fn_span,

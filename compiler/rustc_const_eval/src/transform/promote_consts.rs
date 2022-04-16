@@ -788,7 +788,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
                 let target = match terminator.kind {
-                    TerminatorKind::Call { destination: Some((_, target)), .. } => target,
+                    TerminatorKind::Call { target: Some(target), .. } => target,
                     ref kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
@@ -814,7 +814,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             func,
                             args,
                             cleanup: None,
-                            destination: Some((Place::from(new_temp), new_target)),
+                            destination: Place::from(new_temp),
+                            target: Some(new_target),
                             from_hir_call,
                             fn_span,
                         },
@@ -1054,11 +1055,9 @@ pub fn is_const_fn_in_array_repeat_expression<'tcx>(
         {
             if let Operand::Constant(box Constant { literal, .. }) = func {
                 if let ty::FnDef(def_id, _) = *literal.ty().kind() {
-                    if let Some((destination_place, _)) = destination {
-                        if destination_place == place {
-                            if ccx.tcx.is_const_fn(def_id) {
-                                return true;
-                            }
+                    if destination == place {
+                        if ccx.tcx.is_const_fn(def_id) {
+                            return true;
                         }
                     }
                 }

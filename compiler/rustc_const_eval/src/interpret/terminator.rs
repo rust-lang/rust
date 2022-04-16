@@ -57,7 +57,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
+            Call {
+                ref func,
+                ref args,
+                destination,
+                target,
+                ref cleanup,
+                from_hir_call: _,
+                fn_span: _,
+            } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
@@ -91,20 +99,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
 
-                let dest_place;
-                let ret = match destination {
-                    Some((dest, ret)) => {
-                        dest_place = self.eval_place(dest)?;
-                        Some((&dest_place, ret))
-                    }
-                    None => None,
-                };
+                let destination = self.eval_place(destination)?;
                 self.eval_fn_call(
                     fn_val,
                     (fn_sig.abi, fn_abi),
                     &args,
                     with_caller_location,
-                    ret,
+                    &destination,
+                    target,
                     match (cleanup, fn_abi.can_unwind) {
                         (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
                         (None, true) => StackPopUnwind::Skip,
@@ -299,7 +301,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[OpTy<'tcx, M::PointerTag>],
         with_caller_location: bool,
-        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        destination: &PlaceTy<'tcx, M::PointerTag>,
+        target: Option<mir::BasicBlock>,
         mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
@@ -307,7 +310,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, caller_abi, args, ret, unwind);
+                return M::call_extra_fn(
+                    self,
+                    extra,
+                    caller_abi,
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                );
             }
         };
 
@@ -315,7 +326,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::Intrinsic(def_id) => {
                 assert!(self.tcx.is_intrinsic(def_id));
                 // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
-                M::call_intrinsic(self, instance, args, ret, unwind)
+                M::call_intrinsic(self, instance, args, destination, target, unwind)
             }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
@@ -326,7 +337,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) =
-                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? else {
+                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, destination, target, unwind)? else {
                         return Ok(());
                     };
 
@@ -362,8 +373,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.push_stack_frame(
                     instance,
                     body,
-                    ret.map(|p| p.0),
-                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
+                    destination,
+                    StackPopCleanup::Goto { ret: target, unwind },
                 )?;
 
                 // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -540,7 +551,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     (caller_abi, caller_fn_abi),
                     &args,
                     with_caller_location,
-                    ret,
+                    destination,
+                    target,
                     unwind,
                 )
             }
@@ -582,7 +594,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (Abi::Rust, fn_abi),
             &[arg.into()],
             false,
-            Some((&dest.into(), target)),
+            &dest.into(),
+            Some(target),
             match unwind {
                 Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
                 None => StackPopUnwind::Skip,

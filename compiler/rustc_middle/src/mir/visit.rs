@@ -534,6 +534,7 @@ macro_rules! make_mir_visitor {
                         func,
                         args,
                         destination,
+                        target: _,
                         cleanup: _,
                         from_hir_call: _,
                         fn_span: _
@@ -542,13 +543,11 @@ macro_rules! make_mir_visitor {
                         for arg in args {
                             self.visit_operand(arg, location);
                         }
-                        if let Some((destination, _)) = destination {
-                            self.visit_place(
-                                destination,
-                                PlaceContext::MutatingUse(MutatingUseContext::Call),
-                                location
-                            );
-                        }
+                        self.visit_place(
+                            destination,
+                            PlaceContext::MutatingUse(MutatingUseContext::Call),
+                            location
+                        );
                     }
 
                     TerminatorKind::Assert {

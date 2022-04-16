@@ -519,7 +519,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         intrinsic: Option<Symbol>,
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
-        destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
+        target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
     ) -> bool {
         // Emit a panic or a no-op for `assert_*` intrinsics.
@@ -576,12 +576,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     fn_abi,
                     llfn,
                     &[msg.0, msg.1, location],
-                    destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
+                    target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     cleanup,
                 );
             } else {
                 // a NOP
-                let target = destination.as_ref().unwrap().1;
+                let target = target.unwrap();
                 helper.funclet_br(self, bx, target)
             }
             true
@@ -597,7 +597,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
+        destination: mir::Place<'tcx>,
+        target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
     ) {
@@ -624,7 +625,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
-            let &(_, target) = destination.as_ref().unwrap();
+            let target = target.unwrap();
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -653,9 +654,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::transmute) {
-            if let Some(destination_ref) = destination.as_ref() {
-                let &(dest, target) = destination_ref;
-                self.codegen_transmute(&mut bx, &args[0], dest);
+            if let Some(target) = target {
+                self.codegen_transmute(&mut bx, &args[0], destination);
                 helper.funclet_br(self, &mut bx, target);
             } else {
                 // If we are trying to transmute to an uninhabited type,
@@ -676,7 +676,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             intrinsic,
             instance,
             source_info,
-            destination,
+            target,
             cleanup,
         ) {
             return;
@@ -687,15 +687,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if let Some((dest, _)) = *destination {
+        let ret_dest = if target.is_some() {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
+            self.make_return_dest(&mut bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
             ReturnDest::Nothing
         };
 
         if intrinsic == Some(sym::caller_location) {
-            if let Some((_, target)) = destination.as_ref() {
+            if let Some(target) = target {
                 let location = self
                     .get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
 
@@ -703,7 +703,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     location.val.store(&mut bx, tmp);
                 }
                 self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, &mut bx, *target);
+                helper.funclet_br(self, &mut bx, target);
             }
             return;
         }
@@ -766,7 +766,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
-                if let Some((_, target)) = *destination {
+                if let Some(target) = target {
                     helper.funclet_br(self, &mut bx, target);
                 } else {
                     bx.unreachable();
@@ -913,7 +913,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_abi,
                 fn_ptr,
                 &llargs,
-                destination.as_ref().map(|&(_, target)| (ret_dest, target)),
+                target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
             );
 
@@ -930,7 +930,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             fn_abi,
             fn_ptr,
             &llargs,
-            destination.as_ref().map(|&(_, target)| (ret_dest, target)),
+            target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
         );
     }
@@ -1083,7 +1083,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target,
                 cleanup,
                 from_hir_call: _,
                 fn_span,
@@ -1095,6 +1096,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     func,
                     args,
                     destination,
+                    target,
                     cleanup,
                     fn_span,
                 );

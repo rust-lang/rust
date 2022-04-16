@@ -1403,7 +1403,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, from_hir_call, .. } => {
+            TerminatorKind::Call {
+                ref func, ref args, destination, target, from_hir_call, ..
+            } => {
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(arg, term_location);
@@ -1424,7 +1426,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     sig,
                 );
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(body, term, &sig, destination, term_location);
+                self.check_call_dest(body, term, &sig, destination, target, term_location);
 
                 self.prove_predicates(
                     sig.inputs_and_output
@@ -1502,15 +1504,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &Body<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
-        destination: &Option<(Place<'tcx>, BasicBlock)>,
+        destination: Place<'tcx>,
+        target: Option<BasicBlock>,
         term_location: Location,
     ) {
         let tcx = self.tcx();
-        match *destination {
-            Some((ref dest, _target_block)) => {
-                let dest_ty = dest.ty(body, tcx).ty;
+        match target {
+            Some(_) => {
+                let dest_ty = destination.ty(body, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
-                let category = match dest.as_local() {
+                let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
@@ -1659,8 +1662,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::Call { ref destination, cleanup, .. } => {
-                if let &Some((_, target)) = destination {
+            TerminatorKind::Call { ref target, cleanup, .. } => {
+                if let &Some(target) = target {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
                 if let Some(cleanup) = cleanup {

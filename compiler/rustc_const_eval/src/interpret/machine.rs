@@ -169,7 +169,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
+        target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
 
@@ -180,7 +181,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         fn_val: Self::ExtraFnVal,
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
+        target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
@@ -190,7 +192,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
+        target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
@@ -470,7 +473,8 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         fn_val: !,
         _abi: Abi,
         _args: &[OpTy<$tcx>],
-        _ret: Option<(&PlaceTy<$tcx>, mir::BasicBlock)>,
+        _destination: &PlaceTy<$tcx, Self::PointerTag>,
+        _target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<$tcx> {
         match fn_val {}

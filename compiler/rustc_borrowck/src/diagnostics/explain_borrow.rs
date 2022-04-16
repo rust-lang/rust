@@ -705,10 +705,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let terminator = block.terminator();
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
-                if let TerminatorKind::Call { destination: Some((place, block)), args, .. } =
+                if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
                 {
-                    if let Some(dest) = place.as_local() {
+                    if let Some(dest) = destination.as_local() {
                         debug!(
                             "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
                             target, dest, args

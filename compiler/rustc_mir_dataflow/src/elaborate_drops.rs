@@ -625,7 +625,8 @@ where
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn, substs, self.source_info.span),
                     args: vec![Operand::Move(Place::from(ref_place))],
-                    destination: Some((unit_temp, succ)),
+                    destination: unit_temp,
+                    target: Some(succ),
                     cleanup: unwind.into_option(),
                     from_hir_call: true,
                     fn_span: self.source_info.span,
@@ -963,7 +964,8 @@ where
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args,
-            destination: Some((unit_temp, target)),
+            destination: unit_temp,
+            target: Some(target),
             cleanup: None,
             from_hir_call: false,
             fn_span: self.source_info.span,

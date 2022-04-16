@@ -141,7 +141,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: exchange_malloc,
                         args: vec![Operand::Move(size), Operand::Move(align)],
-                        destination: Some((storage, success)),
+                        destination: storage,
+                        target: Some(success),
                         cleanup: None,
                         from_hir_call: false,
                         fn_span: expr_span,

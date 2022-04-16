@@ -115,13 +115,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
+        ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
         // First handle intrinsics without return place.
-        let (dest, ret) = match ret {
+        let ret = match ret {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
