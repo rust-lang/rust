@@ -310,18 +310,23 @@ impl<'a> Resolver<'a> {
         t
     }
 
-    // Define a "dummy" resolution containing a Res::Err as a placeholder for a
-    // failed resolution
+    // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed resolution,
+    // also mark such failed imports as used to avoid duplicate diagnostics.
     fn import_dummy_binding(&mut self, import: &'a Import<'a>) {
-        if let ImportKind::Single { target, .. } = import.kind {
+        if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
+            if target_bindings.iter().any(|binding| binding.get().is_some()) {
+                return; // Has resolution, do not create the dummy binding
+            }
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let key = this.new_key(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding);
             });
-            // Consider erroneous imports used to avoid duplicate diagnostics.
             self.record_use(target, dummy_binding, false);
+        } else if import.imported_module.get().is_none() {
+            import.used.set(true);
+            self.used_imports.insert(import.id);
         }
     }
 }
@@ -386,7 +391,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             .map(|i| (false, i))
             .chain(indeterminate_imports.into_iter().map(|i| (true, i)))
         {
-            if let Some(err) = self.finalize_import(import) {
+            let unresolved_import_error = self.finalize_import(import);
+
+            // If this import is unresolved then create a dummy import
+            // resolution for it so that later resolve stages won't complain.
+            self.r.import_dummy_binding(import);
+
+            if let Some(err) = unresolved_import_error {
                 if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
                     if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
@@ -396,9 +407,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                 }
 
-                // If the error is a single failed import then create a "fake" import
-                // resolution for it so that later resolve stages won't complain.
-                self.r.import_dummy_binding(import);
                 if prev_root_id.as_u32() != 0
                     && prev_root_id.as_u32() != import.root_id.as_u32()
                     && !errors.is_empty()
@@ -418,8 +426,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     prev_root_id = import.root_id;
                 }
             } else if is_indeterminate {
-                // Consider erroneous imports used to avoid duplicate diagnostics.
-                self.r.used_imports.insert(import.id);
                 let path = import_path_to_string(
                     &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                     &import.kind,
@@ -553,25 +559,22 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     Err(Undetermined) => indeterminate = true,
                     // Don't update the resolution, because it was never added.
                     Err(Determined) if target.name == kw::Underscore => {}
-                    Err(Determined) => {
+                    Ok(binding) if binding.is_importable() => {
+                        let imported_binding = this.import(binding, import);
+                        target_bindings[ns].set(Some(imported_binding));
+                        this.define(parent, target, ns, imported_binding);
+                    }
+                    source_binding @ (Ok(..) | Err(Determined)) => {
+                        if source_binding.is_ok() {
+                            let msg = format!("`{}` is not directly importable", target);
+                            struct_span_err!(this.session, import.span, E0253, "{}", &msg)
+                                .span_label(import.span, "cannot be imported directly")
+                                .emit();
+                        }
                         let key = this.new_key(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
                             resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });
-                    }
-                    Ok(binding) if !binding.is_importable() => {
-                        let msg = format!("`{}` is not directly importable", target);
-                        struct_span_err!(this.session, import.span, E0253, "{}", &msg)
-                            .span_label(import.span, "cannot be imported directly")
-                            .emit();
-                        // Do not import this illegal binding. Import a dummy binding and pretend
-                        // everything is fine
-                        this.import_dummy_binding(import);
-                    }
-                    Ok(binding) => {
-                        let imported_binding = this.import(binding, import);
-                        target_bindings[ns].set(Some(imported_binding));
-                        this.define(parent, target, ns, imported_binding);
                     }
                 }
             }
@@ -605,10 +608,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
-        if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
-            // Consider erroneous imports used to avoid duplicate diagnostics.
-            self.r.used_imports.insert(import.id);
-        }
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
@@ -872,7 +871,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.
-                self.r.import_dummy_binding(import);
                 None
             };
         }
