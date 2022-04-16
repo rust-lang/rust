@@ -1110,8 +1110,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(unaligned_references)]
-    ///
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -1139,10 +1137,11 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     /// [issue #82523]: https://github.com/rust-lang/rust/issues/82523
     pub UNALIGNED_REFERENCES,
-    Warn,
+    Deny,
     "detects unaligned references to fields of packed structs",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #82523 <https://github.com/rust-lang/rust/issues/82523>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
     report_in_external_macro
 }
