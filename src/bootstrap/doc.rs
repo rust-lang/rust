@@ -441,7 +441,6 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
 
-        builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
@@ -548,7 +547,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
-        builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
         let paths = builder
             .paths
@@ -563,9 +561,12 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Build rustc.
+        // Build the standard library, so that proc-macros can use it.
+        // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Std { compiler, target: builder.config.build });
+
+        builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
         // This uses a shared directory so that librustdoc documentation gets
         // correctly built and merged with the rustc documentation. This is
@@ -642,7 +643,6 @@ macro_rules! tool_doc {
     ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
-            stage: u32,
             target: TargetSelection,
         }
 
@@ -657,7 +657,7 @@ macro_rules! tool_doc {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($tool { stage: run.builder.top_stage, target: run.target });
+                run.builder.ensure($tool { target: run.target });
             }
 
             /// Generates compiler documentation.
@@ -667,8 +667,21 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
-                let stage = self.stage;
+                let stage = builder.top_stage;
                 let target = self.target;
+
+                // This is the intended out directory for compiler documentation.
+                let out = builder.compiler_doc_out(target);
+                t!(fs::create_dir_all(&out));
+
+                // Build rustc docs so that we generate relative links.
+                builder.ensure(Rustc { stage, target });
+                // Rustdoc needs the rustc sysroot available to build.
+                // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
+                // with strange errors, but only on a full bors test ...
+                let compiler = builder.compiler(stage, builder.config.build);
+                builder.ensure(compile::Rustc { compiler, target });
+
                 builder.info(
                     &format!(
                         "Documenting stage{} {} ({})",
@@ -677,15 +690,6 @@ macro_rules! tool_doc {
                         target,
                     ),
                 );
-
-                // This is the intended out directory for compiler documentation.
-                let out = builder.compiler_doc_out(target);
-                t!(fs::create_dir_all(&out));
-
-                let compiler = builder.compiler(stage, builder.config.build);
-
-                // Build rustc docs so that we generate relative links.
-                builder.ensure(Rustc { stage, target });
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
