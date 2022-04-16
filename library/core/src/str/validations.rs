@@ -112,8 +112,7 @@ where
     Some(ch)
 }
 
-// use truncation to fit u64 into usize
-const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+const NONASCII_MASK: usize = usize::repeat_u8(0x80);
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]

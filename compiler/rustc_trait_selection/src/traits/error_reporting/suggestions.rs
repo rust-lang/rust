@@ -2724,9 +2724,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 &format!(
                     "consider annotating `{}` with `#[derive({})]`",
                     trait_pred.skip_binder().self_ty(),
-                    diagnostic_name.to_string(),
+                    diagnostic_name,
                 ),
-                format!("#[derive({})]\n", diagnostic_name.to_string()),
+                format!("#[derive({})]\n", diagnostic_name),
                 Applicability::MaybeIncorrect,
             );
         }

@@ -56,7 +56,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -454,7 +454,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -567,7 +567,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -670,7 +670,7 @@ jobs:
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
       - name: publish toolstate

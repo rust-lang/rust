@@ -590,7 +590,7 @@ impl TtParser {
                 (_, 0) => {
                     // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
                     // process the next token.
-                    self.cur_mps.extend(self.next_mps.drain(..));
+                    self.cur_mps.append(&mut self.next_mps);
                     parser.to_mut().bump();
                 }
 

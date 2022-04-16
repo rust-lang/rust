@@ -890,6 +890,27 @@ impl usize {
     widening_impl! { usize, u128, 64, unsigned }
 }
 
+impl usize {
+    /// Returns an `usize` where every byte is equal to `x`.
+    #[inline]
+    pub(crate) const fn repeat_u8(x: u8) -> usize {
+        usize::from_ne_bytes([x; mem::size_of::<usize>()])
+    }
+
+    /// Returns an `usize` where every byte pair is equal to `x`.
+    #[inline]
+    pub(crate) const fn repeat_u16(x: u16) -> usize {
+        let mut r = 0usize;
+        let mut i = 0;
+        while i < mem::size_of::<usize>() {
+            // Use `wrapping_shl` to make it work on targets with 16-bit `usize`
+            r = r.wrapping_shl(16) | (x as usize);
+            i += 2;
+        }
+        r
+    }
+}
+
 /// A classification of floating point numbers.
 ///
 /// This `enum` is used as the return type for [`f32::classify`] and [`f64::classify`]. See
