@@ -183,7 +183,7 @@ impl UseSegment {
     }
 }
 
-pub(crate) fn regroup_use_trees(
+pub(crate) fn normalize_use_trees_with_granularity(
     use_trees: Vec<UseTree>,
     import_granularity: ImportGranularity,
 ) -> Vec<UseTree> {
@@ -1125,7 +1125,10 @@ mod test {
     macro_rules! test_merge {
         ($by:ident, [$($input:expr),* $(,)*], [$($output:expr),* $(,)*]) => {
             assert_eq!(
-                regroup_use_trees(parse_use_trees!($($input,)*), ImportGranularity::$by),
+                normalize_use_trees_with_granularity(
+                    parse_use_trees!($($input,)*),
+                    ImportGranularity::$by,
+                ),
                 parse_use_trees!($($output,)*),
             );
         }

@@ -12,7 +12,7 @@ use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
 use crate::config::{Config, GroupImportsTactic};
-use crate::imports::{regroup_use_trees, UseSegment, UseTree};
+use crate::imports::{normalize_use_trees_with_granularity, UseSegment, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
 use crate::rewrite::RewriteContext;
@@ -107,8 +107,10 @@ fn rewrite_reorderable_or_regroupable_items(
             for (item, list_item) in normalized_items.iter_mut().zip(list_items) {
                 item.list_item = Some(list_item.clone());
             }
-            normalized_items =
-                regroup_use_trees(normalized_items, context.config.imports_granularity());
+            normalized_items = normalize_use_trees_with_granularity(
+                normalized_items,
+                context.config.imports_granularity(),
+            );
 
             let mut regrouped_items = match context.config.group_imports() {
                 GroupImportsTactic::Preserve | GroupImportsTactic::One => {
