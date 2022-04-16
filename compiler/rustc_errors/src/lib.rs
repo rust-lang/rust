@@ -1208,7 +1208,7 @@ impl HandlerInner {
             (0, 0) => return,
             (0, _) => self.emitter.emit_diagnostic(&Diagnostic::new(
                 Level::Warning,
-                DiagnosticMessage::Str(warnings.to_owned()),
+                DiagnosticMessage::Str(warnings),
             )),
             (_, 0) => {
                 let _ = self.fatal(&errors);

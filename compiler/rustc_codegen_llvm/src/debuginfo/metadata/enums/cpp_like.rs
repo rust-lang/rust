@@ -372,7 +372,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
 
     // Build the type node for each field.
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_range
-        .clone()
         .map(|variant_index| {
             let variant_struct_type_di_node = super::build_generator_variant_struct_type_di_node(
                 cx,
