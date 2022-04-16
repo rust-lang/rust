@@ -1176,7 +1176,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     crate fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
-        &self.query_kinds[k.index() as usize]
+        &self.query_kinds[k.index()]
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.

@@ -58,12 +58,14 @@ impl DepKind {
     /// We use this for most things when incr. comp. is turned off.
     pub const NULL: Self = DepKind(0);
 
+    #[inline]
     pub const fn new(index: u16) -> Self {
         DepKind(index)
     }
 
-    pub const fn index(self) -> u16 {
-        self.0
+    #[inline]
+    pub const fn index(self) -> usize {
+        self.0 as usize
     }
 }
 
