@@ -982,6 +982,19 @@ mod prim_tuple {}
 ///   it is considered infectious as almost all calculations where one of the
 ///   operands is NaN will also result in NaN.
 ///
+/// When the number resulting from a primitive operation (addition,
+/// subtraction, multiplication, or division) on this type is not exactly
+/// representable as `f32`, it is rounded according to the roundTiesToEven
+/// direction defined in IEEE 754-2008. That means:
+///
+/// - The result is the representable value closest to the true value, if there
+///   is a unique closest representable value.
+/// - If the true value is exactly half-way between two representable values,
+///   the result is the one with an even least-significant binary digit.
+/// - If the true value's magnitude is ≥ `f32::MAX` + 2<sup>(`f32::MAX_EXP` −
+///   `f32::MANTISSA_DIGITS` − 1)</sup>, the result is ∞ or −∞ (preserving the
+///   true value's sign).
+///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
 /// *[See also the `std::f32::consts` module](crate::f32::consts).*
