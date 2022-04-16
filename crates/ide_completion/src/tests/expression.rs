@@ -642,3 +642,23 @@ fn main() {
         "]],
     );
 }
+
+#[test]
+fn detail_impl_trait_in_argument_position() {
+    check_empty(
+        r"
+//- minicore: sized
+trait Trait<T> {}
+struct Foo;
+impl Foo {
+    fn bar<U>(_: impl Trait<U>) {}
+}
+fn main() {
+    Foo::$0
+}
+",
+        expect![[r"
+            fn bar(…) fn(impl Trait<U>)
+        "]],
+    );
+}

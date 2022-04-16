@@ -1389,15 +1389,15 @@ impl Function {
     }
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
-        let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = db.trait_environment(self.id.into());
-        db.function_data(self.id)
-            .params
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        callable_sig
+            .params()
             .iter()
             .enumerate()
-            .map(|(idx, (_, type_ref))| {
-                let ty = Type { env: environment.clone(), ty: ctx.lower_ty(type_ref) };
+            .map(|(idx, ty)| {
+                let ty = Type { env: environment.clone(), ty: ty.clone() };
                 Param { func: self, ty, idx }
             })
             .collect()
@@ -1411,17 +1411,17 @@ impl Function {
     }
 
     pub fn params_without_self(self, db: &dyn HirDatabase) -> Vec<Param> {
-        let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = db.trait_environment(self.id.into());
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
         let skip = if db.function_data(self.id).has_self_param() { 1 } else { 0 };
-        db.function_data(self.id)
-            .params
+        callable_sig
+            .params()
             .iter()
             .enumerate()
             .skip(skip)
-            .map(|(idx, (_, type_ref))| {
-                let ty = Type { env: environment.clone(), ty: ctx.lower_ty(type_ref) };
+            .map(|(idx, ty)| {
+                let ty = Type { env: environment.clone(), ty: ty.clone() };
                 Param { func: self, ty, idx }
             })
             .collect()
@@ -1573,11 +1573,12 @@ impl SelfParam {
     }
 
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.func.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let substs = TyBuilder::placeholder_subst(db, self.func);
+        let callable_sig =
+            db.callable_item_signature(self.func.into()).substitute(Interner, &substs);
         let environment = db.trait_environment(self.func.into());
-
-        Type { env: environment, ty: ctx.lower_ty(&db.function_data(self.func).params[0].1) }
+        let ty = callable_sig.params()[0].clone();
+        Type { env: environment, ty }
     }
 }
 
@@ -2576,10 +2577,9 @@ impl Impl {
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
-        let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(&impl_data.self_ty);
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let ty = db.impl_self_ty(self.id).substitute(Interner, &substs);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
