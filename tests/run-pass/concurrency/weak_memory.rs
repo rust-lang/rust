@@ -63,73 +63,6 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
     val
 }
 
-// https://plv.mpi-sws.org/scfix/paper.pdf
-// Test case SB
-fn test_sc_store_buffering() {
-    let x = static_atomic(0);
-    let y = static_atomic(0);
-
-    let j1 = spawn(move || {
-        x.store(1, SeqCst);
-        y.load(SeqCst)
-    });
-
-    let j2 = spawn(move || {
-        y.store(1, SeqCst);
-        x.load(SeqCst)
-    });
-
-    let a = j1.join().unwrap();
-    let b = j2.join().unwrap();
-
-    assert_ne!((a, b), (0, 0));
-}
-
-// https://plv.mpi-sws.org/scfix/paper.pdf
-// 2.2 Second Problem: SC Fences are Too Weak
-fn test_rwc_syncs() {
-    /*
-    int main() {
-        atomic_int x = 0;
-        atomic_int y = 0;
-
-        {{{ x.store(1,mo_relaxed);
-        ||| { r1=x.load(mo_relaxed).readsvalue(1);
-              fence(mo_seq_cst);
-              r2=y.load(mo_relaxed); }
-        ||| { y.store(1,mo_relaxed);
-              fence(mo_seq_cst);
-              r3=x.load(mo_relaxed); }
-        }}}
-        return 0;
-    }
-    */
-    let x = static_atomic(0);
-    let y = static_atomic(0);
-
-    let j1 = spawn(move || {
-        x.store(1, Relaxed);
-    });
-
-    let j2 = spawn(move || {
-        reads_value(&x, 1);
-        fence(SeqCst);
-        y.load(Relaxed)
-    });
-
-    let j3 = spawn(move || {
-        y.store(1, Relaxed);
-        fence(SeqCst);
-        x.load(Relaxed)
-    });
-
-    j1.join().unwrap();
-    let b = j2.join().unwrap();
-    let c = j3.join().unwrap();
-
-    assert_ne!((b, c), (0, 0));
-}
-
 fn test_corr() {
     let x = static_atomic(0);
     let y = static_atomic(0);
@@ -263,18 +196,91 @@ fn test_mixed_access() {
     assert_eq!(r2, 2);
 }
 
+// The following two tests are taken from Repairing Sequential Consistency in C/C++11
+// by Lahav et al.
+// https://plv.mpi-sws.org/scfix/paper.pdf
+
+// Test case SB
+fn test_sc_store_buffering() {
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, SeqCst);
+        y.load(SeqCst)
+    });
+
+    let j2 = spawn(move || {
+        y.store(1, SeqCst);
+        x.load(SeqCst)
+    });
+
+    let a = j1.join().unwrap();
+    let b = j2.join().unwrap();
+
+    assert_ne!((a, b), (0, 0));
+}
+
+// 2.2 Second Problem: SC Fences are Too Weak
+// This test should pass under the C++20 model Rust is using.
+// Unfortunately, Miri's weak memory emulation only follows C++11 model
+// as we don't know how to correctly emulate C++20's revised SC semantics
+#[allow(dead_code)]
+fn test_cpp20_rwc_syncs() {
+    /*
+    int main() {
+        atomic_int x = 0;
+        atomic_int y = 0;
+
+        {{{ x.store(1,mo_relaxed);
+        ||| { r1=x.load(mo_relaxed).readsvalue(1);
+              fence(mo_seq_cst);
+              r2=y.load(mo_relaxed); }
+        ||| { y.store(1,mo_relaxed);
+              fence(mo_seq_cst);
+              r3=x.load(mo_relaxed); }
+        }}}
+        return 0;
+    }
+    */
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, Relaxed);
+    });
+
+    let j2 = spawn(move || {
+        reads_value(&x, 1);
+        fence(SeqCst);
+        y.load(Relaxed)
+    });
+
+    let j3 = spawn(move || {
+        y.store(1, Relaxed);
+        fence(SeqCst);
+        x.load(Relaxed)
+    });
+
+    j1.join().unwrap();
+    let b = j2.join().unwrap();
+    let c = j3.join().unwrap();
+
+    assert_ne!((b, c), (0, 0));
+}
+
 pub fn main() {
     // TODO: does this make chances of spurious success
     // "sufficiently low"? This also takes a long time to run,
     // prehaps each function should be its own test case so they
     // can be run in parallel
     for _ in 0..500 {
-        test_sc_store_buffering();
         test_mixed_access();
         test_load_buffering_acq_rel();
         test_message_passing();
         test_wrc();
         test_corr();
-        test_rwc_syncs();
+        test_sc_store_buffering();
+        // test_cpp20_rwc_syncs();
     }
 }
