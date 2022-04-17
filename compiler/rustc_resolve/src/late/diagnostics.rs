@@ -1,7 +1,6 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
-use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
-use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
-use crate::late::{LifetimeBinderKind, LifetimeRibKind};
+use crate::late::{AliasPossibility, ElisionFailureInfo, LateResolutionVisitor, RibKind};
+use crate::late::{LifetimeBinderKind, LifetimeRibKind, MissingLifetime, MissingLifetimeKind};
 use crate::path_names_to_string;
 use crate::{Finalize, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
@@ -27,7 +26,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span};
 
 use std::iter;
 use std::ops::Deref;
@@ -54,41 +53,6 @@ impl AssocSuggestion {
             AssocSuggestion::AssocConst => "use the associated `const`",
             AssocSuggestion::AssocType => "use the associated type",
         }
-    }
-}
-
-crate enum MissingLifetimeSpot<'tcx> {
-    Generics(&'tcx hir::Generics<'tcx>),
-    HigherRanked { span: Span, span_type: ForLifetimeSpanType },
-    Static,
-}
-
-crate enum ForLifetimeSpanType {
-    BoundEmpty,
-    BoundTail,
-    TypeEmpty,
-    TypeTail,
-}
-
-impl ForLifetimeSpanType {
-    crate fn descr(&self) -> &'static str {
-        match self {
-            Self::BoundEmpty | Self::BoundTail => "bound",
-            Self::TypeEmpty | Self::TypeTail => "type",
-        }
-    }
-
-    crate fn suggestion(&self, sugg: &str) -> String {
-        match self {
-            Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
-            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
-        }
-    }
-}
-
-impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
-    fn into(self) -> MissingLifetimeSpot<'tcx> {
-        MissingLifetimeSpot::Generics(self)
     }
 }
 
@@ -1818,18 +1782,35 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             err.span_label(lifetime_ref.ident.span, "undeclared lifetime");
             err
         };
-        let mut suggest_note = true;
+        self.suggest_introducing_lifetime(
+            &mut err,
+            Some(lifetime_ref.ident.name.as_str()),
+            |err, _, span, message, suggestion| {
+                err.span_suggestion(span, message, suggestion, Applicability::MaybeIncorrect);
+                true
+            },
+        );
+        err.emit();
+    }
 
+    fn suggest_introducing_lifetime(
+        &self,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        name: Option<&str>,
+        suggest: impl Fn(&mut DiagnosticBuilder<'_, ErrorGuaranteed>, bool, Span, &str, String) -> bool,
+    ) {
+        let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
+            let mut should_continue = true;
             match rib.kind {
                 LifetimeRibKind::Generics { parent: _, span, kind } => {
-                    if !span.can_be_used_for_suggestions() && suggest_note {
+                    if !span.can_be_used_for_suggestions() && suggest_note && let Some(name) = name {
                         suggest_note = false; // Avoid displaying the same help multiple times.
                         err.span_label(
                             span,
                             &format!(
                                 "lifetime `{}` is missing in item created through this procedural macro",
-                                lifetime_ref.ident,
+                                name,
                             ),
                         );
                         continue;
@@ -1845,46 +1826,42 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         let sugg = format!(
                             "{}<{}>{}",
                             if higher_ranked { "for" } else { "" },
-                            lifetime_ref.ident,
+                            name.unwrap_or("'a"),
                             if higher_ranked { " " } else { "" },
                         );
                         (span, sugg)
                     } else {
                         let span =
                             self.r.session.source_map().span_through_char(span, '<').shrink_to_hi();
-                        let sugg = format!("{}, ", lifetime_ref.ident);
+                        let sugg = format!("{}, ", name.unwrap_or("'a"));
                         (span, sugg)
                     };
                     if higher_ranked {
-                        err.span_suggestion(
-                            span,
-                            &format!(
-                                "consider making the {} lifetime-generic with a new `{}` lifetime",
-                                kind.descr(),
-                                lifetime_ref
-                            ),
-                            sugg,
-                            Applicability::MaybeIncorrect,
+                        let message = format!(
+                            "consider making the {} lifetime-generic with a new `{}` lifetime",
+                            kind.descr(),
+                            name.unwrap_or("'a"),
                         );
+                        should_continue = suggest(err, true, span, &message, sugg);
                         err.note_once(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
+                    } else if let Some(name) = name {
+                        let message = format!("consider introducing lifetime `{}` here", name);
+                        should_continue = suggest(err, false, span, &message, sugg);
                     } else {
-                        err.span_suggestion(
-                            span,
-                            &format!("consider introducing lifetime `{}` here", lifetime_ref.ident),
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
+                        let message = format!("consider introducing a named lifetime parameter");
+                        should_continue = suggest(err, false, span, &message, sugg);
                     }
                 }
                 LifetimeRibKind::Item => break,
                 _ => {}
             }
+            if !should_continue {
+                break;
+            }
         }
-
-        err.emit();
     }
 
     crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
@@ -1917,489 +1894,183 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .emit();
         }
     }
-}
 
-impl<'tcx> LifetimeContext<'_, 'tcx> {
     crate fn report_missing_lifetime_specifiers(
         &self,
-        spans: Vec<Span>,
-        count: usize,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        struct_span_err!(
-            self.tcx.sess,
+        lifetime_refs: Vec<MissingLifetime>,
+        function_param_lifetimes: Option<(Vec<Ident>, Vec<ElisionFailureInfo>)>,
+    ) -> ErrorGuaranteed {
+        let num_lifetimes: usize = lifetime_refs.iter().map(|lt| lt.count).sum();
+        let spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+
+        let mut err = struct_span_err!(
+            self.r.session,
             spans,
             E0106,
             "missing lifetime specifier{}",
-            pluralize!(count)
-        )
-    }
-
-    /// Returns whether to add `'static` lifetime to the suggested lifetime list.
-    crate fn report_elision_failure(
-        &mut self,
-        diag: &mut Diagnostic,
-        params: &[ElisionFailureInfo],
-    ) -> bool {
-        let mut m = String::new();
-        let len = params.len();
-
-        let elided_params: Vec<_> =
-            params.iter().cloned().filter(|info| info.lifetime_count > 0).collect();
-
-        let elided_len = elided_params.len();
-
-        for (i, info) in elided_params.into_iter().enumerate() {
-            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
-                info;
-
-            diag.span_label(span, "");
-            let help_name = if let Some(ident) =
-                parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
-            {
-                format!("`{}`", ident)
-            } else {
-                format!("argument {}", index + 1)
-            };
-
-            m.push_str(
-                &(if n == 1 {
-                    help_name
-                } else {
-                    format!(
-                        "one of {}'s {} {}lifetimes",
-                        help_name,
-                        n,
-                        if have_bound_regions { "free " } else { "" }
-                    )
-                })[..],
-            );
-
-            if elided_len == 2 && i == 0 {
-                m.push_str(" or ");
-            } else if i + 2 == elided_len {
-                m.push_str(", or ");
-            } else if i != elided_len - 1 {
-                m.push_str(", ");
-            }
-        }
-
-        if len == 0 {
-            diag.help(
-                "this function's return type contains a borrowed value, \
-                 but there is no value for it to be borrowed from",
-            );
-            true
-        } else if elided_len == 0 {
-            diag.help(
-                "this function's return type contains a borrowed value with \
-                 an elided lifetime, but the lifetime cannot be derived from \
-                 the arguments",
-            );
-            true
-        } else if elided_len == 1 {
-            diag.help(&format!(
-                "this function's return type contains a borrowed value, \
-                 but the signature does not say which {} it is borrowed from",
-                m
-            ));
-            false
-        } else {
-            diag.help(&format!(
-                "this function's return type contains a borrowed value, \
-                 but the signature does not say whether it is borrowed from {}",
-                m
-            ));
-            false
-        }
-    }
-
-    crate fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
-        if let def::Res::Def(_, did) = trait_ref.trait_ref.path.res {
-            if [
-                self.tcx.lang_items().fn_once_trait(),
-                self.tcx.lang_items().fn_trait(),
-                self.tcx.lang_items().fn_mut_trait(),
-            ]
-            .contains(&Some(did))
-            {
-                let (span, span_type) = match &trait_ref.bound_generic_params {
-                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
-                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
-                };
-                self.missing_named_lifetime_spots
-                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
-                return true;
-            }
-        };
-        false
+            pluralize!(num_lifetimes)
+        );
+        self.add_missing_lifetime_specifiers_label(
+            &mut err,
+            lifetime_refs,
+            function_param_lifetimes,
+        );
+        err.emit()
     }
 
     crate fn add_missing_lifetime_specifiers_label(
         &self,
-        err: &mut Diagnostic,
-        mut spans_with_counts: Vec<(Span, usize)>,
-        lifetime_names: &FxHashSet<Symbol>,
-        lifetime_spans: Vec<Span>,
-        params: &[ElisionFailureInfo],
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        lifetime_refs: Vec<MissingLifetime>,
+        function_param_lifetimes: Option<(Vec<Ident>, Vec<ElisionFailureInfo>)>,
     ) {
-        let snippets: Vec<Option<String>> = spans_with_counts
-            .iter()
-            .map(|(span, _)| self.tcx.sess.source_map().span_to_snippet(*span).ok())
-            .collect();
-
-        // Empty generics are marked with a span of "<", but since from now on
-        // that information is in the snippets it can be removed from the spans.
-        for ((span, _), snippet) in spans_with_counts.iter_mut().zip(&snippets) {
-            if snippet.as_deref() == Some("<") {
-                *span = span.shrink_to_hi();
-            }
-        }
-
-        for &(span, count) in &spans_with_counts {
+        for &lt in &lifetime_refs {
             err.span_label(
-                span,
+                lt.span,
                 format!(
                     "expected {} lifetime parameter{}",
-                    if count == 1 { "named".to_string() } else { count.to_string() },
-                    pluralize!(count),
+                    if lt.count == 1 { "named".to_string() } else { lt.count.to_string() },
+                    pluralize!(lt.count),
                 ),
             );
         }
 
-        let suggest_existing =
-            |err: &mut Diagnostic,
-             name: &str,
-             formatters: Vec<Option<Box<dyn Fn(&str) -> String>>>| {
-                if let Some(MissingLifetimeSpot::HigherRanked { span: for_span, span_type }) =
-                    self.missing_named_lifetime_spots.iter().rev().next()
-                {
-                    // When we have `struct S<'a>(&'a dyn Fn(&X) -> &X);` we want to not only suggest
-                    // using `'a`, but also introduce the concept of HRLTs by suggesting
-                    // `struct S<'a>(&'a dyn for<'b> Fn(&X) -> &'b X);`. (#72404)
-                    let mut introduce_suggestion = vec![];
+        let mut in_scope_lifetimes: Vec<_> = self
+            .lifetime_ribs
+            .iter()
+            .flat_map(|rib| rib.bindings.keys().copied())
+            .filter(|ident| ident.name != kw::UnderscoreLifetime)
+            .collect();
 
-                    let a_to_z_repeat_n = |n| {
-                        (b'a'..=b'z').map(move |c| {
-                            let mut s = '\''.to_string();
-                            s.extend(std::iter::repeat(char::from(c)).take(n));
-                            s
-                        })
-                    };
+        if let Some((param_lifetimes, params)) = function_param_lifetimes {
+            let elided_len =
+                param_lifetimes.iter().filter(|ident| ident.name == kw::UnderscoreLifetime).count();
+            let num_params = params.len();
 
-                    // If all single char lifetime names are present, we wrap around and double the chars.
-                    let lt_name = (1..)
-                        .flat_map(a_to_z_repeat_n)
-                        .find(|lt| !lifetime_names.contains(&Symbol::intern(&lt)))
-                        .unwrap();
-                    let msg = format!(
-                        "consider making the {} lifetime-generic with a new `{}` lifetime",
-                        span_type.descr(),
-                        lt_name,
-                    );
-                    err.note(
-                        "for more information on higher-ranked polymorphism, visit \
-                    https://doc.rust-lang.org/nomicon/hrtb.html",
-                    );
-                    let for_sugg = span_type.suggestion(&lt_name);
-                    for param in params {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
-                        {
-                            if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&{} {}", lt_name, &snippet[1..])));
-                            } else if let Some(stripped) = snippet.strip_prefix("&'_ ") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&{} {}", lt_name, stripped)));
-                            }
-                        }
+            let mut m = String::new();
+
+            for (i, info) in params.into_iter().enumerate() {
+                let ElisionFailureInfo { ident, index, lifetime_count, span } = info;
+                debug_assert_ne!(lifetime_count, 0);
+
+                err.span_label(span, "");
+
+                if i != 0 {
+                    if i + 1 < num_params {
+                        m.push_str(", ");
+                    } else if num_params == 2 {
+                        m.push_str(" or ");
+                    } else {
+                        m.push_str(", or ");
                     }
-                    introduce_suggestion.push((*for_span, for_sugg));
-                    for ((span, _), formatter) in spans_with_counts.iter().zip(formatters.iter()) {
-                        if let Some(formatter) = formatter {
-                            introduce_suggestion.push((*span, formatter(&lt_name)));
-                        }
-                    }
-                    err.multipart_suggestion_verbose(
-                        &msg,
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
                 }
 
-                let spans_suggs: Vec<_> = formatters
-                    .into_iter()
-                    .zip(spans_with_counts.iter())
-                    .filter_map(|(formatter, (span, _))| {
-                        if let Some(formatter) = formatter {
-                            Some((*span, formatter(name)))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                if spans_suggs.is_empty() {
-                    // If all the spans come from macros, we cannot extract snippets and then
-                    // `formatters` only contains None and `spans_suggs` is empty.
-                    return;
+                let help_name = if let Some(ident) = ident {
+                    format!("`{}`", ident)
+                } else {
+                    format!("argument {}", index + 1)
+                };
+
+                if lifetime_count == 1 {
+                    m.push_str(&help_name[..])
+                } else {
+                    m.push_str(&format!("one of {}'s {} lifetimes", help_name, lifetime_count)[..])
                 }
+            }
+
+            if num_params == 0 {
+                err.help(
+                    "this function's return type contains a borrowed value, \
+                 but there is no value for it to be borrowed from",
+                );
+                in_scope_lifetimes = vec![Ident::with_dummy_span(kw::StaticLifetime)];
+            } else if elided_len == 0 {
+                err.help(
+                    "this function's return type contains a borrowed value with \
+                 an elided lifetime, but the lifetime cannot be derived from \
+                 the arguments",
+                );
+                in_scope_lifetimes = vec![Ident::with_dummy_span(kw::StaticLifetime)];
+            } else if num_params == 1 {
+                err.help(&format!(
+                    "this function's return type contains a borrowed value, \
+                 but the signature does not say which {} it is borrowed from",
+                    m
+                ));
+            } else {
+                err.help(&format!(
+                    "this function's return type contains a borrowed value, \
+                 but the signature does not say whether it is borrowed from {}",
+                    m
+                ));
+            }
+        }
+
+        let existing_name = match &in_scope_lifetimes[..] {
+            [] => Symbol::intern("'a"),
+            [existing] => existing.name,
+            _ => Symbol::intern("'lifetime"),
+        };
+
+        let mut spans_suggs: Vec<_> = Vec::new();
+        for &lt in &lifetime_refs {
+            let (span, sugg) = match lt.kind {
+                MissingLifetimeKind::Underscore => {
+                    debug_assert_eq!(lt.count, 1);
+                    (lt.span, existing_name.to_string())
+                }
+                MissingLifetimeKind::Ampersand => {
+                    debug_assert_eq!(lt.count, 1);
+                    (lt.span.shrink_to_hi(), format!("{} ", existing_name))
+                }
+                MissingLifetimeKind::Comma => {
+                    let sugg: String = std::iter::repeat([existing_name.as_str(), ", "])
+                        .take(lt.count)
+                        .flatten()
+                        .collect();
+                    (lt.span.shrink_to_hi(), sugg)
+                }
+                MissingLifetimeKind::Brackets => {
+                    let sugg: String = std::iter::once("<")
+                        .chain(
+                            std::iter::repeat(existing_name.as_str())
+                                .take(lt.count)
+                                .intersperse(", "),
+                        )
+                        .chain([">"])
+                        .collect();
+                    (lt.span.shrink_to_hi(), sugg)
+                }
+            };
+            spans_suggs.push((span, sugg));
+        }
+        match in_scope_lifetimes.len() {
+            0 => {
+                self.suggest_introducing_lifetime(
+                    err,
+                    None,
+                    |err, higher_ranked, span, message, intro_sugg| {
+                        err.multipart_suggestion_verbose(
+                            message,
+                            std::iter::once((span, intro_sugg))
+                                .chain(spans_suggs.clone())
+                                .collect(),
+                            Applicability::MaybeIncorrect,
+                        );
+                        higher_ranked
+                    },
+                );
+            }
+            1 => {
                 err.multipart_suggestion_verbose(
-                    &format!(
-                        "consider using the `{}` lifetime",
-                        lifetime_names.iter().next().unwrap()
-                    ),
+                    &format!("consider using the `{}` lifetime", existing_name),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
                 );
-            };
-        let suggest_new = |err: &mut Diagnostic, suggs: Vec<Option<String>>| {
-            for missing in self.missing_named_lifetime_spots.iter().rev() {
-                let mut introduce_suggestion = vec![];
-                let msg;
-                let should_break;
-                introduce_suggestion.push(match missing {
-                    MissingLifetimeSpot::Generics(generics) => {
-                        if generics.span == DUMMY_SP {
-                            // Account for malformed generics in the HIR. This shouldn't happen,
-                            // but if we make a mistake elsewhere, mainly by keeping something in
-                            // `missing_named_lifetime_spots` that we shouldn't, like associated
-                            // `const`s or making a mistake in the AST lowering we would provide
-                            // nonsensical suggestions. Guard against that by skipping these.
-                            // (#74264)
-                            continue;
-                        }
-                        msg = "consider introducing a named lifetime parameter".to_string();
-                        should_break = true;
-                        if let Some(param) = generics.params.iter().find(|p| {
-                            !matches!(
-                                p.kind,
-                                hir::GenericParamKind::Type { synthetic: true, .. }
-                                    | hir::GenericParamKind::Lifetime {
-                                        kind: hir::LifetimeParamKind::Elided
-                                    }
-                            )
-                        }) {
-                            (param.span.shrink_to_lo(), "'a, ".to_string())
-                        } else {
-                            (generics.span, "<'a>".to_string())
-                        }
-                    }
-                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
-                        msg = format!(
-                            "consider making the {} lifetime-generic with a new `'a` lifetime",
-                            span_type.descr(),
-                        );
-                        should_break = false;
-                        err.note(
-                            "for more information on higher-ranked polymorphism, visit \
-                            https://doc.rust-lang.org/nomicon/hrtb.html",
-                        );
-                        (*span, span_type.suggestion("'a"))
-                    }
-                    MissingLifetimeSpot::Static => {
-                        let mut spans_suggs = Vec::new();
-                        for ((span, count), snippet) in
-                            spans_with_counts.iter().copied().zip(snippets.iter())
-                        {
-                            let (span, sugg) = match snippet.as_deref() {
-                                Some("&") => (span.shrink_to_hi(), "'static ".to_owned()),
-                                Some("'_") => (span, "'static".to_owned()),
-                                Some(snippet) if !snippet.ends_with('>') => {
-                                    if snippet == "" {
-                                        (
-                                            span,
-                                            std::iter::repeat("'static")
-                                                .take(count)
-                                                .collect::<Vec<_>>()
-                                                .join(", "),
-                                        )
-                                    } else if snippet == "<" || snippet == "(" {
-                                        (
-                                            span.shrink_to_hi(),
-                                            std::iter::repeat("'static")
-                                                .take(count)
-                                                .collect::<Vec<_>>()
-                                                .join(", "),
-                                        )
-                                    } else {
-                                        (
-                                            span.shrink_to_hi(),
-                                            format!(
-                                                "<{}>",
-                                                std::iter::repeat("'static")
-                                                    .take(count)
-                                                    .collect::<Vec<_>>()
-                                                    .join(", "),
-                                            ),
-                                        )
-                                    }
-                                }
-                                _ => continue,
-                            };
-                            spans_suggs.push((span, sugg.to_string()));
-                        }
-                        err.multipart_suggestion_verbose(
-                            "consider using the `'static` lifetime",
-                            spans_suggs,
-                            Applicability::MaybeIncorrect,
-                        );
-                        continue;
-                    }
-                });
-
-                struct Lifetime(Span, String);
-                impl Lifetime {
-                    fn is_unnamed(&self) -> bool {
-                        self.1.starts_with('&') && !self.1.starts_with("&'")
-                    }
-                    fn is_underscore(&self) -> bool {
-                        self.1.starts_with("&'_ ")
-                    }
-                    fn is_named(&self) -> bool {
-                        self.1.starts_with("&'")
-                    }
-                    fn suggestion(&self, sugg: String) -> Option<(Span, String)> {
-                        Some(
-                            match (
-                                self.is_unnamed(),
-                                self.is_underscore(),
-                                self.is_named(),
-                                sugg.starts_with('&'),
-                            ) {
-                                (true, _, _, false) => (self.span_unnamed_borrow(), sugg),
-                                (true, _, _, true) => {
-                                    (self.span_unnamed_borrow(), sugg[1..].to_string())
-                                }
-                                (_, true, _, false) => {
-                                    (self.span_underscore_borrow(), sugg.trim().to_string())
-                                }
-                                (_, true, _, true) => {
-                                    (self.span_underscore_borrow(), sugg[1..].trim().to_string())
-                                }
-                                (_, _, true, false) => {
-                                    (self.span_named_borrow(), sugg.trim().to_string())
-                                }
-                                (_, _, true, true) => {
-                                    (self.span_named_borrow(), sugg[1..].trim().to_string())
-                                }
-                                _ => return None,
-                            },
-                        )
-                    }
-                    fn span_unnamed_borrow(&self) -> Span {
-                        let lo = self.0.lo() + BytePos(1);
-                        self.0.with_lo(lo).with_hi(lo)
-                    }
-                    fn span_named_borrow(&self) -> Span {
-                        let lo = self.0.lo() + BytePos(1);
-                        self.0.with_lo(lo)
-                    }
-                    fn span_underscore_borrow(&self) -> Span {
-                        let lo = self.0.lo() + BytePos(1);
-                        let hi = lo + BytePos(2);
-                        self.0.with_lo(lo).with_hi(hi)
-                    }
-                }
-
-                for param in params {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
-                        if let Some((span, sugg)) =
-                            Lifetime(param.span, snippet).suggestion("'a ".to_string())
-                        {
-                            introduce_suggestion.push((span, sugg));
-                        }
-                    }
-                }
-                for (span, sugg) in spans_with_counts.iter().copied().zip(suggs.iter()).filter_map(
-                    |((span, _), sugg)| match &sugg {
-                        Some(sugg) => Some((span, sugg.to_string())),
-                        _ => None,
-                    },
-                ) {
-                    let (span, sugg) = self
-                        .tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(span)
-                        .ok()
-                        .and_then(|snippet| Lifetime(span, snippet).suggestion(sugg.clone()))
-                        .unwrap_or((span, sugg));
-                    introduce_suggestion.push((span, sugg.to_string()));
-                }
-                err.multipart_suggestion_verbose(
-                    &msg,
-                    introduce_suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-                if should_break {
-                    break;
-                }
             }
-        };
-
-        let lifetime_names: Vec<_> = lifetime_names.iter().collect();
-        match &lifetime_names[..] {
-            [name] => {
-                let mut suggs: Vec<Option<Box<dyn Fn(&str) -> String>>> = Vec::new();
-                for (snippet, (_, count)) in snippets.iter().zip(spans_with_counts.iter().copied())
-                {
-                    suggs.push(match snippet.as_deref() {
-                        Some("&") => Some(Box::new(|name| format!("&{} ", name))),
-                        Some("'_") => Some(Box::new(|n| n.to_string())),
-                        Some("") => Some(Box::new(move |n| format!("{}, ", n).repeat(count))),
-                        Some("<") => Some(Box::new(move |n| {
-                            std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
-                        })),
-                        Some(snippet) if !snippet.ends_with('>') => Some(Box::new(move |name| {
-                            format!(
-                                "{}<{}>",
-                                snippet,
-                                std::iter::repeat(name.to_string())
-                                    .take(count)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            )
-                        })),
-                        _ => None,
-                    });
-                }
-                suggest_existing(err, name.as_str(), suggs);
-            }
-            [] => {
-                let mut suggs = Vec::new();
-                for (snippet, (_, count)) in
-                    snippets.iter().cloned().zip(spans_with_counts.iter().copied())
-                {
-                    suggs.push(match snippet.as_deref() {
-                        Some("&") => Some("&'a ".to_string()),
-                        Some("'_") => Some("'a".to_string()),
-                        Some("") => {
-                            Some(std::iter::repeat("'a, ").take(count).collect::<Vec<_>>().join(""))
-                        }
-                        Some("<") => {
-                            Some(std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", "))
-                        }
-                        Some(snippet) => Some(format!(
-                            "{}<{}>",
-                            snippet,
-                            std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", "),
-                        )),
-                        None => None,
-                    });
-                }
-                suggest_new(err, suggs);
-            }
-            lts if lts.len() > 1 => {
+            _ => {
+                let lifetime_spans: Vec<_> = in_scope_lifetimes.iter().map(|i| i.span).collect();
                 err.span_note(lifetime_spans, "these named lifetimes are available to use");
-
-                let mut spans_suggs: Vec<_> = Vec::new();
-                for ((span, _), snippet) in spans_with_counts.iter().copied().zip(snippets.iter()) {
-                    match snippet.as_deref() {
-                        Some("") => spans_suggs.push((span, "'lifetime, ".to_string())),
-                        Some("&") => spans_suggs
-                            .push((span.with_lo(span.lo() + BytePos(1)), "'lifetime ".to_string())),
-                        _ => {}
-                    }
-                }
 
                 if spans_suggs.len() > 0 {
                     // This happens when we have `Foo<T>` where we point at the space before `T`,
@@ -2411,7 +2082,6 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                 }
             }
-            _ => unreachable!(),
         }
     }
 }

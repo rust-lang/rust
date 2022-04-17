@@ -12,6 +12,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
