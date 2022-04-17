@@ -3,7 +3,7 @@ use super::*;
 use crate::ffi::OsStr;
 use crate::mem;
 use crate::ptr;
-use crate::sys::cvt;
+use crate::sys::{cvt, cvt_nz};
 
 macro_rules! t {
     ($e:expr) => {
@@ -39,7 +39,7 @@ fn test_process_mask() {
         let mut old_set = mem::MaybeUninit::<libc::sigset_t>::uninit();
         t!(cvt(sigemptyset(set.as_mut_ptr())));
         t!(cvt(sigaddset(set.as_mut_ptr(), libc::SIGINT)));
-        t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), old_set.as_mut_ptr())));
+        t!(cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), old_set.as_mut_ptr())));
 
         cmd.stdin(Stdio::MakePipe);
         cmd.stdout(Stdio::MakePipe);
@@ -48,7 +48,7 @@ fn test_process_mask() {
         let stdin_write = pipes.stdin.take().unwrap();
         let stdout_read = pipes.stdout.take().unwrap();
 
-        t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(), ptr::null_mut())));
+        t!(cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(), ptr::null_mut())));
 
         t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
         // We need to wait until SIGINT is definitely delivered. The

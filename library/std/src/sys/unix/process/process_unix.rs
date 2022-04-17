@@ -328,6 +328,7 @@ impl Command {
         #[cfg(not(target_os = "emscripten"))]
         {
             use crate::mem::MaybeUninit;
+            use crate::sys::cvt_nz;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -337,7 +338,7 @@ impl Command {
             // we're about to run.
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
 
             #[cfg(target_os = "android")] // see issue #88585
             {
