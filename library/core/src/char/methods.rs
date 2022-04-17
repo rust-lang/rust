@@ -343,10 +343,10 @@ impl char {
                   without modifying the original"]
     #[inline]
     pub const fn to_digit(self, radix: u32) -> Option<u32> {
-        assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
         // If not a digit, a number greater than radix will be created.
         let mut digit = (self as u32).wrapping_sub('0' as u32);
         if radix > 10 {
+            assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
             if digit < 10 {
                 return Some(digit);
             }
