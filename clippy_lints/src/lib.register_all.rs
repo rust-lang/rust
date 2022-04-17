@@ -184,6 +184,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::MAP_FLATTEN),
     LintId::of(methods::MAP_IDENTITY),
     LintId::of(methods::NEEDLESS_OPTION_AS_DEREF),
+    LintId::of(methods::NEEDLESS_OPTION_TAKE),
     LintId::of(methods::NEEDLESS_SPLITN),
     LintId::of(methods::NEW_RET_NO_SELF),
     LintId::of(methods::OK_EXPECT),

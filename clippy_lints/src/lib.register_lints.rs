@@ -323,6 +323,7 @@ store.register_lints(&[
     methods::MAP_IDENTITY,
     methods::MAP_UNWRAP_OR,
     methods::NEEDLESS_OPTION_AS_DEREF,
+    methods::NEEDLESS_OPTION_TAKE,
     methods::NEEDLESS_SPLITN,
     methods::NEW_RET_NO_SELF,
     methods::OK_EXPECT,
