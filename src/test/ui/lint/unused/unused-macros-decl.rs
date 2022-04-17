@@ -1,5 +1,7 @@
 #![feature(decl_macro)]
 #![deny(unused_macros)]
+// To make sure we are not hitting this
+#![deny(unused_macro_rules)]
 
 // Most simple case
 macro unused { //~ ERROR: unused macro definition
