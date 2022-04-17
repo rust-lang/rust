@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-struct.rs:11:9
+  --> $DIR/ref-mut-struct.rs:15:9
    |
 LL |     fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
    |                                         ----     ----
@@ -15,7 +15,7 @@ LL |     fn ref_Struct<'a>(self: &'a mut Struct, f: &'a u32) -> &u32 {
    |                  ++++        ++                 ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-struct.rs:15:9
+  --> $DIR/ref-mut-struct.rs:21:9
    |
 LL |     fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
    |                                                  ----     ----
@@ -31,7 +31,7 @@ LL |     fn box_ref_Struct<'a>(self: Box<&'a mut Struct>, f: &'a u32) -> &u32 {
    |                      ++++            ++                  ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-struct.rs:19:9
+  --> $DIR/ref-mut-struct.rs:27:9
    |
 LL |     fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
    |                                                  ----     ----
@@ -47,7 +47,7 @@ LL |     fn pin_ref_Struct<'a>(self: Pin<&'a mut Struct>, f: &'a u32) -> &u32 {
    |                      ++++            ++                  ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-struct.rs:23:9
+  --> $DIR/ref-mut-struct.rs:33:9
    |
 LL |     fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
    |                                                           ----     ----
@@ -63,7 +63,7 @@ LL |     fn box_box_ref_Struct<'a>(self: Box<Box<&'a mut Struct>>, f: &'a u32) -
    |                          ++++                ++                   ++
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-struct.rs:27:9
+  --> $DIR/ref-mut-struct.rs:39:9
    |
 LL |     fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
    |                                                           ----     ----
