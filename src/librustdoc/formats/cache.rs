@@ -127,6 +127,8 @@ crate struct Cache {
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
 struct CacheBuilder<'a, 'tcx> {
     cache: &'a mut Cache,
+    /// This field is used to prevent duplicated impl blocks.
+    impl_ids: FxHashMap<DefId, FxHashSet<DefId>>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -170,12 +172,19 @@ impl Cache {
                 .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
         }
 
-        krate = CacheBuilder { tcx, cache: &mut cx.cache }.fold_crate(krate);
+        let (krate, mut impl_ids) = {
+            let mut cache_builder =
+                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: FxHashMap::default() };
+            krate = cache_builder.fold_crate(krate);
+            (krate, cache_builder.impl_ids)
+        };
 
         for (trait_did, dids, impl_) in cx.cache.orphan_trait_impls.drain(..) {
             if cx.cache.traits.contains_key(&trait_did) {
                 for did in dids {
-                    cx.cache.impls.entry(did).or_default().push(impl_.clone());
+                    if impl_ids.entry(did).or_default().insert(impl_.def_id()) {
+                        cx.cache.impls.entry(did).or_default().push(impl_.clone());
+                    }
                 }
             }
         }
@@ -467,7 +476,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let impl_item = Impl { impl_item: item };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
-                    self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
+                    if self.impl_ids.entry(did).or_default().insert(impl_item.def_id()) {
+                        self.cache
+                            .impls
+                            .entry(did)
+                            .or_insert_with(Vec::new)
+                            .push(impl_item.clone());
+                    }
                 }
             } else {
                 let trait_did = impl_item.trait_did().expect("no trait did");
