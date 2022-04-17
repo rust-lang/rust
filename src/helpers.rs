@@ -21,6 +21,27 @@ use crate::*;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
+const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
+    use std::io::ErrorKind::*;
+    &[
+        (ConnectionRefused, "ECONNREFUSED"),
+        (ConnectionReset, "ECONNRESET"),
+        (PermissionDenied, "EPERM"),
+        (BrokenPipe, "EPIPE"),
+        (NotConnected, "ENOTCONN"),
+        (ConnectionAborted, "ECONNABORTED"),
+        (AddrNotAvailable, "EADDRNOTAVAIL"),
+        (AddrInUse, "EADDRINUSE"),
+        (NotFound, "ENOENT"),
+        (Interrupted, "EINTR"),
+        (InvalidInput, "EINVAL"),
+        (TimedOut, "ETIMEDOUT"),
+        (AlreadyExists, "EEXIST"),
+        (WouldBlock, "EWOULDBLOCK"),
+        (DirectoryNotEmpty, "ENOTEMPTY"),
+    ]
+};
+
 /// Gets an instance for a path.
 fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
     tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
@@ -502,39 +523,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.read_scalar(&errno_place.into())?.check_init()
     }
 
-    /// Sets the last OS error using a `std::io::ErrorKind`. This function tries to produce the most
-    /// similar OS error from the `std::io::ErrorKind` and sets it as the last OS error.
-    fn set_last_error_from_io_error(&mut self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx> {
-        use std::io::ErrorKind::*;
-        let this = self.eval_context_mut();
+    /// This function tries to produce the most similar OS error from the `std::io::ErrorKind`
+    /// as a platform-specific errnum.
+    fn io_error_to_errnum(&self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
-        let target_os = &target.os;
-        let last_error = if target.families.iter().any(|f| f == "unix") {
-            this.eval_libc(match err_kind {
-                ConnectionRefused => "ECONNREFUSED",
-                ConnectionReset => "ECONNRESET",
-                PermissionDenied => "EPERM",
-                BrokenPipe => "EPIPE",
-                NotConnected => "ENOTCONN",
-                ConnectionAborted => "ECONNABORTED",
-                AddrNotAvailable => "EADDRNOTAVAIL",
-                AddrInUse => "EADDRINUSE",
-                NotFound => "ENOENT",
-                Interrupted => "EINTR",
-                InvalidInput => "EINVAL",
-                TimedOut => "ETIMEDOUT",
-                AlreadyExists => "EEXIST",
-                WouldBlock => "EWOULDBLOCK",
-                DirectoryNotEmpty => "ENOTEMPTY",
-                _ => {
-                    throw_unsup_format!(
-                        "io error {:?} cannot be translated into a raw os error",
-                        err_kind
-                    )
+        if target.families.iter().any(|f| f == "unix") {
+            for &(kind, name) in UNIX_IO_ERROR_TABLE {
+                if err_kind == kind {
+                    return this.eval_libc(name);
                 }
-            })?
+            }
+            throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind)
         } else if target.families.iter().any(|f| f == "windows") {
             // FIXME: we have to finish implementing the Windows equivalent of this.
+            use std::io::ErrorKind::*;
             this.eval_windows(
                 "c",
                 match err_kind {
@@ -546,14 +549,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             err_kind
                         ),
                 },
-            )?
+            )
         } else {
             throw_unsup_format!(
-                "setting the last OS error from an io::Error is unsupported for {}.",
-                target_os
+                "converting io::Error into errnum is unsupported for OS {}",
+                target.os
             )
-        };
-        this.set_last_error(last_error)
+        }
+    }
+
+    /// The inverse of `io_error_to_errnum`.
+    fn errnum_to_io_error(&self, errnum: Scalar<Tag>) -> InterpResult<'tcx, std::io::ErrorKind> {
+        let this = self.eval_context_ref();
+        let target = &this.tcx.sess.target;
+        if target.families.iter().any(|f| f == "unix") {
+            let errnum = errnum.to_i32()?;
+            for &(kind, name) in UNIX_IO_ERROR_TABLE {
+                if errnum == this.eval_libc_i32(name)? {
+                    return Ok(kind);
+                }
+            }
+            throw_unsup_format!("raw errnum {:?} cannot be translated into io::Error", errnum)
+        } else {
+            throw_unsup_format!(
+                "converting errnum into io::Error is unsupported for OS {}",
+                target.os
+            )
+        }
+    }
+
+    /// Sets the last OS error using a `std::io::ErrorKind`.
+    fn set_last_error_from_io_error(&mut self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx> {
+        self.set_last_error(self.io_error_to_errnum(err_kind)?)
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an

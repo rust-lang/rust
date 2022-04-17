@@ -1,3 +1,5 @@
+use std::ffi::OsStr;
+
 use log::trace;
 
 use rustc_middle::mir;
@@ -420,6 +422,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.read_pointer(child)?;
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
+            }
+            "strerror_r" | "__xpg_strerror_r" => {
+                let &[ref errnum, ref buf, ref buflen] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let errnum = this.read_scalar(errnum)?.check_init()?;
+                let buf = this.read_pointer(buf)?;
+                let buflen = this.read_scalar(buflen)?.to_machine_usize(this)?;
+
+                let error = this.errnum_to_io_error(errnum)?;
+                let formatted = error.to_string();
+                let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
+                let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE")? };
+                this.write_int(ret, dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
