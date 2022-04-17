@@ -142,7 +142,7 @@ impl<'tcx> MirPatch<'tcx> {
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
         let mut terminator_targets = Vec::new();
-        let mut statements:Vec<Statement<'_>> = Vec::new();
+        let mut statements: Vec<Statement<'_>> = Vec::new();
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -159,7 +159,7 @@ impl<'tcx> MirPatch<'tcx> {
                 let successors = term.successors().clone();
 
                 for i in successors {
-                    statements.push(Statement{source_info,kind:stmt.clone()});
+                    statements.push(Statement { source_info, kind: stmt.clone() });
                     terminator_targets.push(i.clone());
                 }
                 delta += 1;
@@ -174,9 +174,7 @@ impl<'tcx> MirPatch<'tcx> {
 
         for target in terminator_targets.iter().rev() {
             let stmt = statements.pop().unwrap();
-            body[*target]
-                .statements
-                .insert(0, stmt);
+            body[*target].statements.insert(0, stmt);
         }
     }
 
