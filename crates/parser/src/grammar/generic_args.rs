@@ -40,11 +40,19 @@ fn generic_arg(p: &mut Parser) {
             name_ref(p);
             opt_generic_arg_list(p, false);
             match p.current() {
-                // test assoc_type_eq
-                // type T = StreamingIterator<Item<'a> = &'a T>;
                 T![=] => {
                     p.bump_any();
-                    types::type_(p);
+                    if types::TYPE_FIRST.contains(p.current()) {
+                        // test assoc_type_eq
+                        // type T = StreamingIterator<Item<'a> = &'a T>;
+                        types::type_(p);
+                    } else {
+                        // test assoc_const_eq
+                        // fn foo<F: Foo<N=3>>() {}
+                        // const TEST: usize = 3;
+                        // fn bar<F: Foo<N={TEST}>>() {}
+                        const_arg(p);
+                    }
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
                 // test assoc_type_bound

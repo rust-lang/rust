@@ -1,0 +1,105 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Foo"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "N"
+                      EQ "="
+                      CONST_ARG
+                        LITERAL
+                          INT_NUMBER "3"
+                    R_ANGLE ">"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    NAME
+      IDENT "TEST"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "usize"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "3"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "bar"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Foo"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "N"
+                      EQ "="
+                      CONST_ARG
+                        BLOCK_EXPR
+                          STMT_LIST
+                            L_CURLY "{"
+                            PATH_EXPR
+                              PATH
+                                PATH_SEGMENT
+                                  NAME_REF
+                                    IDENT "TEST"
+                            R_CURLY "}"
+                    R_ANGLE ">"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
