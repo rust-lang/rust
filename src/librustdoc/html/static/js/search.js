@@ -235,7 +235,18 @@ window.initSearch = function(rawSearchIndex) {
      * @return {boolean}
      */
     function isSeparatorCharacter(c) {
-        return ", \t".indexOf(c) !== -1;
+        return c === "," || isWhitespaceCharacter(c);
+    }
+
+    /**
+     * Returns `true` if the given `c` character is a whitespace.
+     *
+     * @param {string} c
+     *
+     * @return {boolean}
+     */
+    function isWhitespaceCharacter(c) {
+        return c === " " || c === "\t";
     }
 
     /**
@@ -425,6 +436,22 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * Checks that the type filter doesn't have unwanted characters like `<>` (which are ignored
+     * if empty).
+     *
+     * @param {ParserState} parserState
+     */
+    function checkExtraTypeFilterCharacters(parserState) {
+        var query = parserState.userQuery;
+
+        for (var pos = 0; pos < parserState.pos; ++pos) {
+            if (!isIdentCharacter(query[pos]) && !isWhitespaceCharacter(query[pos])) {
+                throw new Error(`Unexpected \`${query[pos]}\` in type filter`);
+            }
+        }
+    }
+
+    /**
      * Parses the provided `query` input to fill `parserState`. If it encounters an error while
      * parsing `query`, it'll throw an error.
      *
@@ -457,10 +484,10 @@ window.initSearch = function(rawSearchIndex) {
                     throw new Error("Expected type filter before `:`");
                 } else if (query.elems.length !== 1 || parserState.totalElems !== 1) {
                     throw new Error("Unexpected `:`");
-                }
-                if (query.literalSearch) {
+                } else if (query.literalSearch) {
                     throw new Error("You cannot use quotes on type filter");
                 }
+                checkExtraTypeFilterCharacters(parserState);
                 // The type filter doesn't count as an element since it's a modifier.
                 parserState.typeFilter = query.elems.pop().name;
                 parserState.pos += 1;

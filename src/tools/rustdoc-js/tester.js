@@ -275,7 +275,8 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
                            "parseInput", "getItemsBefore", "getNextElem", "createQueryElement",
                            "isReturnArrow", "isPathStart", "getStringElem", "newParsedQuery",
                            "itemTypeFromName", "isEndCharacter", "isErrorCharacter",
-                           "isIdentCharacter", "isSeparatorCharacter", "getIdentEndPosition"];
+                           "isIdentCharacter", "isSeparatorCharacter", "getIdentEndPosition",
+                           "checkExtraTypeFilterCharacters", "isWhitespaceCharacter"];
 
     const functions = ["hasOwnPropertyRustdoc", "onEach"];
     ALIASES = {};

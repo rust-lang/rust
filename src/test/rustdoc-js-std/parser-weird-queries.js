@@ -7,6 +7,8 @@ const QUERY = [
     'a,b(c)',
     'aaa,a',
     ',,,,',
+    'mod    :',
+    'mod\t:',
 ];
 
 const PARSED = [
@@ -98,6 +100,24 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: ",,,,",
+        error: null,
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: 'mod    :',
+        returned: [],
+        typeFilter: 0,
+        userQuery: 'mod    :',
+        error: null,
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: 'mod\t:',
+        returned: [],
+        typeFilter: 0,
+        userQuery: 'mod\t:',
         error: null,
     },
 ];

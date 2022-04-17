@@ -30,6 +30,10 @@ const QUERY = [
     "a<->",
     "a:: a",
     "a ::a",
+    "a<a>:",
+    "a<>:",
+    "a,:",
+    "  a<>  :",
 ];
 
 const PARSED = [
@@ -311,5 +315,41 @@ const PARSED = [
         typeFilter: -1,
         userQuery: 'a ::a',
         error: 'Paths cannot start with `::`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a<a>:",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a<a>:",
+        error: 'Unexpected `:`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a<>:",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a<>:",
+        error: 'Unexpected `<` in type filter',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a,:",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a,:",
+        error: 'Unexpected `,` in type filter',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a<>  :",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a<>  :",
+        error: 'Unexpected `<` in type filter',
     },
 ];
