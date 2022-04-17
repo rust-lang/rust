@@ -1275,7 +1275,6 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        //Godbolt: https://rust.godbolt.org/z/nMdjWz4aG
         (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) < 26 
     }
 
@@ -1381,7 +1380,6 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        //Godbolt: https://rust.godbolt.org/z/dejn8P9q5
         self.is_ascii_digit() || self.is_ascii_alphabetic()
     }
 
@@ -1453,7 +1451,6 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        // Godbolt: https://rust.godbolt.org/z/nYsdEPj4e
         self.is_ascii_digit() || (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) <= 6
     }
 
