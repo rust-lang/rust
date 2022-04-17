@@ -123,6 +123,7 @@ impl AssocTypeArg {
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
