@@ -13,9 +13,9 @@ anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip]
 All contributors are expected to follow the [Rust Code of Conduct].
 
 - [Contributing to Clippy](#contributing-to-clippy)
-  - [Getting started](#getting-started)
-    - [High level approach](#high-level-approach)
-    - [Finding something to fix/improve](#finding-something-to-fiximprove)
+  - [The Clippy book](#the-clippy-book)
+  - [High level approach](#high-level-approach)
+  - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
     - [IntelliJ Rust](#intellij-rust)
@@ -28,20 +28,24 @@ All contributors are expected to follow the [Rust Code of Conduct].
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
-## Getting started
+## The Clippy book
 
-**Note: If this is your first time contributing to Clippy, you should
-first read the [Basics docs](doc/basics.md).**
+If you're new to Clippy and don't know where to start the [Clippy book] includes
+a developer guide and is a good place to start your journey.
 
-### High level approach
+<!-- FIXME: Link to the deployed book, once it is deployed through CI -->
+[Clippy book]: book/src
+
+## High level approach
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Follow the instructions in the [Basics docs](doc/basics.md) to get set up
+3. Follow the instructions in the [Basics docs](book/src/development/basics.md)
+   to get set up
 4. Run `cargo test` in the root directory and wiggle code until it passes
 5. Open a PR (also can be done after 2. if you run into problems)
 
-### Finding something to fix/improve
+## Finding something to fix/improve
 
 All issues on Clippy are mentored, if you want help simply ask @Manishearth, @flip1995, @phansch
 or @llogiq directly by mentioning them in the issue or over on [Zulip]. This list may be out of date.
@@ -85,20 +89,6 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/mem_forget.rs#L31-L45
 [let chains]: https://github.com/rust-lang/rust/pull/94927
 [nest-less]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/bit_mask.rs#L133-L159
-
-## Writing code
-
-Have a look at the [docs for writing lints][adding_lints] for more details.
-
-If you want to add a new lint or change existing ones apart from bugfixing, it's
-also a good idea to give the [stability guarantees][rfc_stability] and
-[lint categories][rfc_lint_cats] sections of the [Clippy 1.0 RFC][clippy_rfc] a
-quick read.
-
-[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
-[clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
-[rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
-[rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
 
 ## Getting code-completion for rustc internals to work
 
