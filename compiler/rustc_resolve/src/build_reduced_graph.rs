@@ -521,11 +521,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != kw::Empty {
                             // `crate_name` should not be interpreted as relative.
-                            module_path.push(Segment {
-                                ident: Ident { name: kw::PathRoot, span: source.ident.span },
-                                id: Some(self.r.next_node_id()),
-                                has_generic_args: false,
-                            });
+                            module_path.push(Segment::from_ident_and_id(
+                                Ident { name: kw::PathRoot, span: source.ident.span },
+                                self.r.next_node_id(),
+                            ));
                             source.ident.name = crate_name;
                         }
                         if rename.is_none() {

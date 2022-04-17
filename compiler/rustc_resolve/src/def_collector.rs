@@ -133,8 +133,10 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
-        if let FnKind::Fn(_, _, sig, _, body) = fn_kind {
+        if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
             if let Async::Yes { closure_id, return_impl_trait_id, .. } = sig.header.asyncness {
+                self.visit_generics(generics);
+
                 let return_impl_trait_id =
                     self.create_def(return_impl_trait_id, DefPathData::ImplTrait, span);
 

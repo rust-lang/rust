@@ -11,6 +11,7 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
@@ -27,7 +28,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
-use rustc_ast::{Crate, Expr, ExprKind, LitKind, Path};
+use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
@@ -282,6 +283,9 @@ pub struct Segment {
     /// Signals whether this `PathSegment` has generic arguments. Used to avoid providing
     /// nonsensical suggestions.
     has_generic_args: bool,
+    /// Signals whether this `PathSegment` has lifetime arguments.
+    has_lifetime_args: bool,
+    args_span: Span,
 }
 
 impl Segment {
@@ -290,7 +294,23 @@ impl Segment {
     }
 
     fn from_ident(ident: Ident) -> Segment {
-        Segment { ident, id: None, has_generic_args: false }
+        Segment {
+            ident,
+            id: None,
+            has_generic_args: false,
+            has_lifetime_args: false,
+            args_span: DUMMY_SP,
+        }
+    }
+
+    fn from_ident_and_id(ident: Ident, id: NodeId) -> Segment {
+        Segment {
+            ident,
+            id: Some(id),
+            has_generic_args: false,
+            has_lifetime_args: false,
+            args_span: DUMMY_SP,
+        }
     }
 
     fn names_to_string(segments: &[Segment]) -> String {
@@ -300,7 +320,28 @@ impl Segment {
 
 impl<'a> From<&'a ast::PathSegment> for Segment {
     fn from(seg: &'a ast::PathSegment) -> Segment {
-        Segment { ident: seg.ident, id: Some(seg.id), has_generic_args: seg.args.is_some() }
+        let has_generic_args = seg.args.is_some();
+        let (args_span, has_lifetime_args) = if let Some(args) = seg.args.as_deref() {
+            match args {
+                GenericArgs::AngleBracketed(args) => {
+                    let found_lifetimes = args
+                        .args
+                        .iter()
+                        .any(|arg| matches!(arg, AngleBracketedArg::Arg(GenericArg::Lifetime(_))));
+                    (args.span, found_lifetimes)
+                }
+                GenericArgs::Parenthesized(args) => (args.span, true),
+            }
+        } else {
+            (DUMMY_SP, false)
+        };
+        Segment {
+            ident: seg.ident,
+            id: Some(seg.id),
+            has_generic_args,
+            has_lifetime_args,
+            args_span,
+        }
     }
 }
 
@@ -1358,9 +1399,17 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
-        let next =
-            self.next_node_id.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        mem::replace(&mut self.next_node_id, ast::NodeId::from_u32(next))
+        let start = self.next_node_id;
+        let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_u32(next);
+        start
+    }
+
+    pub fn next_node_ids(&mut self, count: usize) -> std::ops::Range<NodeId> {
+        let start = self.next_node_id;
+        let end = start.as_usize().checked_add(count).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_usize(end);
+        start..self.next_node_id
     }
 
     pub fn lint_buffer(&mut self) -> &mut LintBuffer {

@@ -204,12 +204,11 @@ impl<'a> FnSig<'a> {
 
     pub(crate) fn from_fn_kind(
         fn_kind: &'a visit::FnKind<'_>,
-        generics: &'a ast::Generics,
         decl: &'a ast::FnDecl,
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, _) => match fn_ctxt {
+            visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, generics, _) => match fn_ctxt {
                 visit::FnCtxt::Assoc(..) => {
                     let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
                     fn_sig.defaultness = defaultness;
@@ -3180,8 +3179,14 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, self.ident, sig, &self.vis, Some(body)),
-                        generics,
+                        visit::FnKind::Fn(
+                            fn_ctxt,
+                            self.ident,
+                            sig,
+                            &self.vis,
+                            generics,
+                            Some(body),
+                        ),
                         &sig.decl,
                         self.span,
                         defaultness,

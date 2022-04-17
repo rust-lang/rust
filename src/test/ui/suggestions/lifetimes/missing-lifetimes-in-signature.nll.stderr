@@ -1,0 +1,106 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/missing-lifetimes-in-signature.rs:38:11
+   |
+LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+   |        -  ^^ undeclared lifetime
+   |        |
+   |        help: consider introducing lifetime `'a` here: `'a,`
+
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/missing-lifetimes-in-signature.rs:19:5
+   |
+LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
+   |                            ------ hidden type `[closure@$DIR/missing-lifetimes-in-signature.rs:19:5: 22:6]` captures the anonymous lifetime defined here
+...
+LL | /     move || {
+LL | |
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^
+   |
+help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+   |                                                   ++++
+
+error[E0311]: the parameter type `G` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature.rs:32:5
+   |
+LL | /     move || {
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^
+   |
+note: the parameter type `G` must be valid for the anonymous lifetime defined here...
+  --> $DIR/missing-lifetimes-in-signature.rs:26:26
+   |
+LL | fn bar<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+   |                          ^^^^^^
+
+error[E0311]: the parameter type `G` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature.rs:55:5
+   |
+LL | /     move || {
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^
+   |
+note: the parameter type `G` must be valid for the anonymous lifetime defined here...
+  --> $DIR/missing-lifetimes-in-signature.rs:49:34
+   |
+LL | fn qux<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+   |                                  ^^^^^^
+
+error[E0311]: the parameter type `G` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature.rs:65:9
+   |
+LL | /         move || {
+LL | |             *dest = g.get();
+LL | |         }
+   | |_________^
+   |
+note: the parameter type `G` must be valid for the anonymous lifetime defined here...
+  --> $DIR/missing-lifetimes-in-signature.rs:62:47
+   |
+LL |     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
+   |                                               ^^^^^^
+
+error[E0311]: the parameter type `G` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature.rs:77:5
+   |
+LL | /     move || {
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^
+   |
+note: the parameter type `G` must be valid for the anonymous lifetime defined here...
+  --> $DIR/missing-lifetimes-in-signature.rs:72:34
+   |
+LL | fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+   |                                  ^^^^^^
+
+error[E0621]: explicit lifetime required in the type of `dest`
+  --> $DIR/missing-lifetimes-in-signature.rs:77:5
+   |
+LL |   fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+   |                                    ------ help: add explicit lifetime `'a` to the type of `dest`: `&'a mut T`
+...
+LL | /     move || {
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^ lifetime `'a` required
+
+error[E0309]: the parameter type `G` may not live long enough
+  --> $DIR/missing-lifetimes-in-signature.rs:89:5
+   |
+LL | /     move || {
+LL | |         *dest = g.get();
+LL | |     }
+   | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `G: 'a`...
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0261, E0309, E0621, E0700.
+For more information about an error, try `rustc --explain E0261`.

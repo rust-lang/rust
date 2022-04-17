@@ -5,51 +5,55 @@ LL | trait Serializable<'self, T> {
    |                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:2:25
+  --> $DIR/issue-10412.rs:3:24
    |
-LL |     fn serialize(val : &'self T) -> Vec<u8>;
-   |                         ^^^^^
+LL |     fn serialize(val: &'self T) -> Vec<u8>;
+   |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:3:38
+  --> $DIR/issue-10412.rs:4:37
    |
-LL |     fn deserialize(repr : &[u8]) -> &'self T;
-   |                                      ^^^^^
+LL |     fn deserialize(repr: &[u8]) -> &'self T;
+   |                                     ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:6:6
+  --> $DIR/issue-10412.rs:7:6
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |      ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:6:36
+  --> $DIR/issue-10412.rs:7:36
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |                                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:10:25
+  --> $DIR/issue-10412.rs:12:24
    |
-LL |     fn serialize(val : &'self str) -> Vec<u8> {
-   |                         ^^^^^
+LL |     fn serialize(val: &'self str) -> Vec<u8> {
+   |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:13:37
+  --> $DIR/issue-10412.rs:16:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self str {
    |                                     ^^^^^
 
 error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/issue-10412.rs:6:13
+  --> $DIR/issue-10412.rs:7:13
    |
 LL | impl<'self> Serializable<str> for &'self str {
-   |             ^^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Serializable<'_, str>`
+   |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
    |
    = note: assuming a `'static` lifetime...
+help: indicate the anonymous lifetime
+   |
+LL | impl<'self> Serializable<'_, str> for &'self str {
+   |                          +++
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-10412.rs:6:13
+  --> $DIR/issue-10412.rs:7:13
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
