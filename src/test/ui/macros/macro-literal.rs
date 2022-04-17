@@ -21,6 +21,7 @@ macro_rules! only_expr {
     };
 }
 
+#[allow(unused_macro_rules)]
 macro_rules! mtester_dbg {
     ($l:literal) => {
         &format!("macro caught literal: {:?}", $l)
