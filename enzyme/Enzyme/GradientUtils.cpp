@@ -82,6 +82,11 @@ llvm::cl::opt<bool> EnzymeInactiveDynamic(
     cl::desc("Force wholy inactive dynamic loops to have 0 iter reverse pass"));
 
 llvm::cl::opt<bool>
+    EnzymeRuntimeActivityCheck("enzyme-runtime-activity", cl::init(false),
+                               cl::Hidden,
+                               cl::desc("Perform runtime activity checks"));
+
+llvm::cl::opt<bool>
     EnzymeSharedForward("enzyme-shared-forward", cl::init(false), cl::Hidden,
                         cl::desc("Forward Shared Memory from definitions"));
 

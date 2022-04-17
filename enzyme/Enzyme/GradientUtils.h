@@ -96,6 +96,7 @@ extern std::map<
     customFwdCallHandlers;
 
 extern "C" {
+extern llvm::cl::opt<bool> EnzymeRuntimeActivityCheck;
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 extern llvm::cl::opt<bool> EnzymeFreeInternalAllocations;
 extern llvm::cl::opt<bool> EnzymeRematerialize;

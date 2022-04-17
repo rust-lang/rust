@@ -95,6 +95,11 @@ private:
   /// Values that may contain derivative information
   llvm::SmallPtrSet<llvm::Value *, 2> ActiveValues;
 
+  /// Intermediate pointers which are created by inactive instructions
+  /// but are marked as active values to inductively determine their
+  /// activity.
+  llvm::SmallPtrSet<llvm::Value *, 1> DeducingPointers;
+
 public:
   /// Construct the analyzer from the a previous set of constant and active
   /// values and whether returns are active. The all arguments of the functions
@@ -141,7 +146,8 @@ private:
         directions(directions),
         ConstantInstructions(Other.ConstantInstructions),
         ActiveInstructions(Other.ActiveInstructions),
-        ConstantValues(Other.ConstantValues), ActiveValues(Other.ActiveValues) {
+        ConstantValues(Other.ConstantValues), ActiveValues(Other.ActiveValues),
+        DeducingPointers(Other.DeducingPointers) {
     assert(directions != 0);
     assert((directions & Other.directions) == directions);
     assert((directions & Other.directions) != 0);

@@ -1082,8 +1082,14 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         if (!arg->hasByValAttr()) {
           bool res = isConstantValue(TR, TmpOrig);
           if (res) {
+            if (EnzymePrintActivity)
+              llvm::errs() << " arg const from orig val=" << *Val
+                           << " orig=" << *TmpOrig << "\n";
             InsertConstantValue(TR, Val);
           } else {
+            if (EnzymePrintActivity)
+              llvm::errs() << " arg active from orig val=" << *Val
+                           << " orig=" << *TmpOrig << "\n";
             ActiveValues.insert(Val);
           }
           return res;
@@ -1096,7 +1102,29 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
       // If our origin is a load of a known inactive (say inactive argument), we
       // are also inactive
-      if (auto LI = dyn_cast<LoadInst>(TmpOrig)) {
+      if (auto PN = dyn_cast<PHINode>(TmpOrig)) {
+        // Not taking fast path incase phi is recursive.
+        Value *active = nullptr;
+        for (auto &V : PN->incoming_values()) {
+          if (!UpHypothesis->isConstantValue(TR, V.get())) {
+            active = V.get();
+            break;
+          }
+        }
+        if (!active) {
+          InsertConstantValue(TR, Val);
+          if (TmpOrig != Val) {
+            InsertConstantValue(TR, TmpOrig);
+          }
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        } else {
+          ReEvaluateValueIfInactiveValue[active].insert(Val);
+          if (TmpOrig != Val) {
+            ReEvaluateValueIfInactiveValue[active].insert(TmpOrig);
+          }
+        }
+      } else if (auto LI = dyn_cast<LoadInst>(TmpOrig)) {
 
         if (directions == UP) {
           if (isConstantValue(TR, LI->getPointerOperand())) {
@@ -1277,16 +1305,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // A pointer value is active if two things hold:
     //   an potentially active value is stored into the memory
     //   memory loaded from the value is used in an active way
+    bool potentiallyActiveStore = false;
     bool potentialStore = false;
     bool potentiallyActiveLoad = false;
-
-    if (isa<Instruction>(Val) || isa<Argument>(Val)) {
-      // These are handled by iterating through all
-    } else {
-      llvm::errs() << "unknown pointer value type: " << *Val << "\n";
-      assert(0 && "unknown pointer value type");
-      llvm_unreachable("unknown pointer value type");
-    }
 
     // Assume the value (not instruction) is itself active
     // In spite of that can we show that there are either no active stores
@@ -1295,6 +1316,20 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         std::shared_ptr<ActivityAnalyzer>(
             new ActivityAnalyzer(*this, directions));
     Hypothesis->ActiveValues.insert(Val);
+    if (auto VI = dyn_cast<Instruction>(Val)) {
+      for (auto V : DeducingPointers) {
+        UpHypothesis->InsertConstantValue(TR, V);
+      }
+      if (UpHypothesis->isInstructionInactiveFromOrigin(TR, VI)) {
+        Hypothesis->DeducingPointers.insert(Val);
+        if (EnzymePrintActivity)
+          llvm::errs() << " constant instruction hypothesis: " << *VI << "\n";
+      } else {
+        if (EnzymePrintActivity)
+          llvm::errs() << " cannot show constant instruction hypothesis: "
+                       << *VI << "\n";
+      }
+    }
 
     auto checkActivity = [&](Instruction *I) {
       if (notForAnalysis.count(I->getParent()))
@@ -1469,7 +1504,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 llvm::errs()
                     << "potential active store via pointer in load: " << *I
                     << " of " << *Val << "\n";
-              potentialStore = true;
+              potentiallyActiveStore = true;
             }
           }
         } else if (auto MTI = dyn_cast<MemTransferInst>(I)) {
@@ -1480,7 +1515,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                 llvm::errs()
                     << "potential active store via pointer in memcpy: " << *I
                     << " of " << *Val << "\n";
-              potentialStore = true;
+              potentiallyActiveStore = true;
             }
           }
         } else {
@@ -1492,27 +1527,41 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           // A load that has as result an active pointer is not an active
           // instruction, but does have an active value
           if (!Hypothesis->isConstantInstruction(TR, I) ||
-              !Hypothesis->isConstantValue(TR, I)) {
+              (I != Val && !Hypothesis->isConstantValue(TR, I))) {
             potentiallyActiveLoad = true;
             // If this a potential pointer of pointer AND
+            //     double** Val;
+            //
             if (TR.query(Val)[{-1, -1}].isPossiblePointer()) {
-              // If this instruction either can store into the inner pointer,
-              // or could return an active loaded pointer(thus into a
-              // potential pointer of pointer
-              if (I->mayWriteToMemory() ||
-                  (!Hypothesis->isConstantValue(TR, I) &&
+              // If this instruction either:
+              //   1) can actively store into the inner pointer, even
+              //      if it doesn't store into the outer pointer. Actively
+              //      storing into the outer pointer is handled by the isMod
+              //      case.
+              //        I(double** readonly Val, double activeX) {
+              //            double* V0 = Val[0]
+              //            V0 = activeX;
+              //        }
+              //   2) may return an active pointer loaded from Val
+              //        double* I = *Val;
+              //        I[0] = active;
+              //
+              if ((I->mayWriteToMemory() &&
+                   !Hypothesis->isConstantInstruction(TR, I)) ||
+                  (!Hypothesis->DeducingPointers.count(I) &&
+                   !Hypothesis->isConstantValue(TR, I) &&
                    TR.query(I)[{-1}].isPossiblePointer())) {
                 if (EnzymePrintActivity)
                   llvm::errs() << "potential active store via pointer in "
                                   "unknown inst: "
                                << *I << " of " << *Val << "\n";
-                potentialStore = true;
+                potentiallyActiveStore = true;
               }
             }
           }
         }
       }
-      if (!potentialStore && isModSet(AARes)) {
+      if ((!potentiallyActiveStore || !potentialStore) && isModSet(AARes)) {
         if (EnzymePrintActivity)
           llvm::errs() << "potential active store: " << *I << " Val=" << *Val
                        << "\n";
@@ -1522,39 +1571,80 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             llvm::errs() << " -- store potential activity: " << (int)cop
                          << " - " << *SI << " of "
                          << " Val=" << *Val << "\n";
-          potentialStore |= cop;
+          potentialStore = true;
+          if (cop)
+            potentiallyActiveStore = true;
         } else if (auto MTI = dyn_cast<MemTransferInst>(I)) {
-          potentialStore |=
-              !Hypothesis->isConstantValue(TR, MTI->getArgOperand(1));
+          bool cop = !Hypothesis->isConstantValue(TR, MTI->getArgOperand(1));
+          potentialStore = true;
+          if (cop)
+            potentiallyActiveStore = true;
         } else {
           // Otherwise fallback and check if the instruction is active
           // TODO: note that this can be optimized (especially for function
           // calls)
-          potentialStore |= !Hypothesis->isConstantInstruction(TR, I);
+          auto cop = !Hypothesis->isConstantInstruction(TR, I);
+          if (EnzymePrintActivity)
+            llvm::errs() << " -- unknown store potential activity: " << (int)cop
+                         << " - " << *I << " of "
+                         << " Val=" << *Val << "\n";
+          potentialStore = true;
+          if (cop)
+            potentiallyActiveStore = true;
         }
       }
-      if (potentialStore && potentiallyActiveLoad)
+      if (potentiallyActiveStore && potentiallyActiveLoad)
         return true;
       return false;
     };
 
     // Search through all the instructions in this function
-    // for potential loads / stores of this value
-    for (BasicBlock &BB : *TR.getFunction()) {
-      if (notForAnalysis.count(&BB))
-        continue;
-      for (Instruction &I : BB) {
-        if (checkActivity(&I))
-          goto activeLoadAndStore;
+    // for potential loads / stores of this value.
+    //
+    // We can choose to only look at potential follower instructions
+    // if the value is created by the instruction (alloca, noalias)
+    // since no potentially active store to the same location can occur
+    // prior to its creation. Otherwise, check all instructions in the
+    // function as a store to an aliasing location may have occured
+    // prior to the instruction generating the value.
+
+    if (auto VI = dyn_cast<AllocaInst>(Val)) {
+      allFollowersOf(VI, checkActivity);
+    } else if (auto VI = dyn_cast<CallInst>(Val)) {
+      if (VI->hasRetAttr(Attribute::NoAlias))
+        allFollowersOf(VI, checkActivity);
+      else {
+        for (BasicBlock &BB : *TR.getFunction()) {
+          if (notForAnalysis.count(&BB))
+            continue;
+          for (Instruction &I : BB) {
+            if (checkActivity(&I))
+              goto activeLoadAndStore;
+          }
+        }
       }
+    } else if (isa<Argument>(Val) || isa<Instruction>(Val)) {
+      for (BasicBlock &BB : *TR.getFunction()) {
+        if (notForAnalysis.count(&BB))
+          continue;
+        for (Instruction &I : BB) {
+          if (checkActivity(&I))
+            goto activeLoadAndStore;
+        }
+      }
+    } else {
+      llvm::errs() << "unknown pointer value type: " << *Val << "\n";
+      assert(0 && "unknown pointer value type");
+      llvm_unreachable("unknown pointer value type");
     }
 
   activeLoadAndStore:;
     if (EnzymePrintActivity)
       llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *Val
                    << " potentiallyActiveLoad=" << potentiallyActiveLoad
+                   << " potentiallyActiveStore=" << potentiallyActiveStore
                    << " potentialStore=" << potentialStore << "\n";
-    if (potentiallyActiveLoad && potentialStore) {
+    if (potentiallyActiveLoad && potentiallyActiveStore) {
       insertAllFrom(TR, *Hypothesis, Val);
       // TODO have insertall dependence on this
       if (TmpOrig != Val)
@@ -1579,7 +1669,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
       assert(UpHypothesis);
       // UpHypothesis.ConstantValues.insert(val);
-      UpHypothesis->insertConstantsFrom(TR, *Hypothesis);
+      if (DeducingPointers.size() == 0)
+        UpHypothesis->insertConstantsFrom(TR, *Hypothesis);
+      for (auto V : DeducingPointers) {
+        UpHypothesis->InsertConstantValue(TR, V);
+      }
       assert(directions & UP);
       bool ActiveUp = !isa<Argument>(Val) &&
                       !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
@@ -1671,7 +1765,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       } else {
         InsertConstantValue(TR, Val);
         insertConstantsFrom(TR, *Hypothesis);
-        insertConstantsFrom(TR, *UpHypothesis);
+        if (DeducingPointers.size() == 0)
+          insertConstantsFrom(TR, *UpHypothesis);
         insertConstantsFrom(TR, *DownHypothesis);
         return true;
       }

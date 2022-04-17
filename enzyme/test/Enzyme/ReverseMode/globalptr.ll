@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -dce -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -dce -correlated-propagation -simplifycfg -S -enzyme-global-activity | FileCheck %s
 
 ; a function returning a ptr with no arguments is mistakenly marked as constant in spite of accessing a global
 

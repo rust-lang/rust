@@ -672,11 +672,33 @@ public:
           auto prediff = diffe(&I, Builder2);
           setDiffe(&I, Constant::getNullValue(type), Builder2);
 
+          if (mask && (!gutils->isConstantValue(I.getOperand(0)) ||
+                       !gutils->isConstantValue(orig_maskInit)))
+            mask = lookup(mask, Builder2);
+
           if (!gutils->isConstantValue(I.getOperand(0))) {
+            BasicBlock *merge = nullptr;
+            if (EnzymeRuntimeActivityCheck) {
+              Value *shadow = Builder2.CreateICmpNE(
+                  lookup(gutils->getNewFromOriginal(I.getOperand(0)), Builder2),
+                  lookup(gutils->invertPointerM(I.getOperand(0), Builder2),
+                         Builder2));
+
+              BasicBlock *current = Builder2.GetInsertBlock();
+              BasicBlock *conditional = gutils->addReverseBlock(
+                  current, current->getName() + "_active");
+              merge = gutils->addReverseBlock(conditional,
+                                              current->getName() + "_amerge");
+              Builder2.CreateCondBr(shadow, conditional, merge);
+              Builder2.SetInsertPoint(conditional);
+            }
             ((DiffeGradientUtils *)gutils)
-                ->addToInvertedPtrDiffe(
-                    I.getOperand(0), prediff, Builder2, alignment, OrigOffset,
-                    mask ? lookup(mask, Builder2) : nullptr);
+                ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
+                                        alignment, OrigOffset, mask);
+            if (merge) {
+              Builder2.CreateBr(merge);
+              Builder2.SetInsertPoint(merge);
+            }
           }
           if (mask && !gutils->isConstantValue(orig_maskInit)) {
             addToDiffe(orig_maskInit, prediff, Builder2, isfloat,
