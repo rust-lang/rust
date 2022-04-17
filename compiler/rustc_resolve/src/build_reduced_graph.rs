@@ -1218,9 +1218,18 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     // Mark the given macro as unused unless its name starts with `_`.
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
-    fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
+    fn insert_unused_macro(
+        &mut self,
+        ident: Ident,
+        def_id: LocalDefId,
+        node_id: NodeId,
+        rule_count: usize,
+    ) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
+            for rule_i in 0..rule_count {
+                self.r.unused_macro_rules.insert((def_id, rule_i), (node_id, ident));
+            }
         }
     }
 
@@ -1244,6 +1253,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
+        let rule_count = ext.rule_spans.len();
         self.r.macro_map.insert(def_id.to_def_id(), ext);
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
@@ -1264,7 +1274,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
             } else {
                 self.r.check_reserved_macro_name(ident, res);
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.insert_unused_macro(ident, def_id, item.id, rule_count);
             }
             self.r.visibilities.insert(def_id, vis);
             self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
@@ -1285,7 +1295,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _ => self.resolve_visibility(&item.vis),
             };
             if vis != ty::Visibility::Public {
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.insert_unused_macro(ident, def_id, item.id, rule_count);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
             self.r.visibilities.insert(def_id, vis);

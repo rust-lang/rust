@@ -22,7 +22,9 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::builtin::{
+    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS, UNUSED_MACRO_RULES,
+};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -35,6 +37,9 @@ use std::cell::Cell;
 use std::mem;
 
 type Res = def::Res<NodeId>;
+
+#[cfg(test)]
+mod tests;
 
 /// Binding produced by a `macro_rules` item.
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
@@ -311,6 +316,12 @@ impl<'a> ResolverExpand for Resolver<'a> {
         Ok(ext)
     }
 
+    fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
+        if let Some(did) = self.opt_local_def_id(id) {
+            self.unused_macro_rules.remove(&(did, rule_i));
+        }
+    }
+
     fn check_unused_macros(&mut self) {
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(
@@ -318,6 +329,24 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 node_id,
                 ident.span,
                 &format!("unused macro definition: `{}`", ident.as_str()),
+            );
+        }
+        for (&(def_id, arm_i), &(node_id, ident)) in self.unused_macro_rules.iter() {
+            if self.unused_macros.contains_key(&def_id) {
+                // We already lint the entire macro as unused
+                continue;
+            }
+            let ext = &self.macro_map[&def_id.to_def_id()];
+            let rule_span = ext.rule_spans[arm_i];
+            self.lint_buffer.buffer_lint(
+                UNUSED_MACRO_RULES,
+                node_id,
+                rule_span,
+                &format!(
+                    "{} rule of macro `{}` is never used",
+                    ordinalize(arm_i + 1),
+                    ident.as_str()
+                ),
             );
         }
     }
@@ -876,4 +905,15 @@ impl<'a> Resolver<'a> {
 
         result
     }
+}
+
+/// Convert the given number into the corresponding ordinal
+fn ordinalize(v: usize) -> String {
+    let suffix = match ((11..=13).contains(&(v % 100)), v % 10) {
+        (false, 1) => "st",
+        (false, 2) => "nd",
+        (false, 3) => "rd",
+        _ => "th",
+    };
+    format!("{v}{suffix}")
 }
