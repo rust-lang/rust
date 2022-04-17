@@ -504,6 +504,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TupleMatchFound::Single => {
                     let expected_ty = expected_input_tys[0];
                     let provided_ty = final_arg_types[0].map(|ty| ty.0).unwrap();
+                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[0].span);
                     let compatibility = demand_compatible(0, &mut final_arg_types);
                     let type_error = match compatibility {
@@ -565,6 +567,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let expected_ty = expected_input_tys[*input_idx];
                     let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
+                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[*input_idx].span);
                     let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                     let mut err = self.report_and_explain_type_error(trace, error);
@@ -634,6 +638,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .and_then(|x| x.as_ref())
                             .map(|ty| ty.0)
                             .unwrap_or(tcx.ty_error());
+                        let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                        let provided_ty = self.resolve_vars_if_possible(provided_ty);
                         if let Compatibility::Incompatible(error) = &compatibility {
                             let cause = &self.misc(
                                 provided_args.get(input_idx).map(|i| i.span).unwrap_or(call_span),
