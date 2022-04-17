@@ -279,7 +279,7 @@ impl Command {
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
     ) -> Result<!, io::Error> {
-        use crate::sys::{self, cvt_nz, cvt_r};
+        use crate::sys::{self, cvt_r};
 
         if let Some(fd) = stdio.stdin.fd() {
             cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
@@ -324,6 +324,7 @@ impl Command {
         #[cfg(not(target_os = "emscripten"))]
         {
             use crate::mem::MaybeUninit;
+            use crate::sys::cvt_nz;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
