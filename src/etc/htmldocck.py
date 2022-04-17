@@ -423,8 +423,12 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
     else:
         actual_str = flatten(actual_tree)
 
+    # Conditions:
+    #  1. Is --bless
+    #  2. Are actual and expected tree different
+    #  3. Are actual and expected text different
     if not expected_str \
-        or (not normalize_to_text and
+        or (not normalize_to_text and \
             not compare_tree(make_xml(actual_str), make_xml(expected_str), stderr)) \
         or (normalize_to_text and actual_str != expected_str):
 
