@@ -69,32 +69,34 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
     // FIXME: Intermix attribute and bang! expansions
     // currently we only recursively expand one of the two types
-    let mut expanded = None;
-    let mut name = None;
-    let mut kind = SyntaxKind::ERROR;
-    for node in tok.ancestors() {
+    let mut anc = tok.ancestors();
+    let (name, expanded, kind) = loop {
+        let node = anc.next()?;
+
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
-                name = Some(def.name(db).to_string());
-                expanded = expand_attr_macro_recur(&sema, &item);
-                kind = SyntaxKind::MACRO_ITEMS;
-                break;
+                break (
+                    def.name(db).to_string(),
+                    expand_attr_macro_recur(&sema, &item)?,
+                    SyntaxKind::MACRO_ITEMS,
+                );
             }
         }
         if let Some(mac) = ast::MacroCall::cast(node) {
-            name = Some(mac.path()?.segment()?.name_ref()?.to_string());
-            expanded = expand_macro_recur(&sema, &mac);
-            kind = mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
-            break;
+            break (
+                mac.path()?.segment()?.name_ref()?.to_string(),
+                expand_macro_recur(&sema, &mac)?,
+                mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS),
+            );
         }
-    }
+    };
 
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = format(db, kind, position.file_id, expanded?);
+    let expansion = format(db, kind, position.file_id, expanded);
 
-    Some(ExpandedMacro { name: name.unwrap_or_else(|| "???".to_owned()), expansion })
+    Some(ExpandedMacro { name, expansion })
 }
 
 fn expand_macro_recur(
@@ -188,8 +190,15 @@ fn _format(
     let captured_stdout = String::from_utf8(output.stdout).ok()?;
 
     if output.status.success() && !captured_stdout.trim().is_empty() {
-        let foo = captured_stdout.replace(DOLLAR_CRATE_REPLACE, "$crate");
-        let trim_indent = stdx::trim_indent(foo.trim().strip_prefix(prefix)?.strip_suffix(suffix)?);
+        let output = captured_stdout.replace(DOLLAR_CRATE_REPLACE, "$crate");
+        let output = output.trim().strip_prefix(prefix)?;
+        let output = match kind {
+            SyntaxKind::MACRO_PAT => {
+                output.strip_suffix(suffix).or_else(|| output.strip_suffix(": u32,\n);"))?
+            }
+            _ => output.strip_suffix(suffix)?,
+        };
+        let trim_indent = stdx::trim_indent(output);
         tracing::debug!("expand_macro: formatting succeeded");
         Some(trim_indent)
     } else {
