@@ -1058,7 +1058,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // operating system this can avoid physically allocating the page.
             dest_alloc
                 .write_uninit(&tcx, dest_range)
-                .map_err(|e| e.to_interp_error(dest_alloc_id))?; // `Size` multiplication
+                .map_err(|e| e.to_interp_error(dest_alloc_id))?;
             // We can forget about the relocations, this is all not initialized anyway.
             return Ok(());
         }

@@ -269,7 +269,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// `get_bytes_with_uninit_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
-    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
+    /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
@@ -605,6 +605,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Applies a relocation copy.
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
         self.relocations.0.insert_presorted(relocations.relative_relocations);
     }
@@ -1124,6 +1127,9 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Applies multiple instances of the run-length encoding to the initialization mask.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_compressed_init_range(
         &mut self,
         defined: &InitMaskCompressed,
