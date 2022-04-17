@@ -429,8 +429,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         let val = match val {
             ScalarMaybeUninit::Scalar(scalar) => scalar,
             ScalarMaybeUninit::Uninit => {
-                self.mark_init(range, false);
-                return Ok(());
+                return self.write_uninit(cx, range);
             }
         };
 
@@ -454,6 +453,13 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         }
 
         Ok(())
+    }
+
+    /// Write "uninit" to the given memory range.
+    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+        self.mark_init(range, false);
+        self.clear_relocations(cx, range)?;
+        return Ok(());
     }
 }
 
@@ -1056,7 +1062,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         })
     }
 
-    pub fn mark_init(&mut self, range: AllocRange, is_init: bool) {
+    fn mark_init(&mut self, range: AllocRange, is_init: bool) {
         if range.size.bytes() == 0 {
             return;
         }
