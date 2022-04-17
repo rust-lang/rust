@@ -2249,10 +2249,6 @@ impl ToJson for Target {
                 let name = (stringify!($attr)).replace("_", "-");
                 d.insert(name, self.$attr.to_json());
             }};
-            ($attr:ident, $key_name:expr) => {{
-                let name = $key_name;
-                d.insert(name.into(), self.$attr.to_json());
-            }};
         }
 
         macro_rules! target_option_val {
