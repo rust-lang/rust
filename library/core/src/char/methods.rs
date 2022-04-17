@@ -1451,7 +1451,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        self.is_ascii_digit() || (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) <= 6
+        self.is_ascii_digit() || (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) < 6
     }
 
     /// Checks if the value is an ASCII punctuation character:
