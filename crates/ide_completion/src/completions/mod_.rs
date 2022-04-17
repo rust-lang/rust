@@ -9,14 +9,16 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::{patterns::ImmediateLocation, CompletionItem};
+use crate::{context::NameContext, CompletionItem};
 
 use crate::{context::CompletionContext, Completions};
 
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let mod_under_caret = match &ctx.completion_location {
-        Some(ImmediateLocation::ModDeclaration(mod_under_caret)) => mod_under_caret,
+    let mod_under_caret = match &ctx.name_ctx {
+        Some(NameContext::Module(mod_under_caret)) if mod_under_caret.item_list().is_none() => {
+            mod_under_caret
+        }
         _ => return None,
     };
 

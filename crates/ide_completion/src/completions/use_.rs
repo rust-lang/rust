@@ -113,7 +113,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                     acc.add_resolution(ctx, name, res);
                 }
             });
-            acc.add_nameref_keywords(ctx);
+            acc.add_nameref_keywords_with_colon(ctx);
         }
     }
 }

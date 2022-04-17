@@ -41,21 +41,16 @@ pub(crate) enum TypeAnnotation {
 /// from which file the nodes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
-    Rename,
     Impl,
     Trait,
-    RecordField,
     TupleField,
     RefExpr,
     IdentPat,
     StmtList,
     ItemList,
     TypeBound,
-    Variant,
     /// Original file ast node
     TypeAnnotation(TypeAnnotation),
-    /// Fake file ast node
-    ModDeclaration(ast::Module),
     /// Original file ast node
     MethodCall {
         receiver: Option<ast::Expr>,
@@ -80,6 +75,7 @@ pub(crate) enum ImmediateLocation {
     /// The record pat of the field name we are completing
     ///
     /// Original file ast node
+    // FIXME: This should be moved to pattern_ctx
     RecordPat(ast::RecordPat),
 }
 
@@ -211,17 +207,10 @@ pub(crate) fn determine_location(
     let res = match_ast! {
         match parent {
             ast::IdentPat(_) => ImmediateLocation::IdentPat,
-            ast::Rename(_) => ImmediateLocation::Rename,
             ast::StmtList(_) => ImmediateLocation::StmtList,
             ast::SourceFile(_) => ImmediateLocation::ItemList,
             ast::ItemList(_) => ImmediateLocation::ItemList,
             ast::RefExpr(_) => ImmediateLocation::RefExpr,
-            ast::Variant(_) => ImmediateLocation::Variant,
-            ast::RecordField(it) => if it.ty().map_or(false, |it| it.syntax().text_range().contains(offset)) {
-                return None;
-            } else {
-                ImmediateLocation::RecordField
-            },
             ast::RecordExprFieldList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::RecordExprUpdate)?,
@@ -237,13 +226,6 @@ pub(crate) fn determine_location(
             ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
-            ast::Module(it) => {
-                if it.item_list().is_none() {
-                    ImmediateLocation::ModDeclaration(it)
-                } else {
-                    return None;
-                }
-            },
             ast::FieldExpr(it) => {
                 let receiver = find_in_original_file(it.expr(), original_file);
                 let receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) = &receiver {
@@ -473,13 +455,6 @@ mod tests {
         check_location(r"impl A { fn f() {} f$0 }", ImmediateLocation::Impl);
         check_location(r"impl A$0 {}", None);
         check_location(r"impl A { fn f$0 }", None);
-    }
-
-    #[test]
-    fn test_record_field_loc() {
-        check_location(r"struct Foo { f$0 }", ImmediateLocation::RecordField);
-        check_location(r"struct Foo { f$0 pub f: i32}", ImmediateLocation::RecordField);
-        check_location(r"struct Foo { pub f: i32, f$0 }", ImmediateLocation::RecordField);
     }
 
     #[test]
