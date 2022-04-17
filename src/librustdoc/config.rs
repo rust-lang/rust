@@ -10,7 +10,9 @@ use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
 use rustc_session::config::{get_cmd_lint_options, nightly_options};
-use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::config::{
+    CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, JsonUnusedExterns,
+};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -147,7 +149,7 @@ crate struct Options {
     /// documentation.
     crate run_check: bool,
     /// Whether doctests should emit unused externs
-    crate json_unused_externs: bool,
+    crate json_unused_externs: JsonUnusedExterns,
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
 

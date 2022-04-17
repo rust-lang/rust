@@ -969,10 +969,15 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 
-    pub fn emit_unused_externs(&self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
+    pub fn emit_unused_externs(
+        &self,
+        lint_level: rustc_lint_defs::Level,
+        loud: bool,
+        unused_externs: &[&str],
+    ) {
         let mut inner = self.inner.borrow_mut();
 
-        if lint_level.is_error() {
+        if loud && lint_level.is_error() {
             inner.bump_err_count();
         }
 
