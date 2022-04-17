@@ -21,6 +21,23 @@ impl SymbolExportLevel {
     }
 }
 
+/// Kind of exported symbols.
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable)]
+pub enum SymbolExportKind {
+    Text,
+    Data,
+    Tls,
+}
+
+/// The `SymbolExportInfo` of a symbols specifies symbol-related information
+/// that is relevant to code generation and linking.
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+pub struct SymbolExportInfo {
+    pub level: SymbolExportLevel,
+    pub kind: SymbolExportKind,
+    pub used: bool,
+}
+
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
