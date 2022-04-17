@@ -59,8 +59,8 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                 }
 
                 // We are destroying last temp since it's no longer used.
-                if prev_temp.is_some() {
-                    self.patcher.add_statement(loc, StatementKind::StorageDead(prev_temp.unwrap()));
+                if let Some(prev_temp) = prev_temp {
+                    self.patcher.add_statement(loc, StatementKind::StorageDead(prev_temp));
                 }
 
                 prev_temp = Some(temp);
@@ -68,9 +68,9 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
         }
 
         // Since we won't be able to reach final temp, we destroy it outside the loop.
-        if prev_temp.is_some() {
+        if let Some(prev_temp) = prev_temp {
             let last_loc = Location { block: loc.block, statement_index: loc.statement_index + 1 };
-            self.patcher.add_statement(last_loc, StatementKind::StorageDead(prev_temp.unwrap()));
+            self.patcher.add_statement(last_loc, StatementKind::StorageDead(prev_temp));
         }
     }
 }

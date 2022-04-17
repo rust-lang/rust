@@ -2,7 +2,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
-use std::collections::VecDeque;
 
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block
@@ -143,8 +142,7 @@ impl<'tcx> MirPatch<'tcx> {
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
         let mut terminator_targets = Vec::new();
-        let mut inf_and_stmt: VecDeque<(SourceInfo, StatementKind<'_>)> = VecDeque::new();
-
+        let mut statements:Vec<Statement<'_>> = Vec::new();
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -161,7 +159,7 @@ impl<'tcx> MirPatch<'tcx> {
                 let successors = term.successors().clone();
 
                 for i in successors {
-                    inf_and_stmt.push_back((source_info, stmt.clone()));
+                    statements.push(Statement{source_info,kind:stmt.clone()});
                     terminator_targets.push(i.clone());
                 }
                 delta += 1;
@@ -174,11 +172,11 @@ impl<'tcx> MirPatch<'tcx> {
             delta += 1;
         }
 
-        for target in terminator_targets.iter() {
-            let inf_and_stmt = inf_and_stmt.pop_front().unwrap();
+        for target in terminator_targets.iter().rev() {
+            let stmt = statements.pop().unwrap();
             body[*target]
                 .statements
-                .insert(0, Statement { source_info: inf_and_stmt.0, kind: inf_and_stmt.1 });
+                .insert(0, stmt);
         }
     }
 
