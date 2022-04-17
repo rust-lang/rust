@@ -107,11 +107,11 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<CTX> HashStable<CTX> for Path {
+impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
-            segment.ident.name.hash_stable(hcx, hasher);
+            segment.ident.hash_stable(hcx, hasher);
         }
     }
 }
