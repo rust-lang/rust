@@ -466,6 +466,7 @@ pub(crate) fn inlay_hint(
             InlayKind::ImplicitReborrow => false,
         }),
         text_edits: None,
+        data: None,
     }
 }
 
