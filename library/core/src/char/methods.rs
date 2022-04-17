@@ -1275,7 +1275,8 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        matches!(*self, 'A'..='Z' | 'a'..='z')
+        //Godbolt: https://rust.godbolt.org/z/nMdjWz4aG
+        (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) < 26 
     }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -1380,7 +1381,8 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        matches!(*self, '0'..='9' | 'A'..='Z' | 'a'..='z')
+        //Godbolt: https://rust.godbolt.org/z/dejn8P9q5
+        self.is_ascii_digit() || self.is_ascii_alphabetic()
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -1451,7 +1453,8 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        matches!(*self, '0'..='9' | 'A'..='F' | 'a'..='f')
+        // Godbolt: https://rust.godbolt.org/z/nYsdEPj4e
+        self.is_ascii_digit() || (*self as u32 | 0b10_0000).wrapping_sub('a' as u32) <= 6
     }
 
     /// Checks if the value is an ASCII punctuation character:
