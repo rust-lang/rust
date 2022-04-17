@@ -394,6 +394,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 break 'errors;
             }
 
+            self.set_tainted_by_errors();
+
             // The algorithm here is inspired by levenshtein distance and longest common subsequence.
             // We'll try to detect 4 different types of mistakes:
             // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
@@ -569,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.emit_coerce_suggestions(
                         &mut err,
                         &provided_args[*input_idx],
-                        final_arg_types[*input_idx].map(|ty| ty.0).unwrap(),
+                        provided_ty,
                         final_arg_types[*input_idx].map(|ty| ty.1).unwrap(),
                         None,
                         None,
@@ -627,12 +629,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match error {
                     Error::Invalid(input_idx, compatibility) => {
                         let expected_ty = expected_input_tys[input_idx];
+                        let provided_ty = final_arg_types
+                            .get(input_idx)
+                            .and_then(|x| x.as_ref())
+                            .map(|ty| ty.0)
+                            .unwrap_or(tcx.ty_error());
                         if let Compatibility::Incompatible(error) = &compatibility {
-                            let provided_ty = final_arg_types
-                                .get(input_idx)
-                                .and_then(|x| x.as_ref())
-                                .map(|ty| ty.0)
-                                .unwrap_or(tcx.ty_error());
                             let cause = &self.misc(
                                 provided_args.get(input_idx).map(|i| i.span).unwrap_or(call_span),
                             );

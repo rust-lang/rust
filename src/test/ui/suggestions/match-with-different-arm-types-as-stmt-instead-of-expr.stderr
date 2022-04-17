@@ -20,8 +20,8 @@ LL | |         _ => Box::new(Bar),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `Box<Baz>`
-            found struct `Box<Bar>`
+   = note: expected struct `Box<Baz>`
+              found struct `Box<Bar>`
 note: you might have meant to return the `match` expression
   --> $DIR/match-with-different-arm-types-as-stmt-instead-of-expr.rs:27:6
    |
