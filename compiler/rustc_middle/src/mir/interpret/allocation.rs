@@ -567,8 +567,10 @@ impl<Tag> Deref for Relocations<Tag> {
 }
 
 /// A partial, owned list of relocations to transfer into another allocation.
+///
+/// Offsets are already adjusted to the destination allocation.
 pub struct AllocationRelocations<Tag> {
-    relative_relocations: Vec<(Size, Tag)>,
+    dest_relocations: Vec<(Size, Tag)>,
 }
 
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
@@ -581,12 +583,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     ) -> AllocationRelocations<Tag> {
         let relocations = self.get_relocations(cx, src);
         if relocations.is_empty() {
-            return AllocationRelocations { relative_relocations: Vec::new() };
+            return AllocationRelocations { dest_relocations: Vec::new() };
         }
 
         let size = src.size;
         let mut new_relocations = Vec::with_capacity(relocations.len() * (count as usize));
 
+        // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
+        // is mostly filled with redundant information since it's just N copies of the same `Tag`s
+        // at slightly adjusted offsets. The reason we do this is so that in `mark_relocation_range`
+        // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
+        // the right sequence of relocations for all N copies.
         for i in 0..count {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
@@ -599,7 +606,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }));
         }
 
-        AllocationRelocations { relative_relocations: new_relocations }
+        AllocationRelocations { dest_relocations: new_relocations }
     }
 
     /// Applies a relocation copy.
@@ -609,7 +616,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
-        self.relocations.0.insert_presorted(relocations.relative_relocations);
+        self.relocations.0.insert_presorted(relocations.dest_relocations);
     }
 }
 
