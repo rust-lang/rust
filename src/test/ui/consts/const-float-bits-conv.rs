@@ -3,6 +3,7 @@
 
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
+#![allow(unused_macro_rules)]
 
 // Don't promote
 const fn nop<T>(x: T) -> T { x }
