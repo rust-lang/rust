@@ -850,6 +850,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // by-ref, so make a local copy of non-immediate constants.
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
+                | (&mir::Operand::Move(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                     let tmp = PlaceRef::alloca(&mut bx, op.layout);
                     op.val.store(&mut bx, tmp);
