@@ -335,6 +335,8 @@ fn test_errors() {
     // The following tests also check that the `__errno_location()` shim is working properly.
     // Opening a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
+    // Make sure we can also format this.
+    format!("{0:?}: {0}", File::open(&path).unwrap_err());
     // Removing a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
     // Reading the metadata of a non-existing file should fail with a "not found" error.
