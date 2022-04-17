@@ -256,8 +256,6 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
 
-    flags_builder.set("regalloc", &backend_config.regalloc).unwrap();
-
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
