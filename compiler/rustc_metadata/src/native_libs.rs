@@ -3,7 +3,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib};
 use rustc_session::parse::feature_err;
@@ -15,7 +15,9 @@ use rustc_target::spec::abi::Abi;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
-    tcx.hir().visit_all_item_likes(&mut collector);
+    for id in tcx.hir().items() {
+        collector.process_item(id);
+    }
     collector.process_command_line();
     collector.libs
 }
@@ -32,8 +34,13 @@ struct Collector<'tcx> {
     libs: Vec<NativeLib>,
 }
 
-impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
+impl<'tcx> Collector<'tcx> {
+    fn process_item(&mut self, id: rustc_hir::ItemId) {
+        if !matches!(self.tcx.hir().def_kind(id.def_id), DefKind::ForeignMod) {
+            return;
+        }
+
+        let it = self.tcx.hir().item(id);
         let hir::ItemKind::ForeignMod { abi, items: foreign_mod_items } = it.kind else {
             return;
         };
@@ -252,12 +259,6 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
-    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
-}
-
-impl Collector<'_> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
         if lib.name.as_ref().map_or(false, |&s| s == kw::Empty) {
             match span {

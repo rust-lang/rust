@@ -8,7 +8,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -2678,8 +2677,13 @@ define_print_and_forward_display! {
 fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
     // Iterate all local crate items no matter where they are defined.
     let hir = tcx.hir();
-    for item in hir.items() {
-        if item.ident.name.as_str().is_empty() || matches!(item.kind, ItemKind::Use(_, _)) {
+    for id in hir.items() {
+        if matches!(hir.def_kind(id.def_id), DefKind::Use) {
+            continue;
+        }
+
+        let item = hir.item(id);
+        if item.ident.name == kw::Empty {
             continue;
         }
 

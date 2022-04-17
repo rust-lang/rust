@@ -1787,10 +1787,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut visitor = ImplsVisitor { tcx, impls: FxHashMap::default() };
-        tcx.hir().visit_all_item_likes(&mut visitor);
+        let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
+            FxHashMap::default();
 
-        let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
+        for id in tcx.hir().items() {
+            if matches!(tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+                if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
+                    let simplified_self_ty = fast_reject::simplify_type(
+                        self.tcx,
+                        trait_ref.self_ty(),
+                        TreatParams::AsPlaceholders,
+                    );
+
+                    fx_hash_map
+                        .entry(trait_ref.def_id)
+                        .or_default()
+                        .push((id.def_id.local_def_index, simplified_self_ty));
+                }
+            }
+        }
+
+        let mut all_impls: Vec<_> = fx_hash_map.into_iter().collect();
 
         // Bring everything into deterministic order for hashing
         all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
@@ -2051,41 +2068,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
     }
-}
-
-struct ImplsVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    impls: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>>,
-}
-
-impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplsVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        match item.kind {
-            hir::ItemKind::Impl(..) => {
-                if let Some(trait_ref) = self.tcx.impl_trait_ref(item.def_id.to_def_id()) {
-                    let simplified_self_ty = fast_reject::simplify_type(
-                        self.tcx,
-                        trait_ref.self_ty(),
-                        TreatParams::AsPlaceholders,
-                    );
-
-                    self.impls
-                        .entry(trait_ref.def_id)
-                        .or_default()
-                        .push((item.def_id.local_def_index, simplified_self_ty));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem<'v>) {}
-
-    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem<'v>) {
-        // handled in `visit_item` above
-    }
-
-    fn visit_foreign_item(&mut self, _foreign_item: &'v hir::ForeignItem<'v>) {}
 }
 
 /// Used to prefetch queries which will be needed later by metadata encoding.

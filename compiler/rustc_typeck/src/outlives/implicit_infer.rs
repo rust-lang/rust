@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -29,81 +28,57 @@ pub fn infer_predicates<'tcx>(
     while predicates_added {
         predicates_added = false;
 
-        let mut visitor = InferVisitor {
-            tcx,
-            global_inferred_outlives: &mut global_inferred_outlives,
-            predicates_added: &mut predicates_added,
-            explicit_map,
-        };
-
         // Visit all the crates and infer predicates
-        tcx.hir().visit_all_item_likes(&mut visitor);
-    }
+        for id in tcx.hir().items() {
+            let item_did = id.def_id;
 
-    global_inferred_outlives
-}
+            debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-pub struct InferVisitor<'cx, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    global_inferred_outlives: &'cx mut FxHashMap<DefId, RequiredPredicates<'tcx>>,
-    predicates_added: &'cx mut bool,
-    explicit_map: &'cx mut ExplicitPredicatesMap<'tcx>,
-}
+            let mut item_required_predicates = RequiredPredicates::default();
+            match tcx.hir().def_kind(item_did) {
+                DefKind::Union | DefKind::Enum | DefKind::Struct => {
+                    let adt_def = tcx.adt_def(item_did.to_def_id());
 
-impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let item_did = item.def_id;
-
-        debug!("InferVisitor::visit_item(item={:?})", item_did);
-
-        let mut item_required_predicates = RequiredPredicates::default();
-        match item.kind {
-            hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
-                let adt_def = self.tcx.adt_def(item_did.to_def_id());
-
-                // Iterate over all fields in item_did
-                for field_def in adt_def.all_fields() {
-                    // Calculating the predicate requirements necessary
-                    // for item_did.
-                    //
-                    // For field of type &'a T (reference) or Adt
-                    // (struct/enum/union) there will be outlive
-                    // requirements for adt_def.
-                    let field_ty = self.tcx.type_of(field_def.did);
-                    let field_span = self.tcx.def_span(field_def.did);
-                    insert_required_predicates_to_be_wf(
-                        self.tcx,
-                        field_ty,
-                        field_span,
-                        self.global_inferred_outlives,
-                        &mut item_required_predicates,
-                        &mut self.explicit_map,
-                    );
+                    // Iterate over all fields in item_did
+                    for field_def in adt_def.all_fields() {
+                        // Calculating the predicate requirements necessary
+                        // for item_did.
+                        //
+                        // For field of type &'a T (reference) or Adt
+                        // (struct/enum/union) there will be outlive
+                        // requirements for adt_def.
+                        let field_ty = tcx.type_of(field_def.did);
+                        let field_span = tcx.def_span(field_def.did);
+                        insert_required_predicates_to_be_wf(
+                            tcx,
+                            field_ty,
+                            field_span,
+                            &mut global_inferred_outlives,
+                            &mut item_required_predicates,
+                            explicit_map,
+                        );
+                    }
                 }
+
+                _ => {}
+            };
+
+            // If new predicates were added (`local_predicate_map` has more
+            // predicates than the `global_inferred_outlives`), the new predicates
+            // might result in implied predicates for their parent types.
+            // Therefore mark `predicates_added` as true and which will ensure
+            // we walk the crates again and re-calculate predicates for all
+            // items.
+            let item_predicates_len: usize =
+                global_inferred_outlives.get(&item_did.to_def_id()).map_or(0, |p| p.len());
+            if item_required_predicates.len() > item_predicates_len {
+                predicates_added = true;
+                global_inferred_outlives.insert(item_did.to_def_id(), item_required_predicates);
             }
-
-            _ => {}
-        };
-
-        // If new predicates were added (`local_predicate_map` has more
-        // predicates than the `global_inferred_outlives`), the new predicates
-        // might result in implied predicates for their parent types.
-        // Therefore mark `predicates_added` as true and which will ensure
-        // we walk the crates again and re-calculate predicates for all
-        // items.
-        let item_predicates_len: usize =
-            self.global_inferred_outlives.get(&item_did.to_def_id()).map_or(0, |p| p.len());
-        if item_required_predicates.len() > item_predicates_len {
-            *self.predicates_added = true;
-            self.global_inferred_outlives.insert(item_did.to_def_id(), item_required_predicates);
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {}
-
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {}
-
-    fn visit_foreign_item(&mut self, _foreign_item: &'tcx hir::ForeignItem<'tcx>) {}
+    global_inferred_outlives
 }
 
 fn insert_required_predicates_to_be_wf<'tcx>(

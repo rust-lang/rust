@@ -1,72 +1,58 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    let mut used_trait_imports = FxHashSet::default();
+    let mut used_trait_imports: FxHashSet<LocalDefId> = FxHashSet::default();
+
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
         used_trait_imports.extend(imports.iter());
     }
 
-    let mut visitor = CheckVisitor { tcx, used_trait_imports };
-    tcx.hir().visit_all_item_likes(&mut visitor);
+    for id in tcx.hir().items() {
+        if matches!(tcx.hir().def_kind(id.def_id), DefKind::Use) {
+            let item = tcx.hir().item(id);
+            if item.vis.node.is_pub() || item.span.is_dummy() {
+                continue;
+            }
+            if let hir::ItemKind::Use(path, _) = item.kind {
+                check_import(tcx, &mut used_trait_imports, item.item_id(), path.span);
+            }
+        }
+    }
 
     unused_crates_lint(tcx);
 }
 
-impl<'tcx> ItemLikeVisitor<'_> for CheckVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if item.vis.node.is_pub() || item.span.is_dummy() {
-            return;
-        }
-        if let hir::ItemKind::Use(path, _) = item.kind {
-            self.check_import(item.item_id(), path.span);
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
-
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
-}
-
-struct CheckVisitor<'tcx> {
+fn check_import<'tcx>(
     tcx: TyCtxt<'tcx>,
-    used_trait_imports: FxHashSet<LocalDefId>,
-}
-
-impl<'tcx> CheckVisitor<'tcx> {
-    fn check_import(&self, item_id: hir::ItemId, span: Span) {
-        if !self.tcx.maybe_unused_trait_import(item_id.def_id) {
-            return;
-        }
-
-        if self.used_trait_imports.contains(&item_id.def_id) {
-            return;
-        }
-
-        self.tcx.struct_span_lint_hir(
-            lint::builtin::UNUSED_IMPORTS,
-            item_id.hir_id(),
-            span,
-            |lint| {
-                let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    format!("unused import: `{}`", snippet)
-                } else {
-                    "unused import".to_owned()
-                };
-                lint.build(&msg).emit();
-            },
-        );
+    used_trait_imports: &mut FxHashSet<LocalDefId>,
+    item_id: hir::ItemId,
+    span: Span,
+) {
+    if !tcx.maybe_unused_trait_import(item_id.def_id) {
+        return;
     }
+
+    if used_trait_imports.contains(&item_id.def_id) {
+        return;
+    }
+
+    tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, item_id.hir_id(), span, |lint| {
+        let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+            format!("unused import: `{}`", snippet)
+        } else {
+            "unused import".to_owned()
+        };
+        lint.build(&msg).emit();
+    });
 }
 
 fn unused_crates_lint(tcx: TyCtxt<'_>) {
@@ -110,9 +96,20 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
 
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
-    tcx.hir().visit_all_item_likes(&mut CollectExternCrateVisitor {
-        crates_to_lint: &mut crates_to_lint,
-    });
+
+    for id in tcx.hir().items() {
+        if matches!(tcx.hir().def_kind(id.def_id), DefKind::ExternCrate) {
+            let item = tcx.hir().item(id);
+            if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
+                crates_to_lint.push(ExternCrateToLint {
+                    def_id: item.def_id.to_def_id(),
+                    span: item.span,
+                    orig_name,
+                    warn_if_unused: !item.ident.as_str().starts_with('_'),
+                });
+            }
+        }
+    }
 
     let extern_prelude = &tcx.resolutions(()).extern_prelude;
 
@@ -193,10 +190,6 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     }
 }
 
-struct CollectExternCrateVisitor<'a> {
-    crates_to_lint: &'a mut Vec<ExternCrateToLint>,
-}
-
 struct ExternCrateToLint {
     /// `DefId` of the extern crate
     def_id: DefId,
@@ -212,23 +205,4 @@ struct ExternCrateToLint {
     /// if `false`, the original name started with `_`, so we shouldn't lint
     /// about it going unused (but we should still emit idiom lints).
     warn_if_unused: bool,
-}
-
-impl<'a, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
-            self.crates_to_lint.push(ExternCrateToLint {
-                def_id: item.def_id.to_def_id(),
-                span: item.span,
-                orig_name,
-                warn_if_unused: !item.ident.as_str().starts_with('_'),
-            });
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
-
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }

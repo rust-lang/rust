@@ -45,6 +45,13 @@ rustc_queries! {
         desc { "get the crate HIR" }
     }
 
+    /// All items in the crate.
+    query hir_crate_items(_: ()) -> rustc_middle::hir::ModuleItems {
+        storage(ArenaCacheSelector<'tcx>)
+        eval_always
+        desc { "get HIR crate items" }
+    }
+
     /// The items in a module.
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.

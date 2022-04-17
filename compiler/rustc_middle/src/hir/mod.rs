@@ -45,6 +45,24 @@ pub struct ModuleItems {
     foreign_items: Box<[ForeignItemId]>,
 }
 
+impl ModuleItems {
+    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.items.iter().copied()
+    }
+
+    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
+        self.trait_items.iter().copied()
+    }
+
+    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
+        self.impl_items.iter().copied()
+    }
+
+    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
+        self.foreign_items.iter().copied()
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> map::Map<'tcx> {
@@ -68,6 +86,7 @@ pub fn provide(providers: &mut Providers) {
         hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
     };
     providers.hir_crate = |tcx, ()| tcx.untracked_crate;
+    providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
