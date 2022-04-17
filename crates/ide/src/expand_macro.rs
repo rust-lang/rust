@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ide_db::{
-    helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into,
-    RootDatabase,
+    base_db::FileId, helpers::pick_best_token,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
 };
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
@@ -58,10 +58,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
-        Some(ExpandedMacro {
-            name,
-            expansion: expansions.get(idx).cloned().map(insert_ws_into)?.to_string(),
-        })
+        let expansion =
+            format(db, SyntaxKind::MACRO_ITEMS, position.file_id, expansions.get(idx).cloned()?);
+        Some(ExpandedMacro { name, expansion })
     });
 
     if derive.is_some() {
@@ -72,17 +71,20 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // currently we only recursively expand one of the two types
     let mut expanded = None;
     let mut name = None;
+    let mut kind = SyntaxKind::ERROR;
     for node in tok.ancestors() {
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 name = Some(def.name(db).to_string());
                 expanded = expand_attr_macro_recur(&sema, &item);
+                kind = SyntaxKind::MACRO_ITEMS;
                 break;
             }
         }
         if let Some(mac) = ast::MacroCall::cast(node) {
             name = Some(mac.path()?.segment()?.name_ref()?.to_string());
             expanded = expand_macro_recur(&sema, &mac);
+            kind = mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
             break;
         }
     }
@@ -90,7 +92,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = insert_ws_into(expanded?).to_string();
+    let expansion = format(db, kind, position.file_id, expanded?);
+
     Some(ExpandedMacro { name: name.unwrap_or_else(|| "???".to_owned()), expansion })
 }
 
@@ -128,6 +131,70 @@ fn expand<T: AstNode>(
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
     Some(expanded)
+}
+
+fn format(db: &RootDatabase, kind: SyntaxKind, file_id: FileId, expanded: SyntaxNode) -> String {
+    let expansion = insert_ws_into(expanded).to_string();
+
+    _format(db, kind, file_id, &expansion).unwrap_or(expansion)
+}
+
+#[cfg(test)]
+fn _format(
+    _db: &RootDatabase,
+    _kind: SyntaxKind,
+    _file_id: FileId,
+    _expansion: &str,
+) -> Option<String> {
+    None
+}
+
+#[cfg(not(test))]
+fn _format(
+    db: &RootDatabase,
+    kind: SyntaxKind,
+    file_id: FileId,
+    expansion: &str,
+) -> Option<String> {
+    use ide_db::base_db::{FileLoader, SourceDatabase};
+    // hack until we get hygiene working (same character amount to preserve formatting as much as possible)
+    const DOLLAR_CRATE_REPLACE: &str = &"__r_a_";
+    let expansion = expansion.replace("$crate", DOLLAR_CRATE_REPLACE);
+    let (prefix, suffix) = match kind {
+        SyntaxKind::MACRO_PAT => ("fn __(", ": u32);"),
+        SyntaxKind::MACRO_EXPR | SyntaxKind::MACRO_STMTS => ("fn __() {", "}"),
+        SyntaxKind::MACRO_TYPE => ("type __ =", ";"),
+        _ => ("", ""),
+    };
+    let expansion = format!("{prefix}{expansion}{suffix}");
+
+    let &crate_id = db.relevant_crates(file_id).iter().next()?;
+    let edition = db.crate_graph()[crate_id].edition;
+
+    let mut cmd = std::process::Command::new(toolchain::rustfmt());
+    cmd.arg("--edition");
+    cmd.arg(edition.to_string());
+
+    let mut rustfmt = cmd
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .ok()?;
+
+    std::io::Write::write_all(&mut rustfmt.stdin.as_mut()?, expansion.as_bytes()).ok()?;
+
+    let output = rustfmt.wait_with_output().ok()?;
+    let captured_stdout = String::from_utf8(output.stdout).ok()?;
+
+    if output.status.success() && !captured_stdout.trim().is_empty() {
+        let foo = captured_stdout.replace(DOLLAR_CRATE_REPLACE, "$crate");
+        let trim_indent = stdx::trim_indent(foo.trim().strip_prefix(prefix)?.strip_suffix(suffix)?);
+        tracing::debug!("expand_macro: formatting succeeded");
+        Some(trim_indent)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
