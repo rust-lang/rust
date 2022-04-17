@@ -141,7 +141,7 @@ fn format(db: &RootDatabase, kind: SyntaxKind, file_id: FileId, expanded: Syntax
     _format(db, kind, file_id, &expansion).unwrap_or(expansion)
 }
 
-#[cfg(test)]
+#[cfg(any(test, target_arch = "wasm32", target_os = "emscripten"))]
 fn _format(
     _db: &RootDatabase,
     _kind: SyntaxKind,
@@ -151,7 +151,7 @@ fn _format(
     None
 }
 
-#[cfg(not(test))]
+#[cfg(not(any(test, target_arch = "wasm32", target_os = "emscripten")))]
 fn _format(
     db: &RootDatabase,
     kind: SyntaxKind,

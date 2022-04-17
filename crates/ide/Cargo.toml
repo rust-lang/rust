@@ -32,11 +32,13 @@ ide_assists = { path = "../ide_assists", version = "0.0.0" }
 ide_diagnostics = { path = "../ide_diagnostics", version = "0.0.0" }
 ide_ssr = { path = "../ide_ssr", version = "0.0.0" }
 ide_completion = { path = "../ide_completion", version = "0.0.0" }
-toolchain = { path = "../toolchain", version = "0.0.0" }
 
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../hir", version = "0.0.0" }
+
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "emscripten")))'.dependencies]
+toolchain = { path = "../toolchain", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
