@@ -293,6 +293,19 @@ void EnzymeRegisterFwdCallHandler(char *Name, CustomFunctionForward FwdHandle) {
   };
 }
 
+uint64_t EnzymeGradientUtilsGetWidth(GradientUtils *gutils) {
+  return gutils->getWidth();
+}
+
+LLVMTypeRef EnzymeGradientUtilsGetShadowType(GradientUtils *gutils,
+                                             LLVMTypeRef T) {
+  return wrap(gutils->getShadowType(unwrap(T)));
+}
+
+LLVMTypeRef EnzymeGetShadowType(uint64_t width, LLVMTypeRef T) {
+  return wrap(GradientUtils::getShadowType(unwrap(T), width));
+}
+
 LLVMValueRef EnzymeGradientUtilsNewFromOriginal(GradientUtils *gutils,
                                                 LLVMValueRef val) {
   return wrap(gutils->getNewFromOriginal(unwrap(val)));
