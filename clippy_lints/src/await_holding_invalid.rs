@@ -146,15 +146,20 @@ declare_clippy_lint! {
     ///
     /// ```toml
     /// await-holding-invalid-types = [
+    ///   # You can specify a type name
     ///   "CustomLockType",
+    ///   # You can (optionally) specify a reason
+    ///   { type = "OtherCustomLockType", reason = "Relies on a thread local" }
     /// ]
     /// ```
     ///
     /// ```rust
     /// # async fn baz() {}
     /// struct CustomLockType;
+    /// struct OtherCustomLockType;
     /// async fn foo() {
     ///   let _x = CustomLockType;
+    ///   let _y = CustomLockType;
     ///   baz().await; // Lint violation
     /// }
     /// ```
