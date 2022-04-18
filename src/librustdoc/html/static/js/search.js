@@ -476,10 +476,10 @@ window.initSearch = function(rawSearchIndex) {
                     throw new Error(`Unexpected \`${c}\` (did you mean \`->\`?)`);
                 }
                 throw new Error(`Unexpected \`${c}\``);
-            } else if (c === ":" &&
-                parserState.typeFilter === null &&
-                !isPathStart(parserState))
-            {
+            } else if (c === ":" && !isPathStart(parserState)) {
+                if (parserState.typeFilter !== null) {
+                    throw new Error("Unexpected `:`");
+                }
                 if (query.elems.length === 0) {
                     throw new Error("Expected type filter before `:`");
                 } else if (query.elems.length !== 1 || parserState.totalElems !== 1) {
@@ -505,12 +505,7 @@ window.initSearch = function(rawSearchIndex) {
             before = query.elems.length;
             getNextElem(query, parserState, query.elems, false);
             if (query.elems.length === before) {
-                // Nothing was added, let's check it's not because of a solo ":"!
-                if (parserState.pos >= parserState.length ||
-                    parserState.userQuery[parserState.pos] !== ":")
-                {
-                    break;
-                }
+                // Nothing was added, weird... Let's increase the position to not remain stuck.
                 parserState.pos += 1;
             }
             foundStopChar = false;
@@ -678,6 +673,7 @@ window.initSearch = function(rawSearchIndex) {
         } catch (err) {
             query = newParsedQuery(userQuery);
             query.error = err.message;
+            query.typeFilter = -1;
             return query;
         }
 

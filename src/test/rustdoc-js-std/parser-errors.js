@@ -34,6 +34,7 @@ const QUERY = [
     "a<>:",
     "a,:",
     "  a<>  :",
+    "mod : :",
 ];
 
 const PARSED = [
@@ -351,5 +352,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "a<>  :",
         error: 'Unexpected `<` in type filter',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "mod : :",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "mod : :",
+        error: 'Unexpected `:`',
     },
 ];
