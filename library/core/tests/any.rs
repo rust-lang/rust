@@ -138,12 +138,15 @@ struct SomeConcreteType {
 }
 
 impl Provider for SomeConcreteType {
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        req.provide_ref::<String>(&self.some_string)
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        demand
+            .provide_ref::<String>(&self.some_string)
+            .provide_ref::<str>(&self.some_string)
             .provide_value::<String, _>(|| "bye".to_owned());
     }
 }
 
+// Test the provide and request mechanisms with a by-reference trait object.
 #[test]
 fn test_provider() {
     let obj: &dyn Provider = &SomeConcreteType { some_string: "hello".to_owned() };
@@ -151,4 +154,41 @@ fn test_provider() {
     assert_eq!(&**request_ref::<String, _>(obj).unwrap(), "hello");
     assert_eq!(&*request_value::<String, _>(obj).unwrap(), "bye");
     assert_eq!(request_value::<u8, _>(obj), None);
+}
+
+// Test the provide and request mechanisms with a boxed trait object.
+#[test]
+fn test_provider_boxed() {
+    let obj: Box<dyn Provider> = Box::new(SomeConcreteType { some_string: "hello".to_owned() });
+
+    assert_eq!(&**request_ref::<String, _>(&*obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String, _>(&*obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8, _>(&*obj), None);
+}
+
+// Test the provide and request mechanisms with a concrete object.
+#[test]
+fn test_provider_concrete() {
+    let obj = SomeConcreteType { some_string: "hello".to_owned() };
+
+    assert_eq!(&**request_ref::<String, _>(&obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String, _>(&obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8, _>(&obj), None);
+}
+
+trait OtherTrait: Provider {}
+
+impl OtherTrait for SomeConcreteType {}
+
+impl dyn OtherTrait {
+    fn get_ref<T: 'static + ?Sized>(&self) -> Option<&T> {
+        request_ref::<T, _>(self)
+    }
+}
+
+// Test the provide and request mechanisms via an intermediate trait.
+#[test]
+fn test_provider_intermediate() {
+    let obj: &dyn OtherTrait = &SomeConcreteType { some_string: "hello".to_owned() };
+    assert_eq!(obj.get_ref::<str>().unwrap(), "hello");
 }
