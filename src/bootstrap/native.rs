@@ -122,7 +122,7 @@ impl Step for Llvm {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project").path("src/llvm-project/llvm").path("src/llvm")
+        run.path("src/llvm-project").path("src/llvm-project/llvm")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -605,7 +605,7 @@ impl Step for Lld {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project/lld").path("src/tools/lld")
+        run.path("src/llvm-project/lld")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -771,7 +771,7 @@ impl Step for Sanitizers {
     type Output = Vec<SanitizerRuntime>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project/compiler-rt").path("src/sanitizers")
+        run.alias("sanitizers")
     }
 
     fn make_run(run: RunConfig<'_>) {
