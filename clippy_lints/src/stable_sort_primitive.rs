@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.47.0"]
     pub STABLE_SORT_PRIMITIVE,
-    perf,
+    pedantic,
     "use of sort() when sort_unstable() is equivalent"
 }
 
@@ -126,7 +126,7 @@ impl LateLintPass<'_> for StableSortPrimitive {
                         Applicability::MachineApplicable,
                     );
                     diag.note(
-                        "an unstable sort would perform faster without any observable difference for this data type",
+                        "an unstable sort typically performs faster without any observable difference for this data type",
                     );
                 },
             );
