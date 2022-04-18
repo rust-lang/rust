@@ -1,4 +1,4 @@
-const QUERY = ['A::B', 'A::B,C',  'A::B<f>,C'];
+const QUERY = ['A::B', 'A::B,C',  'A::B<f>,C', 'mod::a'];
 
 const PARSED = [
     {
@@ -70,6 +70,21 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: 'a::b<f>,c',
+        error: null,
+    },
+    {
+        elems: [{
+            name: "mod::a",
+            fullPath: ["mod", "a"],
+            pathWithoutLast: ["mod"],
+            pathLast: "a",
+            generics: [],
+        }],
+        foundElems: 1,
+        original: "mod::a",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "mod::a",
         error: null,
     },
 ];
