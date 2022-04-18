@@ -83,10 +83,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         let ptr = this.read_pointer(ptr_op)?;
-        if let Ok(ptr) = ptr.into_pointer_or_addr() {
+        if let Ok((alloc_id, _offset, _)) = this.ptr_try_get_alloc_id(ptr) {
             // Only do anything if we can identify the allocation this goes to.
-            let (_, cur_align) =
-                this.get_alloc_size_and_align(ptr.provenance.alloc_id, AllocCheck::MaybeDead)?;
+            let (_, cur_align) = this.get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead)?;
             if cur_align.bytes() >= req_align {
                 // If the allocation alignment is at least the required alignment we use the
                 // real implementation.

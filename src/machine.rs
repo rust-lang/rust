@@ -360,6 +360,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         name: &str,
         ptr: Pointer<Option<Tag>>,
     ) {
+        // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }

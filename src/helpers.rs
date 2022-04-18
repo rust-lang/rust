@@ -271,8 +271,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
     /// of `action` will be true if this is frozen, false if this is in an `UnsafeCell`.
     /// The range is relative to `place`.
-    ///
-    /// Assumes that the `place` has a proper pointer in it.
     fn visit_freeze_sensitive(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
@@ -290,33 +288,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.
-        let ptr = place.ptr.into_pointer_or_addr().unwrap();
-        let start_offset = ptr.into_parts().1 as Size; // we just compare offsets, the abs. value never matters
-        let mut cur_offset = start_offset;
+        let start_addr = place.ptr.addr();
+        let mut cur_addr = start_addr;
         // Called when we detected an `UnsafeCell` at the given offset and size.
         // Calls `action` and advances `cur_ptr`.
-        let mut unsafe_cell_action = |unsafe_cell_ptr: Pointer<Option<Tag>>,
+        let mut unsafe_cell_action = |unsafe_cell_ptr: &Pointer<Option<Tag>>,
                                       unsafe_cell_size: Size| {
-            let unsafe_cell_ptr = unsafe_cell_ptr.into_pointer_or_addr().unwrap();
-            debug_assert_eq!(unsafe_cell_ptr.provenance, ptr.provenance);
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
-            let unsafe_cell_offset = unsafe_cell_ptr.into_parts().1 as Size; // we just compare offsets, the abs. value never matters
-            assert!(unsafe_cell_offset >= cur_offset);
-            let frozen_size = unsafe_cell_offset - cur_offset;
+            let unsafe_cell_addr = unsafe_cell_ptr.addr();
+            assert!(unsafe_cell_addr >= cur_addr);
+            let frozen_size = unsafe_cell_addr - cur_addr;
             // Everything between the cur_ptr and this `UnsafeCell` is frozen.
             if frozen_size != Size::ZERO {
-                action(alloc_range(cur_offset - start_offset, frozen_size), /*frozen*/ true)?;
+                action(alloc_range(cur_addr - start_addr, frozen_size), /*frozen*/ true)?;
             }
-            cur_offset += frozen_size;
+            cur_addr += frozen_size;
             // This `UnsafeCell` is NOT frozen.
             if unsafe_cell_size != Size::ZERO {
                 action(
-                    alloc_range(cur_offset - start_offset, unsafe_cell_size),
+                    alloc_range(cur_addr - start_addr, unsafe_cell_size),
                     /*frozen*/ false,
                 )?;
             }
-            cur_offset += unsafe_cell_size;
+            cur_addr += unsafe_cell_size;
             // Done
             Ok(())
         };
@@ -334,7 +329,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         .unwrap_or_else(|| place.layout.size);
                     // Now handle this `UnsafeCell`, unless it is empty.
                     if unsafe_cell_size != Size::ZERO {
-                        unsafe_cell_action(place.ptr, unsafe_cell_size)
+                        unsafe_cell_action(&place.ptr, unsafe_cell_size)
                     } else {
                         Ok(())
                     }
@@ -344,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(place.ptr.wrapping_offset(size, this), Size::ZERO)?;
+        unsafe_cell_action(&place.ptr.offset(size, this)?, Size::ZERO)?;
         // Done!
         return Ok(());
 
@@ -428,9 +423,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         let mut places =
                             fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
                         // we just compare offsets, the abs. value never matters
-                        places.sort_by_key(|place| {
-                            place.ptr.into_pointer_or_addr().unwrap().into_parts().1 as Size
-                        });
+                        places.sort_by_key(|place| place.ptr.addr());
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
                     FieldsShape::Union { .. } | FieldsShape::Primitive => {
@@ -777,6 +770,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Mark a machine allocation that was just created as immutable.
     fn mark_immutable(&mut self, mplace: &MemPlace<Tag>) {
         let this = self.eval_context_mut();
+        // This got just allocated, so there definitely is a pointer here.
         this.alloc_mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
             .unwrap();
     }
