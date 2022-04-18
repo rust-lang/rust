@@ -2290,7 +2290,7 @@ impl Step for Distcheck {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("distcheck")
+        run.alias("distcheck")
     }
 
     fn make_run(run: RunConfig<'_>) {
