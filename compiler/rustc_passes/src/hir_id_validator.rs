@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};
@@ -89,7 +89,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         self.owner = Some(owner);
         walk(self);
 
-        if owner.local_def_index == CRATE_DEF_INDEX {
+        if owner == CRATE_DEF_ID {
             return;
         }
 

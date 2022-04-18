@@ -1639,7 +1639,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let hir = tcx.hir();
 
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
-            let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX));
+            let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
                 self.lazy(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();

@@ -18,7 +18,6 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -1312,7 +1311,7 @@ impl clean::Visibility {
                 //                 visibility, so it shouldn't matter.
                 let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
-                if vis_did.index == CRATE_DEF_INDEX {
+                if vis_did.is_crate_root() {
                     "pub(crate) ".to_owned()
                 } else if parent_module == Some(vis_did) {
                     // `pub(in foo)` where `foo` is the parent module
@@ -1360,7 +1359,7 @@ impl clean::Visibility {
                 //                 visibility, so it shouldn't matter.
                 let parent_module = find_nearest_parent_module(tcx, item_did);
 
-                if vis_did.index == CRATE_DEF_INDEX {
+                if vis_did.is_crate_root() {
                     "pub(crate) ".to_owned()
                 } else if parent_module == Some(vis_did) {
                     // `pub(in foo)` where `foo` is the parent module

@@ -10,7 +10,6 @@ use std::fmt;
 use rustc_ast::ast;
 use rustc_hir::{def::CtorKind, def_id::DefId};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::Pos;
 use rustc_target::spec::abi::Abi as RustcAbi;
 
@@ -83,7 +82,7 @@ impl JsonRenderer<'_> {
         match v {
             Public => Visibility::Public,
             Inherited => Visibility::Default,
-            Restricted(did) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
+            Restricted(did) if did.is_crate_root() => Visibility::Crate,
             Restricted(did) => Visibility::Restricted {
                 parent: from_item_id(did.into()),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),

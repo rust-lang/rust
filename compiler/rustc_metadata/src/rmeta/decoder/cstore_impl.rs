@@ -5,7 +5,7 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -324,7 +324,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     continue;
                 }
 
-                bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
+                bfs_queue.push_back(cnum.as_def_id());
             }
 
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
