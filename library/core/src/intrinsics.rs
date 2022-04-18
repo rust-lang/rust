@@ -981,7 +981,7 @@ extern "rust-intrinsic" {
     ///
     /// Turning a pointer into a `usize`:
     ///
-    /// ```
+    /// ```no_run
     /// let ptr = &0;
     /// let ptr_num_transmute = unsafe {
     ///     std::mem::transmute::<&i32, usize>(ptr)
