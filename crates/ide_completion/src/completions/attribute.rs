@@ -107,7 +107,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
                     acc.add_resolution(ctx, name, def);
                 }
             });
-            acc.add_nameref_keywords(ctx);
+            acc.add_nameref_keywords_with_colon(ctx);
         }
     }
 

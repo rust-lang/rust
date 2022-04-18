@@ -102,7 +102,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
                     None => acc.add_resolution(ctx, name, def),
                 }
             });
-            acc.add_nameref_keywords(ctx);
+            acc.add_nameref_keywords_with_colon(ctx);
         }
     }
 }

@@ -45,7 +45,7 @@ pub(crate) fn complete_vis(acc: &mut Completions, ctx: &CompletionContext) {
                 cov_mark::hit!(kw_completion_in);
                 acc.add_keyword(ctx, "in");
             }
-            ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+            acc.add_nameref_keywords(ctx);
         }
         _ => {}
     }

@@ -100,6 +100,30 @@ pub(super) enum LifetimeContext {
     LabelDef,
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub(super) enum NameContext {
+    Const,
+    ConstParam,
+    Enum,
+    Function,
+    IdentPat,
+    MacroDef,
+    MacroRules,
+    /// Fake node
+    Module(ast::Module),
+    RecordField,
+    Rename,
+    SelfParam,
+    Static,
+    Struct,
+    Trait,
+    TypeAlias,
+    TypeParam,
+    Union,
+    Variant,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ParamKind {
     Function(ast::Fn),
@@ -140,6 +164,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) fake_attribute_under_caret: Option<ast::Attr>,
     pub(super) previous_token: Option<SyntaxToken>,
 
+    pub(super) name_ctx: Option<NameContext>,
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionCtx>,
@@ -197,7 +222,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_variant(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Variant))
+        matches!(self.name_ctx, Some(NameContext::Variant))
     }
 
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
@@ -221,10 +246,8 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expect_field(&self) -> bool {
-        matches!(
-            self.completion_location,
-            Some(ImmediateLocation::RecordField | ImmediateLocation::TupleField)
-        )
+        matches!(self.completion_location, Some(ImmediateLocation::TupleField))
+            || matches!(self.name_ctx, Some(NameContext::RecordField))
     }
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
@@ -254,13 +277,9 @@ impl<'a> CompletionContext<'a> {
             )
             || matches!(
                 self.completion_location,
-                Some(
-                    ImmediateLocation::ModDeclaration(_)
-                        | ImmediateLocation::RecordPat(_)
-                        | ImmediateLocation::RecordExpr(_)
-                        | ImmediateLocation::Rename
-                )
+                Some(ImmediateLocation::RecordPat(_) | ImmediateLocation::RecordExpr(_))
             )
+            || matches!(self.name_ctx, Some(NameContext::Module(_) | NameContext::Rename))
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
@@ -429,6 +448,7 @@ impl<'a> CompletionContext<'a> {
             name_syntax: None,
             lifetime_ctx: None,
             pattern_ctx: None,
+            name_ctx: None,
             completion_location: None,
             prev_sibling: None,
             fake_attribute_under_caret: None,
@@ -800,7 +820,12 @@ impl<'a> CompletionContext<'a> {
                 }
             }
             ast::NameLike::Name(name) => {
-                self.pattern_ctx = Self::classify_name(&self.sema, original_file, name);
+                if let Some((name_ctx, pat_ctx)) =
+                    Self::classify_name(&self.sema, original_file, name)
+                {
+                    self.pattern_ctx = pat_ctx;
+                    self.name_ctx = Some(name_ctx);
+                }
             }
         }
     }
@@ -833,17 +858,44 @@ impl<'a> CompletionContext<'a> {
         _sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name: ast::Name,
-    ) -> Option<PatternContext> {
-        let bind_pat = name.syntax().parent().and_then(ast::IdentPat::cast)?;
-        let is_name_in_field_pat = bind_pat
-            .syntax()
-            .parent()
-            .and_then(ast::RecordPatField::cast)
-            .map_or(false, |pat_field| pat_field.name_ref().is_none());
-        if is_name_in_field_pat {
-            return None;
-        }
-        Some(pattern_context_for(original_file, bind_pat.into()))
+    ) -> Option<(NameContext, Option<PatternContext>)> {
+        let parent = name.syntax().parent()?;
+        let mut pat_ctx = None;
+        let name_ctx = match_ast! {
+            match parent {
+                ast::Const(_) => NameContext::Const,
+                ast::ConstParam(_) => NameContext::ConstParam,
+                ast::Enum(_) => NameContext::Enum,
+                ast::Fn(_) => NameContext::Function,
+                ast::IdentPat(bind_pat) => {
+                    let is_name_in_field_pat = bind_pat
+                        .syntax()
+                        .parent()
+                        .and_then(ast::RecordPatField::cast)
+                        .map_or(false, |pat_field| pat_field.name_ref().is_none());
+                    if !is_name_in_field_pat {
+                        pat_ctx = Some(pattern_context_for(original_file, bind_pat.into()));
+                    }
+
+                    NameContext::IdentPat
+                },
+                ast::MacroDef(_) => NameContext::MacroDef,
+                ast::MacroRules(_) => NameContext::MacroRules,
+                ast::Module(module) => NameContext::Module(module),
+                ast::RecordField(_) => NameContext::RecordField,
+                ast::Rename(_) => NameContext::Rename,
+                ast::SelfParam(_) => NameContext::SelfParam,
+                ast::Static(_) => NameContext::Static,
+                ast::Struct(_) => NameContext::Struct,
+                ast::Trait(_) => NameContext::Trait,
+                ast::TypeAlias(_) => NameContext::TypeAlias,
+                ast::TypeParam(_) => NameContext::TypeParam,
+                ast::Union(_) => NameContext::Union,
+                ast::Variant(_) => NameContext::Variant,
+                _ => return None,
+            }
+        };
+        Some((name_ctx, pat_ctx))
     }
 
     fn classify_name_ref(

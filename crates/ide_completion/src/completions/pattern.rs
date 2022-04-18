@@ -202,7 +202,7 @@ fn pattern_path_completion(
                     acc.add_resolution(ctx, name, res);
                 }
             });
-            acc.add_nameref_keywords(ctx);
+            acc.add_nameref_keywords_with_colon(ctx);
         }
     }
 }

@@ -17,21 +17,15 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
     match ctx.path_context {
         Some(PathCompletionCtx {
-            kind:
-                Some(
-                    PathKind::Attr { .. }
-                    | PathKind::Derive
-                    | PathKind::Pat
-                    | PathKind::Use { .. }
-                    | PathKind::Vis { .. },
-                ),
+            is_absolute_path: false,
+            qualifier: None,
+            kind: None | Some(PathKind::Expr | PathKind::Type | PathKind::Mac),
             ..
-        }) => return,
-        Some(PathCompletionCtx { is_absolute_path: false, qualifier: None, .. }) => (),
+        }) => (),
         _ => return,
     }
 
-    ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+    acc.add_nameref_keywords(ctx);
 
     match &ctx.completion_location {
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
