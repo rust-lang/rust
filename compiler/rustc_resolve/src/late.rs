@@ -259,6 +259,9 @@ enum LifetimeRibKind {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     AnonymousPassThrough(NodeId, /* in_fn_return */ bool),
+
+    /// Replace all anonymous lifetimes by provided lifetime.
+    Elided(LifetimeRes),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -580,7 +583,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         // We deal with repeat expressions explicitly in `resolve_expr`.
         self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-            this.resolve_anon_const(constant, IsRepeatExpr::No);
+            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
+                this.resolve_anon_const(constant, IsRepeatExpr::No);
+            })
         })
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
@@ -1052,6 +1057,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             LifetimeRibKind::AnonymousPassThrough(..)
                             | LifetimeRibKind::AnonymousCreateParameter { .. }
                             | LifetimeRibKind::AnonymousReportError
+                            | LifetimeRibKind::Elided(_)
                             | LifetimeRibKind::AnonConst
                             | LifetimeRibKind::ConstGeneric => {}
                         }
@@ -1408,6 +1414,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     | LifetimeRibKind::AnonymousCreateParameter { .. } => {
                                         Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
                                     }
+                                    // Only report if eliding the lifetime would have the same
+                                    // semantics.
+                                    LifetimeRibKind::Elided(r) => Some(if res == r {
+                                        LifetimeUseSet::One { use_span: ident.span, use_ctxt }
+                                    } else {
+                                        LifetimeUseSet::Many
+                                    }),
                                     LifetimeRibKind::Generics { .. }
                                     | LifetimeRibKind::ConstGeneric
                                     | LifetimeRibKind::AnonConst => None,
@@ -1494,6 +1507,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         lifetime.id,
                         LifetimeRes::Anonymous { binder: node_id, elided },
                     );
+                    return;
+                }
+                LifetimeRibKind::Elided(res) => {
+                    self.record_lifetime_res(lifetime.id, res);
                     return;
                 }
                 LifetimeRibKind::Item => break,
@@ -1632,6 +1649,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             break;
                         }
                         LifetimeRibKind::AnonymousCreateParameter { .. }
+                        | LifetimeRibKind::Elided(_)
                         | LifetimeRibKind::Generics { .. }
                         | LifetimeRibKind::ConstGeneric
                         | LifetimeRibKind::AnonConst => {}
@@ -1685,6 +1703,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // `PassThrough` is the normal case.
                     LifetimeRibKind::AnonymousPassThrough(binder, _) => {
                         let res = LifetimeRes::Anonymous { binder, elided: true };
+                        for id in node_ids {
+                            self.record_lifetime_res(id, res);
+                        }
+                        break;
+                    }
+                    LifetimeRibKind::Elided(res) => {
                         for id in node_ids {
                             self.record_lifetime_res(id, res);
                         }
@@ -3581,7 +3605,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
                 self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-                    this.resolve_anon_const(ct, IsRepeatExpr::Yes)
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
+                        this.resolve_anon_const(ct, IsRepeatExpr::Yes)
+                    })
                 });
             }
             ExprKind::ConstBlock(ref ct) => {
