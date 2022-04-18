@@ -207,6 +207,16 @@ impl<Tag> Pointer<Option<Tag>> {
             None => Err(self.offset),
         }
     }
+
+    /// Returns the absolute address the pointer points to.
+    /// Only works if Tag::OFFSET_IS_ADDR is true!
+    pub fn addr(self) -> Size
+    where
+        Tag: Provenance,
+    {
+        assert!(Tag::OFFSET_IS_ADDR);
+        self.offset
+    }
 }
 
 impl<Tag> Pointer<Option<Tag>> {

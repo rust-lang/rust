@@ -126,6 +126,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether, when checking alignment, we should `force_int` and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
+    ///
+    /// Requires PointerTag::OFFSET_IS_ADDR to be true.
     fn force_int_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether to enforce the validity invariant
