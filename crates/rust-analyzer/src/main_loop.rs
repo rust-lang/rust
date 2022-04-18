@@ -236,7 +236,7 @@ impl GlobalState {
                                     self.fetch_workspaces_queue.op_completed(workspaces);
 
                                     let old = Arc::clone(&self.workspaces);
-                                    self.switch_workspaces();
+                                    self.switch_workspaces("fetched workspace".to_string());
                                     let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                                     if self.config.run_build_scripts() && workspaces_updated {
@@ -259,7 +259,7 @@ impl GlobalState {
                                 BuildDataProgress::End(build_data_result) => {
                                     self.fetch_build_data_queue.op_completed(build_data_result);
 
-                                    self.switch_workspaces();
+                                    self.switch_workspaces("fetched build data".to_string());
 
                                     (Some(Progress::End), None)
                                 }
