@@ -1798,14 +1798,15 @@ FunctionType *getFunctionTypeForClone(
         constant_args[argno] == DIFFE_TYPE::DUP_NONEED) {
       ArgTypes.push_back(GradientUtils::getShadowType(I, width));
     } else if (constant_args[argno] == DIFFE_TYPE::OUT_DIFF) {
-      RetTypes.push_back(I);
+      RetTypes.push_back(GradientUtils::getShadowType(I, width));
     }
     ++argno;
   }
 
   if (diffeReturnArg) {
     assert(!FTy->getReturnType()->isVoidTy());
-    ArgTypes.push_back(FTy->getReturnType());
+    ArgTypes.push_back(
+        GradientUtils::getShadowType(FTy->getReturnType(), width));
   }
   if (additionalArg) {
     ArgTypes.push_back(additionalArg);

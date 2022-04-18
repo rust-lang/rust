@@ -970,11 +970,19 @@ public:
     if (differentialReturn) {
       if (differet)
         args.push_back(differet);
-      else if (cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy())
-        args.push_back(
-            ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
-      else if (auto ST =
-                   dyn_cast<StructType>(cast<Function>(fn)->getReturnType())) {
+      else if (cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy()) {
+        Constant *seed =
+            ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0);
+        if (width == 1) {
+          args.push_back(seed);
+        } else {
+          ArrayType *arrayType =
+              ArrayType::get(cast<Function>(fn)->getReturnType(), width);
+          args.push_back(ConstantArray::get(
+              arrayType, SmallVector<Constant *, 3>(width, seed)));
+        }
+      } else if (auto ST = dyn_cast<StructType>(
+                     cast<Function>(fn)->getReturnType())) {
         SmallVector<Constant *, 2> csts;
         for (auto e : ST->elements()) {
           csts.push_back(ConstantFP::get(e, 1.0));
@@ -1090,7 +1098,9 @@ public:
     // Adapt the returned vector type to the struct type expected by our calling
     // convention.
     if (width > 1 && !diffret->getType()->isEmptyTy() &&
-        !diffret->getType()->isVoidTy()) {
+        !diffret->getType()->isVoidTy() &&
+        (mode == DerivativeMode::ForwardMode ||
+         mode == DerivativeMode::ForwardModeSplit)) {
 
       /// Actual return type (including struct return)
       Type *returnType =

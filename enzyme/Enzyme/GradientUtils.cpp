@@ -3382,8 +3382,6 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   case DerivativeMode::ForwardMode:
   case DerivativeMode::ForwardModeSplit:
     prefix = "fwddiffe";
-    if (width > 1)
-      prefix += std::to_string(width);
     break;
   case DerivativeMode::ReverseModeCombined:
   case DerivativeMode::ReverseModeGradient:
@@ -3392,6 +3390,9 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   case DerivativeMode::ReverseModePrimal:
     llvm_unreachable("invalid DerivativeMode: ReverseModePrimal\n");
   }
+
+  if (width > 1)
+    prefix += std::to_string(width);
 
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
       mode, width, todiff, invertedPointers, constant_args, constant_values,
@@ -3751,7 +3752,6 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     auto rule = [&CD](ArrayRef<Constant *> Vals) {
       return ConstantStruct::get(CD->getType(), Vals);
     };
-
     return applyChainRule(CD->getType(), Vals, BuilderM, rule);
   } else if (auto CD = dyn_cast<ConstantVector>(oval)) {
     SmallVector<Constant *, 1> Vals;
