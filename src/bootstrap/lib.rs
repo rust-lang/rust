@@ -645,6 +645,9 @@ impl Build {
         unsafe {
             job::setup(self);
         }
+        if let Some(cmake) = self.config.cmake.as_ref() {
+            env::set_var("CMAKE", cmake); // https://docs.rs/cmake/0.1.48/src/cmake/lib.rs.html#515
+        }
 
         self.maybe_update_submodules();
 

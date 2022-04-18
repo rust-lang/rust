@@ -92,10 +92,31 @@ pub fn check(build: &mut Build) {
                     .unwrap_or(true)
             })
             .any(|build_llvm_ourselves| build_llvm_ourselves);
-    let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
-    if need_cmake {
-        cmd_finder.must_have("cmake");
-    }
+    let need_default_cmake = if building_llvm || build.config.any_sanitizers_enabled() {
+        let cmake_env_var = env::var_os("CMAKE");
+        if let Some(explicit_name) = build.config.cmake.take() {
+            if let Some(cmake_from_env) = cmake_env_var {
+                if explicit_name != cmake_from_env {
+                    eprintln!(
+                        "env var CMAKE = {cmake_from_env:?} != {explicit_name:?} from config.toml"
+                    )
+                }
+            }
+            build.config.cmake = cmd_finder.must_have(explicit_name).into();
+            None
+        } else {
+            // _very_ simplified version of getenv_target_os("CMAKE") from
+            // https://docs.rs/cmake/0.1.48/src/cmake/lib.rs.html#515
+            if let Some(cmake_from_env) = cmake_env_var {
+                cmd_finder.must_have(cmake_from_env)
+            } else {
+                cmd_finder.must_have("cmake")
+            }
+            .into()
+        }
+    } else {
+        None
+    };
 
     build.config.python = build
         .config
@@ -201,14 +222,17 @@ pub fn check(build: &mut Build) {
             }
         }
 
-        if need_cmake && target.contains("msvc") {
-            // There are three builds of cmake on windows: MSVC, MinGW, and
-            // Cygwin. The Cygwin build does not have generators for Visual
-            // Studio, so detect that here and error.
-            let out = output(Command::new("cmake").arg("--help"));
-            if !out.contains("Visual Studio") {
-                panic!(
-                    "
+        if target.contains("msvc") {
+            if let Some(ref cmake_path) =
+                need_default_cmake.as_ref().or(build.config.cmake.as_ref())
+            {
+                // There are three builds of cmake on windows: MSVC, MinGW, and
+                // Cygwin. The Cygwin build does not have generators for Visual
+                // Studio, so detect that here and error.
+                let out = output(Command::new(cmake_path).arg("--help"));
+                if !out.contains("Visual Studio") {
+                    panic!(
+                        "
 cmake does not support Visual Studio generators.
 
 This is likely due to it being an msys/cygwin build of cmake,
@@ -220,7 +244,8 @@ package instead of cmake:
 
 $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 "
-                );
+                    );
+                }
             }
         }
     }

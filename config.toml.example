@@ -258,6 +258,9 @@ changelog-seen = 2
 # Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
+# Path to (or name of) the CMake 3 executable to build LLVM.
+#cmake = "cmake"
+
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
 #locked-deps = false
