@@ -241,10 +241,18 @@ fn exported_symbols_provider_local<'tcx>(
     }
 
     if tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY) {
-        // Similar to profiling, preserve weak msan symbol during LTO.
-        const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];
+        let mut msan_weak_symbols = Vec::new();
 
-        symbols.extend(MSAN_WEAK_SYMBOLS.iter().map(|sym| {
+        // Similar to profiling, preserve weak msan symbol during LTO.
+        if tcx.sess.opts.debugging_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
+            msan_weak_symbols.push("__msan_keep_going");
+        }
+
+        if tcx.sess.opts.debugging_opts.sanitizer_memory_track_origins != 0 {
+            msan_weak_symbols.push("__msan_track_origins");
+        }
+
+        symbols.extend(msan_weak_symbols.into_iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (
                 exported_symbol,
