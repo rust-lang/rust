@@ -158,8 +158,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<AllocId>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (alloc_id, offset) = ptr.into_parts();
+        let alloc_id = ptr.provenance;
         // We need to handle `extern static`.
         match self.tcx.get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
@@ -171,7 +170,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
         // And we need to get the tag.
-        Ok(M::tag_alloc_base_pointer(self, Pointer::new(alloc_id, offset)))
+        Ok(M::tag_alloc_base_pointer(self, ptr))
     }
 
     pub fn create_fn_alloc_ptr(

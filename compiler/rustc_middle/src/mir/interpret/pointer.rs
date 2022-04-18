@@ -201,6 +201,10 @@ impl<Tag> From<Pointer<Tag>> for Pointer<Option<Tag>> {
 }
 
 impl<Tag> Pointer<Option<Tag>> {
+    /// Convert this pointer that *might* have a tag into a pointer that *definitely* has a tag, or
+    /// an absolute address.
+    ///
+    /// This is rarely what you want; call `ptr_try_get_alloc_id` instead.
     pub fn into_pointer_or_addr(self) -> Result<Pointer<Tag>, Size> {
         match self.provenance {
             Some(tag) => Ok(Pointer::new(tag, self.offset)),
