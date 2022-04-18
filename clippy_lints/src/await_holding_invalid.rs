@@ -159,7 +159,7 @@ declare_clippy_lint! {
     /// struct OtherCustomLockType;
     /// async fn foo() {
     ///   let _x = CustomLockType;
-    ///   let _y = CustomLockType;
+    ///   let _y = OtherCustomLockType;
     ///   baz().await; // Lint violation
     /// }
     /// ```
