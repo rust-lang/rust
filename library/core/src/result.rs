@@ -1052,7 +1052,7 @@ impl<T, E> Result<T, E> {
     ///
     /// ```should_panic
     /// let path = std::env::var("IMPORTANT_PATH")
-    ///     .expect("env variable `IMPORTANT_PATH` is always be set by `wrapper_script.sh`");
+    ///     .expect("env variable `IMPORTANT_PATH` is always set by `wrapper_script.sh`");
     /// ```
     ///
     /// The "expect as error message" style has the advantage of giving a more user friendly error
