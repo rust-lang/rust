@@ -171,8 +171,8 @@ impl<'tcx> MirPatch<'tcx> {
             delta += 1;
         }
 
-        for (stmt, target) in stmts_and_targets.iter().rev() {
-            body[*target].statements.insert(0, stmt.clone());
+        for (stmt, target) in stmts_and_targets.into_iter().rev() {
+            body[target].statements.insert(0, stmt);
         }
     }
 
