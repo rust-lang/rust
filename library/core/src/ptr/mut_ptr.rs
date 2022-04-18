@@ -302,7 +302,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -368,7 +368,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -550,7 +550,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -615,7 +615,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -1461,7 +1461,7 @@ impl<T> *mut [T] {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -1513,7 +1513,7 @@ impl<T> *mut [T] {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
