@@ -144,20 +144,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// Strings are, of course, safe to hold across await points. This example
-    /// exists only to show how this lint might be configured for third-party
-    /// crates.
-    ///
     /// ```toml
     /// await-holding-invalid-types = [
-    ///   "std::string::String",
+    ///   "CustomLockType",
     /// ]
     /// ```
     ///
     /// ```rust
     /// # async fn baz() {}
+    /// struct CustomLockType;
     /// async fn foo() {
-    ///   let _x = String::from("hello!");
+    ///   let _x = CustomLockType;
     ///   baz().await; // Lint violation
     /// }
     /// ```
