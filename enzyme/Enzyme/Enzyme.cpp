@@ -661,7 +661,7 @@ public:
           ty = DIFFE_TYPE::DUP_ARG;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
-          if (auto cint = dyn_cast<IntegerType>(offset_arg->getType())) {
+          if (offset_arg->getType()->isIntegerTy()) {
             batchOffset[i + 1] = offset_arg;
           } else {
             EmitFailure("IllegalVectorOffset", CI->getDebugLoc(), CI,
