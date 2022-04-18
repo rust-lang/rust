@@ -1069,7 +1069,7 @@ impl<T, E> Result<T, E> {
     /// directly to users with the default `std` panic hook's report format:
     ///
     /// ```text
-    /// thread 'main' panicked at 'env variable `IMPORTANT_PATH` is always be set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
+    /// thread 'main' panicked at 'env variable `IMPORTANT_PATH` is always set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
     /// ```
     ///
     /// This style works best when paired with a custom [panic hook] like the one provided by the
