@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:13:9
+  --> $DIR/lt-ref-self-async.rs:16:9
    |
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                       -         - let's call the lifetime of this reference `'1`
@@ -9,7 +9,7 @@ LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:19:9
+  --> $DIR/lt-ref-self-async.rs:24:9
    |
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                             -         - let's call the lifetime of this reference `'1`
@@ -19,7 +19,7 @@ LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:23:9
+  --> $DIR/lt-ref-self-async.rs:30:9
    |
 LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                     -          - let's call the lifetime of this reference `'1`
@@ -29,7 +29,7 @@ LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:27:9
+  --> $DIR/lt-ref-self-async.rs:36:9
    |
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                     -          - let's call the lifetime of this reference `'1`
@@ -39,7 +39,7 @@ LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:31:9
+  --> $DIR/lt-ref-self-async.rs:42:9
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                             -           - let's call the lifetime of this reference `'1`
@@ -49,7 +49,7 @@ LL |         f
    |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self-async.rs:35:9
+  --> $DIR/lt-ref-self-async.rs:48:9
    |
 LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                         -           - let's call the lifetime of this reference `'1`
