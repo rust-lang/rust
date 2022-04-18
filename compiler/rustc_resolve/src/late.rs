@@ -252,6 +252,9 @@ enum AnonymousLifetimeRib {
     /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
     Item,
 
+    /// Replace all lifetimes by `'static`.
+    Static,
+
     /// For **Modern** cases, create a new anonymous region parameter
     /// and reference that.
     ///
@@ -549,7 +552,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         // We deal with repeat expressions explicitly in `resolve_expr`.
         self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-            this.resolve_anon_const(constant, IsRepeatExpr::No);
+            this.with_anon_lifetime_rib(AnonymousLifetimeRib::Static, |this| {
+                this.resolve_anon_const(constant, IsRepeatExpr::No);
+            })
         })
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
@@ -692,7 +697,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             }
             ForeignItemKind::Static(..) => {
                 self.with_item_rib(|this| {
-                    visit::walk_foreign_item(this, foreign_item);
+                    this.with_anon_lifetime_rib(AnonymousLifetimeRib::Static, |this| {
+                        visit::walk_foreign_item(this, foreign_item);
+                    })
                 });
             }
             ForeignItemKind::MacCall(..) => {
@@ -1271,6 +1278,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             AnonymousLifetimeRib::PassThrough(node_id) => {
                 LifetimeRes::Anonymous { binder: node_id, elided }
             }
+            AnonymousLifetimeRib::Static => LifetimeRes::Static,
             // This resolution is wrong, it passes the work to HIR lifetime resolution.
             // We cannot use `LifetimeRes::Error` because we do not emit a diagnostic.
             AnonymousLifetimeRib::Item => LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided },
@@ -1396,6 +1404,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 AnonymousLifetimeRib::ReportError | AnonymousLifetimeRib::Item => {
                     LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true }
                 }
+                AnonymousLifetimeRib::Static => LifetimeRes::Static,
             };
 
             let node_ids = self.r.next_node_ids(expected_lifetimes);
@@ -1712,7 +1721,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
                 self.with_item_rib(|this| {
-                    this.visit_ty(ty);
+                    this.with_anon_lifetime_rib(AnonymousLifetimeRib::Static, |this| {
+                        this.visit_ty(ty)
+                    });
                     if let Some(expr) = expr {
                         let constant_item_kind = match item.kind {
                             ItemKind::Const(..) => ConstantItemKind::Const,
@@ -2056,24 +2067,26 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         match &item.kind {
             AssocItemKind::Const(_default, _ty, _expr) => {
                 debug!("resolve_implementation AssocItemKind::Const");
-                // If this is a trait impl, ensure the const
-                // exists in trait
-                self.check_trait_item(
-                    item.id,
-                    item.ident,
-                    &item.kind,
-                    ValueNS,
-                    item.span,
-                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                );
+                self.with_anon_lifetime_rib(AnonymousLifetimeRib::Static, |this| {
+                    // If this is a trait impl, ensure the const
+                    // exists in trait
+                    this.check_trait_item(
+                        item.id,
+                        item.ident,
+                        &item.kind,
+                        ValueNS,
+                        item.span,
+                        |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                    );
 
-                // We allow arbitrary const expressions inside of associated consts,
-                // even if they are potentially not const evaluatable.
-                //
-                // Type parameters can already be used and as associated consts are
-                // not used as part of the type system, this is far less surprising.
-                self.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
-                    visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                    // We allow arbitrary const expressions inside of associated consts,
+                    // even if they are potentially not const evaluatable.
+                    //
+                    // Type parameters can already be used and as associated consts are
+                    // not used as part of the type system, this is far less surprising.
+                    this.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
+                        visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                    })
                 });
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
@@ -3224,7 +3237,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
                 self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-                    this.resolve_anon_const(ct, IsRepeatExpr::Yes)
+                    this.with_anon_lifetime_rib(AnonymousLifetimeRib::Static, |this| {
+                        this.resolve_anon_const(ct, IsRepeatExpr::Yes)
+                    })
                 });
             }
             ExprKind::ConstBlock(ref ct) => {
