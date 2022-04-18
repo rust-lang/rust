@@ -515,7 +515,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_late_pass(|| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|| Box::new(utils::author::Author));
-    store.register_late_pass(|| Box::new(await_holding_invalid::AwaitHolding));
+    let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
+    store.register_late_pass(move || {
+        Box::new(await_holding_invalid::AwaitHolding::new(
+            await_holding_invalid_types.clone(),
+        ))
+    });
     store.register_late_pass(|| Box::new(serde_api::SerdeApi));
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     let type_complexity_threshold = conf.type_complexity_threshold;

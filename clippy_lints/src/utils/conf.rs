@@ -310,6 +310,8 @@ define_Conf! {
     /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
+    /// Lint: AWAIT_HOLDING_INVALID_TYPE
+    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
 }
 
 /// Search for the configuration file.
