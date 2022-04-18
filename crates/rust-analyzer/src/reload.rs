@@ -166,9 +166,9 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn switch_workspaces(&mut self) {
+    pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
         let _p = profile::span("GlobalState::switch_workspaces");
-        tracing::info!("will switch workspaces");
+        tracing::info!(%cause, "will switch workspaces");
 
         if let Err(error_message) = self.fetch_workspace_error() {
             self.show_and_log_error(error_message, None);
@@ -224,6 +224,8 @@ impl GlobalState {
         if same_workspaces {
             let (workspaces, build_scripts) = self.fetch_build_data_queue.last_op_result();
             if Arc::ptr_eq(workspaces, &self.workspaces) {
+                tracing::debug!("set build scripts to workspaces");
+
                 let workspaces = workspaces
                     .iter()
                     .cloned()
@@ -237,11 +239,14 @@ impl GlobalState {
                 // Workspaces are the same, but we've updated build data.
                 self.workspaces = Arc::new(workspaces);
             } else {
+                tracing::info!("build scrips do not match the version of the active workspace");
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
             }
         } else {
+            tracing::debug!("abandon build scripts for workspaces");
+
             // Here, we completely changed the workspace (Cargo.toml edit), so
             // we don't care about build-script results, they are stale.
             self.workspaces = Arc::new(workspaces)
