@@ -934,6 +934,7 @@ pub struct Resolver<'a> {
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
+    has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1313,6 +1314,7 @@ impl<'a> Resolver<'a> {
 
             glob_map: Default::default(),
             visibilities,
+            has_pub_restricted: false,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
             maybe_unused_extern_crates: Vec::new(),
@@ -1423,6 +1425,7 @@ impl<'a> Resolver<'a> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
         let visibilities = self.visibilities;
+        let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
         let reexport_map = self.reexport_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
@@ -1435,6 +1438,7 @@ impl<'a> Resolver<'a> {
             definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             visibilities,
+            has_pub_restricted,
             access_levels,
             extern_crate_map,
             reexport_map,
@@ -1461,6 +1465,7 @@ impl<'a> Resolver<'a> {
             access_levels: self.access_levels.clone(),
             cstore: Box::new(self.cstore().clone()),
             visibilities: self.visibilities.clone(),
+            has_pub_restricted: self.has_pub_restricted,
             extern_crate_map: self.extern_crate_map.clone(),
             reexport_map: self.reexport_map.clone(),
             glob_map: self.glob_map.clone(),

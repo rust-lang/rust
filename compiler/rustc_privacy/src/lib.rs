@@ -1661,7 +1661,6 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     item_def_id: LocalDefId,
     /// The visitor checks that each component type is at least this visible.
     required_visibility: ty::Visibility,
-    has_pub_restricted: bool,
     has_old_errors: bool,
     in_assoc_ty: bool,
 }
@@ -1750,7 +1749,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             };
             let make_msg = || format!("{} {} `{}` in public interface", vis_descr, kind, descr);
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
-            if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
+            if self.has_old_errors
+                || self.in_assoc_ty
+                || self.tcx.resolutions(()).has_pub_restricted
+            {
                 let mut err = if kind == "trait" {
                     struct_span_err!(self.tcx.sess, span, E0445, "{}", make_msg())
                 } else {
@@ -1809,7 +1811,6 @@ impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
 struct PrivateItemsInPublicInterfacesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    has_pub_restricted: bool,
     old_error_set_ancestry: LocalDefIdSet,
 }
 
@@ -1823,7 +1824,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesVisitor<'tcx> {
             tcx: self.tcx,
             item_def_id: def_id,
             required_visibility,
-            has_pub_restricted: self.has_pub_restricted,
             has_old_errors: self.old_error_set_ancestry.contains(&def_id),
             in_assoc_ty: false,
         }
@@ -2061,13 +2061,6 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     };
     tcx.hir().walk_toplevel_module(&mut visitor);
 
-    let has_pub_restricted = tcx.resolutions(()).visibilities.iter().any(|(&def_id, &v)| match v {
-        ty::Visibility::Public | ty::Visibility::Invisible => false,
-        ty::Visibility::Restricted(module) => {
-            module != tcx.parent_module_from_def_id(def_id).to_def_id()
-        }
-    });
-
     let mut old_error_set_ancestry = HirIdSet::default();
     for mut id in visitor.old_error_set.iter().copied() {
         loop {
@@ -2085,7 +2078,6 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     // Check for private types and traits in public interfaces.
     let mut visitor = PrivateItemsInPublicInterfacesVisitor {
         tcx,
-        has_pub_restricted,
         // Only definition IDs are ever searched in `old_error_set_ancestry`,
         // so we can filter away all non-definition IDs at this point.
         old_error_set_ancestry: old_error_set_ancestry
