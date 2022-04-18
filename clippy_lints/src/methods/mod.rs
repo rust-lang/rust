@@ -2009,13 +2009,27 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// // Bad
-    ///  let (key, value) = _.splitn(2, '=').next_tuple()?;
-    ///  let value = _.splitn(2, '=').nth(1)?;
+    /// let s = "key=value=add";
+    /// let (key, value) = s.splitn(2, '=').next_tuple()?;
+    /// let value = s.splitn(2, '=').nth(1)?;
     ///
-    /// // Good
-    /// let (key, value) = _.split_once('=')?;
-    /// let value = _.split_once('=')?.1;
+    /// let mut parts = s.splitn(2, '=');
+    /// let key = parts.next()?;
+    /// let value = parts.next()?;
     /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// // Good
+    /// let s = "key=value=add";
+    /// let (key, value) = s.split_once('=')?;
+    /// let value = s.split_once('=')?.1;
+    ///
+    /// let (key, value) = s.split_once('=')?;
+    /// ```
+    ///
+    /// ### Limitations
+    /// The multiple statement variant currently only detects `iter.next()?`/`iter.next().unwrap()`
+    /// in two separate `let` statements that immediately follow the `splitn()`
     #[clippy::version = "1.57.0"]
     pub MANUAL_SPLIT_ONCE,
     complexity,
