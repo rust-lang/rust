@@ -536,15 +536,6 @@ pub struct CONDITION_VARIABLE {
 pub struct SRWLOCK {
     pub ptr: LPVOID,
 }
-#[repr(C)]
-pub struct CRITICAL_SECTION {
-    CriticalSectionDebug: LPVOID,
-    LockCount: LONG,
-    RecursionCount: LONG,
-    OwningThread: HANDLE,
-    LockSemaphore: HANDLE,
-    SpinCount: ULONG_PTR,
-}
 
 #[repr(C)]
 pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
@@ -875,11 +866,6 @@ if #[cfg(target_vendor = "uwp")] {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn GetCurrentProcessId() -> DWORD;
-    pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOL;
-    pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
-    pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;

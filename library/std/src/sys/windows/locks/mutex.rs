@@ -15,7 +15,6 @@
 //!    is that there are no guarantees of fairness.
 
 use crate::cell::UnsafeCell;
-use crate::mem::MaybeUninit;
 use crate::sys::c;
 
 pub struct Mutex {
@@ -58,39 +57,5 @@ impl Mutex {
     #[inline]
     pub unsafe fn destroy(&self) {
         // SRWLock does not need to be destroyed.
-    }
-}
-
-pub struct ReentrantMutex {
-    inner: MaybeUninit<UnsafeCell<c::CRITICAL_SECTION>>,
-}
-
-unsafe impl Send for ReentrantMutex {}
-unsafe impl Sync for ReentrantMutex {}
-
-impl ReentrantMutex {
-    pub const fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { inner: MaybeUninit::uninit() }
-    }
-
-    pub unsafe fn init(&self) {
-        c::InitializeCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0
-    }
-
-    pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
     }
 }
