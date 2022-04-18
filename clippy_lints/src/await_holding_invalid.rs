@@ -164,7 +164,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.49.0"]
     pub AWAIT_HOLDING_INVALID_TYPE,
     suspicious,
-    "inside an async function, holding a type across an await point which is not safe to be held across an await point"
+    "holding a type across an await point which is not allowed to be held as per the configuration"
 }
 
 impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
