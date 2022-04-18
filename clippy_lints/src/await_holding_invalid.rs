@@ -269,7 +269,7 @@ fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedTy
         &format!("`{type_name}` may not be held across an `await` point per `clippy.toml`",),
         |diag| {
             if let Some(reason) = reason {
-                diag.note(format!("{reason} (according to clippy.toml)"));
+                diag.note(reason.clone());
             }
         },
     );
