@@ -502,7 +502,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     {
         store.register_early_pass(|| Box::new(utils::internal_lints::ClippyLintsInternal));
         store.register_early_pass(|| Box::new(utils::internal_lints::ProduceIce));
-        store.register_late_pass(|| Box::new(utils::inspector::DeepCodeInspector));
         store.register_late_pass(|| Box::new(utils::internal_lints::CollapsibleCalls));
         store.register_late_pass(|| Box::new(utils::internal_lints::CompilerLintFunctions::new()));
         store.register_late_pass(|| Box::new(utils::internal_lints::IfChainStyle));
@@ -514,6 +513,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
+    store.register_late_pass(|| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|| Box::new(utils::author::Author));
     store.register_late_pass(|| Box::new(await_holding_invalid::AwaitHolding));
     store.register_late_pass(|| Box::new(serde_api::SerdeApi));

@@ -22,6 +22,7 @@ because that's clearly a non-descriptive name.
   - [Adding the lint logic](#adding-the-lint-logic)
   - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version-msrv)
   - [Author lint](#author-lint)
+  - [Print HIR lint](#print-hir-lint)
   - [Documentation](#documentation)
   - [Running rustfmt](#running-rustfmt)
   - [Debugging](#debugging)
@@ -483,6 +484,19 @@ If the command was executed successfully, you can copy the code over to where
 you are implementing your lint.
 
 [author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
+
+## Print HIR lint
+
+To implement a lint, it's helpful to first understand the internal representation
+that rustc uses. Clippy has the `#[clippy::dump]` attribute that prints the
+[_High-Level Intermediate Representation (HIR)_] of the item, statement, or 
+expression that the attribute is attached to. To attach the attribute to expressions
+you often need to enable `#![feature(stmt_expr_attributes)]`.
+
+[Here][print_hir_example] you can find an example, just select _Tools_ and run _Clippy_.
+
+[_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
+[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=daf14db3a7f39ca467cd1b86c34b9afb
 
 ## Documentation
 
