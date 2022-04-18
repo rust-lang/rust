@@ -2339,6 +2339,18 @@ fn slice_rsplit_array_mut() {
     }
 }
 
+#[test]
+fn split_as_slice() {
+    let arr = [1, 2, 3, 4, 5, 6];
+    let mut split = arr.split(|v| v % 2 == 0);
+    assert_eq!(split.as_slice(), &[1, 2, 3, 4, 5, 6]);
+    assert!(split.next().is_some());
+    assert_eq!(split.as_slice(), &[3, 4, 5, 6]);
+    assert!(split.next().is_some());
+    assert!(split.next().is_some());
+    assert_eq!(split.as_slice(), &[]);
+}
+
 #[should_panic]
 #[test]
 fn slice_split_array_ref_out_of_bounds() {
