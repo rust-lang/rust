@@ -94,7 +94,7 @@ fn search_for_metadata<'a>(
         .map_err(|e| format!("failed to read {} section in '{}': {}", section, path.display(), e))
 }
 
-fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
+pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
     let endianness = match sess.target.options.endian {
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
