@@ -523,7 +523,8 @@ impl<'a> CompletionContext<'a> {
                     // successful expansions
                     (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
                         let new_offset = fake_mapped_token.text_range().start();
-                        derive_ctx = Some((actual_expansion, fake_expansion, new_offset));
+                        derive_ctx =
+                            Some((actual_expansion, fake_expansion, new_offset, orig_attr));
                         break 'expansion;
                     }
                     // exactly one expansion failed, inconsistent state so stop expanding completely
@@ -718,7 +719,7 @@ impl<'a> CompletionContext<'a> {
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
-        derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize)>,
+        derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
     ) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
@@ -742,16 +743,14 @@ impl<'a> CompletionContext<'a> {
         (self.expected_type, self.expected_name) = self.expected_type_and_name();
 
         // Overwrite the path kind for derives
-        if let Some((original_file, file_with_fake_ident, offset)) = derive_ctx {
-            let attr = self
+        if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
+            self.existing_derives = self
                 .sema
-                .token_ancestors_with_macros(self.token.clone())
-                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-                .find_map(ast::Attr::cast);
-            if let Some(attr) = &attr {
-                self.existing_derives =
-                    self.sema.resolve_derive_macro(attr).into_iter().flatten().flatten().collect();
-            }
+                .resolve_derive_macro(&origin_attr)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .collect();
 
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)

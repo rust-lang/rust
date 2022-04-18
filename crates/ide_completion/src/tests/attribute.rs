@@ -748,6 +748,27 @@ mod derive {
     }
 
     #[test]
+    fn derive_with_existing_derives() {
+        check_derive(
+            r#"
+//- minicore: derive, copy, clone, ord, eq, default, fmt
+#[derive(PartialEq, Eq, Or$0)] struct Test;
+"#,
+            expect![[r#"
+                md core
+                de Default         macro Default
+                de Clone, Copy
+                de PartialOrd, Ord
+                de Clone           macro Clone
+                de PartialOrd
+                kw self::
+                kw super::
+                kw crate::
+            "#]],
+        );
+    }
+
+    #[test]
     fn derive_flyimport() {
         check_derive(
             r#"
