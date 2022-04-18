@@ -149,7 +149,7 @@ declare_clippy_lint! {
     ///   # You can specify a type name
     ///   "CustomLockType",
     ///   # You can (optionally) specify a reason
-    ///   { type = "OtherCustomLockType", reason = "Relies on a thread local" }
+    ///   { path = "OtherCustomLockType", reason = "Relies on a thread local" }
     /// ]
     /// ```
     ///
