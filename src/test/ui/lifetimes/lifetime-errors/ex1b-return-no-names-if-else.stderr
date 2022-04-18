@@ -7,9 +7,36 @@ LL | fn foo(x: &i32, y: &i32) -> &i32 {
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `x` or `y`
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
-   |       ++++     ++          ++          ++
+LL | fn foo<'a>(x: &i32, y: &i32) -> &'a i32 {
+   |       ++++                       ++
 
-error: aborting due to previous error
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/ex1b-return-no-names-if-else.rs:3:16
+   |
+LL |     if x > y { x } else { y }
+   |                ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the anonymous lifetime defined here
+  --> $DIR/ex1b-return-no-names-if-else.rs:1:11
+   |
+LL | fn foo(x: &i32, y: &i32) -> &i32 {
+   |           ^^^^
 
-For more information about this error, try `rustc --explain E0106`.
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/ex1b-return-no-names-if-else.rs:3:27
+   |
+LL |     if x > y { x } else { y }
+   |                           ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the anonymous lifetime defined here
+  --> $DIR/ex1b-return-no-names-if-else.rs:1:20
+   |
+LL | fn foo(x: &i32, y: &i32) -> &i32 {
+   |                    ^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0312.
+For more information about an error, try `rustc --explain E0106`.

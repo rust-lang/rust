@@ -1,14 +1,9 @@
-error[E0106]: missing lifetime specifier
+error[E0637]: `'_` cannot be used here
   --> $DIR/impl-trait-missing-lifetime.rs:1:31
    |
 LL | fn f(_: impl Iterator<Item = &'_ ()>) {}
-   |                               ^^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL | fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
-   |     ++++                          ~~
+   |                               ^^ `'_` is a reserved lifetime name
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0637`.

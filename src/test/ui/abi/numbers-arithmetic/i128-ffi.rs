@@ -12,7 +12,7 @@
 extern "C" {
     fn identity(f: u128) -> u128;
     fn square(f: i128) -> i128;
-    fn sub(f: i128, f: i128) -> i128;
+    fn sub(f: i128, g: i128) -> i128;
 }
 
 fn main() {

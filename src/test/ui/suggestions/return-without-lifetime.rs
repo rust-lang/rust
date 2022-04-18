@@ -1,6 +1,7 @@
 struct Thing<'a>(&'a ());
 struct Foo<'a>(&usize);
 //~^ ERROR missing lifetime specifier
+//~| ERROR parameter `'a` is never used [E0392]
 
 fn func1<'a>(_arg: &'a Thing) -> &() { unimplemented!() }
 //~^ ERROR missing lifetime specifier

@@ -7,8 +7,8 @@ LL | fn buggy_const<const N: usize>(_a: &Option<[u8; N]>, _f: &str) -> &str {
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `_a` or `_f`
 help: consider introducing a named lifetime parameter
    |
-LL | fn buggy_const<'a, const N: usize>(_a: &'a Option<[u8; N]>, _f: &'a str) -> &'a str {
-   |                +++                      ++                       ++          ++
+LL | fn buggy_const<'a, const N: usize>(_a: &Option<[u8; N]>, _f: &str) -> &'a str {
+   |                +++                                                     ++
 
 error: aborting due to previous error
 

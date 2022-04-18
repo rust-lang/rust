@@ -7,7 +7,6 @@ use std::fmt::Debug;
 
 struct Foo {
     x: Box<dyn Debug + '_>, //~ ERROR missing lifetime specifier
-    //~^ ERROR E0228
 }
 
-fn main() { }
+fn main() {}
