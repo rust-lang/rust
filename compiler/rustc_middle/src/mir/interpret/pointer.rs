@@ -163,6 +163,9 @@ pub struct Pointer<Tag = AllocId> {
 }
 
 static_assert_size!(Pointer, 16);
+// `Option<Tag>` pointers are also passed around quite a bit
+// (but not stored in permanent machine state).
+static_assert_size!(Pointer<Option<AllocId>>, 16);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.

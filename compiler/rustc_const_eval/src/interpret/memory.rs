@@ -330,7 +330,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             *self.tcx,
             &mut self.machine,
             &mut alloc.extra,
-            tag,
+            (alloc_id, tag),
             alloc_range(Size::ZERO, size),
         )?;
 
@@ -350,7 +350,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<(AllocId, Size, M::PointerTag)>> {
+    ) -> InterpResult<'tcx, Option<(AllocId, Size, M::TagExtra)>> {
         let align = M::enforce_alignment(&self).then_some(align);
         self.check_and_deref_ptr(
             ptr,
@@ -401,11 +401,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Option<Align>,
         msg: CheckInAllocMsg,
-        alloc_size: impl FnOnce(
-            AllocId,
-            Size,
-            M::PointerTag,
-        ) -> InterpResult<'tcx, (Size, Align, T)>,
+        alloc_size: impl FnOnce(AllocId, Size, M::TagExtra) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
         fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
             if offset % align.bytes() == 0 {
@@ -450,7 +446,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
                     if M::force_int_for_alignment_check(self) {
-                        assert!(M::PointerTag::OFFSET_IS_ADDR, "ptr-to-int cast for align check should never fail");
+                        assert!(
+                            M::PointerTag::OFFSET_IS_ADDR,
+                            "ptr-to-int cast for align check should never fail"
+                        );
                         let (_, addr) = ptr.into_parts(); // we checked that offset is absolute
                         check_offset_align(addr.bytes(), align)?;
                     } else {
@@ -575,7 +574,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )?;
         if let Some((alloc_id, offset, tag, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::memory_read(*self.tcx, &self.machine, &alloc.extra, tag, range)?;
+            M::memory_read(*self.tcx, &self.machine, &alloc.extra, (alloc_id, tag), range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
             // Even in this branch we have to be sure that we actually access the allocation, in
@@ -636,7 +635,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
             let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
             let range = alloc_range(offset, size);
-            M::memory_written(tcx, machine, &mut alloc.extra, tag, range)?;
+            M::memory_written(tcx, machine, &mut alloc.extra, (alloc_id, tag), range)?;
             Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id }))
         } else {
             Ok(None)
@@ -1014,7 +1013,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        M::memory_read(*tcx, &self.machine, &src_alloc.extra, src_tag, src_range)?;
+        M::memory_read(*tcx, &self.machine, &src_alloc.extra, (src_alloc_id, src_tag), src_range)?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
         let Some((dest_alloc_id, dest_offset, dest_tag)) = dest_parts else {
@@ -1039,7 +1038,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
-        M::memory_written(*tcx, extra, &mut dest_alloc.extra, dest_tag, dest_range)?;
+        M::memory_written(
+            *tcx,
+            extra,
+            &mut dest_alloc.extra,
+            (dest_alloc_id, dest_tag),
+            dest_range,
+        )?;
         let dest_bytes = dest_alloc
             .get_bytes_mut_ptr(&tcx, dest_range)
             .map_err(|e| e.to_interp_error(dest_alloc_id))?
@@ -1158,11 +1163,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_try_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
-    ) -> Result<(AllocId, Size, M::PointerTag), u64> {
+    ) -> Result<(AllocId, Size, M::TagExtra), u64> {
         match ptr.into_pointer_or_addr() {
             Ok(ptr) => {
-                let (alloc_id, offset) = M::ptr_get_alloc(self, ptr);
-                Ok((alloc_id, offset, ptr.provenance))
+                let (alloc_id, offset, extra) = M::ptr_get_alloc(self, ptr);
+                Ok((alloc_id, offset, extra))
             }
             Err(addr) => Err(addr.bytes()),
         }
@@ -1173,7 +1178,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
-    ) -> InterpResult<'tcx, (AllocId, Size, M::PointerTag)> {
+    ) -> InterpResult<'tcx, (AllocId, Size, M::TagExtra)> {
         self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
             err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
         })
