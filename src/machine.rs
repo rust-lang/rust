@@ -12,6 +12,8 @@ use rand::SeedableRng;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
+#[allow(unused)]
+use rustc_data_structures::static_assert_size;
 use rustc_middle::{
     mir,
     ty::{
@@ -127,6 +129,13 @@ pub struct Tag {
     /// Stacked Borrows tag.
     pub sb: SbTag,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(Pointer<Tag>, 24);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(Pointer<Option<Tag>>, 24);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(ScalarMaybeUninit<Tag>, 32);
 
 impl Provenance for Tag {
     /// We use absolute addresses in the `offset` of a `Pointer<Tag>`.
