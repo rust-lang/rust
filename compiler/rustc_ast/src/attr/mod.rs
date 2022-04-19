@@ -1,9 +1,9 @@
 //! Functions dealing with attributes and meta items.
 
 use crate::ast;
-use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, Attribute};
+use crate::ast::{AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, Attribute};
+use crate::ast::{AttrMacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind};
-use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
@@ -152,7 +152,7 @@ impl Attribute {
 
     pub fn is_word(&self) -> bool {
         if let AttrKind::Normal(item, _) = &self.kind {
-            matches!(item.args, MacArgs::Empty)
+            matches!(item.args, AttrArgs::Empty)
         } else {
             false
         }
@@ -223,13 +223,13 @@ impl AttrItem {
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
         Some(MetaItem {
             path: self.path.clone(),
-            kind: MetaItemKind::from_mac_args(&self.args)?,
+            kind: MetaItemKind::from_attr_args(&self.args)?,
             span,
         })
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_mac_args(&self.args)
+        MetaItemKind::from_attr_args(&self.args)
     }
 }
 
@@ -344,7 +344,7 @@ crate fn mk_attr_id() -> AttrId {
     AttrId::from_u32(id)
 }
 
-pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
+pub fn mk_attr(style: AttrStyle, path: Path, args: AttrArgs, span: Span) -> Attribute {
     mk_attr_from_item(AttrItem { path, args, tokens: None }, None, style, span)
 }
 
@@ -359,12 +359,12 @@ pub fn mk_attr_from_item(
 
 /// Returns an inner attribute with the given value and span.
 pub fn mk_attr_inner(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Inner, item.path, item.kind.mac_args(item.span), item.span)
+    mk_attr(AttrStyle::Inner, item.path, item.kind.attr_args(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_attr_outer(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
+    mk_attr(AttrStyle::Outer, item.path, item.kind.attr_args(item.span), item.span)
 }
 
 pub fn mk_doc_comment(
@@ -467,10 +467,10 @@ impl MetaItemKind {
         }
     }
 
-    pub fn mac_args(&self, span: Span) -> MacArgs {
+    pub fn attr_args(&self, span: Span) -> AttrArgs {
         match self {
-            MetaItemKind::Word => MacArgs::Empty,
-            MetaItemKind::NameValue(lit) => MacArgs::Eq(span, lit.to_token()),
+            MetaItemKind::Word => AttrArgs::Empty,
+            MetaItemKind::NameValue(lit) => AttrArgs::Eq(span, lit.to_token()),
             MetaItemKind::List(list) => {
                 let mut tts = Vec::new();
                 for (i, item) in list.iter().enumerate() {
@@ -479,9 +479,9 @@ impl MetaItemKind {
                     }
                     tts.extend(item.token_trees_and_spacings())
                 }
-                MacArgs::Delimited(
+                AttrArgs::Delimited(
                     DelimSpan::from_single(span),
-                    MacDelimiter::Parenthesis,
+                    AttrMacDelimiter::Parenthesis,
                     TokenStream::new(tts),
                 )
             }
@@ -545,14 +545,14 @@ impl MetaItemKind {
         }
     }
 
-    fn from_mac_args(args: &MacArgs) -> Option<MetaItemKind> {
+    fn from_attr_args(args: &AttrArgs) -> Option<MetaItemKind> {
         match args {
-            MacArgs::Delimited(_, MacDelimiter::Parenthesis, tokens) => {
+            AttrArgs::Delimited(_, AttrMacDelimiter::Parenthesis, tokens) => {
                 MetaItemKind::list_from_tokens(tokens.clone())
             }
-            MacArgs::Delimited(..) => None,
-            MacArgs::Eq(_, token) => Lit::from_token(token).ok().map(MetaItemKind::NameValue),
-            MacArgs::Empty => Some(MetaItemKind::Word),
+            AttrArgs::Delimited(..) => None,
+            AttrArgs::Eq(_, token) => Lit::from_token(token).ok().map(MetaItemKind::NameValue),
+            AttrArgs::Empty => Some(MetaItemKind::Word),
         }
     }
 

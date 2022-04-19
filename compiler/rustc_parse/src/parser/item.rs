@@ -8,10 +8,10 @@ use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::{AttrMacDelimiter, MacArgs, MacCall};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::Edition;
@@ -1650,7 +1650,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params.into(), arrow.into(), body.into()]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(MacArgs::Delimited(dspan, MacDelimiter::Brace, tokens))
+            P(MacArgs(dspan, AttrMacDelimiter::Brace, tokens))
         } else {
             return self.unexpected();
         };
@@ -1757,15 +1757,15 @@ impl<'a> Parser<'a> {
     }
 
     fn report_invalid_macro_expansion_item(&self, args: &MacArgs) {
-        let span = args.span().expect("undelimited macro call");
+        let span = args.span();
         let mut err = self.struct_span_err(
             span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
         if self.unclosed_delims.is_empty() {
-            let DelimSpan { open, close } = match args {
-                MacArgs::Empty | MacArgs::Eq(..) => unreachable!(),
-                MacArgs::Delimited(dspan, ..) => *dspan,
+            let DelimSpan { open, close } = {
+                let MacArgs(dspan, ..) = args;
+                *dspan
             };
             err.multipart_suggestion(
                 "change the delimiters to curly braces",

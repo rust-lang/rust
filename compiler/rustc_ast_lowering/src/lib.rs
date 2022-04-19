@@ -906,7 +906,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::Normal(ref item, _) => AttrKind::Normal(
                 AttrItem {
                     path: item.path.clone(),
-                    args: self.lower_mac_args(&item.args),
+                    args: self.lower_attr_args(&item.args),
                     tokens: None,
                 },
                 None,
@@ -926,27 +926,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
+    fn lower_attr_args(&self, args: &AttrArgs) -> AttrArgs {
         match *args {
-            MacArgs::Empty => MacArgs::Empty,
-            MacArgs::Delimited(dspan, delim, ref tokens) => {
-                // This is either a non-key-value attribute, or a `macro_rules!` body.
-                // We either not have any nonterminals present (in the case of an attribute),
-                // or have tokens available for all nonterminals in the case of a nested
-                // `macro_rules`: e.g:
-                //
-                // ```rust
-                // macro_rules! outer {
-                //     ($e:expr) => {
-                //         macro_rules! inner {
-                //             () => { $e }
-                //         }
-                //     }
-                // }
-                // ```
-                //
-                // In both cases, we don't want to synthesize any tokens
-                MacArgs::Delimited(
+            AttrArgs::Empty => AttrArgs::Empty,
+            AttrArgs::Delimited(dspan, delim, ref tokens) => {
+                // This is a non-key-value attribute. We have no nonterminals presen, so we don't
+                // want to synthesize any tokens.
+                AttrArgs::Delimited(
                     dspan,
                     delim,
                     self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::No),
@@ -955,7 +941,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can synthesize tokens with fake
             // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            MacArgs::Eq(eq_span, ref token) => {
+            AttrArgs::Eq(eq_span, ref token) => {
                 // In valid code the value is always representable as a single literal token.
                 fn unwrap_single_token(sess: &Session, tokens: TokenStream, span: Span) -> Token {
                     if tokens.len() != 1 {
@@ -983,9 +969,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     nt_to_tokenstream: self.nt_to_tokenstream,
                 }
                 .process_token(token.clone());
-                MacArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
+                AttrArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
             }
         }
+    }
+
+    fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
+        let MacArgs(dspan, delim, ref tokens) = *args;
+        // This is a `macro_rules!` body. We tokens available for all nonterminals in the case of a
+        // nested `macro_rules`: e.g:
+        //
+        // ```rust
+        // macro_rules! outer {
+        //     ($e:expr) => {
+        //         macro_rules! inner {
+        //             () => { $e }
+        //         }
+        //     }
+        // }
+        // ```
+        //
+        // We don't want to synthesize any tokens.
+        MacArgs(
+            dspan,
+            delim,
+            self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::No),
+        )
     }
 
     fn lower_token_stream(

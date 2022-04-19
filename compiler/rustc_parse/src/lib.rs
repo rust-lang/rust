@@ -339,7 +339,7 @@ pub fn parse_cfg_attr(
     parse_sess: &ParseSess,
 ) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
     match attr.get_normal_item().args {
-        ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+        ast::AttrArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
             let msg = "wrong `cfg_attr` delimiters";
             crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
             match parse_in(parse_sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {

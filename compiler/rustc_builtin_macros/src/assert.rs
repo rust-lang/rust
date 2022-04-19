@@ -49,11 +49,7 @@ pub fn expand_assert<'cx>(
             sp,
             ExprKind::MacCall(MacCall {
                 path,
-                args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(sp),
-                    MacDelimiter::Parenthesis,
-                    tokens,
-                )),
+                args: P(MacArgs(DelimSpan::from_single(sp), AttrMacDelimiter::Parenthesis, tokens)),
                 prior_type_ascription: None,
             }),
         )

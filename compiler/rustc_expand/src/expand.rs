@@ -11,8 +11,8 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstLike, AstLikeWrapper, AttrStyle, ExprKind, ForeignItemKind};
-use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind};
+use rustc_ast::{AssocItemKind, AstLike, AstLikeWrapper, AttrArgs, AttrStyle, ExprKind};
+use rustc_ast::{ForeignItemKind, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -686,7 +686,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.into_tokens(&self.cx.sess.parse_sess),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let MacArgs::Eq(..) = attr_item.args {
+                    if let AttrArgs::Eq(..) = attr_item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let inner_tokens = attr_item.args.inner_tokens();

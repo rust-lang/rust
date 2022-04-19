@@ -18,7 +18,11 @@ pub fn placeholder(
     fn mac_placeholder() -> ast::MacCall {
         ast::MacCall {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
-            args: P(ast::MacArgs::Empty),
+            args: P(ast::MacArgs(
+                ast::tokenstream::DelimSpan::dummy(),
+                ast::AttrMacDelimiter::Parenthesis,
+                ast::tokenstream::TokenStream::default(),
+            )),
             prior_type_ascription: None,
         }
     }

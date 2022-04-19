@@ -26,8 +26,8 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
-use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
-use rustc_ast::{Visibility, VisibilityKind};
+use rustc_ast::{Async, AttrMacDelimiter, Expr, ExprKind, MacArgs, Mutability, StrLit, Unsafe};
+use rustc_ast::{AttrArgs, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -1162,28 +1162,42 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mac_args(&mut self) -> PResult<'a, P<MacArgs>> {
-        self.parse_mac_args_common(true).map(P)
+        Ok(P(
+            if self.check(&token::OpenDelim(DelimToken::Paren))
+                || self.check(&token::OpenDelim(DelimToken::Bracket))
+                || self.check(&token::OpenDelim(DelimToken::Brace))
+            {
+                match self.parse_token_tree() {
+                    TokenTree::Delimited(dspan, delim, tokens) => {
+                        // We've confirmed above that there is a delimiter so unwrapping is OK.
+                        MacArgs(dspan, AttrMacDelimiter::from_token(delim).unwrap(), tokens)
+                    }
+                    _ => unreachable!(),
+                }
+            } else {
+                return self.unexpected();
+            },
+        ))
     }
 
-    fn parse_attr_args(&mut self) -> PResult<'a, MacArgs> {
-        self.parse_mac_args_common(false)
-    }
-
-    fn parse_mac_args_common(&mut self, delimited_only: bool) -> PResult<'a, MacArgs> {
+    fn parse_attr_args(&mut self) -> PResult<'a, AttrArgs> {
         Ok(
             if self.check(&token::OpenDelim(DelimToken::Paren))
                 || self.check(&token::OpenDelim(DelimToken::Bracket))
                 || self.check(&token::OpenDelim(DelimToken::Brace))
             {
                 match self.parse_token_tree() {
-                    TokenTree::Delimited(dspan, delim, tokens) =>
-                    // We've confirmed above that there is a delimiter so unwrapping is OK.
-                    {
-                        MacArgs::Delimited(dspan, MacDelimiter::from_token(delim).unwrap(), tokens)
+                    TokenTree::Delimited(dspan, delim, tokens) => {
+                        // We've confirmed above that there is a delimiter so unwrapping is OK.
+                        AttrArgs::Delimited(
+                            dspan,
+                            AttrMacDelimiter::from_token(delim).unwrap(),
+                            tokens,
+                        )
                     }
                     _ => unreachable!(),
                 }
-            } else if !delimited_only {
+            } else {
                 if self.eat(&token::Eq) {
                     let eq_span = self.prev_token.span;
 
@@ -1192,12 +1206,10 @@ impl<'a> Parser<'a> {
                     let span = expr.span;
 
                     let token_kind = token::Interpolated(Lrc::new(token::NtExpr(expr)));
-                    MacArgs::Eq(eq_span, Token::new(token_kind, span))
+                    AttrArgs::Eq(eq_span, Token::new(token_kind, span))
                 } else {
-                    MacArgs::Empty
+                    AttrArgs::Empty
                 }
-            } else {
-                return self.unexpected();
             },
         )
     }

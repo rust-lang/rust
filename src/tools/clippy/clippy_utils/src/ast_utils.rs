@@ -678,17 +678,23 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l, _), Normal(r, _)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
+            (Normal(l, _), Normal(r, _)) => eq_path(&l.path, &r.path) && eq_attr_args(&l.args, &r.args),
             _ => false,
         }
 }
 
-pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
-    use MacArgs::*;
+pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
+    use AttrArgs::*;
     match (l, r) {
         (Empty, Empty) => true,
         (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
         (Eq(_, lt), Eq(_, rt)) => lt.kind == rt.kind,
         _ => false,
     }
+}
+
+pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
+    let MacArgs(_, ld, lts) = l;
+    let MacArgs(_, rd, rts) = r;
+    ld == rd && lts.eq_unspanned(rts)
 }

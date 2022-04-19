@@ -11,10 +11,9 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{self as ast, AttrArgs, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::{attr, Term};
-use rustc_ast::{GenericArg, MacArgs};
-use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::{GenericArg, GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
@@ -460,7 +459,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
         match &item.args {
-            MacArgs::Delimited(_, delim, tokens) => self.print_mac_common(
+            AttrArgs::Delimited(_, delim, tokens) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,
                 None,
@@ -469,14 +468,15 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 true,
                 span,
             ),
-            MacArgs::Empty | MacArgs::Eq(..) => {
+            AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
-                if let MacArgs::Eq(_, token) = &item.args {
-                    self.space();
-                    self.word_space("=");
-                    let token_str = self.token_to_string_ext(token, true);
-                    self.word(token_str);
-                }
+            }
+            AttrArgs::Eq(_, token) => {
+                self.print_path(&item.path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.token_to_string_ext(token, true);
+                self.word(token_str);
             }
         }
         self.end();

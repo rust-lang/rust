@@ -363,14 +363,14 @@ pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
+pub fn visit_attr_args<T: MutVisitor>(args: &mut AttrArgs, vis: &mut T) {
     match args {
-        MacArgs::Empty => {}
-        MacArgs::Delimited(dspan, _delim, tokens) => {
+        AttrArgs::Empty => {}
+        AttrArgs::Delimited(dspan, _delim, tokens) => {
             visit_delim_span(dspan, vis);
             visit_tts(tokens, vis);
         }
-        MacArgs::Eq(eq_span, token) => {
+        AttrArgs::Eq(eq_span, token) => {
             vis.visit_span(eq_span);
             if T::VISIT_TOKENS {
                 visit_token(token, vis);
@@ -387,6 +387,13 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             }
         }
     }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
+    let MacArgs(dspan, _delim, tokens) = args;
+    visit_delim_span(dspan, vis);
+    visit_tts(tokens, vis);
 }
 
 pub fn visit_delim_span<T: MutVisitor>(dspan: &mut DelimSpan, vis: &mut T) {
@@ -602,7 +609,7 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     match kind {
         AttrKind::Normal(AttrItem { path, args, tokens }, attr_tokens) => {
             vis.visit_path(path);
-            visit_mac_args(args, vis);
+            visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
             visit_lazy_tts(attr_tokens, vis);
         }
@@ -793,7 +800,7 @@ pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut 
         token::NtMeta(item) => {
             let AttrItem { path, args, tokens } = item.deref_mut();
             vis.visit_path(path);
-            visit_mac_args(args, vis);
+            visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
         }
         token::NtPath(path) => vis.visit_path(path),

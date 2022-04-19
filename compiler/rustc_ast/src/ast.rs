@@ -14,7 +14,7 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`AttrMacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
@@ -1521,80 +1521,58 @@ pub struct MacCall {
 
 impl MacCall {
     pub fn span(&self) -> Span {
-        self.path.span.to(self.args.span().unwrap_or(self.path.span))
+        self.path.span.to(self.args.span())
     }
 }
 
-/// Arguments passed to an attribute or a function-like macro.
+/// Arguments passed to a function-like macro.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum MacArgs {
-    /// No arguments - `#[attr]`.
-    Empty,
-    /// Delimited arguments - `#[attr()/[]/{}]` or `mac!()/[]/{}`.
-    Delimited(DelimSpan, MacDelimiter, TokenStream),
-    /// Arguments of a key-value attribute - `#[attr = "value"]`.
-    Eq(
-        /// Span of the `=` token.
-        Span,
-        /// "value" as a nonterminal token.
-        Token,
-    ),
-}
+pub struct MacArgs(pub DelimSpan, pub AttrMacDelimiter, pub TokenStream);
 
 impl MacArgs {
-    pub fn delim(&self) -> DelimToken {
-        match self {
-            MacArgs::Delimited(_, delim, _) => delim.to_token(),
-            MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
-        }
+    pub fn span(&self) -> Span {
+        self.0.entire()
     }
 
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            MacArgs::Empty => None,
-            MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
-            MacArgs::Eq(eq_span, token) => Some(eq_span.to(token.span)),
-        }
+    pub fn delim(&self) -> DelimToken {
+        self.1.to_token()
     }
 
     /// Tokens inside the delimiters or after `=`.
     /// Proc macros see these tokens, for example.
     pub fn inner_tokens(&self) -> TokenStream {
-        match self {
-            MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(.., tokens) => tokens.clone(),
-            MacArgs::Eq(.., token) => TokenTree::Token(token.clone()).into(),
-        }
+        self.2.clone()
     }
 
     /// Whether a macro with these arguments needs a semicolon
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
-        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace, _))
+        !matches!(self, MacArgs(_, AttrMacDelimiter::Brace, _))
     }
 }
 
+// This is used in both attributes and macro calls, hence the name.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum MacDelimiter {
+pub enum AttrMacDelimiter {
     Parenthesis,
     Bracket,
     Brace,
 }
 
-impl MacDelimiter {
+impl AttrMacDelimiter {
     pub fn to_token(self) -> DelimToken {
         match self {
-            MacDelimiter::Parenthesis => DelimToken::Paren,
-            MacDelimiter::Bracket => DelimToken::Bracket,
-            MacDelimiter::Brace => DelimToken::Brace,
+            AttrMacDelimiter::Parenthesis => DelimToken::Paren,
+            AttrMacDelimiter::Bracket => DelimToken::Bracket,
+            AttrMacDelimiter::Brace => DelimToken::Brace,
         }
     }
 
-    pub fn from_token(delim: DelimToken) -> Option<MacDelimiter> {
+    pub fn from_token(delim: DelimToken) -> Option<AttrMacDelimiter> {
         match delim {
-            token::Paren => Some(MacDelimiter::Parenthesis),
-            token::Bracket => Some(MacDelimiter::Bracket),
-            token::Brace => Some(MacDelimiter::Brace),
+            token::Paren => Some(AttrMacDelimiter::Parenthesis),
+            token::Bracket => Some(AttrMacDelimiter::Bracket),
+            token::Brace => Some(AttrMacDelimiter::Brace),
             token::NoDelim => None,
         }
     }
@@ -2454,8 +2432,44 @@ impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
-    pub args: MacArgs,
+    pub args: AttrArgs,
     pub tokens: Option<LazyTokenStream>,
+}
+
+/// Arguments passed to an attribute.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum AttrArgs {
+    /// No arguments - `#[attr]`.
+    Empty,
+    /// Delimited arguments - `#[attr()/[]/{}]`.
+    Delimited(DelimSpan, AttrMacDelimiter, TokenStream),
+    /// Arguments of a key-value attribute - `#[attr = "value"]`.
+    Eq(
+        /// Span of the `=` token.
+        Span,
+        /// "value" as a nonterminal token.
+        Token,
+    ),
+}
+
+impl AttrArgs {
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            AttrArgs::Empty => None,
+            AttrArgs::Delimited(dspan, ..) => Some(dspan.entire()),
+            AttrArgs::Eq(eq_span, token) => Some(eq_span.to(token.span)),
+        }
+    }
+
+    /// Tokens inside the delimiters or after `=`.
+    /// Proc macros see these tokens, for example.
+    pub fn inner_tokens(&self) -> TokenStream {
+        match self {
+            AttrArgs::Empty => TokenStream::default(),
+            AttrArgs::Delimited(.., tokens) => tokens.clone(),
+            AttrArgs::Eq(.., token) => TokenTree::Token(token.clone()).into(),
+        }
+    }
 }
 
 /// A list of attributes.

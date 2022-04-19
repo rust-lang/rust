@@ -906,18 +906,18 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
     match attr.kind {
-        AttrKind::Normal(ref item, ref _tokens) => walk_mac_args(visitor, &item.args),
+        AttrKind::Normal(ref item, ref _tokens) => walk_attr_args(visitor, &item.args),
         AttrKind::DocComment(..) => {}
     }
 }
 
-pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
+pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) {
     match args {
-        MacArgs::Empty => {}
-        MacArgs::Delimited(_dspan, _delim, _tokens) => {}
+        AttrArgs::Empty => {}
+        AttrArgs::Delimited(_dspan, _delim, _tokens) => {}
         // The value in `#[key = VALUE]` must be visited as an expression for backward
         // compatibility, so that macros can be expanded in that position.
-        MacArgs::Eq(_eq_span, token) => match &token.kind {
+        AttrArgs::Eq(_eq_span, token) => match &token.kind {
             token::Interpolated(nt) => match &**nt {
                 token::NtExpr(expr) => visitor.visit_expr(expr),
                 t => panic!("unexpected token in key-value attribute: {:?}", t),
