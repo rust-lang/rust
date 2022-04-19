@@ -52,25 +52,6 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     }
 }
 
-#[cfg(target_os = "emscripten")]
-pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) {
-    extern "C" {
-        fn emscripten_futex_wait(
-            addr: *const AtomicU32,
-            val: libc::c_uint,
-            max_wait_ms: libc::c_double,
-        ) -> libc::c_int;
-    }
-
-    unsafe {
-        emscripten_futex_wait(
-            futex,
-            expected,
-            timeout.map_or(crate::f64::INFINITY, |d| d.as_secs_f64() * 1000.0),
-        );
-    }
-}
-
 /// Wake up one thread that's blocked on futex_wait on this futex.
 ///
 /// Returns true if this actually woke up such a thread,
@@ -101,10 +82,32 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "emscripten")]
-pub fn futex_wake(futex: &AtomicU32) -> bool {
-    extern "C" {
-        fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
-    }
+extern "C" {
+    fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
+    fn emscripten_futex_wait(
+        addr: *const AtomicU32,
+        val: libc::c_uint,
+        max_wait_ms: libc::c_double,
+    ) -> libc::c_int;
+}
 
+#[cfg(target_os = "emscripten")]
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+    unsafe {
+        emscripten_futex_wait(
+            futex,
+            expected,
+            timeout.map_or(f64::INFINITY, |d| d.as_secs_f64() * 1000.0),
+        ) != -libc::ETIMEDOUT
+    }
+}
+
+#[cfg(target_os = "emscripten")]
+pub fn futex_wake(futex: &AtomicU32) -> bool {
     unsafe { emscripten_futex_wake(futex, 1) > 0 }
+}
+
+#[cfg(target_os = "emscripten")]
+pub fn futex_wake_all(futex: &AtomicU32) {
+    unsafe { emscripten_futex_wake(futex, i32::MAX) };
 }
