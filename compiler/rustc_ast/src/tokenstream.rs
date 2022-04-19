@@ -586,12 +586,10 @@ impl Cursor {
     }
 
     pub fn next_with_spacing(&mut self) -> Option<TreeAndSpacing> {
-        if self.index < self.stream.len() {
+        self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
-            Some(self.stream.0[self.index - 1].clone())
-        } else {
-            None
-        }
+            tree.clone()
+        })
     }
 
     pub fn index(&self) -> usize {
