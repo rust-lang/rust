@@ -1165,6 +1165,10 @@ impl Attributes {
         ret
     }
 
+    crate fn doc_contains(&self, c: char) -> bool {
+        self.doc_strings.iter().any(|s| s.doc.as_str().contains(c))
+    }
+
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     crate fn collapsed_doc_value(&self) -> Option<String> {

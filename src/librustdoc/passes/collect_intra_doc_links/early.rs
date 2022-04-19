@@ -164,9 +164,14 @@ impl EarlyDocLinkResolver<'_, '_> {
     fn load_links_in_attrs(&mut self, attrs: &[ast::Attribute]) {
         let module_id = self.current_mod.to_def_id();
         let mut need_traits_in_scope = false;
-        for (doc_module, doc) in
-            Attributes::from_ast(attrs, None).collapsed_doc_value_by_module_level()
-        {
+        let mut attrs = Attributes::from_ast(attrs, None);
+        if !attrs.doc_contains('[') {
+            // No need to load anything if there is no link inside this doc comment...
+            return;
+        }
+        // The `unindent_comments` pass hasn't been run yet!
+        attrs.unindent_doc_comments();
+        for (doc_module, doc) in attrs.collapsed_doc_value_by_module_level() {
             assert_eq!(doc_module, None);
             for link in markdown_links(&doc.as_str()) {
                 if let Some(Ok(pinfo)) = preprocess_link(&link) {
