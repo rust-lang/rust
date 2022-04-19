@@ -2289,17 +2289,14 @@ public:
     assert(ptr);
     if (OrigOffset) {
       Value *newOffset = lookupM(getNewFromOriginal(OrigOffset), BuilderM);
-#if LLVM_VERSION_MAJOR > 7
       auto rule = [&](Value *ptr) {
+#if LLVM_VERSION_MAJOR > 7
         return BuilderM.CreateGEP(ptr->getType()->getPointerElementType(), ptr,
                                   newOffset);
-      };
 #else
-      auto rule = [&](Value *ptr) {
-        return BuilderM.CreateGEP(
-            ptr, lookupM(getNewFromOriginal(OrigOffset), BuilderM));
-      };
+        return BuilderM.CreateGEP(ptr, newOffset);
 #endif
+      };
       ptr = applyChainRule(diffType, BuilderM, rule, ptr);
     }
 
