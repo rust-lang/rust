@@ -88,6 +88,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
     type PointerTag: Provenance + Eq + Hash + 'static;
 
+    /// When getting the AllocId of a pointer, some extra data is also obtained from the tag
+    /// that is passed to memory access hooks so they can do things with it.
+    type TagExtra: Copy + 'static;
+
     /// Machines can define extra (non-instance) things that represent values of function pointers.
     /// For example, Miri uses this to return a function pointer from `dlsym`
     /// that can later be called to execute the right thing.
@@ -122,6 +126,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether, when checking alignment, we should `force_int` and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
+    ///
+    /// Requires PointerTag::OFFSET_IS_ADDR to be true.
     fn force_int_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether to enforce the validity invariant
@@ -285,11 +291,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
         addr: u64,
     ) -> Pointer<Option<Self::PointerTag>>;
 
-    /// Convert a pointer with provenance into an allocation-offset pair.
+    /// Convert a pointer with provenance into an allocation-offset pair
+    /// and extra provenance info.
+    ///
+    /// The returned `AllocId` must be the same as `ptr.provenance.get_alloc_id()`.
     fn ptr_get_alloc(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
-    ) -> (AllocId, Size);
+    ) -> (AllocId, Size, Self::TagExtra);
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
     /// it contains (in relocations) tagged.  The way we construct allocations is
@@ -321,7 +330,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
-        _tag: Self::PointerTag,
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -333,7 +342,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
-        _tag: Self::PointerTag,
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -345,7 +354,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
-        _tag: Self::PointerTag,
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -397,6 +406,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
 // (CTFE and ConstProp) use the same instance.  Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type PointerTag = AllocId;
+    type TagExtra = ();
+
     type ExtraFnVal = !;
 
     type MemoryMap =
@@ -474,9 +485,12 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn ptr_get_alloc(_ecx: &InterpCx<$mir, $tcx, Self>, ptr: Pointer<AllocId>) -> (AllocId, Size) {
+    fn ptr_get_alloc(
+        _ecx: &InterpCx<$mir, $tcx, Self>,
+        ptr: Pointer<AllocId>,
+    ) -> (AllocId, Size, Self::TagExtra) {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (alloc_id, offset) = ptr.into_parts();
-        (alloc_id, offset)
+        (alloc_id, offset, ())
     }
 }
