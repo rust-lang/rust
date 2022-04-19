@@ -1,5 +1,6 @@
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // compile-flags: -Zunsound-mir-opts -Zmir-opt-level=3
+// ignore-wasm32-bare compiled with panic=abort by default
 #![feature(arbitrary_enum_discriminant, repr128)]
 
 // Tests that an enum with a variant with no data gets correctly transformed.
