@@ -77,23 +77,7 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // for TRA:
-        //let size = cmp::min(self.a.size(), self.b.size());
-        //(size, Some(size))
-
-        let (a_lower, a_upper) = self.a.size_hint();
-        let (b_lower, b_upper) = self.b.size_hint();
-
-        let lower = cmp::min(a_lower, b_lower);
-
-        let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => Some(cmp::min(x, y)),
-            (Some(x), None) => Some(x),
-            (None, Some(y)) => Some(y),
-            (None, None) => None,
-        };
-
-        (lower, upper)
+        self.spec_size_hint()
     }
 
     fn fold<T, F>(self, init: T, f: F) -> T
@@ -158,6 +142,7 @@ trait ZipSpec: Iterator {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>;
 
+    fn spec_size_hint(&self) -> (usize, Option<usize>);
 }
 
 impl<A, B> ZipSpec for Zip<A, B>
@@ -188,6 +173,23 @@ where
             accum = f(accum, x)?;
         }
         try { accum }
+    }
+
+    #[inline]
+    default fn spec_size_hint(&self) -> (usize, Option<usize>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = cmp::min(a_lower, b_lower);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => Some(cmp::min(x, y)),
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None,
+        };
+
+        (lower, upper)
     }
 }
 
@@ -232,6 +234,12 @@ where
         // FIXME drop-guard or use ForLoopDesugar
         self.cleanup(len, true);
         try { accum }
+    }
+
+    #[inline]
+    fn spec_size_hint(&self) -> (usize, Option<usize>) {
+        let size = cmp::min(self.a.size_hint().0, self.b.size_hint().0);
+        (size, Some(size))
     }
 }
 
