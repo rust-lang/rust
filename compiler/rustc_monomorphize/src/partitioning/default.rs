@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
@@ -335,10 +335,10 @@ fn compute_codegen_unit_name(
     let mut cgu_def_id = None;
     // Walk backwards from the item we want to find the module for.
     loop {
-        if current_def_id.index == CRATE_DEF_INDEX {
+        if current_def_id.is_crate_root() {
             if cgu_def_id.is_none() {
                 // If we have not found a module yet, take the crate root.
-                cgu_def_id = Some(DefId { krate: def_id.krate, index: CRATE_DEF_INDEX });
+                cgu_def_id = Some(def_id.krate.as_def_id());
             }
             break;
         } else if tcx.def_kind(current_def_id) == DefKind::Mod {

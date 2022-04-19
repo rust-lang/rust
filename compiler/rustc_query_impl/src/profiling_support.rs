@@ -1,7 +1,7 @@
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 use rustc_query_system::query::QueryCache;
@@ -143,7 +143,7 @@ impl SpecIntoSelfProfilingString for CrateNum {
         &self,
         builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
     ) -> StringId {
-        builder.def_id_to_string_id(DefId { krate: *self, index: CRATE_DEF_INDEX })
+        builder.def_id_to_string_id(self.as_def_id())
     }
 }
 

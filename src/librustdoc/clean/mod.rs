@@ -15,7 +15,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
@@ -1975,7 +1975,7 @@ fn clean_extern_crate(
     // this is the ID of the `extern crate` statement
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
-    let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.def_id);
     let please_inline = ty_vis.is_public()
@@ -2094,7 +2094,7 @@ fn clean_use_statement(
     } else {
         if inline_attr.is_none() {
             if let Res::Def(DefKind::Mod, did) = path.res {
-                if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                if !did.is_local() && did.is_crate_root() {
                     // if we're `pub use`ing an extern crate root, don't inline it unless we
                     // were specifically asked for it
                     denied = true;
