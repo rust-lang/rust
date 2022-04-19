@@ -277,7 +277,10 @@ where
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
-            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta.check_init()?)),
+            Immediate::ScalarPair(ptr, meta) => {
+                assert!(layout.is_unsized());
+                (ptr, MemPlaceMeta::Meta(meta.check_init()?))
+            }
         };
 
         let mplace = MemPlace {
@@ -298,8 +301,18 @@ where
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let val = self.read_immediate(src)?;
-        trace!("deref to {} on {:?}", val.layout.ty, *val);
+        // HACK we need to special-case dereferencing a `Box` with a non-ZST allocator.
+        // See https://github.com/rust-lang/rust/issues/95453; codegen does similar things.
+        let src = if src.layout.ty.is_box() && !src.layout.field(self, 1).is_zst() {
+            // Extract `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
+            let uniq = self.operand_field(src, 0)?;
+            let nonnull = self.operand_field(&uniq, 0)?;
+            self.operand_field(&nonnull, 0)?
+        } else {
+            *src
+        };
+        let val = self.read_immediate(&src)?;
+        debug!("deref to {} on {:?}", val.layout.ty, *val);
         let mplace = self.ref_to_mplace(&val)?;
         self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
         Ok(mplace)
@@ -762,7 +775,8 @@ where
                     Abi::Scalar(_) => {} // fine
                     _ => span_bug!(
                         self.cur_span(),
-                        "write_immediate_to_mplace: invalid Scalar layout: {:#?}",
+                        "write_immediate_to_mplace: invalid layout for value {:?}: {:#?}",
+                        value,
                         dest.layout
                     ),
                 }
@@ -774,7 +788,8 @@ where
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let Abi::ScalarPair(a, b) = dest.layout.abi else { span_bug!(
                         self.cur_span(),
-                        "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
+                        "write_immediate_to_mplace: invalid layout for value {:?}: {:#?}",
+                        value,
                         dest.layout
                     )
                 };

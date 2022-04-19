@@ -563,7 +563,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 self.check_safe_pointer(value, "reference")?;
                 Ok(true)
             }
-            ty::Adt(def, ..) if def.is_box() => {
+            // HACK: We only treat boxes with ZST allocators as primitives.
+            // See https://github.com/rust-lang/rust/issues/95453.
+            ty::Adt(def, ..) if def.is_box() && value.layout.field(self.ecx, 1).is_zst() => {
                 self.check_safe_pointer(value, "box")?;
                 Ok(true)
             }
@@ -786,7 +788,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             return Ok(());
         }
         // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
-        assert!(op.layout.ty.builtin_deref(true).is_none());
+        // FIXME: `builtin_deref` treats `Box` as a pointer even with arbitrary allocators,
+        // but we cannot treat that as a primitive, so we have to disable this.
+        // See https://github.com/rust-lang/rust/issues/95453.
+        // assert!(op.layout.ty.builtin_deref(true).is_none());
 
         // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
