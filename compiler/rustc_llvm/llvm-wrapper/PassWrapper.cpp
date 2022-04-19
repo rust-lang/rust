@@ -107,6 +107,7 @@ static LLVMRustPassKind toRust(PassKind Kind) {
 }
 
 extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
+#if LLVM_VERSION_LT(15, 0)
   StringRef SR(PassName);
   PassRegistry *PR = PassRegistry::getPassRegistry();
 
@@ -115,36 +116,59 @@ extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
     return wrap(PI->createPass());
   }
   return nullptr;
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateAddressSanitizerFunctionPass(bool Recover) {
+#if LLVM_VERSION_LT(15, 0)
   const bool CompileKernel = false;
   const bool UseAfterScope = true;
 
   return wrap(createAddressSanitizerFunctionPass(CompileKernel, Recover, UseAfterScope));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
+#if LLVM_VERSION_LT(15, 0)
   const bool CompileKernel = false;
 
   return wrap(createModuleAddressSanitizerLegacyPassPass(CompileKernel, Recover));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool Recover) {
+#if LLVM_VERSION_LT(15, 0)
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
+#if LLVM_VERSION_LT(15, 0)
   return wrap(createThreadSanitizerLegacyPassPass());
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
+#if LLVM_VERSION_LT(15, 0)
   const bool CompileKernel = false;
 
   return wrap(createHWAddressSanitizerLegacyPassPass(CompileKernel, Recover));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
@@ -154,10 +178,22 @@ extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
 }
 
 extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
+#if LLVM_VERSION_LT(15, 0)
   assert(RustPass);
   Pass *Pass = unwrap(RustPass);
   PassManagerBase *PMB = unwrap(PMR);
   PMB->add(Pass);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+extern "C" void LLVMRustPassManagerBuilderPopulateLTOPassManager(
+  LLVMPassManagerBuilderRef PMB, LLVMPassManagerRef PM, bool Internalize, bool RunInliner) {
+#if LLVM_VERSION_LT(15, 0)
+  LLVMPassManagerBuilderPopulateLTOPassManager(PMB, PM, Internalize, RunInliner);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C"
@@ -165,12 +201,17 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   LLVMPassManagerBuilderRef PMBR,
   LLVMPassManagerRef PMR
 ) {
+#if LLVM_VERSION_LT(15, 0)
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C"
 void LLVMRustAddLastExtensionPasses(
     LLVMPassManagerBuilderRef PMBR, LLVMPassRef *Passes, size_t NumPasses) {
+#if LLVM_VERSION_LT(15, 0)
   auto AddExtensionPasses = [Passes, NumPasses](
       const PassManagerBuilder &Builder, PassManagerBase &PM) {
     for (size_t I = 0; I < NumPasses; I++) {
@@ -183,6 +224,9 @@ void LLVMRustAddLastExtensionPasses(
                              AddExtensionPasses);
   unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                              AddExtensionPasses);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 #ifdef LLVM_COMPONENT_X86
