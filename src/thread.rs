@@ -10,6 +10,7 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::Mutability;
 
 use crate::sync::SynchronizationState;
 use crate::*;
@@ -571,9 +572,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
             let allocation = tcx.eval_static_initializer(def_id)?;
+            let mut allocation = allocation.inner().clone();
+            // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
+            allocation.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
-            let new_alloc =
-                this.allocate_raw_ptr(allocation.inner().clone(), MiriMemoryKind::Tls.into());
+            let new_alloc = this.allocate_raw_ptr(allocation, MiriMemoryKind::Tls.into());
             this.machine.threads.set_thread_local_alloc(def_id, new_alloc);
             Ok(new_alloc)
         }
