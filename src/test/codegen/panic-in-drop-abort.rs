@@ -6,11 +6,7 @@
 
 // This test uses ignore-msvc, because the expected optimization does not happen on targets using
 // SEH exceptions with the new LLVM pass manager anymore, see
-// https://github.com/llvm/llvm-project/issues/51311. The core issue is that Rust promises that
-// the drop_in_place() function can't unwind, but implements it in a way that *can*, because we
-// currently go out of our way to allow longjmps, which also use the unwinding mechanism on MSVC
-// targets. We should either forbid longjmps, or not assume nounwind, making this optimization
-// incompatible with the current behavior of running cleanuppads on longjmp unwinding.
+// https://github.com/llvm/llvm-project/issues/51311.
 
 // CHECK-NOT: {{(call|invoke).*}}should_not_appear_in_output
 
