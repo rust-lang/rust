@@ -150,6 +150,11 @@ pub struct Parser<'a> {
     pub current_closure: Option<ClosureSpans>,
 }
 
+// This type is used a lot, e.g. it's cloned when matching many declarative macro rules. Make sure
+// it doesn't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Parser<'_>, 328);
+
 /// Stores span information about a closure.
 #[derive(Clone)]
 pub struct ClosureSpans {
