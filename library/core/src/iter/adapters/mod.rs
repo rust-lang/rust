@@ -52,9 +52,6 @@ pub use self::intersperse::{Intersperse, IntersperseWith};
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::map_while::MapWhile;
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::zip::TrustedRandomAccess;
-
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::zip::zip;
 

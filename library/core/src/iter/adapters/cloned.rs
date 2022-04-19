@@ -1,4 +1,5 @@
-use crate::iter::adapters::{zip::try_get_unchecked, TrustedRandomAccess};
+use crate::iter::traits::trusted_random_access::try_get_unchecked;
+use crate::iter::traits::TrustedRandomAccess;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 

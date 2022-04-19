@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::traits::trusted_random_access::try_get_unchecked;
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
 };

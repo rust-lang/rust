@@ -383,6 +383,8 @@ pub use self::traits::FusedIterator;
 pub use self::traits::InPlaceIterable;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::traits::TrustedRandomAccess;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::traits::TrustedStep;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -404,8 +406,6 @@ pub use self::adapters::MapWhile;
 pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
-#[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::adapters::TrustedRandomAccess;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
