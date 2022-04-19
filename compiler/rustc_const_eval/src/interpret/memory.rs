@@ -892,8 +892,11 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     }
 
     /// Mark the entire referenced range as uninitalized
-    pub fn write_uninit(&mut self) {
-        self.alloc.mark_init(self.range, false);
+    pub fn write_uninit(&mut self) -> InterpResult<'tcx> {
+        Ok(self
+            .alloc
+            .write_uninit(&self.tcx, self.range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 }
 
@@ -1053,8 +1056,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
-            dest_alloc.mark_init(dest_range, false); // `Size` multiplication
-            dest_alloc.mark_relocation_range(relocations);
+            dest_alloc
+                .write_uninit(&tcx, dest_range)
+                .map_err(|e| e.to_interp_error(dest_alloc_id))?;
+            // We can forget about the relocations, this is all not initialized anyway.
             return Ok(());
         }
 

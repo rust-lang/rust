@@ -269,7 +269,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// `get_bytes_with_uninit_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
-    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
+    /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
@@ -429,8 +429,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         let val = match val {
             ScalarMaybeUninit::Scalar(scalar) => scalar,
             ScalarMaybeUninit::Uninit => {
-                self.mark_init(range, false);
-                return Ok(());
+                return self.write_uninit(cx, range);
             }
         };
 
@@ -454,6 +453,13 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         }
 
         Ok(())
+    }
+
+    /// Write "uninit" to the given memory range.
+    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+        self.mark_init(range, false);
+        self.clear_relocations(cx, range)?;
+        return Ok(());
     }
 }
 
@@ -561,8 +567,10 @@ impl<Tag> Deref for Relocations<Tag> {
 }
 
 /// A partial, owned list of relocations to transfer into another allocation.
+///
+/// Offsets are already adjusted to the destination allocation.
 pub struct AllocationRelocations<Tag> {
-    relative_relocations: Vec<(Size, Tag)>,
+    dest_relocations: Vec<(Size, Tag)>,
 }
 
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
@@ -575,12 +583,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     ) -> AllocationRelocations<Tag> {
         let relocations = self.get_relocations(cx, src);
         if relocations.is_empty() {
-            return AllocationRelocations { relative_relocations: Vec::new() };
+            return AllocationRelocations { dest_relocations: Vec::new() };
         }
 
         let size = src.size;
         let mut new_relocations = Vec::with_capacity(relocations.len() * (count as usize));
 
+        // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
+        // is mostly filled with redundant information since it's just N copies of the same `Tag`s
+        // at slightly adjusted offsets. The reason we do this is so that in `mark_relocation_range`
+        // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
+        // the right sequence of relocations for all N copies.
         for i in 0..count {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
@@ -593,14 +606,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }));
         }
 
-        AllocationRelocations { relative_relocations: new_relocations }
+        AllocationRelocations { dest_relocations: new_relocations }
     }
 
     /// Applies a relocation copy.
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
-        self.relocations.0.insert_presorted(relocations.relative_relocations);
+        self.relocations.0.insert_presorted(relocations.dest_relocations);
     }
 }
 
@@ -1056,7 +1072,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         })
     }
 
-    pub fn mark_init(&mut self, range: AllocRange, is_init: bool) {
+    fn mark_init(&mut self, range: AllocRange, is_init: bool) {
         if range.size.bytes() == 0 {
             return;
         }
@@ -1118,6 +1134,9 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Applies multiple instances of the run-length encoding to the initialization mask.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_compressed_init_range(
         &mut self,
         defined: &InitMaskCompressed,
