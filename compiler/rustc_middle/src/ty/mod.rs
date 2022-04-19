@@ -36,7 +36,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID};
 use rustc_hir::Node;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -67,8 +67,9 @@ pub use self::consts::{
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorInteriorTypeCause, GlobalCtxt,
-    Lift, OnDiskCache, TyCtxt, TypeckResults, UserType, UserTypeAnnotationIndex,
+    CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
+    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TypeckResults, UserType,
+    UserTypeAnnotationIndex,
 };
 pub use self::instance::{Instance, InstanceDef};
 pub use self::list::List;
@@ -319,7 +320,7 @@ impl Visibility {
     pub fn from_hir(visibility: &hir::Visibility<'_>, id: hir::HirId, tcx: TyCtxt<'_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
-            hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
+            hir::VisibilityKind::Crate(_) => Visibility::Restricted(CRATE_DEF_ID.to_def_id()),
             hir::VisibilityKind::Restricted { ref path, .. } => match path.res {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
@@ -1992,8 +1993,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
-        if def_id.index == CRATE_DEF_INDEX {
-            Some(self.crate_name(def_id.krate))
+        if let Some(cnum) = def_id.as_crate_root() {
+            Some(self.crate_name(cnum))
         } else {
             let def_key = self.def_key(def_id);
             match def_key.disambiguated_data.data {

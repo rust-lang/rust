@@ -353,11 +353,6 @@ impl Definitions {
         }
     }
 
-    /// Retrieves the root definition.
-    pub fn get_root_def(&self) -> LocalDefId {
-        LocalDefId { local_def_index: CRATE_DEF_INDEX }
-    }
-
     /// Adds a definition with a parent definition.
     pub fn create_def(
         &mut self,

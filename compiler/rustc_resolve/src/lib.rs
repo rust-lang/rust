@@ -38,7 +38,7 @@ use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId};
-use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
@@ -796,7 +796,7 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Module(&ModuleData {
                 kind: ModuleKind::Def(DefKind::Mod, def_id, _),
                 ..
-            }) => def_id.index == CRATE_DEF_INDEX,
+            }) => def_id.is_crate_root(),
             _ => false,
         }
     }
@@ -1248,18 +1248,17 @@ impl<'a> Resolver<'a> {
         );
 
         let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
-        let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();
         visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
 
         let mut def_id_to_node_id = IndexVec::default();
-        assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), root);
+        assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut node_id_to_def_id = FxHashMap::default();
-        node_id_to_def_id.insert(CRATE_NODE_ID, root);
+        node_id_to_def_id.insert(CRATE_NODE_ID, CRATE_DEF_ID);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(LocalExpnId::ROOT, (root, ImplTraitContext::Existential));
+        invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts

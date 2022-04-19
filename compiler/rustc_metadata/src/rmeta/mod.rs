@@ -19,6 +19,7 @@ use rustc_middle::mir;
 use rustc_middle::thir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::GeneratorDiagnosticData;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
@@ -358,6 +359,7 @@ define_tables! {
     def_keys: Table<DefIndex, Lazy<DefKey>>,
     def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
+    generator_diagnostic_data: Table<DefIndex, Lazy<GeneratorDiagnosticData<'tcx>>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]

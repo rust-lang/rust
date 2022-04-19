@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
@@ -335,9 +335,7 @@ pub trait PrettyPrinter<'tcx>:
 
         // If `def_id` is a direct or injected extern crate, return the
         // path to the crate followed by the path to the item within the crate.
-        if def_id.index == CRATE_DEF_INDEX {
-            let cnum = def_id.krate;
-
+        if let Some(cnum) = def_id.as_crate_root() {
             if cnum == LOCAL_CRATE {
                 return Ok((self.path_crate(cnum)?, true));
             }
@@ -2227,11 +2225,11 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     ty::BrNamed(_, _) => br.kind,
                     ty::BrAnon(i) => {
                         let name = region_map[&(i + 1)];
-                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                        ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
                     }
                     ty::BrEnv => {
                         let name = region_map[&0];
-                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                        ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
                     }
                 };
                 self.tcx.mk_region(ty::ReLateBound(
@@ -2257,7 +2255,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             }
                         };
                         do_continue(&mut self, name);
-                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                        ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
                     }
                 };
                 tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
@@ -2697,7 +2695,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     let mut seen_defs: DefIdSet = Default::default();
 
     for &cnum in tcx.crates(()).iter() {
-        let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        let def_id = cnum.as_def_id();
 
         // Ignore crates that are not direct dependencies.
         match tcx.extern_crate(def_id) {

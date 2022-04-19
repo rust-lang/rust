@@ -3934,7 +3934,6 @@ dependencies = [
  "rustc_infer",
  "rustc_middle",
  "rustc_parse_format",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",

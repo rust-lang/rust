@@ -1,4 +1,4 @@
-use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use crate::def_id::{LocalDefId, CRATE_DEF_ID};
 use std::fmt;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
@@ -84,8 +84,5 @@ impl ItemLocalId {
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
-pub const CRATE_HIR_ID: HirId = HirId {
-    owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
-    local_id: ItemLocalId::from_u32(0),
-};
+/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
+pub const CRATE_HIR_ID: HirId = HirId { owner: CRATE_DEF_ID, local_id: ItemLocalId::from_u32(0) };

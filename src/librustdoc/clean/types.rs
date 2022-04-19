@@ -20,7 +20,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -104,14 +104,6 @@ impl ItemId {
             ItemId::Primitive(_, krate) => krate,
         }
     }
-
-    #[inline]
-    crate fn index(self) -> Option<DefIndex> {
-        match self {
-            ItemId::DefId(id) => Some(id.index),
-            _ => None,
-        }
-    }
 }
 
 impl From<DefId> for ItemId {
@@ -160,7 +152,7 @@ impl ExternalCrate {
 
     #[inline]
     crate fn def_id(&self) -> DefId {
-        DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }
+        self.crate_num.as_def_id()
     }
 
     crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
@@ -217,7 +209,7 @@ impl ExternalCrate {
 
         // Failing that, see if there's an attribute specifying where to find this
         // external crate
-        let did = DefId { krate: self.crate_num, index: CRATE_DEF_INDEX };
+        let did = self.crate_num.as_def_id();
         tcx.get_attrs(did)
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::html_root_url))
@@ -559,7 +551,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        self.is_mod() && self.item_id.as_def_id().map_or(false, |did| did.index == CRATE_DEF_INDEX)
+        self.is_mod() && self.item_id.as_def_id().map_or(false, |did| did.is_crate_root())
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module

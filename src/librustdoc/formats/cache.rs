@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{sym, Symbol};
@@ -302,7 +302,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.item_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
+                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });

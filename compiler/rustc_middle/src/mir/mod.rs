@@ -15,7 +15,7 @@ use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex}
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self, GeneratorKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
@@ -385,7 +385,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
-            source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
+            source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks,
             source_scopes: IndexVec::new(),
             generator: None,

@@ -1556,16 +1556,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_closure(&mut self, hir_id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(hir_id);
         debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
-
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck.
-        let ty = self.tcx.typeck(def_id).node_type(hir_id);
-
+        let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
+        let ty = typeck_result.node_type(hir_id);
         match ty.kind() {
             ty::Generator(..) => {
                 let data = self.tcx.generator_kind(def_id).unwrap();
+                let generator_diagnostic_data = typeck_result.get_generator_diagnostic_data();
                 record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Generator);
                 record!(self.tables.generator_kind[def_id.to_def_id()] <- data);
+                record!(self.tables.generator_diagnostic_data[def_id.to_def_id()]  <- generator_diagnostic_data);
             }
 
             ty::Closure(..) => {
@@ -1639,7 +1640,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let hir = tcx.hir();
 
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
-            let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX));
+            let stability = tcx.lookup_stability(CRATE_DEF_ID);
             let macros =
                 self.lazy(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
