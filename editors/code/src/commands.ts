@@ -735,6 +735,9 @@ export function resolveCodeAction(ctx: Ctx): Cmd {
         const fileSystemEdit = await client.protocol2CodeConverter.asWorkspaceEdit(lcFileSystemEdit);
         await vscode.workspace.applyEdit(fileSystemEdit);
         await applySnippetWorkspaceEdit(edit);
+        if (item.command != null) {
+            await vscode.commands.executeCommand(item.command.command, item.command.arguments);
+        }
     };
 }
 

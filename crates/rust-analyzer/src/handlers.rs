@@ -1160,8 +1160,9 @@ pub(crate) fn handle_code_action_resolve(
         ))
         .into());
     }
-    let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;
-    code_action.edit = edit;
+    let ca = to_proto::code_action(&snap, assist.clone(), None)?;
+    code_action.edit = ca.edit;
+    code_action.command = ca.command;
     Ok(code_action)
 }
 

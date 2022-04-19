@@ -29,6 +29,7 @@ pub struct Assist {
     /// cumbersome, especially if you want to embed an assist into another data
     /// structure, such as a diagnostic.
     pub source_change: Option<SourceChange>,
+    pub trigger_signature_help: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

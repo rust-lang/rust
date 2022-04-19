@@ -193,9 +193,11 @@ impl Assists {
             return None;
         }
 
+        let mut trigger_signature_help = false;
         let source_change = if self.resolve.should_resolve(&id) {
             let mut builder = AssistBuilder::new(self.file);
             f(&mut builder);
+            trigger_signature_help = builder.trigger_signature_help;
             Some(builder.finish())
         } else {
             None
@@ -203,7 +205,7 @@ impl Assists {
 
         let label = Label::new(label);
         let group = group.cloned();
-        self.buf.push(Assist { id, label, group, target, source_change });
+        self.buf.push(Assist { id, label, group, target, source_change, trigger_signature_help });
         Some(())
     }
 
@@ -219,6 +221,7 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
     source_change: SourceChange,
+    trigger_signature_help: bool,
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
     mutated_tree: Option<TreeMutator>,
@@ -252,6 +255,7 @@ impl AssistBuilder {
             edit: TextEdit::builder(),
             file_id,
             source_change: SourceChange::default(),
+            trigger_signature_help: false,
             mutated_tree: None,
         }
     }
@@ -331,6 +335,9 @@ impl AssistBuilder {
     pub(crate) fn move_file(&mut self, src: FileId, dst: AnchoredPathBuf) {
         let file_system_edit = FileSystemEdit::MoveFile { src, dst };
         self.source_change.push_file_system_edit(file_system_edit);
+    }
+    pub(crate) fn trigger_signature_help(&mut self) {
+        self.trigger_signature_help = true;
     }
 
     fn finish(mut self) -> SourceChange {
