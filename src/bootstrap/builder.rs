@@ -1365,14 +1365,18 @@ impl<'a> Builder<'a> {
             },
         );
 
-        if target.contains("linux") || target.contains("windows") {
-            rustflags.arg("-Zunstable-options");
+        // FIXME(davidtwco): #[cfg(not(bootstrap))] - #95612 needs to be in the bootstrap compiler
+        // for this conditional to be removed.
+        if !target.contains("windows") || compiler.stage >= 1 {
+            if target.contains("linux") || target.contains("windows") {
+                rustflags.arg("-Zunstable-options");
+            }
+            match self.config.rust_split_debuginfo {
+                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+            };
         }
-        match self.config.rust_split_debuginfo {
-            SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
-            SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
-            SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
-        };
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
