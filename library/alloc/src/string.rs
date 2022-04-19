@@ -770,7 +770,10 @@ impl String {
     /// * The first `length` bytes at `buf` need to be valid UTF-8.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal data structures.
+    /// internal data structures. For example, it is normally **not** safe to
+    /// build a `String` from a pointer to a C `char` array containing UTF-8
+    /// _unless_ you are certain that array was originally allocated by the
+    /// Rust standard library's allocator.
     ///
     /// The ownership of `buf` is effectively transferred to the
     /// `String` which may then deallocate, reallocate or change the

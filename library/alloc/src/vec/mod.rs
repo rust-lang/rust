@@ -489,8 +489,10 @@ impl<T> Vec<T> {
     /// * `length` needs to be less than or equal to `capacity`.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal data structures. For example it is **not** safe
-    /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
+    /// internal data structures. For example it is normally **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length
+    /// `size_t`, doing so is only safe if the array was initially allocated by
+    /// a `Vec` or `String`.
     /// It's also not safe to build one from a `Vec<u16>` and its length, because
     /// the allocator cares about the alignment, and these two types have different
     /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
