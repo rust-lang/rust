@@ -76,7 +76,7 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type concerns any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
+/// This type considers any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
 /// This is because APIs that use `NULL` as their sentry value don't treat `INVALID_HANDLE_VALUE`
 /// as special.
 ///
@@ -96,7 +96,7 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type concerns any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
+/// This type considers any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
 /// This is because APIs that use `INVALID_HANDLE_VALUE` as their sentry value may return `NULL`
 /// under `windows_subsystem = "windows"` or other situations where I/O devices are detached.
 ///
@@ -143,17 +143,17 @@ impl BorrowedHandle<'_> {
 }
 
 impl TryFrom<HandleOrNull> for OwnedHandle {
-    type Error = ();
+    type Error = NullHandleError;
 
     #[inline]
-    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
+    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NullHandleError> {
         let owned_handle = handle_or_null.0;
         if owned_handle.handle.is_null() {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(())
+            Err(NullHandleError(()))
         } else {
             Ok(owned_handle)
         }
@@ -201,22 +201,58 @@ impl OwnedHandle {
 }
 
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
-    type Error = ();
+    type Error = InvalidHandleError;
 
     #[inline]
-    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
+    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, InvalidHandleError> {
         let owned_handle = handle_or_invalid.0;
         if owned_handle.handle == c::INVALID_HANDLE_VALUE {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(())
+            Err(InvalidHandleError(()))
         } else {
             Ok(owned_handle)
         }
     }
 }
+
+/// This is the error type used by [`HandleOrNull`] when attempting to convert
+/// into a handle, to indicate that the value is null.
+// The empty field prevents constructing this, and allows extending it in the future.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NullHandleError(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for NullHandleError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "A HandleOrNull could not be converted to a handle because it was null".fmt(fmt)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for NullHandleError {}
+
+/// This is the error type used by [`HandleOrInvalid`] when attempting to
+/// convert into a handle, to indicate that the value is
+/// `INVALID_HANDLE_VALUE`.
+// The empty field prevents constructing this, and allows extending it in the future.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidHandleError(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for InvalidHandleError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "A HandleOrInvalid could not be converted to a handle because it was INVALID_HANDLE_VALUE"
+            .fmt(fmt)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for InvalidHandleError {}
 
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
