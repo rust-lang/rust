@@ -61,7 +61,7 @@ pub trait TypeRelation<'tcx>: Sized {
 
         let tcx = self.tcx();
         let opt_variances = tcx.variances_of(item_def_id);
-        relate_substs(self, Some((item_def_id, opt_variances)), a_subst, b_subst)
+        relate_substs_with_variances(self, item_def_id, opt_variances, a_subst, b_subst)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -135,29 +135,34 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     }
 }
 
+#[inline]
 pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
-    variances: Option<(DefId, &[ty::Variance])>,
+    a_subst: SubstsRef<'tcx>,
+    b_subst: SubstsRef<'tcx>,
+) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+    relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
+        relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+    }))
+}
+
+pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    ty_def_id: DefId,
+    variances: &[ty::Variance],
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
-    let mut cached_ty = None;
 
+    let mut cached_ty = None;
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
-        let (variance, variance_info) = match variances {
-            Some((ty_def_id, variances)) => {
-                let variance = variances[i];
-                let variance_info = if variance == ty::Invariant {
-                    let ty = *cached_ty
-                        .get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
-                    ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
-                } else {
-                    ty::VarianceDiagInfo::default()
-                };
-                (variance, variance_info)
-            }
-            None => (ty::Invariant, ty::VarianceDiagInfo::default()),
+        let variance = variances[i];
+        let variance_info = if variance == ty::Invariant {
+            let ty = *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
+            ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
+        } else {
+            ty::VarianceDiagInfo::default()
         };
         relation.relate_with_variance(variance, variance_info, a, b)
     });
@@ -318,7 +323,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relate_substs(relation, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs })
         }
     }
@@ -334,7 +339,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relate_substs(relation, a.substs, b.substs)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs })
         }
     }
@@ -554,7 +559,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            let substs = relate_substs(relation, a_substs, b_substs)?;
             Ok(tcx.mk_opaque(a_def_id, substs))
         }
 
@@ -742,7 +747,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         a: ty::ClosureSubsts<'tcx>,
         b: ty::ClosureSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relate_substs(relation, a.substs, b.substs)?;
         Ok(ty::ClosureSubsts { substs })
     }
 }
@@ -753,7 +758,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
         a: ty::GeneratorSubsts<'tcx>,
         b: ty::GeneratorSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relate_substs(relation, a.substs, b.substs)?;
         Ok(ty::GeneratorSubsts { substs })
     }
 }
@@ -764,7 +769,7 @@ impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
         a: SubstsRef<'tcx>,
         b: SubstsRef<'tcx>,
     ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-        relate_substs(relation, None, a, b)
+        relate_substs(relation, a, b)
     }
 }
 

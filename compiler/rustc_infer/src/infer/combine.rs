@@ -567,11 +567,17 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_substs(self, None, a_subst, b_subst)
+            relate::relate_substs(self, a_subst, b_subst)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_substs(self, Some((item_def_id, &opt_variances)), a_subst, b_subst)
+            relate::relate_substs_with_variances(
+                self,
+                item_def_id,
+                &opt_variances,
+                a_subst,
+                b_subst,
+            )
         }
     }
 

@@ -53,7 +53,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         // performing trait matching (which then performs equality
         // unification).
 
-        relate::relate_substs(self, None, a_subst, b_subst)
+        relate::relate_substs(self, a_subst, b_subst)
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
