@@ -9,7 +9,6 @@ use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::MultiSpan;
 use rustc_hir::HirId;
-use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
@@ -403,13 +402,6 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     }
 }
 
-// Duplicated from rustc_session::config::ExternDepSpec to avoid cyclic dependency
-#[derive(PartialEq, Debug)]
-pub enum ExternDepSpec {
-    Json(Json),
-    Raw(String),
-}
-
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -428,7 +420,6 @@ pub enum BuiltinLintDiagnostics {
     UnusedBuiltinAttribute { attr_name: Symbol, macro_name: String, invoc_span: Span },
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
-    ExternDepSpec(String, ExternDepSpec),
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span),

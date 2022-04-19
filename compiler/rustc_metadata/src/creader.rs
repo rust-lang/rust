@@ -13,11 +13,10 @@ use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::json::ToJson;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_session::cstore::{ExternCrateSource, MetadataLoaderDyn};
-use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
+use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
@@ -27,7 +26,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::collections::BTreeMap;
 use std::ops::Fn;
 use std::path::Path;
 use std::{cmp, env};
@@ -920,20 +918,7 @@ impl<'a> CrateLoader<'a> {
                 continue;
             }
 
-            let diag = match self.sess.opts.extern_dep_specs.get(name) {
-                Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
-                None => {
-                    // If we don't have a specific location, provide a json encoding of the `--extern`
-                    // option.
-                    let meta: BTreeMap<String, String> =
-                        std::iter::once(("name".to_string(), name.to_string())).collect();
-                    BuiltinLintDiagnostics::ExternDepSpec(
-                        name.clone(),
-                        ExternDepSpec::Json(meta.to_json()),
-                    )
-                }
-            };
-            self.sess.parse_sess.buffer_lint_with_diagnostic(
+            self.sess.parse_sess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -942,7 +927,6 @@ impl<'a> CrateLoader<'a> {
                         name,
                         self.local_crate_name,
                         name),
-                    diag,
                 );
         }
     }
