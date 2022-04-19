@@ -11,56 +11,53 @@ pub(crate) fn get_changelog(
     prev_tag: &str,
     today: &str,
 ) -> anyhow::Result<String> {
-    let git_log = cmd!(sh, "git log {prev_tag}..HEAD --merges --reverse").read()?;
+    let token = match env::var("GITHUB_TOKEN") {
+        Ok(token) => token,
+        Err(_) => bail!("Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."),
+    };
+
+    let git_log = cmd!(sh, "git log {prev_tag}..HEAD --reverse").read()?;
     let mut features = String::new();
     let mut fixes = String::new();
     let mut internal = String::new();
     let mut others = String::new();
     for line in git_log.lines() {
         let line = line.trim_start();
-        if let Some(p) = line.find(':') {
-            let pr = &line[..p];
-            if let Ok(pr_num) = pr.parse::<u32>() {
-                let accept = "Accept: application/vnd.github.v3+json";
-                let token = match env::var("GITHUB_TOKEN") {
-                    Ok(token) => token,
-                    Err(_) => bail!("Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."),
-                };
-                let authorization = format!("Authorization: token {}", token);
-                let pr_url = "https://api.github.com/repos/rust-analyzer/rust-analyzer/issues";
+        if let Some(pr_num) = parse_pr_number(&line) {
+            let accept = "Accept: application/vnd.github.v3+json";
+            let authorization = format!("Authorization: token {}", token);
+            let pr_url = "https://api.github.com/repos/rust-lang/rust-analyzer/issues";
 
-                // we don't use an HTTPS client or JSON parser to keep the build times low
-                let pr_json =
-                    cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}").read()?;
-                let pr_title = cmd!(sh, "jq .title").stdin(&pr_json).read()?;
-                let pr_title = unescape(&pr_title[1..pr_title.len() - 1]);
-                let pr_comment = cmd!(sh, "jq .body").stdin(pr_json).read()?;
+            // we don't use an HTTPS client or JSON parser to keep the build times low
+            let pr = pr_num.to_string();
+            let pr_json =
+                cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}").read()?;
+            let pr_title = cmd!(sh, "jq .title").stdin(&pr_json).read()?;
+            let pr_title = unescape(&pr_title[1..pr_title.len() - 1]);
+            let pr_comment = cmd!(sh, "jq .body").stdin(pr_json).read()?;
 
-                let comments_json =
-                    cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}/comments")
-                        .read()?;
-                let pr_comments = cmd!(sh, "jq .[].body").stdin(comments_json).read()?;
+            let comments_json =
+                cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}/comments").read()?;
+            let pr_comments = cmd!(sh, "jq .[].body").stdin(comments_json).read()?;
 
-                let l = iter::once(pr_comment.as_str())
-                    .chain(pr_comments.lines())
-                    .rev()
-                    .find_map(|it| {
-                        let it = unescape(&it[1..it.len() - 1]);
-                        it.lines().find_map(parse_changelog_line)
-                    })
-                    .into_iter()
-                    .next()
-                    .unwrap_or_else(|| parse_title_line(&pr_title));
-                let s = match l.kind {
-                    PrKind::Feature => &mut features,
-                    PrKind::Fix => &mut fixes,
-                    PrKind::Internal => &mut internal,
-                    PrKind::Other => &mut others,
-                    PrKind::Skip => continue,
-                };
-                writeln!(s, "* pr:{}[] {}", pr_num, l.message.as_deref().unwrap_or(&pr_title))
-                    .unwrap();
-            }
+            let l = iter::once(pr_comment.as_str())
+                .chain(pr_comments.lines())
+                .rev()
+                .find_map(|it| {
+                    let it = unescape(&it[1..it.len() - 1]);
+                    it.lines().find_map(parse_changelog_line)
+                })
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| parse_title_line(&pr_title));
+            let s = match l.kind {
+                PrKind::Feature => &mut features,
+                PrKind::Fix => &mut fixes,
+                PrKind::Internal => &mut internal,
+                PrKind::Other => &mut others,
+                PrKind::Skip => continue,
+            };
+            writeln!(s, "* pr:{}[] {}", pr_num, l.message.as_deref().unwrap_or(&pr_title)).unwrap();
         }
     }
 
@@ -72,11 +69,6 @@ pub(crate) fn get_changelog(
 
 Commit: commit:{}[] +
 Release: release:{}[]
-
-== Sponsors
-
-**Become a sponsor:** On https://opencollective.com/rust-analyzer/[OpenCollective] or
-https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
 
 == New Features
 
@@ -115,6 +107,24 @@ struct PrInfo {
 
 fn unescape(s: &str) -> String {
     s.replace(r#"\""#, "").replace(r#"\n"#, "\n").replace(r#"\r"#, "")
+}
+
+fn parse_pr_number(s: &str) -> Option<u32> {
+    const BORS_PREFIX: &str = "Merge #";
+    const HOMU_PREFIX: &str = "Auto merge of #";
+    if s.starts_with(BORS_PREFIX) {
+        let s = &s[BORS_PREFIX.len()..];
+        s.parse().ok()
+    } else if s.starts_with(HOMU_PREFIX) {
+        let s = &s[HOMU_PREFIX.len()..];
+        if let Some(space) = s.find(' ') {
+            s[..space].parse().ok()
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 fn parse_changelog_line(s: &str) -> Option<PrInfo> {
