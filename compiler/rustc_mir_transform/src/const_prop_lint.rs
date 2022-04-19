@@ -358,10 +358,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let span = tcx.def_span(def_id);
-        // FIXME: `CanConstProp::check` computes the layout of all locals, return those layouts
-        // so we can write them to `ecx.frame_mut().locals.layout, reducing the duplication in
-        // `layout_of` query invocations.
-        let can_const_prop = CanConstProp::check(tcx, param_env, body);
+
+        let (can_const_prop, local_layouts) = CanConstProp::check(tcx, param_env, body);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
             if *mode == ConstPropMode::OnlyInsideOwnBlock {
@@ -396,6 +394,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             StackPopCleanup::Root { cleanup: false },
         )
         .expect("failed to push initial stack frame");
+
+        // write layouts of locals to ecx, which can reduce the duplication on
+        // `layout_of` query invocations.
+        local_layouts.into_iter().zip(ecx.frame().locals.iter()).for_each(|(layout, state)| {
+            if layout.is_some() {
+                state.layout.set(layout)
+            }
+        });
 
         ConstPropagator {
             ecx,
@@ -718,12 +724,11 @@ struct CanConstProp {
 }
 
 impl CanConstProp {
-    /// Returns true if `local` can be propagated
     fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,
-    ) -> IndexVec<Local, ConstPropMode> {
+    ) -> (IndexVec<Local, ConstPropMode>, IndexVec<Local, Option<TyAndLayout<'tcx>>>) {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
             found_assignment: BitSet::new_empty(body.local_decls.len()),
@@ -732,10 +737,13 @@ impl CanConstProp {
                 body.local_decls.len(),
             ),
         };
+        let mut local_layouts = IndexVec::from_elem(None, &body.local_decls);
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
             match tcx.layout_of(param_env.and(ty)) {
-                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
+                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {
+                    local_layouts[local] = Some(layout);
+                }
                 // Either the layout fails to compute, then we can't use this local anyway
                 // or the local is too large, then we don't want to.
                 _ => {
@@ -763,7 +771,7 @@ impl CanConstProp {
             }
         }
         cpv.visit_body(&body);
-        cpv.can_const_prop
+        (cpv.can_const_prop, local_layouts)
     }
 }
 
