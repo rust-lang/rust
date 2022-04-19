@@ -242,14 +242,14 @@ struct TokenCursorFrame {
 }
 
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
-        TokenCursorFrame {
-            delim,
-            span,
-            open_delim: false,
-            tree_cursor: tts.into_trees(),
-            close_delim: false,
-        }
+    fn new(
+        span: DelimSpan,
+        delim: DelimToken,
+        open_delim: bool,
+        tts: TokenStream,
+        close_delim: bool,
+    ) -> Self {
+        TokenCursorFrame { delim, span, open_delim, tree_cursor: tts.into_trees(), close_delim }
     }
 }
 
@@ -274,7 +274,7 @@ impl TokenCursor {
                         break (token, spacing);
                     }
                     TokenTree::Delimited(sp, delim, tts) => {
-                        let frame = TokenCursorFrame::new(sp, delim, tts);
+                        let frame = TokenCursorFrame::new(sp, delim, false, tts, false);
                         self.stack.push(mem::replace(&mut self.frame, frame));
                     }
                 }
@@ -328,6 +328,7 @@ impl TokenCursor {
                     TokenCursorFrame::new(
                         delim_span,
                         token::NoDelim,
+                        false,
                         if attr_style == AttrStyle::Inner {
                             [
                                 TokenTree::token(token::Pound, span),
@@ -343,6 +344,7 @@ impl TokenCursor {
                                 .cloned()
                                 .collect::<TokenStream>()
                         },
+                        false,
                     ),
                 ));
 
@@ -434,9 +436,8 @@ impl<'a> Parser<'a> {
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
-        let mut start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
-        start_frame.open_delim = true;
-        start_frame.close_delim = true;
+        let start_frame =
+            TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, true, tokens, true);
 
         let mut parser = Parser {
             sess,
