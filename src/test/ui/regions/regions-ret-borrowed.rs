@@ -5,13 +5,18 @@
 // used to successfully compile because we failed to account for the
 // fact that fn(x: &isize) rebound the region &.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn with<R, F>(f: F) -> R where F: FnOnce(&isize) -> R {
     f(&3)
 }
 
 fn return_it<'a>() -> &'a isize {
     with(|o| o)
-        //~^ ERROR cannot infer
+    //[base]~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements [E0495]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {

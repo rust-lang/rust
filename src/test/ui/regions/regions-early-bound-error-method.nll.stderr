@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-early-bound-error-method.rs:20:9
+  --> $DIR/regions-early-bound-error-method.rs:24:9
    |
 LL | impl<'a> Box<'a> {
    |      -- lifetime `'a` defined here

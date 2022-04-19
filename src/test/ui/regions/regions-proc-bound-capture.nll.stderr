@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-proc-bound-capture.rs:9:5
+  --> $DIR/regions-proc-bound-capture.rs:13:5
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
    |                   - let's call the lifetime of this reference `'1`

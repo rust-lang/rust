@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:9:5
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:13:5
    |
 LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
    |      --  -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |     *x = *y;
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:5
    |
 LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
    |      -- -- lifetime `'b` defined here
@@ -28,7 +28,7 @@ LL |     a(x, y, z);
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0308]: mismatched types
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:30:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -37,7 +37,7 @@ LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
               found fn pointer `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
 error[E0308]: mismatched types
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:30:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -46,7 +46,7 @@ LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
               found fn pointer `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
 error[E0308]: mismatched types
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:30:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other

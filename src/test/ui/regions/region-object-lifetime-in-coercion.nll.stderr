@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:8:12
+  --> $DIR/region-object-lifetime-in-coercion.rs:12:12
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         - let's call the lifetime of this reference `'1`
@@ -7,7 +7,7 @@ LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
    |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:13:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:19:5
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         - let's call the lifetime of this reference `'1`
@@ -15,7 +15,7 @@ LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:19:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:27:5
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
    |         - let's call the lifetime of this reference `'1`
@@ -24,7 +24,7 @@ LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:23:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:33:5
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      -- -- lifetime `'b` defined here

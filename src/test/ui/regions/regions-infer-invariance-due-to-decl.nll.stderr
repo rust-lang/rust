@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-invariance-due-to-decl.rs:12:5
+  --> $DIR/regions-infer-invariance-due-to-decl.rs:16:5
    |
 LL | fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {
    |                       -- lifetime `'r` defined here

@@ -4,6 +4,10 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 struct Invariant<'a> {
     f: &'a mut &'a isize
 }
@@ -14,7 +18,9 @@ fn use_<'b>(c: Invariant<'b>) {
     // Since 'b <= 'static, this would be true if Invariant were covariant
     // with respect to its parameter 'a.
 
-    let _: Invariant<'static> = c; //~ ERROR mismatched types
+    let _: Invariant<'static> = c;
+    //[base]~^ ERROR mismatched types [E0308]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

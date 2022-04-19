@@ -2,6 +2,10 @@
 // that appear in their parameter list.  See also
 // regions-free-region-ordering-caller.rs
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn ordering1<'a, 'b>(x: &'a &'b usize) -> &'a usize {
     // It is safe to assume that 'a <= 'b due to the type of x
     let y: &'b usize = &**x;
@@ -10,13 +14,16 @@ fn ordering1<'a, 'b>(x: &'a &'b usize) -> &'a usize {
 
 fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
     // However, it is not safe to assume that 'b <= 'a
-    &*y //~ ERROR lifetime mismatch [E0623]
+    &*y
+    //[base]~^ ERROR lifetime mismatch [E0623]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
     // Do not infer an ordering from the return value.
     let z: &'b usize = &*x;
-    //~^ ERROR lifetime mismatch [E0623]
+    //[base]~^ ERROR lifetime mismatch [E0623]
+    //[nll]~^^ ERROR lifetime may not live long enough
     panic!();
 }
 

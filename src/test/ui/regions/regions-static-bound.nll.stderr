@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-static-bound.rs:6:5
+  --> $DIR/regions-static-bound.rs:10:5
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
    |                        -- lifetime `'a` defined here
@@ -7,7 +7,7 @@ LL |     t
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/regions-static-bound.rs:10:5
+  --> $DIR/regions-static-bound.rs:16:5
    |
 LL | fn error(u: &(), v: &()) {
    |          -  - let's call the lifetime of this reference `'1`
@@ -20,13 +20,13 @@ LL |     static_id(&u);
    |     argument requires that `'1` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/regions-static-bound.rs:11:5
+  --> $DIR/regions-static-bound.rs:19:5
    |
 LL | fn error(u: &(), v: &()) {
    |                  -  - let's call the lifetime of this reference `'2`
    |                  |
    |                  `v` is a reference that is only valid in the function body
-LL |     static_id(&u);
+...
 LL |     static_id_indirect(&v);
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |     |
