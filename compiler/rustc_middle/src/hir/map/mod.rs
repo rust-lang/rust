@@ -910,8 +910,10 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
-        let ident = match self.get(id) {
+    #[inline]
+    fn opt_ident(self, id: HirId) -> Option<Ident> {
+        match self.get(id) {
+            Node::Binding(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.
             Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
@@ -920,20 +922,17 @@ impl<'hir> Map<'hir> {
                 _ => unreachable!(),
             },
             node => node.ident(),
-        };
-        ident.map(|ident| ident.span)
+        }
     }
 
+    #[inline]
+    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
+        self.opt_ident(id).map(|ident| ident.span)
+    }
+
+    #[inline]
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
-        match self.get(id) {
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => Some(l.name),
-            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
-                Node::Item(item) => Some(item.ident.name),
-                Node::Variant(variant) => Some(variant.ident.name),
-                _ => unreachable!(),
-            },
-            node => node.ident().map(|i| i.name),
-        }
+        self.opt_ident(id).map(|ident| ident.name)
     }
 
     pub fn name(self, id: HirId) -> Symbol {
