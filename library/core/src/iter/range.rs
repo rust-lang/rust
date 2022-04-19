@@ -3,9 +3,7 @@ use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Try};
 
-use super::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
-};
+use super::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedStep};
 
 // Safety: All invariants are upheld.
 macro_rules! unsafe_impl_trusted_step {
@@ -497,11 +495,7 @@ macro_rules! unsafe_range_trusted_random_access_impl {
     ($($t:ty)*) => ($(
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
-        unsafe impl TrustedRandomAccess for ops::Range<$t> {}
-
-        #[doc(hidden)]
-        #[unstable(feature = "trusted_random_access", issue = "none")]
-        unsafe impl TrustedRandomAccessNoCoerce for ops::Range<$t> {
+        unsafe impl TrustedRandomAccess for ops::Range<$t> {
 
             fn cleanup(&mut self, num: usize, forward: bool) {
                 if forward {
@@ -764,7 +758,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Self: TrustedRandomAccess,
     {
         // SAFETY: The TrustedRandomAccess contract requires that callers only  pass an index
         // that is in bounds.

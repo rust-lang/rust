@@ -1,5 +1,5 @@
 use core::fmt;
-use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
 use core::mem::MaybeUninit;
 use core::ops::Try;
 
@@ -205,11 +205,7 @@ unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {}
-
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<T> TrustedRandomAccessNoCoerce for Iter<'_, T> {
+unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {

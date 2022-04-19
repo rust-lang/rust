@@ -1,7 +1,5 @@
 use crate::fmt;
-use crate::iter::adapters::{
-    zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
-};
+use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::Try;
 
@@ -128,7 +126,7 @@ where
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
@@ -190,13 +188,9 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<I, F> TrustedRandomAccess for Map<I, F> where I: TrustedRandomAccess {}
-
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<I, F> TrustedRandomAccessNoCoerce for Map<I, F>
+unsafe impl<I, F> TrustedRandomAccess for Map<I, F>
 where
-    I: TrustedRandomAccessNoCoerce,
+    I: TrustedRandomAccess,
 {
     const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
 

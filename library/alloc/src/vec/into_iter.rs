@@ -4,9 +4,7 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
 use core::intrinsics::arith_offset;
-use core::iter::{
-    FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
-};
+use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::Deref;
@@ -200,7 +198,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must guarantee that `i` is in bounds of the
         // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
@@ -284,9 +282,7 @@ impl<T: Copy> NonDrop for T {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
-// TrustedRandomAccess (without NoCoerce) must not be implemented because
-// subtypes/supertypes of `T` might not be `NonDrop`
-unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
+unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
 where
     T: NonDrop,
 {

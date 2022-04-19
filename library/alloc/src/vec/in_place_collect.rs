@@ -60,7 +60,7 @@
 //! # O(1) collect
 //!
 //! The main iteration itself is further specialized when the iterator implements
-//! [`TrustedRandomAccessNoCoerce`] to let the optimizer see that it is a counted loop with a single
+//! [`TrustedRandomAccess`] to let the optimizer see that it is a counted loop with a single
 //! [induction variable]. This can turn some iterators into a noop, i.e. it reduces them from O(n) to
 //! O(1). This particular optimization is quite fickle and doesn't always work, see [#79308]
 //!
@@ -70,7 +70,7 @@
 //! Since unchecked accesses through that trait do not advance the read pointer of `IntoIter`
 //! this would interact unsoundly with the requirements about dropping the tail described above.
 //! But since the normal `Drop` implementation of `IntoIter` would suffer from the same problem it
-//! is only correct for `TrustedRandomAccessNoCoerce` to be implemented when the items don't
+//! is only correct for `TrustedRandomAccess` to be implemented when the items don't
 //! have a destructor. Thus that implicit requirement also makes the specialization safe to use for
 //! in-place collection.
 //! Note that this safety concern is about the correctness of `impl Drop for IntoIter`,
@@ -134,7 +134,7 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
-use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
+use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccess};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
@@ -195,7 +195,7 @@ where
         // itself once IntoIter goes out of scope.
         // If the drop panics then we also leak any elements collected into dst_buf.
         //
-        // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
+        // Note: This access to the source wouldn't be allowed by the TrustedRandomIterator
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documenttation why this is ok anyway.
         src.forget_allocation_drop_remaining();
@@ -230,7 +230,7 @@ trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
     /// collected. `end` is the last writable element of the allocation and used for bounds checks.
     ///
     /// This method is specialized and one of its implementations makes use of
-    /// `Iterator::__iterator_get_unchecked` calls with a `TrustedRandomAccessNoCoerce` bound
+    /// `Iterator::__iterator_get_unchecked` calls with a `TrustedRandomAccess` bound
     /// on `I` which means the caller of this method must take the safety conditions
     /// of that trait into consideration.
     fn collect_in_place(&mut self, dst: *mut T, end: *const T) -> usize;
@@ -256,7 +256,7 @@ where
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
 where
-    I: Iterator<Item = T> + TrustedRandomAccessNoCoerce,
+    I: Iterator<Item = T> + TrustedRandomAccess,
 {
     #[inline]
     fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {

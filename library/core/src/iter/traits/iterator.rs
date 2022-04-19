@@ -3,7 +3,7 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
 use super::super::ByRefSized;
-use super::super::TrustedRandomAccessNoCoerce;
+use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
@@ -3763,7 +3763,7 @@ pub trait Iterator {
     #[unstable(feature = "trusted_random_access", issue = "none")]
     unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Self: TrustedRandomAccess,
     {
         unreachable!("Always specialized");
     }

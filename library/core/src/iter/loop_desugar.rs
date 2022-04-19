@@ -1,5 +1,5 @@
 use crate::iter::IntoIterator;
-use crate::iter::TrustedRandomAccessNoCoerce;
+use crate::iter::TrustedRandomAccess;
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -60,7 +60,7 @@ where
 
 impl<I, T> DesugarSpec<T> for ForLoopDesugar<I>
 where
-    I: TrustedRandomAccessNoCoerce + Iterator<Item = T>,
+    I: TrustedRandomAccess + Iterator<Item = T>,
 {
     #[inline]
     fn setup(&mut self) {

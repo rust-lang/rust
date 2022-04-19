@@ -92,7 +92,7 @@ where
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccessNoCoerce,
+        Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
@@ -258,15 +258,6 @@ where
     A: TrustedRandomAccess,
     B: TrustedRandomAccess,
 {
-}
-
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<A, B> TrustedRandomAccessNoCoerce for Zip<A, B>
-where
-    A: TrustedRandomAccessNoCoerce,
-    B: TrustedRandomAccessNoCoerce,
-{
     const NEEDS_CLEANUP: bool = A::NEEDS_CLEANUP || B::NEEDS_CLEANUP;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -328,9 +319,7 @@ impl<A: Debug, B: Debug> ZipFmt<A, B> for Zip<A, B> {
     }
 }
 
-impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoerce> ZipFmt<A, B>
-    for Zip<A, B>
-{
+impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B> for Zip<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // It's *not safe* to call fmt on the contained iterators, since once
         // we start iterating they're in strange, potentially unsafe, states.
@@ -344,7 +333,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.
 ///
-/// `TrustedRandomAccessNoCoerce::size` may not be overridden.
+/// `TrustedRandomAccess::size` may not be overridden.
 ///
 /// All subtypes and all supertypes of `Self` must also implement `TrustedRandomAccess`.
 /// In particular, this means that types with non-invariant parameters usually can not have
@@ -372,14 +361,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///     * `std::iter::DoubleEndedIterator::next_back`
 ///     * `std::iter::ExactSizeIterator::len`
 ///     * `std::iter::Iterator::__iterator_get_unchecked`
-///     * `std::iter::TrustedRandomAccessNoCoerce::size`
-/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
-///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
-///    been called, then no methods except for the ones listed under 4. are allowed to be called
-///    on the resulting value of type `T`, either. Multiple such coercion steps are allowed.
-///    Regarding 2. and 3., the number of times `__iterator_get_unchecked(idx)` or `next_back()` is
-///    called on `self` and the resulting value of type `T` (and on further coercion results with
-///    sub-subtypes) are added together and their sums must not exceed the specified bounds.
+///     * `std::iter::TrustedRandomAccess::size`
 ///
 /// Further, given that these conditions are met, it must guarantee that:
 ///
@@ -387,27 +369,13 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 /// * It must be safe to call the methods listed above on `self` after calling
 ///   `self.__iterator_get_unchecked(idx)`, assuming that the required traits are implemented.
 /// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
-/// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
 //
 // FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SourceIter::as_inner`
 // after `__iterator_get_unchecked` is supposed to be allowed.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
-pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
-
-/// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
-/// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
-/// without the requirement that subtypes / supertypes implement `TrustedRandomAccessNoCoerce`.
-///
-/// This trait was created in PR #85874 to fix soundness issue #85873 without performance regressions.
-/// It is subject to change as we might want to build a more generally useful (for performance
-/// optimizations) and more sophisticated trait or trait hierarchy that replaces or extends
-/// [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
-#[doc(hidden)]
-#[unstable(feature = "trusted_random_access", issue = "none")]
-#[rustc_specialization_trait]
-pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
+pub unsafe trait TrustedRandomAccess: Sized {
     // Convenience method.
     fn size(&self) -> usize
     where
@@ -450,7 +418,7 @@ unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
     }
 }
 
-unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
+unsafe impl<I: Iterator + TrustedRandomAccess> SpecTrustedRandomAccess for I {
     #[inline]
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
