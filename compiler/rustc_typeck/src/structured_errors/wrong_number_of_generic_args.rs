@@ -6,9 +6,10 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
+use std::iter;
 
 use GenericArgsInfo::*;
 
@@ -334,6 +335,22 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .join(", ")
     }
 
+    fn get_unbound_associated_types(&self) -> Vec<String> {
+        if self.tcx.is_trait(self.def_id) {
+            let items: &AssocItems<'_> = self.tcx.associated_items(self.def_id);
+            items
+                .in_definition_order()
+                .filter(|item| item.kind == AssocKind::Type)
+                .filter(|item| {
+                    !self.gen_args.bindings.iter().any(|binding| binding.ident.name == item.name)
+                })
+                .map(|item| item.name.to_ident_string())
+                .collect()
+        } else {
+            Vec::default()
+        }
+    }
+
     fn create_error_message(&self) -> String {
         let def_path = self.tcx.def_path_str(self.def_id);
         let def_kind = self.tcx.def_kind(self.def_id).descr(self.def_id);
@@ -618,6 +635,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     fn suggest_removing_args_or_generics(&self, err: &mut Diagnostic) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
+        let unbound_types = self.get_unbound_associated_types();
         let num_provided_args = num_provided_lt_args + num_provided_type_const_args;
         assert!(num_provided_args > 0);
 
@@ -629,6 +647,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let redundant_type_or_const_args = num_redundant_type_or_const_args > 0;
 
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
+        let provided_args_matches_unbound_traits =
+            unbound_types.len() == num_redundant_type_or_const_args;
 
         let remove_lifetime_args = |err: &mut Diagnostic| {
             let mut lt_arg_spans = Vec::new();
@@ -713,7 +733,28 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        if remove_entire_generics {
+        // If there is a single unbound associated type and a single excess generic param
+        // suggest replacing the generic param with the associated type bound
+        if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
+            let mut suggestions = vec![];
+            let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
+            for (potential, name) in iter::zip(unused_generics, &unbound_types) {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(potential.span()) {
+                    suggestions.push((potential.span(), format!("{} = {}", name, snippet)));
+                }
+            }
+
+            if !suggestions.is_empty() {
+                err.multipart_suggestion(
+                    &format!(
+                        "replace the generic bound{s} with the associated type{s}",
+                        s = pluralize!(unbound_types.len())
+                    ),
+                    suggestions,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        } else if remove_entire_generics {
             let span = self
                 .path_segment
                 .args
