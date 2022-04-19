@@ -20,7 +20,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -352,7 +352,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
             })
             .collect::<Vec<_>>();
-        let crate_def_id = DefId::local(CRATE_DEF_INDEX);
+        let crate_def_id = CRATE_DEF_ID.to_def_id();
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let mut enum_candidates: Vec<_> = self
                 .r
@@ -1332,10 +1332,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r.crate_loader.maybe_process_path_extern(ident.name).and_then(
                                     |crate_id| {
-                                        let crate_mod = Res::Def(
-                                            DefKind::Mod,
-                                            DefId { krate: crate_id, index: CRATE_DEF_INDEX },
-                                        );
+                                        let crate_mod =
+                                            Res::Def(DefKind::Mod, crate_id.as_def_id());
 
                                         if filter_fn(crate_mod) {
                                             Some(TypoSuggestion::typo_from_res(

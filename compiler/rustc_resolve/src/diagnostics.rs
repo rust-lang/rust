@@ -10,7 +10,7 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::DefIdTree;
@@ -1167,7 +1167,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
-                        let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
+                        let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
                         filter_fn(res).then_some(TypoSuggestion::typo_from_res(ident.name, res))
                     }));
                 }

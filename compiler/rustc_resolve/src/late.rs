@@ -19,7 +19,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
@@ -2751,7 +2751,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // trait to resolve.  In that case, we leave the `B`
                 // segment to be resolved by type-check.
                 return Ok(Some(PartialRes::with_unresolved_segments(
-                    Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX)),
+                    Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id()),
                     path.len(),
                 )));
             }

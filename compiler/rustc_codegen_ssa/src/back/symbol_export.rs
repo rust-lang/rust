@@ -1,12 +1,10 @@
 use std::collections::hash_map::Entry::*;
 
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::Node;
-use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
@@ -277,17 +275,6 @@ fn upstream_monomorphizations_provider(
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 
-    let cnum_stable_ids: IndexVec<CrateNum, Fingerprint> = {
-        let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO, cnums.len() + 1);
-
-        for &cnum in cnums.iter() {
-            cnum_stable_ids[cnum] =
-                tcx.def_path_hash(DefId { krate: cnum, index: CRATE_DEF_INDEX }).0;
-        }
-
-        cnum_stable_ids
-    };
-
     let drop_in_place_fn_def_id = tcx.lang_items().drop_in_place_fn();
 
     for &cnum in cnums.iter() {
@@ -316,7 +303,7 @@ fn upstream_monomorphizations_provider(
                     // If there are multiple monomorphizations available,
                     // we select one deterministically.
                     let other_cnum = *e.get();
-                    if cnum_stable_ids[other_cnum] > cnum_stable_ids[cnum] {
+                    if tcx.stable_crate_id(other_cnum) > tcx.stable_crate_id(cnum) {
                         e.insert(cnum);
                     }
                 }
