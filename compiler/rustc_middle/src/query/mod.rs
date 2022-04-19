@@ -1969,4 +1969,10 @@ rustc_queries! {
         eval_always
         desc { "computing the backend features for CLI flags" }
     }
+
+    query generator_diagnostic_data(key: DefId) -> Option<GeneratorDiagnosticData<'tcx>> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { |tcx| "looking up generator diagnostic data of `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
+    }
 }
