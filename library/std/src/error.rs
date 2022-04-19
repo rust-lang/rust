@@ -637,7 +637,7 @@ impl Error for core::ffi::FromBytesWithNulError {
     }
 }
 
-#[unstable(feature = "todo", issue = "none")]
+#[stable(feature = "io_error_from_frombyteswithnulerror", since = "1.62.0")]
 impl From<core::ffi::FromBytesWithNulError> for io::Error {
     /// Converts a [`NulError`](core::ffi::FromBytesWithNulError) into an [`io::Error`].
     fn from(e: core::ffi::FromBytesWithNulError) -> io::Error {
