@@ -823,7 +823,7 @@ where
             // Zero-sized access
             return Ok(());
         };
-        alloc.write_uninit();
+        alloc.write_uninit()?;
         Ok(())
     }
 
