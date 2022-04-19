@@ -139,7 +139,7 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnUsed, uint8_t shadowReturnUsed,
     struct CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
-    size_t uncacheable_args_size, uint8_t forceAnonymousTape,
+    size_t uncacheable_args_size, uint8_t forceAnonymousTape, unsigned width,
     uint8_t AtomicAdd);
 
 typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,

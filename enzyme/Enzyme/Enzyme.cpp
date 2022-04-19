@@ -878,7 +878,7 @@ public:
       aug = &Logic.CreateAugmentedPrimal(
           cast<Function>(fn), retType, constants, TA,
           /*returnUsed*/ false, /*shadowReturnUsed*/ false, type_args,
-          volatile_args, forceAnonymousTape, /*atomicAdd*/ AtomicAdd);
+          volatile_args, forceAnonymousTape, width, /*atomicAdd*/ AtomicAdd);
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
         assert(!aug->tapeType);
@@ -941,7 +941,7 @@ public:
                                              retType == DIFFE_TYPE::DUP_NONEED);
       aug = &Logic.CreateAugmentedPrimal(
           cast<Function>(fn), retType, constants, TA, returnUsed,
-          shadowReturnUsed, type_args, volatile_args, forceAnonymousTape,
+          shadowReturnUsed, type_args, volatile_args, forceAnonymousTape, width,
           /*atomicAdd*/ AtomicAdd);
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
       if (!forceAnonymousTape) {

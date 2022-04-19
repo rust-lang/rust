@@ -4386,6 +4386,7 @@ public:
             cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*return is used*/ false,
             /*shadowReturnUsed*/ false, nextTypeInfo, uncacheable_args, false,
+            gutils->getWidth(),
             /*AtomicAdd*/ true,
             /*OpenMP*/ true);
         if (Mode == DerivativeMode::ReverseModePrimal) {
@@ -4981,7 +4982,7 @@ public:
 
   std::string extractBLAS(StringRef in, std::string &prefix,
                           std::string &suffix) {
-    std::string extractable[] = {"ddot", "sdot"};
+    std::string extractable[] = {"ddot", "sdot", "dnrm2", "snrm2"};
     std::string prefixes[] = {"", "cblas_", "cublas_"};
     std::string suffixes[] = {"", "_", "_64_"};
     for (auto ex : extractable) {
@@ -5001,19 +5002,175 @@ public:
   bool handleBLAS(llvm::CallInst &call, Function *called, StringRef funcName,
                   StringRef prefix, StringRef suffix,
                   const std::map<Argument *, bool> &uncacheable_args) {
-    // Forward Mode not handled yet
-    assert(Mode != DerivativeMode::ForwardMode &&
-           Mode != DerivativeMode::ForwardModeSplit);
-    // Vector Mode not handled yet
-    assert(gutils->getWidth() == 1);
     CallInst *const newCall = cast<CallInst>(gutils->getNewFromOriginal(&call));
     IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
     IRBuilder<> allocationBuilder(gutils->inversionAllocs);
     allocationBuilder.setFastMathFlags(getFast());
 
+    if (funcName == "dnrm2" || funcName == "snrm2") {
+      if (!gutils->isConstantInstruction(&call)) {
+
+        Type *innerType;
+        std::string dfuncName;
+        if (funcName == "dnrm2") {
+          innerType = Type::getDoubleTy(call.getContext());
+          dfuncName = (prefix + "ddot" + suffix).str();
+        } else if (funcName == "snrm2") {
+          innerType = Type::getFloatTy(call.getContext());
+          dfuncName = (prefix + "sdot" + suffix).str();
+        } else {
+          assert(false && "Unreachable");
+        }
+
+        IntegerType *intType =
+            dyn_cast<IntegerType>(call.getOperand(0)->getType());
+        bool byRef = false;
+        if (!intType) {
+          auto PT = cast<PointerType>(call.getOperand(0)->getType());
+          if (suffix.contains("64"))
+            intType = IntegerType::get(PT->getContext(), 64);
+          else
+            intType = IntegerType::get(PT->getContext(), 32);
+          byRef = true;
+        }
+
+        // Non-forward Mode not handled yet
+        if (Mode != DerivativeMode::ForwardMode) {
+          return false;
+        } else {
+          Type *castval;
+          if (auto PT = dyn_cast<PointerType>(call.getArgOperand(1)->getType()))
+            castval = PT;
+          else
+            castval = PointerType::getUnqual(innerType);
+
+          auto in_arg = call.getCalledFunction()->arg_begin();
+          Argument *n = in_arg;
+          in_arg++;
+          Argument *x = in_arg;
+          in_arg++;
+          Argument *xinc = in_arg;
+
+          auto derivcall = gutils->oldFunc->getParent()->getOrInsertFunction(
+              dfuncName, innerType, n->getType(), x->getType(), xinc->getType(),
+              x->getType(), xinc->getType());
+
+#if LLVM_VERSION_MAJOR >= 9
+          if (auto F = dyn_cast<Function>(derivcall.getCallee()))
+#else
+          if (auto F = dyn_cast<Function>(derivcall))
+#endif
+          {
+            F->addFnAttr(Attribute::ArgMemOnly);
+            F->addFnAttr(Attribute::ReadOnly);
+            if (byRef) {
+              F->addParamAttr(0, Attribute::ReadOnly);
+              F->addParamAttr(0, Attribute::NoCapture);
+              F->addParamAttr(2, Attribute::ReadOnly);
+              F->addParamAttr(2, Attribute::NoCapture);
+              F->addParamAttr(4, Attribute::ReadOnly);
+              F->addParamAttr(4, Attribute::NoCapture);
+            }
+            if (call.getArgOperand(1)->getType()->isPointerTy()) {
+              F->addParamAttr(1, Attribute::ReadOnly);
+              F->addParamAttr(1, Attribute::NoCapture);
+              F->addParamAttr(3, Attribute::ReadOnly);
+              F->addParamAttr(3, Attribute::NoCapture);
+            }
+          }
+
+          if (!gutils->isConstantValue(&call)) {
+            if (gutils->isConstantValue(call.getOperand(1))) {
+              setDiffe(
+                  &call,
+                  Constant::getNullValue(gutils->getShadowType(call.getType())),
+                  BuilderZ);
+            } else {
+              auto Defs = gutils->getInvertedBundles(
+                  &call,
+                  {ValueType::Primal, ValueType::Primal, ValueType::Primal},
+                  BuilderZ, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+              auto callval = call.getCalledOperand();
+#else
+              auto callval = call.getCalledValue();
+#endif
+
+              if (auto F = dyn_cast<Function>(callval)) {
+                F->addFnAttr(Attribute::ArgMemOnly);
+                F->addFnAttr(Attribute::ReadOnly);
+                if (byRef) {
+                  F->addParamAttr(0, Attribute::ReadOnly);
+                  F->addParamAttr(0, Attribute::NoCapture);
+                  F->addParamAttr(2, Attribute::ReadOnly);
+                  F->addParamAttr(2, Attribute::NoCapture);
+                }
+                if (call.getArgOperand(1)->getType()->isPointerTy()) {
+                  F->addParamAttr(1, Attribute::ReadOnly);
+                  F->addParamAttr(1, Attribute::NoCapture);
+                }
+              }
+
+              Value *args[] = {gutils->getNewFromOriginal(call.getOperand(0)),
+                               gutils->getNewFromOriginal(call.getOperand(1)),
+                               gutils->getNewFromOriginal(call.getOperand(2))};
+
+#if LLVM_VERSION_MAJOR > 7
+              auto norm = BuilderZ.CreateCall(call.getFunctionType(), callval,
+                                              args, Defs);
+#else
+              auto norm = BuilderZ.CreateCall(callval, args, Defs);
+#endif
+
+              Value *dval = applyChainRule(
+                  call.getType(), BuilderZ,
+                  [&](Value *ip) {
+                    Value *args1[] = {
+                        gutils->getNewFromOriginal(call.getOperand(0)),
+                        gutils->getNewFromOriginal(call.getOperand(1)),
+                        gutils->getNewFromOriginal(call.getOperand(2)), ip,
+                        gutils->getNewFromOriginal(call.getOperand(2))};
+                    return BuilderZ.CreateFDiv(
+                        BuilderZ.CreateCall(
+                            derivcall, args1,
+                            gutils->getInvertedBundles(
+                                &call,
+                                {ValueType::Primal, ValueType::Both,
+                                 ValueType::Primal},
+                                BuilderZ, /*lookup*/ false)),
+                        norm);
+                  },
+                  gutils->invertPointerM(call.getOperand(1), BuilderZ));
+              setDiffe(&call, dval, BuilderZ);
+            }
+          }
+        }
+
+        if (gutils->knownRecomputeHeuristic.find(&call) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[&call]) {
+            gutils->cacheForReverse(BuilderZ, newCall,
+                                    getIndex(&call, CacheType::Self));
+          }
+        }
+      }
+
+      if (Mode == DerivativeMode::ReverseModeGradient) {
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
+      } else {
+        eraseIfUnused(call);
+      }
+      return true;
+    }
     if (funcName == "ddot" || funcName == "sdot") {
       if (!gutils->isConstantInstruction(&call)) {
+        // Forward Mode not handled yet
+        assert(Mode != DerivativeMode::ForwardMode &&
+               Mode != DerivativeMode::ForwardModeSplit);
+        // Vector Mode not handled yet
+        assert(gutils->getWidth() == 1);
         Type *innerType;
         std::string dfuncName;
         if (funcName == "ddot") {
@@ -8037,7 +8194,8 @@ public:
         if (ifound != gutils->invertedPointers.end()) {
           auto placeholder = cast<PHINode>(&*ifound->second);
           if (invertedReturn && invertedReturn != placeholder) {
-            if (invertedReturn->getType() != orig->getType()) {
+            if (invertedReturn->getType() !=
+                gutils->getShadowType(orig->getType())) {
               llvm::errs() << " o: " << *orig << "\n";
               llvm::errs() << " ot: " << *orig->getType() << "\n";
               llvm::errs() << " ir: " << *invertedReturn << "\n";
@@ -8047,7 +8205,8 @@ public:
               llvm::errs() << " newCall: " << *newCall << "\n";
               llvm::errs() << " newCallT: " << *newCall->getType() << "\n";
             }
-            assert(invertedReturn->getType() == orig->getType());
+            assert(invertedReturn->getType() ==
+                   gutils->getShadowType(orig->getType()));
             placeholder->replaceAllUsesWith(invertedReturn);
             gutils->erase(placeholder);
             gutils->invertedPointers.insert(
@@ -8128,7 +8287,8 @@ public:
             gutils->erase(placeholder);
           } else {
             if (invertedReturn && invertedReturn != placeholder) {
-              if (invertedReturn->getType() != orig->getType()) {
+              if (invertedReturn->getType() !=
+                  gutils->getShadowType(orig->getType())) {
                 llvm::errs() << " o: " << *orig << "\n";
                 llvm::errs() << " ot: " << *orig->getType() << "\n";
                 llvm::errs() << " ir: " << *invertedReturn << "\n";
@@ -8138,7 +8298,8 @@ public:
                 llvm::errs() << " newCall: " << *newCall << "\n";
                 llvm::errs() << " newCallT: " << *newCall->getType() << "\n";
               }
-              assert(invertedReturn->getType() == orig->getType());
+              assert(invertedReturn->getType() ==
+                     gutils->getShadowType(orig->getType()));
               placeholder->replaceAllUsesWith(invertedReturn);
               gutils->erase(placeholder);
             } else
@@ -9839,8 +10000,15 @@ public:
                    forwardsShadow) ||
                   (Mode == DerivativeMode::ReverseModeGradient &&
                    backwardsShadow)) {
-                anti = shadowHandlers[called->getName().str()](bb, orig, args);
-
+                anti = applyChainRule(call.getType(), bb, [&]() {
+                  return shadowHandlers[called->getName().str()](bb, orig,
+                                                                 args);
+                });
+                if (anti->getType() != placeholder->getType()) {
+                  llvm::errs() << "orig: " << *orig << "\n";
+                  llvm::errs() << "placeholder: " << *placeholder << "\n";
+                  llvm::errs() << "anti: " << *anti << "\n";
+                }
                 gutils->invertedPointers.erase(found);
                 bb.SetInsertPoint(placeholder);
 
@@ -10263,7 +10431,11 @@ public:
 
       Value *ptrshadow =
           gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
-      Value *val = BuilderZ.CreateCall(called, {ptrshadow});
+
+      Value *val = applyChainRule(
+          call.getType(), BuilderZ,
+          [&](Value *v) -> Value * { return BuilderZ.CreateCall(called, {v}); },
+          ptrshadow);
 
       gutils->replaceAWithB(placeholder, val);
       gutils->erase(placeholder);
@@ -10973,7 +11145,7 @@ public:
               cast<Function>(called), subretType, argsInverted,
               TR.analyzer.interprocedural, /*return is used*/ subretused,
               shadowReturnUsed, nextTypeInfo, uncacheable_args, false,
-              gutils->AtomicAdd);
+              gutils->getWidth(), gutils->AtomicAdd);
           if (Mode == DerivativeMode::ReverseModePrimal) {
             assert(augmentedReturn);
             auto subaugmentations =

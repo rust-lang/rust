@@ -1819,9 +1819,14 @@ FunctionType *getFunctionTypeForClone(
     RetTypes.push_back(Type::getInt8PtrTy(FTy->getContext()));
     if (returnValue == ReturnType::TapeAndTwoReturns) {
       RetTypes.push_back(FTy->getReturnType());
-      RetTypes.push_back(FTy->getReturnType());
+      RetTypes.push_back(
+          GradientUtils::getShadowType(FTy->getReturnType(), width));
     } else if (returnValue == ReturnType::TapeAndReturn) {
-      RetTypes.push_back(FTy->getReturnType());
+      if (returnType != DIFFE_TYPE::CONSTANT)
+        RetTypes.push_back(
+            GradientUtils::getShadowType(FTy->getReturnType(), width));
+      else
+        RetTypes.push_back(FTy->getReturnType());
     }
     RetType = StructType::get(FTy->getContext(), RetTypes);
   } else if (returnValue == ReturnType::Return) {

@@ -237,7 +237,7 @@ public:
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<llvm::Argument *, bool> /*uncacheable_args*/,
                  bool /*returnUsed*/, bool /*shadowReturnUsed*/,
-                 const FnTypeInfo, bool, bool, bool>;
+                 const FnTypeInfo, bool, bool, bool, unsigned>;
   std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
   std::map<AugmentedCacheKey, bool> AugmentedCachedFinished;
 
@@ -257,7 +257,8 @@ public:
       const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
       bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &typeInfo,
       const std::map<llvm::Argument *, bool> _uncacheable_args,
-      bool forceAnonymousTape, bool AtomicAdd, bool omp = false);
+      bool forceAnonymousTape, unsigned width, bool AtomicAdd,
+      bool omp = false);
 
   std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
 

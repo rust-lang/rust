@@ -1640,7 +1640,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
     bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
-    bool AtomicAdd, bool omp) {
+    unsigned width, bool AtomicAdd, bool omp) {
   if (returnUsed)
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
@@ -1656,7 +1656,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                       std::map<Argument *, bool>(_uncacheable_args.begin(),
                                                  _uncacheable_args.end()),
                       returnUsed, shadowReturnUsed, oldTypeInfo,
-                      forceAnonymousTape, AtomicAdd, omp);
+                      forceAnonymousTape, AtomicAdd, omp, width);
   auto found = AugmentedCachedFunctions.find(tup);
   if (found != AugmentedCachedFunctions.end()) {
     return found->second;
@@ -1745,7 +1745,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       }
       auto &aug = CreateAugmentedPrimal(
           todiff, retType, next_constant_args, TA, returnUsed, shadowReturnUsed,
-          oldTypeInfo_, _uncacheable_args, forceAnonymousTape, AtomicAdd, omp);
+          oldTypeInfo_, _uncacheable_args, forceAnonymousTape, width, AtomicAdd,
+          omp);
       auto cal = bb.CreateCall(aug.fn, fwdargs);
       cal->setCallingConv(aug.fn->getCallingConv());
 
@@ -1835,7 +1836,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   std::map<AugmentedStruct, int> returnMapping;
 
   GradientUtils *gutils = GradientUtils::CreateFromClone(
-      *this, todiff, TLI, TA, retType, constant_args,
+      *this, width, todiff, TLI, TA, retType, constant_args,
       /*returnUsed*/ returnUsed, /*shadowReturnUsed*/ shadowReturnUsed,
       returnMapping, omp);
   gutils->AtomicAdd = AtomicAdd;
@@ -3052,7 +3053,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       auto &aug = CreateAugmentedPrimal(
           key.todiff, key.retType, key.constant_args, TA, key.returnUsed,
           key.shadowReturnUsed, key.typeInfo, key.uncacheable_args,
-          /*forceAnonymousTape*/ false, key.AtomicAdd, omp);
+          /*forceAnonymousTape*/ false, key.width, key.AtomicAdd, omp);
 
       SmallVector<Value *, 4> fwdargs;
       for (auto &a : NewF->args())

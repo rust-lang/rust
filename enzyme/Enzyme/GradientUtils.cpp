@@ -3294,8 +3294,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
 }
 
 GradientUtils *GradientUtils::CreateFromClone(
-    EnzymeLogic &Logic, Function *todiff, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, DIFFE_TYPE retType,
+    EnzymeLogic &Logic, unsigned width, Function *todiff,
+    TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
     bool shadowReturnUsed, std::map<AugmentedStruct, int> &returnMapping,
     bool omp) {
@@ -3342,18 +3342,22 @@ GradientUtils *GradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
+  std::string prefix = "fakeaugmented";
+  if (width > 1)
+    prefix += std::to_string(width);
+  prefix += "_";
+  prefix += todiff->getName().str();
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
-      DerivativeMode::ReverseModePrimal, /* width */ 1, todiff,
+      DerivativeMode::ReverseModePrimal, /* width */ width, todiff,
       invertedPointers, constant_args, constant_values, nonconstant_values,
       returnvals,
-      /*returnValue*/ returnValue, retType,
-      "fakeaugmented_" + todiff->getName(), &originalToNew,
+      /*returnValue*/ returnValue, retType, prefix, &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
   auto res = new GradientUtils(
       Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
       nonconstant_values, retType, originalToNew,
-      DerivativeMode::ReverseModePrimal, /* width */ 1, omp);
+      DerivativeMode::ReverseModePrimal, /* width */ width, omp);
   return res;
 }
 
@@ -3632,7 +3636,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         /*shadowReturnUsed*/ false, type_args, uncacheable_args,
-        /*forceAnonymousTape*/ true, AtomicAdd);
+        /*forceAnonymousTape*/ true, width, AtomicAdd);
     Constant *newf = Logic.CreateForwardDiff(
         fn, retType, types, TA, false, mode, /*freeMemory*/ true, width,
         nullptr, type_args, uncacheable_args, /*augmented*/ &augdata);
@@ -3672,7 +3676,8 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
                                            retType == DIFFE_TYPE::DUP_NONEED);
     auto &augdata = Logic.CreateAugmentedPrimal(
         fn, retType, /*constant_args*/ types, TA, returnUsed, shadowReturnUsed,
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
+        type_args, uncacheable_args, /*forceAnonymousTape*/ true, width,
+        AtomicAdd);
     Constant *newf = Logic.CreatePrimalAndGradient(
         (ReverseCacheKey){.todiff = fn,
                           .retType = retType,
