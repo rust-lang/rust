@@ -274,8 +274,10 @@ impl TokenCursor {
                         break (token, spacing);
                     }
                     TokenTree::Delimited(sp, delim, tts) => {
-                        let frame = TokenCursorFrame::new(sp, delim, false, tts, false);
+                        // Set `open_delim` to true here because we deal with it immediately.
+                        let frame = TokenCursorFrame::new(sp, delim, true, tts, false);
                         self.stack.push(mem::replace(&mut self.frame, frame));
+                        return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                     }
                 }
             } else if !self.frame.close_delim {
