@@ -1,4 +1,4 @@
-use crate::spec::{cvs, RelroLevel, TargetOptions};
+use crate::spec::{cvs, RelroLevel, SplitDebuginfo, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -11,6 +11,8 @@ pub fn opts() -> TargetOptions {
         relro_level: RelroLevel::Full,
         has_thread_local: true,
         crt_static_respected: true,
+        // PERF EXPERIMENT
+        split_debuginfo: SplitDebuginfo::Unpacked,
         ..Default::default()
     }
 }
