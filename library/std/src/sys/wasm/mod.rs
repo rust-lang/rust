@@ -49,16 +49,13 @@ pub mod time;
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        #[path = "atomics/condvar.rs"]
-        mod condvar;
-        #[path = "atomics/mutex.rs"]
-        mod mutex;
-        #[path = "atomics/rwlock.rs"]
-        mod rwlock;
+        #[path = "../unix/locks"]
         pub mod locks {
-            pub use super::condvar::*;
-            pub use super::mutex::*;
-            pub use super::rwlock::*;
+            #![allow(unsafe_op_in_unsafe_fn)]
+            mod futex;
+            mod futex_rwlock;
+            pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
+            pub use futex_rwlock::{RwLock, MovableRwLock};
         }
         #[path = "atomics/futex.rs"]
         pub mod futex;
