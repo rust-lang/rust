@@ -817,7 +817,7 @@ class RustBuild(object):
         return os.path.join(self.bin_root(True), '.rustfmt-stamp')
 
     def llvm_stamp(self):
-        """Return the path for .rustfmt-stamp
+        """Return the path for .llvm-stamp
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
