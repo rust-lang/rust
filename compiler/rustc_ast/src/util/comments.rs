@@ -44,6 +44,10 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
     }
 
     fn get_horizontal_trim<'a>(lines: &'a [&str], kind: CommentKind) -> Option<String> {
+        if lines.is_empty() {
+            return None;
+        }
+
         let mut i = usize::MAX;
         let mut first = true;
 
