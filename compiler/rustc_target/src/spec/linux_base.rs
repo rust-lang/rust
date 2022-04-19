@@ -12,7 +12,7 @@ pub fn opts() -> TargetOptions {
         has_thread_local: true,
         crt_static_respected: true,
         // PERF EXPERIMENT
-        split_debuginfo: SplitDebuginfo::Unpacked,
+        split_debuginfo: SplitDebuginfo::Packed,
         ..Default::default()
     }
 }
