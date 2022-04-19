@@ -8,6 +8,7 @@ use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_error_messages::MultiSpan;
+use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
@@ -147,7 +148,7 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable_Generic)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -174,8 +175,6 @@ pub enum Level {
     /// levels.
     Forbid,
 }
-
-rustc_data_structures::impl_stable_hash_via_hash!(Level);
 
 impl Level {
     /// Converts a level to a lower-case string.

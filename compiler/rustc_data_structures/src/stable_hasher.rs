@@ -207,9 +207,14 @@ pub trait ToStableHashKey<HCX> {
     fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType;
 }
 
-// Implement HashStable by just calling `Hash::hash()`. This works fine for
-// self-contained values that don't depend on the hashing context `CTX`.
-#[macro_export]
+/// Implement HashStable by just calling `Hash::hash()`.
+///
+/// **WARNING** This is only valid for types that *really* don't need any context for fingerprinting.
+/// But it is easy to misuse this macro (see [#96013](https://github.com/rust-lang/rust/issues/96013)
+/// for examples). Therefore this macro is not exported and should only be used in the limited cases
+/// here in this module.
+///
+/// Use `#[derive(HashStable_Generic)]` instead.
 macro_rules! impl_stable_hash_via_hash {
     ($t:ty) => {
         impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {
@@ -246,12 +251,14 @@ impl<CTX> HashStable<CTX> for ! {
 }
 
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)
     }
 }
 
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)
     }
@@ -272,12 +279,14 @@ impl<CTX> HashStable<CTX> for f64 {
 }
 
 impl<CTX> HashStable<CTX> for ::std::cmp::Ordering {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (*self as i8).hash_stable(ctx, hasher);
     }
 }
 
 impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let (ref _0,) = *self;
         _0.hash_stable(ctx, hasher);
