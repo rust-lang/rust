@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
@@ -703,7 +703,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id) else {
                     return;
                 };
-                let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+                let def_id = cnum.as_def_id();
                 self.tcx.check_stability(def_id, Some(item.hir_id()), item.span, None);
             }
 

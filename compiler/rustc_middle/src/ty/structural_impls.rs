@@ -10,7 +10,6 @@ use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
 
 use std::fmt;
@@ -71,7 +70,7 @@ impl fmt::Debug for ty::BoundRegionKind {
         match *self {
             ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
             ty::BrNamed(did, name) => {
-                if did.index == CRATE_DEF_INDEX {
+                if did.is_crate_root() {
                     write!(f, "BrNamed({})", name)
                 } else {
                     write!(f, "BrNamed({:?}, {})", did, name)
