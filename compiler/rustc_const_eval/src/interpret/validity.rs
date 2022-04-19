@@ -645,17 +645,18 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // i.e. that we go over the `check_init` below.
         let size = scalar_layout.size(self.ecx);
         let is_full_range = match scalar_layout {
-            ScalarAbi::Initialized { valid_range, .. } => {
+            ScalarAbi::Initialized { .. } => {
                 if M::enforce_number_validity(self.ecx) {
                     false // not "full" since uninit is not accepted
                 } else {
-                    valid_range.is_full_for(size)
+                    scalar_layout.is_always_valid(self.ecx)
                 }
             }
             ScalarAbi::Union { .. } => true,
         };
         if is_full_range {
-            // Nothing to check
+            // Nothing to check. Cruciall we don't even `read_scalar` until here, since that would
+            // fail for `Union` scalars!
             return Ok(());
         }
         // We have something to check: it must at least be initialized.
@@ -688,7 +689,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     } else {
                         return Ok(());
                     }
-                } else if scalar_layout.valid_range(self.ecx).is_full_for(size) {
+                } else if scalar_layout.is_always_valid(self.ecx) {
                     // Easy. (This is reachable if `enforce_number_validity` is set.)
                     return Ok(());
                 } else {

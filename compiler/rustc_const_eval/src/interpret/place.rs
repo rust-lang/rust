@@ -16,7 +16,7 @@ use rustc_target::abi::{HasDataLayout, Size, VariantIdx, Variants};
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy,
-    Operand, Pointer, PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit,
+    Operand, Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
@@ -700,24 +700,7 @@ where
         src: Immediate<M::PointerTag>,
         dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        if cfg!(debug_assertions) {
-            // This is a very common path, avoid some checks in release mode
-            assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
-            match src {
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Ptr(..))) => assert_eq!(
-                    self.pointer_size(),
-                    dest.layout.size,
-                    "Size mismatch when writing pointer"
-                ),
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Int(int))) => {
-                    assert_eq!(int.size(), dest.layout.size, "Size mismatch when writing bits")
-                }
-                Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // uninit can have any size
-                Immediate::ScalarPair(_, _) => {
-                    // FIXME: Can we check anything here?
-                }
-            }
-        }
+        assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
@@ -769,15 +752,15 @@ where
         // cover all the bytes!
         match value {
             Immediate::Scalar(scalar) => {
-                match dest.layout.abi {
-                    Abi::Scalar(_) => {} // fine
-                    _ => span_bug!(
+                let Abi::Scalar(s) = dest.layout.abi else { span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                         dest.layout
-                    ),
-                }
-                alloc.write_scalar(alloc_range(Size::ZERO, dest.layout.size), scalar)
+                    )
+                };
+                let size = s.size(&tcx);
+                assert_eq!(dest.layout.size, size, "abi::Scalar size does not match layout size");
+                alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
@@ -791,6 +774,7 @@ where
                 };
                 let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
                 let b_offset = a_size.align_to(b.align(&tcx).abi);
+                assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
