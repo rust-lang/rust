@@ -262,29 +262,32 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
         let (token, spacing) = loop {
-            let (tree, spacing) = if !self.frame.open_delim {
+            if !self.frame.open_delim {
                 self.frame.open_delim = true;
-                TokenTree::token(token::OpenDelim(self.frame.delim), self.frame.span.open).into()
-            } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
-                tree
+                return (
+                    Token::new(token::OpenDelim(self.frame.delim), self.frame.span.open),
+                    Spacing::Alone,
+                );
+            } else if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing() {
+                match tree {
+                    TokenTree::Token(token) => {
+                        break (token, spacing);
+                    }
+                    TokenTree::Delimited(sp, delim, tts) => {
+                        let frame = TokenCursorFrame::new(sp, delim, tts);
+                        self.stack.push(mem::replace(&mut self.frame, frame));
+                    }
+                }
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
-                TokenTree::token(token::CloseDelim(self.frame.delim), self.frame.span.close).into()
+                return (
+                    Token::new(token::CloseDelim(self.frame.delim), self.frame.span.close),
+                    Spacing::Alone,
+                );
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
-                continue;
             } else {
-                (TokenTree::Token(Token::new(token::Eof, DUMMY_SP)), Spacing::Alone)
-            };
-
-            match tree {
-                TokenTree::Token(token) => {
-                    break (token, spacing);
-                }
-                TokenTree::Delimited(sp, delim, tts) => {
-                    let frame = TokenCursorFrame::new(sp, delim, tts);
-                    self.stack.push(mem::replace(&mut self.frame, frame));
-                }
+                return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
         };
 
