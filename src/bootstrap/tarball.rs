@@ -262,11 +262,13 @@ impl<'a> Tarball<'a> {
         t!(std::fs::rename(&self.image_dir, &dest));
 
         self.run(|this, cmd| {
+            let distdir = crate::dist::distdir(this.builder);
+            t!(std::fs::create_dir_all(&distdir));
             cmd.arg("tarball")
                 .arg("--input")
                 .arg(&dest)
                 .arg("--output")
-                .arg(crate::dist::distdir(this.builder).join(this.package_name()));
+                .arg(distdir.join(this.package_name()));
         })
     }
 
