@@ -370,7 +370,8 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
             clause = clause.replace("<br>", &format!("<br>{}", padding));
             clause.insert_str(0, &"&nbsp;".repeat(indent.saturating_sub(1)));
             if !end_newline {
-                clause.insert_str(0, "<br>");
+                // we insert the <br> after a single space but before multiple spaces at the start
+                clause.insert_str(if indent == 0 { 1 } else { 0 }, "<br>");
             }
         }
         write!(f, "{}", clause)
