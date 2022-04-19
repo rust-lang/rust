@@ -1120,21 +1120,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 match st[i].abi() {
                                     Abi::Scalar(_) => Abi::Scalar(niche_scalar),
                                     Abi::ScalarPair(first, second) => {
-                                        // We need to use scalar_unit to reset the
-                                        // valid range to the maximal one for that
-                                        // primitive, because only the niche is
-                                        // guaranteed to be initialised, not the
-                                        // other primitive.
+                                        // Only the niche is guaranteed to be initialised,
+                                        // so use union layout for the other primitive.
                                         if offset.bytes() == 0 {
-                                            Abi::ScalarPair(
-                                                niche_scalar,
-                                                scalar_unit(second.primitive()),
-                                            )
+                                            Abi::ScalarPair(niche_scalar, second.to_union())
                                         } else {
-                                            Abi::ScalarPair(
-                                                scalar_unit(first.primitive()),
-                                                niche_scalar,
-                                            )
+                                            Abi::ScalarPair(first.to_union(), niche_scalar)
                                         }
                                     }
                                     _ => Abi::Aggregate { sized: true },
@@ -1329,6 +1320,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
+                    let mut common_prim_initialized_in_all_variants = true;
                     for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
                         let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
                             bug!();
@@ -1336,7 +1328,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let mut fields =
                             iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
                         let (field, offset) = match (fields.next(), fields.next()) {
-                            (None, None) => continue,
+                            (None, None) => {
+                                common_prim_initialized_in_all_variants = false;
+                                continue;
+                            }
                             (Some(pair), None) => pair,
                             _ => {
                                 common_prim = None;
@@ -1344,7 +1339,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
                         };
                         let prim = match field.abi {
-                            Abi::Scalar(scalar) => scalar.primitive(),
+                            Abi::Scalar(scalar) => {
+                                common_prim_initialized_in_all_variants &=
+                                    matches!(scalar, Scalar::Initialized { .. });
+                                scalar.primitive()
+                            }
                             _ => {
                                 common_prim = None;
                                 break;
@@ -1364,7 +1363,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                     }
                     if let Some((prim, offset)) = common_prim {
-                        let pair = self.scalar_pair(tag, scalar_unit(prim));
+                        let prim_scalar = if common_prim_initialized_in_all_variants {
+                            scalar_unit(prim)
+                        } else {
+                            // Common prim might be uninit.
+                            Scalar::Union { value: prim }
+                        };
+                        let pair = self.scalar_pair(tag, prim_scalar);
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index, &[0, 1]);
