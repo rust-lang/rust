@@ -33,8 +33,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_serialize::json::Json;
-use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -727,30 +726,6 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
                     db.span_label(span, "the attribute is introduced here");
-                }
-                BuiltinLintDiagnostics::ExternDepSpec(krate, loc) => {
-                    let json = match loc {
-                        ExternDepSpec::Json(json) => {
-                            db.help(&format!("remove unnecessary dependency `{}`", krate));
-                            json
-                        }
-                        ExternDepSpec::Raw(raw) => {
-                            db.help(&format!("remove unnecessary dependency `{}` at `{}`", krate, raw));
-                            db.span_suggestion_with_style(
-                                DUMMY_SP,
-                                "raw extern location",
-                                raw.clone(),
-                                Applicability::Unspecified,
-                                SuggestionStyle::CompletelyHidden,
-                            );
-                            Json::String(raw)
-                        }
-                    };
-                    db.tool_only_suggestion_with_metadata(
-                        "json extern location",
-                        Applicability::Unspecified,
-                        json
-                    );
                 }
                 BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
                     db.note(&note);
