@@ -59,7 +59,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Option<RustcVe
                         from_slice_ty, from_size, to_slice_ty, to_size,
                     ),
                     |diag| {
-                        let cast_expr = match expr.kind {
+                        let cast_expr = match expr.peel_blocks().kind {
                             ExprKind::Cast(cast_expr, ..) => cast_expr,
                             _ => unreachable!("expr should be a cast as checked by expr_cast_chain_tys"),
                         };
