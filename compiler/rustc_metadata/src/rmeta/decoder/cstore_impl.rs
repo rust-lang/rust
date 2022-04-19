@@ -246,6 +246,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
