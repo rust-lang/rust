@@ -774,7 +774,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn opt_item_ident(self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
         let name = self.opt_item_name(item_index)?;
-        let span = self.root.tables.def_ident_span.get(self, item_index)?.decode((self, sess));
+        let span =
+            self.root.tables.def_ident_span.get(self, item_index).unwrap().decode((self, sess));
         Some(Ident::new(name, span))
     }
 
