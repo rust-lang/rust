@@ -220,7 +220,7 @@ type SyntaxNode = Arc<SyntaxData>;
 struct SyntaxData {
     offset: usize,
     parent: Option<SyntaxNode>,
-    green: Arc<GreeNode>,
+    green: Arc<GreenNode>,
 }
 
 impl SyntaxNode {
@@ -302,7 +302,7 @@ type SyntaxNode = Arc<SyntaxData>;
 struct SyntaxData {
     offset: usize,
     parent: Option<SyntaxNode>,
-    green: Arc<GreeNode>,
+    green: Arc<GreenNode>,
     children: Vec<OnceCell<SyntaxNode>>,
 }
 ```
