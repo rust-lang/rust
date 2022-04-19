@@ -117,6 +117,7 @@ mod baz {}
                                             is_snippet: false,
                                         },
                                     ),
+                                    trigger_signature_help: false,
                                 },
                                 Assist {
                                     id: AssistId(
@@ -143,6 +144,7 @@ mod baz {}
                                             is_snippet: false,
                                         },
                                     ),
+                                    trigger_signature_help: false,
                                 },
                             ],
                         ),

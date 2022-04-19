@@ -204,6 +204,7 @@ fn map_rust_child_diagnostic(
                     }),
                     is_preferred: Some(true),
                     data: None,
+                    command: None,
                 },
             }),
         })

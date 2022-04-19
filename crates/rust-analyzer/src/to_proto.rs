@@ -1018,7 +1018,13 @@ pub(crate) fn code_action(
         edit: None,
         is_preferred: None,
         data: None,
+        command: None,
     };
+
+    if assist.trigger_signature_help && snap.config.client_commands().trigger_parameter_hints {
+        res.command = Some(command::trigger_parameter_hints());
+    }
+
     match (assist.source_change, resolve_data) {
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params))) => {
