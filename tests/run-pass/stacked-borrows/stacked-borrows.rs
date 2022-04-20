@@ -16,6 +16,7 @@ fn main() {
     disjoint_mutable_subborrows();
     raw_ref_to_part();
     array_casts();
+    mut_below_shr();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -185,4 +186,13 @@ fn array_casts() {
     let x: [usize; 2] = [0, 1];
     let p = &x as *const usize;
     assert_eq!(unsafe { *p.add(1) }, 1);
+}
+
+/// Transmuting &&i32 to &&mut i32 is fine.
+fn mut_below_shr() {
+    let x = 0;
+    let y = &x;
+    let p = unsafe { core::mem::transmute::<&&i32,&&mut i32>(&y) };
+    let r = &**p;
+    let _val = *r;
 }
