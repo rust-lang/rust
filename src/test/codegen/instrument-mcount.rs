@@ -1,3 +1,4 @@
+// min-llvm-version: 13.0.0
 // revisions: opt noopt
 // compile-flags: -Z instrument-mcount
 // [opt]compile-flags: -O
