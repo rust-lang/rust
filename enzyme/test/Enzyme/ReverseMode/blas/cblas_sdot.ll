@@ -130,11 +130,11 @@ entry:
 ; CHECK-NEXT:   %1 = extractvalue { float*, float* } %0, 0
 ; CHECK-NEXT:   %2 = extractvalue { float*, float* } %0, 1
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %1, i32 1, float* %"n'", i32 %incn)
-; CHECK-NEXT:   %3 = bitcast float* %1 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %3)
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %2, i32 1, float* %"m'", i32 %incm)
+; CHECK-NEXT:   %3 = bitcast float* %1 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
 ; CHECK-NEXT:   %4 = bitcast float* %2 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %4)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %4)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -158,7 +158,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %0, i32 1, float* %"n'", i32 %incn)
 ; CHECK-NEXT:   %1 = bitcast float* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %1)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -182,7 +182,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %0, i32 1, float* %"m'", i32 %incm)
 ; CHECK-NEXT:   %1 = bitcast float* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %1)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

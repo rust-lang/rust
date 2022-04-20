@@ -130,11 +130,11 @@ entry:
 ; CHECK-NEXT:   %1 = extractvalue { double*, double* } %0, 0
 ; CHECK-NEXT:   %2 = extractvalue { double*, double* } %0, 1
 ; CHECK-NEXT:   call void @cblas_daxpy(i32 %len, double %differeturn, double* %1, i32 1, double* %"n'", i32 %incn)
-; CHECK-NEXT:   %3 = bitcast double* %1 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %3)
 ; CHECK-NEXT:   call void @cblas_daxpy(i32 %len, double %differeturn, double* %2, i32 1, double* %"m'", i32 %incm)
+; CHECK-NEXT:   %3 = bitcast double* %1 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
 ; CHECK-NEXT:   %4 = bitcast double* %2 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %4)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %4)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -158,7 +158,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @cblas_daxpy(i32 %len, double %differeturn, double* %0, i32 1, double* %"n'", i32 %incn)
 ; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %1)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -182,7 +182,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @cblas_daxpy(i32 %len, double %differeturn, double* %0, i32 1, double* %"m'", i32 %incm)
 ; CHECK-NEXT:   %1 = bitcast double* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* %1)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %1)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
