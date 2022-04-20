@@ -44,10 +44,12 @@ pub struct ConstS<'tcx> {
 static_assert_size!(ConstS<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
+    #[inline]
     pub fn ty(self) -> Ty<'tcx> {
         self.0.ty
     }
 
+    #[inline]
     pub fn val(self) -> ConstKind<'tcx> {
         self.0.val
     }
