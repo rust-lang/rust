@@ -994,22 +994,24 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
-        let (mut next, spacing) = self.token_cursor.inlined_next(self.desugar_doc_comments);
+        // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
+        // than `.0`/`.1` access.
+        let mut next = self.token_cursor.inlined_next(self.desugar_doc_comments);
         self.token_cursor.num_next_calls += 1;
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
         // an unglued token. See `break_and_eat` for more details
         self.token_cursor.break_last_token = false;
-        if next.span.is_dummy() {
+        if next.0.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             let fallback_span = self.token.span;
-            next.span = fallback_span.with_ctxt(next.span.ctxt());
+            next.0.span = fallback_span.with_ctxt(next.0.span.ctxt());
         }
         debug_assert!(!matches!(
-            next.kind,
+            next.0.kind,
             token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
         ));
-        self.inlined_bump_with((next, spacing))
+        self.inlined_bump_with(next)
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
