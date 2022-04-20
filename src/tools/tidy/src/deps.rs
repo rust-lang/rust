@@ -42,6 +42,9 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("self_cell", "Apache-2.0"),      // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
+    ("dunce", "CC0-1.0"),            // cargo (dev dependency)
+    ("similar", "Apache-2.0"),       // cargo (dev dependency)
+    ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
