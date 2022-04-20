@@ -353,33 +353,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // a hidden lifetime parameter. This is needed for backwards
         // compatibility, even in contexts like an impl header where
         // we generally don't permit such things (see #51008).
-        if let Some((_, _, binders)) = &mut self.captured_lifetimes {
-            binders.insert(id);
-        }
-        let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
-        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
-        }));
-        let output_ty = match output {
-            FnRetTy::Ty(ty) => {
-                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
-            }
-            FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
-        };
-        let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
-        let binding = self.output_ty_binding(output_ty.span, output_ty);
-        if let Some((_, _, binders)) = &mut self.captured_lifetimes {
-            binders.remove(&id);
-        }
-        (
-            GenericArgsCtor {
-                args,
-                bindings: arena_vec![self; binding],
-                parenthesized: true,
-                span: data.inputs_span,
-            },
-            false,
-        )
+        self.with_lifetime_binder(id, |this| {
+            let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
+            let inputs = this.arena.alloc_from_iter(inputs.iter().map(|ty| {
+                this.lower_ty_direct(
+                    ty,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
+                )
+            }));
+            let output_ty = match output {
+                FnRetTy::Ty(ty) => this
+                    .lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
+                FnRetTy::Default(_) => this.arena.alloc(this.ty_tup(*span, &[])),
+            };
+            let args = smallvec![GenericArg::Type(this.ty_tup(*inputs_span, inputs))];
+            let binding = this.output_ty_binding(output_ty.span, output_ty);
+            (
+                GenericArgsCtor {
+                    args,
+                    bindings: arena_vec![this; binding],
+                    parenthesized: true,
+                    span: data.inputs_span,
+                },
+                false,
+            )
+        })
     }
 
     /// An associated type binding `Output = $ty`.
