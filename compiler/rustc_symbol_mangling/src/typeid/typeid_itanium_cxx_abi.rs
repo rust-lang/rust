@@ -641,6 +641,12 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        ty::TyAlias(def_id, substs) => {
+            let binder_ty = tcx.bound_type_of(*def_id);
+            let ty = binder_ty.subst(tcx, substs);
+            return encode_ty(tcx, ty, dict, options);
+        }
+
         // Unexpected types
         ty::Bound(..)
         | ty::Error(..)
@@ -793,6 +799,12 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     fn_sig.bound_vars(),
                 ));
             }
+        }
+
+        ty::TyAlias(def_id, substs) => {
+            let binder_ty = tcx.bound_type_of(*def_id);
+            let ty = binder_ty.subst(tcx, substs);
+            return transform_ty(tcx, ty, options);
         }
 
         ty::Bound(..)

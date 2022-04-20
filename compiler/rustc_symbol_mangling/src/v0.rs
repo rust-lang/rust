@@ -387,6 +387,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
+        let ty = self.tcx.peel_off_ty_alias(ty);
+
         match *ty.kind() {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
@@ -439,9 +441,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
+            | ty::Closure(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
             }
@@ -490,6 +492,8 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+
+            ty::TyAlias(..) => bug!("symbol_names: unexpected projection"),
         }
 
         // Only cache types that do not refer to an enclosing
