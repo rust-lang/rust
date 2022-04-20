@@ -515,6 +515,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
                 return Err(AllocError::PartialPointerOverwrite(first));
             }
+            warn!(
+                "Partial pointer overwrite! De-initializing memory at offsets {first:?}..{start:?}."
+            );
             self.init_mask.set_range(first, start, false);
         }
         if last > end {
@@ -523,10 +526,15 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
                     last - cx.data_layout().pointer_size,
                 ));
             }
+            warn!(
+                "Partial pointer overwrite! De-initializing memory at offsets {end:?}..{last:?}."
+            );
             self.init_mask.set_range(end, last, false);
         }
 
         // Forget all the relocations.
+        // Since relocations do not overlap, we know that removing until `last` (exclusive) is fine,
+        // i.e., this will not remove any other relocations just after the ones we care about.
         self.relocations.0.remove_range(first..last);
 
         Ok(())
