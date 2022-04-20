@@ -984,12 +984,6 @@ impl<'a> Parser<'a> {
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
     fn inlined_bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
-        // Bumping after EOF is a bad sign, usually an infinite loop.
-        if self.prev_token.kind == TokenKind::Eof {
-            let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
-            self.span_bug(self.token.span, msg);
-        }
-
         // Update the current and previous tokens.
         self.prev_token = mem::replace(&mut self.token, next_token);
         self.token_spacing = next_spacing;
