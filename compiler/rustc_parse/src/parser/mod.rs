@@ -241,20 +241,13 @@ struct TokenCursor {
 struct TokenCursorFrame {
     delim: token::DelimToken,
     span: DelimSpan,
-    open_delim: bool,
     tree_cursor: tokenstream::Cursor,
     close_delim: bool,
 }
 
 impl TokenCursorFrame {
-    fn new(
-        span: DelimSpan,
-        delim: DelimToken,
-        open_delim: bool,
-        tts: TokenStream,
-        close_delim: bool,
-    ) -> Self {
-        TokenCursorFrame { delim, span, open_delim, tree_cursor: tts.into_trees(), close_delim }
+    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream, close_delim: bool) -> Self {
+        TokenCursorFrame { delim, span, tree_cursor: tts.into_trees(), close_delim }
     }
 }
 
@@ -267,13 +260,7 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
         loop {
-            if !self.frame.open_delim {
-                self.frame.open_delim = true;
-                return (
-                    Token::new(token::OpenDelim(self.frame.delim), self.frame.span.open),
-                    Spacing::Alone,
-                );
-            } else if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing() {
+            if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing() {
                 return match tree {
                     TokenTree::Token(token) => match (desugar_doc_comments, &token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
@@ -283,7 +270,7 @@ impl TokenCursor {
                     },
                     TokenTree::Delimited(sp, delim, tts) => {
                         // Set `open_delim` to true here because we deal with it immediately.
-                        let frame = TokenCursorFrame::new(sp, delim, true, tts, false);
+                        let frame = TokenCursorFrame::new(sp, delim, tts, false);
                         self.stack.push(mem::replace(&mut self.frame, frame));
                         (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone)
                     }
@@ -335,7 +322,6 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                true,
                 if attr_style == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, span), TokenTree::token(token::Not, span), body]
                         .iter()
@@ -436,8 +422,7 @@ impl<'a> Parser<'a> {
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
-        let start_frame =
-            TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, true, tokens, true);
+        let start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens, true);
 
         let mut parser = Parser {
             sess,
