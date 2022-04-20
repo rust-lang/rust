@@ -95,7 +95,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`).
+    /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
+    /// site.
+    #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
         // needs to have them force-captured here.
