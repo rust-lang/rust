@@ -1987,8 +1987,8 @@ public:
         }
       }
       if (!constantval0) {
+        Value *op1 = lookup(gutils->getNewFromOriginal(orig_op1), Builder2);
         auto rule = [&](Value *idiff) {
-          Value *op1 = lookup(gutils->getNewFromOriginal(orig_op1), Builder2);
           return Builder2.CreateFDiv(idiff, op1,
                                      "d0diffe" + orig_op0->getName());
         };
