@@ -130,7 +130,6 @@
 #![feature(const_replace)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
