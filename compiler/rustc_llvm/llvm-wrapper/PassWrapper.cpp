@@ -187,6 +187,41 @@ extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
 }
+
+extern "C" LLVMPassManagerBuilderRef LLVMRustPassManagerBuilderCreate() {
+#if LLVM_VERSION_LT(15, 0)
+  return LLVMPassManagerBuilderCreate();
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+
+extern "C" void LLVMRustPassManagerBuilderDispose(LLVMPassManagerBuilderRef PMB) {
+#if LLVM_VERSION_LT(15, 0)
+  LLVMPassManagerBuilderDispose(PMB);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+
+extern "C" void LLVMRustPassManagerBuilderPopulateFunctionPassManager(
+  LLVMPassManagerBuilderRef PMB, LLVMPassManagerRef PM) {
+#if LLVM_VERSION_LT(15, 0)
+  LLVMPassManagerBuilderPopulateFunctionPassManager(PMB, PM);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+
+extern "C" void LLVMRustPassManagerBuilderPopulateModulePassManager(
+  LLVMPassManagerBuilderRef PMB, LLVMPassManagerRef PM) {
+#if LLVM_VERSION_LT(15, 0)
+  LLVMPassManagerBuilderPopulateModulePassManager(PMB, PM);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+
 extern "C" void LLVMRustPassManagerBuilderPopulateLTOPassManager(
   LLVMPassManagerBuilderRef PMB, LLVMPassManagerRef PM, bool Internalize, bool RunInliner) {
 #if LLVM_VERSION_LT(15, 0)
@@ -203,6 +238,15 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
 ) {
 #if LLVM_VERSION_LT(15, 0)
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
+}
+
+extern "C" void LLVMRustPassManagerBuilderUseInlinerWithThreshold(
+  LLVMPassManagerBuilderRef PMB, unsigned Threshold) {
+#if LLVM_VERSION_LT(15, 0)
+  LLVMPassManagerBuilderUseInlinerWithThreshold(PMB, Threshold);
 #else
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
@@ -577,12 +621,16 @@ extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
     bool MergeFunctions, bool SLPVectorize, bool LoopVectorize, bool PrepareForThinLTO,
-    const char* PGOGenPath, const char* PGOUsePath, const char* PGOSampleUsePath) {
+    const char* PGOGenPath, const char* PGOUsePath, const char* PGOSampleUsePath,
+    int SizeLevel) {
+#if LLVM_VERSION_LT(15, 0)
   unwrap(PMBR)->MergeFunctions = MergeFunctions;
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
   unwrap(PMBR)->PrepareForThinLTO = PrepareForThinLTO;
+  unwrap(PMBR)->SizeLevel = SizeLevel;
+  unwrap(PMBR)->DisableUnrollLoops = SizeLevel != 0;
 
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
@@ -594,6 +642,9 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
   } else if (PGOSampleUsePath) {
     unwrap(PMBR)->PGOSampleUse = PGOSampleUsePath;
   }
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
