@@ -972,7 +972,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
             /*incrementing value to increase when it goes past a power of two*/
             containedloops.back().first.incvar,
             /*buffer size (element x subloops)*/
-            build.CreateMul(tsize, sublimits[i].first, "", /*NUW*/ true,
+            build.CreateMul(tsize, size, "", /*NUW*/ true,
                             /*NSW*/ true)};
 
         assert(allocation->getType()->getPointerElementType() == myType);
