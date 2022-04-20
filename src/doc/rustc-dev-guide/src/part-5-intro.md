@@ -11,7 +11,7 @@ will finally take the MIR and produce some executable machine code.
 
 [MIR]: ./mir/index.md
 
-> NOTE: This part of a compiler is often called the _backend_ the term is a bit
+> NOTE: This part of a compiler is often called the _backend_. The term is a bit
 > overloaded because in the compiler source, it usually refers to the "codegen
 > backend" (i.e. LLVM or Cranelift). Usually, when you see the word "backend"
 > in this part, we are referring to the "codegen backend".
