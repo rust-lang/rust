@@ -1,5 +1,8 @@
 use crate::iter::traits::trusted_random_access::try_get_unchecked;
-use crate::iter::traits::TrustedRandomAccess;
+use crate::iter::traits::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
+};
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -152,12 +155,29 @@ unsafe impl<I> TrustedRandomAccess for Copied<I>
 where
     I: TrustedRandomAccess,
 {
-    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.it.cleanup(num, forward);
     }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsCleanup for Copied<I> where I: TrustedRandomAccessNeedsCleanup
+{}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsForwardSetup for Copied<I> where
+    I: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsReverseSetup for Copied<I> where
+    I: TrustedRandomAccessNeedsReverseSetup
+{
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]

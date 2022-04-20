@@ -2,6 +2,8 @@ use crate::intrinsics;
 use crate::iter::traits::trusted_random_access::try_get_unchecked;
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
 };
 use crate::ops::Try;
 
@@ -225,14 +227,30 @@ unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
     I: TrustedRandomAccess,
 {
-    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         if let Some(iter) = self.iter.as_mut() {
             iter.cleanup(num, forward);
         }
     }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsCleanup for Fuse<I> where I: TrustedRandomAccessNeedsCleanup {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsForwardSetup for Fuse<I> where
+    I: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsReverseSetup for Fuse<I> where
+    I: TrustedRandomAccessNeedsReverseSetup
+{
 }
 
 /// Fuse specialization trait

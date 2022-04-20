@@ -1,5 +1,7 @@
 use crate::iter::IntoIterator;
-use crate::iter::TrustedRandomAccess;
+use crate::iter::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+};
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -34,39 +36,32 @@ unsafe impl<#[may_dangle] I: Iterator> Drop for ForLoopDesugar<I> {
     }
 }
 
-trait DesugarSpec<T> {
-    fn setup(&mut self);
-
+trait DesugarNext<T> {
     fn next_spec(&mut self) -> Option<T>;
+}
 
+trait DesugarSetup<T> {
+    fn setup(&mut self);
+}
+
+trait DesugarCleanup<T> {
     fn cleanup(&mut self);
 }
 
-impl<I, T> DesugarSpec<T> for ForLoopDesugar<I>
+impl<I, T> DesugarNext<T> for ForLoopDesugar<I>
 where
     I: Iterator<Item = T>,
 {
     #[inline]
-    default fn setup(&mut self) {}
-
-    #[inline]
     default fn next_spec(&mut self) -> Option<I::Item> {
         self.iter.next()
     }
-
-    #[inline]
-    default fn cleanup(&mut self) {}
 }
 
-impl<I, T> DesugarSpec<T> for ForLoopDesugar<I>
+impl<I, T> DesugarNext<T> for ForLoopDesugar<I>
 where
     I: TrustedRandomAccess + Iterator<Item = T>,
 {
-    #[inline]
-    fn setup(&mut self) {
-        let _ = self.iter.advance_by(0);
-    }
-
     #[inline]
     fn next_spec(&mut self) -> Option<I::Item> {
         let idx = self.idx;
@@ -81,11 +76,40 @@ where
             None
         }
     }
+}
 
+impl<I, T> DesugarSetup<T> for ForLoopDesugar<I>
+where
+    I: Iterator<Item = T>,
+{
+    #[inline]
+    default fn setup(&mut self) {}
+}
+
+impl<I, T> DesugarSetup<T> for ForLoopDesugar<I>
+where
+    I: Iterator<Item = T> + TrustedRandomAccess + TrustedRandomAccessNeedsForwardSetup,
+{
+    #[inline]
+    fn setup(&mut self) {
+        let _ = self.iter.advance_by(0);
+    }
+}
+
+impl<I, T> DesugarCleanup<T> for ForLoopDesugar<I>
+where
+    I: Iterator<Item = T>,
+{
+    #[inline]
+    default fn cleanup(&mut self) {}
+}
+
+impl<I, T> DesugarCleanup<T> for ForLoopDesugar<I>
+where
+    I: Iterator<Item = T> + TrustedRandomAccessNeedsCleanup + TrustedRandomAccess,
+{
     #[inline]
     fn cleanup(&mut self) {
-        if I::NEEDS_CLEANUP {
-            self.iter.cleanup(self.idx, true);
-        }
+        self.iter.cleanup(self.idx, true);
     }
 }

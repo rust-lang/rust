@@ -348,8 +348,6 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
-    const NEEDS_CLEANUP: bool = false;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.0.cleanup(num, forward);

@@ -2,7 +2,10 @@ use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::traits::trusted_random_access::try_get_unchecked;
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
-use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
+use crate::iter::{
+    InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNeedsCleanup,
+    TrustedRandomAccessNeedsForwardSetup, TrustedRandomAccessNeedsReverseSetup,
+};
 use crate::ops::Try;
 
 /// An iterator that iterates two other iterators simultaneously.
@@ -259,13 +262,62 @@ where
     A: TrustedRandomAccess,
     B: TrustedRandomAccess,
 {
-    const NEEDS_CLEANUP: bool = A::NEEDS_CLEANUP || B::NEEDS_CLEANUP;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.a.cleanup(num, forward);
         self.b.cleanup(num, forward);
     }
 }
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsCleanup for Zip<A, B> where
+    A: TrustedRandomAccessNeedsCleanup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsCleanup for Zip<A, B> where
+    B: TrustedRandomAccessNeedsCleanup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsCleanup for Zip<A, B>
+where
+    A: TrustedRandomAccessNeedsCleanup,
+    B: TrustedRandomAccessNeedsCleanup,
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsForwardSetup for Zip<A, B> where
+    A: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsForwardSetup for Zip<A, B> where
+    B: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsForwardSetup for Zip<A, B>
+where
+    A: TrustedRandomAccessNeedsForwardSetup,
+    B: TrustedRandomAccessNeedsForwardSetup,
+{
+}
+
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNeedsReverseSetup for Zip<A, B> where Self: TrustedRandomAccess {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A, B> FusedIterator for Zip<A, B>

@@ -383,13 +383,16 @@ pub use self::traits::FusedIterator;
 pub use self::traits::InPlaceIterable;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
-#[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::traits::TrustedRandomAccess;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::traits::TrustedStep;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{
     DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,
+};
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::traits::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
 };
 
 #[stable(feature = "iter_zip", since = "1.59.0")]

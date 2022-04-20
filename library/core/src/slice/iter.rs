@@ -1371,8 +1371,6 @@ impl<T> FusedIterator for Windows<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             self.v = &self.v[num..];
@@ -1559,8 +1557,6 @@ impl<T> FusedIterator for Chunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             let len = self.v.len();
@@ -1735,8 +1731,6 @@ impl<T> FusedIterator for ChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         let len = self.len();
         let v = mem::replace(&mut self.v, &mut []);
@@ -1904,8 +1898,6 @@ impl<T> FusedIterator for ChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             let start = self.chunk_size * num;
@@ -2067,8 +2059,6 @@ impl<T> FusedIterator for ChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         let v = mem::replace(&mut self.v, &mut []);
         if forward {
@@ -2319,8 +2309,6 @@ impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.iter.cleanup(num, forward);
     }
@@ -2438,8 +2426,6 @@ impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.iter.cleanup(num, forward);
     }
@@ -2612,8 +2598,6 @@ impl<T> FusedIterator for RChunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             let end = self.v.len().saturating_sub(self.chunk_size * num);
@@ -2791,8 +2775,6 @@ impl<T> FusedIterator for RChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         let len = self.len();
         let v = mem::replace(&mut self.v, &mut []);
@@ -2964,8 +2946,6 @@ impl<T> FusedIterator for RChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             let end = self.v.len() - (self.chunk_size * num);
@@ -3131,8 +3111,6 @@ impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         let v = mem::replace(&mut self.v, &mut []);
         if forward {
@@ -3148,8 +3126,6 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
@@ -3163,8 +3139,6 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {

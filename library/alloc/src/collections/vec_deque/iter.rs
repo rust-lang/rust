@@ -206,8 +206,6 @@ unsafe impl<T> TrustedLen for Iter<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {
-    const NEEDS_CLEANUP: bool = false;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             let _ = self.advance_by(num);

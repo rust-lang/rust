@@ -1,7 +1,10 @@
 use crate::fmt;
 use crate::iter::adapters::SourceIter;
 use crate::iter::traits::trusted_random_access::try_get_unchecked;
-use crate::iter::traits::TrustedRandomAccess;
+use crate::iter::traits::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
+};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::Try;
 
@@ -194,12 +197,31 @@ unsafe impl<I, F> TrustedRandomAccess for Map<I, F>
 where
     I: TrustedRandomAccess,
 {
-    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.iter.cleanup(num, forward);
     }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I, F> TrustedRandomAccessNeedsCleanup for Map<I, F> where
+    I: TrustedRandomAccessNeedsCleanup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I, F> TrustedRandomAccessNeedsForwardSetup for Map<I, F> where
+    I: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I, F> TrustedRandomAccessNeedsReverseSetup for Map<I, F> where
+    I: TrustedRandomAccessNeedsReverseSetup
+{
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

@@ -186,6 +186,7 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
+#![feature(marker_trait_attr)]
 #![feature(min_specialization)]
 #![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]

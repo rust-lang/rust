@@ -21,4 +21,7 @@ pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
 #[unstable(feature = "trusted_random_access", issue = "none")]
-pub use self::trusted_random_access::TrustedRandomAccess;
+pub use self::trusted_random_access::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
+};

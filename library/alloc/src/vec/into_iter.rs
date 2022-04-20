@@ -4,7 +4,10 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
 use core::intrinsics::arith_offset;
-use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
+use core::iter::{
+    FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNeedsCleanup,
+};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::Deref;
@@ -286,8 +289,6 @@ unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
 where
     T: NonDrop,
 {
-    const NEEDS_CLEANUP: bool = true;
-
     fn cleanup(&mut self, num: usize, forward: bool) {
         if forward {
             if mem::size_of::<T>() == 0 {
@@ -312,6 +313,10 @@ where
         }
     }
 }
+
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "std_internals")]
+unsafe impl<T, A: Allocator> TrustedRandomAccessNeedsCleanup for IntoIter<T, A> where T: NonDrop {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]

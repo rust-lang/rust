@@ -504,8 +504,6 @@ macro_rules! unsafe_range_trusted_random_access_impl {
                     let _ = self.advance_back_by(num);
                 }
             }
-
-            const NEEDS_CLEANUP: bool = false;
         }
     )*)
 }

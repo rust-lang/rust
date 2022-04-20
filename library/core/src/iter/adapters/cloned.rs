@@ -1,5 +1,8 @@
 use crate::iter::traits::trusted_random_access::try_get_unchecked;
-use crate::iter::traits::TrustedRandomAccess;
+use crate::iter::traits::{
+    TrustedRandomAccess, TrustedRandomAccessNeedsCleanup, TrustedRandomAccessNeedsForwardSetup,
+    TrustedRandomAccessNeedsReverseSetup,
+};
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -126,12 +129,29 @@ unsafe impl<I> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess,
 {
-    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
-
     #[inline]
     fn cleanup(&mut self, num: usize, forward: bool) {
         self.it.cleanup(num, forward);
     }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsCleanup for Cloned<I> where I: TrustedRandomAccessNeedsCleanup
+{}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsForwardSetup for Cloned<I> where
+    I: TrustedRandomAccessNeedsForwardSetup
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNeedsReverseSetup for Cloned<I> where
+    I: TrustedRandomAccessNeedsReverseSetup
+{
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]

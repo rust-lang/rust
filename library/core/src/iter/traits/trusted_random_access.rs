@@ -55,10 +55,33 @@ pub unsafe trait TrustedRandomAccess: Sized {
         self.size_hint().0
     }
 
-    const NEEDS_CLEANUP: bool;
-
     fn cleanup(&mut self, num: usize, forward: bool);
 }
+
+// The following marker traits exist because specializing on them currently is the only way to avoid
+// emitting dead IR. Associated constants do not work because we currently don't have post-monomorphization
+// DCE.
+//
+// Pulling in the setup and cleanup methods on every specialized `for _ in` loop leads to 10% IR bloat
+// and LLVM won't eliminate it in debug mode.
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+#[rustc_specialization_trait]
+#[marker]
+pub unsafe trait TrustedRandomAccessNeedsCleanup {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+#[rustc_specialization_trait]
+#[marker]
+pub unsafe trait TrustedRandomAccessNeedsForwardSetup {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+#[rustc_specialization_trait]
+#[marker]
+pub unsafe trait TrustedRandomAccessNeedsReverseSetup {}
 
 /// Like `Iterator::__iterator_get_unchecked`, but doesn't require the compiler to
 /// know that `U: TrustedRandomAccess`.
