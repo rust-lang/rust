@@ -1390,7 +1390,9 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
 ///
 /// ```
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.chunks(2);
+/// for chunk in slice.chunks(2) {
+///     println!("{:?}", chunk)
+/// }
 /// ```
 ///
 /// [`chunks`]: slice::chunks
