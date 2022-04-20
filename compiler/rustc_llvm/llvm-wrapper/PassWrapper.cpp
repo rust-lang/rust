@@ -149,11 +149,15 @@ extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
 }
 
 extern "C" LLVMPassRef LLVMRustCreateEntryExitInstrumenterPass(bool PostInlining) {
+#if LLVM_VERSION_LT(15, 0)
   if (PostInlining) {
     return wrap(createPostInlineEntryExitInstrumenterPass());
   } else {
     return wrap(createEntryExitInstrumenterPass());
   }
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
@@ -180,6 +184,7 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
 extern "C"
 void LLVMRustAddEarlyExtensionPasses(
     LLVMPassManagerBuilderRef PMBR, LLVMPassRef *Passes, size_t NumPasses) {
+#if LLVM_VERSION_LT(15, 0)
   auto AddExtensionPasses = [Passes, NumPasses](
       const PassManagerBuilder &Builder, PassManagerBase &PM) {
     for (size_t I = 0; I < NumPasses; I++) {
@@ -190,6 +195,9 @@ void LLVMRustAddEarlyExtensionPasses(
                              AddExtensionPasses);
   unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                              AddExtensionPasses);
+#else
+  report_fatal_error("Legacy PM not supported with LLVM 15");
+#endif
 }
 
 extern "C"
