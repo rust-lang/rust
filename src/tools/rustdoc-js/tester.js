@@ -58,7 +58,8 @@ function extractFunction(content, functionName) {
                 } while (pos < content.length && content[pos] !== '/' && content[pos - 1] !== '*');
 
             // Eat quoted strings
-            } else if (content[pos] === '"' || content[pos] === "'" || content[pos] === "`") {
+            } else if ((content[pos] === '"' || content[pos] === "'" || content[pos] === "`") &&
+                       (pos === 0 || content[pos - 1] !== '/')) {
                 stop = content[pos];
                 do {
                     if (content[pos] === '\\') {
@@ -269,8 +270,13 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
-                           "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch",
-                           "removeEmptyStringsFromArray"];
+                           "buildIndex", "execQuery", "parseQuery", "createQueryResults",
+                           "isWhitespace", "isSpecialStartCharacter", "isStopCharacter",
+                           "parseInput", "getItemsBefore", "getNextElem", "createQueryElement",
+                           "isReturnArrow", "isPathStart", "getStringElem", "newParsedQuery",
+                           "itemTypeFromName", "isEndCharacter", "isErrorCharacter",
+                           "isIdentCharacter", "isSeparatorCharacter", "getIdentEndPosition",
+                           "checkExtraTypeFilterCharacters", "isWhitespaceCharacter"];
 
     const functions = ["hasOwnPropertyRustdoc", "onEach"];
     ALIASES = {};
@@ -286,12 +292,99 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
     return [loaded, index];
 }
 
+// This function checks if `expected` has all the required fields needed for the checks.
+function checkNeededFields(fullPath, expected, error_text, queryName, position) {
+    let fieldsToCheck;
+    if (fullPath.length === 0) {
+        fieldsToCheck = [
+            "foundElems",
+            "original",
+            "returned",
+            "typeFilter",
+            "userQuery",
+            "error",
+        ];
+    } else if (fullPath.endsWith("elems") || fullPath.endsWith("generics")) {
+        fieldsToCheck = [
+            "name",
+            "fullPath",
+            "pathWithoutLast",
+            "pathLast",
+            "generics",
+        ];
+    } else {
+        fieldsToCheck = [];
+    }
+    for (var i = 0; i < fieldsToCheck.length; ++i) {
+        const field = fieldsToCheck[i];
+        if (!expected.hasOwnProperty(field)) {
+            let text = `${queryName}==> Mandatory key \`${field}\` is not present`;
+            if (fullPath.length > 0) {
+                text += ` in field \`${fullPath}\``;
+                if (position != null) {
+                    text += ` (position ${position})`;
+                }
+            }
+            error_text.push(text);
+        }
+    }
+}
+
+function valueCheck(fullPath, expected, result, error_text, queryName) {
+    if (Array.isArray(expected)) {
+        for (var i = 0; i < expected.length; ++i) {
+            checkNeededFields(fullPath, expected[i], error_text, queryName, i);
+            if (i >= result.length) {
+                error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
+                    `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``);
+            } else {
+                valueCheck(fullPath + '[' + i + ']', expected[i], result[i], error_text, queryName);
+            }
+        }
+        for (; i < result.length; ++i) {
+            error_text.push(`${queryName}==> RESULT has extra value in array from field ` +
+                `\`${fullPath}\` (position ${i}): \`${JSON.stringify(result[i])}\` ` +
+                'compared to EXPECTED');
+        }
+    } else if (expected !== null && typeof expected !== "undefined" &&
+               expected.constructor == Object)
+    {
+        for (const key in expected) {
+            if (!expected.hasOwnProperty(key)) {
+                continue;
+            }
+            if (!result.hasOwnProperty(key)) {
+                error_text.push('==> Unknown key "' + key + '"');
+                break;
+            }
+            const obj_path = fullPath + (fullPath.length > 0 ? '.' : '') + key;
+            valueCheck(obj_path, expected[key], result[key], error_text, queryName);
+        }
+    } else {
+        expectedValue = JSON.stringify(expected);
+        resultValue = JSON.stringify(result);
+        if (expectedValue != resultValue) {
+            error_text.push(`${queryName}==> Different values for field \`${fullPath}\`:\n` +
+                `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``);
+        }
+    }
+}
+
+function runParser(query, expected, loaded, loadedFile, queryName) {
+    var error_text = [];
+    checkNeededFields("", expected, error_text, queryName, null);
+    if (error_text.length === 0) {
+        valueCheck('', expected, loaded.parseQuery(query), error_text, queryName);
+    }
+    return error_text;
+}
+
 function runSearch(query, expected, index, loaded, loadedFile, queryName) {
     const filter_crate = loadedFile.FILTER_CRATE;
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
 
-    var results = loaded.execSearch(loaded.getQuery(query), index, filter_crate);
+    var results = loaded.execQuery(loaded.parseQuery(query), index, filter_crate);
     var error_text = [];
 
     for (var key in expected) {
@@ -353,40 +446,75 @@ function checkResult(error_text, loadedFile, displaySuccess) {
     return 1;
 }
 
-function runChecks(testFile, loaded, index) {
-    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;';
-    if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
-        testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
-    } else {
-        testFileContent += "exports.FILTER_CRATE = null;";
-    }
-    var loadedFile = loadContent(testFileContent);
-
-    const expected = loadedFile.EXPECTED;
+function runCheck(loadedFile, key, callback) {
+    const expected = loadedFile[key];
     const query = loadedFile.QUERY;
 
     if (Array.isArray(query)) {
         if (!Array.isArray(expected)) {
             console.log("FAILED");
-            console.log("==> If QUERY variable is an array, EXPECTED should be an array too");
+            console.log(`==> If QUERY variable is an array, ${key} should be an array too`);
             return 1;
         } else if (query.length !== expected.length) {
             console.log("FAILED");
-            console.log("==> QUERY variable should have the same length as EXPECTED");
+            console.log(`==> QUERY variable should have the same length as ${key}`);
             return 1;
         }
         for (var i = 0; i < query.length; ++i) {
-            var error_text = runSearch(query[i], expected[i], index, loaded, loadedFile,
-                "[ query `" + query[i] + "`]");
+            var error_text = callback(query[i], expected[i], "[ query `" + query[i] + "`]");
             if (checkResult(error_text, loadedFile, false) !== 0) {
                 return 1;
             }
         }
         console.log("OK");
-        return 0;
+    } else {
+        var error_text = callback(query, expected, "");
+        if (checkResult(error_text, loadedFile, true) !== 0) {
+            return 1;
+        }
     }
-    var error_text = runSearch(query, expected, index, loaded, loadedFile, "");
-    return checkResult(error_text, loadedFile, true);
+    return 0;
+}
+
+function runChecks(testFile, loaded, index) {
+    var checkExpected = false;
+    var checkParsed = false;
+    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;';
+
+    if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
+        testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
+    } else {
+        testFileContent += "exports.FILTER_CRATE = null;";
+    }
+
+    if (testFileContent.indexOf("\nconst EXPECTED") !== -1) {
+        testFileContent += 'exports.EXPECTED = EXPECTED;';
+        checkExpected = true;
+    }
+    if (testFileContent.indexOf("\nconst PARSED") !== -1) {
+        testFileContent += 'exports.PARSED = PARSED;';
+        checkParsed = true;
+    }
+    if (!checkParsed && !checkExpected) {
+        console.log("FAILED");
+        console.log("==> At least `PARSED` or `EXPECTED` is needed!");
+        return 1;
+    }
+
+    const loadedFile = loadContent(testFileContent);
+    var res = 0;
+
+    if (checkExpected) {
+        res += runCheck(loadedFile, "EXPECTED", (query, expected, text) => {
+            return runSearch(query, expected, index, loaded, loadedFile, text);
+        });
+    }
+    if (checkParsed) {
+        res += runCheck(loadedFile, "PARSED", (query, expected, text) => {
+            return runParser(query, expected, loaded, loadedFile, text);
+        });
+    }
+    return res;
 }
 
 function load_files(doc_folder, resource_suffix, crate) {
