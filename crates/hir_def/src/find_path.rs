@@ -43,8 +43,7 @@ impl ModPathExt for ModPath {
         self.segments().first() == Some(&known::std)
     }
 
-    // When std library is present, paths starting with `std::`
-    // should be preferred over paths starting with `core::` and `alloc::`
+    // Can we replace the first segment with `std::` and still get a valid, identical path?
     fn can_start_with_std(&self) -> bool {
         let first_segment = self.segments().first();
         first_segment == Some(&known::alloc) || first_segment == Some(&known::core)
@@ -203,7 +202,7 @@ fn find_path_inner_(
     }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
-    let prefer_no_std = db.attrs(crate_root.into()).by_key("no_std").exists();
+    let prefer_no_std = db.crate_supports_no_std(crate_root.krate);
     let mut best_path = None;
     let mut best_path_len = max_len;
 
@@ -819,6 +818,32 @@ pub mod sync {
             r#"
 //- /main.rs crate:main deps:core,std
 #![no_std]
+
+$0
+
+//- /std.rs crate:std deps:core
+
+pub mod fmt {
+    pub use core::fmt::Error;
+}
+
+//- /zzz.rs crate:core
+
+pub mod fmt {
+    pub struct Error;
+}
+        "#,
+            "core::fmt::Error",
+            "core::fmt::Error",
+            "core::fmt::Error",
+            "core::fmt::Error",
+        );
+
+        // Should also work (on a best-effort basis) if `no_std` is conditional.
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:core,std
+#![cfg_attr(not(test), no_std)]
 
 $0
 

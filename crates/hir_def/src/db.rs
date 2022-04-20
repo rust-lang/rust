@@ -18,7 +18,7 @@ use crate::{
     generics::GenericParams,
     import_map::ImportMap,
     intern::Interned,
-    item_tree::ItemTree,
+    item_tree::{AttrOwner, ItemTree},
     lang_item::{LangItemTarget, LangItems},
     nameres::DefMap,
     visibility::{self, Visibility},
@@ -184,6 +184,8 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::transparent]
     fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
+
+    fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
@@ -203,4 +205,39 @@ fn crate_limits(db: &dyn DefDatabase, crate_id: CrateId) -> CrateLimits {
         // 128 is the default in rustc.
         recursion_limit: def_map.recursion_limit().unwrap_or(128),
     }
+}
+
+fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
+    let file = db.crate_graph()[crate_id].root_file_id;
+    let item_tree = db.file_item_tree(file.into());
+    let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
+    for attr in &**attrs {
+        match attr.path().as_ident().and_then(|id| id.as_text()) {
+            Some(ident) if ident == "no_std" => return true,
+            Some(ident) if ident == "cfg_attr" => {}
+            _ => continue,
+        }
+
+        // This is a `cfg_attr`; check if it could possibly expand to `no_std`.
+        // Syntax is: `#[cfg_attr(condition(cfg, style), attr0, attr1, <...>)]`
+        let tt = match attr.token_tree_value() {
+            Some(tt) => &tt.token_trees,
+            None => continue,
+        };
+
+        let segments = tt.split(|tt| match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => true,
+            _ => false,
+        });
+        for output in segments.skip(1) {
+            match output {
+                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "no_std" => {
+                    return true
+                }
+                _ => {}
+            }
+        }
+    }
+
+    false
 }
