@@ -851,6 +851,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         }
         if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
+            assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());

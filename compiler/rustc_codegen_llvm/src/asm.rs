@@ -602,7 +602,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => "^Yk",
             InlineAsmRegClass::X86(
-                X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg,
+                X86InlineAsmRegClass::x87_reg
+                | X86InlineAsmRegClass::mmx_reg
+                | X86InlineAsmRegClass::kreg0,
             ) => unreachable!("clobber-only"),
             InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
             InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
@@ -687,7 +689,11 @@ fn modifier_to_llvm(
             _ => unreachable!(),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg) => {
+        InlineAsmRegClass::X86(
+            X86InlineAsmRegClass::x87_reg
+            | X86InlineAsmRegClass::mmx_reg
+            | X86InlineAsmRegClass::kreg0,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => None,
@@ -757,7 +763,11 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => cx.type_i16(),
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg) => {
+        InlineAsmRegClass::X86(
+            X86InlineAsmRegClass::x87_reg
+            | X86InlineAsmRegClass::mmx_reg
+            | X86InlineAsmRegClass::kreg0,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),

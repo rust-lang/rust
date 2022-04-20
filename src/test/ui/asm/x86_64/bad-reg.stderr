@@ -64,23 +64,23 @@ error: invalid register `ip`: the instruction pointer cannot be used as an opera
 LL |         asm!("", in("ip") foo);
    |                  ^^^^^^^^^^^^
 
-error: invalid register `k0`: the k0 AVX mask register cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:32:18
-   |
-LL |         asm!("", in("k0") foo);
-   |                  ^^^^^^^^^^^^
-
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:35:18
+  --> $DIR/bad-reg.rs:33:18
    |
 LL |         asm!("", in("st(2)") foo);
    |                  ^^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:37:18
+  --> $DIR/bad-reg.rs:35:18
    |
 LL |         asm!("", in("mm0") foo);
    |                  ^^^^^^^^^^^^^
+
+error: register class `kreg0` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:37:18
+   |
+LL |         asm!("", in("k0") foo);
+   |                  ^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
   --> $DIR/bad-reg.rs:41:20

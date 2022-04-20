@@ -14,6 +14,7 @@ def_reg_class! {
         ymm_reg,
         zmm_reg,
         kreg,
+        kreg0,
         mmx_reg,
         x87_reg,
     }
@@ -38,7 +39,7 @@ impl X86InlineAsmRegClass {
             }
             Self::reg_byte => &[],
             Self::xmm_reg | Self::ymm_reg | Self::zmm_reg => &['x', 'y', 'z'],
-            Self::kreg => &[],
+            Self::kreg | Self::kreg0 => &[],
             Self::mmx_reg | Self::x87_reg => &[],
         }
     }
@@ -77,7 +78,7 @@ impl X86InlineAsmRegClass {
                 256 => Some(('y', "ymm0")),
                 _ => Some(('x', "xmm0")),
             },
-            Self::kreg => None,
+            Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
         }
     }
@@ -95,7 +96,7 @@ impl X86InlineAsmRegClass {
             Self::xmm_reg => Some(('x', "xmm0")),
             Self::ymm_reg => Some(('y', "ymm0")),
             Self::zmm_reg => Some(('z', "zmm0")),
-            Self::kreg => None,
+            Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
         }
     }
@@ -132,6 +133,7 @@ impl X86InlineAsmRegClass {
                 avx512f: I8, I16;
                 avx512bw: I32, I64;
             },
+            Self::kreg0 => &[],
             Self::mmx_reg | Self::x87_reg => &[],
         }
     }
@@ -294,6 +296,7 @@ def_regs! {
         zmm29: zmm_reg = ["zmm29", "xmm29", "ymm29"] % x86_64_only,
         zmm30: zmm_reg = ["zmm30", "xmm30", "ymm30"] % x86_64_only,
         zmm31: zmm_reg = ["zmm31", "xmm31", "ymm31"] % x86_64_only,
+        k0: kreg0 = ["k0"],
         k1: kreg = ["k1"],
         k2: kreg = ["k2"],
         k3: kreg = ["k3"],
@@ -323,8 +326,6 @@ def_regs! {
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["ip", "eip", "rip"] =>
             "the instruction pointer cannot be used as an operand for inline asm",
-        #error = ["k0"] =>
-            "the k0 AVX mask register cannot be used as an operand for inline asm",
     }
 }
 

@@ -158,8 +158,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<AllocId>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (alloc_id, offset) = ptr.into_parts();
+        let alloc_id = ptr.provenance;
         // We need to handle `extern static`.
         match self.tcx.get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
@@ -171,7 +170,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
         // And we need to get the tag.
-        Ok(M::tag_alloc_base_pointer(self, Pointer::new(alloc_id, offset)))
+        Ok(M::tag_alloc_base_pointer(self, ptr))
     }
 
     pub fn create_fn_alloc_ptr(
@@ -238,7 +237,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        let (alloc_id, offset, ptr) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub_format!(
                 "reallocating {:?} which does not point to the beginning of an object",
@@ -255,14 +254,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // This will also call the access hooks.
         self.mem_copy(
-            ptr.into(),
+            ptr,
             Align::ONE,
             new_ptr.into(),
             Align::ONE,
             old_size.min(new_size),
             /*nonoverlapping*/ true,
         )?;
-        self.deallocate_ptr(ptr.into(), old_size_and_align, kind)?;
+        self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
         Ok(new_ptr)
     }
@@ -274,7 +273,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         old_size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx> {
-        let (alloc_id, offset, ptr) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, tag) = self.ptr_get_alloc_id(ptr)?;
         trace!("deallocating: {}", alloc_id);
 
         if offset.bytes() != 0 {
@@ -330,7 +329,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             *self.tcx,
             &mut self.machine,
             &mut alloc.extra,
-            ptr.provenance,
+            (alloc_id, tag),
             alloc_range(Size::ZERO, size),
         )?;
 
@@ -350,17 +349,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<(AllocId, Size, Pointer<M::PointerTag>)>> {
+    ) -> InterpResult<'tcx, Option<(AllocId, Size, M::TagExtra)>> {
         let align = M::enforce_alignment(&self).then_some(align);
         self.check_and_deref_ptr(
             ptr,
             size,
             align,
             CheckInAllocMsg::MemoryAccessTest,
-            |alloc_id, offset, ptr| {
+            |alloc_id, offset, tag| {
                 let (size, align) =
                     self.get_alloc_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
-                Ok((size, align, (alloc_id, offset, ptr)))
+                Ok((size, align, (alloc_id, offset, tag)))
             },
         )
     }
@@ -401,11 +400,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Option<Align>,
         msg: CheckInAllocMsg,
-        alloc_size: impl FnOnce(
-            AllocId,
-            Size,
-            Pointer<M::PointerTag>,
-        ) -> InterpResult<'tcx, (Size, Align, T)>,
+        alloc_size: impl FnOnce(AllocId, Size, M::TagExtra) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
         fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
             if offset % align.bytes() == 0 {
@@ -433,8 +428,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 None
             }
-            Ok((alloc_id, offset, ptr)) => {
-                let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
+            Ok((alloc_id, offset, tag)) => {
+                let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, tag)?;
                 // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
                 if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
@@ -450,10 +445,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
                     if M::force_int_for_alignment_check(self) {
-                        let addr = Scalar::from_pointer(ptr, &self.tcx)
-                            .to_machine_usize(&self.tcx)
-                            .expect("ptr-to-int cast for align check should never fail");
-                        check_offset_align(addr, align)?;
+                        // `force_int_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
+                        check_offset_align(ptr.addr().bytes(), align)?;
                     } else {
                         // Check allocation alignment and offset alignment.
                         if alloc_align.bytes() < align.bytes() {
@@ -569,14 +562,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             size,
             align,
             CheckInAllocMsg::MemoryAccessTest,
-            |alloc_id, offset, ptr| {
+            |alloc_id, offset, tag| {
                 let alloc = self.get_alloc_raw(alloc_id)?;
-                Ok((alloc.size(), alloc.align, (alloc_id, offset, ptr, alloc)))
+                Ok((alloc.size(), alloc.align, (alloc_id, offset, tag, alloc)))
             },
         )?;
-        if let Some((alloc_id, offset, ptr, alloc)) = ptr_and_alloc {
+        if let Some((alloc_id, offset, tag, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::memory_read(*self.tcx, &self.machine, &alloc.extra, ptr.provenance, range)?;
+            M::memory_read(*self.tcx, &self.machine, &alloc.extra, (alloc_id, tag), range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
             // Even in this branch we have to be sure that we actually access the allocation, in
@@ -631,13 +624,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         align: Align,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::PointerTag, M::AllocExtra>>> {
         let parts = self.get_ptr_access(ptr, size, align)?;
-        if let Some((alloc_id, offset, ptr)) = parts {
+        if let Some((alloc_id, offset, tag)) = parts {
             let tcx = *self.tcx;
             // FIXME: can we somehow avoid looking up the allocation twice here?
             // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
             let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
             let range = alloc_range(offset, size);
-            M::memory_written(tcx, machine, &mut alloc.extra, ptr.provenance, range)?;
+            M::memory_written(tcx, machine, &mut alloc.extra, (alloc_id, tag), range)?;
             Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id }))
         } else {
             Ok(None)
@@ -732,7 +725,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         trace!("get_fn({:?})", ptr);
-        let (alloc_id, offset, _ptr) = self.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
@@ -892,8 +885,11 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     }
 
     /// Mark the entire referenced range as uninitalized
-    pub fn write_uninit(&mut self) {
-        self.alloc.mark_init(self.range, false);
+    pub fn write_uninit(&mut self) -> InterpResult<'tcx> {
+        Ok(self
+            .alloc
+            .write_uninit(&self.tcx, self.range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 }
 
@@ -1009,16 +1005,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // and once below to get the underlying `&[mut] Allocation`.
 
         // Source alloc preparations and access hooks.
-        let Some((src_alloc_id, src_offset, src)) = src_parts else {
+        let Some((src_alloc_id, src_offset, src_tag)) = src_parts else {
             // Zero-sized *source*, that means dst is also zero-sized and we have nothing to do.
             return Ok(());
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        M::memory_read(*tcx, &self.machine, &src_alloc.extra, src.provenance, src_range)?;
+        M::memory_read(*tcx, &self.machine, &src_alloc.extra, (src_alloc_id, src_tag), src_range)?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
-        let Some((dest_alloc_id, dest_offset, dest)) = dest_parts else {
+        let Some((dest_alloc_id, dest_offset, dest_tag)) = dest_parts else {
             // Zero-sized *destination*.
             return Ok(());
         };
@@ -1040,7 +1036,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
-        M::memory_written(*tcx, extra, &mut dest_alloc.extra, dest.provenance, dest_range)?;
+        M::memory_written(
+            *tcx,
+            extra,
+            &mut dest_alloc.extra,
+            (dest_alloc_id, dest_tag),
+            dest_range,
+        )?;
         let dest_bytes = dest_alloc
             .get_bytes_mut_ptr(&tcx, dest_range)
             .map_err(|e| e.to_interp_error(dest_alloc_id))?
@@ -1053,8 +1055,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
-            dest_alloc.mark_init(dest_range, false); // `Size` multiplication
-            dest_alloc.mark_relocation_range(relocations);
+            dest_alloc
+                .write_uninit(&tcx, dest_range)
+                .map_err(|e| e.to_interp_error(dest_alloc_id))?;
+            // We can forget about the relocations, this is all not initialized anyway.
             return Ok(());
         }
 
@@ -1159,11 +1163,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_try_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
-    ) -> Result<(AllocId, Size, Pointer<M::PointerTag>), u64> {
+    ) -> Result<(AllocId, Size, M::TagExtra), u64> {
         match ptr.into_pointer_or_addr() {
             Ok(ptr) => {
-                let (alloc_id, offset) = M::ptr_get_alloc(self, ptr);
-                Ok((alloc_id, offset, ptr))
+                let (alloc_id, offset, extra) = M::ptr_get_alloc(self, ptr);
+                Ok((alloc_id, offset, extra))
             }
             Err(addr) => Err(addr.bytes()),
         }
@@ -1174,7 +1178,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn ptr_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
-    ) -> InterpResult<'tcx, (AllocId, Size, Pointer<M::PointerTag>)> {
+    ) -> InterpResult<'tcx, (AllocId, Size, M::TagExtra)> {
         self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
             err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
         })
