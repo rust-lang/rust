@@ -32,6 +32,7 @@
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
+#include "llvm/Transforms/Utils/EntryExitInstrumenter.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
@@ -147,6 +148,14 @@ extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
   return wrap(createHWAddressSanitizerLegacyPassPass(CompileKernel, Recover));
 }
 
+extern "C" LLVMPassRef LLVMRustCreateEntryExitInstrumenterPass(bool PostInlining) {
+  if (PostInlining) {
+    return wrap(createPostInlineEntryExitInstrumenterPass());
+  } else {
+    return wrap(createEntryExitInstrumenterPass());
+  }
+}
+
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
   assert(RustPass);
   Pass *Pass = unwrap(RustPass);
@@ -166,6 +175,21 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   LLVMPassManagerRef PMR
 ) {
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
+}
+
+extern "C"
+void LLVMRustAddEarlyExtensionPasses(
+    LLVMPassManagerBuilderRef PMBR, LLVMPassRef *Passes, size_t NumPasses) {
+  auto AddExtensionPasses = [Passes, NumPasses](
+      const PassManagerBuilder &Builder, PassManagerBase &PM) {
+    for (size_t I = 0; I < NumPasses; I++) {
+      PM.add(unwrap(Passes[I]));
+    }
+  };
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EarlyAsPossible,
+                             AddExtensionPasses);
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                             AddExtensionPasses);
 }
 
 extern "C"
@@ -749,7 +773,7 @@ LLVMRustOptimizeWithNewPassManager(
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
-    bool InstrumentCoverage, bool InstrumentGCOV,
+    bool InstrumentCoverage, bool InstrumentGCOV, bool InstrumentMcount,
     const char *PGOSampleUsePath, bool DebugInfoForProfiling,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
@@ -855,6 +879,26 @@ LLVMRustOptimizeWithNewPassManager(
       }
     );
   }
+
+// EntryExitInstrumentation needs to be added by the frontend as of LLVM 13
+#if LLVM_VERSION_GE(13, 0)
+  if (InstrumentMcount) {
+    PipelineStartEPCallbacks.push_back(
+      [](ModulePassManager &MPM, OptimizationLevel Level) {
+        MPM.addPass(createModuleToFunctionPassAdaptor(
+          EntryExitInstrumenterPass(/*PostInlining=*/false)
+        ));
+      }
+    );
+    OptimizerLastEPCallbacks.push_back(
+      [](ModulePassManager &MPM, OptimizationLevel Level) {
+        MPM.addPass(createModuleToFunctionPassAdaptor(
+          EntryExitInstrumenterPass(/*PostInlining=*/true)
+        ));
+      }
+    );
+  }
+#endif
 
   if (SanitizerOptions) {
     if (SanitizerOptions->SanitizeMemory) {

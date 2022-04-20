@@ -493,6 +493,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
         config.instrument_gcov,
+        config.instrument_mcount,
         pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.debug_info_for_profiling,
         llvm_selfprofiler,
@@ -573,6 +574,7 @@ pub(crate) unsafe fn optimize(
                 llvm::LLVMRustAddPass(fpm, find_pass("verify").unwrap());
             }
 
+            let mut early_passes = Vec::new();
             let mut extra_passes = Vec::new();
             let mut have_name_anon_globals_pass = false;
 
@@ -609,6 +611,12 @@ pub(crate) unsafe fn optimize(
                 llvm::LLVMRustAddPass(mpm, find_pass("add-discriminators").unwrap());
             }
 
+            // EntryExitInstrumentation needs to be added by the frontend as of LLVM 13
+            if config.instrument_mcount && llvm_util::get_version() >= (13, 0, 0) {
+                early_passes.push(llvm::LLVMRustCreateEntryExitInstrumenterPass(false));
+                extra_passes.push(llvm::LLVMRustCreateEntryExitInstrumenterPass(true));
+            }
+
             add_sanitizer_passes(config, &mut extra_passes);
 
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
@@ -623,6 +631,11 @@ pub(crate) unsafe fn optimize(
                     || cgcx.lto == Lto::ThinLocal
                     || (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
                 with_llvm_pmb(llmod, config, opt_level, prepare_for_thin_lto, &mut |b| {
+                    llvm::LLVMRustAddEarlyExtensionPasses(
+                        b,
+                        early_passes.as_ptr(),
+                        early_passes.len() as size_t,
+                    );
                     llvm::LLVMRustAddLastExtensionPasses(
                         b,
                         extra_passes.as_ptr(),
@@ -640,7 +653,7 @@ pub(crate) unsafe fn optimize(
             } else {
                 // If we don't use the standard pipeline, directly populate the MPM
                 // with the extra passes.
-                for pass in extra_passes {
+                for pass in early_passes.into_iter().chain(extra_passes.into_iter()) {
                     llvm::LLVMRustAddPass(mpm, pass);
                 }
             }

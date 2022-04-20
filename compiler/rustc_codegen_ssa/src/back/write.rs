@@ -87,6 +87,7 @@ pub struct ModuleConfig {
     pub debug_info_for_profiling: bool,
     pub instrument_coverage: bool,
     pub instrument_gcov: bool,
+    pub instrument_mcount: bool,
 
     pub sanitizer: SanitizerSet,
     pub sanitizer_recover: SanitizerSet,
@@ -189,6 +190,7 @@ impl ModuleConfig {
                 sess.opts.debugging_opts.profile && !is_compiler_builtins,
                 false
             ),
+            instrument_mcount: if_regular!(sess.instrument_mcount(), false),
 
             sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(

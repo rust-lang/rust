@@ -2253,7 +2253,13 @@ extern "C" {
     ) -> &'static mut Pass;
     pub fn LLVMRustCreateThreadSanitizerPass() -> &'static mut Pass;
     pub fn LLVMRustCreateHWAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateEntryExitInstrumenterPass(PostInlining: bool) -> &'static mut Pass;
     pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
+    pub fn LLVMRustAddEarlyExtensionPasses(
+        PMB: &PassManagerBuilder,
+        Passes: *const &'static mut Pass,
+        NumPasses: size_t,
+    );
     pub fn LLVMRustAddLastExtensionPasses(
         PMB: &PassManagerBuilder,
         Passes: *const &'static mut Pass,
@@ -2342,6 +2348,7 @@ extern "C" {
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
         InstrumentGCOV: bool,
+        InstrumentMcount: bool,
         PGOSampleUsePath: *const c_char,
         DebugInfoForProfiling: bool,
         llvm_selfprofiler: *mut c_void,
