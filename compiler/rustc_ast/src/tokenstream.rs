@@ -575,6 +575,7 @@ impl Cursor {
         Cursor { stream, index: 0 }
     }
 
+    #[inline]
     pub fn next_with_spacing(&mut self) -> Option<TreeAndSpacing> {
         self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
