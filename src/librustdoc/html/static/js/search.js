@@ -1246,6 +1246,10 @@ window.initSearch = function(rawSearchIndex) {
 
         /**
          * This function is called in case the query is only one element (with or without generics).
+         * This element will be compared to arguments' and returned values' items and also to items.
+         *
+         * Other important thing to note: since there is only one element, we use levenshtein
+         * distance for name comparisons.
          *
          * @param {Row} row
          * @param {integer} pos              - Position in the `searchIndex`.
