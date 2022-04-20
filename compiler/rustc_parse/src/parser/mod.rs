@@ -335,7 +335,7 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                false,
+                true,
                 if attr_style == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, span), TokenTree::token(token::Not, span), body]
                         .iter()
@@ -347,7 +347,7 @@ impl TokenCursor {
                         .cloned()
                         .collect::<TokenStream>()
                 },
-                false,
+                true,
             ),
         ));
 
