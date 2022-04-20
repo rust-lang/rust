@@ -1312,7 +1312,19 @@ crate fn markdown_links<R>(md: &str, filter_map: impl Fn(MarkdownLink) -> Option
     let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
 
     for ev in iter {
-        if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
+        if let Event::Start(Tag::Link(
+            // `<>` links cannot be intra-doc links so we skip them.
+            kind @ (LinkType::Inline
+            | LinkType::Reference
+            | LinkType::ReferenceUnknown
+            | LinkType::Collapsed
+            | LinkType::CollapsedUnknown
+            | LinkType::Shortcut
+            | LinkType::ShortcutUnknown),
+            dest,
+            _,
+        )) = ev.0
+        {
             debug!("found link: {dest}");
             let span = span_for_link(&dest, ev.1);
             filter_map(MarkdownLink { kind, link: dest.into_string(), range: span })
