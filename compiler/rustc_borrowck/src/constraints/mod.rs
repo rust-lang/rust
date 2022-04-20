@@ -2,6 +2,7 @@ use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
+use rustc_span::Span;
 use std::fmt;
 use std::ops::Index;
 
@@ -86,6 +87,12 @@ pub struct OutlivesConstraint<'tcx> {
 
     /// Where did this constraint arise?
     pub locations: Locations,
+
+    /// The `Span` associated with the creation of this constraint.
+    /// This should be used in preference to obtaining the span from
+    /// `locations`, since the `locations` may give a poor span
+    /// in some cases (e.g. converting a constraint from a promoted).
+    pub span: Span,
 
     /// What caused this constraint?
     pub category: ConstraintCategory,

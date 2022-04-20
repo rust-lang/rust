@@ -316,6 +316,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 self.implicit_region_bound,
                 self.param_env,
                 Locations::All(DUMMY_SP),
+                DUMMY_SP,
                 ConstraintCategory::Internal,
                 &mut self.constraints,
             )
