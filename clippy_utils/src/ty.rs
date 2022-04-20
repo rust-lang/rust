@@ -13,8 +13,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
-    Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, GenericParamDefKind, IntTy, ParamEnv, Predicate,
+    PredicateKind, ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -937,4 +938,133 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .unwrap_or_default(),
         (Err(_), _) => 0,
     }
+}
+
+/// Makes the projection type for the named associated type in the given impl or trait impl.
+///
+/// This function is for associated types which are "known" to exist, and as such, will only return
+/// `None` when debug assertions are disabled in order to prevent ICE's. With debug assertions
+/// enabled this will check that the named associated type exists, the correct number of
+/// substitutions are given, and that the correct kinds of substitutions are given (lifetime,
+/// constant or type). This will not check if type normalization would succeed.
+pub fn make_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    container_id: DefId,
+    assoc_ty: Symbol,
+    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+) -> Option<ProjectionTy<'tcx>> {
+    fn helper<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        container_id: DefId,
+        assoc_ty: Symbol,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<ProjectionTy<'tcx>> {
+        let Some(assoc_item) = tcx
+            .associated_items(container_id)
+            .find_by_name_and_kind(tcx, Ident::with_dummy_span(assoc_ty), AssocKind::Type, container_id)
+        else {
+            debug_assert!(false, "type `{assoc_ty}` not found in `{container_id:?}`");
+            return None;
+        };
+        #[cfg(debug_assertions)]
+        {
+            let generics = tcx.generics_of(assoc_item.def_id);
+            let generic_count = generics.parent_count + generics.params.len();
+            let params = generics
+                .parent
+                .map_or([].as_slice(), |id| &*tcx.generics_of(id).params)
+                .iter()
+                .chain(&generics.params)
+                .map(|x| &x.kind);
+
+            debug_assert!(
+                generic_count == substs.len(),
+                "wrong number of substs for `{:?}`: found `{}` expected `{}`.\n\
+                    note: the expected parameters are: {:#?}\n\
+                    the given arguments are: `{:#?}`",
+                assoc_item.def_id,
+                substs.len(),
+                generic_count,
+                params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
+                substs,
+            );
+
+            if let Some((idx, (param, arg))) = params
+                .clone()
+                .zip(substs.iter().map(GenericArg::unpack))
+                .enumerate()
+                .find(|(_, (param, arg))| {
+                    !matches!(
+                        (param, arg),
+                        (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                            | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                            | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
+                    )
+                })
+            {
+                debug_assert!(
+                    false,
+                    "mismatched subst type at index {}: expected a {}, found `{:?}`\n\
+                        note: the expected parameters are {:#?}\n\
+                        the given arguments are {:#?}",
+                    idx,
+                    param.descr(),
+                    arg,
+                    params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
+                    substs,
+                );
+            }
+        }
+
+        Some(ProjectionTy {
+            substs,
+            item_def_id: assoc_item.def_id,
+        })
+    }
+    helper(
+        tcx,
+        container_id,
+        assoc_ty,
+        tcx.mk_substs(substs.into_iter().map(Into::into)),
+    )
+}
+
+/// Normalizes the named associated type in the given impl or trait impl.
+///
+/// This function is for associated types which are "known" to be valid with the given
+/// substitutions, and as such, will only return `None` when debug assertions are disabled in order
+/// to prevent ICE's. With debug assertions enabled this will check that that type normalization
+/// succeeds as well as everything checked by `make_projection`.
+pub fn make_normalized_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    container_id: DefId,
+    assoc_ty: Symbol,
+    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: ProjectionTy<'tcx>) -> Option<Ty<'tcx>> {
+        #[cfg(debug_assertions)]
+        if let Some((i, subst)) = ty
+            .substs
+            .iter()
+            .enumerate()
+            .find(|(_, subst)| subst.has_late_bound_regions())
+        {
+            debug_assert!(
+                false,
+                "substs contain late-bound region at index `{i}` which can't be normalized.\n\
+                    use `TyCtxt::erase_late_bound_regions`\n\
+                    note: subst is `{subst:#?}`",
+            );
+            return None;
+        }
+        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.item_def_id, ty.substs)) {
+            Ok(ty) => Some(ty),
+            Err(e) => {
+                debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
+                None
+            },
+        }
+    }
+    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, substs)?)
 }
