@@ -9,14 +9,24 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// ### What it does
     /// When sorting primitive values (integers, bools, chars, as well
-    /// as arrays, slices, and tuples of such items), it is better to
+    /// as arrays, slices, and tuples of such items), it is typically better to
     /// use an unstable sort than a stable sort.
     ///
     /// ### Why is this bad?
-    /// Using a stable sort consumes more memory and cpu cycles. Because
-    /// values which compare equal are identical, preserving their
+    /// Typically, using a stable sort consumes more memory and cpu cycles.
+    /// Because values which compare equal are identical, preserving their
     /// relative order (the guarantee that a stable sort provides) means
     /// nothing, while the extra costs still apply.
+    ///
+    /// ### Known problems
+    ///
+    /// As pointed out in
+    /// [issue #8241](https://github.com/rust-lang/rust-clippy/issues/8241),
+    /// a stable sort can instead be significantly faster for certain scenarios
+    /// (eg. when a sorted vector is extended with new data and resorted).
+    ///
+    /// For more information and benchmarking results, please refer to the
+    /// issue linked above.
     ///
     /// ### Example
     /// ```rust
