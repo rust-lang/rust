@@ -1,0 +1,26 @@
+warning: FIXME(skippy) PartialEq on function pointers has been deprecated.
+  --> $DIR/deprecated-partialeq-fn-pointer.rs:25:6
+   |
+LL | impl Bla2<fn()> for u32 {}
+   |      ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-partialeq-fn-pointer.rs:5:9
+   |
+LL | #![warn(deprecated_in_future)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: FIXME(skippy) PartialEq on function pointers has been deprecated.
+  --> $DIR/deprecated-partialeq-fn-pointer.rs:16:19
+   |
+LL |         let _ = x == y;
+   |                   ^^
+
+warning: FIXME(skippy) PartialEq on function pointers has been deprecated.
+  --> $DIR/deprecated-partialeq-fn-pointer.rs:30:15
+   |
+LL |     let _ = x == y;
+   |               ^^
+
+warning: 3 warnings emitted
+

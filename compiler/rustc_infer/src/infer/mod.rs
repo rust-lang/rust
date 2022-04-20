@@ -354,6 +354,21 @@ pub struct InferCtxt<'a, 'tcx> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<ty::UniverseIndex>,
+
+    pub query_mode: TraitQueryMode,
+}
+
+/// The mode that trait queries run in.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TraitQueryMode {
+    /// Standard/un-canonicalized queries get accurate
+    /// spans etc. passed in and hence can do reasonable
+    /// error reporting on their own.
+    Standard,
+    /// Canonicalized queries get dummy spans and hence
+    /// must generally propagate errors to
+    /// pre-canonicalization callsites.
+    Canonical,
 }
 
 /// See the `error_reporting` module for more details.
@@ -615,14 +630,26 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.enter(|infcx| {
-            let (value, subst) =
-                infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
-            f(infcx, value, subst)
-        })
+        self.enter_with_query_mode(
+            |infcx| {
+                let (value, subst) =
+                    infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+                f(infcx, value, subst)
+            },
+            TraitQueryMode::Canonical,
+        )
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
+        self.enter_with_query_mode(f, TraitQueryMode::Standard)
+    }
+
+    // FIXME(skippy) specifically needs reviewer feedback (see query_mode field)
+    fn enter_with_query_mode<R>(
+        &mut self,
+        f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R,
+        query_mode: TraitQueryMode,
+    ) -> R {
         let InferCtxtBuilder { tcx, defining_use_anchor, ref fresh_typeck_results } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
@@ -640,6 +667,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             in_snapshot: Cell::new(false),
             skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            query_mode,
         })
     }
 }

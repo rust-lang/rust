@@ -73,6 +73,8 @@ impl RawWaker {
 /// any other `data` pointer will cause undefined behavior.
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
+// FIXME(skippy) for PartialEq on function pointers
+#[allow(deprecated_in_future)]
 pub struct RawWakerVTable {
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
     /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.

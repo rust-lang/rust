@@ -58,7 +58,8 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::warnings::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use smallvec::{smallvec, SmallVec};
@@ -604,15 +605,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[_; 4]> = smallvec![traits::predicate_for_trait_def(
+        let root_obligation = traits::predicate_for_trait_def(
             self.tcx,
             self.fcx.param_env,
             cause,
             coerce_unsized_did,
             0,
             coerce_source,
-            &[coerce_target.into()]
-        )];
+            &[coerce_target.into()],
+        );
+        // FIXME(skippy) extra .clone() here due to root_obligation
+        let mut queue: SmallVec<[_; 4]> = smallvec![root_obligation.clone()];
 
         let mut has_unsized_tuple_coercion = false;
         let mut has_trait_upcasting_coercion = false;
@@ -692,7 +695,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                Ok(Some(impl_source)) => {
+                    // FIXME(skippy) just has the root_obligation, not the entire trace
+                    self.check_obligation_lints(&obligation, || vec![root_obligation.clone()]);
+                    queue.extend(impl_source.nested_obligations());
+                }
             }
         }
 

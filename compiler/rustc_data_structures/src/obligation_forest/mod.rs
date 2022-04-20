@@ -102,6 +102,7 @@ pub trait ObligationProcessor {
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,
+        tracer: impl Fn() -> Vec<Self::Obligation>,
     ) -> ProcessResult<Self::Obligation, Self::Error>;
 
     /// As we do the cycle check, we invoke this callback when we
@@ -436,7 +437,11 @@ impl<O: ForestObligation> ObligationForest<O> {
         // be computed with the initial length, and we would miss the appended
         // nodes. Therefore we use a `while` loop.
         let mut index = 0;
-        while let Some(node) = self.nodes.get_mut(index) {
+        while index < self.nodes.len() {
+            let (nodes, [node, ..]) = self.nodes.split_at_mut(index) else {
+                todo!("FIXME(skippy)")
+            };
+
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
             // `self.active_cache`. This means that `self.active_cache` can get
@@ -447,7 +452,28 @@ impl<O: ForestObligation> ObligationForest<O> {
                 continue;
             }
 
-            match processor.process_obligation(&mut node.obligation) {
+            let parent_index = if node.has_parent { Some(node.dependents[0]) } else { None };
+            let tracer = || {
+                let mut trace = vec![];
+                if let Some(mut index) = parent_index {
+                    loop {
+                        let node = &nodes[index];
+                        trace.push(node.obligation.clone());
+                        if node.has_parent {
+                            // The first dependent is the parent, which is treated
+                            // specially.
+                            index = node.dependents[0];
+                        } else {
+                            // No parent; treat all dependents non-specially.
+                            break;
+                        }
+                    }
+                }
+
+                trace
+            };
+
+            match processor.process_obligation(&mut node.obligation, tracer) {
                 ProcessResult::Unchanged => {
                     // No change in state.
                 }

@@ -25,6 +25,7 @@ use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
+use crate::traits::error_reporting::warnings::InferCtxtExt as _;
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
@@ -275,6 +276,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     fn process_obligation(
         &mut self,
         pending_obligation: &mut Self::Obligation,
+        tracer: impl Fn() -> Vec<Self::Obligation>,
     ) -> ProcessResult<Self::Obligation, Self::Error> {
         // If we were stalled on some unresolved variables, first check whether
         // any of them have been resolved; if not, don't bother doing more work
@@ -313,7 +315,12 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             return ProcessResult::Unchanged;
         }
 
-        self.process_changed_obligations(pending_obligation)
+        let result = self.process_changed_obligations(pending_obligation);
+        if let ProcessResult::Changed(_) = result {
+            let tracer = || tracer().into_iter().map(|x| x.obligation).collect();
+            self.selcx.infcx().check_obligation_lints(&pending_obligation.obligation, tracer);
+        }
+        result
     }
 
     fn process_backedge<'c, I>(

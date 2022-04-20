@@ -2,6 +2,7 @@
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
+use crate::traits::error_reporting::warnings::InferCtxtExt as _;
 use crate::traits::query::NoSolution;
 use crate::traits::{
     ChalkEnvironmentAndGoal, FulfillmentError, FulfillmentErrorCode, ObligationCause,
@@ -109,12 +110,17 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 &orig_values,
                                 &response,
                             ) {
-                                Ok(infer_ok) => next_round.extend(
-                                    infer_ok.obligations.into_iter().map(|obligation| {
-                                        assert!(!infcx.is_in_snapshot());
-                                        infcx.resolve_vars_if_possible(obligation)
-                                    }),
-                                ),
+                                Ok(infer_ok) => {
+                                    infcx.check_obligation_lints(&obligation, || {
+                                        vec![obligation.clone()]
+                                    });
+                                    next_round.extend(infer_ok.obligations.into_iter().map(
+                                        |obligation| {
+                                            assert!(!infcx.is_in_snapshot());
+                                            infcx.resolve_vars_if_possible(obligation)
+                                        },
+                                    ))
+                                }
 
                                 Err(_err) => errors.push(FulfillmentError {
                                     obligation: obligation.clone(),
