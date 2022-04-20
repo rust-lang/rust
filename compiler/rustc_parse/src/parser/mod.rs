@@ -1000,7 +1000,6 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
-        let fallback_span = self.token.span;
         let (mut next, spacing) = self.token_cursor.inlined_next(self.desugar_doc_comments);
         self.token_cursor.num_next_calls += 1;
         // We've retrieved an token from the underlying
@@ -1009,6 +1008,7 @@ impl<'a> Parser<'a> {
         self.token_cursor.break_last_token = false;
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
+            let fallback_span = self.token.span;
             next.span = fallback_span.with_ctxt(next.span.ctxt());
         }
         debug_assert!(!matches!(
