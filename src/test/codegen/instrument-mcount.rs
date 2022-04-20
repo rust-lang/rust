@@ -1,7 +1,8 @@
-//
+// revisions: opt noopt
 // compile-flags: -Z instrument-mcount
+// [opt]compile-flags: -O
 
 #![crate_type = "lib"]
 
-// CHECK: attributes #{{.*}} "frame-pointer"="all" "instrument-function-entry-inlined"="{{.*}}mcount{{.*}}"
+// CHECK: call void @{{.*}}mcount
 pub fn foo() {}
