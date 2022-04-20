@@ -1647,8 +1647,9 @@ mod remove_dir_impl {
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, &path) {
-            Err(err) if err.raw_os_error() == Some(libc::ENOTDIR) => {
+            Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
+                // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
                 return match parent_fd {
                     // unlink...
                     Some(parent_fd) => {
