@@ -293,11 +293,6 @@
                     "default": null,
                     "markdownDescription": "Environment variables passed to the runnable launched using `Test` or `Debug` lens or `rust-analyzer.run` command."
                 },
-                "rust-analyzer.inlayHints.enable": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Whether to show inlay hints."
-                },
                 "rust-analyzer.server.path": {
                     "type": [
                         "null",
