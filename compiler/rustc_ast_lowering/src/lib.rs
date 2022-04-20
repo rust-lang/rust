@@ -173,7 +173,7 @@ pub enum LifetimeRes {
     Fresh {
         /// Id of the generic parameter that introduced it.
         param: LocalDefId,
-        /// Id to create the HirId.
+        /// Id to create the HirId.  This is used when creating the `Fresh` lifetime parameters.
         introducer: Option<NodeId>,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
@@ -693,27 +693,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Ident::new(ident.name, self.lower_span(ident.span))
     }
 
-    /// Creates a new `hir::GenericParam` for every new lifetime and
-    /// type parameter encountered while evaluating `f`. Definitions
-    /// are created with the parent provided. If no `parent_id` is
-    /// provided, no definitions will be returned.
-    fn collect_in_band_defs<T>(
-        &mut self,
-        parent_def_id: LocalDefId,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> (FxIndexMap<NodeId, Span>, T) {
-        let lifetime_stash = std::mem::take(&mut self.lifetimes_to_define);
-        let was_collecting =
-            std::mem::replace(&mut self.is_collecting_anonymous_lifetimes, Some(parent_def_id));
-
-        let res = f(self);
-
-        self.is_collecting_anonymous_lifetimes = was_collecting;
-        let lifetimes_to_define = std::mem::replace(&mut self.lifetimes_to_define, lifetime_stash);
-
-        (lifetimes_to_define, res)
-    }
-
     /// Converts a lifetime into a new generic parameter.
     fn fresh_lifetime_to_generic_param(
         &mut self,
@@ -733,9 +712,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Evaluates `f` with the lifetimes in `params` in-scope.
-    /// This is used to track which lifetimes have already been defined, and
-    /// which are new in-band lifetimes that need to have a definition created
-    /// for them.
+    /// This is used to track which lifetimes have already been defined,
+    /// which need to be duplicated for async fns.
     fn with_in_scope_lifetime_defs<T>(
         &mut self,
         params: &[GenericParam],
@@ -758,36 +736,40 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         res
     }
 
-    /// Appends in-band lifetime defs and argument-position `impl
-    /// Trait` defs to the existing set of generics.
-    fn add_in_band_defs<T>(
+    /// Creates a new `hir::GenericParam` for every new `Fresh` lifetime and
+    /// universal `impl Trait` type parameter encountered while evaluating `f`.
+    /// Definitions are created with the provided `parent_def_id`.
+    fn add_implicit_generics<T>(
         &mut self,
         generics: &Generics,
         parent_def_id: LocalDefId,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
-        let (lifetimes_to_define, (mut lowered_generics, impl_trait_defs, res)) = self
-            .collect_in_band_defs(parent_def_id, |this| {
-                this.with_in_scope_lifetime_defs(&generics.params, |this| {
-                    let mut impl_trait_defs = Vec::new();
-                    // Note: it is necessary to lower generics *before* calling `f`.
-                    // When lowering `async fn`, there's a final step when lowering
-                    // the return type that assumes that all in-scope lifetimes have
-                    // already been added to either `in_scope_lifetimes` or
-                    // `lifetimes_to_define`. If we swapped the order of these two,
-                    // in-band-lifetimes introduced by generics or where-clauses
-                    // wouldn't have been added yet.
-                    let generics = this.lower_generics_mut(
-                        generics,
-                        ImplTraitContext::Universal(
-                            &mut impl_trait_defs,
-                            this.current_hir_id_owner,
-                        ),
-                    );
-                    let res = f(this, &mut impl_trait_defs);
-                    (generics, impl_trait_defs, res)
-                })
+        let lifetime_stash = std::mem::take(&mut self.lifetimes_to_define);
+        let was_collecting =
+            std::mem::replace(&mut self.is_collecting_anonymous_lifetimes, Some(parent_def_id));
+
+        let mut impl_trait_defs = Vec::new();
+
+        let (mut lowered_generics, res) =
+            self.with_in_scope_lifetime_defs(&generics.params, |this| {
+                // Note: it is necessary to lower generics *before* calling `f`.
+                // When lowering `async fn`, there's a final step when lowering
+                // the return type that assumes that all in-scope lifetimes have
+                // already been added to either `in_scope_lifetimes` or
+                // `lifetimes_to_define`. If we swapped the order of these two,
+                // fresh lifetimes introduced by generics or where-clauses
+                // wouldn't have been added yet.
+                let generics = this.lower_generics_mut(
+                    generics,
+                    ImplTraitContext::Universal(&mut impl_trait_defs, this.current_hir_id_owner),
+                );
+                let res = f(this, &mut impl_trait_defs);
+                (generics, res)
             });
+
+        self.is_collecting_anonymous_lifetimes = was_collecting;
+        let lifetimes_to_define = std::mem::replace(&mut self.lifetimes_to_define, lifetime_stash);
 
         lowered_generics.params.extend(
             lifetimes_to_define
@@ -1700,7 +1682,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Calculate all the lifetimes that should be captured
         // by the opaque type. This should include all in-scope
         // lifetime parameters, including those defined in-band.
-        //
 
         // Input lifetime like `'a`:
         let mut captures = FxHashMap::default();
@@ -1708,7 +1689,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let Ident { name, span } = p_name.ident();
             let node_id = self.resolver.next_node_id();
 
-            // Add a definition for the in-band lifetime def.
+            // Add a definition for the in scope lifetime def.
             self.resolver.create_def(
                 opaque_ty_def_id,
                 node_id,
@@ -1735,7 +1716,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let def_id = self.resolver.local_def_id(node_id);
             let new_node_id = self.resolver.next_node_id();
 
-            // Add a definition for the in-band lifetime def.
+            // Add a definition for the `Fresh` lifetime def.
             let new_def_id = self.resolver.create_def(
                 opaque_ty_def_id,
                 new_node_id,

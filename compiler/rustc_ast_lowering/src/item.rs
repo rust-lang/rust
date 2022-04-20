@@ -299,7 +299,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let (generics, decl) =
-                        this.add_in_band_defs(generics, fn_def_id, |this, idty| {
+                        this.add_implicit_generics(generics, fn_def_id, |this, idty| {
                             let ret_id = asyncness.opt_return_id();
                             this.lower_fn_decl(&decl, Some((id, idty)), FnDeclKind::Fn, ret_id)
                         });
@@ -417,7 +417,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // parent lifetime.
                 let lowered_trait_def_id = hir_id.expect_owner();
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.add_in_band_defs(ast_generics, lowered_trait_def_id, |this, _| {
+                    self.add_implicit_generics(ast_generics, lowered_trait_def_id, |this, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -743,7 +743,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) =
-                        self.add_in_band_defs(generics, def_id, |this, _| {
+                        self.add_implicit_generics(generics, def_id, |this, _| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
@@ -1345,7 +1345,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
         let fn_def_id = self.resolver.local_def_id(id);
         let header = self.lower_fn_header(sig.header);
-        let (generics, decl) = self.add_in_band_defs(generics, fn_def_id, |this, idty| {
+        let (generics, decl) = self.add_implicit_generics(generics, fn_def_id, |this, idty| {
             this.lower_fn_decl(&sig.decl, Some((id, idty)), kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
