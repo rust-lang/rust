@@ -8,7 +8,7 @@ use std::process;
 
 use getopts::Options;
 
-use crate::builder::Builder;
+use crate::builder::{Builder, Kind};
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
 use crate::util::t;
@@ -243,27 +243,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         // the subcommand. Therefore we must manually identify the subcommand first, so that we can
         // complete the definition of the options.  Then we can use the getopt::Matches object from
         // there on out.
-        let subcommand = args.iter().find(|&s| {
-            (s == "build")
-                || (s == "b")
-                || (s == "check")
-                || (s == "c")
-                || (s == "clippy")
-                || (s == "fix")
-                || (s == "fmt")
-                || (s == "test")
-                || (s == "t")
-                || (s == "bench")
-                || (s == "doc")
-                || (s == "d")
-                || (s == "clean")
-                || (s == "dist")
-                || (s == "install")
-                || (s == "run")
-                || (s == "r")
-                || (s == "setup")
-        });
-        let subcommand = match subcommand {
+        let subcommand = match args.iter().find_map(|s| Kind::parse(&s)) {
             Some(s) => s,
             None => {
                 // No or an invalid subcommand -- show the general usage and subcommand help
@@ -276,8 +256,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         };
 
         // Some subcommands get extra options
-        match subcommand.as_str() {
-            "test" | "t" => {
+        match subcommand {
+            Kind::Test => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti(
                     "",
@@ -316,22 +296,22 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
-            "check" | "c" => {
+            Kind::Check => {
                 opts.optflag("", "all-targets", "Check all targets");
             }
-            "bench" => {
+            Kind::Bench => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
             }
-            "clippy" => {
+            Kind::Clippy => {
                 opts.optflag("", "fix", "automatically apply lint suggestions");
             }
-            "doc" | "d" => {
+            Kind::Doc => {
                 opts.optflag("", "open", "open the docs in a browser");
             }
-            "clean" => {
+            Kind::Clean => {
                 opts.optflag("", "all", "clean all build artifacts");
             }
-            "fmt" => {
+            Kind::Format => {
                 opts.optflag("", "check", "check formatting instead of applying.");
             }
             _ => {}
@@ -339,25 +319,22 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            let mut extra_help = String::new();
-
-            // All subcommands except `clean` can have an optional "Available paths" section
-            if verbose {
-                let config = Config::parse(&["build".to_string()]);
-                let build = Build::new(config);
-
-                let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
-                extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
-            } else if !(subcommand.as_str() == "clean" || subcommand.as_str() == "fmt") {
-                extra_help.push_str(
-                    format!("Run `./x.py {} -h -v` to see a list of available paths.", subcommand)
-                        .as_str(),
-                );
-            }
+            let config = Config::parse(&["build".to_string()]);
+            let build = Build::new(config);
+            let paths = Builder::get_help(&build, subcommand);
 
             println!("{}", opts.usage(subcommand_help));
-            if !extra_help.is_empty() {
-                println!("{}", extra_help);
+            if let Some(s) = paths {
+                if verbose {
+                    println!("{}", s);
+                } else {
+                    println!(
+                        "Run `./x.py {} -h -v` to see a list of available paths.",
+                        subcommand.as_str()
+                    );
+                }
+            } else if verbose {
+                panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
             process::exit(exit_code);
         };
@@ -375,7 +352,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         //            ^-- option  ^     ^- actual subcommand
         //                        \_ arg to option could be mistaken as subcommand
         let mut pass_sanity_check = true;
-        match matches.free.get(0) {
+        match matches.free.get(0).and_then(|s| Kind::parse(&s)) {
             Some(check_subcommand) => {
                 if check_subcommand != subcommand {
                     pass_sanity_check = false;
@@ -394,8 +371,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             process::exit(1);
         }
         // Extra help text for some commands
-        match subcommand.as_str() {
-            "build" | "b" => {
+        match subcommand {
+            Kind::Build => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -415,7 +392,7 @@ Arguments:
         ./x.py build ",
                 );
             }
-            "check" | "c" => {
+            Kind::Check => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -427,7 +404,7 @@ Arguments:
     If no arguments are passed then many artifacts are checked.",
                 );
             }
-            "clippy" => {
+            Kind::Clippy => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -438,7 +415,7 @@ Arguments:
         ./x.py clippy library/core library/proc_macro",
                 );
             }
-            "fix" => {
+            Kind::Fix => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -449,7 +426,7 @@ Arguments:
         ./x.py fix library/core library/proc_macro",
                 );
             }
-            "fmt" => {
+            Kind::Format => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -460,7 +437,7 @@ Arguments:
         ./x.py fmt --check",
                 );
             }
-            "test" | "t" => {
+            Kind::Test => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -488,7 +465,7 @@ Arguments:
         ./x.py test --stage 1",
                 );
             }
-            "doc" | "d" => {
+            Kind::Doc => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -506,7 +483,7 @@ Arguments:
         ./x.py doc --stage 1",
                 );
             }
-            "run" | "r" => {
+            Kind::Run => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -518,7 +495,7 @@ Arguments:
     At least a tool needs to be called.",
                 );
             }
-            "setup" => {
+            Kind::Setup => {
                 subcommand_help.push_str(&format!(
                     "\n
 x.py setup creates a `config.toml` which changes the defaults for x.py itself.
@@ -535,7 +512,7 @@ Arguments:
                     Profile::all_for_help("        ").trim_end()
                 ));
             }
-            _ => {}
+            Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install => {}
         };
         // Get any optional paths which occur after the subcommand
         let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
@@ -547,9 +524,9 @@ Arguments:
             usage(0, &opts, verbose, &subcommand_help);
         }
 
-        let cmd = match subcommand.as_str() {
-            "build" | "b" => Subcommand::Build { paths },
-            "check" | "c" => {
+        let cmd = match subcommand {
+            Kind::Build => Subcommand::Build { paths },
+            Kind::Check => {
                 if matches.opt_present("all-targets") {
                     eprintln!(
                         "Warning: --all-targets is now on by default and does not need to be passed explicitly."
@@ -557,9 +534,9 @@ Arguments:
                 }
                 Subcommand::Check { paths }
             }
-            "clippy" => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
-            "fix" => Subcommand::Fix { paths },
-            "test" | "t" => Subcommand::Test {
+            Kind::Clippy => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
+            Kind::Fix => Subcommand::Fix { paths },
+            Kind::Test => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
                 force_rerun: matches.opt_present("force-rerun"),
@@ -578,9 +555,9 @@ Arguments:
                     DocTests::Yes
                 },
             },
-            "bench" => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
-            "doc" | "d" => Subcommand::Doc { paths, open: matches.opt_present("open") },
-            "clean" => {
+            Kind::Bench => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
+            Kind::Doc => Subcommand::Doc { paths, open: matches.opt_present("open") },
+            Kind::Clean => {
                 if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
                     usage(1, &opts, verbose, &subcommand_help);
@@ -588,17 +565,17 @@ Arguments:
 
                 Subcommand::Clean { all: matches.opt_present("all") }
             }
-            "fmt" => Subcommand::Format { check: matches.opt_present("check"), paths },
-            "dist" => Subcommand::Dist { paths },
-            "install" => Subcommand::Install { paths },
-            "run" | "r" => {
+            Kind::Format => Subcommand::Format { check: matches.opt_present("check"), paths },
+            Kind::Dist => Subcommand::Dist { paths },
+            Kind::Install => Subcommand::Install { paths },
+            Kind::Run => {
                 if paths.is_empty() {
                     println!("\nrun requires at least a path!\n");
                     usage(1, &opts, verbose, &subcommand_help);
                 }
                 Subcommand::Run { paths }
             }
-            "setup" => {
+            Kind::Setup => {
                 let profile = if paths.len() > 1 {
                     println!("\nat most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
@@ -617,9 +594,6 @@ Arguments:
                     t!(crate::setup::interactive_path())
                 };
                 Subcommand::Setup { profile }
-            }
-            _ => {
-                usage(1, &opts, verbose, &subcommand_help);
             }
         };
 
