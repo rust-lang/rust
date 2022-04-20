@@ -314,16 +314,20 @@ environment variable:
   ensure alignment.  (The standard library `align_to` method works fine in both
   modes; under symbolic alignment it only fills the middle slice when the
   allocation guarantees sufficient alignment.)
-* `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
+* `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
-  use after free bugs.
-* `-Zmiri-track-call-id=<id>` shows a backtrace when the given call id is
+  use after free bugs. Specifying this argument multiple times does not overwrite the previous
+  values, instead it appends its values to the list. Listing an id multiple times has no effect.
+* `-Zmiri-track-call-id=<id1>,<id2>,...` shows a backtrace when the given call ids are
   assigned to a stack frame.  This helps in debugging UB related to Stacked
-  Borrows "protectors".
-* `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
+  Borrows "protectors". Specifying this argument multiple times does not overwrite the previous
+  values, instead it appends its values to the list. Listing an id multiple times has no effect.
+* `-Zmiri-track-pointer-tag=<tag1>,<tag2>,...` shows a backtrace when a given pointer tag
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
+  Specifying this argument multiple times does not overwrite the previous
+  values, instead it appends its values to the list. Listing a tag multiple times has no effect.
 * `-Zmiri-tag-raw-pointers` makes Stacked Borrows assign proper tags even for raw pointers. This can
   make valid code using int-to-ptr casts fail to pass the checks, but also can help identify latent
   aliasing issues in code that Miri accepts by default. You can recognize false positives by

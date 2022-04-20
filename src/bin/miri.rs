@@ -251,6 +251,13 @@ fn run_compiler(
     std::process::exit(exit_code)
 }
 
+/// Parses a comma separated list of `T` from the given string:
+///
+/// `<value1>,<value2>,<value3>,...`
+fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
+    input.split(',').map(str::parse::<T>).collect()
+}
+
 fn main() {
     rustc_driver::install_ice_hook();
 
@@ -397,46 +404,55 @@ fn main() {
                         .push(arg.strip_prefix("-Zmiri-env-forward=").unwrap().to_owned());
                 }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
-                    let id: u64 =
-                        match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse() {
-                            Ok(id) => id,
-                            Err(err) =>
-                                panic!(
-                                    "-Zmiri-track-pointer-tag requires a valid `u64` argument: {}",
-                                    err
-                                ),
-                        };
-                    if let Some(id) = miri::PtrId::new(id) {
-                        miri_config.tracked_pointer_tag = Some(id);
-                    } else {
-                        panic!("-Zmiri-track-pointer-tag requires a nonzero argument");
+                    let ids: Vec<u64> = match parse_comma_list(
+                        arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap(),
+                    ) {
+                        Ok(ids) => ids,
+                        Err(err) =>
+                            panic!(
+                                "-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {}",
+                                err
+                            ),
+                    };
+                    for id in ids.into_iter().map(miri::PtrId::new) {
+                        if let Some(id) = id {
+                            miri_config.tracked_pointer_tags.insert(id);
+                        } else {
+                            panic!("-Zmiri-track-pointer-tag requires nonzero arguments");
+                        }
                     }
                 }
                 arg if arg.starts_with("-Zmiri-track-call-id=") => {
-                    let id: u64 = match arg.strip_prefix("-Zmiri-track-call-id=").unwrap().parse() {
-                        Ok(id) => id,
+                    let ids: Vec<u64> = match parse_comma_list(
+                        arg.strip_prefix("-Zmiri-track-call-id=").unwrap(),
+                    ) {
+                        Ok(ids) => ids,
                         Err(err) =>
-                            panic!("-Zmiri-track-call-id requires a valid `u64` argument: {}", err),
+                            panic!(
+                                "-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {}",
+                                err
+                            ),
                     };
-                    if let Some(id) = miri::CallId::new(id) {
-                        miri_config.tracked_call_id = Some(id);
-                    } else {
-                        panic!("-Zmiri-track-call-id requires a nonzero argument");
+                    for id in ids.into_iter().map(miri::CallId::new) {
+                        if let Some(id) = id {
+                            miri_config.tracked_call_ids.insert(id);
+                        } else {
+                            panic!("-Zmiri-track-call-id requires a nonzero argument");
+                        }
                     }
                 }
                 arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
-                    let id = match arg
-                        .strip_prefix("-Zmiri-track-alloc-id=")
-                        .unwrap()
-                        .parse()
-                        .ok()
-                        .and_then(NonZeroU64::new)
-                    {
-                        Some(id) => id,
-                        None =>
-                            panic!("-Zmiri-track-alloc-id requires a valid non-zero `u64` argument"),
+                    let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(
+                        arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap(),
+                    ) {
+                        Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
+                        Err(err) =>
+                            panic!(
+                                "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",
+                                err
+                            ),
                     };
-                    miri_config.tracked_alloc_id = Some(miri::AllocId(id));
+                    miri_config.tracked_alloc_ids.extend(ids);
                 }
                 arg if arg.starts_with("-Zmiri-compare-exchange-weak-failure-rate=") => {
                     let rate = match arg

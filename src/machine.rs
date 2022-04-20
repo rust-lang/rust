@@ -3,6 +3,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::fmt;
 use std::num::NonZeroU64;
 use std::time::Instant;
@@ -281,9 +282,9 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
     pub(crate) rng: RefCell<StdRng>,
 
-    /// An allocation ID to report when it is being allocated
+    /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
-    tracked_alloc_id: Option<AllocId>,
+    tracked_alloc_ids: HashSet<AllocId>,
 
     /// Controls whether alignment of memory accesses is being checked.
     pub(crate) check_alignment: AlignmentCheck,
@@ -303,8 +304,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let stacked_borrows = if config.stacked_borrows {
             Some(RefCell::new(stacked_borrows::GlobalStateInner::new(
-                config.tracked_pointer_tag,
-                config.tracked_call_id,
+                config.tracked_pointer_tags.clone(),
+                config.tracked_call_ids.clone(),
                 config.tag_raw,
             )))
         } else {
@@ -340,7 +341,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             local_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
-            tracked_alloc_id: config.tracked_alloc_id,
+            tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
         }
@@ -560,7 +561,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
-        if Some(id) == ecx.machine.tracked_alloc_id {
+        if ecx.machine.tracked_alloc_ids.contains(&id) {
             register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
         }
 
@@ -669,7 +670,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
-        if Some(alloc_id) == machine.tracked_alloc_id {
+        if machine.tracked_alloc_ids.contains(&alloc_id) {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {

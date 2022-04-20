@@ -15,6 +15,8 @@ use rustc_target::spec::abi::Abi;
 
 use rustc_session::config::EntryFnType;
 
+use std::collections::HashSet;
+
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -91,12 +93,12 @@ pub struct MiriConfig {
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
-    /// The stacked borrows pointer id to report about
-    pub tracked_pointer_tag: Option<PtrId>,
-    /// The stacked borrows call ID to report about
-    pub tracked_call_id: Option<CallId>,
-    /// The allocation id to report about.
-    pub tracked_alloc_id: Option<AllocId>,
+    /// The stacked borrows pointer ids to report about
+    pub tracked_pointer_tags: HashSet<PtrId>,
+    /// The stacked borrows call IDs to report about
+    pub tracked_call_ids: HashSet<CallId>,
+    /// The allocation ids to report about.
+    pub tracked_alloc_ids: HashSet<AllocId>,
     /// Whether to track raw pointers in stacked borrows.
     pub tag_raw: bool,
     /// Determine if data race detection should be enabled
@@ -130,9 +132,9 @@ impl Default for MiriConfig {
             forwarded_env_vars: vec![],
             args: vec![],
             seed: None,
-            tracked_pointer_tag: None,
-            tracked_call_id: None,
-            tracked_alloc_id: None,
+            tracked_pointer_tags: Default::default(),
+            tracked_call_ids: Default::default(),
+            tracked_alloc_ids: Default::default(),
             tag_raw: false,
             data_race_detector: true,
             cmpxchg_weak_failure_rate: 0.8,
