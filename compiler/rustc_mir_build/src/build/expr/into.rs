@@ -255,10 +255,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         func: fun,
                         args,
                         cleanup: None,
-                        // FIXME(varkor): replace this with an uninhabitedness-based check.
-                        // This requires getting access to the current module to call
-                        // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
-                        destination: if expr.ty.is_never() {
+                        // The presence or absence of a return edge affects control-flow sensitive
+                        // MIR checks and ultimately whether code is accepted or not. We can only
+                        // omit the return edge if a return type is visibly uninhabited to a module
+                        // that makes the call.
+                        destination: if this.tcx.is_ty_uninhabited_from(
+                            this.parent_module,
+                            expr.ty,
+                            this.param_env,
+                        ) {
                             None
                         } else {
                             Some((destination, success))
