@@ -4,15 +4,18 @@
 #![feature(never_type)]
 #![allow(unused, invalid_value)]
 
-enum Void {}
+mod m {
+    enum VoidI {}
+    pub struct Void(VoidI);
 
-fn f(v: Void) -> ! {
-    match v {} //~ ERROR entering unreachable code
+    pub fn f(v: Void) -> ! {
+        match v.0 {} //~ ERROR entering unreachable code
+    }
 }
 
 fn main() {
-    let v: Void = unsafe {
-        std::mem::transmute::<(), Void>(())
+    let v = unsafe {
+        std::mem::transmute::<(), m::Void>(())
     };
-    f(v); //~ inside `main`
+    m::f(v); //~ inside `main`
 }
