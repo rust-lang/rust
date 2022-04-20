@@ -59,12 +59,12 @@ impl<'a> Parser<'a> {
 
     /// Run a parser, but fail if the entire input wasn't consumed.
     /// Doesn't run atomically.
-    fn parse_with<T, F>(&mut self, inner: F) -> Result<T, AddrParseError>
+    fn parse_with<T, F>(&mut self, inner: F, kind: AddrKind) -> Result<T, AddrParseError>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
         let result = inner(self);
-        if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(()))
+        if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(kind))
     }
 
     /// Peek the next character from the input
@@ -278,7 +278,7 @@ impl<'a> Parser<'a> {
 impl FromStr for IpAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_ip_addr())
+        Parser::new(s).parse_with(|p| p.read_ip_addr(), AddrKind::Ip)
     }
 }
 
@@ -288,9 +288,9 @@ impl FromStr for Ipv4Addr {
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
         // don't try to parse if too long
         if s.len() > 15 {
-            Err(AddrParseError(()))
+            Err(AddrParseError(AddrKind::Ipv4))
         } else {
-            Parser::new(s).parse_with(|p| p.read_ipv4_addr())
+            Parser::new(s).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
         }
     }
 }
@@ -299,7 +299,7 @@ impl FromStr for Ipv4Addr {
 impl FromStr for Ipv6Addr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_ipv6_addr())
+        Parser::new(s).parse_with(|p| p.read_ipv6_addr(), AddrKind::Ipv6)
     }
 }
 
@@ -307,7 +307,7 @@ impl FromStr for Ipv6Addr {
 impl FromStr for SocketAddrV4 {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr_v4())
+        Parser::new(s).parse_with(|p| p.read_socket_addr_v4(), AddrKind::SocketV4)
     }
 }
 
@@ -315,7 +315,7 @@ impl FromStr for SocketAddrV4 {
 impl FromStr for SocketAddrV6 {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr_v6())
+        Parser::new(s).parse_with(|p| p.read_socket_addr_v6(), AddrKind::SocketV6)
     }
 }
 
@@ -323,8 +323,18 @@ impl FromStr for SocketAddrV6 {
 impl FromStr for SocketAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr())
+        Parser::new(s).parse_with(|p| p.read_socket_addr(), AddrKind::Socket)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AddrKind {
+    Ip,
+    Ipv4,
+    Ipv6,
+    Socket,
+    SocketV4,
+    SocketV6,
 }
 
 /// An error which can be returned when parsing an IP address or a socket address.
@@ -353,7 +363,7 @@ impl FromStr for SocketAddr {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AddrParseError(());
+pub struct AddrParseError(AddrKind);
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {
@@ -367,6 +377,13 @@ impl fmt::Display for AddrParseError {
 impl Error for AddrParseError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        "invalid IP address syntax"
+        match self.0 {
+            AddrKind::Ip => "invalid IP address syntax",
+            AddrKind::Ipv4 => "invalid IPv4 address syntax",
+            AddrKind::Ipv6 => "invalid IPv6 address syntax",
+            AddrKind::Socket => "invalid socket address syntax",
+            AddrKind::SocketV4 => "invalid IPv4 socket address syntax",
+            AddrKind::SocketV6 => "invalid IPv6 socket address syntax",
+        }
     }
 }
