@@ -2061,11 +2061,15 @@ use sit;
 
 ## `group_imports`
 
-Controls the strategy for how imports are grouped together.
+Controls the strategy for how consecutive imports are grouped together.
+
+Controls the strategy for grouping sets of consecutive imports. Imports may contain newlines between imports and still be grouped together as a single set, but other statements between imports will result in different grouping sets.
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `StdExternalCrate`, `One`
 - **Stable**: No (tracking issue: [#5083](https://github.com/rust-lang/rustfmt/issues/5083))
+
+Each set of imports (one or more `use` statements, optionally separated by newlines) will be formatted independently. Other statements such as `mod ...` or `extern crate ...` will cause imports to not be grouped together.
 
 #### `Preserve` (default):
 
