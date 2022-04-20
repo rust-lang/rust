@@ -242,12 +242,17 @@ struct TokenCursorFrame {
     delim: token::DelimToken,
     span: DelimSpan,
     tree_cursor: tokenstream::Cursor,
-    close_delim: bool,
+    need_to_produce_close_delim: bool,
 }
 
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream, close_delim: bool) -> Self {
-        TokenCursorFrame { delim, span, tree_cursor: tts.into_trees(), close_delim }
+    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
+        TokenCursorFrame {
+            delim,
+            span,
+            tree_cursor: tts.into_trees(),
+            need_to_produce_close_delim: delim != DelimToken::NoDelim,
+        }
     }
 }
 
@@ -261,28 +266,32 @@ impl TokenCursor {
     fn inlined_next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
         loop {
             if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing() {
-                return match tree {
+                match tree {
                     TokenTree::Token(token) => match (desugar_doc_comments, &token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
-                            self.desugar(attr_style, data, span)
+                            return self.desugar(attr_style, data, span);
                         }
-                        _ => (token, spacing),
+                        _ => return (token, spacing),
                     },
                     TokenTree::Delimited(sp, delim, tts) => {
                         // Set `open_delim` to true here because we deal with it immediately.
-                        let frame = TokenCursorFrame::new(sp, delim, tts, false);
+                        let frame = TokenCursorFrame::new(sp, delim, tts);
                         self.stack.push(mem::replace(&mut self.frame, frame));
-                        (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone)
+                        if delim != DelimToken::NoDelim {
+                            return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
+                        }
+                        // No open delimeter to return; continue on to the next iteration.
                     }
                 };
-            } else if !self.frame.close_delim {
-                self.frame.close_delim = true;
+            } else if self.frame.need_to_produce_close_delim {
+                self.frame.need_to_produce_close_delim = false;
                 return (
                     Token::new(token::CloseDelim(self.frame.delim), self.frame.span.close),
                     Spacing::Alone,
                 );
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
+                // Back to the parent frame; continue on to the next iteration.
             } else {
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
@@ -333,7 +342,6 @@ impl TokenCursor {
                         .cloned()
                         .collect::<TokenStream>()
                 },
-                true,
             ),
         ));
 
@@ -422,7 +430,7 @@ impl<'a> Parser<'a> {
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
-        let start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens, true);
+        let start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
 
         let mut parser = Parser {
             sess,
@@ -993,24 +1001,21 @@ impl<'a> Parser<'a> {
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
         let fallback_span = self.token.span;
-        loop {
-            let (mut next, spacing) = self.token_cursor.inlined_next(self.desugar_doc_comments);
-            self.token_cursor.num_next_calls += 1;
-            // We've retrieved an token from the underlying
-            // cursor, so we no longer need to worry about
-            // an unglued token. See `break_and_eat` for more details
-            self.token_cursor.break_last_token = false;
-            if next.span.is_dummy() {
-                // Tweak the location for better diagnostics, but keep syntactic context intact.
-                next.span = fallback_span.with_ctxt(next.span.ctxt());
-            }
-            if !matches!(
-                next.kind,
-                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
-            ) {
-                return self.inlined_bump_with((next, spacing));
-            }
+        let (mut next, spacing) = self.token_cursor.inlined_next(self.desugar_doc_comments);
+        self.token_cursor.num_next_calls += 1;
+        // We've retrieved an token from the underlying
+        // cursor, so we no longer need to worry about
+        // an unglued token. See `break_and_eat` for more details
+        self.token_cursor.break_last_token = false;
+        if next.span.is_dummy() {
+            // Tweak the location for better diagnostics, but keep syntactic context intact.
+            next.span = fallback_span.with_ctxt(next.span.ctxt());
         }
+        debug_assert!(!matches!(
+            next.kind,
+            token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
+        ));
+        self.inlined_bump_with((next, spacing))
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
