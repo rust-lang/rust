@@ -1141,6 +1141,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Some(self.implicit_region_bound),
             self.param_env,
             locations,
+            locations.span(self.body),
             category,
             &mut self.borrowck_context.constraints,
         )
@@ -2401,6 +2402,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 sup: ref_region.to_region_vid(),
                                 sub: borrow_region.to_region_vid(),
                                 locations: location.to_locations(),
+                                span: location.to_locations().span(body),
                                 category,
                                 variance_info: ty::VarianceDiagInfo::default(),
                             });

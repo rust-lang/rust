@@ -27,14 +27,14 @@ fn id<T>(t: T) -> T {
 }
 
 static SOME_STRUCT: &SomeStruct = &SomeStruct {
-    //[nll]~^ ERROR mismatched types
-    //[nll]~| ERROR mismatched types
-    //[nll]~| ERROR implementation of `FnOnce` is not general enough
-    //[nll]~| ERROR implementation of `FnOnce` is not general enough
     foo: &Foo { bools: &[false, true] },
     bar: &Bar { bools: &[true, true] },
     f: &id,
     //[base]~^ ERROR implementation of `FnOnce` is not general enough
+    //[nll]~^^ ERROR mismatched types
+    //[nll]~| ERROR mismatched types
+    //[nll]~| ERROR implementation of `FnOnce` is not general enough
+    //[nll]~| ERROR implementation of `FnOnce` is not general enough
 };
 
 // very simple test for a 'static static with default lifetime

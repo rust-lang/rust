@@ -74,14 +74,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
         constraints.sort_by_key(|c| (c.sup, c.sub));
         for constraint in &constraints {
-            let OutlivesConstraint { sup, sub, locations, category, variance_info: _ } = constraint;
+            let OutlivesConstraint { sup, sub, locations, category, span, variance_info: _ } =
+                constraint;
             let (name, arg) = match locations {
                 Locations::All(span) => {
                     ("All", tcx.sess.source_map().span_to_embeddable_string(*span))
                 }
                 Locations::Single(loc) => ("Single", format!("{:?}", loc)),
             };
-            with_msg(&format!("{:?}: {:?} due to {:?} at {}({})", sup, sub, category, name, arg))?;
+            with_msg(&format!(
+                "{:?}: {:?} due to {:?} at {}({}) ({:?}",
+                sup, sub, category, name, arg, span
+            ))?;
         }
 
         Ok(())
