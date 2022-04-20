@@ -235,6 +235,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Some(self.implicit_region_bound),
                 self.param_env,
                 Locations::All(DUMMY_SP),
+                DUMMY_SP,
                 ConstraintCategory::Internal,
                 &mut self.borrowck_context.constraints,
             )

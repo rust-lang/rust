@@ -156,6 +156,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Edges<'s, 'tcx, D> {
                 sup: self.static_region,
                 sub: next_static_idx.into(),
                 locations: Locations::All(DUMMY_SP),
+                span: DUMMY_SP,
                 category: ConstraintCategory::Internal,
                 variance_info: VarianceDiagInfo::default(),
             })
