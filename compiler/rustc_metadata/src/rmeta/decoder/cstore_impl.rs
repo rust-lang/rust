@@ -532,6 +532,14 @@ impl CStore {
         self.get_crate_data(cnum).get_all_incoherent_impls()
     }
 
+    pub fn associated_item_def_ids_untracked<'a>(
+        &'a self,
+        def_id: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = DefId> + 'a {
+        self.get_crate_data(def_id.krate).get_associated_item_def_ids(def_id.index, sess)
+    }
+
     pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
         self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
     }
