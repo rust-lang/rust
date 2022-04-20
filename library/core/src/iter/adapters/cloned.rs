@@ -130,8 +130,13 @@ where
     I: TrustedRandomAccess,
 {
     #[inline]
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        self.it.cleanup(num, forward);
+    fn cleanup_front(&mut self, num: usize) {
+        self.it.cleanup_front(num);
+    }
+
+    #[inline]
+    fn cleanup_back(&mut self, num: usize) {
+        self.it.cleanup_back(num);
     }
 }
 

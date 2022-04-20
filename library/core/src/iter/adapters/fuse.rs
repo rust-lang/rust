@@ -228,9 +228,16 @@ where
     I: TrustedRandomAccess,
 {
     #[inline]
-    fn cleanup(&mut self, num: usize, forward: bool) {
+    fn cleanup_front(&mut self, num: usize) {
         if let Some(iter) = self.iter.as_mut() {
-            iter.cleanup(num, forward);
+            iter.cleanup_front(num);
+        }
+    }
+
+    #[inline]
+    fn cleanup_back(&mut self, num: usize) {
+        if let Some(iter) = self.iter.as_mut() {
+            iter.cleanup_back(num);
         }
     }
 }

@@ -1371,12 +1371,12 @@ impl<T> FusedIterator for Windows<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            self.v = &self.v[num..];
-        } else {
-            self.v = &self.v[..self.v.len() - num];
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        self.v = &self.v[num..];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        self.v = &self.v[..self.v.len() - num];
     }
 }
 
@@ -1557,16 +1557,16 @@ impl<T> FusedIterator for Chunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let len = self.v.len();
-            let start = cmp::min(len, self.chunk_size * num);
-            self.v = &self.v[start..];
-        } else {
-            let remaining = self.len() - num;
-            let end = remaining * self.chunk_size;
-            self.v = &self.v[..end];
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let len = self.v.len();
+        let start = cmp::min(len, self.chunk_size * num);
+        self.v = &self.v[start..];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let remaining = self.len() - num;
+        let end = remaining * self.chunk_size;
+        self.v = &self.v[..end];
     }
 }
 
@@ -1731,17 +1731,18 @@ impl<T> FusedIterator for ChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
+    fn cleanup_front(&mut self, num: usize) {
+        let v = mem::replace(&mut self.v, &mut []);
+        let start = self.chunk_size * num;
+        self.v = &mut v[start..];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
         let len = self.len();
         let v = mem::replace(&mut self.v, &mut []);
-        if forward {
-            let start = self.chunk_size * num;
-            self.v = &mut v[start..];
-        } else {
-            let remaining = len - num;
-            let end = remaining * self.chunk_size;
-            self.v = &mut v[..end];
-        }
+        let remaining = len - num;
+        let end = remaining * self.chunk_size;
+        self.v = &mut v[..end];
     }
 }
 
@@ -1898,14 +1899,14 @@ impl<T> FusedIterator for ChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let start = self.chunk_size * num;
-            self.v = &self.v[start..];
-        } else {
-            let end = self.v.len() - (self.chunk_size * num);
-            self.v = &self.v[..end];
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let start = self.chunk_size * num;
+        self.v = &self.v[start..];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let end = self.v.len() - (self.chunk_size * num);
+        self.v = &self.v[..end];
     }
 }
 
@@ -2059,15 +2060,16 @@ impl<T> FusedIterator for ChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
+    fn cleanup_front(&mut self, num: usize) {
         let v = mem::replace(&mut self.v, &mut []);
-        if forward {
-            let start = self.chunk_size * num;
-            self.v = &mut v[start..];
-        } else {
-            let end = v.len() - (self.chunk_size * num);
-            self.v = &mut v[..end];
-        }
+        let start = self.chunk_size * num;
+        self.v = &mut v[start..];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let v = mem::replace(&mut self.v, &mut []);
+        let end = v.len() - (self.chunk_size * num);
+        self.v = &mut v[..end];
     }
 }
 
@@ -2309,8 +2311,12 @@ impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        self.iter.cleanup(num, forward);
+    fn cleanup_front(&mut self, num: usize) {
+        self.iter.cleanup_front(num);
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        self.iter.cleanup_back(num);
     }
 }
 
@@ -2426,8 +2432,12 @@ impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        self.iter.cleanup(num, forward);
+    fn cleanup_front(&mut self, num: usize) {
+        self.iter.cleanup_front(num);
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        self.iter.cleanup_back(num);
     }
 }
 
@@ -2598,15 +2608,15 @@ impl<T> FusedIterator for RChunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let end = self.v.len().saturating_sub(self.chunk_size * num);
-            self.v = &self.v[..end];
-        } else {
-            let remainder = self.len() - num;
-            let start = self.v.len() - remainder * self.chunk_size;
-            self.v = &self.v[start..];
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let end = self.v.len().saturating_sub(self.chunk_size * num);
+        self.v = &self.v[..end];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let remainder = self.len() - num;
+        let start = self.v.len() - remainder * self.chunk_size;
+        self.v = &self.v[start..];
     }
 }
 
@@ -2775,17 +2785,18 @@ impl<T> FusedIterator for RChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
+    fn cleanup_front(&mut self, num: usize) {
+        let v = mem::replace(&mut self.v, &mut []);
+        let end = v.len().saturating_sub(self.chunk_size * num);
+        self.v = &mut v[..end];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
         let len = self.len();
         let v = mem::replace(&mut self.v, &mut []);
-        self.v = if forward {
-            let end = v.len().saturating_sub(self.chunk_size * num);
-            &mut v[..end]
-        } else {
-            let remainder = len - num;
-            let start = v.len() - remainder * self.chunk_size;
-            &mut v[start..]
-        };
+        let remainder = len - num;
+        let start = v.len() - remainder * self.chunk_size;
+        self.v = &mut v[start..]
     }
 }
 
@@ -2946,14 +2957,14 @@ impl<T> FusedIterator for RChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let end = self.v.len() - (self.chunk_size * num);
-            self.v = &self.v[..end];
-        } else {
-            let start = self.chunk_size * num;
-            self.v = &self.v[start..];
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let end = self.v.len() - (self.chunk_size * num);
+        self.v = &self.v[..end];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let start = self.chunk_size * num;
+        self.v = &self.v[start..];
     }
 }
 
@@ -3111,15 +3122,16 @@ impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
+    fn cleanup_front(&mut self, num: usize) {
         let v = mem::replace(&mut self.v, &mut []);
-        if forward {
-            let end = v.len() - (self.chunk_size * num);
-            self.v = &mut v[..end];
-        } else {
-            let start = self.chunk_size * num;
-            self.v = &mut v[start..];
-        }
+        let end = v.len() - (self.chunk_size * num);
+        self.v = &mut v[..end];
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let v = mem::replace(&mut self.v, &mut []);
+        let start = self.chunk_size * num;
+        self.v = &mut v[start..];
     }
 }
 
@@ -3127,12 +3139,13 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
     #[inline]
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let _ = self.advance_by(num);
-        } else {
-            let _ = self.advance_back_by(num);
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let _ = self.advance_by(num);
+    }
+
+    #[inline]
+    fn cleanup_back(&mut self, num: usize) {
+        let _ = self.advance_back_by(num);
     }
 }
 
@@ -3140,12 +3153,13 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     #[inline]
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let _ = self.advance_by(num);
-        } else {
-            let _ = self.advance_back_by(num);
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let _ = self.advance_by(num);
+    }
+
+    #[inline]
+    fn cleanup_back(&mut self, num: usize) {
+        let _ = self.advance_back_by(num);
     }
 }
 

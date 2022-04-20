@@ -55,7 +55,9 @@ pub unsafe trait TrustedRandomAccess: Sized {
         self.size_hint().0
     }
 
-    fn cleanup(&mut self, num: usize, forward: bool);
+    fn cleanup_front(&mut self, num: usize);
+
+    fn cleanup_back(&mut self, num: usize);
 }
 
 // The following marker traits exist because specializing on them currently is the only way to avoid

@@ -217,7 +217,7 @@ where
             accum = f(accum, x);
         }
         // FIXME drop-guard or use ForLoopDesugar
-        self.cleanup(len, true);
+        self.cleanup_front(len);
         accum
     }
 
@@ -236,7 +236,7 @@ where
             accum = f(accum, x)?;
         }
         // FIXME drop-guard or use ForLoopDesugar
-        self.cleanup(len, true);
+        self.cleanup_front(len);
         try { accum }
     }
 
@@ -262,9 +262,14 @@ where
     A: TrustedRandomAccess,
     B: TrustedRandomAccess,
 {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        self.a.cleanup(num, forward);
-        self.b.cleanup(num, forward);
+    fn cleanup_front(&mut self, num: usize) {
+        self.a.cleanup_front(num);
+        self.b.cleanup_front(num);
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        self.a.cleanup_back(num);
+        self.b.cleanup_back(num);
     }
 }
 
@@ -313,7 +318,6 @@ where
     B: TrustedRandomAccessNeedsForwardSetup,
 {
 }
-
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]

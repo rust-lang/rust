@@ -155,11 +155,11 @@ unsafe impl<T> TrustedLen for IterMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<T> TrustedRandomAccess for IterMut<'_, T> {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            let _ = self.advance_by(num);
-        } else {
-            let _ = self.advance_back_by(num);
-        }
+    fn cleanup_front(&mut self, num: usize) {
+        let _ = self.advance_by(num);
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        let _ = self.advance_back_by(num);
     }
 }

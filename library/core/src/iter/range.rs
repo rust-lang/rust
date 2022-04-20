@@ -497,13 +497,14 @@ macro_rules! unsafe_range_trusted_random_access_impl {
         #[unstable(feature = "trusted_random_access", issue = "none")]
         unsafe impl TrustedRandomAccess for ops::Range<$t> {
 
-            fn cleanup(&mut self, num: usize, forward: bool) {
-                if forward {
-                    let _ = self.advance_by(num);
-                } else {
-                    let _ = self.advance_back_by(num);
-                }
+            fn cleanup_front(&mut self, num: usize) {
+                let _ = self.advance_by(num);
             }
+
+            fn cleanup_back(&mut self, num: usize) {
+                let _ = self.advance_back_by(num);
+            }
+
         }
     )*)
 }

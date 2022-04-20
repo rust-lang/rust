@@ -110,6 +110,6 @@ where
 {
     #[inline]
     fn cleanup(&mut self) {
-        self.iter.cleanup(self.idx, true);
+        self.iter.cleanup_front(self.idx);
     }
 }

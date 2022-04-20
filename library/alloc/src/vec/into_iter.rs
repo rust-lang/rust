@@ -289,27 +289,27 @@ unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
 where
     T: NonDrop,
 {
-    fn cleanup(&mut self, num: usize, forward: bool) {
-        if forward {
-            if mem::size_of::<T>() == 0 {
-                // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
-                // effectively results in unsigned pointers representing positions 0..usize::MAX,
-                // which is valid for ZSTs.
-                self.ptr = unsafe { arith_offset(self.ptr as *const i8, num as isize) as *mut T }
-            } else {
-                // SAFETY: the caller must guarantee that `num` is in bounds
-                self.ptr = unsafe { self.ptr.add(num) };
+    fn cleanup_front(&mut self, num: usize) {
+        if mem::size_of::<T>() == 0 {
+            // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
+            // effectively results in unsigned pointers representing positions 0..usize::MAX,
+            // which is valid for ZSTs.
+            self.ptr = unsafe { arith_offset(self.ptr as *const i8, num as isize) as *mut T }
+        } else {
+            // SAFETY: the caller must guarantee that `num` is in bounds
+            self.ptr = unsafe { self.ptr.add(num) };
+        }
+    }
+
+    fn cleanup_back(&mut self, num: usize) {
+        if mem::size_of::<T>() == 0 {
+            // SAFETY: same as above
+            self.end = unsafe {
+                arith_offset(self.end as *const i8, num.wrapping_neg() as isize) as *mut T
             }
         } else {
-            if mem::size_of::<T>() == 0 {
-                // SAFETY: same as above
-                self.end = unsafe {
-                    arith_offset(self.end as *const i8, num.wrapping_neg() as isize) as *mut T
-                }
-            } else {
-                // SAFETY: same as above
-                self.end = unsafe { self.end.offset(num.wrapping_neg() as isize) };
-            }
+            // SAFETY: same as above
+            self.end = unsafe { self.end.offset(num.wrapping_neg() as isize) };
         }
     }
 }
