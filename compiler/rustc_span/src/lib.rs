@@ -1130,6 +1130,7 @@ impl ExternalSource {
 pub struct OffsetOverflowError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub enum SourceFileHashAlgorithm {
     Md5,
     Sha1,
@@ -1148,8 +1149,6 @@ impl FromStr for SourceFileHashAlgorithm {
         }
     }
 }
-
-rustc_data_structures::impl_stable_hash_via_hash!(SourceFileHashAlgorithm);
 
 /// The hash of the on-disk source file used for debug info.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

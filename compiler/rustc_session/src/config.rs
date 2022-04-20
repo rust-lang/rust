@@ -3,14 +3,14 @@
 
 pub use crate::options::*;
 
-use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{early_error, early_warn, Session};
+use crate::{lint, HashStableContext};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::impl_stable_hash_via_hash;
 
+use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_target::abi::{Align, TargetDataLayout};
 use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
 use rustc_target::spec::{PanicStrategy, SanitizerSet, TARGETS};
@@ -78,7 +78,7 @@ pub enum CFProtection {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic)]
 pub enum OptLevel {
     No,         // -O0
     Less,       // -O1
@@ -87,8 +87,6 @@ pub enum OptLevel {
     Size,       // -Os
     SizeMin,    // -Oz
 }
-
-impl_stable_hash_via_hash!(OptLevel);
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
@@ -230,14 +228,12 @@ impl SwitchWithOptPath {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic)]
 #[derive(Encodable, Decodable)]
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
 }
-
-impl_stable_hash_via_hash!(SymbolManglingVersion);
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum DebugInfo {
@@ -277,7 +273,7 @@ impl FromStr for SplitDwarfKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable_Generic)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
     Bitcode,
@@ -290,7 +286,13 @@ pub enum OutputType {
     DepInfo,
 }
 
-impl_stable_hash_via_hash!(OutputType);
+impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+    type KeyType = Self;
+
+    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+        *self
+    }
+}
 
 impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
@@ -396,7 +398,7 @@ pub enum TrimmedDefPaths {
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, HashStable_Generic)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
 impl OutputTypes {
@@ -585,7 +587,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, HashStable_Generic)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
@@ -593,8 +595,6 @@ pub struct OutputFilenames {
     pub temps_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
-
-impl_stable_hash_via_hash!(OutputFilenames);
 
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
@@ -808,15 +808,14 @@ impl DebuggingOptions {
 }
 
 // The type of entry function, so users can have their own entry functions
-#[derive(Copy, Clone, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable_Generic)]
 pub enum EntryFnType {
     Main,
     Start,
 }
 
-impl_stable_hash_via_hash!(EntryFnType);
-
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -825,8 +824,6 @@ pub enum CrateType {
     Cdylib,
     ProcMacro,
 }
-
-impl_stable_hash_via_hash!(CrateType);
 
 impl CrateType {
     /// When generated, is this crate type an archive?

@@ -37,6 +37,7 @@ pub use rustc_error_messages::{
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
+use rustc_span::HashStableContext;
 use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
@@ -1494,6 +1495,7 @@ pub fn add_elided_lifetime_in_path_suggestion(
 /// Useful type to use with `Result<>` indicate that an error has already
 /// been reported to the user, so no need to continue checking.
 #[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable_Generic)]
 pub struct ErrorGuaranteed(());
 
 impl ErrorGuaranteed {
@@ -1503,5 +1505,3 @@ impl ErrorGuaranteed {
         ErrorGuaranteed(())
     }
 }
-
-rustc_data_structures::impl_stable_hash_via_hash!(ErrorGuaranteed);
