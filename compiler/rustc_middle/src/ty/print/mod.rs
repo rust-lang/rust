@@ -264,6 +264,10 @@ fn characteristic_def_id_of_type_cached<'a>(
             return None;
         }),
 
+        // `TyAlias` always return `None` since the type alias' defining module is irrelevant for
+        // any decisions.
+        ty::TyAlias(..) => None,
+
         ty::FnDef(def_id, _)
         | ty::Closure(def_id, _)
         | ty::Generator(def_id, _, _)

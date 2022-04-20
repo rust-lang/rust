@@ -637,7 +637,9 @@ where
                 }
             };
 
-            match *this.ty.kind() {
+            let ty = tcx.peel_off_ty_alias(this.ty);
+
+            match *ty.kind() {
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -770,6 +772,7 @@ where
                 | ty::Opaque(..)
                 | ty::Param(_)
                 | ty::Infer(_)
+                | ty::TyAlias(_, _)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
             }
         }

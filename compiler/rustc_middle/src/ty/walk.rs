@@ -2,7 +2,7 @@
 //! WARNING: this does not keep track of the region depth.
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sso::SsoHashSet;
 use smallvec::{self, SmallVec};
 
@@ -193,6 +193,16 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Generator(_, substs, _)
             | ty::FnDef(_, substs) => {
                 stack.extend(substs.iter().rev());
+            }
+            ty::TyAlias(def_id, substs) => {
+                let ty = crate::ty::tls::with(|tcx| {
+                    let tcx: TyCtxt<'tcx> = unsafe { std::mem::transmute(tcx) };
+                    let binder_ty = tcx.bound_type_of(def_id);
+                    let ty = binder_ty.subst(tcx, substs);
+
+                    tcx.peel_off_ty_alias(ty)
+                });
+                stack.extend([ty.into()]);
             }
             ty::Tuple(ts) => stack.extend(ts.as_substs().iter().rev()),
             ty::GeneratorWitness(ts) => {

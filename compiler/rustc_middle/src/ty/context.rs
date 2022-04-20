@@ -1726,6 +1726,16 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
         self.visibility(def_id).expect_local()
     }
+
+    /// As long as the kind of `ty` is `TyAlias`, then it'll continue to peel it off and return
+    /// the type below it.
+    pub fn peel_off_ty_alias(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        while let ty::TyAlias(def_id, substs) = *ty.kind() {
+            let binder_ty = self.bound_type_of(def_id);
+            ty = binder_ty.subst(self, substs);
+        }
+        ty
+    }
 }
 
 /// A trait implemented for all `X<'a>` types that can be safely and
@@ -1996,7 +2006,7 @@ pub mod tls {
 }
 
 macro_rules! sty_debug_print {
-    ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
+    ($fmt: expr, $ctxt: expr, $($variant: ident),* $(,)?) => {{
         // Curious inner module to allow variant names to be used as
         // variable names.
         #[allow(non_snake_case)]
@@ -2095,7 +2105,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     Infer,
                     Projection,
                     Opaque,
-                    Foreign
+                    Foreign,
+                    TyAlias,
                 )?;
 
                 writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
@@ -2631,6 +2642,11 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
+    }
+
+    #[inline]
+    pub fn mk_ty_alias(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyAlias(def_id, substs))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {

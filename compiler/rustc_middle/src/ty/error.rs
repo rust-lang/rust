@@ -329,6 +329,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error(_) => "type error".into(),
+            ty::TyAlias(_, _) => "type alias".into(),
         }
     }
 
@@ -366,6 +367,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Projection(_) => "associated type".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Opaque(..) => "opaque type".into(),
+            ty::TyAlias(_, _) => "type alias".into(),
         }
     }
 }

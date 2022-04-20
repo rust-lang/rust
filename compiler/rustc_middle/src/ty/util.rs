@@ -269,7 +269,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 ty::Tuple(_) => break,
 
-                ty::Projection(_) | ty::Opaque(..) => {
+                ty::Projection(_) | ty::Opaque(..) | ty::TyAlias(..) => {
                     let normalized = normalize(ty);
                     if ty == normalized {
                         return ty;
@@ -881,7 +881,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Projection(_) => false,
+            | ty::Projection(_)
+            | ty::TyAlias(_, _) => false,
         }
     }
 
@@ -921,7 +922,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Projection(_) => false,
+            | ty::Projection(_)
+            | ty::TyAlias(_, _) => false,
         }
     }
 
@@ -1047,6 +1049,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => false,
+
+            ty::TyAlias(def_id, _) => tcx.type_of(def_id).is_structural_eq_shallow(tcx),
 
             ty::Foreign(_) | ty::GeneratorWitness(..) | ty::Error(_) => false,
         }
@@ -1184,7 +1188,8 @@ pub fn needs_drop_components<'tcx>(
         | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Closure(..)
-        | ty::Generator(..) => Ok(smallvec![ty]),
+        | ty::Generator(..)
+        | ty::TyAlias(_, _) => Ok(smallvec![ty]),
     }
 }
 
@@ -1212,7 +1217,8 @@ pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::Param(_)
         | ty::Placeholder(_)
         | ty::Projection(_)
-        | ty::Infer(_) => false,
+        | ty::Infer(_)
+        | ty::TyAlias(_, _) => false,
 
         // Not trivial because they have components, and instead of looking inside,
         // we'll just perform trait selection.

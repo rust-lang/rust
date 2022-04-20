@@ -780,6 +780,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!("]")
             }
             ty::Slice(ty) => p!("[", print(ty), "]"),
+            ty::TyAlias(def_id, substs) => p!(print_def_path(def_id, substs)),
         }
 
         Ok(self)

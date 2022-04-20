@@ -639,6 +639,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
             ty::Projection(data) => ty::Projection(data.try_fold_with(folder)?),
             ty::Opaque(did, substs) => ty::Opaque(did, substs.try_fold_with(folder)?),
+            ty::TyAlias(did, substs) => ty::TyAlias(did, substs.try_fold_with(folder)?),
 
             ty::Bool
             | ty::Char
@@ -685,6 +686,7 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Projection(ref data) => data.visit_with(visitor),
             ty::Opaque(_, ref substs) => substs.visit_with(visitor),
+            ty::TyAlias(_, ref substs) => substs.visit_with(visitor),
 
             ty::Bool
             | ty::Char
