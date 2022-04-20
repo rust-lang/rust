@@ -109,6 +109,10 @@ pub enum TyKind<I: Interner> {
     /// ```
     FnDef(I::DefId, I::SubstsRef),
 
+    /// A type alias (`type Alias = i8;`) containing the `DefId` of the aliased type and its
+    /// generics.
+    TyAlias(I::DefId, I::SubstsRef),
+
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
     /// Note that both functions and closures start out as either
@@ -259,6 +263,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 24,
         Infer(_) => 25,
         Error(_) => 26,
+        TyAlias(_, _) => 27,
     }
 }
 
@@ -293,6 +298,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Placeholder(p) => Placeholder(p.clone()),
             Infer(t) => Infer(t.clone()),
             Error(e) => Error(e.clone()),
+            TyAlias(t, s) => TyAlias(t.clone(), s.clone()),
         }
     }
 }
@@ -351,6 +357,9 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 (&Placeholder(ref __self_0), &Placeholder(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&Infer(ref __self_0), &Infer(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&Error(ref __self_0), &Error(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&TyAlias(ref __self_0, ref __self_1), &TyAlias(ref __arg_1_0, ref __arg_1_1)) => {
+                    __self_0 == __arg_1_0 && __self_1 == __arg_1_1
+                }
                 _ => true,
             }
         } else {
@@ -464,6 +473,12 @@ impl<I: Interner> Ord for TyKind<I> {
                 }
                 (&Infer(ref __self_0), &Infer(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&Error(ref __self_0), &Error(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&TyAlias(ref __self_0, ref __self_1), &TyAlias(ref __arg_1_0, ref __arg_1_1)) => {
+                    match Ord::cmp(__self_0, __arg_1_0) {
+                        Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                        cmp => cmp,
+                    }
+                }
                 _ => Ordering::Equal,
             }
         } else {
@@ -580,6 +595,11 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
+            (&TyAlias(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&tykind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
             _ => hash::Hash::hash(&tykind_discriminant(self), state),
         }
     }
@@ -619,6 +639,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Placeholder(f0) => Formatter::debug_tuple_field1_finish(f, "Placeholder", f0),
             Infer(f0) => Formatter::debug_tuple_field1_finish(f, "Infer", f0),
             TyKind::Error(f0) => Formatter::debug_tuple_field1_finish(f, "Error", f0),
+            TyAlias(f0, f1) => Formatter::debug_tuple_field2_finish(f, "TyAlias", f0, f1),
         }
     }
 }
@@ -721,6 +742,10 @@ where
                 def_id.encode(e);
                 substs.encode(e);
             }),
+            TyAlias(def_id, substs) => e.emit_enum_variant(disc, |e| {
+                def_id.encode(e);
+                substs.encode(e);
+            }),
             Param(p) => e.emit_enum_variant(disc, |e| {
                 p.encode(e);
             }),
@@ -796,6 +821,7 @@ where
             24 => Placeholder(Decodable::decode(d)),
             25 => Infer(Decodable::decode(d)),
             26 => Error(Decodable::decode(d)),
+            27 => TyAlias(Decodable::decode(d), Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
@@ -923,6 +949,10 @@ where
             }
             Error(d) => {
                 d.hash_stable(__hcx, __hasher);
+            }
+            TyAlias(def_id, substs) => {
+                def_id.hash_stable(__hcx, __hasher);
+                substs.hash_stable(__hcx, __hasher);
             }
         }
     }
