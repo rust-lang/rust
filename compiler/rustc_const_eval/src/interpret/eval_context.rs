@@ -679,7 +679,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        debug!("body: {:#?}", body);
+        trace!("body: {:#?}", body);
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
@@ -836,7 +836,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
 
-        debug!("locals: {:#?}", frame.locals);
+        trace!("locals: {:#?}", frame.locals);
 
         // Cleanup: deallocate all locals that are backed by an allocation.
         for local in &frame.locals {

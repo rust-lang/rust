@@ -870,9 +870,17 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
         range: AllocRange,
         val: ScalarMaybeUninit<Tag>,
     ) -> InterpResult<'tcx> {
+        let range = self.range.subrange(range);
+        debug!(
+            "write_scalar in {} at {:#x}, size {}: {:?}",
+            self.alloc_id,
+            range.start.bytes(),
+            range.size.bytes(),
+            val
+        );
         Ok(self
             .alloc
-            .write_scalar(&self.tcx, self.range.subrange(range), val)
+            .write_scalar(&self.tcx, range, val)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 
@@ -895,10 +903,19 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
 
 impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
     pub fn read_scalar(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-        Ok(self
+        let range = self.range.subrange(range);
+        let res = self
             .alloc
-            .read_scalar(&self.tcx, self.range.subrange(range))
-            .map_err(|e| e.to_interp_error(self.alloc_id))?)
+            .read_scalar(&self.tcx, range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?;
+        debug!(
+            "read_scalar in {} at {:#x}, size {}: {:?}",
+            self.alloc_id,
+            range.start.bytes(),
+            range.size.bytes(),
+            res
+        );
+        Ok(res)
     }
 
     pub fn read_ptr_sized(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
