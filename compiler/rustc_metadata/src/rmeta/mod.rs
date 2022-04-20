@@ -360,6 +360,7 @@ define_tables! {
     def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
     generator_diagnostic_data: Table<DefIndex, Lazy<GeneratorDiagnosticData<'tcx>>>,
+    may_have_doc_links: Table<DefIndex, ()>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]

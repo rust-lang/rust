@@ -4,7 +4,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::Res;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path, TraitCandidate};
@@ -29,11 +29,14 @@ use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId, TraitWithExtraInfo};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
+use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
 crate struct ResolverCaches {
+    crate markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
+    crate doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<NodeId>>>,
     /// Traits in scope for a given module.
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     crate traits_in_scope: DefIdMap<Vec<TraitCandidate>>,

@@ -1089,35 +1089,35 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
-        let mut doc_strings: Vec<DocFragment> = vec![];
-        let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
-            if let Some((value, kind)) = attr.doc_str_and_comment_kind() {
-                trace!("got doc_str={:?}", value);
-                let value = beautify_doc_string(value, kind);
+        // Additional documentation should be shown before the original documentation.
+        let attrs1 = additional_attrs
+            .into_iter()
+            .flat_map(|(attrs, def_id)| attrs.iter().map(move |attr| (attr, Some(def_id))));
+        let attrs2 = attrs.iter().map(|attr| (attr, None));
+        Attributes::from_ast_iter(attrs1.chain(attrs2), false)
+    }
+
+    crate fn from_ast_iter<'a>(
+        attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
+        doc_only: bool,
+    ) -> Attributes {
+        let mut doc_strings = Vec::new();
+        let mut other_attrs = Vec::new();
+        for (attr, parent_module) in attrs {
+            if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
+                trace!("got doc_str={doc_str:?}");
+                let doc = beautify_doc_string(doc_str, comment_kind);
                 let kind = if attr.is_doc_comment() {
                     DocFragmentKind::SugaredDoc
                 } else {
                     DocFragmentKind::RawDoc
                 };
-
-                let frag =
-                    DocFragment { span: attr.span, doc: value, kind, parent_module, indent: 0 };
-
-                doc_strings.push(frag);
-
-                None
-            } else {
-                Some(attr.clone())
+                let fragment = DocFragment { span: attr.span, doc, kind, parent_module, indent: 0 };
+                doc_strings.push(fragment);
+            } else if !doc_only {
+                other_attrs.push(attr.clone());
             }
-        };
-
-        // Additional documentation should be shown before the original documentation
-        let other_attrs = additional_attrs
-            .into_iter()
-            .flat_map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
-            .chain(attrs.iter().map(|attr| (attr, None)))
-            .filter_map(clean_attr)
-            .collect();
+        }
 
         Attributes { doc_strings, other_attrs }
     }
@@ -1138,23 +1138,17 @@ impl Attributes {
     }
 
     /// Return the doc-comments on this item, grouped by the module they came from.
-    ///
     /// The module can be different if this is a re-export with added documentation.
-    crate fn collapsed_doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
-        let mut ret = FxHashMap::default();
-        if self.doc_strings.len() == 0 {
-            return ret;
+    ///
+    /// The last newline is not trimmed so the produced strings are reusable between
+    /// early and late doc link resolution regardless of their position.
+    crate fn prepare_to_doc_link_resolution(&self) -> FxHashMap<Option<DefId>, String> {
+        let mut res = FxHashMap::default();
+        for fragment in &self.doc_strings {
+            let out_str = res.entry(fragment.parent_module).or_default();
+            add_doc_fragment(out_str, fragment);
         }
-        let last_index = self.doc_strings.len() - 1;
-
-        for (i, new_frag) in self.doc_strings.iter().enumerate() {
-            let out = ret.entry(new_frag.parent_module).or_default();
-            add_doc_fragment(out, new_frag);
-            if i == last_index {
-                out.pop();
-            }
-        }
-        ret
+        res
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined

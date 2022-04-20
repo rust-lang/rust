@@ -9,6 +9,7 @@ use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree, TreeAndSpacing};
 use crate::tokenstream::{LazyTokenStream, TokenStream};
+use crate::util::comments;
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
@@ -260,6 +261,10 @@ impl Attribute {
             }
             _ => None,
         }
+    }
+
+    pub fn may_have_doc_links(&self) -> bool {
+        self.doc_str().map_or(false, |s| comments::may_have_doc_links(s.as_str()))
     }
 
     pub fn get_normal_item(&self) -> &AttrItem {

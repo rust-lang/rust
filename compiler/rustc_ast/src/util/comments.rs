@@ -24,6 +24,14 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
+/// A fast conservative estimate on whether the string can contain documentation links.
+/// A pair of square brackets `[]` must exist in the string, but we only search for the
+/// opening bracket because brackets always go in pairs in practice.
+#[inline]
+pub fn may_have_doc_links(s: &str) -> bool {
+    s.contains('[')
+}
+
 /// Makes a doc string more presentable to users.
 /// Used by rustdoc and perhaps other tools, but not by rustc.
 pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {

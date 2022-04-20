@@ -186,6 +186,20 @@ impl FixedSizeEncoding for Option<RawDefId> {
     }
 }
 
+impl FixedSizeEncoding for Option<()> {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        (b[0] != 0).then(|| ())
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        b[0] = self.is_some() as u8
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.
