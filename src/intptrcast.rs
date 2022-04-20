@@ -128,7 +128,7 @@ impl<'mir, 'tcx> GlobalStateInner {
 
     /// Convert a relative (tcx) pointer to an absolute address.
     pub fn rel_ptr_to_addr(ecx: &MiriEvalContext<'mir, 'tcx>, ptr: Pointer<AllocId>) -> u64 {
-        let (alloc_id, offset) = ptr.into_parts(); // offset is relative
+        let (alloc_id, offset) = ptr.into_parts(); // offset is relative (AllocId provenance)
         let base_addr = GlobalStateInner::alloc_base_addr(ecx, alloc_id);
 
         // Add offset with the right kind of pointer-overflowing arithmetic.
@@ -137,7 +137,7 @@ impl<'mir, 'tcx> GlobalStateInner {
     }
 
     pub fn abs_ptr_to_rel(ecx: &MiriEvalContext<'mir, 'tcx>, ptr: Pointer<Tag>) -> Size {
-        let (tag, addr) = ptr.into_parts(); // addr is absolute
+        let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
         let base_addr = GlobalStateInner::alloc_base_addr(ecx, tag.alloc_id);
 
         // Wrapping "addr - base_addr"

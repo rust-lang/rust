@@ -360,6 +360,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         name: &str,
         ptr: Pointer<Option<Tag>>,
     ) {
+        // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }
@@ -431,11 +432,13 @@ impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> 
 /// Machine hook implementations.
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
+    type ExtraFnVal = Dlsym;
 
     type FrameExtra = FrameData<'tcx>;
     type AllocExtra = AllocExtra;
+
     type PointerTag = Tag;
-    type ExtraFnVal = Dlsym;
+    type TagExtra = SbTag;
 
     type MemoryMap =
         MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
@@ -607,9 +610,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn ptr_get_alloc(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         ptr: Pointer<Self::PointerTag>,
-    ) -> (AllocId, Size) {
+    ) -> (AllocId, Size, Self::TagExtra) {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
-        (ptr.provenance.alloc_id, rel)
+        (ptr.provenance.alloc_id, rel, ptr.provenance.sb)
     }
 
     #[inline(always)]
@@ -617,16 +620,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         _tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra,
-        tag: Tag,
+        (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(tag.alloc_id, range, machine.data_race.as_ref().unwrap())?;
+            data_race.read(alloc_id, range, machine.data_race.as_ref().unwrap())?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
             stacked_borrows.memory_read(
-                tag.alloc_id,
-                tag.sb,
+                alloc_id,
+                tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
             )
@@ -640,16 +643,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
-        tag: Tag,
+        (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(tag.alloc_id, range, machine.data_race.as_mut().unwrap())?;
+            data_race.write(alloc_id, range, machine.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_written(
-                tag.alloc_id,
-                tag.sb,
+                alloc_id,
+                tag,
                 range,
                 machine.stacked_borrows.as_mut().unwrap(),
             )
@@ -663,19 +666,19 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
-        tag: Tag,
+        (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
-        if Some(tag.alloc_id) == machine.tracked_alloc_id {
-            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(tag.alloc_id));
+        if Some(alloc_id) == machine.tracked_alloc_id {
+            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(tag.alloc_id, range, machine.data_race.as_mut().unwrap())?;
+            data_race.deallocate(alloc_id, range, machine.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_deallocated(
-                tag.alloc_id,
-                tag.sb,
+                alloc_id,
+                tag,
                 range,
                 machine.stacked_borrows.as_mut().unwrap(),
             )

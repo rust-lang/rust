@@ -702,8 +702,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             );
             return Ok(());
         }
-        let (alloc_id, base_offset, ptr) = this.ptr_get_alloc_id(place.ptr)?;
-        let orig_tag = ptr.provenance.sb;
+        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) =
