@@ -2655,9 +2655,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if !matches!(source, PathSource::TraitItem(..)) {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(id, partial_res);
+            self.resolve_elided_lifetimes_in_path(id, partial_res, path, source, finalize);
         }
 
-        self.resolve_elided_lifetimes_in_path(id, partial_res, path, source, finalize);
         partial_res
     }
 
