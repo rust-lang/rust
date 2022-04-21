@@ -16,18 +16,25 @@ use std::collections::{BTreeSet, HashMap};
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(SessionDiagnostic)]
-/// #[error(code = "E0505", slug = "move-out-of-borrow-error")]
+/// #[error(code = "E0505", slug = "borrowck-move-out-of-borrow")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
 ///     #[primary_span]
-///     #[label = "cannot move out of borrow"]
+///     #[label]
 ///     pub span: Span,
-///     #[label = "`{ty}` first borrowed here"]
-///     pub other_span: Span,
-///     #[suggestion(message = "consider cloning here", code = "{name}.clone()")]
-///     pub opt_sugg: Option<(Span, Applicability)>
+///     #[label = "first-borrow-label"]
+///     pub first_borrow_span: Span,
+///     #[suggestion(code = "{name}.clone()")]
+///     pub clone_sugg: Option<(Span, Applicability)>
 /// }
+/// ```
+///
+/// ```fluent
+/// move-out-of-borrow = cannot move out of {$name} because it is borrowed
+///     .label = cannot move out of borrow
+///     .first-borrow-label = `{$ty}` first borrowed here
+///     .suggestion = consider cloning here
 /// ```
 ///
 /// Then, later, to emit the error:
@@ -37,10 +44,13 @@ use std::collections::{BTreeSet, HashMap};
 ///     expected,
 ///     actual,
 ///     span,
-///     other_span,
-///     opt_sugg: Some(suggestion, Applicability::MachineApplicable),
+///     first_borrow_span,
+///     clone_sugg: Some(suggestion, Applicability::MachineApplicable),
 /// });
 /// ```
+///
+/// See rustc dev guide for more examples on using the `#[derive(SessionDiagnostic)]`:
+/// <https://rustc-dev-guide.rust-lang.org/diagnostics/sessiondiagnostic.html>
 pub fn session_diagnostic_derive(s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     // Names for the diagnostic we build and the session we build it from.
     let diag = format_ident!("diag");
