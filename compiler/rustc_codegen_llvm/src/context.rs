@@ -326,6 +326,15 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
+    if sess.opts.debugging_opts.virtual_function_elimination {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Error,
+            "Virtual Function Elim\0".as_ptr().cast(),
+            1,
+        );
+    }
+
     llmod
 }
 

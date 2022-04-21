@@ -586,9 +586,21 @@ pub(crate) fn run_pass_manager(
     // LTO-specific optimization passes that LLVM provides.
     //
     // This code is based off the code found in llvm's LTO code generator:
-    //      tools/lto/LTOCodeGenerator.cpp
+    //      llvm/lib/LTO/LTOCodeGenerator.cpp
     debug!("running the pass manager");
     unsafe {
+        if !llvm::LLVMRustHasModuleFlag(
+            module.module_llvm.llmod(),
+            "LTOPostLink".as_ptr().cast(),
+            11,
+        ) {
+            llvm::LLVMRustAddModuleFlag(
+                module.module_llvm.llmod(),
+                llvm::LLVMModFlagBehavior::Error,
+                "LTOPostLink\0".as_ptr().cast(),
+                1,
+            );
+        }
         if llvm_util::should_use_new_llvm_pass_manager(
             &config.new_llvm_pass_manager,
             &cgcx.target_arch,
