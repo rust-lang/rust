@@ -58,3 +58,14 @@ fn cow_const() {
     const IS_OWNED: bool = COW.is_owned();
     assert!(!IS_OWNED);
 }
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn cow<'new>(c: Cow<'static, str>) -> Cow<'new, str> {
+        c
+    }
+
+    fn cow_cow<'new>(c: Cow<'static, Cow<'static, str>>) -> Cow<'new, Cow<'new, str>> {
+        c
+    }
+}
