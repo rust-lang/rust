@@ -1014,7 +1014,7 @@ impl<'a> Resolver<'a> {
             }
             ResolutionError::InvalidAsmSym => {
                 let mut err = self.session.struct_span_err(span, "invalid `sym` operand");
-                err.span_label(span, &format!("is a local variable"));
+                err.span_label(span, "is a local variable");
                 err.help("`sym` operands must refer to either a function or a static");
                 err
             }

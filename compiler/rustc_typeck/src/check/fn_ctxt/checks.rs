@@ -968,9 +968,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 SuggestionText::Remove(plural) => {
                     Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
                 }
-                SuggestionText::Swap => Some(format!("swap these arguments")),
-                SuggestionText::Reorder => Some(format!("reorder these arguments")),
-                SuggestionText::DidYouMean => Some(format!("did you mean")),
+                SuggestionText::Swap => Some("swap these arguments".to_string()),
+                SuggestionText::Reorder => Some("reorder these arguments".to_string()),
+                SuggestionText::DidYouMean => Some("did you mean".to_string()),
             };
             if let Some(suggestion_text) = suggestion_text {
                 let source_map = self.sess().source_map();

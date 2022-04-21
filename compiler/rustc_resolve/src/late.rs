@@ -1696,7 +1696,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     "invalid lifetime parameter name: `{}`",
                     param.ident,
                 )
-                .span_label(param.ident.span, format!("'static is a reserved lifetime name"))
+                .span_label(param.ident.span, "'static is a reserved lifetime name")
                 .emit();
                 continue;
             }
