@@ -4,7 +4,6 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::iter_from_generator;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
@@ -39,6 +38,7 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
+use std::iter;
 use std::num::NonZeroUsize;
 use tracing::{debug, trace};
 
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            record_array!(self.tables.children[def_id] <- iter_from_generator(|| {
+            record_array!(self.tables.children[def_id] <- iter::from_generator(|| {
                 for item_id in md.item_ids {
                     match tcx.hir().item(*item_id).kind {
                         // Foreign items are planted into their parent modules
