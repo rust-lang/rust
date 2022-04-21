@@ -1366,8 +1366,8 @@ options! {
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),
-    drop_tracking: bool = (false, parse_bool, [TRACKED],
-        "enables drop tracking in generators (default: no)"),
+    drop_tracking: bool = (true, parse_bool, [TRACKED],
+        "enables drop tracking in generators (default: yes)"),
     drop_tracking_mir: bool = (false, parse_bool, [TRACKED],
         "enables drop tracking on MIR in generators (default: no)"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
