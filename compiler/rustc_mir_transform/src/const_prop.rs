@@ -12,9 +12,8 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind, Location,
-    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
-    RETURN_PLACE,
+    BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalKind, Location, Operand, Place,
+    Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -313,9 +312,6 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    // FIXME(eddyb) avoid cloning this field more than once,
-    // by accessing it through `ecx` instead.
-    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
@@ -361,10 +357,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-        let span = tcx.def_span(def_id);
-        // FIXME: `CanConstProp::check` computes the layout of all locals, return those layouts
-        // so we can write them to `ecx.frame_mut().locals.layout, reducing the duplication in
-        // `layout_of` query invocations.
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
@@ -374,7 +366,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         let mut ecx = InterpCx::new(
             tcx,
-            span,
+            tcx.def_span(def_id),
             param_env,
             ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
         );
@@ -401,16 +393,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        ConstPropagator {
-            ecx,
-            tcx,
-            param_env,
-            // FIXME(eddyb) avoid cloning this field more than once,
-            // by accessing it through `ecx` instead.
-            //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
-            local_decls: body.local_decls.clone(),
-            source_info: None,
-        }
+        ConstPropagator { ecx, tcx, param_env, source_info: None }
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
@@ -511,7 +494,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r = r?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(&self.local_decls, self.tcx);
+            let left_ty = left.ty(&self.ecx.frame().body.local_decls, self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().ok();
@@ -1133,7 +1116,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 assert!(
                     self.get_const(local.into()).is_none()
                         || self
-                            .layout_of(self.local_decls[local].ty)
+                            .layout_of(self.ecx.frame().body.local_decls[local].ty)
                             .map_or(true, |layout| layout.is_zst())
                 )
             }
