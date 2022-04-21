@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
 use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -125,7 +125,8 @@ impl TaskPath {
                     if found_kind.is_empty() {
                         panic!("empty kind in task path {}", path.display());
                     }
-                    kind = Some(Kind::parse(found_kind));
+                    kind = Kind::parse(found_kind);
+                    assert!(kind.is_some());
                     path = Path::new(found_prefix).join(components.as_path());
                 }
             }
@@ -431,43 +432,53 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
+    Format,
     Test,
     Bench,
-    Dist,
     Doc,
+    Clean,
+    Dist,
     Install,
     Run,
+    Setup,
 }
 
 impl Kind {
-    fn parse(string: &str) -> Kind {
-        match string {
-            "build" => Kind::Build,
-            "check" => Kind::Check,
+    pub fn parse(string: &str) -> Option<Kind> {
+        // these strings, including the one-letter aliases, must match the x.py help text
+        Some(match string {
+            "build" | "b" => Kind::Build,
+            "check" | "c" => Kind::Check,
             "clippy" => Kind::Clippy,
             "fix" => Kind::Fix,
-            "test" => Kind::Test,
+            "fmt" => Kind::Format,
+            "test" | "t" => Kind::Test,
             "bench" => Kind::Bench,
+            "doc" | "d" => Kind::Doc,
+            "clean" => Kind::Clean,
             "dist" => Kind::Dist,
-            "doc" => Kind::Doc,
             "install" => Kind::Install,
-            "run" => Kind::Run,
-            other => panic!("unknown kind: {}", other),
-        }
+            "run" | "r" => Kind::Run,
+            "setup" => Kind::Setup,
+            _ => return None,
+        })
     }
 
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Kind::Build => "build",
             Kind::Check => "check",
             Kind::Clippy => "clippy",
             Kind::Fix => "fix",
+            Kind::Format => "fmt",
             Kind::Test => "test",
             Kind::Bench => "bench",
-            Kind::Dist => "dist",
             Kind::Doc => "doc",
+            Kind::Clean => "clean",
+            Kind::Dist => "dist",
             Kind::Install => "install",
             Kind::Run => "run",
+            Kind::Setup => "setup",
         }
     }
 }
@@ -511,7 +522,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
+            Kind::Check => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
@@ -641,32 +652,29 @@ impl<'a> Builder<'a> {
                 install::Rustc
             ),
             Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            // These commands either don't use paths, or they're special-cased in Build::build()
+            Kind::Clean | Kind::Clippy | Kind::Fix | Kind::Format | Kind::Setup => vec![],
         }
     }
 
-    pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
-        let kind = match subcommand {
-            "build" | "b" => Kind::Build,
-            "doc" | "d" => Kind::Doc,
-            "test" | "t" => Kind::Test,
-            "bench" => Kind::Bench,
-            "dist" => Kind::Dist,
-            "install" => Kind::Install,
-            _ => return None,
-        };
+    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
+        let step_descriptions = Builder::get_step_descriptions(kind);
+        if step_descriptions.is_empty() {
+            return None;
+        }
 
         let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
         // The "build" kind here is just a placeholder, it will be replaced with something else in
         // the following statement.
         let mut should_run = ShouldRun::new(builder, Kind::Build);
-        for desc in Builder::get_step_descriptions(builder.kind) {
+        for desc in step_descriptions {
             should_run.kind = desc.kind;
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
         let mut add_path = |path: &Path| {
-            help.push_str(&format!("    ./x.py {} {}\n", subcommand, path.display()));
+            t!(write!(help, "    ./x.py {} {}\n", kind.as_str(), path.display()));
         };
         for pathset in should_run.paths {
             match pathset {
