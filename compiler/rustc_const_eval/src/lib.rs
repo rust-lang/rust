@@ -35,6 +35,7 @@ pub mod transform;
 pub mod util;
 
 use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::ParamEnv;
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
@@ -48,6 +49,9 @@ pub fn provide(providers: &mut Providers) {
     providers.const_to_valtree = |tcx, param_env_and_value| {
         let (param_env, raw) = param_env_and_value.into_parts();
         const_eval::const_to_valtree(tcx, param_env, raw)
+    };
+    providers.valtree_to_const_val = |tcx, (ty, valtree)| {
+        const_eval::valtree_to_const_value(tcx, ParamEnv::empty().and(ty), valtree)
     };
     providers.deref_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();

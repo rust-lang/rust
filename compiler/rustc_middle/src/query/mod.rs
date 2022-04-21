@@ -936,6 +936,11 @@ rustc_queries! {
         remap_env_constness
     }
 
+    /// Converts a type level constant value into `ConstValue`
+    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> ConstValue<'tcx> {
+        desc { "convert type-level constant value to mir constant value"}
+    }
+
     /// Destructure a constant ADT or array into its variant index and its
     /// field values or return `None` if constant is invalid.
     ///
