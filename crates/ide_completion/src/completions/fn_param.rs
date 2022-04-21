@@ -30,11 +30,10 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         let mk_item = |label: &str, range: TextRange| {
             CompletionItem::new(CompletionItemKind::Binding, range, label)
         };
-        let mut item = match &comma_wrapper {
-            Some((fmt, range)) => mk_item(&fmt(label), *range),
-            None => mk_item(label, ctx.source_range()),
+        let item = match &comma_wrapper {
+            Some((fmt, range, lookup)) => mk_item(&fmt(label), *range).lookup_by(lookup).to_owned(),
+            None => mk_item(label, ctx.source_range()).lookup_by(lookup).to_owned(),
         };
-        item.lookup_by(lookup);
         item.add_to(acc)
     };
 
@@ -162,7 +161,7 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: &ast::ParamL
     inside_impl && no_params
 }
 
-fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange)> {
+fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange, String)> {
     let param = ctx.token.ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
     let next_token_kind = {
@@ -184,5 +183,9 @@ fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, Te
         matches!(prev_token_kind, SyntaxKind::COMMA | SyntaxKind::L_PAREN | SyntaxKind::PIPE);
     let leading = if has_leading_comma { "" } else { ", " };
 
-    Some((move |label: &_| (format!("{}{}{}", leading, label, trailing)), param.text_range()))
+    Some((
+        move |label: &_| (format!("{}{}{}", leading, label, trailing)),
+        param.text_range(),
+        format!("{}{}", leading, param.text()),
+    ))
 }
