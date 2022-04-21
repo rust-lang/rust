@@ -8,7 +8,7 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, BoundCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -1231,7 +1231,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
                 self.with_banned_tilde_const(|this| {
-                    walk_list!(this, visit_param_bound, bounds, BoundCtxt::SuperTraits)
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
@@ -1459,10 +1459,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundCtxt) {
+    fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
         if let GenericBound::Trait(ref poly, modify) = *bound {
             match (ctxt, modify) {
-                (BoundCtxt::SuperTraits, TraitBoundModifier::Maybe) => {
+                (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
                     let mut err = self.err_handler().struct_span_err(
                         poly.span,
                         &format!("`?Trait` is not permitted in supertraits"),
@@ -1471,7 +1471,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.note(&format!("traits are `?{}` by default", path_str));
                     err.emit();
                 }
-                (BoundCtxt::TraitObject, TraitBoundModifier::Maybe) => {
+                (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
                     let mut err = self.err_handler().struct_span_err(
                         poly.span,
                         &format!("`?Trait` is not permitted in trait object types"),
@@ -1661,7 +1661,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.with_tilde_const_allowed(|this| {
                     this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds, BoundCtxt::Normal);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
                 });
                 walk_list!(self, visit_ty, ty);
             }
