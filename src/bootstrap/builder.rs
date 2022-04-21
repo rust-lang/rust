@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
 use crate::compile;
-use crate::config::TargetSelection;
+use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
 use crate::flags::{Color, Subcommand};
@@ -1390,17 +1390,17 @@ impl<'a> Builder<'a> {
             },
         );
 
-        // `dsymutil` adds time to builds on Apple platforms for no clear benefit, and also makes
-        // it more difficult for debuggers to find debug info. The compiler currently defaults to
-        // running `dsymutil` to preserve its historical default, but when compiling the compiler
-        // itself, we skip it by default since we know it's safe to do so in that case.
-        // See https://github.com/rust-lang/rust/issues/79361 for more info on this flag.
-        if target.contains("apple") {
-            if self.config.rust_run_dsymutil {
-                rustflags.arg("-Csplit-debuginfo=packed");
-            } else {
-                rustflags.arg("-Csplit-debuginfo=unpacked");
+        // FIXME(davidtwco): #[cfg(not(bootstrap))] - #95612 needs to be in the bootstrap compiler
+        // for this conditional to be removed.
+        if !target.contains("windows") || compiler.stage >= 1 {
+            if target.contains("linux") || target.contains("windows") {
+                rustflags.arg("-Zunstable-options");
             }
+            match self.config.rust_split_debuginfo {
+                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+            };
         }
 
         if self.config.cmd.bless() {

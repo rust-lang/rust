@@ -130,7 +130,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: u32,
     pub rust_debuginfo_level_tools: u32,
     pub rust_debuginfo_level_tests: u32,
-    pub rust_run_dsymutil: bool,
+    pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -217,6 +217,46 @@ impl FromStr for LlvmLibunwind {
             "in-tree" => Ok(Self::InTree),
             "system" => Ok(Self::System),
             invalid => Err(format!("Invalid value '{}' for rust.llvm-libunwind config.", invalid)),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SplitDebuginfo {
+    Packed,
+    Unpacked,
+    Off,
+}
+
+impl Default for SplitDebuginfo {
+    fn default() -> Self {
+        SplitDebuginfo::Off
+    }
+}
+
+impl std::str::FromStr for SplitDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "packed" => Ok(SplitDebuginfo::Packed),
+            "unpacked" => Ok(SplitDebuginfo::Unpacked),
+            "off" => Ok(SplitDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl SplitDebuginfo {
+    /// Returns the default `-Csplit-debuginfo` value for the current target. See the comment for
+    /// `rust.split-debuginfo` in `config.toml.example`.
+    fn default_for_platform(target: &str) -> Self {
+        if target.contains("apple") {
+            SplitDebuginfo::Unpacked
+        } else if target.contains("windows") {
+            SplitDebuginfo::Packed
+        } else {
+            SplitDebuginfo::Off
         }
     }
 }
@@ -586,6 +626,7 @@ define_config! {
         debuginfo_level_std: Option<u32> = "debuginfo-level-std",
         debuginfo_level_tools: Option<u32> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<u32> = "debuginfo-level-tests",
+        split_debuginfo: Option<String> = "split-debuginfo",
         run_dsymutil: Option<bool> = "run-dsymutil",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
@@ -992,7 +1033,12 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
-            config.rust_run_dsymutil = rust.run_dsymutil.unwrap_or(false);
+            config.rust_split_debuginfo = rust
+                .split_debuginfo
+                .as_deref()
+                .map(SplitDebuginfo::from_str)
+                .map(|v| v.expect("invalid value for rust.split_debuginfo"))
+                .unwrap_or(SplitDebuginfo::default_for_platform(&config.build.triple));
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             config.rust_new_symbol_mangling = rust.new_symbol_mangling;
