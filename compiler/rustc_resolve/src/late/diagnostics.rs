@@ -2037,84 +2037,44 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
-enum ShadowKind {
-    Label,
-    Lifetime,
-}
-#[derive(Copy, Clone)]
-pub struct Original {
-    kind: ShadowKind,
-    span: Span,
-    param: bool,
-}
-#[derive(Copy, Clone)]
-pub struct Shadower {
-    kind: ShadowKind,
-    span: Span,
-}
-
-pub fn original_label(span: Span) -> Original {
-    Original { kind: ShadowKind::Label, span, param: false }
-}
-pub fn shadower_label(span: Span) -> Shadower {
-    Shadower { kind: ShadowKind::Label, span }
-}
-pub fn original_lifetime(span: Span) -> Original {
-    Original { kind: ShadowKind::Lifetime, span, param: false }
-}
-pub fn original_lifetime_param(span: Span) -> Original {
-    Original { kind: ShadowKind::Lifetime, span, param: true }
-}
-pub fn shadower_lifetime(span: Span) -> Shadower {
-    Shadower { kind: ShadowKind::Lifetime, span }
-}
-
-impl ShadowKind {
-    fn desc(&self) -> &'static str {
-        match *self {
-            ShadowKind::Label => "label",
-            ShadowKind::Lifetime => "lifetime",
-        }
-    }
-}
-
-pub fn signal_shadowing_problem(sess: &Session, name: Symbol, orig: Original, shadower: Shadower) {
-    let mut err = if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
-        // lifetime/lifetime shadowing is an error
-        if orig.param {
-            struct_span_err!(
-                sess,
-                shadower.span,
-                E0263,
-                "lifetime name `{}` declared twice in the same scope",
-                name,
-            )
-        } else {
-            struct_span_err!(
-                sess,
-                shadower.span,
-                E0496,
-                "lifetime name `{}` shadows a lifetime name that is already in scope",
-                name,
-            )
-        }
-        .forget_guarantee()
-    } else {
-        // shadowing involving a label is only a warning, due to issues with
-        // labels and lifetimes not being macro-hygienic.
-        sess.struct_span_warn(
+/// Report lifetime/lifetime shadowing as an error.
+pub fn signal_lifetime_shadowing(
+    sess: &Session,
+    orig: Ident,
+    shadower: Ident,
+    orig_is_param: bool,
+) {
+    let mut err = if orig_is_param {
+        struct_span_err!(
+            sess,
             shadower.span,
-            &format!(
-                "{} name `{}` shadows a {} name that is already in scope",
-                shadower.kind.desc(),
-                name,
-                orig.kind.desc()
-            ),
+            E0263,
+            "lifetime name `{}` declared twice in the same scope",
+            orig.name,
+        )
+    } else {
+        struct_span_err!(
+            sess,
+            shadower.span,
+            E0496,
+            "lifetime name `{}` shadows a lifetime name that is already in scope",
+            orig.name,
         )
     };
     err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("{} `{}` already in scope", orig.kind.desc(), name));
+    err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
+    err.emit();
+}
+
+/// Shadowing involving a label is only a warning, due to issues with
+/// labels and lifetimes not being macro-hygienic.
+pub fn signal_label_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+    let mut err = sess.struct_span_warn(
+        shadower.span,
+        &format!("label name `{}` shadows a label name that is already in scope", orig.name),
+    );
+    err.span_label(orig.span, "first declared here");
+    err.span_label(shadower.span, format!("label `{}` already in scope", orig.name));
     err.emit();
 }
 

@@ -12,10 +12,6 @@ use crate::{path_names_to_string, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
-use diagnostics::{
-    original_label, original_lifetime, original_lifetime_param, shadower_label, shadower_lifetime,
-};
-
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
@@ -1902,6 +1898,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut function_value_rib = Rib::new(kind);
         let mut function_lifetime_rib = LifetimeRib::new(lifetime_kind);
         let mut seen_bindings = FxHashMap::default();
+        // Store all seen lifetimes names, and whether they were created in the currently processed
+        // parameter set.
         let mut seen_lifetimes = FxHashMap::default();
 
         // We also can't shadow bindings from the parent item
@@ -1920,19 +1918,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // Forbid shadowing lifetime bindings
         for rib in self.lifetime_ribs.iter().rev() {
-            seen_lifetimes.extend(
-                rib.bindings.iter().map(|(ident, _)| (*ident, original_lifetime(ident.span))),
-            );
+            seen_lifetimes.extend(rib.bindings.iter().map(|(ident, _)| (*ident, false)));
             if let LifetimeRibKind::Item = rib.kind {
                 break;
             }
-        }
-        for rib in self.label_ribs.iter().rev() {
-            if rib.kind.is_label_barrier() {
-                break;
-            }
-            seen_lifetimes
-                .extend(rib.bindings.iter().map(|(ident, _)| (*ident, original_label(ident.span))));
         }
 
         for param in params {
@@ -1942,16 +1931,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let GenericParamKind::Lifetime = param.kind {
                 match seen_lifetimes.entry(ident) {
                     Entry::Occupied(entry) => {
-                        let original = *entry.get();
-                        diagnostics::signal_shadowing_problem(
+                        let original = *entry.key();
+                        let orig_is_param = *entry.get();
+                        diagnostics::signal_lifetime_shadowing(
                             self.r.session,
-                            ident.name,
                             original,
-                            shadower_lifetime(param.ident.span),
-                        )
+                            param.ident,
+                            orig_is_param,
+                        );
                     }
                     Entry::Vacant(entry) => {
-                        entry.insert(original_lifetime_param(param.ident.span));
+                        entry.insert(true);
                     }
                 }
             } else {
@@ -3155,26 +3145,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
             }
 
-            // Forbid shadowing lifetime bindings
             let ident = label.ident.normalize_to_macro_rules();
-            for rib in self.lifetime_ribs.iter().rev() {
-                if let Some((orig_ident, _)) = rib.bindings.get_key_value(&ident) {
-                    diagnostics::signal_shadowing_problem(
-                        self.r.session,
-                        label.ident.name,
-                        original_lifetime(orig_ident.span),
-                        shadower_label(label.ident.span),
-                    )
-                }
-            }
             for rib in self.label_ribs.iter_mut().rev() {
-                if let Some((orig_ident, _)) = rib.bindings.get_key_value(&ident) {
-                    diagnostics::signal_shadowing_problem(
-                        self.r.session,
-                        label.ident.name,
-                        original_label(orig_ident.span),
-                        shadower_label(label.ident.span),
-                    )
+                if let Some((&orig_ident, _)) = rib.bindings.get_key_value(&ident) {
+                    diagnostics::signal_label_shadowing(self.r.session, orig_ident, label.ident)
                 }
                 if rib.kind.is_label_barrier() {
                     rib.bindings.insert(ident, id);
