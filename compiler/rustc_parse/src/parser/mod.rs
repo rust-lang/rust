@@ -267,17 +267,17 @@ impl TokenCursor {
             // FIXME: we currently don't return `NoDelim` open/close delims. To fix #67062 we will
             // need to, whereupon the `delim != DelimToken::NoDelim` conditions below can be
             // removed, as well as the loop.
-            if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing() {
+            if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing_ref() {
                 match tree {
-                    TokenTree::Token(token) => match (desugar_doc_comments, &token) {
+                    &TokenTree::Token(ref token) => match (desugar_doc_comments, token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
                             return self.desugar(attr_style, data, span);
                         }
-                        _ => return (token, spacing),
+                        _ => return (token.clone(), *spacing),
                     },
-                    TokenTree::Delimited(sp, delim, tts) => {
+                    &TokenTree::Delimited(sp, delim, ref tts) => {
                         // Set `open_delim` to true here because we deal with it immediately.
-                        let frame = TokenCursorFrame::new(sp, delim, tts);
+                        let frame = TokenCursorFrame::new(sp, delim, tts.clone());
                         self.stack.push(mem::replace(&mut self.frame, frame));
                         if delim != DelimToken::NoDelim {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);

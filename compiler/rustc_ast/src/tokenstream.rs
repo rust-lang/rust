@@ -583,6 +583,14 @@ impl Cursor {
         })
     }
 
+    #[inline]
+    pub fn next_with_spacing_ref(&mut self) -> Option<&TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
+    }
+
     pub fn index(&self) -> usize {
         self.index
     }
