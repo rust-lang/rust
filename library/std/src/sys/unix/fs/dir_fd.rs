@@ -147,8 +147,9 @@ mod remove_dir_all_xat {
         fn open_subdir_or_unlink_non_dir(&self, child_name: &CStr) -> io::Result<Option<Self>> {
             let fd = match openat_nofollow_dironly(Some(self.as_fd()), child_name) {
                 Ok(fd) => fd,
-                Err(err) if err.raw_os_error() == Some(libc::ENOTDIR) => {
+                Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                     // not a directory - unlink and return
+                    // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
                     cvt(unsafe { unlinkat(self.as_fd().as_raw_fd(), child_name.as_ptr(), 0) })?;
                     return Ok(None);
                 }
