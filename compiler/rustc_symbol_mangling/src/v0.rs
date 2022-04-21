@@ -95,6 +95,24 @@ pub(super) fn mangle_typeid_for_fnabi<'tcx>(
     format!("typeid{}", arg_count)
 }
 
+pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+) -> String {
+    // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
+    let mut cx = &mut SymbolMangler {
+        tcx,
+        start_offset: 0,
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::new(),
+    };
+    cx = cx.print_def_path(trait_ref.def_id(), &[]).unwrap();
+    std::mem::take(&mut cx.out)
+}
+
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.

@@ -155,6 +155,13 @@ pub fn typeid_for_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>)
     v0::mangle_typeid_for_fnabi(tcx, fn_abi)
 }
 
+pub fn typeid_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+) -> String {
+    v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
+}
+
 /// Computes the symbol name for the given instance. This function will call
 /// `compute_instantiating_crate` if it needs to factor the instantiating crate
 /// into the symbol name.
