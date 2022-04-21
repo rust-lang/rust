@@ -94,16 +94,6 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
 
-    /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::OpenDelim(delim), span.open)
-    }
-
-    /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::CloseDelim(delim), span.close)
-    }
-
     pub fn uninterpolate(self) -> TokenTree {
         match self {
             TokenTree::Token(token) => TokenTree::Token(token.uninterpolate().into_owned()),
@@ -585,13 +575,20 @@ impl Cursor {
         Cursor { stream, index: 0 }
     }
 
+    #[inline]
     pub fn next_with_spacing(&mut self) -> Option<TreeAndSpacing> {
-        if self.index < self.stream.len() {
+        self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
-            Some(self.stream.0[self.index - 1].clone())
-        } else {
-            None
-        }
+            tree.clone()
+        })
+    }
+
+    #[inline]
+    pub fn next_with_spacing_ref(&mut self) -> Option<&TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
     }
 
     pub fn index(&self) -> usize {

@@ -11,8 +11,10 @@ use crate::parser::{FollowedByType, ForceCollect, NtOrTt, Parser, PathStyle};
 impl<'a> Parser<'a> {
     /// Checks whether a non-terminal may begin with a particular token.
     ///
-    /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
-    /// token. Be conservative (return true) if not sure.
+    /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with
+    /// that token. Be conservative (return true) if not sure. Inlined because it has a single call
+    /// site.
+    #[inline]
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
@@ -95,7 +97,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`).
+    /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
+    /// site.
+    #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
         // needs to have them force-captured here.
