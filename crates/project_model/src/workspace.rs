@@ -759,7 +759,9 @@ fn handle_rustc_crates(
 
             let overrides = match override_cfg {
                 CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
-                CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
+                CfgOverrides::Selective(cfg_overrides) => {
+                    cfg_overrides.get(&rustc_workspace[pkg].name)
+                }
             };
 
             if let Some(overrides) = overrides {
