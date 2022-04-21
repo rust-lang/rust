@@ -232,3 +232,16 @@ fn bar(bar$0) {}
         "#]],
     )
 }
+
+#[test]
+fn completes_for_params_with_attributes() {
+    check(
+        r#"
+fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
+fn g(foo: (), #[baz = "qux"] mut ba$0)
+"#,
+        expect![[r##"
+            bn #[baz = "qux"] mut bar: u32
+        "##]],
+    )
+}

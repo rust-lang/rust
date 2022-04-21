@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use syntax::{
     algo,
     ast::{self, HasModuleItem},
-    match_ast, AstNode, Direction, SyntaxKind,
+    match_ast, AstNode, Direction, SyntaxKind, TextRange,
 };
 
 use crate::{
@@ -27,14 +27,13 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     let comma_wrapper = comma_wrapper(ctx);
     let mut add_new_item_to_acc = |label: &str, lookup: String| {
-        let mk_item = |label: &str| {
-            CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label)
+        let mk_item = |label: &str, range: TextRange| {
+            CompletionItem::new(CompletionItemKind::Binding, range, label)
         };
-        let mut item = match &comma_wrapper {
-            Some(fmt) => mk_item(&fmt(label)),
-            None => mk_item(label),
+        let item = match &comma_wrapper {
+            Some((fmt, range, lookup)) => mk_item(&fmt(label), *range).lookup_by(lookup).to_owned(),
+            None => mk_item(label, ctx.source_range()).lookup_by(lookup).to_owned(),
         };
-        item.lookup_by(lookup);
         item.add_to(acc)
     };
 
@@ -162,14 +161,16 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: &ast::ParamL
     inside_impl && no_params
 }
 
-fn comma_wrapper(ctx: &CompletionContext) -> Option<impl Fn(&str) -> String> {
+fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange, String)> {
+    let param = ctx.token.ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
+
     let next_token_kind = {
-        let t = ctx.token.next_token()?;
+        let t = param.last_token()?.next_token()?;
         let t = algo::skip_whitespace_token(t, Direction::Next)?;
         t.kind()
     };
     let prev_token_kind = {
-        let t = ctx.previous_token.clone()?;
+        let t = param.first_token()?.prev_token()?;
         let t = algo::skip_whitespace_token(t, Direction::Prev)?;
         t.kind()
     };
@@ -182,5 +183,9 @@ fn comma_wrapper(ctx: &CompletionContext) -> Option<impl Fn(&str) -> String> {
         matches!(prev_token_kind, SyntaxKind::COMMA | SyntaxKind::L_PAREN | SyntaxKind::PIPE);
     let leading = if has_leading_comma { "" } else { ", " };
 
-    Some(move |param: &_| format!("{}{}{}", leading, param, trailing))
+    Some((
+        move |label: &_| (format!("{}{}{}", leading, label, trailing)),
+        param.text_range(),
+        format!("{}{}", leading, param.text()),
+    ))
 }
