@@ -442,6 +442,7 @@ pub enum MetadataType {
     MD_nonnull = 11,
     MD_align = 17,
     MD_type = 19,
+    MD_vcall_visibility = 28,
     MD_noundef = 29,
 }
 
@@ -1067,6 +1068,7 @@ extern "C" {
     pub fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Node: &'a Value);
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
+    pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
@@ -1080,6 +1082,11 @@ extern "C" {
         Vals: *const &'a Value,
         Count: c_uint,
     ) -> &'a Value;
+    pub fn LLVMMDNodeInContext2<'a>(
+        C: &'a Context,
+        Vals: *const &'a Metadata,
+        Count: size_t,
+    ) -> &'a Metadata;
     pub fn LLVMAddNamedMetadataOperand<'a>(M: &'a Module, Name: *const c_char, Val: &'a Value);
 
     // Operations on scalar constants
