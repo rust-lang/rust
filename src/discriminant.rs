@@ -128,8 +128,16 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             let relative_discr = if niche_start == 0 {
                 tag
             } else {
-                // FIXME handle niche_start > i64::MAX
-                fx.bcx.ins().iadd_imm(tag, -i64::try_from(niche_start).unwrap())
+                let niche_start = match fx.bcx.func.dfg.value_type(tag) {
+                    types::I128 => {
+                        let lsb = fx.bcx.ins().iconst(types::I64, niche_start as u64 as i64);
+                        let msb =
+                            fx.bcx.ins().iconst(types::I64, (niche_start >> 64) as u64 as i64);
+                        fx.bcx.ins().iconcat(lsb, msb)
+                    }
+                    ty => fx.bcx.ins().iconst(ty, niche_start as i64),
+                };
+                fx.bcx.ins().isub(tag, niche_start)
             };
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let is_niche = {
