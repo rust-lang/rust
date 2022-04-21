@@ -4,8 +4,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'),
-		url("FiraSans-Regular.woff2") format("woff2"),
-		url("FiraSans-Regular.woff") format('woff');
+		url("FiraSans-Regular.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -13,8 +12,7 @@
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium.woff2") format("woff2"),
-		url("FiraSans-Medium.woff") format('woff');
+		url("FiraSans-Medium.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -24,8 +22,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular.ttf.woff2") format("woff2"),
-		url("SourceSerif4-Regular.ttf.woff") format("woff");
+		url("SourceSerif4-Regular.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -33,8 +30,7 @@
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It.ttf.woff2") format("woff2"),
-		url("SourceSerif4-It.ttf.woff") format("woff");
+		url("SourceSerif4-It.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -42,8 +38,7 @@
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold.ttf.woff2") format("woff2"),
-		url("SourceSerif4-Bold.ttf.woff") format("woff");
+		url("SourceSerif4-Bold.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -54,32 +49,28 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.ttf.woff2") format("woff2"),
-		url("SourceCodePro-Regular.ttf.woff") format("woff");
+	src: url("SourceCodePro-Regular.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It.ttf.woff2") format("woff2"),
-		url("SourceCodePro-It.ttf.woff") format("woff");
+	src: url("SourceCodePro-It.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.ttf.woff2") format("woff2"),
-		url("SourceCodePro-Semibold.ttf.woff") format("woff");
+	src: url("SourceCodePro-Semibold.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic.ttf.woff2") format("woff2"),
-		url("NanumBarunGothic.ttf.woff") format("woff");
+	src: url("NanumBarunGothic.ttf.woff2") format("woff2");
 	font-display: swap;
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
