@@ -262,6 +262,7 @@ mod items_after_statements;
 mod iter_not_returning_iterator;
 mod large_const_arrays;
 mod large_enum_variant;
+mod large_include_file;
 mod large_stack_arrays;
 mod len_zero;
 mod let_if_seq;
@@ -884,6 +885,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|| Box::new(format_push_string::FormatPushString));
     store.register_late_pass(|| Box::new(bytes_count_to_len::BytesCountToLen));
+    let max_include_file_size = conf.max_include_file_size;
+    store.register_late_pass(move || Box::new(large_include_file::LargeIncludeFile::new(max_include_file_size)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -312,6 +312,10 @@ define_Conf! {
     (max_suggested_slice_pattern_length: u64 = 3),
     /// Lint: AWAIT_HOLDING_INVALID_TYPE
     (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    /// Lint: LARGE_INCLUDE_FILE.
+    ///
+    /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
+    (max_include_file_size: u64 = 1_000_000),
 }
 
 /// Search for the configuration file.
