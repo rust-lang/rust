@@ -1484,7 +1484,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         err.span_suggestion_hidden(
                             return_span,
                             "use `.collect()` to allocate the iterator",
-                            format!("{}{}", snippet, ".collect::<Vec<_>>()"),
+                            format!("{snippet}.collect::<Vec<_>>()"),
                             Applicability::MaybeIncorrect,
                         );
                     }
