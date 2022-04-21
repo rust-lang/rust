@@ -5531,11 +5531,18 @@ public:
             }
             if (call.getArgOperand(3)->getType()->isIntegerTy())
               ydata = Builder2.CreatePtrToInt(ydata,
-                                              call.getArgOperand(1)->getType());
+                                              call.getArgOperand(3)->getType());
           } else if (!gutils->isConstantValue(call.getArgOperand(1))) {
             ydata = lookup(gutils->getNewFromOriginal(call.getArgOperand(3)),
                            Builder2);
           }
+        } else {
+          if (call.getArgOperand(1)->getType()->isIntegerTy())
+            xdata = Builder2.CreatePtrToInt(xdata,
+                                            call.getArgOperand(1)->getType());
+          if (call.getArgOperand(3)->getType()->isIntegerTy())
+            ydata = Builder2.CreatePtrToInt(ydata,
+                                            call.getArgOperand(3)->getType());
         }
 
         if (Mode == DerivativeMode::ForwardMode ||
@@ -5607,14 +5614,14 @@ public:
         if (Mode == DerivativeMode::ReverseModeCombined ||
             Mode == DerivativeMode::ReverseModeGradient) {
           Value *dif = diffe(&call, Builder2);
+          Value *alloc = nullptr;
           if (byRef) {
-            auto alloc = allocationBuilder.CreateAlloca(innerType);
-            Builder2.CreateStore(dif, alloc);
-            dif = alloc;
+            alloc = allocationBuilder.CreateAlloca(innerType);
           }
           auto derivcall = gutils->oldFunc->getParent()->getOrInsertFunction(
               dfuncName, Builder2.getVoidTy(), call.getArgOperand(0)->getType(),
-              call.getType(), call.getArgOperand(1)->getType(),
+              byRef ? PointerType::getUnqual(call.getType()) : call.getType(),
+              call.getArgOperand(1)->getType(),
               call.getArgOperand(0)->getType(),
               call.getArgOperand(3)->getType(),
               call.getArgOperand(0)->getType());
@@ -5657,6 +5664,10 @@ public:
           applyChainRule(
               Builder2,
               [&](Value *dx, Value *dy, Value *dif) {
+                if (byRef) {
+                  Builder2.CreateStore(dif, alloc);
+                  dif = alloc;
+                }
                 if (!gutils->isConstantValue(call.getArgOperand(3))) {
                   Value *args1[6] = {count, dif, xdata, xinc, dy, trueYinc};
                   Builder2.CreateCall(
