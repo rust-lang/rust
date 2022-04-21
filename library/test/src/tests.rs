@@ -778,7 +778,6 @@ fn should_sort_failures_before_printing_them() {
     let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);
 
     let st = console::ConsoleTestState {
-        log_out: None,
         total: 0,
         passed: 0,
         failed: 0,

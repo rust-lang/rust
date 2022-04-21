@@ -6,7 +6,6 @@ use std::io::prelude::Write;
 use std::time::Instant;
 
 use super::{
-    bench::fmt_bench_samples,
     cli::TestOpts,
     event::{CompletedTest, TestEvent},
     filter_tests,
@@ -15,7 +14,7 @@ use super::{
     options::{Options, OutputFormat},
     run_tests, term,
     test_result::TestResult,
-    time::{TestExecTime, TestSuiteExecTime},
+    time::TestSuiteExecTime,
     types::{NamePadding, TestDesc, TestDescAndFn},
 };
 
@@ -29,20 +28,19 @@ impl<T: Write> Write for OutputLocation<T> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             OutputLocation::Pretty(ref mut term) => term.write(buf),
-            OutputLocation::Raw(ref mut stdout) => stdout.write(buf),
+            OutputLocation::Raw(ref mut stdout_or_file) => stdout_or_file.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             OutputLocation::Pretty(ref mut term) => term.flush(),
-            OutputLocation::Raw(ref mut stdout) => stdout.flush(),
+            OutputLocation::Raw(ref mut stdout_or_file) => stdout_or_file.flush(),
         }
     }
 }
 
 pub struct ConsoleTestState {
-    pub log_out: Option<File>,
     pub total: usize,
     pub passed: usize,
     pub failed: usize,
@@ -59,13 +57,7 @@ pub struct ConsoleTestState {
 
 impl ConsoleTestState {
     pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestState> {
-        let log_out = match opts.logfile {
-            Some(ref path) => Some(File::create(path)?),
-            None => None,
-        };
-
         Ok(ConsoleTestState {
-            log_out,
             total: 0,
             passed: 0,
             failed: 0,
@@ -81,54 +73,6 @@ impl ConsoleTestState {
         })
     }
 
-    pub fn write_log<F, S>(&mut self, msg: F) -> io::Result<()>
-    where
-        S: AsRef<str>,
-        F: FnOnce() -> S,
-    {
-        match self.log_out {
-            None => Ok(()),
-            Some(ref mut o) => {
-                let msg = msg();
-                let msg = msg.as_ref();
-                o.write_all(msg.as_bytes())
-            }
-        }
-    }
-
-    pub fn write_log_result(
-        &mut self,
-        test: &TestDesc,
-        result: &TestResult,
-        exec_time: Option<&TestExecTime>,
-    ) -> io::Result<()> {
-        self.write_log(|| {
-            let TestDesc { name, ignore_message, .. } = test;
-            format!(
-                "{} {}",
-                match *result {
-                    TestResult::TrOk => "ok".to_owned(),
-                    TestResult::TrFailed => "failed".to_owned(),
-                    TestResult::TrFailedMsg(ref msg) => format!("failed: {msg}"),
-                    TestResult::TrIgnored => {
-                        if let Some(msg) = ignore_message {
-                            format!("ignored: {msg}")
-                        } else {
-                            "ignored".to_owned()
-                        }
-                    }
-                    TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
-                    TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
-                },
-                name,
-            )
-        })?;
-        if let Some(exec_time) = exec_time {
-            self.write_log(|| format!(" <{exec_time}>"))?;
-        }
-        self.write_log(|| "\n")
-    }
-
     fn current_test_count(&self) -> usize {
         self.passed + self.failed + self.ignored + self.measured
     }
@@ -142,7 +86,11 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     };
 
     let quiet = opts.format == OutputFormat::Terse;
-    let mut st = ConsoleTestState::new(opts)?;
+
+    let mut log_out = match &opts.logfile {
+        None => None,
+        Some(path) => Some(OutputLocation::Raw(File::create(path)?)),
+    };
 
     let mut ntest = 0;
     let mut nbench = 0;
@@ -164,7 +112,9 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         };
 
         writeln!(output, "{name}: {fntype}")?;
-        st.write_log(|| format!("{fntype} {name}\n"))?;
+        if let Some(ref mut log_output) = log_out {
+            writeln!(log_output, "{name}: {fntype}")?;
+        }
     }
 
     fn plural(count: u32, s: &str) -> String {
@@ -177,9 +127,15 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     if !quiet {
         if ntest != 0 || nbench != 0 {
             writeln!(output)?;
+            if let Some(ref mut log_output) = log_out {
+                writeln!(log_output)?;
+            }
         }
 
         writeln!(output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;
+        if let Some(ref mut log_output) = log_out {
+            writeln!(log_output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;
+        }
     }
 
     Ok(())
@@ -226,25 +182,41 @@ fn on_test_event(
     event: &TestEvent,
     st: &mut ConsoleTestState,
     out: &mut dyn OutputFormatter,
+    log_out: Option<&mut dyn OutputFormatter>,
 ) -> io::Result<()> {
     match (*event).clone() {
         TestEvent::TeFiltered(filtered_tests, shuffle_seed) => {
             st.total = filtered_tests;
             out.write_run_start(filtered_tests, shuffle_seed)?;
+            if let Some(log_output) = log_out {
+                log_output.write_run_start(filtered_tests, shuffle_seed)?;
+            }
         }
         TestEvent::TeFilteredOut(filtered_out) => {
             st.filtered_out = filtered_out;
         }
-        TestEvent::TeWait(ref test) => out.write_test_start(test)?,
-        TestEvent::TeTimeout(ref test) => out.write_timeout(test)?,
+        TestEvent::TeWait(ref test) => {
+            out.write_test_start(test)?;
+            if let Some(log_output) = log_out {
+                log_output.write_test_start(test)?;
+            }
+        }
+        TestEvent::TeTimeout(ref test) => {
+            out.write_timeout(test)?;
+            if let Some(log_output) = log_out {
+                log_output.write_timeout(test)?;
+            }
+        }
         TestEvent::TeResult(completed_test) => {
             let test = &completed_test.desc;
             let result = &completed_test.result;
             let exec_time = &completed_test.exec_time;
             let stdout = &completed_test.stdout;
 
-            st.write_log_result(test, result, exec_time.as_ref())?;
             out.write_result(test, result, exec_time.as_ref(), stdout, st)?;
+            if let Some(log_output) = log_out {
+                log_output.write_result(test, result, exec_time.as_ref(), stdout, st)?;
+            }
             handle_test_result(st, completed_test);
         }
     }
@@ -282,6 +254,30 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
         OutputFormat::Junit => Box::new(JunitFormatter::new(output)),
     };
+
+    let mut log_out: Option<Box<dyn OutputFormatter>> = match &opts.logfile {
+        None => None,
+        Some(path) => {
+            let log_output_location = OutputLocation::Raw(File::create(path)?);
+            match opts.format {
+                OutputFormat::Pretty => Some(Box::new(PrettyFormatter::new(
+                    log_output_location,
+                    opts.use_color(),
+                    max_name_len,
+                    is_multithreaded,
+                    opts.time_options,
+                ))),
+                OutputFormat::Terse => Some(Box::new(TerseFormatter::new(
+                    log_output_location,
+                    opts.use_color(),
+                    max_name_len,
+                    is_multithreaded,
+                ))),
+                OutputFormat::Json => Some(Box::new(JsonFormatter::new(log_output_location))),
+                OutputFormat::Junit => Some(Box::new(JunitFormatter::new(log_output_location))),
+            }
+        }
+    };
     let mut st = ConsoleTestState::new(opts)?;
 
     // Prevent the usage of `Instant` in some cases:
@@ -290,12 +286,27 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     let is_instant_supported = !cfg!(target_family = "wasm") && !cfg!(miri);
 
     let start_time = is_instant_supported.then(Instant::now);
-    run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
+    run_tests(opts, tests, |x| {
+        on_test_event(
+            &x,
+            &mut st,
+            &mut *out,
+            match &mut log_out {
+                None => None,
+                Some(ref mut log_output) => Some(&mut **log_output),
+            },
+        )
+    })?;
     st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
 
     assert!(opts.fail_fast || st.current_test_count() == st.total);
 
-    out.write_run_finish(&st)
+    let out_result = out.write_run_finish(&st);
+    let log_out_result = match &mut log_out {
+        None => Ok(true),
+        Some(ref mut log_output) => log_output.write_run_finish(&st),
+    };
+    log_out_result.and(out_result)
 }
 
 // Calculates padding for given test description.
