@@ -134,7 +134,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion_verbose(message = "suggestion", code = "{ty}")]
+    #[suggestion_verbose(code = "{ty}")]
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
