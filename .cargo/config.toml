@@ -1,6 +1,5 @@
 [alias]
 xtask = "run --package xtask --bin xtask --"
-install-ra = "run --package xtask --bin xtask -- install" # for backwards compat
 tq = "test -- -q"
 qt = "tq"
 lint = "clippy --all-targets -- -Aclippy::collapsible_if -Aclippy::needless_pass_by_value -Aclippy::nonminimal_bool -Aclippy::redundant_pattern_matching --cap-lints warn"
