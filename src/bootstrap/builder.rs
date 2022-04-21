@@ -388,11 +388,13 @@ impl<'a> ShouldRun<'a> {
             paths
                 .iter()
                 .map(|p| {
-                    assert!(
-                        self.builder.src.join(p).exists(),
-                        "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
-                        p
-                    );
+                    // FIXME(#96188): make sure this is actually a path.
+                    // This currently breaks for paths within submodules.
+                    //assert!(
+                    //    self.builder.src.join(p).exists(),
+                    //    "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
+                    //    p
+                    //);
                     TaskPath { path: p.into(), kind: Some(self.kind) }
                 })
                 .collect(),

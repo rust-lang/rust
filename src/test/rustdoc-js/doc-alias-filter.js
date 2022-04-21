@@ -1,6 +1,6 @@
 // exact-check
 
-const QUERY = 'true';
+const QUERY = '"true"';
 
 const FILTER_CRATE = 'doc_alias_filter';
 

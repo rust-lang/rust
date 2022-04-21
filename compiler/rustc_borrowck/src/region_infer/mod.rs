@@ -1733,7 +1733,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     crate fn retrieve_closure_constraint_info(
         &self,
-        body: &Body<'tcx>,
+        _body: &Body<'tcx>,
         constraint: &OutlivesConstraint<'tcx>,
     ) -> BlameConstraint<'tcx> {
         let loc = match constraint.locations {
@@ -1760,7 +1760,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .unwrap_or(BlameConstraint {
                 category: constraint.category,
                 from_closure: false,
-                cause: ObligationCause::dummy_with_span(body.source_info(loc).span),
+                cause: ObligationCause::dummy_with_span(constraint.span),
                 variance_info: constraint.variance_info,
             })
     }
@@ -1869,6 +1869,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     sup: r,
                     sub: constraint.min_choice,
                     locations: Locations::All(p_c.definition_span),
+                    span: p_c.definition_span,
                     category: ConstraintCategory::OpaqueType,
                     variance_info: ty::VarianceDiagInfo::default(),
                 };
@@ -2017,7 +2018,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         category: constraint.category,
                         from_closure: false,
                         cause: ObligationCause::new(
-                            constraint.locations.span(body),
+                            constraint.span,
                             CRATE_HIR_ID,
                             cause_code.clone(),
                         ),

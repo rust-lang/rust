@@ -8,7 +8,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -26,6 +26,7 @@ crate struct ConstraintConversion<'a, 'tcx> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
+    span: Span,
     category: ConstraintCategory,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
@@ -38,6 +39,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
+        span: Span,
         category: ConstraintCategory,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
@@ -49,6 +51,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             implicit_region_bound,
             param_env,
             locations,
+            span,
             category,
             constraints,
         }
@@ -153,6 +156,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
             category: self.category,
+            span: self.span,
             sub,
             sup,
             variance_info: ty::VarianceDiagInfo::default(),

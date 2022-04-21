@@ -116,6 +116,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 sup,
                 sub,
                 locations: self.locations,
+                span: self.locations.span(self.type_checker.body),
                 category: self.category,
                 variance_info: info,
             },
