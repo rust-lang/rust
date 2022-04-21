@@ -134,6 +134,7 @@ store.register_lints(&[
     drop_forget_ref::UNDROPPED_MANUALLY_DROPS,
     duration_subsec::DURATION_SUBSEC,
     else_if_without_else::ELSE_IF_WITHOUT_ELSE,
+    empty_drop::EMPTY_DROP,
     empty_enum::EMPTY_ENUM,
     empty_structs_with_brackets::EMPTY_STRUCTS_WITH_BRACKETS,
     entry::MAP_ENTRY,

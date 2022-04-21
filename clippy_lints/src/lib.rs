@@ -210,6 +210,7 @@ mod double_parens;
 mod drop_forget_ref;
 mod duration_subsec;
 mod else_if_without_else;
+mod empty_drop;
 mod empty_enum;
 mod empty_structs_with_brackets;
 mod entry;
@@ -822,6 +823,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
+    store.register_late_pass(|| Box::new(empty_drop::EmptyDrop));
     store.register_late_pass(|| Box::new(strings::StrToString));
     store.register_late_pass(|| Box::new(strings::StringToString));
     store.register_late_pass(|| Box::new(zero_sized_map_values::ZeroSizedMapValues));
