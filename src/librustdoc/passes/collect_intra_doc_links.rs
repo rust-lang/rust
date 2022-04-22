@@ -181,11 +181,6 @@ enum ResolutionFailure<'a> {
         /// In `[std::io::Error::x]`, `x` would be unresolved.
         unresolved: Cow<'a, str>,
     },
-    /// Used to communicate that this should be ignored, but shouldn't be reported to the user.
-    ///
-    /// This happens when there is no disambiguator and one of the namespaces
-    /// failed to resolve.
-    Dummy,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -405,35 +400,22 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let ty_res = self.resolve_path(&path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
-            Res::Def(DefKind::Enum, did) => {
-                if tcx
-                    .inherent_impls(did)
-                    .iter()
-                    .flat_map(|imp| tcx.associated_items(*imp).in_definition_order())
-                    .any(|item| item.name == variant_name)
-                {
-                    // This is just to let `fold_item` know that this shouldn't be considered;
-                    // it's a bug for the error to make it to the user
-                    return Err(ResolutionFailure::Dummy.into());
-                }
-                match tcx.type_of(did).kind() {
-                    ty::Adt(def, _) if def.is_enum() => {
-                        if let Some(field) = def.all_fields().find(|f| f.name == variant_field_name)
-                        {
-                            Ok((ty_res, Some(ItemFragment(FragmentKind::VariantField, field.did))))
-                        } else {
-                            Err(ResolutionFailure::NotResolved {
-                                item_id,
-                                module_id,
-                                partial_res: Some(Res::Def(DefKind::Enum, def.did())),
-                                unresolved: variant_field_name.to_string().into(),
-                            }
-                            .into())
+            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).kind() {
+                ty::Adt(def, _) if def.is_enum() => {
+                    if let Some(field) = def.all_fields().find(|f| f.name == variant_field_name) {
+                        Ok((ty_res, Some(ItemFragment(FragmentKind::VariantField, field.did))))
+                    } else {
+                        Err(ResolutionFailure::NotResolved {
+                            item_id,
+                            module_id,
+                            partial_res: Some(Res::Def(DefKind::Enum, def.did())),
+                            unresolved: variant_field_name.to_string().into(),
                         }
+                        .into())
                     }
-                    _ => unreachable!(),
                 }
-            }
+                _ => unreachable!(),
+            },
             _ => Err(ResolutionFailure::NotResolved {
                 item_id,
                 module_id,
@@ -1535,7 +1517,7 @@ impl LinkCollector<'_, '_> {
             }
             None => {
                 // Try everything!
-                let mut candidates = PerNS {
+                let candidates = PerNS {
                     macro_ns: self
                         .resolve_macro(path_str, item_id, base_node)
                         .map(|res| (res, extra_fragment.clone().map(UrlFragment::UserWritten))),
@@ -1611,11 +1593,13 @@ impl LinkCollector<'_, '_> {
                 } else if len == 2 && is_derive_trait_collision(&candidates) {
                     Some(candidates.type_ns.unwrap())
                 } else {
-                    if is_derive_trait_collision(&candidates) {
-                        candidates.macro_ns = Err(ResolutionFailure::Dummy);
-                    }
+                    let ignore_macro = is_derive_trait_collision(&candidates);
                     // If we're reporting an ambiguity, don't mention the namespaces that failed
-                    let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
+                    let mut candidates =
+                        candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
+                    if ignore_macro {
+                        candidates.macro_ns = None;
+                    }
                     ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
                     None
                 }
@@ -2092,7 +2076,6 @@ fn resolution_failure(
                 }
                 let note = match failure {
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
-                    ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
                         suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
 
