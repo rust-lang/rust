@@ -43,14 +43,19 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         }
     });
 
-    // Also try to inline primitive impls from other crates.
     cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
         for def_id in PrimitiveType::all_impls(cx.tcx) {
+            // Try to inline primitive impls from other crates.
             if !def_id.is_local() {
                 inline::build_impl(cx, None, def_id, None, &mut new_items);
-
-                // FIXME(eddyb) is this `doc(hidden)` check needed?
-                if !cx.tcx.is_doc_hidden(def_id) {
+            }
+        }
+        for (prim, did) in PrimitiveType::primitive_locations(cx.tcx) {
+            // Do not calculate blanket impl list for docs that are not going to be rendered.
+            // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
+            // attached is directly included in `libstd` as well.
+            if did.is_local() {
+                for def_id in prim.impls(cx.tcx) {
                     let impls = get_auto_trait_and_blanket_impls(cx, def_id);
                     new_items.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
                 }
