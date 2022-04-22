@@ -66,7 +66,7 @@ macro_rules! thir_with_elements {
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
-        #[derive(Debug, HashStable)]
+        #[derive(Debug, HashStable, Clone)]
         pub struct Thir<'tcx> {
             $(
                 pub $name: IndexVec<$id, $value>,
@@ -106,7 +106,7 @@ pub enum LintLevel {
     Explicit(hir::HirId),
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
     /// and `try` blocks.
@@ -125,7 +125,7 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Adt<'tcx> {
     /// The ADT we're constructing.
     pub adt_def: AdtDef<'tcx>,
@@ -151,13 +151,13 @@ pub enum BlockSafety {
     ExplicitUnsafe(hir::HirId),
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum StmtKind<'tcx> {
     /// An expression with a trailing semicolon.
     Expr {
@@ -196,7 +196,7 @@ pub enum StmtKind<'tcx> {
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
 /// A THIR expression.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Expr<'tcx> {
     /// The type of this expression
     pub ty: Ty<'tcx>,
@@ -212,7 +212,7 @@ pub struct Expr<'tcx> {
     pub kind: ExprKind<'tcx>,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum ExprKind<'tcx> {
     /// `Scope`s are used to explicitly mark destruction scopes,
     /// and to track the `HirId` of the expressions within the scope.
@@ -461,20 +461,20 @@ impl<'tcx> ExprKind<'tcx> {
 /// Represents the association of a field identifier and an expression.
 ///
 /// This is used in struct constructors.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FieldExpr {
     pub name: Field,
     pub expr: ExprId,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FruInfo<'tcx> {
     pub base: ExprId,
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
 /// A `match` arm.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Pat<'tcx>,
     pub guard: Option<Guard<'tcx>>,
@@ -485,7 +485,7 @@ pub struct Arm<'tcx> {
 }
 
 /// A `match` guard.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum Guard<'tcx> {
     If(ExprId),
     IfLet(Pat<'tcx>, ExprId),
@@ -499,7 +499,7 @@ pub enum LogicalOp {
     Or,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
