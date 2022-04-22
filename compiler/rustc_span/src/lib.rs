@@ -59,6 +59,8 @@ pub use symbol::{sym, Symbol};
 mod analyze_source_file;
 pub mod fatal_error;
 
+pub mod profiling;
+
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
