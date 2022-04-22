@@ -14,6 +14,7 @@ use crate::setup::Profile;
 use crate::util::t;
 use crate::{Build, DocTests};
 
+#[derive(Copy, Clone)]
 pub enum Color {
     Always,
     Never,
@@ -79,6 +80,7 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
 }
 
+#[cfg_attr(test, derive(Clone))]
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,
@@ -668,6 +670,24 @@ Arguments:
 }
 
 impl Subcommand {
+    pub fn kind(&self) -> Kind {
+        match self {
+            Subcommand::Bench { .. } => Kind::Bench,
+            Subcommand::Build { .. } => Kind::Build,
+            Subcommand::Check { .. } => Kind::Check,
+            Subcommand::Clippy { .. } => Kind::Clippy,
+            Subcommand::Doc { .. } => Kind::Doc,
+            Subcommand::Fix { .. } => Kind::Fix,
+            Subcommand::Format { .. } => Kind::Format,
+            Subcommand::Test { .. } => Kind::Test,
+            Subcommand::Clean { .. } => Kind::Clean,
+            Subcommand::Dist { .. } => Kind::Dist,
+            Subcommand::Install { .. } => Kind::Install,
+            Subcommand::Run { .. } => Kind::Run,
+            Subcommand::Setup { .. } => Kind::Setup,
+        }
+    }
+
     pub fn test_args(&self) -> Vec<&str> {
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {

@@ -26,6 +26,49 @@ fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
     v.into_iter().map(|(a, _)| a).collect::<Vec<_>>()
 }
 
+fn run_build(paths: &[PathBuf], config: Config) -> Cache {
+    let kind = config.cmd.kind();
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
+    builder.cache
+}
+
+#[test]
+fn test_exclude() {
+    let mut config = configure("test", &["A"], &["A"]);
+    config.exclude = vec![TaskPath::parse("src/tools/tidy")];
+
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
+
+    // Ensure we have really excluded tidy
+    assert!(!builder.cache.contains::<test::Tidy>());
+
+    // Ensure other tests are not affected.
+    assert!(builder.cache.contains::<test::RustdocUi>());
+}
+
+#[test]
+fn test_exclude_kind() {
+    let path = PathBuf::from("src/tools/cargotest");
+    let exclude = TaskPath::parse("test::src/tools/cargotest");
+    assert_eq!(exclude, TaskPath { kind: Some(Kind::Test), path: path.clone() });
+
+    let mut config = configure("test", &["A"], &["A"]);
+    // Ensure our test is valid, and `test::Cargotest` would be run without the exclude.
+    assert!(run_build(&[path.clone()], config.clone()).contains::<test::Cargotest>());
+    // Ensure tests for cargotest are skipped.
+    config.exclude = vec![exclude.clone()];
+    assert!(!run_build(&[path.clone()], config).contains::<test::Cargotest>());
+
+    // Ensure builds for cargotest are not skipped.
+    let mut config = configure("build", &["A"], &["A"]);
+    config.exclude = vec![exclude];
+    assert!(run_build(&[path], config).contains::<tool::CargoTest>());
+}
+
 mod defaults {
     use super::{configure, first};
     use crate::builder::*;
@@ -513,35 +556,6 @@ mod dist {
                 krate: INTERNER.intern_str("std"),
             },]
         );
-    }
-
-    #[test]
-    fn test_exclude() {
-        let mut config = configure(&["A"], &["A"]);
-        config.exclude = vec![TaskPath::parse("src/tools/tidy")];
-        config.cmd = Subcommand::Test {
-            paths: Vec::new(),
-            test_args: Vec::new(),
-            rustc_args: Vec::new(),
-            fail_fast: true,
-            doc_tests: DocTests::No,
-            bless: false,
-            force_rerun: false,
-            compare_mode: None,
-            rustfix_coverage: false,
-            pass: None,
-            run: None,
-        };
-
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
-
-        // Ensure we have really excluded tidy
-        assert!(!builder.cache.contains::<test::Tidy>());
-
-        // Ensure other tests are not affected.
-        assert!(builder.cache.contains::<test::RustdocUi>());
     }
 
     #[test]
