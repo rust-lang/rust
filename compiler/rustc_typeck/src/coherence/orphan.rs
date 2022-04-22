@@ -211,7 +211,6 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let msg = match self_ty.kind() {
                 ty::Adt(..) => "can be implemented for types defined outside of the crate",
-                ty::Param(_) => "can have blanket implementations defined in this trait",
                 _ if self_ty.is_primitive() => "can be implemented for primitive types",
                 _ => "can be implemented for arbitrary types",
             };
