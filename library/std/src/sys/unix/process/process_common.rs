@@ -429,12 +429,20 @@ impl Stdio {
 }
 
 impl From<AnonPipe> for Stdio {
+    /// Converts a [`AnonPipe`] into a [`Stdio`].
+    ///
+    /// The conversion consumes the [`AnonPipe`].
+    ///
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Fd(pipe.into_inner())
     }
 }
 
 impl From<File> for Stdio {
+    /// Converts a [`File`] into a [`Stdio`].
+    ///
+    /// The conversion consumes the [`File`].
+    ///
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())
     }
