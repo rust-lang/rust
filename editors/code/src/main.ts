@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as lc from 'vscode-languageclient/node';
 import * as os from "os";
 
 import * as commands from './commands';
@@ -14,16 +15,20 @@ let ctx: Ctx | undefined;
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
-export async function activate(context: vscode.ExtensionContext) {
+export interface RustAnalyzerExtensionApi {
+    client: lc.LanguageClient;
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<RustAnalyzerExtensionApi> {
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
-    await tryActivate(context).catch(err => {
+    return await tryActivate(context).catch(err => {
         void vscode.window.showErrorMessage(`Cannot activate rust-analyzer: ${err.message}`);
         throw err;
     });
 }
 
-async function tryActivate(context: vscode.ExtensionContext) {
+async function tryActivate(context: vscode.ExtensionContext): Promise<RustAnalyzerExtensionApi> {
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(context, config, state).catch(err => {
@@ -62,6 +67,10 @@ async function tryActivate(context: vscode.ExtensionContext) {
         null,
         ctx.subscriptions,
     );
+
+    return {
+        client: ctx.client
+    };
 }
 
 async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
