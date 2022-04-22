@@ -181,8 +181,6 @@ enum ResolutionFailure<'a> {
         /// In `[std::io::Error::x]`, `x` would be unresolved.
         unresolved: Cow<'a, str>,
     },
-    /// This link has malformed generic parameters; e.g., the angle brackets are unbalanced.
-    MalformedGenerics(MalformedGenerics),
     /// Used to communicate that this should be ignored, but shouldn't be reported to the user.
     ///
     /// This happens when there is no disambiguator and one of the namespaces
@@ -190,7 +188,7 @@ enum ResolutionFailure<'a> {
     Dummy,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum MalformedGenerics {
     /// This link has unbalanced angle brackets.
     ///
@@ -1088,12 +1086,20 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
 enum PreprocessingError {
     Anchor(AnchorFailure),
     Disambiguator(Range<usize>, String),
-    Resolution(ResolutionFailure<'static>, String, Option<Disambiguator>),
+    MalformedGenerics(MalformedGenerics, String),
 }
 
-impl From<AnchorFailure> for PreprocessingError {
-    fn from(err: AnchorFailure) -> Self {
-        Self::Anchor(err)
+impl PreprocessingError {
+    fn report(&self, cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
+        match self {
+            PreprocessingError::Anchor(err) => anchor_failure(cx, diag_info, *err),
+            PreprocessingError::Disambiguator(range, msg) => {
+                disambiguator_error(cx, diag_info, range.clone(), msg)
+            }
+            PreprocessingError::MalformedGenerics(err, path_str) => {
+                report_malformed_generics(cx, diag_info, *err, path_str)
+            }
+        }
     }
 }
 
@@ -1138,7 +1144,7 @@ fn preprocess_link(
     let extra_fragment = parts.next();
     if parts.next().is_some() {
         // A valid link can't have multiple #'s
-        return Some(Err(AnchorFailure::MultipleAnchors.into()));
+        return Some(Err(PreprocessingError::Anchor(AnchorFailure::MultipleAnchors)));
     }
 
     // Parse and strip the disambiguator from the link, if present.
@@ -1166,13 +1172,9 @@ fn preprocess_link(
     let path_str = if path_str.contains(['<', '>'].as_slice()) {
         match strip_generics_from_path(path_str) {
             Ok(path) => path,
-            Err(err_kind) => {
+            Err(err) => {
                 debug!("link has malformed generics: {}", path_str);
-                return Some(Err(PreprocessingError::Resolution(
-                    err_kind,
-                    path_str.to_owned(),
-                    disambiguator,
-                )));
+                return Some(Err(PreprocessingError::MalformedGenerics(err, path_str.to_owned())));
             }
         }
     } else {
@@ -1222,31 +1224,9 @@ impl LinkCollector<'_, '_> {
             link_range: ori_link.range.clone(),
         };
 
-        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } = match pp_link
-        {
-            Ok(x) => x,
-            Err(err) => {
-                match err {
-                    PreprocessingError::Anchor(err) => anchor_failure(self.cx, diag_info, *err),
-                    PreprocessingError::Disambiguator(range, msg) => {
-                        disambiguator_error(self.cx, diag_info, range.clone(), msg)
-                    }
-                    PreprocessingError::Resolution(err, path_str, disambiguator) => {
-                        resolution_failure(
-                            self,
-                            diag_info,
-                            path_str,
-                            *disambiguator,
-                            smallvec![err.clone()],
-                        );
-                    }
-                }
-                return None;
-            }
-        };
+        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
+            pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
-
-        let inner_docs = item.inner_docs(self.cx.tcx);
 
         // In order to correctly resolve intra-doc links we need to
         // pick a base AST node to work from.  If the documentation for
@@ -1259,6 +1239,7 @@ impl LinkCollector<'_, '_> {
         // we've already pushed this node onto the resolution stack but
         // for outer comments we explicitly try and resolve against the
         // parent_node first.
+        let inner_docs = item.inner_docs(self.cx.tcx);
         let base_node =
             if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
         let module_id = base_node.expect("doc link without parent module");
@@ -2121,27 +2102,6 @@ fn resolution_failure(
                             expected_ns.descr()
                         )
                     }
-                    ResolutionFailure::MalformedGenerics(variant) => match variant {
-                        MalformedGenerics::UnbalancedAngleBrackets => {
-                            String::from("unbalanced angle brackets")
-                        }
-                        MalformedGenerics::MissingType => {
-                            String::from("missing type for generic parameters")
-                        }
-                        MalformedGenerics::HasFullyQualifiedSyntax => {
-                            diag.note("see https://github.com/rust-lang/rust/issues/74563 for more information");
-                            String::from("fully-qualified syntax is unsupported")
-                        }
-                        MalformedGenerics::InvalidPathSeparator => {
-                            String::from("has invalid path separator")
-                        }
-                        MalformedGenerics::TooManyAngleBrackets => {
-                            String::from("too many angle brackets")
-                        }
-                        MalformedGenerics::EmptyAngleBrackets => {
-                            String::from("empty angle brackets")
-                        }
-                    },
                 };
                 if let Some(span) = sp {
                     diag.span_label(span, &note);
@@ -2203,6 +2163,40 @@ fn disambiguator_error(
         );
         diag.note(&msg);
     });
+}
+
+fn report_malformed_generics(
+    cx: &DocContext<'_>,
+    diag_info: DiagnosticInfo<'_>,
+    err: MalformedGenerics,
+    path_str: &str,
+) {
+    report_diagnostic(
+        cx.tcx,
+        BROKEN_INTRA_DOC_LINKS,
+        &format!("unresolved link to `{}`", path_str),
+        &diag_info,
+        |diag, sp| {
+            let note = match err {
+                MalformedGenerics::UnbalancedAngleBrackets => "unbalanced angle brackets",
+                MalformedGenerics::MissingType => "missing type for generic parameters",
+                MalformedGenerics::HasFullyQualifiedSyntax => {
+                    diag.note(
+                        "see https://github.com/rust-lang/rust/issues/74563 for more information",
+                    );
+                    "fully-qualified syntax is unsupported"
+                }
+                MalformedGenerics::InvalidPathSeparator => "has invalid path separator",
+                MalformedGenerics::TooManyAngleBrackets => "too many angle brackets",
+                MalformedGenerics::EmptyAngleBrackets => "empty angle brackets",
+            };
+            if let Some(span) = sp {
+                diag.span_label(span, note);
+            } else {
+                diag.note(note);
+            }
+        },
+    );
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
@@ -2340,7 +2334,7 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
     Some(Res::Primitive(prim))
 }
 
-fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<'static>> {
+fn strip_generics_from_path(path_str: &str) -> Result<String, MalformedGenerics> {
     let mut stripped_segments = vec![];
     let mut path = path_str.chars().peekable();
     let mut segment = Vec::new();
@@ -2355,9 +2349,7 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<
                         stripped_segments.push(stripped_segment);
                     }
                 } else {
-                    return Err(ResolutionFailure::MalformedGenerics(
-                        MalformedGenerics::InvalidPathSeparator,
-                    ));
+                    return Err(MalformedGenerics::InvalidPathSeparator);
                 }
             }
             '<' => {
@@ -2365,14 +2357,10 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<
 
                 match path.next() {
                     Some('<') => {
-                        return Err(ResolutionFailure::MalformedGenerics(
-                            MalformedGenerics::TooManyAngleBrackets,
-                        ));
+                        return Err(MalformedGenerics::TooManyAngleBrackets);
                     }
                     Some('>') => {
-                        return Err(ResolutionFailure::MalformedGenerics(
-                            MalformedGenerics::EmptyAngleBrackets,
-                        ));
+                        return Err(MalformedGenerics::EmptyAngleBrackets);
                     }
                     Some(chr) => {
                         segment.push(chr);
@@ -2400,16 +2388,10 @@ fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<
 
     let stripped_path = stripped_segments.join("::");
 
-    if !stripped_path.is_empty() {
-        Ok(stripped_path)
-    } else {
-        Err(ResolutionFailure::MalformedGenerics(MalformedGenerics::MissingType))
-    }
+    if !stripped_path.is_empty() { Ok(stripped_path) } else { Err(MalformedGenerics::MissingType) }
 }
 
-fn strip_generics_from_path_segment(
-    segment: Vec<char>,
-) -> Result<String, ResolutionFailure<'static>> {
+fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<String, MalformedGenerics> {
     let mut stripped_segment = String::new();
     let mut param_depth = 0;
 
@@ -2424,9 +2406,7 @@ fn strip_generics_from_path_segment(
             if latest_generics_chunk.contains(" as ") {
                 // The segment tries to use fully-qualified syntax, which is currently unsupported.
                 // Give a helpful error message instead of completely ignoring the angle brackets.
-                return Err(ResolutionFailure::MalformedGenerics(
-                    MalformedGenerics::HasFullyQualifiedSyntax,
-                ));
+                return Err(MalformedGenerics::HasFullyQualifiedSyntax);
             }
         } else {
             if param_depth == 0 {
@@ -2441,6 +2421,6 @@ fn strip_generics_from_path_segment(
         Ok(stripped_segment)
     } else {
         // The segment has unbalanced angle brackets, e.g. `Vec<T` or `Vec<T>>`
-        Err(ResolutionFailure::MalformedGenerics(MalformedGenerics::UnbalancedAngleBrackets))
+        Err(MalformedGenerics::UnbalancedAngleBrackets)
     }
 }
