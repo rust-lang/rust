@@ -16,7 +16,7 @@ use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, DUMMY_SP};
+use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
@@ -94,14 +94,6 @@ impl Res {
         match self {
             Res::Def(_, id) => id,
             Res::Primitive(prim) => *PrimitiveType::primitive_locations(tcx).get(&prim).unwrap(),
-        }
-    }
-
-    fn as_hir_res(self) -> Option<rustc_hir::def::Res> {
-        match self {
-            Res::Def(kind, id) => Some(rustc_hir::def::Res::Def(kind, id)),
-            // FIXME: maybe this should handle the subset of PrimitiveType that fits into hir::PrimTy?
-            Res::Primitive(_) => None,
         }
     }
 
@@ -189,9 +181,6 @@ enum ResolutionFailure<'a> {
         /// In `[std::io::Error::x]`, `x` would be unresolved.
         unresolved: Cow<'a, str>,
     },
-    /// This happens when rustdoc can't determine the parent scope for an item.
-    /// It is always a bug in rustdoc.
-    NoParentItem,
     /// This link has malformed generic parameters; e.g., the angle brackets are unbalanced.
     MalformedGenerics(MalformedGenerics),
     /// Used to communicate that this should be ignored, but shouldn't be reported to the user.
@@ -616,8 +605,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // item a separate function.
                 Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
                 Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
-                Res::Def(DefKind::Variant, _) => {
-                    return handle_variant(self.cx, res);
+                Res::Def(DefKind::Variant, def_id) => {
+                    let enum_def_id = self.cx.tcx.parent(def_id).expect("variant has no parent");
+                    return Ok((
+                        Res::Def(DefKind::Enum, enum_def_id),
+                        Some(ItemFragment(FragmentKind::Variant, def_id)),
+                    ));
                 }
                 // Not a trait item; just return what we found.
                 _ => return Ok((res, None)),
@@ -1268,19 +1261,7 @@ impl LinkCollector<'_, '_> {
         // parent_node first.
         let base_node =
             if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
-
-        let Some(module_id) = base_node else {
-            // This is a bug.
-            debug!("attempting to resolve item without parent module: {}", path_str);
-            resolution_failure(
-                self,
-                diag_info,
-                path_str,
-                disambiguator,
-                smallvec![ResolutionFailure::NoParentItem],
-            );
-            return None;
-        };
+        let module_id = base_node.expect("doc link without parent module");
 
         let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
@@ -2140,17 +2121,6 @@ fn resolution_failure(
                             expected_ns.descr()
                         )
                     }
-                    ResolutionFailure::NoParentItem => {
-                        // FIXME(eddyb) this doesn't belong here, whatever made
-                        // the `ResolutionFailure::NoParentItem` should emit an
-                        // immediate or delayed `span_bug` about the issue.
-                        tcx.sess.delay_span_bug(
-                            sp.unwrap_or(DUMMY_SP),
-                            "intra-doc link missing parent item",
-                        );
-
-                        "BUG: all intra-doc links should have a parent item".to_owned()
-                    }
                     ResolutionFailure::MalformedGenerics(variant) => match variant {
                         MalformedGenerics::UnbalancedAngleBrackets => {
                             String::from("unbalanced angle brackets")
@@ -2329,17 +2299,6 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
         };
         diag.note(note_msg);
     });
-}
-
-/// Given an enum variant's res, return the res of its enum and the associated fragment.
-fn handle_variant(
-    cx: &DocContext<'_>,
-    res: Res,
-) -> Result<(Res, Option<ItemFragment>), ErrorKind<'static>> {
-    let parent = cx.tcx.parent(res.def_id(cx.tcx));
-    let parent_def = Res::Def(DefKind::Enum, parent);
-    let variant = cx.tcx.expect_variant_res(res.as_hir_res().unwrap());
-    Ok((parent_def, Some(ItemFragment(FragmentKind::Variant, variant.def_id))))
 }
 
 /// Resolve a primitive type or value.
