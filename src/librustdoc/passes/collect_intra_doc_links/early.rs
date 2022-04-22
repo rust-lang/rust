@@ -66,9 +66,7 @@ crate fn early_resolve_intra_doc_links(
 }
 
 fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes {
-    let mut attrs = Attributes::from_ast_iter(attrs.map(|attr| (attr, None)), true);
-    attrs.unindent_doc_comments();
-    attrs
+    Attributes::from_ast_iter(attrs.map(|attr| (attr, None)), true)
 }
 
 struct EarlyDocLinkResolver<'r, 'ra> {

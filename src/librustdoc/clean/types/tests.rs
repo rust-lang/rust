@@ -20,7 +20,7 @@ fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
 fn run_test(input: &str, expected: &str) {
     create_default_session_globals_then(|| {
         let mut s = create_doc_fragment(input);
-        unindent_fragments(&mut s);
+        unindent_doc_fragments(&mut s);
         assert_eq!(collapse_doc_fragments(&s), expected);
     });
 }
