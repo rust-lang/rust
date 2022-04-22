@@ -681,23 +681,31 @@ impl<'a> TyLoweringContext<'a> {
 
         let ty_error = GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner);
 
-        for eid in def_generics.iter_id().take(parent_params) {
-            match eid {
-                Either::Left(_) => substs.push(ty_error.clone()),
-                Either::Right(x) => {
-                    substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
+        let mut def_generic_iter = def_generics.iter_id();
+
+        for _ in 0..parent_params {
+            if let Some(eid) = def_generic_iter.next() {
+                match eid {
+                    Either::Left(_) => substs.push(ty_error.clone()),
+                    Either::Right(x) => {
+                        substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
+                    }
                 }
             }
         }
 
         let fill_self_params = || {
-            substs.extend(
-                explicit_self_ty
-                    .into_iter()
-                    .map(|x| GenericArgData::Ty(x).intern(Interner))
-                    .chain(iter::repeat(ty_error.clone()))
-                    .take(self_params),
-            )
+            for x in explicit_self_ty
+                .into_iter()
+                .map(|x| GenericArgData::Ty(x).intern(Interner))
+                .chain(iter::repeat(ty_error.clone()))
+                .take(self_params)
+            {
+                if let Some(id) = def_generic_iter.next() {
+                    assert!(id.is_left());
+                    substs.push(x);
+                }
+            }
         };
         let mut had_explicit_args = false;
 
@@ -712,34 +720,38 @@ impl<'a> TyLoweringContext<'a> {
             };
             let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
             // if args are provided, it should be all of them, but we can't rely on that
-            for (arg, id) in generic_args
+            for arg in generic_args
                 .args
                 .iter()
                 .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                 .skip(skip)
                 .take(expected_num)
-                .zip(def_generics.iter_id().skip(parent_params + skip))
             {
-                if let Some(x) = generic_arg_to_chalk(
-                    self.db,
-                    id,
-                    arg,
-                    &mut (),
-                    |_, type_ref| self.lower_ty(type_ref),
-                    |_, c, ty| {
-                        const_or_path_to_chalk(
-                            self.db,
-                            &self.resolver,
-                            ty,
-                            c,
-                            self.type_param_mode,
-                            || self.generics(),
-                            self.in_binders,
-                        )
-                    },
-                ) {
-                    had_explicit_args = true;
-                    substs.push(x);
+                if let Some(id) = def_generic_iter.next() {
+                    if let Some(x) = generic_arg_to_chalk(
+                        self.db,
+                        id,
+                        arg,
+                        &mut (),
+                        |_, type_ref| self.lower_ty(type_ref),
+                        |_, c, ty| {
+                            const_or_path_to_chalk(
+                                self.db,
+                                &self.resolver,
+                                ty,
+                                c,
+                                self.type_param_mode,
+                                || self.generics(),
+                                self.in_binders,
+                            )
+                        },
+                    ) {
+                        had_explicit_args = true;
+                        substs.push(x);
+                    } else {
+                        // we just filtered them out
+                        never!("Unexpected lifetime argument");
+                    }
                 }
             }
         } else {
@@ -757,14 +769,16 @@ impl<'a> TyLoweringContext<'a> {
                 for default_ty in defaults.iter().skip(substs.len()) {
                     // each default can depend on the previous parameters
                     let substs_so_far = Substitution::from_iter(Interner, substs.clone());
-                    substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
+                    if let Some(_id) = def_generic_iter.next() {
+                        substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
+                    }
                 }
             }
         }
 
         // add placeholders for args that were not provided
         // FIXME: emit diagnostics in contexts where this is not allowed
-        for eid in def_generics.iter_id().skip(substs.len()) {
+        for eid in def_generic_iter {
             match eid {
                 Either::Left(_) => substs.push(ty_error.clone()),
                 Either::Right(x) => {
@@ -772,6 +786,7 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
         }
+        // If this assert fails, it means you pushed into subst but didn't call .next() of def_generic_iter
         assert_eq!(substs.len(), total_len);
 
         Substitution::from_iter(Interner, substs)
@@ -1659,6 +1674,10 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
     }
 }
 
+/// Checks if the provided generic arg matches its expected kind, then lower them via
+/// provided closures. Use unknown if there was kind mismatch.
+///
+/// Returns `Some` of the lowered generic arg. `None` if the provided arg is a lifetime.
 pub(crate) fn generic_arg_to_chalk<'a, T>(
     db: &dyn HirDatabase,
     kind_id: Either<TypeParamId, ConstParamId>,

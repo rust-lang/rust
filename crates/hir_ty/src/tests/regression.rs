@@ -1471,6 +1471,22 @@ fn regression_11688_3() {
 }
 
 #[test]
+fn regression_11688_4() {
+    check_types(
+        r#"
+        trait Bar<const C: usize> {
+            fn baz(&self) -> [i32; C];
+        }
+
+        fn foo(x: &dyn Bar<2>) {
+            x.baz();
+          //^^^^^^^ [i32; 2]
+        }
+        "#,
+    )
+}
+
+#[test]
 fn gat_crash_1() {
     cov_mark::check!(ignore_gats);
     check_no_mismatches(
