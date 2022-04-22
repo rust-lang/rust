@@ -144,9 +144,13 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                     let close_token = Token::new(token::CloseDelim(delimited.delim), span.close);
 
                     locs.push(MatcherLoc::Delimited);
-                    locs.push(MatcherLoc::Token { token: open_token });
+                    if delimited.delim != token::DelimToken::NoDelim {
+                        locs.push(MatcherLoc::Token { token: open_token });
+                    }
                     inner(&delimited.tts, locs, next_metavar, seq_depth);
-                    locs.push(MatcherLoc::Token { token: close_token });
+                    if delimited.delim != token::DelimToken::NoDelim {
+                        locs.push(MatcherLoc::Token { token: close_token });
+                    }
                 }
                 TokenTree::Sequence(_, seq) => {
                     // We can't determine `idx_first_after` and construct the final
