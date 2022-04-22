@@ -77,9 +77,13 @@ fn try_main() -> Result<()> {
                 println!("{}", flags::RustAnalyzer::HELP);
                 return Ok(());
             }
-            run_server()?
+            with_extra_thread("rust-analyzer server thread", run_server)?;
         }
-        flags::RustAnalyzerCmd::ProcMacro(flags::ProcMacro) => proc_macro_srv::cli::run()?,
+        flags::RustAnalyzerCmd::ProcMacro(flags::ProcMacro) => {
+            with_extra_thread("rust-analyzer proc-macro expander", || {
+                proc_macro_srv::cli::run().map_err(Into::into)
+            })?;
+        }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Highlight(cmd) => cmd.run()?,
@@ -126,6 +130,23 @@ fn setup_logging(log_file: Option<&Path>) -> Result<()> {
     profile::init();
 
     Ok(())
+}
+
+const STACK_SIZE: usize = 1024 * 1024 * 8;
+
+/// Parts of rust-analyzer can use a lot of stack space, and some operating systems only give us
+/// 1 MB by default (eg. Windows), so this spawns a new thread with hopefully sufficient stack
+/// space.
+fn with_extra_thread(
+    thread_name: impl Into<String>,
+    f: impl FnOnce() -> Result<()> + Send + 'static,
+) -> Result<()> {
+    let handle =
+        std::thread::Builder::new().name(thread_name.into()).stack_size(STACK_SIZE).spawn(f)?;
+    match handle.join() {
+        Ok(res) => res,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
 }
 
 fn run_server() -> Result<()> {
