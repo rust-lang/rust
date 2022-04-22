@@ -122,7 +122,7 @@ fn call_return_u128_pair() {
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
     take_unique(Unique {
-        pointer: 0 as *const (),
+        pointer: unsafe { NonNull(1 as *mut ()) },
         _marker: PhantomData,
     });
     take_f32(0.1);
@@ -173,7 +173,7 @@ fn main() {
         assert!(intrinsics::needs_drop::<NoisyDrop>());
 
         Unique {
-            pointer: 0 as *const &str,
+            pointer: NonNull(1 as *mut &str),
             _marker: PhantomData,
         } as Unique<dyn SomeTrait>;
 

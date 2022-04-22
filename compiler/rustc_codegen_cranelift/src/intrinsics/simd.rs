@@ -322,20 +322,21 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
             assert_eq!(a.layout(), b.layout());
             assert_eq!(a.layout(), c.layout());
-            let layout = a.layout();
+            assert_eq!(a.layout(), ret.layout());
 
-            let (lane_count, _lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_count, ret_lane_count);
-            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+            let layout = a.layout();
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
 
             for lane in 0..lane_count {
-                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
-                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
-                let c_lane = c.value_lane(fx, lane).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane);
+                let b_lane = b.value_lane(fx, lane);
+                let c_lane = c.value_lane(fx, lane);
 
-                let mul_lane = fx.bcx.ins().fmul(a_lane, b_lane);
-                let res_lane = CValue::by_val(fx.bcx.ins().fadd(mul_lane, c_lane), ret_lane_layout);
+                let res_lane = match lane_ty.kind() {
+                    ty::Float(FloatTy::F32) => fx.easy_call("fmaf", &[a_lane, b_lane, c_lane], lane_ty),
+                    ty::Float(FloatTy::F64) => fx.easy_call("fma", &[a_lane, b_lane, c_lane], lane_ty),
+                    _ => unreachable!(),
+                };
 
                 ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
             }
@@ -354,8 +355,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!("{:?}", lane_ty),
                 }
                 match intrinsic {
-                    sym::simd_fmin => fx.bcx.ins().fmin(x_lane, y_lane),
-                    sym::simd_fmax => fx.bcx.ins().fmax(x_lane, y_lane),
+                    sym::simd_fmin => crate::num::codegen_float_min(fx, x_lane, y_lane),
+                    sym::simd_fmax => crate::num::codegen_float_max(fx, x_lane, y_lane),
                     _ => unreachable!(),
                 }
             });
@@ -495,7 +496,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let lt = match ty.kind() {
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedLessThan, a, b),
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan, a, b),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::LessThan, a, b),
+                    ty::Float(_) => return crate::num::codegen_float_min(fx, a, b),
                     _ => unreachable!(),
                 };
                 fx.bcx.ins().select(lt, a, b)
@@ -512,7 +513,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let gt = match ty.kind() {
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan, a, b),
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, a, b),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::GreaterThan, a, b),
+                    ty::Float(_) => return crate::num::codegen_float_max(fx, a, b),
                     _ => unreachable!(),
                 };
                 fx.bcx.ins().select(gt, a, b)
