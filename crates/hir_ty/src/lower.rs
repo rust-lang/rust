@@ -749,7 +749,8 @@ impl<'a> TyLoweringContext<'a> {
                         had_explicit_args = true;
                         substs.push(x);
                     } else {
-                        never!();
+                        // we just filtered them out
+                        never!("Unexpected lifetime argument");
                     }
                 }
             }
@@ -1673,6 +1674,10 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
     }
 }
 
+/// Checks if the provided generic arg matches its expected kind, then lower them via
+/// provided closures. Use unknown if there was kind mismatch.
+/// 
+/// Returns `Some` of the lowered generic arg. `None` if the provided arg is a lifetime.
 pub(crate) fn generic_arg_to_chalk<'a, T>(
     db: &dyn HirDatabase,
     kind_id: Either<TypeParamId, ConstParamId>,
