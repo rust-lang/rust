@@ -75,7 +75,7 @@ use super::Recover;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<T> {
-    pub(super) map: BTreeMap<T, ()>,
+    map: BTreeMap<T, ()>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1076,6 +1076,17 @@ impl<T> BTreeSet<T> {
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Makes a `BTreeSet` from a sorted iterator.
+    pub(crate) fn bulk_build_from_sorted_iter<I>(iter: I) -> Self
+    where
+        T: Ord,
+        I: IntoIterator<Item = T>,
+    {
+        let iter = iter.into_iter().map(|k| (k, ()));
+        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
+        BTreeSet { map }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1104,9 +1115,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
 
         // use stable sort to preserve the insertion order.
         arr.sort();
-        let iter = IntoIterator::into_iter(arr).map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
+        BTreeSet::bulk_build_from_sorted_iter(arr)
     }
 }
 

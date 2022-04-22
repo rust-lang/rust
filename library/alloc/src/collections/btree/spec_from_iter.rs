@@ -54,9 +54,7 @@ where
 
         // use stable sort to preserve the insertion order.
         inputs.sort();
-        let iter = inputs.into_iter().map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
+        BTreeSet::bulk_build_from_sorted_iter(inputs)
     }
 }
 
@@ -71,8 +69,6 @@ where
 
         // use stable sort to preserve the insertion order.
         iterator.as_mut_slice().sort();
-        let iter = iterator.map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
+        BTreeSet::bulk_build_from_sorted_iter(iterator)
     }
 }
