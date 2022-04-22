@@ -1386,14 +1386,6 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
 ///
 /// This struct is created by the [`chunks`] method on [slices].
 ///
-/// # Example
-///
-/// ```
-/// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// for chunk in slice.chunks(2) {
-///     println!("{:?}", chunk)
-/// }
-/// ```
 ///
 /// [`chunks`]: slice::chunks
 /// [slices]: slice
