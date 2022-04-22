@@ -54,6 +54,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod mut_mutex_lock;
+mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
 mod no_effect_replace;
@@ -3141,6 +3142,28 @@ declare_clippy_lint! {
     "jumping to the start of stream using `seek` method"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for functions collecting an iterator when collect
+    /// is not needed.
+    ///
+    /// ### Why is this bad?
+    /// `collect` causes the allocation of a new data structure,
+    /// when this allocation may not be needed.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let iterator = vec![1].into_iter();
+    /// let len = iterator.clone().collect::<Vec<_>>().len();
+    /// // should be
+    /// let len = iterator.count();
+    /// ```
+    #[clippy::version = "1.30.0"]
+    pub NEEDLESS_COLLECT,
+    nursery,
+    "collecting an iterator when collect is not needed"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -3267,6 +3290,7 @@ impl_lint_pass!(Methods => [
     ITER_KV_MAP,
     SEEK_FROM_CURRENT,
     SEEK_TO_START_INSTEAD_OF_REWIND,
+    NEEDLESS_COLLECT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3317,6 +3341,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             },
             _ => (),
         }
+
+        needless_collect::check(expr, cx);
     }
 
     #[allow(clippy::too_many_lines)]
