@@ -792,11 +792,19 @@ public:
               element = Builder.CreateBitCast(
                   element, PointerType::get(Type::getInt8Ty(CI->getContext()),
                                             elementPtrTy->getAddressSpace()));
+#if LLVM_VERSION_MAJOR >= 7
+              element = Builder.CreateGEP(
+                  Type::getInt8Ty(CI->getContext()), element,
+                  Builder.CreateMul(
+                      batchOffset[i - 1],
+                      ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#else
               element = Builder.CreateGEP(
                   element,
                   Builder.CreateMul(
                       batchOffset[i - 1],
                       ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#endif
               element = Builder.CreateBitCast(element, elementPtrTy);
             } else {
               return false;
