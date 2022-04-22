@@ -214,7 +214,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
-        if self.tcx.sess.opts.debugging_opts.validate_mir {
+        if self.tcx.sess.opts.debugging_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
+        {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
