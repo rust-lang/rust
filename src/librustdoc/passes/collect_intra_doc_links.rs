@@ -54,12 +54,6 @@ enum ErrorKind<'a> {
     AnchorFailure(AnchorFailure),
 }
 
-impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
-    fn from(err: ResolutionFailure<'a>) -> Self {
-        ErrorKind::Resolve(box err)
-    }
-}
-
 #[derive(Copy, Clone, Debug, Hash)]
 enum Res {
     Def(DefKind, DefId),
@@ -371,7 +365,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         path_str: &'path str,
         item_id: ItemId,
         module_id: DefId,
-    ) -> Result<(Res, Option<ItemFragment>), ErrorKind<'path>> {
+    ) -> Result<(Res, Option<ItemFragment>), ResolutionFailure<'path>> {
         let tcx = self.cx.tcx;
         let no_res = || ResolutionFailure::NotResolved {
             item_id,
@@ -442,25 +436,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     let fragment = ItemFragment::from_assoc_item(item);
                     (Res::Primitive(prim_ty), fragment)
                 })
-        })
-    }
-
-    /// Resolves a string as a macro.
-    ///
-    /// FIXME(jynelson): Can this be unified with `resolve()`?
-    fn resolve_macro(
-        &self,
-        path_str: &'a str,
-        item_id: ItemId,
-        module_id: DefId,
-    ) -> Result<Res, ResolutionFailure<'a>> {
-        self.resolve_path(path_str, MacroNS, item_id, module_id).ok_or_else(|| {
-            ResolutionFailure::NotResolved {
-                item_id,
-                module_id,
-                partial_res: None,
-                unresolved: path_str.into(),
-            }
         })
     }
 
@@ -556,12 +531,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         user_fragment: &Option<String>,
     ) -> Result<(Res, Option<UrlFragment>), ErrorKind<'path>> {
-        let (res, rustdoc_fragment) = self.resolve_inner(path_str, ns, item_id, module_id)?;
+        let (res, rustdoc_fragment) = self
+            .resolve_inner(path_str, ns, item_id, module_id)
+            .map_err(|err| ErrorKind::Resolve(box err))?;
         let chosen_fragment = match (user_fragment, rustdoc_fragment) {
-            (Some(_), Some(r_frag)) => {
-                let diag_res = match r_frag {
-                    ItemFragment(_, did) => Res::Def(self.cx.tcx.def_kind(did), did),
-                };
+            (Some(_), Some(ItemFragment(_, did))) => {
+                let diag_res = Res::Def(self.cx.tcx.def_kind(did), did);
                 let failure = AnchorFailure::RustdocAnchorConflict(diag_res);
                 return Err(ErrorKind::AnchorFailure(failure));
             }
@@ -578,7 +553,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         ns: Namespace,
         item_id: ItemId,
         module_id: DefId,
-    ) -> Result<(Res, Option<ItemFragment>), ErrorKind<'path>> {
+    ) -> Result<(Res, Option<ItemFragment>), ResolutionFailure<'path>> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
@@ -595,6 +570,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // Not a trait item; just return what we found.
                 _ => return Ok((res, None)),
             }
+        } else if ns == MacroNS {
+            return Err(ResolutionFailure::NotResolved {
+                item_id,
+                module_id,
+                partial_res: None,
+                unresolved: path_str.into(),
+            });
         }
 
         // Try looking for methods and associated items.
@@ -639,8 +621,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         module_id,
                         partial_res: None,
                         unresolved: path_root.into(),
-                    }
-                    .into())
+                    })
                 }
             })
     }
@@ -862,18 +843,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Option<Res> {
-        // resolve() can't be used for macro namespace
-        let result = match ns {
-            Namespace::MacroNS => self
-                .resolve_macro(path_str, item_id, module_id)
-                .map(|res| (res, None))
-                .map_err(ErrorKind::from),
-            Namespace::TypeNS | Namespace::ValueNS => {
-                self.resolve(path_str, ns, item_id, module_id, extra_fragment)
-            }
-        };
-
-        let res = match result {
+        let res = match self.resolve(path_str, ns, item_id, module_id, extra_fragment) {
             Ok((res, frag)) => {
                 if let Some(UrlFragment::Item(ItemFragment(_, id))) = frag {
                     Some(Res::Def(self.cx.tcx.def_kind(id), id))
@@ -881,7 +851,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     Some(res)
                 }
             }
-            Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
+            Err(ErrorKind::Resolve(kind)) => kind.full_res(),
             Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => Some(res),
             Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
         };
@@ -1481,80 +1451,57 @@ impl LinkCollector<'_, '_> {
         let extra_fragment = &key.extra_fragment;
 
         match disambiguator.map(Disambiguator::ns) {
-            Some(expected_ns @ (ValueNS | TypeNS)) => {
+            Some(expected_ns) => {
                 match self.resolve(path_str, expected_ns, item_id, base_node, extra_fragment) {
                     Ok(res) => Some(res),
-                    Err(ErrorKind::Resolve(box mut kind)) => {
+                    Err(ErrorKind::AnchorFailure(msg)) => {
+                        anchor_failure(self.cx, diag, msg);
+                        None
+                    }
+                    Err(ErrorKind::Resolve(mut err)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
-                        if kind.full_res().is_none() {
-                            let other_ns = if expected_ns == ValueNS { TypeNS } else { ValueNS };
-                            // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
-                            // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
-                            for new_ns in [other_ns, MacroNS] {
+                        // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`.
+                        // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach.
+                        for other_ns in [TypeNS, ValueNS, MacroNS] {
+                            if other_ns != expected_ns {
                                 if let Some(res) = self.check_full_res(
-                                    new_ns,
+                                    other_ns,
                                     path_str,
                                     item_id,
                                     base_node,
                                     extra_fragment,
                                 ) {
-                                    kind = ResolutionFailure::WrongNamespace { res, expected_ns };
+                                    *err = ResolutionFailure::WrongNamespace { res, expected_ns };
                                     break;
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![*err]);
                         // This could just be a normal link or a broken link
                         // we could potentially check if something is
                         // "intra-doc-link-like" and warn in that case.
-                        None
-                    }
-                    Err(ErrorKind::AnchorFailure(msg)) => {
-                        anchor_failure(self.cx, diag, msg);
                         None
                     }
                 }
             }
             None => {
                 // Try everything!
+                let mut candidate =
+                    |ns| match self.resolve(path_str, ns, item_id, base_node, extra_fragment) {
+                        Ok(res) => Some(Ok(res)),
+                        Err(ErrorKind::AnchorFailure(msg)) => {
+                            anchor_failure(self.cx, diag.clone(), msg);
+                            None
+                        }
+                        Err(ErrorKind::Resolve(err)) => Some(Err(*err)),
+                    };
+
                 let candidates = PerNS {
-                    macro_ns: self
-                        .resolve_macro(path_str, item_id, base_node)
-                        .map(|res| (res, extra_fragment.clone().map(UrlFragment::UserWritten))),
-                    type_ns: match self.resolve(
-                        path_str,
-                        TypeNS,
-                        item_id,
-                        base_node,
-                        extra_fragment,
-                    ) {
-                        Ok(res) => {
-                            debug!("got res in TypeNS: {:?}", res);
-                            Ok(res)
-                        }
-                        Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, diag, msg);
-                            return None;
-                        }
-                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                    },
-                    value_ns: match self.resolve(
-                        path_str,
-                        ValueNS,
-                        item_id,
-                        base_node,
-                        extra_fragment,
-                    ) {
-                        Ok(res) => Ok(res),
-                        Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, diag, msg);
-                            return None;
-                        }
-                        Err(ErrorKind::Resolve(box kind)) => Err(kind),
-                    }
-                    .and_then(|(res, fragment)| {
-                        // Constructors are picked up in the type namespace.
+                    macro_ns: candidate(MacroNS)?,
+                    type_ns: candidate(TypeNS)?,
+                    value_ns: candidate(ValueNS)?.and_then(|(res, fragment)| {
                         match res {
+                            // Constructors are picked up in the type namespace.
                             Res::Def(DefKind::Ctor(..), _) => {
                                 Err(ResolutionFailure::WrongNamespace { res, expected_ns: TypeNS })
                             }
@@ -1602,29 +1549,6 @@ impl LinkCollector<'_, '_> {
                     }
                     ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
                     None
-                }
-            }
-            Some(MacroNS) => {
-                match self.resolve_macro(path_str, item_id, base_node) {
-                    Ok(res) => Some((res, extra_fragment.clone().map(UrlFragment::UserWritten))),
-                    Err(mut kind) => {
-                        // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
-                        for ns in [TypeNS, ValueNS] {
-                            if let Some(res) = self.check_full_res(
-                                ns,
-                                path_str,
-                                item_id,
-                                base_node,
-                                extra_fragment,
-                            ) {
-                                kind =
-                                    ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
-                                break;
-                            }
-                        }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
-                        None
-                    }
                 }
             }
         }
