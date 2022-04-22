@@ -160,7 +160,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
         // in the OsStr plus one for the null-terminating character. We are not
         // wasting bytes here as paths created by this function are primarily used
         // in an ephemeral fashion.
-        let mut maybe_result: Vec<u16> = Vec::with_capacity(s.len() + 1);
+        let mut maybe_result = Vec::with_capacity(s.len() + 1);
         maybe_result.extend(s.encode_wide());
 
         if unrolled_find_u16s(0, &maybe_result).is_some() {
