@@ -630,6 +630,25 @@ pub fn eval_condition(
 
                     !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
                 }
+                sym::target => {
+                    if let Some(features) = features && !features.cfg_target_compact {
+                        feature_err(
+                            sess,
+                            sym::cfg_target_compact,
+                            cfg.span,
+                            &"compact `cfg(target(..))` is experimental and subject to change"
+                        ).emit();
+                    }
+
+                    mis.iter().fold(true, |res, mi| {
+                        let mut mi = mi.meta_item().unwrap().clone();
+                        if let [seg, ..] = &mut mi.path.segments[..] {
+                            seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
+                        }
+
+                        res & eval_condition(&mi, sess, features, eval)
+                    })
+                }
                 _ => {
                     struct_span_err!(
                         sess.span_diagnostic,
