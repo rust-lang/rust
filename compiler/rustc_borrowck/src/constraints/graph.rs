@@ -190,7 +190,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> RegionGraph<'s, 'tcx, D> {
 
     /// Given a region `R`, iterate over all regions `R1` such that
     /// there exists a constraint `R: R1`.
-    crate fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'_, 'tcx, D> {
+    crate fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'s, 'tcx, D> {
         Successors {
             edges: self.constraint_graph.outgoing_edges(region_sup, self.set, self.static_region),
         }
@@ -225,10 +225,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::WithSuccessors for RegionGraph
     }
 }
 
-impl<'s, 'graph, 'tcx, D: ConstraintGraphDirecton> graph::GraphSuccessors<'graph>
-    for RegionGraph<'s, 'tcx, D>
-{
+impl<'s, 'tcx, D: ConstraintGraphDirecton> graph::GraphSuccessors<'_> for RegionGraph<'s, 'tcx, D> {
     type Item = RegionVid;
-    // FIXME - why can't this be `'graph, 'tcx`
-    type Iter = Successors<'graph, 'graph, D>;
+    type Iter = Successors<'s, 'tcx, D>;
 }
