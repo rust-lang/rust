@@ -14,6 +14,7 @@ use rustc_hir::TraitCandidate;
 use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_resolve::{ParentScope, Resolver};
 use rustc_session::config::Externs;
+use rustc_session::Session;
 use rustc_span::{Symbol, SyntaxContext};
 
 use std::collections::hash_map::Entry;
@@ -21,12 +22,14 @@ use std::mem;
 
 crate fn early_resolve_intra_doc_links(
     resolver: &mut Resolver<'_>,
+    sess: &Session,
     krate: &ast::Crate,
     externs: Externs,
     document_private_items: bool,
 ) -> ResolverCaches {
     let mut link_resolver = EarlyDocLinkResolver {
         resolver,
+        sess,
         current_mod: CRATE_DEF_ID,
         visited_mods: Default::default(),
         markdown_links: Default::default(),
@@ -70,6 +73,7 @@ fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes 
 
 struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
+    sess: &'r Session,
     current_mod: LocalDefId,
     visited_mods: DefIdSet,
     markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
@@ -167,14 +171,22 @@ impl EarlyDocLinkResolver<'_, '_> {
         }
     }
 
-    fn resolve_doc_links_extern_impl(&mut self, def_id: DefId, _is_inherent: bool) {
-        // FIXME: Resolve links in associated items in addition to traits themselves,
-        // `force` is used to provide traits in scope for the associated items.
-        self.resolve_doc_links_extern_outer(def_id, def_id, true);
+    fn resolve_doc_links_extern_impl(&mut self, def_id: DefId, is_inherent: bool) {
+        self.resolve_doc_links_extern_outer(def_id, def_id);
+        let assoc_item_def_ids = Vec::from_iter(
+            self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.sess),
+        );
+        for assoc_def_id in assoc_item_def_ids {
+            if !is_inherent
+                || self.resolver.cstore().visibility_untracked(assoc_def_id) == Visibility::Public
+            {
+                self.resolve_doc_links_extern_outer(assoc_def_id, def_id);
+            }
+        }
     }
 
-    fn resolve_doc_links_extern_outer(&mut self, def_id: DefId, scope_id: DefId, force: bool) {
-        if !force && !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
+    fn resolve_doc_links_extern_outer(&mut self, def_id: DefId, scope_id: DefId) {
+        if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
             return;
         }
         // FIXME: actually resolve links, not just add traits in scope.
@@ -246,7 +258,7 @@ impl EarlyDocLinkResolver<'_, '_> {
                         Res::Def(DefKind::Variant, ..) => self.resolver.parent(def_id).unwrap(),
                         _ => def_id,
                     };
-                    self.resolve_doc_links_extern_outer(def_id, scope_id, false); // Outer attribute scope
+                    self.resolve_doc_links_extern_outer(def_id, scope_id); // Outer attribute scope
                     if let Res::Def(DefKind::Mod, ..) = child.res {
                         self.resolve_doc_links_extern_inner(def_id); // Inner attribute scope
                     }

@@ -795,6 +795,7 @@ fn main_options(options: config::Options) -> MainResult {
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
                     collect_intra_doc_links::early_resolve_intra_doc_links(
                         resolver,
+                        sess,
                         krate,
                         externs,
                         document_private,
