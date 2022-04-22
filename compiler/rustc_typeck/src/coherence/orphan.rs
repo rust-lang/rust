@@ -50,6 +50,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
             tcx,
             sp,
             tr.path.span,
+            trait_ref.self_ty(),
             impl_.self_ty.span,
             &impl_.generics,
             err,
@@ -201,18 +202,23 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     trait_span: Span,
+    self_ty: Ty<'tcx>,
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
+            let msg = match self_ty.kind() {
+                ty::Adt(..) => "can be implemented for types defined outside of the crate",
+                _ if self_ty.is_primitive() => "can be implemented for primitive types",
+                _ => "can be implemented for arbitrary types",
+            };
             let mut err = struct_span_err!(
                 tcx.sess,
                 sp,
                 E0117,
-                "only traits defined in the current crate can be implemented for \
-                        arbitrary types"
+                "only traits defined in the current crate {msg}"
             );
             err.span_label(sp, "impl doesn't use only types from inside the current crate");
             for (ty, is_target_ty) in &tys {
