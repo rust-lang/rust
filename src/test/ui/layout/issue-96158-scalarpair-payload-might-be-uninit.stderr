@@ -42,9 +42,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -66,9 +64,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 1,
@@ -107,15 +103,13 @@ error: layout_of(MissingPayloadField) = Layout {
                abi: Align {
                    pow2: 0,
                },
-               pref: Align {
-                   pow2: 3,
-               },
+               pref: $PREF_ALIGN,
            },
            size: Size {
                raw: 2,
            },
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:15:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
    |
 LL | / pub enum MissingPayloadField {
 LL | |     Some(u8),
@@ -167,9 +161,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -197,9 +189,7 @@ error: layout_of(CommonPayloadField) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -239,15 +229,13 @@ error: layout_of(CommonPayloadField) = Layout {
                abi: Align {
                    pow2: 0,
                },
-               pref: Align {
-                   pow2: 3,
-               },
+               pref: $PREF_ALIGN,
            },
            size: Size {
                raw: 2,
            },
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:24:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
    |
 LL | / pub enum CommonPayloadField {
 LL | |     A(u8),
@@ -299,9 +287,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -329,9 +315,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -370,15 +354,13 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                abi: Align {
                    pow2: 0,
                },
-               pref: Align {
-                   pow2: 3,
-               },
+               pref: $PREF_ALIGN,
            },
            size: Size {
                raw: 2,
            },
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:32:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
 LL | / pub enum CommonPayloadFieldIsMaybeUninit {
 LL | |     A(u8),
@@ -462,9 +444,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -486,9 +466,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 0,
@@ -510,9 +488,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 0,
@@ -551,15 +527,13 @@ error: layout_of(NicheFirst) = Layout {
                abi: Align {
                    pow2: 0,
                },
-               pref: Align {
-                   pow2: 3,
-               },
+               pref: $PREF_ALIGN,
            },
            size: Size {
                raw: 2,
            },
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:40:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
 LL | / pub enum NicheFirst {
 LL | |     A(HasNiche, u8),
@@ -644,9 +618,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 2,
@@ -668,9 +640,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 0,
@@ -692,9 +662,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align {
                                pow2: 0,
                            },
-                           pref: Align {
-                               pow2: 3,
-                           },
+                           pref: $PREF_ALIGN,
                        },
                        size: Size {
                            raw: 0,
@@ -733,15 +701,13 @@ error: layout_of(NicheSecond) = Layout {
                abi: Align {
                    pow2: 0,
                },
-               pref: Align {
-                   pow2: 3,
-               },
+               pref: $PREF_ALIGN,
            },
            size: Size {
                raw: 2,
            },
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:49:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |
 LL | / pub enum NicheSecond {
 LL | |     A(u8, HasNiche),
