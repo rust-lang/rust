@@ -831,3 +831,16 @@ fn from_array() {
     let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);
     assert_eq!(set, unordered_duplicates);
 }
+
+#[test]
+fn from_iter() {
+    let expect = BTreeSet::from([1, 2, 3, 4]);
+    let actual = BTreeSet::from_iter(vec![4, 1, 4, 3, 2]);
+    assert_eq!(expect, actual);
+
+    let mut iter = vec![1, 2, 3, 4].into_iter();
+    iter.next();
+    let expect = BTreeSet::from([2, 3, 4]);
+    let actual = BTreeSet::from_iter(iter);
+    assert_eq!(expect, actual);
+}

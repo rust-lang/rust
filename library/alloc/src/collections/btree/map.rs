@@ -1,4 +1,3 @@
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
@@ -14,6 +13,7 @@ use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
+use super::spec_from_iter::SpecFromIter;
 
 mod entry;
 
@@ -1947,16 +1947,9 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
-        let mut inputs: Vec<_> = iter.into_iter().collect();
-
-        if inputs.is_empty() {
-            return BTreeMap::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        inputs.sort_by(|a, b| a.0.cmp(&b.0));
-        BTreeMap::bulk_build_from_sorted_iter(inputs)
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> BTreeMap<K, V> {
+        <Self as SpecFromIter<(K, V), I::IntoIter>>::spec_from_iter(iter.into_iter())
     }
 }
 

@@ -10,6 +10,7 @@ mod node;
 mod remove;
 mod search;
 pub mod set;
+mod spec_from_iter;
 mod split;
 
 #[doc(hidden)]

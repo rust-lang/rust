@@ -2303,3 +2303,16 @@ fn from_array() {
     let unordered_duplicates = BTreeMap::from([(3, 4), (1, 2), (1, 2)]);
     assert_eq!(map, unordered_duplicates);
 }
+
+#[test]
+fn from_iter() {
+    let expect = BTreeMap::from([(1, 5), (3, 4)]);
+    let actual = BTreeMap::from_iter(vec![(1, 2), (3, 4), (1, 5)]);
+    assert_eq!(expect, actual);
+
+    let mut iter = vec![(6, 5), (4, 3), (2, 1)].into_iter();
+    iter.next();
+    let expect = BTreeMap::from([(2, 1), (4, 3)]);
+    let actual = BTreeMap::from_iter(iter);
+    assert_eq!(expect, actual);
+}

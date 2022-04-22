@@ -1,7 +1,6 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
-use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering::{Equal, Greater, Less};
 use core::cmp::{max, min};
@@ -11,6 +10,7 @@ use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
 use super::map::{BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
+use super::spec_from_iter::SpecFromIter;
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators
@@ -75,7 +75,7 @@ use super::Recover;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<T> {
-    map: BTreeMap<T, ()>,
+    pub(super) map: BTreeMap<T, ()>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1080,18 +1080,9 @@ impl<T> BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BTreeSet<T> {
-        let mut inputs: Vec<_> = iter.into_iter().collect();
-
-        if inputs.is_empty() {
-            return BTreeSet::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        inputs.sort();
-        let iter = inputs.into_iter().map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
+        <Self as SpecFromIter<T, I::IntoIter>>::spec_from_iter(iter.into_iter())
     }
 }
 
