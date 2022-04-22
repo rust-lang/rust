@@ -81,6 +81,8 @@ crate struct DocContext<'tcx> {
     crate inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     crate output_format: OutputFormat,
+    crate items_from_blanket: FxHashMap<DefId, clean::Item>,
+    crate path_from_blanket: FxHashMap<DefId, clean::Path>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -368,6 +370,8 @@ crate fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        items_from_blanket: Default::default(),
+        path_from_blanket: Default::default(),
     };
 
     // Small hack to force the Sized trait to be present.

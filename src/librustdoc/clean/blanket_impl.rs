@@ -101,6 +101,13 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
                     cx.generated_synthetics.insert((ty, trait_def_id));
 
+                    let mut clean_trait_ref = cx.path_from_blanket.get(&trait_ref.def_id).cloned();
+                    if clean_trait_ref.is_none() {
+                        let c = trait_ref.clean(cx);
+                        cx.path_from_blanket.insert(trait_ref.def_id, c.clone());
+                        clean_trait_ref = Some(c);
+                    }
+
                     impls.push(Item {
                         name: None,
                         attrs: Default::default(),
@@ -115,12 +122,19 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ),
                             // FIXME(eddyb) compute both `trait_` and `for_` from
                             // the post-inference `trait_ref`, as it's more accurate.
-                            trait_: Some(trait_ref.clean(cx)),
+                            trait_: clean_trait_ref,
                             for_: ty.clean(cx),
                             items: cx.tcx
                                 .associated_items(impl_def_id)
                                 .in_definition_order()
-                                .map(|x| x.clean(cx))
+                                .map(|x| {
+                                    let t = cx.items_from_blanket.get(&x.def_id).cloned();
+                                    t.unwrap_or_else(|| {
+                                        let c = x.clean(cx);
+                                        cx.items_from_blanket.insert(x.def_id, c.clone());
+                                        c
+                                    })
+                                })
                                 .collect::<Vec<_>>(),
                             polarity: ty::ImplPolarity::Positive,
                             kind: ImplKind::Blanket(box trait_ref.self_ty().clean(cx)),
