@@ -47,6 +47,13 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 }
 
 #[test]
+fn test_intersection() {
+    let set = PathSet::Set(["library/core", "library/alloc", "library/std"].into_iter().map(TaskPath::parse).collect());
+    let subset = set.intersection(&[Path::new("library/core"), Path::new("library/alloc"), Path::new("library/stdarch")], None);
+    assert_eq!(subset, PathSet::Set(["library/core", "library/alloc"].into_iter().map(TaskPath::parse).collect()));
+}
+
+#[test]
 fn test_exclude() {
     let mut config = configure("test", &["A"], &["A"]);
     config.exclude = vec![TaskPath::parse("src/tools/tidy")];
@@ -539,7 +546,7 @@ mod dist {
                 target: host,
                 mode: Mode::Std,
                 test_kind: test::TestKind::Test,
-                krate: INTERNER.intern_str("std"),
+                crates: vec![INTERNER.intern_str("std")],
             },]
         );
     }

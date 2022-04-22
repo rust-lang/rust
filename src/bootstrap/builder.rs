@@ -91,7 +91,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
     pub target: TargetSelection,
-    pub path: PathBuf,
+    pub paths: Vec<PathSet>,
 }
 
 impl RunConfig<'_> {
@@ -150,11 +150,16 @@ impl Debug for TaskPath {
 /// Collection of paths used to match a task rule.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum PathSet {
-    /// A collection of individual paths.
+    /// A collection of individual paths or aliases.
     ///
     /// These are generally matched as a path suffix. For example, a
-    /// command-line value of `libstd` will match if `src/libstd` is in the
+    /// command-line value of `std` will match if `library/std` is in the
     /// set.
+    ///
+    /// NOTE: the paths within a set should always be aliases of one another.
+    /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
+    /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
+    /// to build them separately.
     Set(BTreeSet<TaskPath>),
     /// A "suite" of paths.
     ///
@@ -177,26 +182,65 @@ impl PathSet {
     }
 
     fn has(&self, needle: &Path, module: Option<Kind>) -> bool {
-        let check = |p: &TaskPath| {
-            if let (Some(p_kind), Some(kind)) = (&p.kind, module) {
-                p.path.ends_with(needle) && *p_kind == kind
-            } else {
-                p.path.ends_with(needle)
-            }
-        };
-
         match self {
-            PathSet::Set(set) => set.iter().any(check),
-            PathSet::Suite(suite) => check(suite),
+            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
+            PathSet::Suite(suite) => Self::check(suite, needle, module),
         }
     }
 
-    fn path(&self, builder: &Builder<'_>) -> PathBuf {
+    // internal use only
+    fn check(p: &TaskPath, needle: &Path, module: Option<Kind>) -> bool {
+        if let (Some(p_kind), Some(kind)) = (&p.kind, module) {
+            p.path.ends_with(needle) && *p_kind == kind
+        } else {
+            p.path.ends_with(needle)
+        }
+    }
+
+    /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
+    /// matched needles.
+    ///
+    /// This is used for `StepDescription::krate`, which passes all matching crates at once to
+    /// `Step::make_run`, rather than calling it many times with a single crate.
+    /// See `tests.rs` for examples.
+    fn intersection_removing_matches(
+        &self,
+        needles: &mut Vec<&Path>,
+        module: Option<Kind>,
+    ) -> PathSet {
+        let mut check = |p| {
+            for (i, n) in needles.iter().enumerate() {
+                let matched = Self::check(p, n, module);
+                if matched {
+                    needles.remove(i);
+                    return true;
+                }
+            }
+            false
+        };
+        match self {
+            PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
+            PathSet::Suite(suite) => {
+                if check(suite) {
+                    self.clone()
+                } else {
+                    PathSet::empty()
+                }
+            }
+        }
+    }
+
+    /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
+    ///
+    /// This can be used with [`ShouldRun::krate`], [`ShouldRun::path`], or [`ShouldRun::alias`].
+    #[track_caller]
+    pub fn assert_single_path(&self) -> &TaskPath {
         match self {
             PathSet::Set(set) => {
-                set.iter().next().map(|p| &p.path).unwrap_or(&builder.build.src).clone()
+                assert_eq!(set.len(), 1, "called assert_single_path on multiple paths");
+                set.iter().next().unwrap()
             }
-            PathSet::Suite(path) => path.path.clone(),
+            PathSet::Suite(_) => unreachable!("called assert_single_path on a Suite path"),
         }
     }
 }
@@ -213,8 +257,8 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathset: &PathSet) {
-        if self.is_excluded(builder, pathset) {
+    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) {
+        if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
             return;
         }
 
@@ -222,7 +266,7 @@ impl StepDescription {
         let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
 
         for target in targets {
-            let run = RunConfig { builder, path: pathset.path(builder), target: *target };
+            let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
             (self.make_run)(run);
         }
     }
@@ -261,45 +305,50 @@ impl StepDescription {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
                     for pathset in &should_run.paths {
-                        desc.maybe_run(builder, pathset);
+                        desc.maybe_run(builder, vec![pathset.clone()]);
                     }
                 }
             }
         }
 
-        for path in paths {
-            // strip CurDir prefix if present
-            let path = match path.strip_prefix(".") {
-                Ok(p) => p,
-                Err(_) => path,
-            };
+        // strip CurDir prefix if present
+        let mut paths: Vec<_> =
+            paths.into_iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
 
-            let mut attempted_run = false;
+        // Handle all test suite paths.
+        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
+        paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(path) {
-                    attempted_run = true;
-                    desc.maybe_run(builder, suite);
-                } else if let Some(pathset) = should_run.pathset_for_path(path, desc.kind) {
-                    attempted_run = true;
-                    desc.maybe_run(builder, pathset);
+                if let Some(suite) = should_run.is_suite_path(&path) {
+                    desc.maybe_run(builder, vec![suite.clone()]);
+                    return false;
                 }
             }
+            true
+        });
 
-            if !attempted_run {
-                eprintln!(
-                    "error: no `{}` rules matched '{}'",
-                    builder.kind.as_str(),
-                    path.display()
-                );
-                eprintln!(
-                    "help: run `x.py {} --help --verbose` to show a list of available paths",
-                    builder.kind.as_str()
-                );
-                eprintln!(
-                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
-                );
-                std::process::exit(1);
+        if paths.is_empty() {
+            return;
+        }
+
+        // Handle all PathSets.
+        for (desc, should_run) in v.iter().zip(&should_runs) {
+            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+            if !pathsets.is_empty() {
+                desc.maybe_run(builder, pathsets);
             }
+        }
+
+        if !paths.is_empty() {
+            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!(
+                "help: run `x.py {} --help --verbose` to show a list of available paths",
+                builder.kind.as_str()
+            );
+            eprintln!(
+                "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+            );
+            std::process::exit(1);
         }
     }
 }
@@ -370,7 +419,7 @@ impl<'a> ShouldRun<'a> {
     /// Indicates it should run if the command-line selects the given crate or
     /// any of its (local) dependencies.
     ///
-    /// `make_run` will be called separately for each matching command-line path.
+    /// `make_run` will be called a single time with all matching command-line paths.
     pub fn krate(mut self, name: &str) -> Self {
         for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
@@ -417,9 +466,10 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    pub fn is_suite_path(&self, path: &Path) -> Option<&PathSet> {
+    /// Handles individual files (not directories) within a test suite.
+    fn is_suite_path(&self, requested_path: &Path) -> Option<&PathSet> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(p) => path.starts_with(&p.path),
+            PathSet::Suite(suite) => requested_path.starts_with(&suite.path),
             PathSet::Set(_) => false,
         })
     }
@@ -435,8 +485,28 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    fn pathset_for_path(&self, path: &Path, kind: Kind) -> Option<&PathSet> {
-        self.paths.iter().find(|pathset| pathset.has(path, Some(kind)))
+    /// Given a set of requested paths, return the subset which match the Step for this `ShouldRun`,
+    /// removing the matches from `paths`.
+    ///
+    /// NOTE: this returns multiple PathSets to allow for the possibility of multiple units of work
+    /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
+    /// cargo invocation, which are put into separate sets because they aren't aliases.
+    ///
+    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
+    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
+    fn pathset_for_paths_removing_matches(
+        &self,
+        paths: &mut Vec<&Path>,
+        kind: Kind,
+    ) -> Vec<PathSet> {
+        let mut sets = vec![];
+        for pathset in &self.paths {
+            let subset = pathset.intersection_removing_matches(paths, Some(kind));
+            if subset != PathSet::empty() {
+                sets.push(subset);
+            }
+        }
+        sets
     }
 }
 
