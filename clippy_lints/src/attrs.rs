@@ -335,9 +335,6 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
-                            // permit `unused_imports`, `deprecated`, `unreachable_pub`,
-                            // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
-                            // and `unused_imports` for `extern crate` items with `macro_use`
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
@@ -345,10 +342,12 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "wildcard_imports")
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "enum_glob_use")
+                                            || extract_clippy_lint(lint).map_or(false, |s| {
+                                                matches!(
+                                                    s.as_str(),
+                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                )
+                                            })
                                         {
                                             return;
                                         }
