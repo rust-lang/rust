@@ -110,10 +110,12 @@ fn signature_help_for_call(
         SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };
 
     let db = sema.db;
+    let mut fn_params = None;
     match callable.kind() {
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
             format_to!(res.signature, "fn {}", func.name(db));
+            fn_params = Some(func.assoc_fn_params(db));
         }
         hir::CallableKind::TupleStruct(strukt) => {
             res.doc = strukt.docs(db).map(|it| it.into());
@@ -137,7 +139,7 @@ fn signature_help_for_call(
             format_to!(res.signature, "{}", self_param)
         }
         let mut buf = String::new();
-        for (pat, ty) in callable.params(db) {
+        for (idx, (pat, ty)) in callable.params(db).into_iter().enumerate() {
             buf.clear();
             if let Some(pat) = pat {
                 match pat {
@@ -145,18 +147,31 @@ fn signature_help_for_call(
                     Either::Right(pat) => format_to!(buf, "{}: ", pat),
                 }
             }
-            format_to!(buf, "{}", ty.display(db));
+            // APITs (argument position `impl Trait`s) are inferred as {unknown} as the user is
+            // in the middle of entering call arguments.
+            // In that case, fall back to render definitions of the respective parameters.
+            // This is overly conservative: we do not substitute known type vars
+            // (see FIXME in tests::impl_trait) and falling back on any unknowns.
+            match (ty.contains_unknown(), fn_params.as_deref()) {
+                (true, Some(fn_params)) => format_to!(buf, "{}", fn_params[idx].ty().display(db)),
+                _ => format_to!(buf, "{}", ty.display(db)),
+            }
             res.push_call_param(&buf);
         }
     }
     res.signature.push(')');
 
+    let mut render = |ret_type: hir::Type| {
+        if !ret_type.is_unit() {
+            format_to!(res.signature, " -> {}", ret_type.display(db));
+        }
+    };
     match callable.kind() {
+        hir::CallableKind::Function(func) if callable.return_type().contains_unknown() => {
+            render(func.ret_type(db))
+        }
         hir::CallableKind::Function(_) | hir::CallableKind::Closure => {
-            let ret_type = callable.return_type();
-            if !ret_type.is_unit() {
-                format_to!(res.signature, " -> {}", ret_type.display(db));
-            }
+            render(callable.return_type())
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
@@ -420,8 +435,8 @@ fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
 fn bar() { foo($03, ); }
 "#,
             expect![[r#"
-                fn foo(x: i32, y: {unknown}) -> u32
-                       ^^^^^^  ------------
+                fn foo(x: i32, y: U) -> u32
+                       ^^^^^^  ----
             "#]],
         );
     }
@@ -434,7 +449,7 @@ fn foo<T>() -> T where T: Copy + Display {}
 fn bar() { foo($0); }
 "#,
             expect![[r#"
-                fn foo() -> {unknown}
+                fn foo() -> T
             "#]],
         );
     }
@@ -633,26 +648,21 @@ pub fn do_it() {
     fn test_fn_signature_with_docs_from_actix() {
         check(
             r#"
-struct WriteHandler<E>;
-
-impl<E> WriteHandler<E> {
-    /// Method is called when writer emits error.
-    ///
-    /// If this method returns `ErrorAction::Continue` writer processing
-    /// continues otherwise stream processing stops.
-    fn error(&mut self, err: E, ctx: &mut Self::Context) -> Running {
-        Running::Stop
-    }
-
+trait Actor {
+    /// Actor execution context type
+    type Context;
+}
+trait WriteHandler<E>
+where
+    Self: Actor
+{
     /// Method is called when writer finishes.
     ///
     /// By default this method stops actor's `Context`.
-    fn finished(&mut self, ctx: &mut Self::Context) {
-        ctx.stop()
-    }
+    fn finished(&mut self, ctx: &mut Self::Context) {}
 }
 
-pub fn foo(mut r: WriteHandler<()>) {
+fn foo(mut r: impl WriteHandler<()>) {
     r.finished($0);
 }
 "#,
@@ -661,8 +671,8 @@ pub fn foo(mut r: WriteHandler<()>) {
 
                 By default this method stops actor's `Context`.
                 ------
-                fn finished(&mut self, ctx: &mut {unknown})
-                                       ^^^^^^^^^^^^^^^^^^^
+                fn finished(&mut self, ctx: &mut <impl WriteHandler<()> as Actor>::Context)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
             "#]],
         );
     }
@@ -1052,6 +1062,25 @@ fn f() {
             expect![[r#"
                 fn callee<'a, const A: u8, T, const C: u8>
                           --  ^^^^^^^^^^^  -  -----------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn impl_trait() {
+        // FIXME: Substitute type vars in impl trait (`U` -> `i8`)
+        check(
+            r#"
+trait Trait<T> {}
+struct Wrap<T>(T);
+fn foo<U>(x: Wrap<impl Trait<U>>) {}
+fn f() {
+    foo::<i8>($0)
+}
+"#,
+            expect![[r#"
+                fn foo(x: Wrap<impl Trait<U>>)
+                       ^^^^^^^^^^^^^^^^^^^^^^
             "#]],
         );
     }
