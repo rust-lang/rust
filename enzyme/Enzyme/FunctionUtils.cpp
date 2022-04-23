@@ -1770,7 +1770,8 @@ FunctionType *getFunctionTypeForClone(
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::Return) {
-    if (returnType != DIFFE_TYPE::CONSTANT) {
+    if (returnType != DIFFE_TYPE::CONSTANT &&
+        returnType != DIFFE_TYPE::OUT_DIFF) {
       RetTypes.push_back(
           GradientUtils::getShadowType(FTy->getReturnType(), width));
     } else {
@@ -1779,7 +1780,8 @@ FunctionType *getFunctionTypeForClone(
   } else if (returnValue == ReturnType::ArgsWithTwoReturns ||
              returnValue == ReturnType::TwoReturns) {
     RetTypes.push_back(FTy->getReturnType());
-    if (returnType != DIFFE_TYPE::CONSTANT) {
+    if (returnType != DIFFE_TYPE::CONSTANT &&
+        returnType != DIFFE_TYPE::OUT_DIFF) {
       RetTypes.push_back(
           GradientUtils::getShadowType(FTy->getReturnType(), width));
     } else {
@@ -1822,7 +1824,8 @@ FunctionType *getFunctionTypeForClone(
       RetTypes.push_back(
           GradientUtils::getShadowType(FTy->getReturnType(), width));
     } else if (returnValue == ReturnType::TapeAndReturn) {
-      if (returnType != DIFFE_TYPE::CONSTANT)
+      if (returnType != DIFFE_TYPE::CONSTANT &&
+          returnType != DIFFE_TYPE::OUT_DIFF)
         RetTypes.push_back(
             GradientUtils::getShadowType(FTy->getReturnType(), width));
       else

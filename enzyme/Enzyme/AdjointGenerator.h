@@ -11418,6 +11418,7 @@ public:
 
         if (subretused) {
           Value *dcall = nullptr;
+          assert(returnIdx);
           dcall = (returnIdx.getValue() < 0)
                       ? augmentcall
                       : BuilderZ.CreateExtractValue(
@@ -11425,6 +11426,7 @@ public:
           gutils->originalToNewFn[orig] = dcall;
           gutils->newToOriginalFn.erase(newCall);
           gutils->newToOriginalFn[dcall] = orig;
+
           assert(dcall->getType() == orig->getType());
           assert(dcall);
 
