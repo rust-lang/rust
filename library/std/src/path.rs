@@ -168,8 +168,8 @@ pub enum Prefix<'a> {
 
     /// Device namespace prefix, e.g., `\\.\COM42`.
     ///
-    /// Device namespace prefixes consist of `\\.\` immediately followed by the
-    /// device name.
+    /// Device namespace prefixes consist of `\\.\` (possibly using `/`
+    /// instead of `\`), immediately followed by the device name.
     #[stable(feature = "rust1", since = "1.0.0")]
     DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
@@ -193,7 +193,7 @@ impl<'a> Prefix<'a> {
     fn len(&self) -> usize {
         use self::Prefix::*;
         fn os_str_len(s: &OsStr) -> usize {
-            os_str_as_u8_slice(s).len()
+            s.bytes().len()
         }
         match *self {
             Verbatim(x) => 4 + os_str_len(x),
@@ -299,19 +299,17 @@ where
     }
 }
 
-// See note at the top of this module to understand why these are used:
-//
-// These casts are safe as OsStr is internally a wrapper around [u8] on all
-// platforms.
-//
-// Note that currently this relies on the special knowledge that libstd has;
-// these types are single-element structs but are not marked repr(transparent)
-// or repr(C) which would make these casts allowable outside std.
-fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
-    unsafe { &*(s as *const OsStr as *const [u8]) }
-}
 unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
-    // SAFETY: see the comment of `os_str_as_u8_slice`
+    // SAFETY: See note at the top of this module to understand why this and
+    // `OsStr::bytes` are used:
+    //
+    // This casts are safe as OsStr is internally a wrapper around [u8] on all
+    // platforms.
+    //
+    // Note that currently this relies on the special knowledge that libstd has;
+    // these types are single-element structs but are not marked
+    // repr(transparent) or repr(C) which would make these casts not allowable
+    // outside std.
     unsafe { &*(s as *const [u8] as *const OsStr) }
 }
 
@@ -332,7 +330,7 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
 
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
-    if os_str_as_u8_slice(file) == b".." {
+    if file.bytes() == b".." {
         return (Some(file), None);
     }
 
@@ -340,7 +338,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let mut iter = os_str_as_u8_slice(file).rsplitn(2, |b| *b == b'.');
+    let mut iter = file.bytes().rsplitn(2, |b| *b == b'.');
     let after = iter.next();
     let before = iter.next();
     if before == Some(b"") {
@@ -351,7 +349,7 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
 }
 
 fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
-    let slice = os_str_as_u8_slice(file);
+    let slice = file.bytes();
     if slice == b".." {
         return (file, None);
     }
@@ -1445,17 +1443,17 @@ impl PathBuf {
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
         let file_stem = match self.file_stem() {
             None => return false,
-            Some(f) => os_str_as_u8_slice(f),
+            Some(f) => f.bytes(),
         };
 
         // truncate until right after the file stem
         let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
-        let start = os_str_as_u8_slice(&self.inner).as_ptr().addr();
+        let start = self.inner.bytes().as_ptr().addr();
         let v = self.as_mut_vec();
         v.truncate(end_file_stem.wrapping_sub(start));
 
         // add the new extension, if any
-        let new = os_str_as_u8_slice(extension);
+        let new = extension.bytes();
         if !new.is_empty() {
             v.reserve_exact(new.len() + 1);
             v.push(b'.');
@@ -1948,7 +1946,7 @@ impl Path {
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
     fn as_u8_slice(&self) -> &[u8] {
-        os_str_as_u8_slice(&self.inner)
+        self.inner.bytes()
     }
 
     /// Directly wraps a string slice as a `Path` slice.
