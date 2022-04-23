@@ -7,7 +7,7 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
@@ -24,14 +24,6 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         synth.visit_crate(&krate);
         synth.impls
     });
-
-    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
-
-    let crate_items = {
-        let mut coll = ItemCollector::new();
-        cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
-        coll.items
-    };
 
     let mut new_items = Vec::new();
 
@@ -58,28 +50,20 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         }
     });
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
     let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
-    fn add_deref_target(
-        cx: &DocContext<'_>,
-        map: &FxHashMap<DefId, &Type>,
-        cleaner: &mut BadImplStripper<'_>,
-        type_did: DefId,
-    ) {
+    fn add_deref_target(cx: &DocContext<'_>, map: &FxHashMap<DefId, &Type>, type_did: DefId) {
         if let Some(target) = map.get(&type_did) {
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
-            if let Some(target_prim) = target.primitive_type() {
-                cleaner.prims.insert(target_prim);
+            if let Some(_) = target.primitive_type() {
             } else if let Some(target_did) = target.def_id(&cx.cache) {
                 // `impl Deref<Target = S> for S`
                 if target_did == type_did {
                     // Avoid infinite cycles
                     return;
                 }
-                cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, target_did);
+                add_deref_target(cx, map, target_did);
             }
         }
     }
@@ -88,29 +72,21 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
             if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
-                && cleaner.keep_impl(for_, true)
+                && keep_impl(for_, &cx.cache)
             {
-                let target = items
+                let Some(target) = items
                     .iter()
                     .find_map(|item| match *item.kind {
                         AssocTypeItem(ref t, _) => Some(&t.type_),
                         _ => None,
-                    })
-                    .expect("Deref impl without Target type");
+                    }) else { continue };
 
-                if let Some(prim) = target.primitive_type() {
-                    cleaner.prims.insert(prim);
-                } else if let Some(did) = target.def_id(&cx.cache) {
-                    cleaner.items.insert(did.into());
-                }
                 if let Some(for_did) = for_.def_id(&cx.cache) {
                     if type_did_to_deref_target.insert(for_did, target).is_none() {
                         // Since only the `DefId` portion of the `Type` instances is known to be same for both the
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-                        if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did);
-                        }
+                        add_deref_target(cx, &type_did_to_deref_target, for_did);
                     }
                 }
             }
@@ -118,12 +94,8 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     }
 
     new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
-            cleaner.keep_impl(
-                for_,
-                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
-            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || kind.is_blanket()
+        if let ImplItem(Impl { ref for_, ref kind, .. }) = *it.kind {
+            keep_impl(for_, &cx.cache) || kind.is_blanket()
         } else {
             true
         }
@@ -186,46 +158,15 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
     }
 }
 
-#[derive(Default)]
-struct ItemCollector {
-    items: FxHashSet<ItemId>,
-}
-
-impl ItemCollector {
-    fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl DocVisitor for ItemCollector {
-    fn visit_item(&mut self, i: &Item) {
-        self.items.insert(i.item_id);
-
-        self.visit_item_recur(i)
-    }
-}
-
-struct BadImplStripper<'a> {
-    prims: FxHashSet<PrimitiveType>,
-    items: FxHashSet<ItemId>,
-    cache: &'a Cache,
-}
-
-impl<'a> BadImplStripper<'a> {
-    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
-        if let Generic(_) = ty {
-            // keep impls made on generics
-            true
-        } else if let Some(prim) = ty.primitive_type() {
-            self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id(self.cache) {
-            is_deref || self.keep_impl_with_def_id(did.into())
-        } else {
-            false
-        }
-    }
-
-    fn keep_impl_with_def_id(&self, item_id: ItemId) -> bool {
-        self.items.contains(&item_id)
+fn keep_impl(ty: &Type, cache: &Cache) -> bool {
+    if let Generic(_) = ty {
+        // keep impls made on generics
+        true
+    } else if let Some(_) = ty.primitive_type() {
+        true
+    } else if let Some(_) = ty.def_id(cache) {
+        true
+    } else {
+        false
     }
 }
