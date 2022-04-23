@@ -168,7 +168,7 @@ impl PathSet {
         PathSet::Set(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
+    pub fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
         let mut set = BTreeSet::new();
         set.insert(TaskPath { path: path.into(), kind: Some(kind) });
         PathSet::Set(set)
@@ -226,18 +226,7 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
-            eprintln!("Skipping {:?} because it is excluded", pathset);
-            return true;
-        }
-
-        if !builder.config.exclude.is_empty() {
-            builder.verbose(&format!(
-                "{:?} not skipped for {:?} -- not in {:?}",
-                pathset, self.name, builder.config.exclude
-            ));
-        }
-        false
+        builder.is_excluded(pathset, &format!("for {:?}", self.name))
     }
 
     fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
@@ -283,7 +272,7 @@ impl StepDescription {
                 }
             }
 
-            if !attempted_run {
+            if !attempted_run && !builder.is_excluded(&PathSet::one(path, builder.kind), "") {
                 panic!("error: no rules matched {}", path.display());
             }
         }
@@ -745,6 +734,21 @@ impl<'a> Builder<'a> {
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
         StepDescription::run(v, self, paths);
+    }
+
+    pub fn is_excluded(&self, pathset: &PathSet, extra_description: &str) -> bool {
+        if self.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
+            eprintln!("Skipping {:?} because it is excluded", pathset);
+            return true;
+        }
+
+        if !self.config.exclude.is_empty() {
+            self.verbose(&format!(
+                "{:?} not skipped{} -- not in {:?}",
+                pathset, extra_description, self.config.exclude
+            ));
+        }
+        false
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
