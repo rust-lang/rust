@@ -50,6 +50,7 @@ pub(super) enum PathKind {
     Type,
     Attr { kind: AttrKind, annotated_item_kind: Option<SyntaxKind> },
     Derive,
+    // This should be removed in favor of `has_macro_bang` in PathCompletionContext
     Mac,
     Pat,
     Vis { has_in_token: bool },
@@ -194,6 +195,14 @@ impl<'a> CompletionContext<'a> {
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
+    }
+
+    pub(crate) fn name_ref(&self) -> Option<&ast::NameRef> {
+        self.name_syntax.as_ref().and_then(ast::NameLike::as_name_ref)
+    }
+
+    pub(crate) fn lifetime(&self) -> Option<&ast::Lifetime> {
+        self.name_syntax.as_ref().and_then(ast::NameLike::as_lifetime)
     }
 
     pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
