@@ -149,9 +149,9 @@ fn signature_help_for_call(
             }
             // APITs (argument position `impl Trait`s) are inferred as {unknown} as the user is
             // in the middle of entering call arguments.
-            // In that case, fall back to render definition of the argument.
+            // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
-            // (see FIXME in tests::impl_trait).
+            // (see FIXME in tests::impl_trait) and falling back on any unknowns.
             match (ty.contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => format_to!(buf, "{}", fn_params[idx].ty().display(db)),
                 _ => format_to!(buf, "{}", ty.display(db)),
@@ -161,12 +161,17 @@ fn signature_help_for_call(
     }
     res.signature.push(')');
 
+    let mut render = |ret_type: hir::Type| {
+        if !ret_type.is_unit() {
+            format_to!(res.signature, " -> {}", ret_type.display(db));
+        }
+    };
     match callable.kind() {
+        hir::CallableKind::Function(func) if callable.return_type().contains_unknown() => {
+            render(func.ret_type(db))
+        }
         hir::CallableKind::Function(_) | hir::CallableKind::Closure => {
-            let ret_type = callable.return_type();
-            if !ret_type.is_unit() {
-                format_to!(res.signature, " -> {}", ret_type.display(db));
-            }
+            render(callable.return_type())
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
@@ -444,7 +449,7 @@ fn foo<T>() -> T where T: Copy + Display {}
 fn bar() { foo($0); }
 "#,
             expect![[r#"
-                fn foo() -> {unknown}
+                fn foo() -> T
             "#]],
         );
     }
