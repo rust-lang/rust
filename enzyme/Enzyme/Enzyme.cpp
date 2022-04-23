@@ -1780,8 +1780,16 @@ public:
           //&AAPotentialValues::ID,
       };
 
+#if LLVM_VERSION_MAJOR >= 15
+      AttributorConfig aconfig(CGUpdater);
+      aconfig.Allowed = &Allowed;
+      aconfig.DeleteFns = false;
+      Attributor A(Functions, InfoCache, aconfig);
+#else
+
       Attributor A(Functions, InfoCache, CGUpdater, &Allowed,
                    /*DeleteFns*/ false);
+#endif
       for (Function *F : Functions) {
         // Populate the Attributor with abstract attribute opportunities in the
         // function and the information cache with IR information.
