@@ -4,10 +4,15 @@ error[E0425]: cannot find function `bar` in module `a`
 LL |     a::bar();
    |        ^^^ not found in `a`
    |
-help: consider importing this function
+help: consider importing this function...
    |
 LL | use b::bar;
    |
+help: ...and refer to it directly
+   |
+LL -     a::bar();
+LL +     bar();
+   | 
 
 error: aborting due to previous error
 

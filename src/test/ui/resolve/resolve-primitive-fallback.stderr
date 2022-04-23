@@ -10,10 +10,15 @@ error[E0412]: cannot find type `u8` in the crate root
 LL |     let _: ::u8;
    |              ^^ not found in the crate root
    |
-help: consider importing this builtin type
+help: consider importing this builtin type...
    |
 LL | use std::primitive::u8;
    |
+help: ...and refer to it directly
+   |
+LL -     let _: ::u8;
+LL +     let _: u8;
+   | 
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/resolve-primitive-fallback.rs:3:5
