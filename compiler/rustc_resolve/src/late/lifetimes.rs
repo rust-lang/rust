@@ -685,8 +685,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         hir_id: hir::HirId,
     ) {
         let name = match fk {
-            intravisit::FnKind::ItemFn(id, _, _, _) => id.name,
-            intravisit::FnKind::Method(id, _, _) => id.name,
+            intravisit::FnKind::ItemFn(id, _, _) => id.name,
+            intravisit::FnKind::Method(id, _) => id.name,
             intravisit::FnKind::Closure => sym::closure,
         };
         let name = name.as_str();

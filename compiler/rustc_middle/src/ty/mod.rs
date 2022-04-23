@@ -36,7 +36,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_ID};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -131,6 +131,8 @@ pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
+    pub has_pub_restricted: bool,
     pub access_levels: AccessLevels,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
@@ -317,22 +319,6 @@ impl<'tcx> DefIdTree for TyCtxt<'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility<'_>, id: hir::HirId, tcx: TyCtxt<'_>) -> Self {
-        match visibility.node {
-            hir::VisibilityKind::Public => Visibility::Public,
-            hir::VisibilityKind::Crate(_) => Visibility::Restricted(CRATE_DEF_ID.to_def_id()),
-            hir::VisibilityKind::Restricted { ref path, .. } => match path.res {
-                // If there is no resolution, `resolve` will have already reported an error, so
-                // assume that the visibility is public to avoid reporting more privacy errors.
-                Res::Err => Visibility::Public,
-                def => Visibility::Restricted(def.def_id()),
-            },
-            hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.parent_module(id).to_def_id())
-            }
-        }
-    }
-
     /// Returns `true` if an item with this visibility is accessible from the given block.
     pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {

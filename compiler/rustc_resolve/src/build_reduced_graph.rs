@@ -265,6 +265,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
+                // Make `PRIVATE_IN_PUBLIC` lint a hard error.
+                self.r.has_pub_restricted = true;
                 // For visibilities we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
                 // On 2015 edition visibilities are resolved as crate-relative by default,
@@ -458,6 +460,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
+                if id1 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id1), vis);
+                }
+                if id2 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id2), vis);
+                }
+
                 if nested {
                     // Correctly handle `self`
                     if source.ident.name == kw::SelfLower {
@@ -580,6 +590,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {

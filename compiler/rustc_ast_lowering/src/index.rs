@@ -290,18 +290,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
-    fn visit_vis(&mut self, visibility: &'hir Visibility<'hir>) {
-        match visibility.node {
-            VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
-            VisibilityKind::Restricted { hir_id, .. } => {
-                self.insert(visibility.span, hir_id, Node::Visibility(visibility));
-                self.with_parent(hir_id, |this| {
-                    intravisit::walk_vis(this, visibility);
-                });
-            }
-        }
-    }
-
     fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics<'hir>, item_id: HirId) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {

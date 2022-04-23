@@ -18,8 +18,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     for id in tcx.hir().items() {
         if matches!(tcx.hir().def_kind(id.def_id), DefKind::Use) {
+            if tcx.visibility(id.def_id).is_public() {
+                continue;
+            }
             let item = tcx.hir().item(id);
-            if item.vis.node.is_pub() || item.span.is_dummy() {
+            if item.span.is_dummy() {
                 continue;
             }
             if let hir::ItemKind::Use(path, _) = item.kind {
@@ -176,7 +179,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                 Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
                 None => format!("use {};", item.ident.name),
             };
-            let vis = tcx.sess.source_map().span_to_snippet(item.vis.span).unwrap_or_default();
+            let vis = tcx.sess.source_map().span_to_snippet(item.vis_span).unwrap_or_default();
             let add_vis = |to| if vis.is_empty() { to } else { format!("{} {}", vis, to) };
             lint.build("`extern crate` is not idiomatic in the new edition")
                 .span_suggestion_short(

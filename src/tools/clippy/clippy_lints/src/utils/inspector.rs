@@ -4,6 +4,7 @@ use clippy_utils::get_attr;
 use rustc_ast::ast::{Attribute, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -45,14 +46,16 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             return;
         }
         println!("impl item `{}`", item.ident.name);
-        match item.vis.node {
-            hir::VisibilityKind::Public => println!("public"),
-            hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-            hir::VisibilityKind::Restricted { path, .. } => println!(
-                "visible in module `{}`",
-                rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
-            ),
-            hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
+        match cx.tcx.visibility(item.def_id) {
+            ty::Visibility::Public => println!("public"),
+            ty::Visibility::Restricted(def_id) => {
+                if def_id.is_top_level_module() {
+                    println!("visible crate wide")
+                } else {
+                    println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+                }
+            },
+            ty::Visibility::Invisible => println!("invisible"),
         }
         match item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
@@ -360,14 +363,16 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
 fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     let did = item.def_id;
     println!("item `{}`", item.ident.name);
-    match item.vis.node {
-        hir::VisibilityKind::Public => println!("public"),
-        hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-        hir::VisibilityKind::Restricted { path, .. } => println!(
-            "visible in module `{}`",
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
-        ),
-        hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
+    match cx.tcx.visibility(item.def_id) {
+        ty::Visibility::Public => println!("public"),
+        ty::Visibility::Restricted(def_id) => {
+            if def_id.is_top_level_module() {
+                println!("visible crate wide")
+            } else {
+                println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+            }
+        },
+        ty::Visibility::Invisible => println!("invisible"),
     }
     match item.kind {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {

@@ -36,8 +36,7 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
-use rustc_hir::{HirId, Node};
+use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -487,9 +486,6 @@ declare_lint! {
 pub struct MissingDoc {
     /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
-
-    /// Private traits or trait items that leaked through. Don't check their methods.
-    private_traits: FxHashSet<hir::HirId>,
 }
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
@@ -520,7 +516,7 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false], private_traits: FxHashSet::default() }
+        MissingDoc { doc_hidden_stack: vec![false] }
     }
 
     fn doc_hidden(&self) -> bool {
@@ -598,30 +594,16 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         match it.kind {
-            hir::ItemKind::Trait(.., trait_item_refs) => {
+            hir::ItemKind::Trait(..) => {
                 // Issue #11592: traits are always considered exported, even when private.
-                if let hir::VisibilityKind::Inherited = it.vis.node {
-                    self.private_traits.insert(it.hir_id());
-                    for trait_item_ref in trait_item_refs {
-                        self.private_traits.insert(trait_item_ref.id.hir_id());
-                    }
+                if cx.tcx.visibility(it.def_id)
+                    == ty::Visibility::Restricted(
+                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                    )
+                {
                     return;
                 }
             }
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), items, .. }) => {
-                // If the trait is private, add the impl items to `private_traits` so they don't get
-                // reported for missing docs.
-                let real_trait = trait_ref.path.res.def_id();
-                let Some(def_id) = real_trait.as_local() else { return };
-                let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(def_id) else { return };
-                if let hir::VisibilityKind::Inherited = item.vis.node {
-                    for impl_item_ref in items {
-                        self.private_traits.insert(impl_item_ref.id.hir_id());
-                    }
-                }
-                return;
-            }
-
             hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Macro(..)
@@ -641,10 +623,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
-        if self.private_traits.contains(&trait_item.hir_id()) {
-            return;
-        }
-
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, trait_item.def_id, trait_item.span, article, desc);
@@ -1384,46 +1362,47 @@ impl UnreachablePub {
         cx: &LateContext<'_>,
         what: &str,
         def_id: LocalDefId,
-        vis: &hir::Visibility<'_>,
         span: Span,
+        vis_span: Span,
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        match vis.node {
-            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(def_id) => {
-                if span.from_expansion() {
-                    applicability = Applicability::MaybeIncorrect;
-                }
-                let def_span = cx.tcx.sess.source_map().guess_head_span(span);
-                cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
-                    let mut err = lint.build(&format!("unreachable `pub` {}", what));
-                    let replacement = if cx.tcx.features().crate_visibility_modifier {
-                        "crate"
-                    } else {
-                        "pub(crate)"
-                    }
-                    .to_owned();
-
-                    err.span_suggestion(
-                        vis.span,
-                        "consider restricting its visibility",
-                        replacement,
-                        applicability,
-                    );
-                    if exportable {
-                        err.help("or consider exporting it for use by other crates");
-                    }
-                    err.emit();
-                });
+        if cx.tcx.visibility(def_id).is_public() && !cx.access_levels.is_reachable(def_id) {
+            if vis_span.from_expansion() {
+                applicability = Applicability::MaybeIncorrect;
             }
-            _ => {}
+            let def_span = cx.tcx.sess.source_map().guess_head_span(span);
+            cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
+                let mut err = lint.build(&format!("unreachable `pub` {}", what));
+                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                    "crate"
+                } else {
+                    "pub(crate)"
+                }
+                .to_owned();
+
+                err.span_suggestion(
+                    vis_span,
+                    "consider restricting its visibility",
+                    replacement,
+                    applicability,
+                );
+                if exportable {
+                    err.help("or consider exporting it for use by other crates");
+                }
+                err.emit();
+            });
         }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        self.perform_lint(cx, "item", item.def_id, &item.vis, item.span, true);
+        // Do not warn for fake `use` statements.
+        if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
+            return;
+        }
+        self.perform_lint(cx, "item", item.def_id, item.span, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
@@ -1431,19 +1410,29 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
             cx,
             "item",
             foreign_item.def_id,
-            &foreign_item.vis,
             foreign_item.span,
+            foreign_item.vis_span,
             true,
         );
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let def_id = cx.tcx.hir().local_def_id(field.hir_id);
-        self.perform_lint(cx, "field", def_id, &field.vis, field.span, false);
+        self.perform_lint(cx, "field", def_id, field.span, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        self.perform_lint(cx, "item", impl_item.def_id, &impl_item.vis, impl_item.span, false);
+        // Only lint inherent impl items.
+        if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
+            self.perform_lint(
+                cx,
+                "item",
+                impl_item.def_id,
+                impl_item.span,
+                impl_item.vis_span,
+                false,
+            );
+        }
     }
 }
 

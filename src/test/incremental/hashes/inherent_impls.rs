@@ -116,7 +116,7 @@ impl Foo {
 // Change Method Privacy -------------------------------------------------------
 #[cfg(any(cfail1,cfail4))]
 impl Foo {
-    //------------------------------------------------------------------------------
+    //----------------------------------------------------
     //--------------------------
     //------------------------------------------------------------------------------
     //--------------------------
@@ -129,9 +129,9 @@ impl Foo {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="associated_item,hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail2", except="associated_item")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="associated_item,hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,associated_item")]
     #[rustc_clean(cfg="cfail6")]
     fn     method_privacy() { }
 }

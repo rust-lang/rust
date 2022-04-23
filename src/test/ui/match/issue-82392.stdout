@@ -6,7 +6,7 @@ extern crate std;
 // compile-flags: -Zunpretty=hir,typed
 // check-pass
 
-pub fn main() ({
+fn main() ({
         (if (true as bool)
                 ({ } as
                     ()) else if (let Some(a) =

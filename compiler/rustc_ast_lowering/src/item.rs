@@ -14,7 +14,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::utils::NtToTokenstream;
 use rustc_session::Session;
-use rustc_span::source_map::{respan, DesugaringKind};
+use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
@@ -230,15 +230,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
         let mut ident = i.ident;
-        let mut vis = self.lower_visibility(&i.vis);
+        let vis_span = self.lower_span(i.vis.span);
         let hir_id = self.lower_node_id(i.id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
-        let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
+        let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, vis_span, &i.kind);
         let item = hir::Item {
             def_id: hir_id.expect_owner(),
             ident: self.lower_ident(ident),
             kind,
-            vis,
+            vis_span,
             span: self.lower_span(i.span),
         };
         self.arena.alloc(item)
@@ -251,7 +251,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir_id: hir::HirId,
         ident: &mut Ident,
         attrs: Option<&'hir [Attribute]>,
-        vis: &mut hir::Visibility<'hir>,
+        vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
         match *i {
@@ -260,7 +260,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Start with an empty prefix.
                 let prefix = Path { segments: vec![], span: use_tree.span, tokens: None };
 
-                self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
+                self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
@@ -527,12 +527,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         tree: &UseTree,
         prefix: &Path,
         id: NodeId,
-        vis: &mut hir::Visibility<'hir>,
+        vis_span: Span,
         ident: &mut Ident,
         attrs: Option<&'hir [Attribute]>,
     ) -> hir::ItemKind<'hir> {
         debug!("lower_use_tree(tree={:?})", tree);
-        debug!("lower_use_tree: vis = {:?}", vis);
 
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -586,7 +585,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
-                        let vis = this.rebuild_vis(&vis);
                         if let Some(attrs) = attrs {
                             this.attrs.insert(hir::ItemLocalId::new(0), attrs);
                         }
@@ -595,7 +593,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             def_id: new_id,
                             ident: this.lower_ident(ident),
                             kind,
-                            vis,
+                            vis_span,
                             span: this.lower_span(span),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
@@ -657,11 +655,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // own its own names, we have to adjust the owner before
                     // lowering the rest of the import.
                     self.with_hir_id_owner(id, |this| {
-                        let mut vis = this.rebuild_vis(&vis);
                         let mut ident = *ident;
 
                         let kind =
-                            this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
+                            this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
                         if let Some(attrs) = attrs {
                             this.attrs.insert(hir::ItemLocalId::new(0), attrs);
                         }
@@ -670,35 +667,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             def_id: new_hir_id,
                             ident: this.lower_ident(ident),
                             kind,
-                            vis,
+                            vis_span,
                             span: this.lower_span(use_tree.span),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
-                }
-
-                // Subtle and a bit hacky: we lower the privacy level
-                // of the list stem to "private" most of the time, but
-                // not for "restricted" paths. The key thing is that
-                // we don't want it to stay as `pub` (with no caveats)
-                // because that affects rustdoc and also the lints
-                // about `pub` items. But we can't *always* make it
-                // private -- particularly not for restricted paths --
-                // because it contains node-ids that would then be
-                // unused, failing the check that HirIds are "densely
-                // assigned".
-                match vis.node {
-                    hir::VisibilityKind::Public
-                    | hir::VisibilityKind::Crate(_)
-                    | hir::VisibilityKind::Inherited => {
-                        *vis = respan(
-                            self.lower_span(prefix.span.shrink_to_lo()),
-                            hir::VisibilityKind::Inherited,
-                        );
-                    }
-                    hir::VisibilityKind::Restricted { .. } => {
-                        // Do nothing here, as described in the comment on the match.
-                    }
                 }
 
                 let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
@@ -707,37 +680,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
-    }
-
-    /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
-    /// many times in the HIR tree; for each occurrence, we need to assign distinct
-    /// `NodeId`s. (See, e.g., #56128.)
-    fn rebuild_use_path(&mut self, path: &hir::Path<'hir>) -> &'hir hir::Path<'hir> {
-        debug!("rebuild_use_path(path = {:?})", path);
-        let segments =
-            self.arena.alloc_from_iter(path.segments.iter().map(|seg| hir::PathSegment {
-                ident: seg.ident,
-                hir_id: seg.hir_id.map(|_| self.next_id()),
-                res: seg.res,
-                args: None,
-                infer_args: seg.infer_args,
-            }));
-        self.arena.alloc(hir::Path { span: path.span, res: path.res, segments })
-    }
-
-    fn rebuild_vis(&mut self, vis: &hir::Visibility<'hir>) -> hir::Visibility<'hir> {
-        let vis_kind = match vis.node {
-            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
-            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
-            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
-                hir::VisibilityKind::Restricted {
-                    path: self.rebuild_use_path(path),
-                    hir_id: self.next_id(),
-                }
-            }
-        };
-        respan(self.lower_span(vis.span), vis_kind)
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
@@ -773,7 +715,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
-            vis: self.lower_visibility(&i.vis),
+            vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
         };
         self.arena.alloc(item)
@@ -851,7 +793,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME(jseyfried): positional field hygiene.
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
-            vis: self.lower_visibility(&f.vis),
+            vis_span: self.lower_span(f.vis.span),
             ty,
         }
     }
@@ -1016,8 +958,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             def_id: hir_id.expect_owner(),
             ident: self.lower_ident(i.ident),
             generics,
-            vis: self.lower_visibility(&i.vis),
             kind,
+            vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
         };
         self.arena.alloc(item)
@@ -1042,28 +984,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             trait_item_def_id: self.resolver.get_partial_res(i.id).map(|r| r.base_res().def_id()),
         }
-    }
-
-    /// If an `explicit_owner` is given, this method allocates the `HirId` in
-    /// the address space of that item instead of the item currently being
-    /// lowered. This can happen during `lower_impl_item_ref()` where we need to
-    /// lower a `Visibility` value although we haven't lowered the owning
-    /// `ImplItem` in question yet.
-    fn lower_visibility(&mut self, v: &Visibility) -> hir::Visibility<'hir> {
-        let node = match v.kind {
-            VisibilityKind::Public => hir::VisibilityKind::Public,
-            VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
-            VisibilityKind::Restricted { ref path, id } => {
-                debug!("lower_visibility: restricted path id = {:?}", id);
-                let lowered_id = self.lower_node_id(id);
-                hir::VisibilityKind::Restricted {
-                    path: self.lower_path(id, path, ParamMode::Explicit),
-                    hir_id: lowered_id,
-                }
-            }
-            VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-        };
-        respan(self.lower_span(v.span), node)
     }
 
     fn lower_defaultness(

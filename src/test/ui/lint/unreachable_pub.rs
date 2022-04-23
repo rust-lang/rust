@@ -22,6 +22,11 @@ mod private_mod {
         pub fn count_neutrons(&self) -> usize { self.neutrons } //~ WARNING unreachable_pub
         crate fn count_electrons(&self) -> usize { self.electrons }
     }
+    impl Clone for Hydrogen {
+        fn clone(&self) -> Hydrogen {
+            Hydrogen { neutrons: self.neutrons, electrons: self.electrons }
+        }
+    }
 
     pub enum Helium {} //~ WARNING unreachable_pub
     pub union Lithium { c1: usize, c2: u8 } //~ WARNING unreachable_pub

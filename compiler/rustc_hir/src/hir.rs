@@ -4,8 +4,8 @@ crate use crate::hir_id::{HirId, ItemLocalId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
 
+use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{self as ast, CrateSugar};
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
 pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
@@ -2140,10 +2140,10 @@ impl ImplItemId {
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub vis: Visibility<'hir>,
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
+    pub vis_span: Span,
 }
 
 impl ImplItem<'_> {
@@ -2645,34 +2645,11 @@ pub struct PolyTraitRef<'hir> {
     pub span: Span,
 }
 
-pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
-
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum VisibilityKind<'hir> {
-    Public,
-    Crate(CrateSugar),
-    Restricted { path: &'hir Path<'hir>, hir_id: HirId },
-    Inherited,
-}
-
-impl VisibilityKind<'_> {
-    pub fn is_pub(&self) -> bool {
-        matches!(*self, VisibilityKind::Public)
-    }
-
-    pub fn is_pub_restricted(&self) -> bool {
-        match *self {
-            VisibilityKind::Public | VisibilityKind::Inherited => false,
-            VisibilityKind::Crate(..) | VisibilityKind::Restricted { .. } => true,
-        }
-    }
-}
-
 #[derive(Debug, HashStable_Generic)]
 pub struct FieldDef<'hir> {
     pub span: Span,
+    pub vis_span: Span,
     pub ident: Ident,
-    pub vis: Visibility<'hir>,
     pub hir_id: HirId,
     pub ty: &'hir Ty<'hir>,
 }
@@ -2744,8 +2721,8 @@ pub struct Item<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
     pub kind: ItemKind<'hir>,
-    pub vis: Visibility<'hir>,
     pub span: Span,
+    pub vis_span: Span,
 }
 
 impl Item<'_> {
@@ -3002,7 +2979,7 @@ pub struct ForeignItem<'hir> {
     pub kind: ForeignItemKind<'hir>,
     pub def_id: LocalDefId,
     pub span: Span,
-    pub vis: Visibility<'hir>,
+    pub vis_span: Span,
 }
 
 impl ForeignItem<'_> {
@@ -3210,7 +3187,6 @@ pub enum Node<'hir> {
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam<'hir>),
-    Visibility(&'hir Visibility<'hir>),
 
     Crate(&'hir Mod<'hir>),
 
@@ -3253,7 +3229,6 @@ impl<'hir> Node<'hir> {
             | Node::Binding(..)
             | Node::Arm(..)
             | Node::Local(..)
-            | Node::Visibility(..)
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
@@ -3318,18 +3293,18 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(i) => match i.kind {
                 ItemKind::Fn(ref sig, ref generics, _) => {
-                    Some(FnKind::ItemFn(i.ident, generics, sig.header, &i.vis))
+                    Some(FnKind::ItemFn(i.ident, generics, sig.header))
                 }
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
                 TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig, None))
+                    Some(FnKind::Method(ti.ident, sig))
                 }
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {
-                ImplItemKind::Fn(ref sig, _) => Some(FnKind::Method(ii.ident, sig, Some(&ii.vis))),
+                ImplItemKind::Fn(ref sig, _) => Some(FnKind::Method(ii.ident, sig)),
                 _ => None,
             },
             Node::Expr(e) => match e.kind {
@@ -3350,8 +3325,8 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 160);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 144);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 120);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
 }
