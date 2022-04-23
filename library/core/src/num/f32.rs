@@ -928,19 +928,9 @@ impl f32 {
                 FpCategory::Subnormal => {
                     panic!("const-eval error: cannot use f32::to_bits on a subnormal number")
                 }
-                FpCategory::Infinite =>
-                // SAFETY: Infinity per se is fine
-                unsafe { mem::transmute::<f32, u32>(ct) },
-                FpCategory::Zero | FpCategory::Normal => {
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
                     // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
-                    let bits: u32 = unsafe { mem::transmute::<f32, u32>(ct) };
-                    // Let's doublecheck to make sure it wasn't a weird float by truncating it.
-                    if bits >> 23 & 0xFF == 0xFF {
-                        panic!(
-                            "const-eval error: an unusually large x87 floating point value should not leak into const eval"
-                        )
-                    };
-                    bits
+                    unsafe { mem::transmute::<f32, u32>(ct) }
                 }
             }
         }
@@ -1021,13 +1011,15 @@ impl f32 {
         const fn ct_u32_to_f32(ct: u32) -> f32 {
             match f32::classify_bits(ct) {
                 FpCategory::Subnormal => {
-                    panic!("const-eval error: cannot use f32::from_bits on a subnormal number");
+                    panic!("const-eval error: cannot use f32::from_bits on a subnormal number")
                 }
                 FpCategory::Nan => {
-                    panic!("const-eval error: cannot use f32::from_bits on NaN");
+                    panic!("const-eval error: cannot use f32::from_bits on NaN")
                 }
-                // SAFETY: It's not a frumious number
-                _ => unsafe { mem::transmute::<u32, f32>(ct) },
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: It's not a frumious number
+                    unsafe { mem::transmute::<u32, f32>(ct) }
+                }
             }
         }
         // SAFETY: `u32` is a plain old datatype so we can always... uh...
