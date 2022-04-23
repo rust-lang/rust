@@ -171,6 +171,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             None,
                             type_test.generic_kind,
                             lower_bound_region,
+                            self.body.source.def_id().as_local(),
                         ));
                     } else {
                         // FIXME. We should handle this case better. It
