@@ -62,6 +62,16 @@ fn bar2(x: *mut [u16]) -> *mut [u8] {
     x as _
 }
 
+// constify
+fn bar3(x: *mut [u16]) -> *const [u8] {
+    x as _
+}
+
+// unconstify
+fn bar4(x: *const [u16]) -> *mut [u8] {
+    x as _
+}
+
 // function returns plus blocks
 fn blocks(x: *mut [u16]) -> *mut [u8] {
     ({ x }) as _
