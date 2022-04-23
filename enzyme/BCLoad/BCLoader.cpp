@@ -6,13 +6,91 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <map>
 #include <set>
 #include <string>
 
 using namespace llvm;
 
-cl::opt<std::string> BCPath("bcpath", cl::init(""), cl::Hidden,
-                            cl::desc("Path to BC definitions"));
+#define DATA EnzymeBlasBC
+#include "blas_headers.h"
+#undef DATA
+
+bool provideDefinitions(Module &M) {
+  std::vector<const char *> todo;
+  bool seen32 = false;
+  bool seen64 = false;
+  for (auto &F : M) {
+    if (!F.empty())
+      continue;
+    int index = 0;
+    for (auto postfix : {"", "_", "_64_"}) {
+      std::string str;
+      if (strlen(postfix) == 0)
+        str = F.getName().str();
+      else if (F.getName().endswith(postfix)) {
+        str = "cblas_" +
+              F.getName().substr(0, F.getName().size() - strlen(postfix)).str();
+      }
+
+      auto found = EnzymeBlasBC.find(str);
+      if (found != EnzymeBlasBC.end()) {
+        todo.push_back(found->second);
+        if (index == 1)
+          seen32 = true;
+        if (index == 2)
+          seen64 = true;
+        break;
+      }
+      index++;
+    }
+  }
+
+  // Push fortran wrapper libs before all the other blas
+  // to ensure the fortran injections have their code
+  // replaced
+  if (seen32)
+    todo.insert(todo.begin(), __data_fblas32);
+  if (seen64)
+    todo.insert(todo.begin(), __data_fblas64);
+  bool changed = false;
+  for (auto mod : todo) {
+    SMDiagnostic Err;
+    MemoryBufferRef buf(StringRef(mod), StringRef("bcloader"));
+
+#if LLVM_VERSION_MAJOR <= 10
+    auto BC = llvm::parseIR(buf, Err, M.getContext(), true,
+                            M.getDataLayout().getStringRepresentation());
+#else
+    auto BC = llvm::parseIR(buf, Err, M.getContext(), [&](StringRef) {
+      return Optional<std::string>(M.getDataLayout().getStringRepresentation());
+    });
+#endif
+    if (!BC)
+      Err.print("bcloader", llvm::errs());
+    assert(BC);
+    SmallVector<std::string, 1> toReplace;
+    for (auto &F : *BC) {
+      if (F.empty())
+        continue;
+      toReplace.push_back(F.getName().str());
+    }
+    Linker L(M);
+    L.linkInModule(std::move(BC));
+    for (auto name : toReplace) {
+      if (auto F = M.getFunction(name))
+        F->setLinkage(Function::LinkageTypes::InternalLinkage);
+    }
+    changed = true;
+  }
+  return changed;
+}
+
+extern "C" {
+uint8_t EnzymeBitcodeReplacement(LLVMModuleRef M) {
+  return provideDefinitions(*unwrap(M));
+}
+}
 
 namespace {
 class BCLoader : public ModulePass {
@@ -20,32 +98,7 @@ public:
   static char ID;
   BCLoader() : ModulePass(ID) {}
 
-  bool runOnModule(Module &M) override {
-    std::set<std::string> bcfuncs = {"cblas_ddot"};
-    for (std::string name : bcfuncs) {
-      if (name == "cblas_ddot") {
-        SMDiagnostic Err;
-#if LLVM_VERSION_MAJOR <= 10
-        auto BC = llvm::parseIRFile(
-            BCPath + "/cblas_ddot_double.bc", Err, M.getContext(), true,
-            M.getDataLayout().getStringRepresentation());
-#else
-        auto BC = llvm::parseIRFile(
-            BCPath + "/cblas_ddot_double.bc", Err, M.getContext(),
-            [&](StringRef) {
-              return Optional<std::string>(
-                  M.getDataLayout().getStringRepresentation());
-            });
-#endif
-        if (!BC)
-          Err.print("bcloader", llvm::errs());
-        assert(BC);
-        Linker L(M);
-        L.linkInModule(std::move(BC));
-      }
-    }
-    return true;
-  }
+  bool runOnModule(Module &M) override { return provideDefinitions(M); }
 };
 } // namespace
 

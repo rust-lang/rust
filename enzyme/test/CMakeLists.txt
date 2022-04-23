@@ -5,7 +5,7 @@ configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
-set(ENZYME_TEST_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR} BCPass-${LLVM_VERSION_MAJOR})
+set(ENZYME_TEST_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR})
 
 add_subdirectory(ActivityAnalysis)
 add_subdirectory(TypeAnalysis)
