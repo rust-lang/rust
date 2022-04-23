@@ -72,4 +72,20 @@ mod issue4291 {
     }
 }
 
+mod issue6437 {
+    pub struct Scalar;
+
+    impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
+        fn add_assign(&mut self, _rhs: &Scalar) {
+            unimplemented!();
+        }
+    }
+
+    impl<'b> Scalar {
+        pub fn something<'c>() -> Self {
+            Self
+        }
+    }
+}
+
 fn main() {}
