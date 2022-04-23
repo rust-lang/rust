@@ -437,6 +437,29 @@ impl MacroCallKind {
 
     /// Returns the original file range that best describes the location of this macro call.
     ///
+    /// Unlike `MacroCallKind::original_call_range`, this also spans the item of attributes and derives.
+    pub fn original_call_range_with_body(self, db: &dyn db::AstDatabase) -> FileRange {
+        let mut kind = self;
+        let file_id = loop {
+            match kind.file_id().0 {
+                HirFileIdRepr::MacroFile(file) => {
+                    kind = db.lookup_intern_macro_call(file.macro_call_id).kind;
+                }
+                HirFileIdRepr::FileId(file_id) => break file_id,
+            }
+        };
+
+        let range = match kind {
+            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+            MacroCallKind::Derive { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+            MacroCallKind::Attr { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+        };
+
+        FileRange { range, file_id }
+    }
+
+    /// Returns the original file range that best describes the location of this macro call.
+    ///
     /// Here we try to roughly match what rustc does to improve diagnostics: fn-like macros
     /// get the whole `ast::MacroCall`, attribute macros get the attribute's range, and derives
     /// get only the specific derive that is being referred to.
@@ -751,6 +774,9 @@ impl<'a> InFile<&'a SyntaxNode> {
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
+    ///
+    /// For attributes and derives, this will point back to the attribute only.
+    /// For the entire item `InFile::use original_file_range_full`.
     pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
         if let Some(res) = self.original_file_range_opt(db) {
             return res;
@@ -762,6 +788,22 @@ impl<'a> InFile<&'a SyntaxNode> {
             HirFileIdRepr::MacroFile(mac_file) => {
                 let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
                 loc.kind.original_call_range(db)
+            }
+        }
+    }
+
+    /// Falls back to the macro call range if the node cannot be mapped up fully.
+    pub fn original_file_range_full(self, db: &dyn db::AstDatabase) -> FileRange {
+        if let Some(res) = self.original_file_range_opt(db) {
+            return res;
+        }
+
+        // Fall back to whole macro call.
+        match self.file_id.0 {
+            HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
+            HirFileIdRepr::MacroFile(mac_file) => {
+                let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
+                loc.kind.original_call_range_with_body(db)
             }
         }
     }
