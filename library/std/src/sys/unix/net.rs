@@ -427,6 +427,16 @@ impl Socket {
         self.0.set_nonblocking(nonblocking)
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_MARK, mark as libc::c_int)
+    }
+
+    #[cfg(target_os = "freebsd")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_USER_COOKIE, mark)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         let raw: c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)?;
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }

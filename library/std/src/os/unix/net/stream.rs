@@ -424,6 +424,12 @@ impl UnixStream {
         self.0.passcred()
     }
 
+    #[cfg(any(doc, target_os = "linux", target_os = "freebsd",))]
+    #[unstable(feature = "unix_set_mark", issue = "none")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        self.0.set_mark(mark)
+    }
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples
