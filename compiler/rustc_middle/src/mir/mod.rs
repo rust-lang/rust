@@ -166,7 +166,8 @@ pub enum MirPhase {
     /// * [`StatementKind::Retag`]
     ///
     /// Furthermore, `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop`
-    /// terminator means that the auto-generated drop glue will be invoked.
+    /// terminator means that the auto-generated drop glue will be invoked. Also, `Copy` operands
+    /// are allowed for non-`Copy` types.
     DropsLowered = 3,
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
@@ -2330,7 +2331,10 @@ pub struct SourceScopeLocalData {
 /// validator.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
-    /// Creates a value by loading the given place. The type of the place must be `Copy`
+    /// Creates a value by loading the given place.
+    ///
+    /// Before drop elaboration, the type of the place must be `Copy`. After drop elaboration there
+    /// is no such requirement.
     Copy(Place<'tcx>),
 
     /// Creates a value by performing loading the place, just like the `Copy` operand.
