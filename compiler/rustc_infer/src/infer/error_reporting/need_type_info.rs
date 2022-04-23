@@ -734,19 +734,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !impl_candidates.is_empty() && e.span.contains(span)
                     && let Some(expr) = exprs.first()
                     && let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
-                    && let [path_segment] = path.segments
+                    && let [_] = path.segments
                 {
                     let mut eraser = TypeParamEraser(self.tcx);
                     let candidate_len = impl_candidates.len();
                     let suggestions = impl_candidates.iter().map(|candidate| {
                         let candidate = candidate.super_fold_with(&mut eraser);
-                        format!(
-                            "{}::{}({})",
-                            candidate, segment.ident, path_segment.ident
-                        )
+                        vec![
+                            (expr.span.shrink_to_lo(), format!("{}::{}(", candidate, segment.ident)),
+                            if exprs.len() == 1 {
+                                (expr.span.shrink_to_hi().with_hi(e.span.hi()), ")".to_string())
+                            } else {
+                                (expr.span.shrink_to_hi().with_hi(exprs[1].span.lo()), ", ".to_string())
+                            },
+                        ]
                     });
-                    err.span_suggestions(
-                        e.span,
+                    err.multipart_suggestions(
                         &format!(
                             "use the fully qualified path for the potential candidate{}",
                             pluralize!(candidate_len),

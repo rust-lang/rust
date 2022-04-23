@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
   --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
    |
-LL |     thing.method();
-   |     ------^^^^^^--
+LL |     thing.method(42);
+   |     ------^^^^^^----
    |     |     |
    |     |     cannot infer type for type parameter `T` declared on the trait `Method`
    |     this method call resolves to `T`
@@ -10,8 +10,8 @@ LL |     thing.method();
 error[E0283]: type annotations needed
   --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
    |
-LL |     thing.method();
-   |     ------^^^^^^--
+LL |     thing.method(42);
+   |     ------^^^^^^----
    |     |     |
    |     |     cannot infer type for type parameter `T` declared on the trait `Method`
    |     this method call resolves to `T`
@@ -26,10 +26,10 @@ LL | impl<X> Method<u32> for Thing<X> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use the fully qualified path for the potential candidates
    |
-LL |     <Thing<_> as Method<i32>>::method(thing);
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL |     <Thing<_> as Method<u32>>::method(thing);
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     <Thing<_> as Method<i32>>::method(thing, 42);
+   |     ++++++++++++++++++++++++++++++++++     ~
+LL |     <Thing<_> as Method<u32>>::method(thing, 42);
+   |     ++++++++++++++++++++++++++++++++++     ~
 
 error: aborting due to 2 previous errors
 
