@@ -426,6 +426,12 @@ impl NameLike {
             _ => None,
         }
     }
+    pub fn as_lifetime(&self) -> Option<&ast::Lifetime> {
+        match self {
+            NameLike::Lifetime(lifetime) => Some(lifetime),
+            _ => None,
+        }
+    }
 }
 
 impl ast::AstNode for NameLike {

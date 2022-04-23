@@ -22,8 +22,8 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
         Some(LifetimeContext::LifetimeParam { is_decl: false, param }) => Some(param),
         _ => return,
     };
-    let param_lifetime = match (&ctx.name_syntax, lp.and_then(|lp| lp.lifetime())) {
-        (Some(ast::NameLike::Lifetime(lt)), Some(lp)) if lp == lt.clone() => return,
+    let param_lifetime = match (ctx.lifetime(), lp.and_then(|lp| lp.lifetime())) {
+        (Some(lt), Some(lp)) if lp == lt.clone() => return,
         (Some(_), Some(lp)) => Some(lp),
         _ => None,
     };

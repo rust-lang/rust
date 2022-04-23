@@ -11,12 +11,9 @@ use crate::{
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (is_absolute_path, qualifier) = match ctx.path_context {
+    let (&is_absolute_path, qualifier) = match &ctx.path_context {
         Some(PathCompletionCtx {
-            kind: Some(PathKind::Use),
-            is_absolute_path,
-            ref qualifier,
-            ..
+            kind: Some(PathKind::Use), is_absolute_path, qualifier, ..
         }) => (is_absolute_path, qualifier),
         _ => return,
     };
@@ -45,13 +42,9 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             if let Some(list) = ctx.token.ancestors().find_map(ast::UseTreeList::cast) {
                 let use_tree = list.parent_use_tree();
                 if use_tree.path().as_ref() == Some(path) {
-                    for tree in list.use_trees() {
-                        if tree.is_simple_path() {
-                            if let Some(name) =
-                                tree.path().and_then(|path| path.as_single_name_ref())
-                            {
-                                already_imported_names.insert(name.to_string());
-                            }
+                    for tree in list.use_trees().filter(|tree| tree.is_simple_path()) {
+                        if let Some(name) = tree.path().and_then(|path| path.as_single_name_ref()) {
+                            already_imported_names.insert(name.to_string());
                         }
                     }
                 }
@@ -62,14 +55,14 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     let unknown_is_current = |name: &hir::Name| {
                         matches!(
-                            ctx.name_syntax.as_ref(),
-                            Some(ast::NameLike::NameRef(name_ref))
-                                if name_ref.syntax().text() == name.to_smol_str().as_str()
+                            ctx.name_ref(),
+                            Some(name_ref) if name_ref.syntax().text() == name.to_smol_str().as_str()
                         )
                     };
                     for (name, def) in module_scope {
-                        let is_name_already_imported =
-                            already_imported_names.contains(name.as_text().unwrap().as_str());
+                        let is_name_already_imported = name
+                            .as_text()
+                            .map_or(false, |text| already_imported_names.contains(text.as_str()));
 
                         let add_resolution = match def {
                             ScopeDef::Unknown if unknown_is_current(&name) => {
