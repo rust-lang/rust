@@ -16,6 +16,9 @@
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "destruct"]
+pub trait Destruct {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
@@ -491,13 +494,20 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonNull<T: ?Sized>(pub *mut T);
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+
 pub struct Unique<T: ?Sized> {
-    pub pointer: *const T,
+    pub pointer: NonNull<T>,
     pub _marker: PhantomData<T>,
 }
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
-
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[lang = "owned_box"]
@@ -526,7 +536,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
 #[lang = "box_free"]
 unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
-    libc::free(ptr.pointer as *mut u8);
+    libc::free(ptr.pointer.0 as *mut u8);
 }
 
 #[lang = "drop"]

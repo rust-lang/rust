@@ -102,42 +102,6 @@ index 6a8ecd3..68fcb49 100644
          }
      }
  }
-diff --git a/crates/core_simd/tests/ops_macros.rs b/crates/core_simd/tests/ops_macros.rs
-index 31b7ee2..bd04b3c 100644
---- a/crates/core_simd/tests/ops_macros.rs
-+++ b/crates/core_simd/tests/ops_macros.rs
-@@ -567,6 +567,7 @@ macro_rules! impl_float_tests {
-                     });
-                 }
- 
-+                /*
-                 fn horizontal_max<const LANES: usize>() {
-                     test_helpers::test_1(&|x| {
-                         let vmax = Vector::<LANES>::from_array(x).horizontal_max();
-@@ -590,6 +591,7 @@ macro_rules! impl_float_tests {
-                         Ok(())
-                     });
-                 }
-+                */
-             }
- 
-             #[cfg(feature = "std")]
-@@ -604,6 +606,7 @@ macro_rules! impl_float_tests {
-                         )
-                     }
- 
-+                    /*
-                     fn mul_add<const LANES: usize>() {
-                         test_helpers::test_ternary_elementwise(
-                             &Vector::<LANES>::mul_add,
-@@ -611,6 +614,7 @@ macro_rules! impl_float_tests {
-                             &|_, _, _| true,
-                         )
-                     }
-+                    */
-                 }
-             }
-         }
 -- 
 2.26.2.7.g19db9cfb68
 
