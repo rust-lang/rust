@@ -13,6 +13,7 @@ use std::borrow::Cow;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
+use crate::callee::get_fn;
 
 
 // Rust asm! and GCC Extended Asm semantics differ substantially.
@@ -343,9 +344,24 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // processed in the previous pass
                 }
 
-                InlineAsmOperandRef::Const { .. }
-                | InlineAsmOperandRef::SymFn { .. }
-                | InlineAsmOperandRef::SymStatic { .. } => {
+                InlineAsmOperandRef::SymFn { instance } => {
+                    inputs.push(AsmInOperand {
+                        constraint: "X".into(),
+                        rust_idx,
+                        val: self.cx.rvalue_as_function(get_fn(self.cx, instance))
+                            .get_address(None),
+                    });
+                }
+
+                InlineAsmOperandRef::SymStatic { def_id } => {
+                    inputs.push(AsmInOperand {
+                        constraint: "X".into(),
+                        rust_idx,
+                        val: self.cx.get_static(def_id).get_address(None),
+                    });
+                }
+
+                InlineAsmOperandRef::Const { .. } => {
                     // processed in the previous pass
                 }
             }
