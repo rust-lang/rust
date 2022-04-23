@@ -505,18 +505,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
     ) -> Result<(Res, Option<DefId>), UnresolvedPath<'path>> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
-            match res {
-                // FIXME(#76467): make this fallthrough to lookup the associated
-                // item a separate function.
-                Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
-                Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
-                Res::Def(DefKind::Variant, def_id) => {
-                    let enum_def_id = self.cx.tcx.parent(def_id).expect("variant has no parent");
-                    return Ok((Res::Def(DefKind::Enum, enum_def_id), Some(def_id)));
+            return Ok(match res {
+                Res::Def(
+                    DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
+                    def_id,
+                ) => {
+                    let parent_def_id = self.cx.tcx.parent(def_id).unwrap();
+                    (Res::from_def_id(self.cx.tcx, parent_def_id), Some(def_id))
                 }
-                // Not a trait item; just return what we found.
-                _ => return Ok((res, None)),
-            }
+                _ => ((res, None)),
+            });
         } else if ns == MacroNS {
             return Err(UnresolvedPath {
                 item_id,
