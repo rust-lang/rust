@@ -8,7 +8,7 @@ use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Option<RustcVersion>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Option<RustcVersion>) {
     // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
     if !meets_msrv(msrv.as_ref(), &msrvs::PTR_SLICE_RAW_PARTS) {
         return;
@@ -102,21 +102,20 @@ fn get_raw_slice_ty_mut(ty: Ty<'_>) -> Option<TypeAndMut<'_>> {
     }
 }
 
-struct CastChainInfo<'expr, 'tcx> {
+struct CastChainInfo<'tcx> {
     /// The left most part of the cast chain, or in other words, the first cast in the chain
     /// Used for diagnostics
-    left_cast: &'expr Expr<'expr>,
+    left_cast: &'tcx Expr<'tcx>,
     /// The starting type of the cast chain
     start_ty: TypeAndMut<'tcx>,
     /// The final type of the cast chain
     end_ty: TypeAndMut<'tcx>,
 }
 
-// FIXME(asquared31415): unbounded recursion linear with the number of casts in an expression
 /// Returns a `CastChainInfo` with the left-most cast in the chain and the original ptr T and final
 /// ptr U if the expression is composed of casts.
 /// Returns None if the expr is not a Cast
-fn expr_cast_chain_tys<'tcx, 'expr>(cx: &LateContext<'tcx>, expr: &Expr<'expr>) -> Option<CastChainInfo<'expr, 'tcx>> {
+fn expr_cast_chain_tys<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<CastChainInfo<'tcx>> {
     if let ExprKind::Cast(cast_expr, _cast_to_hir_ty) = expr.peel_blocks().kind {
         let cast_to = cx.typeck_results().expr_ty(expr);
         let to_slice_ty = get_raw_slice_ty_mut(cast_to)?;
