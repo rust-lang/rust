@@ -966,7 +966,7 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
-        let n = cvt(unsafe { lseek64(self.as_raw_fd(), pos, whence) })?;
+        let n = cvt(unsafe { lseek64(self.as_raw_fd(), pos as off64_t, whence) })?;
         Ok(n as u64)
     }
 
