@@ -5,7 +5,7 @@ set(BC_LOAD_FLAGS "" CACHE STRING "")
 set(BC_LOAD_HEADER "" CACHE STRING "")
 
 if (NOT ("${BC_LOAD_HEADER}" STREQUAL ""))
-    add_custom_target(blasheaders mkdir "${CMAKE_CURRENT_BINARY_DIR}/gsl" && cp ${BC_LOAD_HEADER} "${CMAKE_CURRENT_BINARY_DIR}/gsl/blas_headers.h")
+    add_custom_target(blasheaders mkdir -p "${CMAKE_CURRENT_BINARY_DIR}/gsl" && cp ${BC_LOAD_HEADER} "${CMAKE_CURRENT_BINARY_DIR}/gsl/blas_headers.h")
 set_target_properties(blasheaders PROPERTIES EXCLUDE_FROM_ALL TRUE)
 elseif (${Clang_FOUND})
 include(ExternalProject)
@@ -15,8 +15,8 @@ ExternalProject_Add(gsl
     PREFIX gsl
     BUILD_IN_SOURCE 1
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/gsl/install
-    CONFIGURE_COMMAND autoreconf -i && ./configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/gsl/install
-    BUILD_COMMAND  sh -c "make -C gsl && $<TARGET_FILE:clang> cblas/*.c ${BC_LOAD_FLAGS} -I . -S -emit-llvm -O1"
+    CONFIGURE_COMMAND sh -c "cp sys/gsl_sys.h . && cp cblas/gsl_cblas.h . && rm cblas/test*.c && echo > config.h"
+    BUILD_COMMAND  sh -c "$<TARGET_FILE:clang> cblas/*.c ${BC_LOAD_FLAGS} -I . -I .. -S -emit-llvm -O1"
     INSTALL_COMMAND ""
     UPDATE_COMMAND ""
     TEST_COMMAND      ""
