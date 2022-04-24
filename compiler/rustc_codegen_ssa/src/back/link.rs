@@ -1691,6 +1691,12 @@ fn add_linked_symbol_object(
         return;
     };
 
+    // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
+    // so add an empty section.
+    if file.format() == object::BinaryFormat::Coff {
+        file.add_section(Vec::new(), ".text".into(), object::SectionKind::Text);
+    }
+
     for (sym, kind) in symbols.iter() {
         file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
