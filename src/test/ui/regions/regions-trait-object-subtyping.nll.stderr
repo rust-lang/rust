@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-trait-object-subtyping.rs:15:5
+  --> $DIR/regions-trait-object-subtyping.rs:19:5
    |
 LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
    |         -- -- lifetime `'b` defined here
@@ -15,7 +15,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/regions-trait-object-subtyping.rs:22:5
+  --> $DIR/regions-trait-object-subtyping.rs:28:5
    |
 LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
    |         --    -- lifetime `'b` defined here

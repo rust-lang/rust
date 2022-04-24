@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn a<'a, 'b>(x: &mut &'a isize, y: &mut &'b isize) where 'b: 'a {
     // Note: this is legal because of the `'b:'a` declaration.
     *x = *y;
@@ -5,19 +9,25 @@ fn a<'a, 'b>(x: &mut &'a isize, y: &mut &'b isize) where 'b: 'a {
 
 fn b<'a, 'b>(x: &mut &'a isize, y: &mut &'b isize) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y; //~ ERROR E0623
+    *x = *y;
+    //[base]~^ ERROR E0623
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
-    a(x, y); //~ ERROR lifetime mismatch [E0623]
+    a(x, y);
+    //[base]~^ ERROR lifetime mismatch [E0623]
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn d() {
     // 'a and 'b are early bound in the function `a` because they appear
     // inconstraints:
-    let _: fn(&mut &isize, &mut &isize) = a; //~ ERROR mismatched types
+    let _: fn(&mut &isize, &mut &isize) = a;
+    //~^ ERROR mismatched types [E0308]
+    //[nll]~^^ ERROR mismatched types [E0308]
 }
 
 fn e() {

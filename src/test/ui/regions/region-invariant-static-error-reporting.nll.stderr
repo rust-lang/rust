@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/region-invariant-static-error-reporting.rs:15:9
+  --> $DIR/region-invariant-static-error-reporting.rs:19:9
    |
 LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
    |          --  - `x` is a reference that is only valid in the function body

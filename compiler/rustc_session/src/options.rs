@@ -368,6 +368,8 @@ mod desc {
     pub const parse_opt_langid: &str = "a language identifier";
     pub const parse_opt_pathbuf: &str = "a path";
     pub const parse_list: &str = "a space-separated list of strings";
+    pub const parse_list_with_polarity: &str =
+        "a comma-separated list of strings, with elements beginning with + or -";
     pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
@@ -523,6 +525,19 @@ mod parse {
         match v {
             Some(s) => {
                 slot.extend(s.split_whitespace().map(|s| s.to_string()));
+                true
+            }
+            None => false,
+        }
+    }
+
+    crate fn parse_list_with_polarity(slot: &mut Vec<(String, bool)>, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                for s in s.split(",") {
+                    let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
+                    slot.push((pass_name.to_string(), &s[..1] == "+"));
+                }
                 true
             }
             None => false,
@@ -1318,6 +1333,10 @@ options! {
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
+    mir_enable_passes: Vec<(String, bool)> = (Vec::new(), parse_list_with_polarity, [TRACKED],
+        "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
+        enabled, overriding all other checks. Passes that are not specified are enabled or \
+        disabled by other flags as usual."),
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],

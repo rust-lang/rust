@@ -2563,40 +2563,77 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // We proactively collect all the inferred type params to emit a single error per fn def.
         let mut visitor = HirPlaceholderCollector::default();
-        for ty in decl.inputs {
-            visitor.visit_ty(ty);
-        }
+        let mut infer_replacements = vec![];
+
         walk_generics(&mut visitor, generics);
 
-        let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
+        let input_tys: Vec<_> = decl
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(i, a)| {
+                if let hir::TyKind::Infer = a.kind && !self.allow_ty_infer() {
+                    if let Some(suggested_ty) =
+                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
+                    {
+                        infer_replacements.push((a.span, suggested_ty.to_string()));
+                        return suggested_ty;
+                    }
+                }
+
+                // Only visit the type looking for `_` if we didn't fix the type above
+                visitor.visit_ty(a);
+                self.ty_of_arg(a, None)
+            })
+            .collect();
+
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                visitor.visit_ty(output);
-                self.ast_ty_to_ty(output)
+                if let hir::TyKind::Infer = output.kind
+                    && !self.allow_ty_infer()
+                    && let Some(suggested_ty) =
+                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
+                {
+                    infer_replacements.push((output.span, suggested_ty.to_string()));
+                    suggested_ty
+                } else {
+                    visitor.visit_ty(output);
+                    self.ast_ty_to_ty(output)
+                }
             }
             hir::FnRetTy::DefaultReturn(..) => tcx.mk_unit(),
         };
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi);
+        let fn_ty = tcx.mk_fn_sig(input_tys.into_iter(), output_ty, decl.c_variadic, unsafety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if !self.allow_ty_infer() {
+        if !self.allow_ty_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we
             // only want to emit an error complaining about them if infer types (`_`) are not
             // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
             // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
 
-            crate::collect::placeholder_type_error(
+            let mut diag = crate::collect::placeholder_type_error_diag(
                 tcx,
                 ident_span.map(|sp| sp.shrink_to_hi()),
                 generics.params,
                 visitor.0,
+                infer_replacements.iter().map(|(s, _)| *s).collect(),
                 true,
                 hir_ty,
                 "function",
             );
+
+            if !infer_replacements.is_empty() {
+                diag.multipart_suggestion(&format!(
+                    "try replacing `_` with the type{} in the corresponding trait method signature",
+                    rustc_errors::pluralize!(infer_replacements.len()),
+                ), infer_replacements, Applicability::MachineApplicable);
+            }
+
+            diag.emit();
         }
 
         // Find any late-bound regions declared in return type that do
@@ -2622,6 +2659,43 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
 
         bare_fn_ty
+    }
+
+    /// Given a fn_hir_id for a impl function, suggest the type that is found on the
+    /// corresponding function in the trait that the impl implements, if it exists.
+    /// If arg_idx is Some, then it corresponds to an input type index, otherwise it
+    /// corresponds to the return type.
+    fn suggest_trait_fn_ty_for_impl_fn_infer(
+        &self,
+        fn_hir_id: hir::HirId,
+        arg_idx: Option<usize>,
+    ) -> Option<Ty<'tcx>> {
+        let tcx = self.tcx();
+        let hir = tcx.hir();
+
+        let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
+            hir.get(fn_hir_id) else { return None };
+        let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
+                hir.get(hir.get_parent_node(fn_hir_id)) else { bug!("ImplItem should have Impl parent") };
+
+        let trait_ref =
+            self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
+
+        let x: &ty::AssocItem = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
+            tcx,
+            *ident,
+            ty::AssocKind::Fn,
+            trait_ref.def_id,
+        )?;
+
+        let fn_sig = tcx.fn_sig(x.def_id).subst(
+            tcx,
+            trait_ref.substs.extend_to(tcx, x.def_id, |param, _| tcx.mk_param_from_def(param)),
+        );
+
+        let ty = if let Some(arg_idx) = arg_idx { fn_sig.input(arg_idx) } else { fn_sig.output() };
+
+        Some(tcx.erase_late_bound_regions(ty))
     }
 
     fn validate_late_bound_regions(

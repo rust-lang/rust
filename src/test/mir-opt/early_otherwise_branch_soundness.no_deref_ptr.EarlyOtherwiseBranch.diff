@@ -19,7 +19,7 @@
   
       bb1: {
           _0 = const 0_i32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:25:14: 25:15
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:25:14: 25:15
+          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:25:14: 25:15
       }
   
       bb2: {
@@ -29,7 +29,7 @@
   
       bb3: {
           _0 = const 0_i32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:23:18: 23:19
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:23:18: 23:19
+          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:23:18: 23:19
       }
   
       bb4: {
@@ -37,7 +37,15 @@
           _5 = (((*_2) as Some).0: i32);   // scope 0 at $DIR/early_otherwise_branch_soundness.rs:22:18: 22:19
           _0 = _5;                         // scope 1 at $DIR/early_otherwise_branch_soundness.rs:22:24: 22:25
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:22:24: 22:25
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:22:24: 22:25
+          goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:22:24: 22:25
+      }
+  
+      bb5: {
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:27:2: 27:2
+      }
+  
+      bb6 (cleanup): {
+          resume;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:18:1: 27:2
       }
   }
   

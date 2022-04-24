@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:8:5
+  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:12:5
    |
 LL | fn b<'a, 'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |      --  -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |     *x = *y;
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:14:5
+  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:20:5
    |
 LL | fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |      -- -- lifetime `'b` defined here
@@ -28,7 +28,7 @@ LL |     a(x, y);
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0308]: mismatched types
-  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:20:12
+  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:28:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize) = a;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
@@ -37,7 +37,7 @@ LL |     let _: fn(&mut &isize, &mut &isize) = a;
               found fn pointer `for<'r, 's> fn(&'r mut &isize, &'s mut &isize)`
 
 error[E0308]: mismatched types
-  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:20:12
+  --> $DIR/region-lifetime-bounds-on-fns-where-clause.rs:28:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize) = a;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other

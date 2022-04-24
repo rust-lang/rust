@@ -31,8 +31,8 @@ fn main() {
 
     let mut cmd = Command::new(rustdoc);
 
-    // I am not actually sure why it's necessary to pass the sysroot for `--test`,
-    // but `test --doc --stage 0` is broken without it :(
+    // cfg(bootstrap)
+    // NOTE: the `--test` special-casing can be removed when https://github.com/rust-lang/cargo/pull/10594 lands on beta.
     if target.is_some() || args.iter().any(|x| x == "--test") {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
@@ -63,13 +63,6 @@ fn main() {
         } else {
             cmd.arg("-Clink-arg=-Wl,--threads=1");
         }
-    }
-
-    // Needed to be able to run all rustdoc tests.
-    if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
-        // This "unstable-options" can be removed when `--resource-suffix` is stabilized
-        cmd.arg("-Z").arg("unstable-options");
-        cmd.arg("--resource-suffix").arg(x);
     }
 
     if verbose > 1 {

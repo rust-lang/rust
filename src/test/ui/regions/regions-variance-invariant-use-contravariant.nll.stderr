@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-variance-invariant-use-contravariant.rs:20:12
+  --> $DIR/regions-variance-invariant-use-contravariant.rs:24:12
    |
 LL | fn use_<'short,'long>(c: Invariant<'long>,
    |         ------ ----- lifetime `'long` defined here

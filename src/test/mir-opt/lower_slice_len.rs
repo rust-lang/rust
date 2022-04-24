@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+// unit-test: LowerSliceLenCalls
 
 // EMIT_MIR lower_slice_len.bound.LowerSliceLenCalls.diff
 pub fn bound(index: usize, slice: &[u8]) -> u8 {

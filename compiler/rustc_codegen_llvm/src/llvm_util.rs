@@ -542,6 +542,11 @@ pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_a
     // The new pass manager is enabled by default for LLVM >= 13.
     // This matches Clang, which also enables it since Clang 13.
 
+    // Since LLVM 15, the legacy pass manager is no longer supported.
+    if llvm_util::get_version() >= (15, 0, 0) {
+        return true;
+    }
+
     // There are some perf issues with the new pass manager when targeting
     // s390x with LLVM 13, so enable the new pass manager only with LLVM 14.
     // See https://github.com/rust-lang/rust/issues/89609.

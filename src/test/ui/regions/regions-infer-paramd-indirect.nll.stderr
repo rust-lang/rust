@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-paramd-indirect.rs:22:9
+  --> $DIR/regions-infer-paramd-indirect.rs:26:9
    |
 LL | impl<'a> SetF<'a> for C<'a> {
    |      -- lifetime `'a` defined here

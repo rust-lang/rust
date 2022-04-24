@@ -1825,24 +1825,22 @@ extern "C" {
 
     pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
 
-    pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
-    pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
-    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(
+    pub fn LLVMRustPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
+    pub fn LLVMRustPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
+    pub fn LLVMRustPassManagerBuilderUseInlinerWithThreshold(
         PMB: &PassManagerBuilder,
         threshold: c_uint,
     );
-    pub fn LLVMPassManagerBuilderPopulateModulePassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateModulePassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
 
-    pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateFunctionPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
-    pub fn LLVMPassManagerBuilderPopulateLTOPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateLTOPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
         Internalize: Bool,
@@ -2308,6 +2306,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         PGOSampleUsePath: *const c_char,
+        SizeLevel: c_int,
     );
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,

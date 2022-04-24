@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/regions-close-object-into-object-5.rs:17:5
+  --> $DIR/regions-close-object-into-object-5.rs:21:5
    |
 LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
    |          - help: consider adding an explicit lifetime bound...: `T: 'static`
@@ -8,7 +8,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/regions-close-object-into-object-5.rs:17:5
+  --> $DIR/regions-close-object-into-object-5.rs:21:5
    |
 LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
    |          - help: consider adding an explicit lifetime bound...: `T: 'static`
@@ -17,7 +17,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/regions-close-object-into-object-5.rs:17:5
+  --> $DIR/regions-close-object-into-object-5.rs:21:5
    |
 LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
    |          - help: consider adding an explicit lifetime bound...: `T: 'static`
@@ -26,7 +26,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0515]: cannot return value referencing local data `*v`
-  --> $DIR/regions-close-object-into-object-5.rs:17:5
+  --> $DIR/regions-close-object-into-object-5.rs:21:5
    |
 LL |     Box::new(B(&*v)) as Box<dyn X>
    |     ^^^^^^^^^^^---^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |     returns a value referencing data owned by the current function
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/regions-close-object-into-object-5.rs:17:14
+  --> $DIR/regions-close-object-into-object-5.rs:21:14
    |
 LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
    |          - help: consider adding an explicit lifetime bound...: `T: 'static`
