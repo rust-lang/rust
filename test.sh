@@ -18,6 +18,7 @@ flags=
 gcc_master_branch=1
 channel="debug"
 func=all
+build_only=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -72,6 +73,10 @@ while [[ $# -gt 0 ]]; do
             func=build_sysroot
             shift
             ;;
+        "--build")
+            build_only=1
+            shift
+            ;;
         *)
             echo "Unknown option $1"
             exit 1
@@ -89,7 +94,7 @@ else
     cargo rustc $flags
 fi
 
-if [[ "$1" == "--build" ]]; then
+if (( $build_only == 1 )); then
     exit
 fi
 
