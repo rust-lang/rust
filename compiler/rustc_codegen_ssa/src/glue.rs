@@ -5,7 +5,7 @@
 use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, UintTy};
 use rustc_target::abi::WrappingRange;
 
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -41,11 +41,11 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let (size, overflow) = bx.checked_binop(
                 OverflowOp::Mul,
                 bx.tcx().mk_mach_uint(UintTy::Usize),
-                unit.size.bytes(),
+                bx.const_usize(unit.size.bytes()),
                 info.unwrap(),
             );
             (
-                bx.select(overflow, bx.const_usize(usize::MAX), size),
+                bx.select(overflow, bx.const_usize(u64::MAX), size),
                 bx.const_usize(unit.align.abi.bytes()),
             )
         }
