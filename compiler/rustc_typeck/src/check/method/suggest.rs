@@ -28,7 +28,7 @@ use rustc_trait_selection::traits::{
 use std::cmp::Ordering;
 use std::iter;
 
-use super::probe::Mode;
+use super::probe::{Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1127,6 +1127,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 } else if !custom_span_label {
                     label_span_not_found();
+                }
+
+                if let SelfSource::MethodCall(expr) = source
+                    && let Some((fields, substs)) = self.get_field_candidates(span, actual)
+                {
+                    let call_expr =
+                        self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
+                    for candidate_field in fields.iter() {
+                        if let Some(field_path) = self.check_for_nested_field_satisfying(
+                            span,
+                            &|_, field_ty| {
+                                self.lookup_probe(
+                                    span,
+                                    item_name,
+                                    field_ty,
+                                    call_expr,
+                                    ProbeScope::AllTraits,
+                                )
+                                .is_ok()
+                            },
+                            candidate_field,
+                            substs,
+                            vec![],
+                            self.tcx.parent_module(expr.hir_id).to_def_id(),
+                        ) {
+                            let field_path_str = field_path
+                                .iter()
+                                .map(|id| id.name.to_ident_string())
+                                .collect::<Vec<String>>()
+                                .join(".");
+                            debug!("field_path_str: {:?}", field_path_str);
+
+                            err.span_suggestion_verbose(
+                                item_name.span.shrink_to_lo(),
+                                "one of the expressions' fields has a method of the same name",
+                                format!("{field_path_str}."),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                 }
 
                 bound_spans.sort();
