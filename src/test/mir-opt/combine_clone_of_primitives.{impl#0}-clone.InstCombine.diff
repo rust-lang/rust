@@ -23,9 +23,15 @@
       }
   
       bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
           _2 = &((*_1).0: T);              // scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          StorageLive(_3);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
           _3 = &((*_1).1: u64);            // scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+          StorageLive(_4);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
           _4 = &((*_1).2: [f32; 3]);       // scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+          StorageLive(_5);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          StorageLive(_6);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          StorageLive(_7);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
 -         _7 = &(*_2);                     // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
 -         _6 = &(*_7);                     // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
 +         _7 = _2;                         // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
@@ -37,6 +43,10 @@
       }
   
       bb1: {
+          StorageDead(_6);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:8:8: 8:9
+          StorageLive(_8);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+          StorageLive(_9);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+          StorageLive(_10);                // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
 -         _10 = &(*_3);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
 -         _9 = &(*_10);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
 -         _8 = <u64 as Clone>::clone(move _9) -> [return: bb2, unwind: bb4]; // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
@@ -50,6 +60,10 @@
       }
   
       bb2: {
+          StorageDead(_9);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:9:10: 9:11
+          StorageLive(_11);                // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+          StorageLive(_12);                // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+          StorageLive(_13);                // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
 -         _13 = &(*_4);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
 -         _12 = &(*_13);                   // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
 -         _11 = <[f32; 3] as Clone>::clone(move _12) -> [return: bb3, unwind: bb4]; // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
@@ -63,10 +77,20 @@
       }
   
       bb3: {
+          StorageDead(_12);                // scope 1 at $DIR/combine_clone_of_primitives.rs:10:15: 10:16
           Deinit(_0);                      // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.0: T) = move _5;             // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.1: u64) = move _8;           // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
           (_0.2: [f32; 3]) = move _11;     // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+          StorageDead(_13);                // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_11);                // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_10);                // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_8);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_7);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_5);                 // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_4);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_3);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+          StorageDead(_2);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
           return;                          // scope 0 at $DIR/combine_clone_of_primitives.rs:6:15: 6:15
       }
   

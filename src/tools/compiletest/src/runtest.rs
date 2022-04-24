@@ -1856,10 +1856,14 @@ impl<'test> TestCx<'test> {
                 rustc.args(&[
                     "-Copt-level=1",
                     "-Zdump-mir=all",
-                    "-Zmir-opt-level=4",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
+                if let Some(pass) = &self.props.mir_unit_test {
+                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                } else {
+                    rustc.arg("-Zmir-opt-level=4");
+                }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
