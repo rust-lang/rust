@@ -34,6 +34,8 @@ mod native_libs;
 mod rmeta;
 
 pub mod creader;
+pub mod fs;
 pub mod locator;
 
+pub use fs::{emit_metadata, METADATA_FILENAME};
 pub use rmeta::{encode_metadata, EncodedMetadata, METADATA_HEADER};

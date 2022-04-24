@@ -28,10 +28,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{create_rmeta_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
-use crate::{
-    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
-    METADATA_FILENAME,
-};
+use crate::{looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib};
 
 use cc::windows_registry;
 use regex::Regex;
@@ -237,23 +234,7 @@ pub fn each_linked_rlib(
     Ok(())
 }
 
-/// We use a temp directory here to avoid races between concurrent rustc processes,
-/// such as builds in the same directory using the same filename for metadata while
-/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
-/// directory being searched for `extern crate` (observing an incomplete file).
-/// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, metadata);
-
-    if let Err(e) = result {
-        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-    }
-
-    out_filename
-}
-
-/// Create an 'rlib'.
+/// Create an 'arlib'.
 ///
 /// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
 /// the object file of the crate, but it also contains all of the object files from native
@@ -276,7 +257,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         RlibFlavor::Normal => {
             let (metadata, metadata_position) =
                 create_rmeta_file(sess, codegen_results.metadata.raw_data());
-            let metadata = emit_metadata(sess, &metadata, tmpdir);
+            let metadata = rustc_metadata::fs::emit_metadata(sess, &metadata, tmpdir);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -502,7 +483,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
 
         ab.add_archive(path, move |fname: &str| {
             // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
+            if fname == rustc_metadata::fs::METADATA_FILENAME {
                 return true;
             }
 
@@ -2474,7 +2455,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
             if let Err(e) = archive.add_archive(cratepath, move |f| {
-                if f == METADATA_FILENAME {
+                if f == rustc_metadata::fs::METADATA_FILENAME {
                     return true;
                 }
 
