@@ -7,6 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
@@ -22,6 +23,7 @@ use rustc_trait_selection::traits::TraitEngineExt as _;
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
 
+use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::find_all_local_uses;
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
@@ -1956,45 +1958,46 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
-        match place.last_projection() {
-            None => StorageDeadOrDrop::LocalStorageDead,
-            Some((place_base, elem)) => {
-                // FIXME(spastorino) make this iterate
-                let base_access = self.classify_drop_access_kind(place_base);
-                match elem {
-                    ProjectionElem::Deref => match base_access {
-                        StorageDeadOrDrop::LocalStorageDead
-                        | StorageDeadOrDrop::BoxedStorageDead => {
-                            assert!(
-                                place_base.ty(self.body, tcx).ty.is_box(),
-                                "Drop of value behind a reference or raw pointer"
-                            );
-                            StorageDeadOrDrop::BoxedStorageDead
-                        }
-                        StorageDeadOrDrop::Destructor(_) => base_access,
-                    },
-                    ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = place_base.ty(self.body, tcx).ty;
-                        match base_ty.kind() {
-                            ty::Adt(def, _) if def.has_dtor(tcx) => {
-                                // Report the outermost adt with a destructor
-                                match base_access {
-                                    StorageDeadOrDrop::Destructor(_) => base_access,
-                                    StorageDeadOrDrop::LocalStorageDead
-                                    | StorageDeadOrDrop::BoxedStorageDead => {
-                                        StorageDeadOrDrop::Destructor(base_ty)
+        let (kind, _place_ty) = place.projection.iter().fold(
+            (LocalStorageDead, PlaceTy::from_ty(self.body.local_decls[place.local].ty)),
+            |(kind, place_ty), &elem| {
+                (
+                    match elem {
+                        ProjectionElem::Deref => match kind {
+                            StorageDeadOrDrop::LocalStorageDead
+                            | StorageDeadOrDrop::BoxedStorageDead => {
+                                assert!(
+                                    place_ty.ty.is_box(),
+                                    "Drop of value behind a reference or raw pointer"
+                                );
+                                StorageDeadOrDrop::BoxedStorageDead
+                            }
+                            StorageDeadOrDrop::Destructor(_) => kind,
+                        },
+                        ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
+                            match place_ty.ty.kind() {
+                                ty::Adt(def, _) if def.has_dtor(tcx) => {
+                                    // Report the outermost adt with a destructor
+                                    match kind {
+                                        StorageDeadOrDrop::Destructor(_) => kind,
+                                        StorageDeadOrDrop::LocalStorageDead
+                                        | StorageDeadOrDrop::BoxedStorageDead => {
+                                            StorageDeadOrDrop::Destructor(place_ty.ty)
+                                        }
                                     }
                                 }
+                                _ => kind,
                             }
-                            _ => base_access,
                         }
-                    }
-                    ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Index(_) => base_access,
-                }
-            }
-        }
+                        ProjectionElem::ConstantIndex { .. }
+                        | ProjectionElem::Subslice { .. }
+                        | ProjectionElem::Index(_) => kind,
+                    },
+                    place_ty.projection_ty(tcx, elem),
+                )
+            },
+        );
+        kind
     }
 
     /// Describe the reason for the fake borrow that was assigned to `place`.
