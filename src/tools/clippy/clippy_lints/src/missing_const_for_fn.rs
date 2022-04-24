@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, meets_msrv, msrvs, trait_ref_of_method};
+use clippy_utils::{is_entrypoint_fn, meets_msrv, msrvs, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         }
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
+        if cx.tcx.item_has_impossible_predicates(def_id.to_def_id()) {
             return;
         }
 

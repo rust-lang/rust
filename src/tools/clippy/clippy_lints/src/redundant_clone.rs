@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, walk_ptrs_ty_depth};
-use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
+        if cx.tcx.item_has_impossible_predicates(def_id.to_def_id()) {
             return;
         }
 

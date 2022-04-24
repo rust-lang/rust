@@ -91,7 +91,7 @@ use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
-use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
+use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, UpvarCapture};
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
@@ -1889,31 +1889,6 @@ pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     } else {
         false
     }
-}
-
-/// Check if it's even possible to satisfy the `where` clause for the item.
-///
-/// `trivial_bounds` feature allows functions with unsatisfiable bounds, for example:
-///
-/// ```ignore
-/// fn foo() where i32: Iterator {
-///     for _ in 2i32 {}
-/// }
-/// ```
-pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
-    use rustc_trait_selection::traits;
-    let predicates = cx
-        .tcx
-        .predicates_of(did)
-        .predicates
-        .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    traits::impossible_predicates(
-        cx.tcx,
-        traits::elaborate_predicates(cx.tcx, predicates)
-            .map(|o| o.predicate)
-            .collect::<Vec<_>>(),
-    )
 }
 
 /// Returns the `DefId` of the callee if the given expression is a function or method call.
