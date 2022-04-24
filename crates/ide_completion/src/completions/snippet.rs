@@ -94,7 +94,17 @@ fn ${1:feature}() {
     item.lookup_by("tfn");
     item.add_to(acc);
 
-    let item = snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}");
+    let item = snippet(
+        ctx,
+        cap,
+        "macro_rules",
+        "\
+macro_rules! $1 {
+    ($2) => {
+        $0
+    };
+}",
+    );
     item.add_to(acc);
 }
 
