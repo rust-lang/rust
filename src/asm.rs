@@ -116,7 +116,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
         let is_x86 = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64);
         let att_dialect = is_x86 && options.contains(InlineAsmOptions::ATT_SYNTAX);
-        let intel_dialect = is_x86 && !options.contains(InlineAsmOptions::ATT_SYNTAX);
 
         // GCC index of an output operand equals its position in the array
         let mut outputs = vec![];
@@ -354,7 +353,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // 3. Build the template string
 
         let mut template_str = String::with_capacity(estimate_template_length(template, constants_len, att_dialect));
-        if !intel_dialect {
+        if att_dialect {
             template_str.push_str(ATT_SYNTAX_INS);
         }
 
@@ -436,7 +435,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
         }
 
-        if !intel_dialect {
+        if att_dialect {
             template_str.push_str(INTEL_SYNTAX_INS);
         }
 
@@ -661,8 +660,8 @@ impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
         // Default to Intel syntax on x86
-        let intel_syntax = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
-            && !options.contains(InlineAsmOptions::ATT_SYNTAX);
+        let att_dialect = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
+            && options.contains(InlineAsmOptions::ATT_SYNTAX);
 
         // Build the template string
         let mut template_str = String::new();
@@ -696,11 +695,11 @@ impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
         }
 
         let template_str =
-            if intel_syntax {
-                format!("{}\n\t.intel_syntax noprefix", template_str)
+            if att_dialect {
+                format!(".att_syntax\n\t{}\n\t.intel_syntax noprefix", template_str)
             }
             else {
-                format!(".att_syntax\n\t{}\n\t.intel_syntax noprefix", template_str)
+                template_str
             };
         // NOTE: seems like gcc will put the asm in the wrong section, so set it to .text manually.
         let template_str = format!(".pushsection .text\n{}\n.popsection", template_str);
