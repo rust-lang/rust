@@ -91,7 +91,7 @@ LL |     let fail36 = 0xFFFF_FFFF_FFFF_FFFF_64; // u64
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean to write: `0xFFFF_FFFF_FFFF_FFFF_u64`
 
 error: mistyped literal suffix
-  --> $DIR/mistyped_literal_suffix.rs:38:13
+  --> $DIR/mistyped_literal_suffix.rs:42:13
    |
 LL |     let _ = 1.12345E1_32;
    |             ^^^^^^^^^^^^ help: did you mean to write: `1.123_45E1_f32`

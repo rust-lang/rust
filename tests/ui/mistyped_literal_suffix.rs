@@ -35,5 +35,9 @@ fn main() {
     let ok35 = 0x12345_16;
     let fail36 = 0xFFFF_FFFF_FFFF_FFFF_64; // u64
 
+    // issue #6129
+    let ok37 = 123_32.123;
+    let ok38 = 124_64.0;
+
     let _ = 1.12345E1_32;
 }
