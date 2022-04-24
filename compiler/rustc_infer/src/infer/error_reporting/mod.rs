@@ -61,7 +61,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
@@ -2285,7 +2285,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
-        self.construct_generic_bound_failure(span, origin, bound_kind, sub).emit();
+        let owner =
+            self.in_progress_typeck_results.map(|typeck_results| typeck_results.borrow().hir_owner);
+        self.construct_generic_bound_failure(span, origin, bound_kind, sub, owner).emit();
     }
 
     pub fn construct_generic_bound_failure(
@@ -2294,31 +2296,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
+        owner: Option<LocalDefId>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let hir = self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let generics = self
-            .in_progress_typeck_results
-            .map(|typeck_results| typeck_results.borrow().hir_owner)
-            .map(|owner| {
-                let hir_id = hir.local_def_id_to_hir_id(owner);
-                let parent_id = hir.get_parent_item(hir_id);
-                (
-                    // Parent item could be a `mod`, so we check the HIR before calling:
-                    if let Some(Node::Item(Item {
-                        kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
-                        ..
-                    })) = hir.find_by_def_id(parent_id)
-                    {
-                        Some(self.tcx.generics_of(parent_id))
-                    } else {
-                        None
-                    },
-                    self.tcx.generics_of(owner.to_def_id()),
-                    hir.span(hir_id),
-                )
-            });
+        let generics = owner.map(|owner| {
+            let hir_id = hir.local_def_id_to_hir_id(owner);
+            let parent_id = hir.get_parent_item(hir_id);
+            (
+                // Parent item could be a `mod`, so we check the HIR before calling:
+                if let Some(Node::Item(Item {
+                    kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
+                    ..
+                })) = hir.find_by_def_id(parent_id)
+                {
+                    Some(self.tcx.generics_of(parent_id))
+                } else {
+                    None
+                },
+                self.tcx.generics_of(owner.to_def_id()),
+                hir.span(hir_id),
+            )
+        });
 
         let span = match generics {
             // This is to get around the trait identity obligation, that has a `DUMMY_SP` as signal
@@ -2606,11 +2606,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     None,
                 );
                 if let Some(infer::RelateParamBound(_, t, _)) = origin {
-                    let return_impl_trait = self
-                        .in_progress_typeck_results
-                        .map(|typeck_results| typeck_results.borrow().hir_owner)
-                        .and_then(|owner| self.tcx.return_type_impl_trait(owner))
-                        .is_some();
+                    let return_impl_trait =
+                        owner.and_then(|owner| self.tcx.return_type_impl_trait(owner)).is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:

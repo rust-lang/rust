@@ -5,6 +5,7 @@ LL |         check_bound(x, self)
    |         ^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `Self: 'a`...
+   = note: ...so that the type `Self` will meet its required lifetime bounds
 
 error: aborting due to previous error
 

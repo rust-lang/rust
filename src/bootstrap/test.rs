@@ -1400,9 +1400,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         targetflags.extend(builder.lld_flags(target));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
-        cmd.arg("--docck-python").arg(builder.python());
-
-        cmd.arg("--lldb-python").arg(builder.python());
+        cmd.arg("--python").arg(builder.python());
 
         if let Some(ref gdb) = builder.config.gdb {
             cmd.arg("--gdb").arg(gdb);

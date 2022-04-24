@@ -43,7 +43,7 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let download_rustc = run.builder.config.download_rustc;
-        run.all_krates("test").default_condition(!download_rustc)
+        run.all_krates("test").path("library").default_condition(!download_rustc)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1047,7 +1047,7 @@ impl Step for Assemble {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc")
+        run.path("compiler/rustc").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {

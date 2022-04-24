@@ -82,10 +82,11 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:41:5
    |
+LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
+   |                                 -- help: consider adding an explicit lifetime bound...: `T: 'static +`
+...
 LL |     x
-   |     ^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to 9 previous errors
 

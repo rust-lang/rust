@@ -29,18 +29,20 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23
    |
+LL | fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
+   |                  - help: consider adding an explicit lifetime bound...: `T: 'a`
+...
 LL |     with_signature(x, |y| y)
-   |                       ^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+   |                       ^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:41:5
    |
+LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>
+   |                         - help: consider adding an explicit lifetime bound...: `T: 'a`
+...
 LL |     x
-   |     ^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to 2 previous errors
 

@@ -64,7 +64,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test")
+        run.all_krates("test").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -162,7 +162,7 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("rustc-main")
+        run.all_krates("rustc-main").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {

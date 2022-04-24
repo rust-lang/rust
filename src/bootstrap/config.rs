@@ -41,6 +41,7 @@ macro_rules! check_ci_llvm {
 /// each field, see the corresponding fields in
 /// `config.toml.example`.
 #[derive(Default)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Config {
     pub changelog_seen: Option<usize>,
     pub ccache: Option<String>,
@@ -330,6 +331,7 @@ impl PartialEq<&str> for TargetSelection {
 
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,

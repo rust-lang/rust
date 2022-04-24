@@ -416,7 +416,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.all_krates("test").default_condition(builder.config.docs)
+        run.all_krates("test").path("library").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -477,11 +477,14 @@ impl Step for Std {
             .iter()
             .map(components_simplified)
             .filter_map(|path| {
-                if path.get(0) == Some(&"library") {
+                if path.len() >= 2 && path.get(0) == Some(&"library") {
+                    // single crate
                     Some(path[1].to_owned())
                 } else if !path.is_empty() {
+                    // ??
                     Some(path[0].to_owned())
                 } else {
+                    // all library crates
                     None
                 }
             })

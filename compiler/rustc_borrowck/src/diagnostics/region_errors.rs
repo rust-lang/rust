@@ -4,6 +4,7 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
+    RelateParamBound,
 };
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
@@ -166,11 +167,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let type_test_span = type_test.locations.span(&self.body);
 
                     if let Some(lower_bound_region) = lower_bound_region {
+                        let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
+                        let origin = RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.construct_generic_bound_failure(
                             type_test_span,
-                            None,
+                            Some(origin),
                             type_test.generic_kind,
                             lower_bound_region,
+                            self.body.source.def_id().as_local(),
                         ));
                     } else {
                         // FIXME. We should handle this case better. It

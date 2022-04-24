@@ -19,10 +19,10 @@ LL | type WrongGeneric<T> = impl 'static;
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/generic_type_does_not_live_long_enough.rs:18:5
    |
+LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
+   |                  - help: consider adding an explicit lifetime bound...: `T: 'static`
 LL |     t
-   |     ^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to 3 previous errors
 
