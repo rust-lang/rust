@@ -545,14 +545,16 @@ help: use type parameters instead
 LL |     fn test10<T>(&self, _x : T) { }
    |              +++             ~
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:59:24
    |
 LL |     fn clone(&self) -> _ { Test9 }
-   |                        ^
-   |                        |
-   |                        not allowed in type signatures
-   |                        help: replace with the correct return type: `Test9`
+   |                        ^ not allowed in type signatures
+   |
+help: try replacing `_` with the type in the corresponding trait method signature
+   |
+LL |     fn clone(&self) -> Test9 { Test9 }
+   |                        ~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:62:37
@@ -560,10 +562,10 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |     fn clone_from(&mut self, other: _) { *self = Test9; }
    |                                     ^ not allowed in type signatures
    |
-help: use type parameters instead
+help: try replacing `_` with the type in the corresponding trait method signature
    |
-LL |     fn clone_from<T>(&mut self, other: T) { *self = Test9; }
-   |                  +++                   ~
+LL |     fn clone_from(&mut self, other: &Test9) { *self = Test9; }
+   |                                     ~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:107:31
@@ -585,14 +587,16 @@ help: use type parameters instead
 LL |         fn fn_test10<T>(&self, _x : T) { }
    |                     +++             ~
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:115:28
    |
 LL |         fn clone(&self) -> _ { FnTest9 }
-   |                            ^
-   |                            |
-   |                            not allowed in type signatures
-   |                            help: replace with the correct return type: `FnTest9`
+   |                            ^ not allowed in type signatures
+   |
+help: try replacing `_` with the type in the corresponding trait method signature
+   |
+LL |         fn clone(&self) -> FnTest9 { FnTest9 }
+   |                            ~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:118:41
@@ -600,10 +604,10 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |         fn clone_from(&mut self, other: _) { *self = FnTest9; }
    |                                         ^ not allowed in type signatures
    |
-help: use type parameters instead
+help: try replacing `_` with the type in the corresponding trait method signature
    |
-LL |         fn clone_from<T>(&mut self, other: T) { *self = FnTest9; }
-   |                      +++                   ~
+LL |         fn clone_from(&mut self, other: &FnTest9) { *self = FnTest9; }
+   |                                         ~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
   --> $DIR/typeck_type_placeholder_item.rs:201:14

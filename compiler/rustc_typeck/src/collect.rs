@@ -160,6 +160,33 @@ crate fn placeholder_type_error<'tcx>(
         return;
     }
 
+    placeholder_type_error_diag(
+        tcx,
+        span,
+        generics,
+        placeholder_types,
+        vec![],
+        suggest,
+        hir_ty,
+        kind,
+    )
+    .emit();
+}
+
+crate fn placeholder_type_error_diag<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: Option<Span>,
+    generics: &[hir::GenericParam<'_>],
+    placeholder_types: Vec<Span>,
+    additional_spans: Vec<Span>,
+    suggest: bool,
+    hir_ty: Option<&hir::Ty<'_>>,
+    kind: &'static str,
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    if placeholder_types.is_empty() {
+        return bad_placeholder(tcx, additional_spans, kind);
+    }
+
     let type_name = generics.next_type_param_name(None);
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
@@ -182,7 +209,8 @@ crate fn placeholder_type_error<'tcx>(
         sugg.push((span, format!(", {}", type_name)));
     }
 
-    let mut err = bad_placeholder(tcx, placeholder_types, kind);
+    let mut err =
+        bad_placeholder(tcx, placeholder_types.into_iter().chain(additional_spans).collect(), kind);
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -218,7 +246,8 @@ crate fn placeholder_type_error<'tcx>(
             );
         }
     }
-    err.emit();
+
+    err
 }
 
 fn reject_placeholder_type_signatures_in_item<'tcx>(
@@ -1868,50 +1897,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             generics,
             ..
         })
-        | ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), ident, generics, .. })
         | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
-            match get_infer_ret_ty(&sig.decl.output) {
-                Some(ty) => {
-                    let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
-                    // Typeck doesn't expect erased regions to be returned from `type_of`.
-                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match *r {
-                        ty::ReErased => tcx.lifetimes.re_static,
-                        _ => r,
-                    });
-                    let fn_sig = ty::Binder::dummy(fn_sig);
+            infer_return_ty_for_fn_sig(tcx, sig, *ident, generics, def_id, &icx)
+        }
 
-                    let mut visitor = HirPlaceholderCollector::default();
-                    visitor.visit_ty(ty);
-                    let mut diag = bad_placeholder(tcx, visitor.0, "return type");
-                    let ret_ty = fn_sig.skip_binder().output();
-                    if !ret_ty.references_error() {
-                        if !ret_ty.is_closure() {
-                            let ret_ty_str = match ret_ty.kind() {
-                                // Suggest a function pointer return type instead of a unique function definition
-                                // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
-                                // syntax)
-                                ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
-                                _ => ret_ty.to_string(),
-                            };
-                            diag.span_suggestion(
-                                ty.span,
-                                "replace with the correct return type",
-                                ret_ty_str,
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
-                            // to prevent the user from getting a papercut while trying to use the unique closure
-                            // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
-                            diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-                            diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
-                        }
-                    }
-                    diag.emit();
-
-                    fn_sig
-                }
-                None => <dyn AstConv<'_>>::ty_of_fn(
+        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), ident, generics, .. }) => {
+            // Do not try to inference the return type for a impl method coming from a trait
+            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
+                tcx.hir().get(tcx.hir().get_parent_node(hir_id))
+                && i.of_trait.is_some()
+            {
+                <dyn AstConv<'_>>::ty_of_fn(
                     &icx,
                     hir_id,
                     sig.header.unsafety,
@@ -1920,7 +1916,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     generics,
                     Some(ident.span),
                     None,
-                ),
+                )
+            } else {
+                infer_return_ty_for_fn_sig(tcx, sig, *ident, generics, def_id, &icx)
             }
         }
 
@@ -1979,6 +1977,70 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
+    }
+}
+
+fn infer_return_ty_for_fn_sig<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig: &hir::FnSig<'_>,
+    ident: Ident,
+    generics: &hir::Generics<'_>,
+    def_id: LocalDefId,
+    icx: &ItemCtxt<'tcx>,
+) -> ty::PolyFnSig<'tcx> {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+
+    match get_infer_ret_ty(&sig.decl.output) {
+        Some(ty) => {
+            let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
+            // Typeck doesn't expect erased regions to be returned from `type_of`.
+            let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match *r {
+                ty::ReErased => tcx.lifetimes.re_static,
+                _ => r,
+            });
+            let fn_sig = ty::Binder::dummy(fn_sig);
+
+            let mut visitor = HirPlaceholderCollector::default();
+            visitor.visit_ty(ty);
+            let mut diag = bad_placeholder(tcx, visitor.0, "return type");
+            let ret_ty = fn_sig.skip_binder().output();
+            if !ret_ty.references_error() {
+                if !ret_ty.is_closure() {
+                    let ret_ty_str = match ret_ty.kind() {
+                        // Suggest a function pointer return type instead of a unique function definition
+                        // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
+                        // syntax)
+                        ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
+                        _ => ret_ty.to_string(),
+                    };
+                    diag.span_suggestion(
+                        ty.span,
+                        "replace with the correct return type",
+                        ret_ty_str,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
+                    // to prevent the user from getting a papercut while trying to use the unique closure
+                    // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
+                    diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+                    diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                }
+            }
+            diag.emit();
+
+            fn_sig
+        }
+        None => <dyn AstConv<'_>>::ty_of_fn(
+            icx,
+            hir_id,
+            sig.header.unsafety,
+            sig.header.abi,
+            sig.decl,
+            generics,
+            Some(ident.span),
+            None,
+        ),
     }
 }
 

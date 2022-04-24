@@ -57,7 +57,7 @@ unsafe fn test12(x: *const usize) -> *const *const _ {
 
 impl Clone for Test9 {
     fn clone(&self) -> _ { Test9 }
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
     fn clone_from(&mut self, other: _) { *self = Test9; }
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
@@ -113,7 +113,7 @@ pub fn main() {
 
     impl Clone for FnTest9 {
         fn clone(&self) -> _ { FnTest9 }
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
         fn clone_from(&mut self, other: _) { *self = FnTest9; }
         //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
