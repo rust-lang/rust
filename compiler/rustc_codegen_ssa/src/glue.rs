@@ -44,8 +44,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 bx.const_usize(unit.size.bytes()),
                 info.unwrap(),
             );
+            let ptr_max = bx.data_layout().pointer_size.truncate(u128::MAX) as u64;
             (
-                bx.select(overflow, bx.const_usize(u64::MAX), size),
+                bx.select(overflow, bx.const_usize(ptr_max), size),
                 bx.const_usize(unit.align.abi.bytes()),
             )
         }
