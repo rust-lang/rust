@@ -45,7 +45,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -122,20 +122,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
 
-    /// Used to create lifetime definitions for anonymous lifetimes.
-    /// When an anonymous lifetime is encountered in a function or impl header and
-    /// requires to create a fresh lifetime parameter, it is added
-    /// to this list. The results of this list are then added to the list of
-    /// lifetime definitions in the corresponding impl or function generics.
-    lifetimes_to_define: FxIndexMap<NodeId, Span>,
-
-    /// If anonymous lifetimes are being collected, this field holds the parent
-    /// `LocalDefId` to create the fresh lifetime parameters' `LocalDefId`.
-    is_collecting_anonymous_lifetimes: Option<LocalDefId>,
-
-    /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
-    in_scope_lifetimes: Vec<(ParamName, LocalDefId)>,
-
     /// Used to handle lifetimes appearing in impl-traits.
     captured_lifetimes: Option<LifetimeCaptureContext>,
 
@@ -173,8 +159,6 @@ pub enum LifetimeRes {
     Fresh {
         /// Id of the generic parameter that introduced it.
         param: LocalDefId,
-        /// Id to create the HirId.  This is used when creating the `Fresh` lifetime parameters.
-        introducer: Option<NodeId>,
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
     },
@@ -236,6 +220,9 @@ pub trait ResolverAstLowering {
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
+
+    /// Obtain the list of lifetimes parameters to add to an item.
+    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
 
@@ -694,46 +681,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Converts a lifetime into a new generic parameter.
-    fn fresh_lifetime_to_generic_param(
+    fn lifetime_res_to_generic_param(
         &mut self,
-        span: Span,
+        ident: Ident,
         node_id: NodeId,
-    ) -> hir::GenericParam<'hir> {
-        let hir_id = self.lower_node_id(node_id);
-        let def_id = self.resolver.local_def_id(node_id);
-        hir::GenericParam {
-            hir_id,
-            name: hir::ParamName::Fresh(def_id),
-            bounds: &[],
-            span: self.lower_span(span),
-            pure_wrt_drop: false,
-            kind: hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided },
-        }
-    }
-
-    /// Evaluates `f` with the lifetimes in `params` in-scope.
-    /// This is used to track which lifetimes have already been defined,
-    /// which need to be duplicated for async fns.
-    fn with_in_scope_lifetime_defs<T>(
-        &mut self,
-        params: &[GenericParam],
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let old_len = self.in_scope_lifetimes.len();
-        let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                let def_id = self.resolver.local_def_id(param.id);
-                let name = ParamName::Plain(param.ident);
-                Some((name, def_id))
+        res: LifetimeRes,
+    ) -> Option<hir::GenericParam<'hir>> {
+        let (name, kind) = match res {
+            LifetimeRes::Param { .. } => {
+                (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            _ => None,
-        });
-        self.in_scope_lifetimes.extend(lt_def_names);
-
-        let res = f(self);
-
-        self.in_scope_lifetimes.truncate(old_len);
-        res
+            LifetimeRes::Fresh { param, .. } => {
+                (hir::ParamName::Fresh(param), hir::LifetimeParamKind::Elided)
+            }
+            LifetimeRes::Static | LifetimeRes::Error => return None,
+            res => panic!(
+                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                res, ident, ident.span
+            ),
+        };
+        let hir_id = self.lower_node_id(node_id);
+        Some(hir::GenericParam {
+            hir_id,
+            name,
+            bounds: &[],
+            span: self.lower_span(ident.span),
+            pure_wrt_drop: false,
+            kind: hir::GenericParamKind::Lifetime { kind },
+        })
     }
 
     /// Creates a new `hir::GenericParam` for every new `Fresh` lifetime and
@@ -742,39 +717,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn add_implicit_generics<T>(
         &mut self,
         generics: &Generics,
-        parent_def_id: LocalDefId,
+        parent_node_id: NodeId,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
-        let lifetime_stash = std::mem::take(&mut self.lifetimes_to_define);
-        let was_collecting =
-            std::mem::replace(&mut self.is_collecting_anonymous_lifetimes, Some(parent_def_id));
-
         let mut impl_trait_defs = Vec::new();
+        let mut lowered_generics = self.lower_generics_mut(
+            generics,
+            ImplTraitContext::Universal(&mut impl_trait_defs, self.current_hir_id_owner),
+        );
+        let res = f(self, &mut impl_trait_defs);
 
-        let (mut lowered_generics, res) =
-            self.with_in_scope_lifetime_defs(&generics.params, |this| {
-                // Note: it is necessary to lower generics *before* calling `f`.
-                // When lowering `async fn`, there's a final step when lowering
-                // the return type that assumes that all in-scope lifetimes have
-                // already been added to either `in_scope_lifetimes` or
-                // `lifetimes_to_define`. If we swapped the order of these two,
-                // fresh lifetimes introduced by generics or where-clauses
-                // wouldn't have been added yet.
-                let generics = this.lower_generics_mut(
-                    generics,
-                    ImplTraitContext::Universal(&mut impl_trait_defs, this.current_hir_id_owner),
-                );
-                let res = f(this, &mut impl_trait_defs);
-                (generics, res)
-            });
-
-        self.is_collecting_anonymous_lifetimes = was_collecting;
-        let lifetimes_to_define = std::mem::replace(&mut self.lifetimes_to_define, lifetime_stash);
-
+        let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
         lowered_generics.params.extend(
-            lifetimes_to_define
+            extra_lifetimes
                 .into_iter()
-                .map(|(node_id, span)| self.fresh_lifetime_to_generic_param(span, node_id))
+                .filter_map(|(ident, node_id, res)| {
+                    self.lifetime_res_to_generic_param(ident, node_id, res)
+                })
                 .chain(impl_trait_defs),
         );
 
@@ -1227,19 +1186,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
-                this.with_lifetime_binder(t.id, |this| {
-                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                        generic_params: this.lower_generic_params(
-                            &f.generic_params,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                        ),
-                        unsafety: this.lower_unsafety(f.unsafety),
-                        abi: this.lower_extern(f.ext),
-                        decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
-                        param_names: this.lower_fn_params_to_names(&f.decl),
-                    }))
-                })
+            TyKind::BareFn(ref f) => self.with_lifetime_binder(t.id, |this| {
+                hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                    generic_params: this.lower_generic_params(
+                        &f.generic_params,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    ),
+                    unsafety: this.lower_unsafety(f.unsafety),
+                    abi: this.lower_extern(f.ext),
+                    decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
+                    param_names: this.lower_fn_params_to_names(&f.decl),
+                }))
             }),
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => {
@@ -1676,70 +1633,50 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // should be figured out using the ordinary elision rules, and
         // this desugaring achieves that.
 
-        debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", self.in_scope_lifetimes);
-        debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", self.lifetimes_to_define);
-
         // Calculate all the lifetimes that should be captured
         // by the opaque type. This should include all in-scope
         // lifetime parameters, including those defined in-band.
 
-        // Input lifetime like `'a`:
         let mut captures = FxHashMap::default();
-        for &(p_name, def_id) in &self.in_scope_lifetimes {
-            let Ident { name, span } = p_name.ident();
-            let node_id = self.resolver.next_node_id();
+
+        let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
+        debug!(?extra_lifetime_params);
+        for (ident, outer_node_id, outer_res) in extra_lifetime_params {
+            let Ident { name, span } = ident;
+            let outer_def_id = self.resolver.local_def_id(outer_node_id);
+            let inner_node_id = self.resolver.next_node_id();
 
             // Add a definition for the in scope lifetime def.
             self.resolver.create_def(
                 opaque_ty_def_id,
-                node_id,
+                inner_node_id,
                 DefPathData::LifetimeNs(name),
                 ExpnId::root(),
                 span.with_parent(None),
             );
 
-            let res = match p_name {
-                hir::ParamName::Plain(_) => {
-                    LifetimeRes::Param { param: def_id, binder: fn_node_id }
+            let (p_name, inner_res) = match outer_res {
+                // Input lifetime like `'a`:
+                LifetimeRes::Param { param, .. } => {
+                    (hir::ParamName::Plain(ident), LifetimeRes::Param { param, binder: fn_node_id })
                 }
-                hir::ParamName::Fresh(_) => {
-                    LifetimeRes::Fresh { param: def_id, introducer: None, binder: fn_node_id }
+                // Input lifetime like `'1`:
+                LifetimeRes::Fresh { param, .. } => (
+                    hir::ParamName::Fresh(outer_def_id),
+                    LifetimeRes::Fresh { param, binder: fn_node_id },
+                ),
+                LifetimeRes::Static | LifetimeRes::Error => continue,
+                res => {
+                    panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span)
                 }
-                hir::ParamName::Error => LifetimeRes::Error,
             };
 
-            captures.insert(def_id, (span, node_id, p_name, res));
-        }
-
-        // Input lifetime like `'1`:
-        for (&node_id, &span) in &self.lifetimes_to_define {
-            let def_id = self.resolver.local_def_id(node_id);
-            let new_node_id = self.resolver.next_node_id();
-
-            // Add a definition for the `Fresh` lifetime def.
-            let new_def_id = self.resolver.create_def(
-                opaque_ty_def_id,
-                new_node_id,
-                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                ExpnId::root(),
-                span.with_parent(None),
-            );
-
-            captures.insert(
-                def_id,
-                (
-                    span,
-                    new_node_id,
-                    hir::ParamName::Fresh(new_def_id),
-                    LifetimeRes::Fresh { param: def_id, introducer: None, binder: fn_node_id },
-                ),
-            );
+            captures.insert(outer_def_id, (span, inner_node_id, p_name, inner_res));
         }
 
         debug!(?captures);
 
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
-            debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", this.lifetimes_to_define);
             let future_bound =
                 this.while_capturing_lifetimes(opaque_ty_def_id, &mut captures, |this| {
                     // We have to be careful to get elision right here. The
@@ -1923,11 +1860,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 hir::LifetimeName::Param(p_name)
             }
-            LifetimeRes::Fresh { mut param, introducer, binder } => {
+            LifetimeRes::Fresh { mut param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                // Only items are allowed to introduce fresh lifetimes,
-                // so we know `binder` has a `LocalDefId`.
-                let binder_def_id = self.resolver.local_def_id(binder);
                 if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
                     &mut self.captured_lifetimes
                     && !binders_to_ignore.contains(&binder)
@@ -1948,16 +1882,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             v.insert((span, p_id, p_name, res));
                             param = p_def_id;
                         }
-                    }
-                } else if let Some(introducer) = introducer {
-                    if self.is_collecting_anonymous_lifetimes == Some(binder_def_id)
-                        && self.resolver.opt_local_def_id(introducer) == Some(param)
-                    {
-                        debug!(
-                            "lifetime_to_define += id={:?} span={:?} res={:?}",
-                            introducer, span, res
-                        );
-                        self.lifetimes_to_define.insert(introducer, span);
                     }
                 }
                 let p_name = ParamName::Fresh(param);
@@ -2091,10 +2015,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bound_generic_params =
             self.lower_generic_params(&p.bound_generic_params, itctx.reborrow());
 
-        let trait_ref = self.with_in_scope_lifetime_defs(&p.bound_generic_params, |this| {
-            this.with_lifetime_binder(p.trait_ref.ref_id, |this| {
-                this.lower_trait_ref(&p.trait_ref, itctx.reborrow())
-            })
+        let trait_ref = self.with_lifetime_binder(p.trait_ref.ref_id, |this| {
+            this.lower_trait_ref(&p.trait_ref, itctx.reborrow())
         });
 
         hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }

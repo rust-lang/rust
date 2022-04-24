@@ -15,7 +15,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
@@ -244,7 +244,8 @@ impl LifetimeBinderKind {
 #[derive(Debug)]
 struct LifetimeRib {
     kind: LifetimeRibKind,
-    bindings: IdentMap<LifetimeRes>,
+    // We need to preserve insertion order for async fns.
+    bindings: FxIndexMap<Ident, (NodeId, LifetimeRes)>,
 }
 
 impl LifetimeRib {
@@ -718,6 +719,32 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         },
                     );
 
+                    // Construct the list of in-scope lifetime parameters for async lowering.
+                    // We include all lifetime parameters, either named or "Fresh".
+                    // The order of those parameters does not matter, as long as it is
+                    // deterministic.
+                    let mut extra_lifetime_params =
+                        this.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
+                    for rib in this.lifetime_ribs.iter().rev() {
+                        extra_lifetime_params.extend(
+                            rib.bindings
+                                .iter()
+                                .map(|(&ident, &(node_id, res))| (ident, node_id, res)),
+                        );
+                        match rib.kind {
+                            LifetimeRibKind::Item => break,
+                            LifetimeRibKind::AnonymousCreateParameter(id) => {
+                                if let Some(earlier_fresh) =
+                                    this.r.extra_lifetime_params_map.get(&id)
+                                {
+                                    extra_lifetime_params.extend(earlier_fresh);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    this.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
+
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousPassThrough(async_node_id),
                         |this| visit::walk_fn_ret_ty(this, &declaration.output),
@@ -1126,7 +1153,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         for i in &mut indices {
             let rib = &self.lifetime_ribs[i];
             let normalized_ident = ident.normalize_to_macros_2_0();
-            if let Some(&region) = rib.bindings.get(&normalized_ident) {
+            if let Some(&(_, region)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, region);
                 return;
             }
@@ -1229,12 +1256,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
         debug!(?def_id);
 
-        let region = LifetimeRes::Fresh {
-            param: def_id,
-            introducer: Some(def_node_id),
-            binder: item_node_id,
-        };
+        let region = LifetimeRes::Fresh { param: def_id, binder: item_node_id };
         self.record_lifetime_res(id, region);
+        self.r.extra_lifetime_params_map.entry(item_node_id).or_insert_with(Vec::new).push((
+            ident,
+            def_node_id,
+            region,
+        ));
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
@@ -1818,7 +1846,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     let LifetimeRibKind::Generics { parent, .. } = lifetime_kind else { panic!() };
                     let res = LifetimeRes::Param { param: def_id, binder: parent };
                     self.record_lifetime_res(param.id, res);
-                    function_lifetime_rib.bindings.insert(ident, res);
+                    function_lifetime_rib.bindings.insert(ident, (param.id, res));
                     continue;
                 }
             };

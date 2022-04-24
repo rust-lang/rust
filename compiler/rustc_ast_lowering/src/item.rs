@@ -84,9 +84,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             generator_kind: None,
             task_context: None,
             current_item: None,
-            lifetimes_to_define: Default::default(),
-            is_collecting_anonymous_lifetimes: None,
-            in_scope_lifetimes: Vec::new(),
             captured_lifetimes: None,
             allow_try_trait: Some([sym::try_trait_v2][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
@@ -149,36 +146,8 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
             match parent_hir.node().expect_item().kind {
-                hir::ItemKind::Impl(hir::Impl { ref of_trait, ref generics, .. }) => {
+                hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }) => {
                     lctx.is_in_trait_impl = of_trait.is_some();
-                    lctx.in_scope_lifetimes = generics
-                        .params
-                        .iter()
-                        .filter(|param| {
-                            matches!(param.kind, hir::GenericParamKind::Lifetime { .. })
-                        })
-                        .map(|param| {
-                            let def_id =
-                                parent_hir.nodes.local_id_to_def_id[&param.hir_id.local_id];
-                            let name = param.name;
-                            (name, def_id)
-                        })
-                        .collect();
-                }
-                hir::ItemKind::Trait(_, _, ref generics, ..) => {
-                    lctx.in_scope_lifetimes = generics
-                        .params
-                        .iter()
-                        .filter(|param| {
-                            matches!(param.kind, hir::GenericParamKind::Lifetime { .. })
-                        })
-                        .map(|param| {
-                            let def_id =
-                                parent_hir.nodes.local_id_to_def_id[&param.hir_id.local_id];
-                            let name = param.name;
-                            (name, def_id)
-                        })
-                        .collect();
                 }
                 _ => {}
             };
@@ -286,7 +255,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref body,
                 ..
             }) => {
-                let fn_def_id = self.resolver.local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -299,7 +267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let (generics, decl) =
-                        this.add_implicit_generics(generics, fn_def_id, |this, idty| {
+                        this.add_implicit_generics(generics, id, |this, idty| {
                             let ret_id = asyncness.opt_return_id();
                             this.lower_fn_decl(&decl, Some((id, idty)), FnDeclKind::Fn, ret_id)
                         });
@@ -415,9 +383,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_def_id = hir_id.expect_owner();
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.add_implicit_generics(ast_generics, lowered_trait_def_id, |this, _| {
+                    self.add_implicit_generics(ast_generics, id, |this, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -431,12 +398,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (trait_ref, lowered_ty)
                     });
 
-                let new_impl_items =
-                    self.with_in_scope_lifetime_defs(&ast_generics.params, |this| {
-                        this.arena.alloc_from_iter(
-                            impl_items.iter().map(|item| this.lower_impl_item_ref(item)),
-                        )
-                    });
+                let new_impl_items = self
+                    .arena
+                    .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -743,7 +707,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) =
-                        self.add_implicit_generics(generics, def_id, |this, _| {
+                        self.add_implicit_generics(generics, i.id, |this, _| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
@@ -1343,9 +1307,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: FnDeclKind,
         is_async: Option<NodeId>,
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
-        let fn_def_id = self.resolver.local_def_id(id);
         let header = self.lower_fn_header(sig.header);
-        let (generics, decl) = self.add_implicit_generics(generics, fn_def_id, |this, idty| {
+        let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty| {
             this.lower_fn_decl(&sig.decl, Some((id, idty)), kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
@@ -1487,24 +1450,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounded_ty,
                 ref bounds,
                 span,
-            }) => self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
-                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    bound_generic_params: this.lower_generic_params(
-                        bound_generic_params,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    ),
-                    bounded_ty: this.lower_ty(
-                        bounded_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Type),
-                    ),
-                    bounds: this.arena.alloc_from_iter(bounds.iter().map(|bound| {
-                        this.lower_param_bound(
-                            bound,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                        )
-                    })),
-                    span: this.lower_span(span),
-                })
+            }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                bound_generic_params: self.lower_generic_params(
+                    bound_generic_params,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                ),
+                bounded_ty: self
+                    .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
+                    self.lower_param_bound(
+                        bound,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    )
+                })),
+                span: self.lower_span(span),
             }),
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,

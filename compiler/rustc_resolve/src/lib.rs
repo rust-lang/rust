@@ -903,6 +903,8 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes>,
+    /// Lifetime parameters that lowering will have to introduce.
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
@@ -1159,6 +1161,10 @@ impl ResolverAstLowering for Resolver<'_> {
         self.lifetimes_res_map.get(&id).copied()
     }
 
+    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
+        self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
+    }
+
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
     }
@@ -1308,6 +1314,7 @@ impl<'a> Resolver<'a> {
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
+            extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             reexport_map: FxHashMap::default(),
             trait_map: NodeMap::default(),
