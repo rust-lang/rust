@@ -5,7 +5,6 @@ use crate::interpret::{
     Scalar, ScalarMaybeUninit,
 };
 use rustc_middle::mir::interpret::ConstAlloc;
-use rustc_middle::mir::{Field, ProjectionElem};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
@@ -197,45 +196,45 @@ pub fn valtree_to_const_value<'tcx>(
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
 
     match ty.kind() {
+        ty::FnDef(..) => {
+            assert!(valtree.unwrap_branch().is_empty());
+            ConstValue::Scalar(Scalar::ZST)
+        }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
             ty::ValTree::Branch(_) => bug!(
                 "ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf"
             ),
         },
-        ty::Ref(_, inner_ty, _) => {
-            // create a place for the pointee
-            let mut pointee_place = create_pointee_place(&mut ecx, *inner_ty, valtree);
-            debug!(?pointee_place);
-
-            // insert elements of valtree into `place`
-            fill_place_recursively(&mut ecx, &mut pointee_place, valtree);
-            dump_place(&ecx, pointee_place.into());
-            intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &pointee_place).unwrap();
-
-            let ref_place = pointee_place.to_ref(&tcx);
-            let imm = ImmTy::from_immediate(ref_place, tcx.layout_of(param_env_ty).unwrap());
-
-            let const_val = op_to_const(&ecx, &imm.into());
-            debug!(?const_val);
-
-            const_val
-        }
-        ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
-            let mut place = create_mplace_from_layout(&mut ecx, ty);
+        ty::Ref(_, _, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
+            let mut place = match ty.kind() {
+                ty::Ref(_, inner_ty, _) => {
+                    // Need to create a place for the pointee to fill for Refs
+                    create_pointee_place(&mut ecx, *inner_ty, valtree)
+                }
+                _ => create_mplace_from_layout(&mut ecx, ty),
+            };
             debug!(?place);
 
             fill_place_recursively(&mut ecx, &mut place, valtree);
             dump_place(&ecx, place.into());
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
-            let const_val = op_to_const(&ecx, &place.into());
+            let const_val = match ty.kind() {
+                ty::Ref(_, _, _) => {
+                    let ref_place = place.to_ref(&tcx);
+                    let imm =
+                        ImmTy::from_immediate(ref_place, tcx.layout_of(param_env_ty).unwrap());
+
+                    op_to_const(&ecx, &imm.into())
+                }
+                _ => op_to_const(&ecx, &place.into()),
+            };
             debug!(?const_val);
 
             const_val
         }
         ty::Never
-        | ty::FnDef(..)
         | ty::Error(_)
         | ty::Foreign(..)
         | ty::Infer(ty::FreshIntTy(_))
@@ -331,13 +330,6 @@ fn fill_place_recursively<'tcx>(
                 debug!(?i, ?inner_valtree);
 
                 let mut place_inner = match *ty.kind() {
-                    ty::Adt(def, substs) if !def.is_enum() => {
-                        let field = &def.variant(VariantIdx::from_usize(0)).fields[i];
-                        let field_ty = field.ty(tcx, substs);
-                        let projection_elem = ProjectionElem::Field(Field::from_usize(i), field_ty);
-
-                        ecx.mplace_projection(&place_adjusted, projection_elem).unwrap()
-                    }
                     ty::Adt(_, _) | ty::Tuple(_) => ecx.mplace_field(&place_adjusted, i).unwrap(),
                     ty::Array(_, _) | ty::Str => {
                         ecx.mplace_index(&place_adjusted, i as u64).unwrap()

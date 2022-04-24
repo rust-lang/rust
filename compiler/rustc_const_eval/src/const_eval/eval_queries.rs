@@ -1,4 +1,4 @@
-use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
+use super::{const_to_valtree, CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
@@ -214,6 +214,13 @@ fn turn_into_const_value<'tcx>(
         !is_static || cid.promoted.is_some(),
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
+
+    if cfg!(debug_assertions) {
+        if let Some(valtree) = const_to_valtree(tcx, key.param_env, constant) {
+            let const_val = tcx.valtree_to_const_val((constant.ty, valtree));
+            debug!(?const_val);
+        }
+    }
 
     // Turn this into a proper constant.
     let const_val = op_to_const(&ecx, &mplace.into());
