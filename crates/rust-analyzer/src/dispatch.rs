@@ -166,7 +166,7 @@ where
     match result {
         Ok(result) => result_to_response::<R>(id, result),
         Err(panic) => {
-            let mut message = "server panicked".to_string();
+            let mut message = "request handler panicked".to_string();
 
             let panic_message = panic
                 .downcast_ref::<String>()
