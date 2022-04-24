@@ -296,15 +296,15 @@ declare_clippy_lint! {
     /// Checks for methods with certain name prefixes and which
     /// doesn't match how self is taken. The actual rules are:
     ///
-    /// |Prefix |Postfix     |`self` taken           | `self` type  |
-    /// |-------|------------|-----------------------|--------------|
-    /// |`as_`  | none       |`&self` or `&mut self` | any          |
-    /// |`from_`| none       | none                  | any          |
-    /// |`into_`| none       |`self`                 | any          |
-    /// |`is_`  | none       |`&self` or none        | any          |
-    /// |`to_`  | `_mut`     |`&mut self`            | any          |
-    /// |`to_`  | not `_mut` |`self`                 | `Copy`       |
-    /// |`to_`  | not `_mut` |`&self`                | not `Copy`   |
+    /// |Prefix |Postfix     |`self` taken                   | `self` type  |
+    /// |-------|------------|-------------------------------|--------------|
+    /// |`as_`  | none       |`&self` or `&mut self`         | any          |
+    /// |`from_`| none       | none                          | any          |
+    /// |`into_`| none       |`self`                         | any          |
+    /// |`is_`  | none       |`&mut self` or `&self` or none | any          |
+    /// |`to_`  | `_mut`     |`&mut self`                    | any          |
+    /// |`to_`  | not `_mut` |`self`                         | `Copy`       |
+    /// |`to_`  | not `_mut` |`&self`                        | not `Copy`   |
     ///
     /// Note: Clippy doesn't trigger methods with `to_` prefix in:
     /// - Traits definition.

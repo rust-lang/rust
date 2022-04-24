@@ -31,7 +31,7 @@ LL |     fn into_i32(&self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `is_*` usually take `self` by reference or no `self`
+error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
   --> $DIR/wrong_self_convention.rs:38:15
    |
 LL |     fn is_i32(self) {}
@@ -71,7 +71,7 @@ LL |     pub fn into_i64(&self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `is_*` usually take `self` by reference or no `self`
+error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
   --> $DIR/wrong_self_convention.rs:46:19
    |
 LL |     pub fn is_i64(self) {}
@@ -111,7 +111,7 @@ LL |         fn into_i32_ref(&self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `is_*` usually take `self` by reference or no `self`
+error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
   --> $DIR/wrong_self_convention.rs:98:19
    |
 LL |         fn is_i32(self) {}
@@ -143,7 +143,7 @@ LL |         fn into_i32_ref(&self);
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `is_*` usually take `self` by reference or no `self`
+error: methods called `is_*` usually take `self` by mutable reference or `self` by reference or no `self`
   --> $DIR/wrong_self_convention.rs:122:19
    |
 LL |         fn is_i32(self);
@@ -191,13 +191,5 @@ LL |         fn to_u64(self) -> u64 {
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `is_*` usually take `self` by reference or no `self`
-  --> $DIR/wrong_self_convention.rs:197:27
-   |
-LL |         fn is_still_buggy(&mut self) -> bool {
-   |                           ^^^^^^^^^
-   |
-   = help: consider choosing a less ambiguous name
-
-error: aborting due to 25 previous errors
+error: aborting due to 24 previous errors
 
