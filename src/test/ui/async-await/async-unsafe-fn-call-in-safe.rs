@@ -11,11 +11,11 @@ impl S {
 async unsafe fn f() {}
 
 async fn g() {
-    S::f(); //~ ERROR call to unsafe function is unsafe
-    f(); //~ ERROR call to unsafe function is unsafe
+    S::f(); //~ ERROR call to unsafe function `S::f` is unsafe
+    f(); //~ ERROR call to unsafe function `f` is unsafe
 }
 
 fn main() {
-    S::f(); //[mir]~ ERROR call to unsafe function is unsafe
-    f(); //[mir]~ ERROR call to unsafe function is unsafe
+    S::f(); //[mir]~ ERROR call to unsafe function `S::f` is unsafe
+    f(); //[mir]~ ERROR call to unsafe function `f` is unsafe
 }

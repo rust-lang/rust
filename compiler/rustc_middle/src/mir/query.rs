@@ -12,6 +12,7 @@ use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
@@ -28,7 +29,7 @@ pub enum UnsafetyViolationKind {
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
-    CallToUnsafeFunction,
+    CallToUnsafeFunction(Option<DefId>),
     UseOfInlineAssembly,
     InitializingTypeWith,
     CastOfPointerToInt,
@@ -39,66 +40,74 @@ pub enum UnsafetyViolationDetails {
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
-    CallToFunctionWith,
+    CallToFunctionWith(DefId),
 }
 
 impl UnsafetyViolationDetails {
-    pub fn description_and_note(&self) -> (&'static str, &'static str) {
+    pub fn description_and_note(&self, tcx: TyCtxt<'_>) -> (Cow<'static, str>, &'static str) {
         use UnsafetyViolationDetails::*;
         match self {
-            CallToUnsafeFunction => (
-                "call to unsafe function",
+            CallToUnsafeFunction(did) => (
+                if let Some(did) = did {
+                    Cow::from(format!("call to unsafe function `{}`", tcx.def_path_str(*did)))
+                } else {
+                    Cow::Borrowed("call to unsafe function")
+                },
                 "consult the function's documentation for information on how to avoid undefined \
                  behavior",
             ),
             UseOfInlineAssembly => (
-                "use of inline assembly",
+                Cow::Borrowed("use of inline assembly"),
                 "inline assembly is entirely unchecked and can cause undefined behavior",
             ),
             InitializingTypeWith => (
-                "initializing type with `rustc_layout_scalar_valid_range` attr",
+                Cow::Borrowed("initializing type with `rustc_layout_scalar_valid_range` attr"),
                 "initializing a layout restricted type's field with a value outside the valid \
                  range is undefined behavior",
             ),
-            CastOfPointerToInt => {
-                ("cast of pointer to int", "casting pointers to integers in constants")
-            }
+            CastOfPointerToInt => (
+                Cow::Borrowed("cast of pointer to int"),
+                "casting pointers to integers in constants",
+            ),
             UseOfMutableStatic => (
-                "use of mutable static",
+                Cow::Borrowed("use of mutable static"),
                 "mutable statics can be mutated by multiple threads: aliasing violations or data \
                  races will cause undefined behavior",
             ),
             UseOfExternStatic => (
-                "use of extern static",
+                Cow::Borrowed("use of extern static"),
                 "extern statics are not controlled by the Rust type system: invalid data, \
                  aliasing violations or data races will cause undefined behavior",
             ),
             DerefOfRawPointer => (
-                "dereference of raw pointer",
+                Cow::Borrowed("dereference of raw pointer"),
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
             AssignToDroppingUnionField => (
-                "assignment to union field that might need dropping",
+                Cow::Borrowed("assignment to union field that might need dropping"),
                 "the previous content of the field will be dropped, which causes undefined \
                  behavior if the field was not properly initialized",
             ),
             AccessToUnionField => (
-                "access to union field",
+                Cow::Borrowed("access to union field"),
                 "the field may not be properly initialized: using uninitialized data will cause \
                  undefined behavior",
             ),
             MutationOfLayoutConstrainedField => (
-                "mutation of layout constrained field",
+                Cow::Borrowed("mutation of layout constrained field"),
                 "mutating layout constrained fields cannot statically be checked for valid values",
             ),
             BorrowOfLayoutConstrainedField => (
-                "borrow of layout constrained field with interior mutability",
+                Cow::Borrowed("borrow of layout constrained field with interior mutability"),
                 "references to fields of layout constrained fields lose the constraints. Coupled \
                  with interior mutability, the field can be changed to invalid values",
             ),
-            CallToFunctionWith => (
-                "call to function with `#[target_feature]`",
+            CallToFunctionWith(did) => (
+                Cow::from(format!(
+                    "call to function `{}` with `#[target_feature]`",
+                    tcx.def_path_str(*did)
+                )),
                 "can only be called if the required target features are available",
             ),
         }
