@@ -61,8 +61,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
-        .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
-        .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
+        .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
@@ -222,8 +221,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
-        lldb_python: matches.opt_str("lldb-python").unwrap(),
-        docck_python: matches.opt_str("docck-python").unwrap(),
+        python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
