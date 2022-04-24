@@ -36,6 +36,9 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/propagate-from-trait-match.rs:32:36
    |
+LL |   fn supply<'a, T>(value: T)
+   |                 - help: consider adding an explicit lifetime bound...: `T: 'a`
+...
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
 LL | |
@@ -44,9 +47,7 @@ LL | |         // This function call requires that
 ...  |
 LL | |         require(value);
 LL | |     });
-   | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to previous error
 

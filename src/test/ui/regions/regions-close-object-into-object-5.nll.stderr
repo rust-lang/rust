@@ -1,26 +1,29 @@
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:5
    |
+LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |          - help: consider adding an explicit lifetime bound...: `T: 'static`
+LL |     // oh dear!
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |     ^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |     ^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:5
    |
+LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |          - help: consider adding an explicit lifetime bound...: `T: 'static`
+LL |     // oh dear!
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:5
    |
+LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |          - help: consider adding an explicit lifetime bound...: `T: 'static`
+LL |     // oh dear!
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0515]: cannot return value referencing local data `*v`
   --> $DIR/regions-close-object-into-object-5.rs:17:5
@@ -34,10 +37,11 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/regions-close-object-into-object-5.rs:17:14
    |
+LL | fn f<'a, T, U>(v: Box<A<T> + 'static>) -> Box<X + 'static> {
+   |          - help: consider adding an explicit lifetime bound...: `T: 'static`
+LL |     // oh dear!
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |              ^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
+   |              ^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to 5 previous errors
 

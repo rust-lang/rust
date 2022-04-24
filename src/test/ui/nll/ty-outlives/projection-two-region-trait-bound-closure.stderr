@@ -34,6 +34,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType: 'a`...
+   = note: ...so that the type `<T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(1, 'c)>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -70,6 +71,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType: 'a`...
+   = note: ...so that the type `<T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(2, 'c)>>::AssocType` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29

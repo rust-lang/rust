@@ -37,6 +37,8 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
+LL |   fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
+   |                    - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |
@@ -45,9 +47,7 @@ LL | |         // See `correct_region`, which explains the point of this
 ...  |
 LL | |         require(&x, &y)
 LL | |     })
-   | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
@@ -121,15 +121,16 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
+LL |   fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
+   |                           - help: consider adding an explicit lifetime bound...: `T: 'a`
+...
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
 LL | |     })
-   | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
