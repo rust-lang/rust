@@ -47,7 +47,7 @@ LL | |         // See `correct_region`, which explains the point of this
 ...  |
 LL | |         require(&x, &y)
 LL | |     })
-   | |_____^
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
@@ -130,7 +130,7 @@ LL | |
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
 LL | |     })
-   | |_____^
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26

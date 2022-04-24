@@ -47,7 +47,7 @@ LL | |         // This function call requires that
 ...  |
 LL | |         require(value);
 LL | |     });
-   | |_____^
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
 
 error: aborting due to previous error
 
