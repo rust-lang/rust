@@ -271,205 +271,187 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (None, true) => "variant",
                     }
                 };
-                // FIXME(eddyb) this indentation is probably unnecessary.
-                let mut err = {
-                    // Suggest clamping down the type if the method that is being attempted to
-                    // be used exists at all, and the type is an ambiguous numeric type
-                    // ({integer}/{float}).
-                    let mut candidates = all_traits(self.tcx)
-                        .into_iter()
-                        .filter_map(|info| self.associated_value(info.def_id, item_name));
-                    // There are methods that are defined on the primitive types and won't be
-                    // found when exploring `all_traits`, but we also need them to be accurate on
-                    // our suggestions (#47759).
-                    let found_assoc = |ty: Ty<'tcx>| {
-                        simplify_type(tcx, ty, TreatParams::AsPlaceholders)
-                            .and_then(|simp| {
-                                tcx.incoherent_impls(simp)
-                                    .iter()
-                                    .find_map(|&id| self.associated_value(id, item_name))
-                            })
-                            .is_some()
-                    };
-                    let found_candidate = candidates.next().is_some()
-                        || found_assoc(tcx.types.i8)
-                        || found_assoc(tcx.types.i16)
-                        || found_assoc(tcx.types.i32)
-                        || found_assoc(tcx.types.i64)
-                        || found_assoc(tcx.types.i128)
-                        || found_assoc(tcx.types.u8)
-                        || found_assoc(tcx.types.u16)
-                        || found_assoc(tcx.types.u32)
-                        || found_assoc(tcx.types.u64)
-                        || found_assoc(tcx.types.u128)
-                        || found_assoc(tcx.types.f32)
-                        || found_assoc(tcx.types.f32);
-                    if let (true, false, SelfSource::MethodCall(expr), true) = (
-                        actual.is_numeric(),
-                        actual.has_concrete_skeleton(),
-                        source,
-                        found_candidate,
-                    ) {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            span,
-                            E0689,
-                            "can't call {} `{}` on ambiguous numeric type `{}`",
-                            item_kind,
-                            item_name,
-                            ty_str
-                        );
-                        let concrete_type = if actual.is_integral() { "i32" } else { "f32" };
-                        match expr.kind {
-                            ExprKind::Lit(ref lit) => {
-                                // numeric literal
-                                let snippet = tcx
-                                    .sess
-                                    .source_map()
-                                    .span_to_snippet(lit.span)
-                                    .unwrap_or_else(|_| "<numeric literal>".to_owned());
+                // Suggest clamping down the type if the method that is being attempted to
+                // be used exists at all, and the type is an ambiguous numeric type
+                // ({integer}/{float}).
+                let mut candidates = all_traits(self.tcx)
+                    .into_iter()
+                    .filter_map(|info| self.associated_value(info.def_id, item_name));
+                // There are methods that are defined on the primitive types and won't be
+                // found when exploring `all_traits`, but we also need them to be accurate on
+                // our suggestions (#47759).
+                let found_assoc = |ty: Ty<'tcx>| {
+                    simplify_type(tcx, ty, TreatParams::AsPlaceholders)
+                        .and_then(|simp| {
+                            tcx.incoherent_impls(simp)
+                                .iter()
+                                .find_map(|&id| self.associated_value(id, item_name))
+                        })
+                        .is_some()
+                };
+                let found_candidate = candidates.next().is_some()
+                    || found_assoc(tcx.types.i8)
+                    || found_assoc(tcx.types.i16)
+                    || found_assoc(tcx.types.i32)
+                    || found_assoc(tcx.types.i64)
+                    || found_assoc(tcx.types.i128)
+                    || found_assoc(tcx.types.u8)
+                    || found_assoc(tcx.types.u16)
+                    || found_assoc(tcx.types.u32)
+                    || found_assoc(tcx.types.u64)
+                    || found_assoc(tcx.types.u128)
+                    || found_assoc(tcx.types.f32)
+                    || found_assoc(tcx.types.f32);
+                if let (true, false, SelfSource::MethodCall(expr), true) =
+                    (actual.is_numeric(), actual.has_concrete_skeleton(), source, found_candidate)
+                {
+                    let mut err = struct_span_err!(
+                        tcx.sess,
+                        span,
+                        E0689,
+                        "can't call {} `{}` on ambiguous numeric type `{}`",
+                        item_kind,
+                        item_name,
+                        ty_str
+                    );
+                    let concrete_type = if actual.is_integral() { "i32" } else { "f32" };
+                    match expr.kind {
+                        ExprKind::Lit(ref lit) => {
+                            // numeric literal
+                            let snippet = tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(lit.span)
+                                .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
-                                // If this is a floating point literal that ends with '.',
-                                // get rid of it to stop this from becoming a member access.
-                                let snippet = snippet.strip_suffix('.').unwrap_or(&snippet);
+                            // If this is a floating point literal that ends with '.',
+                            // get rid of it to stop this from becoming a member access.
+                            let snippet = snippet.strip_suffix('.').unwrap_or(&snippet);
 
-                                err.span_suggestion(
-                                    lit.span,
-                                    &format!(
-                                        "you must specify a concrete type for this numeric value, \
+                            err.span_suggestion(
+                                lit.span,
+                                &format!(
+                                    "you must specify a concrete type for this numeric value, \
                                          like `{}`",
-                                        concrete_type
-                                    ),
-                                    format!("{snippet}_{concrete_type}"),
-                                    Applicability::MaybeIncorrect,
+                                    concrete_type
+                                ),
+                                format!("{snippet}_{concrete_type}"),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        ExprKind::Path(QPath::Resolved(_, path)) => {
+                            // local binding
+                            if let hir::def::Res::Local(hir_id) = path.res {
+                                let span = tcx.hir().span(hir_id);
+                                let snippet = tcx.sess.source_map().span_to_snippet(span);
+                                let filename = tcx.sess.source_map().span_to_filename(span);
+
+                                let parent_node =
+                                    self.tcx.hir().get(self.tcx.hir().get_parent_node(hir_id));
+                                let msg = format!(
+                                    "you must specify a type for this binding, like `{}`",
+                                    concrete_type,
                                 );
-                            }
-                            ExprKind::Path(QPath::Resolved(_, path)) => {
-                                // local binding
-                                if let hir::def::Res::Local(hir_id) = path.res {
-                                    let span = tcx.hir().span(hir_id);
-                                    let snippet = tcx.sess.source_map().span_to_snippet(span);
-                                    let filename = tcx.sess.source_map().span_to_filename(span);
 
-                                    let parent_node =
-                                        self.tcx.hir().get(self.tcx.hir().get_parent_node(hir_id));
-                                    let msg = format!(
-                                        "you must specify a type for this binding, like `{}`",
-                                        concrete_type,
-                                    );
-
-                                    match (filename, parent_node, snippet) {
-                                        (
-                                            FileName::Real(_),
-                                            Node::Local(hir::Local {
-                                                source: hir::LocalSource::Normal,
-                                                ty,
-                                                ..
-                                            }),
-                                            Ok(ref snippet),
-                                        ) => {
-                                            err.span_suggestion(
-                                                // account for `let x: _ = 42;`
-                                                //                  ^^^^
-                                                span.to(ty
-                                                    .as_ref()
-                                                    .map(|ty| ty.span)
-                                                    .unwrap_or(span)),
-                                                &msg,
-                                                format!("{}: {}", snippet, concrete_type),
-                                                Applicability::MaybeIncorrect,
-                                            );
-                                        }
-                                        _ => {
-                                            err.span_label(span, msg);
-                                        }
+                                match (filename, parent_node, snippet) {
+                                    (
+                                        FileName::Real(_),
+                                        Node::Local(hir::Local {
+                                            source: hir::LocalSource::Normal,
+                                            ty,
+                                            ..
+                                        }),
+                                        Ok(ref snippet),
+                                    ) => {
+                                        err.span_suggestion(
+                                            // account for `let x: _ = 42;`
+                                            //                  ^^^^
+                                            span.to(ty.as_ref().map(|ty| ty.span).unwrap_or(span)),
+                                            &msg,
+                                            format!("{}: {}", snippet, concrete_type),
+                                            Applicability::MaybeIncorrect,
+                                        );
                                     }
-                                }
-                            }
-                            _ => {}
-                        }
-                        err.emit();
-                        return None;
-                    } else {
-                        span = item_name.span;
-
-                        // Don't show generic arguments when the method can't be found in any implementation (#81576).
-                        let mut ty_str_reported = ty_str.clone();
-                        if let ty::Adt(_, generics) = actual.kind() {
-                            if generics.len() > 0 {
-                                let mut autoderef = self.autoderef(span, actual);
-                                let candidate_found = autoderef.any(|(ty, _)| {
-                                    if let ty::Adt(adt_deref, _) = ty.kind() {
-                                        self.tcx
-                                            .inherent_impls(adt_deref.did())
-                                            .iter()
-                                            .filter_map(|def_id| {
-                                                self.associated_value(*def_id, item_name)
-                                            })
-                                            .count()
-                                            >= 1
-                                    } else {
-                                        false
-                                    }
-                                });
-                                let has_deref = autoderef.step_count() > 0;
-                                if !candidate_found
-                                    && !has_deref
-                                    && unsatisfied_predicates.is_empty()
-                                {
-                                    if let Some((path_string, _)) = ty_str.split_once('<') {
-                                        ty_str_reported = path_string.to_string();
+                                    _ => {
+                                        err.span_label(span, msg);
                                     }
                                 }
                             }
                         }
+                        _ => {}
+                    }
+                    err.emit();
+                    return None;
+                }
+                span = item_name.span;
 
-                        let mut err = struct_span_err!(
-                            tcx.sess,
-                            span,
-                            E0599,
-                            "no {} named `{}` found for {} `{}` in the current scope",
-                            item_kind,
-                            item_name,
-                            actual.prefix_string(self.tcx),
-                            ty_str_reported,
-                        );
-                        if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
+                // Don't show generic arguments when the method can't be found in any implementation (#81576).
+                let mut ty_str_reported = ty_str.clone();
+                if let ty::Adt(_, generics) = actual.kind() {
+                    if generics.len() > 0 {
+                        let mut autoderef = self.autoderef(span, actual);
+                        let candidate_found = autoderef.any(|(ty, _)| {
+                            if let ty::Adt(adt_deref, _) = ty.kind() {
+                                self.tcx
+                                    .inherent_impls(adt_deref.did())
+                                    .iter()
+                                    .filter_map(|def_id| self.associated_value(*def_id, item_name))
+                                    .count()
+                                    >= 1
+                            } else {
+                                false
+                            }
+                        });
+                        let has_deref = autoderef.step_count() > 0;
+                        if !candidate_found && !has_deref && unsatisfied_predicates.is_empty() {
+                            if let Some((path_string, _)) = ty_str.split_once('<') {
+                                ty_str_reported = path_string.to_string();
+                            }
+                        }
+                    }
+                }
+
+                let mut err = struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0599,
+                    "no {} named `{}` found for {} `{}` in the current scope",
+                    item_kind,
+                    item_name,
+                    actual.prefix_string(self.tcx),
+                    ty_str_reported,
+                );
+                if actual.references_error() {
+                    err.downgrade_to_delayed_bug();
+                }
+
+                if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
                             self.suggest_await_before_method(
                                 &mut err, item_name, actual, cal, span,
                             );
                         }
-                        if let Some(span) =
-                            tcx.resolutions(()).confused_type_with_std_module.get(&span)
-                        {
-                            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
-                                err.span_suggestion(
-                                    *span,
-                                    "you are looking for the module in `std`, \
+                if let Some(span) = tcx.resolutions(()).confused_type_with_std_module.get(&span) {
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
+                        err.span_suggestion(
+                            *span,
+                            "you are looking for the module in `std`, \
                                      not the primitive type",
-                                    format!("std::{}", snippet),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                        }
-                        if let ty::RawPtr(_) = &actual.kind() {
-                            err.note(
-                                "try using `<*const T>::as_ref()` to get a reference to the \
+                            format!("std::{}", snippet),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+                if let ty::RawPtr(_) = &actual.kind() {
+                    err.note(
+                        "try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref",
-                            );
-                            err.note(
-                                "using `<*const T>::as_ref()` on a pointer \
+                    );
+                    err.note(
+                        "using `<*const T>::as_ref()` on a pointer \
                                       which is unaligned or points to invalid \
                                       or uninitialized memory is undefined behavior",
-                            );
-                        }
-                        err
-                    }
-                };
-
-                if actual.references_error() {
-                    err.downgrade_to_delayed_bug();
+                    );
                 }
 
                 if let Some(def) = actual.ty_adt_def() {
