@@ -738,7 +738,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     let mut eraser = TypeParamEraser(self.tcx);
                     let candidate_len = impl_candidates.len();
-                    let suggestions = impl_candidates.iter().map(|candidate| {
+                    let mut suggestions: Vec<_> = impl_candidates.iter().map(|candidate| {
                         let candidate = candidate.super_fold_with(&mut eraser);
                         vec![
                             (expr.span.shrink_to_lo(), format!("{}::{}(", candidate, segment.ident)),
@@ -748,13 +748,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 (expr.span.shrink_to_hi().with_hi(exprs[1].span.lo()), ", ".to_string())
                             },
                         ]
-                    });
+                    }).collect();
+                    suggestions.sort_by(|a, b| a[0].1.cmp(&b[0].1));
                     err.multipart_suggestions(
                         &format!(
                             "use the fully qualified path for the potential candidate{}",
                             pluralize!(candidate_len),
                         ),
-                        suggestions,
+                        suggestions.into_iter(),
                         Applicability::MaybeIncorrect,
                     );
                 }
