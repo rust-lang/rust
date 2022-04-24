@@ -7,6 +7,7 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = true;
+    config.submodules = Some(false);
     config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
     // HACK: rather than pull in `tempdir`, use the one that cargo has conveniently created for us
@@ -25,36 +26,74 @@ fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
     v.into_iter().map(|(a, _)| a).collect::<Vec<_>>()
 }
 
+fn run_build(paths: &[PathBuf], config: Config) -> Cache {
+    let kind = config.cmd.kind();
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
+    builder.cache
+}
+
+#[test]
+fn test_exclude() {
+    let mut config = configure("test", &["A"], &["A"]);
+    config.exclude = vec![TaskPath::parse("src/tools/tidy")];
+    let cache = run_build(&[], config);
+
+    // Ensure we have really excluded tidy
+    assert!(!cache.contains::<test::Tidy>());
+
+    // Ensure other tests are not affected.
+    assert!(cache.contains::<test::RustdocUi>());
+}
+
+#[test]
+fn test_exclude_kind() {
+    let path = PathBuf::from("src/tools/cargotest");
+    let exclude = TaskPath::parse("test::src/tools/cargotest");
+    assert_eq!(exclude, TaskPath { kind: Some(Kind::Test), path: path.clone() });
+
+    let mut config = configure("test", &["A"], &["A"]);
+    // Ensure our test is valid, and `test::Cargotest` would be run without the exclude.
+    assert!(run_build(&[path.clone()], config.clone()).contains::<test::Cargotest>());
+    // Ensure tests for cargotest are skipped.
+    config.exclude = vec![exclude.clone()];
+    assert!(!run_build(&[path.clone()], config).contains::<test::Cargotest>());
+
+    // Ensure builds for cargotest are not skipped.
+    let mut config = configure("build", &["A"], &["A"]);
+    config.exclude = vec![exclude];
+    assert!(run_build(&[path], config).contains::<tool::CargoTest>());
+}
+
 mod defaults {
-    use super::{configure, first};
+    use super::{configure, first, run_build};
     use crate::builder::*;
     use crate::Config;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn build_default() {
-        let build = Build::new(configure("build", &["A"], &["A"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+        let mut cache = run_build(&[], configure("build", &["A"], &["A"]));
 
         let a = TargetSelection::from_user("A");
         assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
+            first(cache.all::<compile::Std>()),
             &[
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
             ]
         );
-        assert!(!builder.cache.all::<compile::Assemble>().is_empty());
+        assert!(!cache.all::<compile::Assemble>().is_empty());
         // Make sure rustdoc is only built once.
         assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
+            first(cache.all::<tool::Rustdoc>()),
             // Recall that rustdoc stages are off-by-one
             // - this is the compiler it's _linked_ to, not built with.
             &[tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } }],
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
+            first(cache.all::<compile::Rustc>()),
             &[compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },]
         );
     }
@@ -62,31 +101,27 @@ mod defaults {
     #[test]
     fn build_stage_0() {
         let config = Config { stage: 0, ..configure("build", &["A"], &["A"]) };
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+        let mut cache = run_build(&[], config);
 
         let a = TargetSelection::from_user("A");
         assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
+            first(cache.all::<compile::Std>()),
             &[compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },]
         );
-        assert!(!builder.cache.all::<compile::Assemble>().is_empty());
+        assert!(!cache.all::<compile::Assemble>().is_empty());
         assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
+            first(cache.all::<tool::Rustdoc>()),
             // This is the beta rustdoc.
             // Add an assert here to make sure this is the only rustdoc built.
             &[tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } }],
         );
-        assert!(builder.cache.all::<compile::Rustc>().is_empty());
+        assert!(cache.all::<compile::Rustc>().is_empty());
     }
 
     #[test]
     fn build_cross_compile() {
         let config = Config { stage: 1, ..configure("build", &["A", "B"], &["A", "B"]) };
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+        let mut cache = run_build(&[], config);
 
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
@@ -97,7 +132,7 @@ mod defaults {
         // (since we're producing stage 1 libraries/binaries).  But currently
         // rustbuild is just a bit buggy here; this should be fixed though.
         assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
+            first(cache.all::<compile::Std>()),
             &[
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
@@ -106,7 +141,7 @@ mod defaults {
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Assemble>()),
+            first(cache.all::<compile::Assemble>()),
             &[
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
@@ -114,14 +149,14 @@ mod defaults {
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
+            first(cache.all::<tool::Rustdoc>()),
             &[
                 tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
                 tool::Rustdoc { compiler: Compiler { host: b, stage: 1 } },
             ],
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
+            first(cache.all::<compile::Rustc>()),
             &[
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: b },
@@ -134,33 +169,28 @@ mod defaults {
         let mut config = configure("doc", &["A"], &["A"]);
         config.compiler_docs = true;
         config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        let mut cache = run_build(&[], config);
         let a = TargetSelection::from_user("A");
 
         // error_index_generator uses stage 0 to share rustdoc artifacts with the
         // rustdoc tool.
+        assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
         assert_eq!(
-            first(builder.cache.all::<doc::ErrorIndex>()),
-            &[doc::ErrorIndex { target: a },]
-        );
-        assert_eq!(
-            first(builder.cache.all::<tool::ErrorIndex>()),
+            first(cache.all::<tool::ErrorIndex>()),
             &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 0 } }]
         );
         // docs should be built with the beta compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
+            first(cache.all::<tool::Rustdoc>()),
             &[tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } },]
         );
     }
 }
 
 mod dist {
-    use super::{first, Config};
+    use super::{first, run_build, Config};
     use crate::builder::*;
     use pretty_assertions::assert_eq;
 
@@ -170,94 +200,88 @@ mod dist {
 
     #[test]
     fn dist_baseline() {
-        let build = Build::new(configure(&["A"], &["A"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], configure(&["A"], &["A"]));
 
         let a = TargetSelection::from_user("A");
 
-        assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
-        assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
+        assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
+        assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[dist::Rustc { compiler: Compiler { host: a, stage: 2 } },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },]
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
         // Make sure rustdoc is only built once.
         assert_eq!(
-            first(builder.cache.all::<tool::Rustdoc>()),
+            first(cache.all::<tool::Rustdoc>()),
             &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
         );
     }
 
     #[test]
     fn dist_with_targets() {
-        let build = Build::new(configure(&["A"], &["A", "B"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], configure(&["A"], &["A", "B"]));
 
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
 
         assert_eq!(
-            first(builder.cache.all::<dist::Docs>()),
+            first(cache.all::<dist::Docs>()),
             &[dist::Docs { host: a }, dist::Docs { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Mingw>()),
+            first(cache.all::<dist::Mingw>()),
             &[dist::Mingw { host: a }, dist::Mingw { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[dist::Rustc { compiler: Compiler { host: a, stage: 2 } },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 dist::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
             ]
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
     }
 
     #[test]
     fn dist_with_hosts() {
-        let build = Build::new(configure(&["A", "B"], &["A", "B"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B"]));
 
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
 
         assert_eq!(
-            first(builder.cache.all::<dist::Docs>()),
+            first(cache.all::<dist::Docs>()),
             &[dist::Docs { host: a }, dist::Docs { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Mingw>()),
+            first(cache.all::<dist::Mingw>()),
             &[dist::Mingw { host: a }, dist::Mingw { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[
                 dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
                 dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
+            first(cache.all::<compile::Std>()),
             &[
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
@@ -266,26 +290,25 @@ mod dist {
                 compile::Std { compiler: Compiler { host: a, stage: 2 }, target: b },
             ],
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
     }
 
     #[test]
     fn dist_only_cross_host() {
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
-        let mut build = Build::new(configure(&["A", "B"], &["A", "B"]));
-        build.config.docs = false;
-        build.config.extended = true;
-        build.hosts = vec![b];
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut config = configure(&["A", "B"], &["A", "B"]);
+        config.docs = false;
+        config.extended = true;
+        config.hosts = vec![b];
+        let mut cache = run_build(&[], config);
 
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[dist::Rustc { compiler: Compiler { host: b, stage: 2 } },]
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
+            first(cache.all::<compile::Rustc>()),
             &[
                 compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Rustc { compiler: Compiler { host: a, stage: 1 }, target: b },
@@ -295,92 +318,86 @@ mod dist {
 
     #[test]
     fn dist_with_targets_and_hosts() {
-        let build = Build::new(configure(&["A", "B"], &["A", "B", "C"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B", "C"]));
 
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
         let c = TargetSelection::from_user("C");
 
         assert_eq!(
-            first(builder.cache.all::<dist::Docs>()),
+            first(cache.all::<dist::Docs>()),
             &[dist::Docs { host: a }, dist::Docs { host: b }, dist::Docs { host: c },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Mingw>()),
+            first(cache.all::<dist::Mingw>()),
             &[dist::Mingw { host: a }, dist::Mingw { host: b }, dist::Mingw { host: c },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[
                 dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
                 dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
                 dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },
             ]
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
     }
 
     #[test]
     fn dist_with_empty_host() {
         let config = configure(&[], &["C"]);
-        let build = Build::new(config);
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], config);
 
         let a = TargetSelection::from_user("A");
         let c = TargetSelection::from_user("C");
 
-        assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: c },]);
-        assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: c },]);
+        assert_eq!(first(cache.all::<dist::Docs>()), &[dist::Docs { host: c },]);
+        assert_eq!(first(cache.all::<dist::Mingw>()), &[dist::Mingw { host: c },]);
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[dist::Std { compiler: Compiler { host: a, stage: 2 }, target: c },]
         );
     }
 
     #[test]
     fn dist_with_same_targets_and_hosts() {
-        let build = Build::new(configure(&["A", "B"], &["A", "B"]));
-        let mut builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+        let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B"]));
 
         let a = TargetSelection::from_user("A");
         let b = TargetSelection::from_user("B");
 
         assert_eq!(
-            first(builder.cache.all::<dist::Docs>()),
+            first(cache.all::<dist::Docs>()),
             &[dist::Docs { host: a }, dist::Docs { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Mingw>()),
+            first(cache.all::<dist::Mingw>()),
             &[dist::Mingw { host: a }, dist::Mingw { host: b },]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Rustc>()),
+            first(cache.all::<dist::Rustc>()),
             &[
                 dist::Rustc { compiler: Compiler { host: a, stage: 2 } },
                 dist::Rustc { compiler: Compiler { host: b, stage: 2 } },
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<dist::Std>()),
+            first(cache.all::<dist::Std>()),
             &[
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
                 dist::Std { compiler: Compiler { host: a, stage: 1 }, target: b },
             ]
         );
-        assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+        assert_eq!(first(cache.all::<dist::Src>()), &[dist::Src]);
         assert_eq!(
-            first(builder.cache.all::<compile::Std>()),
+            first(cache.all::<compile::Std>()),
             &[
                 compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
                 compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
@@ -390,7 +407,7 @@ mod dist {
             ]
         );
         assert_eq!(
-            first(builder.cache.all::<compile::Assemble>()),
+            first(cache.all::<compile::Assemble>()),
             &[
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
                 compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
@@ -512,35 +529,6 @@ mod dist {
                 krate: INTERNER.intern_str("std"),
             },]
         );
-    }
-
-    #[test]
-    fn test_exclude() {
-        let mut config = configure(&["A"], &["A"]);
-        config.exclude = vec![TaskPath::parse("src/tools/tidy")];
-        config.cmd = Subcommand::Test {
-            paths: Vec::new(),
-            test_args: Vec::new(),
-            rustc_args: Vec::new(),
-            fail_fast: true,
-            doc_tests: DocTests::No,
-            bless: false,
-            force_rerun: false,
-            compare_mode: None,
-            rustfix_coverage: false,
-            pass: None,
-            run: None,
-        };
-
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
-
-        // Ensure we have really excluded tidy
-        assert!(!builder.cache.contains::<test::Tidy>());
-
-        // Ensure other tests are not affected.
-        assert!(builder.cache.contains::<test::RustdocUi>());
     }
 
     #[test]
