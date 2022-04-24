@@ -5,7 +5,7 @@ set(BC_LOAD_FLAGS "" CACHE STRING "")
 set(BC_LOAD_HEADER "" CACHE STRING "")
 
 if (NOT ("${BC_LOAD_HEADER}" STREQUAL ""))
-    add_custom_target(blasheaders cp ${BC_LOAD_HEADER} "${CMAKE_CURRENT_BINARY_DIR}/gsl/blas_headers.h")
+    add_custom_target(blasheaders mkdir "${CMAKE_CURRENT_BINARY_DIR}/gsl" && cp ${BC_LOAD_HEADER} "${CMAKE_CURRENT_BINARY_DIR}/gsl/blas_headers.h")
 set_target_properties(blasheaders PROPERTIES EXCLUDE_FROM_ALL TRUE)
 elseif (${Clang_FOUND})
 include(ExternalProject)
