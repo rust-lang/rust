@@ -29,6 +29,12 @@ fn main() {
         // no lint
         vec.push(1);
     }
+
+    let mut vec = Vec::with_capacity(5);
+    vec.push(1);
+    vec.push(2);
+    vec.push(3);
+    vec.push(4);
 }
 
 pub fn no_lint() -> Vec<i32> {
@@ -84,5 +90,17 @@ fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
     if x {
         v.push(1);
     }
-    v
+
+    let mut v2 = Vec::new();
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.extend(&v);
+
+    v2
 }

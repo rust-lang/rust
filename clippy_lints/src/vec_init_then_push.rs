@@ -18,6 +18,13 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for calls to `push` immediately after creating a new `Vec`.
     ///
+    /// If the `Vec` is created using `with_capacity` this will only lint if the capacity is a
+    /// constant and the number of pushes is greater than or equal to the initial capacity.
+    ///
+    /// If the `Vec` is extended after the initial sequence of pushes and it was default initialized
+    /// then this will only lint after there were at least four pushes. This number may change in
+    /// the future.
+    ///
     /// ### Why is this bad?
     /// The `vec![]` macro is both more performant and easier to read than
     /// multiple `push` calls.
@@ -56,7 +63,7 @@ struct VecPushSearcher {
 }
 impl VecPushSearcher {
     fn display_err(&self, cx: &LateContext<'_>) {
-        let min_pushes_for_extension = match self.init {
+        let required_pushes_before_extension = match self.init {
             _ if self.found == 0 => return,
             VecInitKind::WithConstCapacity(x) if x > self.found => return,
             VecInitKind::WithConstCapacity(x) => x,
@@ -98,6 +105,8 @@ impl VecPushSearcher {
                         && adjusted_mut == Mutability::Mut
                         && !adjusted_ty.peel_refs().is_slice() =>
                 {
+                    // No need to set `needs_mut` to true. The receiver will be either explicitly borrowed, or it will
+                    // be implicitly borrowed via an adjustment. Both of these cases are already handled by this point.
                     return ControlFlow::Break(true);
                 },
                 ExprKind::Assign(lhs, ..) if e.hir_id == lhs.hir_id => {
@@ -110,7 +119,7 @@ impl VecPushSearcher {
         });
 
         // Avoid allocating small `Vec`s when they'll be extended right after.
-        if res == ControlFlow::Break(true) && self.found <= min_pushes_for_extension {
+        if res == ControlFlow::Break(true) && self.found <= required_pushes_before_extension {
             return;
         }
 
