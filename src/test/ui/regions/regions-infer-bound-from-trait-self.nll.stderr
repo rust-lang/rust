@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/regions-infer-bound-from-trait-self.rs:46:9
+  --> $DIR/regions-infer-bound-from-trait-self.rs:50:9
    |
 LL |         check_bound(x, self)
    |         ^^^^^^^^^^^^^^^^^^^^

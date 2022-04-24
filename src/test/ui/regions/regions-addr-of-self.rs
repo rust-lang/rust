@@ -1,10 +1,16 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 struct Dog {
     cats_chased: usize,
 }
 
 impl Dog {
     pub fn chase_cat(&mut self) {
-        let p: &'static mut usize = &mut self.cats_chased; //~ ERROR E0759
+        let p: &'static mut usize = &mut self.cats_chased;
+        //[base]~^ ERROR E0759
+        //[nll]~^^ ERROR lifetime may not live long enough
         *p += 1;
     }
 

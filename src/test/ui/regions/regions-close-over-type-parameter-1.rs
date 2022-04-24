@@ -2,6 +2,9 @@
 // an object. This should yield errors unless `A` (and the object)
 // both have suitable bounds.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
 
 trait SomeTrait {
     fn get(&self) -> isize;

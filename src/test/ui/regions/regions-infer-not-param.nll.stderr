@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-not-param.rs:15:54
+  --> $DIR/regions-infer-not-param.rs:19:54
    |
 LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                -- -- lifetime `'b` defined here      ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
@@ -9,7 +9,7 @@ LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-not-param.rs:19:63
+  --> $DIR/regions-infer-not-param.rs:25:63
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
@@ -22,7 +22,7 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-not-param.rs:19:63
+  --> $DIR/regions-infer-not-param.rs:25:63
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`

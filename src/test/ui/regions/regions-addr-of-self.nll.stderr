@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-addr-of-self.rs:7:16
+  --> $DIR/regions-addr-of-self.rs:11:16
    |
 LL |     pub fn chase_cat(&mut self) {
    |                      - let's call the lifetime of this reference `'1`

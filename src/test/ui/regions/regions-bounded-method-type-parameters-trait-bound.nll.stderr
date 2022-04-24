@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:5
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:24:5
    |
 LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
    |            -- -- lifetime `'b` defined here

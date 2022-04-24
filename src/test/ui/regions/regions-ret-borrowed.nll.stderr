@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-ret-borrowed.rs:13:14
+  --> $DIR/regions-ret-borrowed.rs:17:14
    |
 LL |     with(|o| o)
    |           -- ^ returning this value requires that `'1` must outlive `'2`

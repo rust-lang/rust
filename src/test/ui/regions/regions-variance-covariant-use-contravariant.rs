@@ -4,6 +4,10 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // This is covariant with respect to 'a, meaning that
 // Covariant<'foo> <: Covariant<'static> because
 // 'foo <= 'static
@@ -20,7 +24,9 @@ fn use_<'short,'long>(c: Covariant<'long>,
     // 'short <= 'long, this would be true if the Covariant type were
     // contravariant with respect to its parameter 'a.
 
-    let _: Covariant<'short> = c; //~ ERROR E0623
+    let _: Covariant<'short> = c;
+    //[base]~^ ERROR E0623
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {}
