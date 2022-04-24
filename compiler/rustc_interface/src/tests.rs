@@ -66,6 +66,7 @@ where
         location: ExternLocation::ExactPaths(locations),
         is_private_dep: false,
         add_prelude: true,
+        nounused_dep: false,
     }
 }
 
