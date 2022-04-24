@@ -598,7 +598,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     description,
                     unsafe_fn_msg,
                 )
-                .span_label(source_info.span, description)
+                .span_label(source_info.span, details.simple_description())
                 .note(note)
                 .emit();
             }
