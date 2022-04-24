@@ -1,5 +1,7 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
+// normalize-stderr-test: "__FastLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
+// normalize-stderr-test: "__OsLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
 
 #![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
@@ -17,8 +19,8 @@ static __KEY: std::thread::__OsLocalKeyInner<Foo> = std::thread::__OsLocalKeyInn
 
 fn __getit(_: Option<&mut Option<RefCell<String>>>) -> std::option::Option<&'static Foo> {
     __KEY.get(Default::default)
-    //[mir]~^ ERROR call to unsafe function `std::thread::__FastLocalKeyInner::<T>::get` is unsafe
-    //[thir]~^^ ERROR call to unsafe function `__FastLocalKeyInner::<T>::get` is unsafe
+    //[mir]~^ ERROR call to unsafe function `std::thread::
+    //[thir]~^^ ERROR call to unsafe function `__
 }
 
 static FOO: std::thread::LocalKey<Foo> = std::thread::LocalKey::new(__getit);
