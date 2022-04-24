@@ -32,7 +32,14 @@ LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               |
    |               let's call the lifetime of this reference `'1`
    |
-   = help: consider replacing `'1` with `'static`
+help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
+   |
+LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
+   |                                    ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
+   |               ~~~~~~~~~~~~
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:11:55
@@ -40,7 +47,14 @@ error: lifetime may not live long enough
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |              -- lifetime `'a` defined here            ^ returning this value requires that `'a` must outlive `'static`
    |
-   = help: consider replacing `'a` with `'static`
+help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
+   |
+LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |                                             ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
+   |                     ~~~~~~~~~~~~
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/must_outlive_least_region_or_bound.rs:13:41
@@ -57,6 +71,15 @@ LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |               -                                       ^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
    |               |
    |               let's call the lifetime of this reference `'1`
+   |
+help: to declare that the trait object captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug + '_>, impl Debug) { (Box::new(x), x) }
+   |                                       ++++
+help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x) }
+   |                                                    ++++
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:29:69
@@ -64,7 +87,14 @@ error: lifetime may not live long enough
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               -- lifetime `'a` defined here                         ^ returning this value requires that `'a` must outlive `'static`
    |
-   = help: consider replacing `'a` with `'static`
+help: consider changing the `impl Trait`'s explicit `'static` bound to the lifetime of argument `x`
+   |
+LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
+   |                                                           ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x }
+   |                      ~~~~~~~~~~~~
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:34:5

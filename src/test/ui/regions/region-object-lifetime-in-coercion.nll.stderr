@@ -5,6 +5,15 @@ LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         - let's call the lifetime of this reference `'1`
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
    |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn a(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                                 ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |         ~~~~~~~~~~~~~
 
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:19:5
@@ -13,6 +22,15 @@ LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         - let's call the lifetime of this reference `'1`
 LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                                 ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |         ~~~~~~~~~~~~~
 
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:27:5
@@ -22,6 +40,11 @@ LL | fn c(v: &[u8]) -> Box<dyn Foo> {
 ...
 LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `v`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                               ++++
 
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:33:5
