@@ -625,7 +625,7 @@ pub(crate) fn run_pass_manager(
             if thin {
                 llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm);
             } else {
-                llvm::LLVMPassManagerBuilderPopulateLTOPassManager(
+                llvm::LLVMRustPassManagerBuilderPopulateLTOPassManager(
                     b, pm, /* Internalize = */ False, /* RunInliner = */ True,
                 );
             }
