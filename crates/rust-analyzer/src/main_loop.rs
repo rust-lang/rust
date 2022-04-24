@@ -499,9 +499,13 @@ impl GlobalState {
                 self.fetch_workspaces(cause);
             }
         }
-        if let Some(cause) = self.fetch_build_data_queue.should_start_op() {
-            self.fetch_build_data(cause);
+
+        if !self.fetch_workspaces_queue.op_in_progress() {
+            if let Some(cause) = self.fetch_build_data_queue.should_start_op() {
+                self.fetch_build_data(cause);
+            }
         }
+
         if let Some(cause) = self.prime_caches_queue.should_start_op() {
             tracing::debug!(%cause, "will prime caches");
             let num_worker_threads = self.config.prime_caches_num_threads();
@@ -571,14 +575,11 @@ impl GlobalState {
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync_mut::<lsp_ext::ReloadWorkspace>(|s, ()| {
-                s.fetch_workspaces_queue.request_op("reload workspace request".to_string());
-                Ok(())
-            })?
             .on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
                 s.shutdown_requested = true;
                 Ok(())
             })?
+            .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)?
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)?
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)?
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)?
