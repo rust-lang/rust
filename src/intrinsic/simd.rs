@@ -539,6 +539,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let func = bx.context.get_target_builtin_function(builtin_name);
+        let param1_type = func.get_parameter(0).get_type();
+        let lhs =
+            if lhs.get_type() != param1_type {
+                bx.context.new_bitcast(None, lhs, param1_type)
+            }
+            else {
+                lhs
+            };
         let result = bx.context.new_call(None, func, &[lhs, rhs]);
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vec_ty));
