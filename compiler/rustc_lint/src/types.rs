@@ -1134,6 +1134,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
+            ty::TyAlias(def_id, substs) => {
+                for ty in substs.types() {
+                    let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+                    match self.check_type_for_ffi(cache, ty) {
+                        FfiSafe => {}
+                        r => return r,
+                    };
+                }
+                let ty = tcx.type_of(def_id);
+                let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+                self.check_type_for_ffi(cache, ty)
+            }
+
             ty::Foreign(..) => FfiSafe,
 
             // While opaque types are checked for earlier, if a projection in a struct field
