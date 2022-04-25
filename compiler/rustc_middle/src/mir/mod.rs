@@ -2581,8 +2581,6 @@ pub enum Rvalue<'tcx> {
     /// This is different from a normal transmute because dataflow analysis will treat the box as
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
-    ///
-    /// Disallowed after drop elaboration.
     ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
 }
 
