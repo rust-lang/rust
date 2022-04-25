@@ -141,6 +141,8 @@ pub struct CompletionRelevance {
     pub is_item_from_trait: bool,
     /// This is set when an import is suggested whose name is already imported.
     pub is_name_already_imported: bool,
+    /// This is set for completions that will insert a `use` item.
+    pub requires_import: bool,
     /// Set for method completions of the `core::ops` and `core::cmp` family.
     pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
@@ -208,6 +210,7 @@ impl CompletionRelevance {
             is_local,
             is_item_from_trait,
             is_name_already_imported,
+            requires_import,
             is_op_method,
             is_private_editable,
             postfix_match,
@@ -224,6 +227,10 @@ impl CompletionRelevance {
         }
         // lower rank for conflicting import names
         if !is_name_already_imported {
+            score += 1;
+        }
+        // lower rank for items that don't need an import
+        if !requires_import {
             score += 1;
         }
         if exact_name_match {
