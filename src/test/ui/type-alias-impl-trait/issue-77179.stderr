@@ -2,7 +2,10 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-77179.rs:7:22
    |
 LL | fn test() -> Pointer<_> {
-   |                      ^ not allowed in type signatures
+   |              --------^-
+   |              |       |
+   |              |       not allowed in type signatures
+   |              help: replace with the correct return type: `Pointer<i32>`
 
 error: aborting due to previous error
 
