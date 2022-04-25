@@ -3765,6 +3765,49 @@ pub fn gimme() -> theitem::TheItem {
 }
 
 #[test]
+fn test_hover_trait_assoc_typealias() {
+    check(
+        r#"
+        fn main() {}
+
+trait T1 {
+    type Bar;
+    type Baz;
+}
+
+struct Foo;
+
+mod t2 {
+    pub trait T2 {
+        type Bar;
+    }
+}
+
+use t2::T2;
+
+impl T2 for Foo {
+    type Bar = String;
+}
+
+impl T1 for Foo {
+    type Bar = <Foo as t2::T2>::Ba$0r;
+    //                          ^^^ unresolvedReference
+}
+        "#,
+        expect![[r#"
+*Bar*
+
+```rust
+test::t2
+```
+
+```rust
+pub type Bar
+```
+"#]],
+    );
+}
+#[test]
 fn hover_generic_assoc() {
     check(
         r#"

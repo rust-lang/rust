@@ -652,7 +652,13 @@ fn resolve_hir_path_(
                 let (ty, remaining) =
                     resolver.resolve_path_in_type_ns(db.upcast(), path.mod_path())?;
                 match remaining {
-                    Some(remaining) if remaining > 1 => None,
+                    Some(remaining) if remaining > 1 => {
+                        if remaining + 1 == path.segments().len() {
+                            Some((ty, path.segments().last()))
+                        } else {
+                            None
+                        }
+                    }
                     _ => Some((ty, path.segments().get(1))),
                 }
             }
