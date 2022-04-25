@@ -209,6 +209,7 @@ store.register_lints(&[
     iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR,
     large_const_arrays::LARGE_CONST_ARRAYS,
     large_enum_variant::LARGE_ENUM_VARIANT,
+    large_include_file::LARGE_INCLUDE_FILE,
     large_stack_arrays::LARGE_STACK_ARRAYS,
     len_zero::COMPARISON_TO_EMPTY,
     len_zero::LEN_WITHOUT_IS_EMPTY,
