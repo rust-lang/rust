@@ -416,6 +416,8 @@ mod desc {
     pub const parse_split_dwarf_kind: &str =
         "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
+    // FIXME: add link to reference or other documentation, where the `-Clink-self-contained`
+    // options will be explained in more detail.
     pub const parse_link_self_contained: &str =
         "one of: `y`, `yes`, `on`, `n`, `no`, `off`, `auto`, `crt`, `linker`, `all`";
     pub const parse_stack_protector: &str =
