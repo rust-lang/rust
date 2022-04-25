@@ -10,10 +10,9 @@ use rustc_middle::mir::{
     interpret::{ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar},
     BinOp, NonDivergingIntrinsic,
 };
-use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, Align, Primitive, Size};
 
@@ -102,6 +101,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
+            ty::TyAlias(..) => bug!("unexpected TyAlias in eval_nullary_intrinsic"),
         },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
