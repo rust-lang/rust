@@ -1,6 +1,5 @@
 //! Completes references after dot (fields and method calls).
 
-use either::Either;
 use rustc_hash::FxHashSet;
 
 use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
@@ -20,10 +19,13 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     if matches!(ctx.completion_location, Some(ImmediateLocation::MethodCall { .. })) {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
-        complete_fields(ctx, &receiver_ty, |field, ty| match field {
-            Either::Left(field) => acc.add_field(ctx, None, field, &ty),
-            Either::Right(tuple_idx) => acc.add_tuple_field(ctx, None, tuple_idx, &ty),
-        });
+        complete_fields(
+            acc,
+            ctx,
+            &receiver_ty,
+            |acc, field, ty| acc.add_field(ctx, None, field, &ty),
+            |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
+        );
     }
     complete_methods(ctx, &receiver_ty, |func| acc.add_method(ctx, func, None, None));
 }
@@ -38,14 +40,13 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some(func) = ctx.function_def.as_ref().and_then(|fn_| ctx.sema.to_def(fn_)) {
         if let Some(self_) = func.self_param(ctx.db) {
             let ty = self_.ty(ctx.db);
-            complete_fields(ctx, &ty, |field, ty| match field {
-                either::Either::Left(field) => {
-                    acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty)
-                }
-                either::Either::Right(tuple_idx) => {
-                    acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), tuple_idx, &ty)
-                }
-            });
+            complete_fields(
+                acc,
+                ctx,
+                &ty,
+                |acc, field, ty| acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+                |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+            );
             complete_methods(ctx, &ty, |func| {
                 acc.add_method(ctx, func, Some(hir::known::SELF_PARAM), None)
             });
@@ -54,17 +55,19 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
 }
 
 fn complete_fields(
+    acc: &mut Completions,
     ctx: &CompletionContext,
     receiver: &hir::Type,
-    mut f: impl FnMut(Either<hir::Field, usize>, hir::Type),
+    mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
+    mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
 ) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            f(Either::Left(field), ty);
+            named_field(acc, field, ty);
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // Tuple fields are always public (tuple struct fields are handled above).
-            f(Either::Right(i), ty);
+            tuple_index(acc, i, ty);
         }
     }
 }
