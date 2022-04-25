@@ -7,7 +7,19 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = true;
+
+    // Ignore most submodules, since we don't need them for a dry run.
+    // But make sure to check out the `doc` and `rust-analyzer` submodules, since some steps need them
+    // just to know which commands to run.
+    let submodule_build = Build::new(Config {
+        // don't include LLVM, so CI doesn't require ninja/cmake to be installed
+        rust_codegen_backends: vec![],
+        ..Config::parse(&["check".to_owned()])
+    });
+    submodule_build.update_submodule(Path::new("src/doc/book"));
+    submodule_build.update_submodule(Path::new("src/tools/rust-analyzer"));
     config.submodules = Some(false);
+
     config.ninja_in_file = false;
     // try to avoid spurious failures in dist where we create/delete each others file
     // HACK: rather than pull in `tempdir`, use the one that cargo has conveniently created for us
