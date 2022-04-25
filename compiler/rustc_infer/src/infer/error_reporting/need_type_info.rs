@@ -341,7 +341,7 @@ impl InferenceDiagnosticsData {
 
 impl InferenceDiagnosticsParentData {
     fn for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<InferenceDiagnosticsParentData> {
-        let parent_def_id = tcx.parent(def_id)?;
+        let parent_def_id = tcx.parent(def_id);
 
         let parent_name =
             tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
@@ -854,10 +854,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some((DefKind::AssocFn, def_id)) =
             self.in_progress_typeck_results?.borrow().type_dependent_def(hir_id)
         {
-            return self
-                .tcx
-                .parent(def_id)
-                .filter(|&parent_def_id| self.tcx.is_trait(parent_def_id));
+            let parent_def_id = self.tcx.parent(def_id);
+            return self.tcx.is_trait(parent_def_id).then_some(parent_def_id);
         }
 
         None

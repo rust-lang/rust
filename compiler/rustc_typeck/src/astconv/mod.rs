@@ -1952,7 +1952,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        let trait_def_id = tcx.parent(item_def_id).unwrap();
+        let trait_def_id = tcx.parent(item_def_id);
 
         debug!("qpath_to_ty: trait_def_id={:?}", trait_def_id);
 
@@ -2159,11 +2159,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     // `DefKind::Ctor` -> `DefKind::Variant`
                     if let DefKind::Ctor(..) = kind {
-                        def_id = tcx.parent(def_id).unwrap()
+                        def_id = tcx.parent(def_id);
                     }
 
                     // `DefKind::Variant` -> `DefKind::Enum`
-                    let enum_def_id = tcx.parent(def_id).unwrap();
+                    let enum_def_id = tcx.parent(def_id);
                     (enum_def_id, last - 1)
                 } else {
                     // FIXME: lint here recommending `Enum::<...>::Variant` form

@@ -75,7 +75,7 @@ pub(super) fn check<'tcx>(
             let arg_snippet = snippet(cx, span, "..");
             let body = cx.tcx.hir().body(id);
                 if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
-                if let Some(id) = path_def_id(cx, func).and_then(|ctor_id| cx.tcx.parent(ctor_id));
+                if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
                 if Some(id) == cx.tcx.lang_items().option_some_variant();
                 then {
                     let func_snippet = snippet(cx, arg_char.span, "..");

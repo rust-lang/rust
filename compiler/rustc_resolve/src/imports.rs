@@ -13,7 +13,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, PartialRes};
-use rustc_hir::def_id::DefId;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
@@ -343,12 +342,6 @@ struct UnresolvedImportError {
 
 pub struct ImportResolver<'a, 'b> {
     pub r: &'a mut Resolver<'b>,
-}
-
-impl<'a, 'b> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
-    fn parent(self, id: DefId) -> Option<DefId> {
-        self.r.parent(id)
-    }
 }
 
 impl<'a, 'b> ImportResolver<'a, 'b> {
@@ -696,7 +689,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 }
                 if !is_prelude &&
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
-                   !max_vis.get().is_at_least(import.vis.get(), &*self)
+                   !max_vis.get().is_at_least(import.vis.get(), &*self.r)
                 {
                     let msg = "glob import doesn't reexport anything because no candidate is public enough";
                     self.r.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);

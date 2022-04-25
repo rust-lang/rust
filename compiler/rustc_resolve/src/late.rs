@@ -1313,12 +1313,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Figure out if this is a type/trait segment,
             // which may need lifetime elision performed.
             let type_def_id = match partial_res.base_res() {
-                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
-                    self.r.parent(def_id).unwrap()
-                }
-                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
-                    self.r.parent(def_id).unwrap()
-                }
+                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => self.r.parent(def_id),
+                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => self.r.parent(def_id),
                 Res::Def(DefKind::Struct, def_id)
                 | Res::Def(DefKind::Union, def_id)
                 | Res::Def(DefKind::Enum, def_id)

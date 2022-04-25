@@ -108,7 +108,7 @@ impl<'tcx> Ty<'tcx> {
             | Placeholder(_)
             | Error(_) => false,
             Opaque(did, substs) => {
-                let parent = tcx.parent(*did).expect("opaque types always have a parent");
+                let parent = tcx.parent(*did);
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = tcx.def_kind(parent)
                     && let Opaque(parent_did, _) = tcx.type_of(parent).kind()
                     && parent_did == did

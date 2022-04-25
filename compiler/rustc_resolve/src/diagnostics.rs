@@ -1321,7 +1321,7 @@ impl<'a> Resolver<'a> {
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms, tokens: None };
                         let did = match res {
-                            Res::Def(DefKind::Ctor(..), did) => this.parent(did),
+                            Res::Def(DefKind::Ctor(..), did) => this.opt_parent(did),
                             _ => res.opt_def_id(),
                         };
 
@@ -1707,7 +1707,7 @@ impl<'a> Resolver<'a> {
             _,
         ) = binding.kind
         {
-            let def_id = self.parent(ctor_def_id).expect("no parent for a constructor");
+            let def_id = self.parent(ctor_def_id);
             let fields = self.field_names.get(&def_id)?;
             return fields.iter().map(|name| name.span).reduce(Span::to); // None for `struct Foo()`
         }

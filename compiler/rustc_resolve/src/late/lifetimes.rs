@@ -534,21 +534,17 @@ fn is_late_bound_map<'tcx>(
 ) -> Option<(LocalDefId, &'tcx FxHashSet<LocalDefId>)> {
     match tcx.def_kind(def_id) {
         DefKind::AnonConst | DefKind::InlineConst => {
-            let mut def_id = tcx
-                .parent(def_id.to_def_id())
-                .unwrap_or_else(|| bug!("anon const or closure without a parent"));
+            let mut def_id = tcx.local_parent(def_id);
             // We search for the next outer anon const or fn here
             // while skipping closures.
             //
             // Note that for `AnonConst` we still just recurse until we
             // find a function body, but who cares :shrug:
-            while tcx.is_closure(def_id) {
-                def_id = tcx
-                    .parent(def_id)
-                    .unwrap_or_else(|| bug!("anon const or closure without a parent"));
+            while tcx.is_closure(def_id.to_def_id()) {
+                def_id = tcx.local_parent(def_id);
             }
 
-            tcx.is_late_bound_map(def_id.expect_local())
+            tcx.is_late_bound_map(def_id)
         }
         _ => resolve_lifetimes_for(tcx, def_id).late_bound.get(&def_id).map(|lt| (def_id, lt)),
     }
@@ -1864,7 +1860,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let remove_decl = self
             .tcx
             .parent(def_id)
-            .and_then(|parent_def_id| parent_def_id.as_local())
+            .as_local()
             .and_then(|parent_def_id| self.tcx.hir().get_generics(parent_def_id))
             .and_then(|generics| self.lifetime_deletion_span(name, generics));
 
@@ -2003,36 +1999,35 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             continue;
                         }
 
-                        if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                            if let Some(def_id) = parent_def_id.as_local() {
-                                // lifetimes in `derive` expansions don't count (Issue #53738)
-                                if self
-                                    .tcx
-                                    .get_attrs(def_id.to_def_id())
-                                    .iter()
-                                    .any(|attr| attr.has_name(sym::automatically_derived))
-                                {
-                                    continue;
-                                }
+                        let parent_def_id = self.tcx.parent(def_id);
+                        if let Some(def_id) = parent_def_id.as_local() {
+                            // lifetimes in `derive` expansions don't count (Issue #53738)
+                            if self
+                                .tcx
+                                .get_attrs(def_id.to_def_id())
+                                .iter()
+                                .any(|attr| attr.has_name(sym::automatically_derived))
+                            {
+                                continue;
+                            }
 
-                                // opaque types generated when desugaring an async function can have a single
-                                // use lifetime even if it is explicitly denied (Issue #77175)
-                                if let hir::Node::Item(hir::Item {
-                                    kind: hir::ItemKind::OpaqueTy(ref opaque),
-                                    ..
-                                }) = self.tcx.hir().get_by_def_id(def_id)
-                                {
-                                    if !matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(..)) {
+                            // opaque types generated when desugaring an async function can have a single
+                            // use lifetime even if it is explicitly denied (Issue #77175)
+                            if let hir::Node::Item(hir::Item {
+                                kind: hir::ItemKind::OpaqueTy(ref opaque),
+                                ..
+                            }) = self.tcx.hir().get_by_def_id(def_id)
+                            {
+                                if !matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(..)) {
+                                    continue 'lifetimes;
+                                }
+                                // We want to do this only if the lifetime identifier is already defined
+                                // in the async function that generated this. Otherwise it could be
+                                // an opaque type defined by the developer and we still want this
+                                // lint to fail compilation
+                                for p in opaque.generics.params {
+                                    if defined_by.contains_key(&p.name) {
                                         continue 'lifetimes;
-                                    }
-                                    // We want to do this only if the lifetime identifier is already defined
-                                    // in the async function that generated this. Otherwise it could be
-                                    // an opaque type defined by the developer and we still want this
-                                    // lint to fail compilation
-                                    for p in opaque.generics.params {
-                                        if defined_by.contains_key(&p.name) {
-                                            continue 'lifetimes;
-                                        }
                                     }
                                 }
                             }
@@ -2087,20 +2082,19 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             |lint| {
                                 let mut err = lint
                                     .build(&format!("lifetime parameter `{}` never used", name));
-                                if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                                    if let Some(generics) =
-                                        self.tcx.hir().get_generics(parent_def_id.expect_local())
-                                    {
-                                        let unused_lt_span =
-                                            self.lifetime_deletion_span(name, generics);
-                                        if let Some(span) = unused_lt_span {
-                                            err.span_suggestion(
-                                                span,
-                                                "elide the unused lifetime",
-                                                String::new(),
-                                                Applicability::MachineApplicable,
-                                            );
-                                        }
+                                let parent_def_id = self.tcx.parent(def_id);
+                                if let Some(generics) =
+                                    self.tcx.hir().get_generics(parent_def_id.expect_local())
+                                {
+                                    let unused_lt_span =
+                                        self.lifetime_deletion_span(name, generics);
+                                    if let Some(span) = unused_lt_span {
+                                        err.span_suggestion(
+                                            span,
+                                            "elide the unused lifetime",
+                                            String::new(),
+                                            Applicability::MachineApplicable,
+                                        );
                                     }
                                 }
                                 err.emit();

@@ -49,7 +49,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         let _prof_timer = cx.tcx.sess.prof.generic_activity("build_local_trait_impls");
         let mut attr_buf = Vec::new();
         for &impl_def_id in all_trait_impls.iter().take_while(|def_id| def_id.is_local()) {
-            let mut parent = cx.tcx.parent(impl_def_id);
+            let mut parent = Some(cx.tcx.parent(impl_def_id));
             while let Some(did) = parent {
                 attr_buf.extend(
                     cx.tcx
@@ -65,7 +65,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                         })
                         .cloned(),
                 );
-                parent = cx.tcx.parent(did);
+                parent = cx.tcx.opt_parent(did);
             }
             inline::build_impl(cx, None, impl_def_id, Some(&attr_buf), &mut new_items_local);
             attr_buf.clear();

@@ -377,7 +377,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
-                let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
+                let variant_id = self.tcx.parent(variant_ctor_id);
                 Res::Def(DefKind::Variant, variant_id)
             }
             res => res,
@@ -385,7 +385,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let mut kind = match res {
             Res::Def(DefKind::Variant, variant_id) => {
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id);
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let substs = match ty.kind() {

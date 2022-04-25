@@ -90,7 +90,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-                if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
                         Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
                             if target == place.local_or_deref_local() =>

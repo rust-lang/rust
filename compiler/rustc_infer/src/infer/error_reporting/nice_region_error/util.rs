@@ -42,7 +42,7 @@ pub fn find_param_with_region<'tcx>(
     let (id, bound_region) = match *anon_region {
         ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
         ty::ReEarlyBound(ebr) => {
-            (tcx.parent(ebr.def_id).unwrap(), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
+            (tcx.parent(ebr.def_id), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
         }
         _ => return None, // not a free region
     };

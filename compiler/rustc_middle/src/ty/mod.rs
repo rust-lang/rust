@@ -290,11 +290,28 @@ pub struct ClosureSizeProfileData<'tcx> {
 }
 
 pub trait DefIdTree: Copy {
-    fn parent(self, id: DefId) -> Option<DefId>;
+    fn opt_parent(self, id: DefId) -> Option<DefId>;
 
     #[inline]
-    fn local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
-        Some(self.parent(id.to_def_id())?.expect_local())
+    #[track_caller]
+    fn parent(self, id: DefId) -> DefId {
+        match self.opt_parent(id) {
+            Some(id) => id,
+            // not `unwrap_or_else` to avoid breaking caller tracking
+            None => bug!("{id:?} doesn't have a parent"),
+        }
+    }
+
+    #[inline]
+    #[track_caller]
+    fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
+        self.opt_parent(id.to_def_id()).map(DefId::expect_local)
+    }
+
+    #[inline]
+    #[track_caller]
+    fn local_parent(self, id: LocalDefId) -> LocalDefId {
+        self.parent(id.to_def_id()).expect_local()
     }
 
     fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
@@ -303,7 +320,7 @@ pub trait DefIdTree: Copy {
         }
 
         while descendant != ancestor {
-            match self.parent(descendant) {
+            match self.opt_parent(descendant) {
                 Some(parent) => descendant = parent,
                 None => return false,
             }
@@ -313,7 +330,8 @@ pub trait DefIdTree: Copy {
 }
 
 impl<'tcx> DefIdTree for TyCtxt<'tcx> {
-    fn parent(self, id: DefId) -> Option<DefId> {
+    #[inline]
+    fn opt_parent(self, id: DefId) -> Option<DefId> {
         self.def_key(id).parent.map(|index| DefId { index, ..id })
     }
 }
@@ -2123,17 +2141,17 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn expect_variant_res(self, res: Res) -> &'tcx VariantDef {
         match res {
             Res::Def(DefKind::Variant, did) => {
-                let enum_did = self.parent(did).unwrap();
+                let enum_did = self.parent(did);
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Res::Def(DefKind::Struct | DefKind::Union, did) => self.adt_def(did).non_enum_variant(),
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
-                let variant_did = self.parent(variant_ctor_did).unwrap();
-                let enum_did = self.parent(variant_did).unwrap();
+                let variant_did = self.parent(variant_ctor_did);
+                let enum_did = self.parent(variant_did);
                 self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), ctor_did) => {
-                let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
+                let struct_did = self.parent(ctor_did);
                 self.adt_def(struct_did).non_enum_variant()
             }
             _ => bug!("expect_variant_res used with unexpected res {:?}", res),

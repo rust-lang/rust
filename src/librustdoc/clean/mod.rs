@@ -421,7 +421,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                     // `self_def_id` set, we override it here.
                     // See https://github.com/rust-lang/rust/issues/85454
                     if let QPath { ref mut self_def_id, .. } = default {
-                        *self_def_id = cx.tcx.parent(self.def_id);
+                        *self_def_id = Some(cx.tcx.parent(self.def_id));
                     }
 
                     Some(default)
@@ -1068,7 +1068,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
             let mut what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
 
-            let impl_ref = cx.tcx.parent(local_did).and_then(|did| cx.tcx.impl_trait_ref(did));
+            let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(self.def_id));
 
             // Trait impl items always inherit the impl's visibility --
             // we don't want to show `pub`.
@@ -1260,7 +1260,7 @@ impl Clean<Item> for ty::AssocItem {
         let mut what_rustc_thinks =
             Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
 
-        let impl_ref = tcx.parent(self.def_id).and_then(|did| tcx.impl_trait_ref(did));
+        let impl_ref = tcx.impl_trait_ref(tcx.parent(self.def_id));
 
         // Trait impl items always inherit the impl's visibility --
         // we don't want to show `pub`.
@@ -1742,9 +1742,7 @@ fn clean_field(def_id: DefId, name: Symbol, ty: Type, cx: &mut DocContext<'_>) -
 }
 
 fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let parent = tcx
-        .parent(def_id)
-        .expect("is_field_vis_inherited can only be called on struct or variant fields");
+    let parent = tcx.parent(def_id);
     match tcx.def_kind(parent) {
         DefKind::Struct | DefKind::Union => false,
         DefKind::Variant => true,

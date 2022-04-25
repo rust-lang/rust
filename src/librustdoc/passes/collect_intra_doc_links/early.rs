@@ -188,7 +188,7 @@ impl EarlyDocLinkResolver<'_, '_> {
             return;
         }
         // FIXME: actually resolve links, not just add traits in scope.
-        if let Some(parent_id) = self.resolver.parent(scope_id) {
+        if let Some(parent_id) = self.resolver.opt_parent(scope_id) {
             self.add_traits_in_scope(parent_id);
         }
     }
@@ -253,7 +253,7 @@ impl EarlyDocLinkResolver<'_, '_> {
             {
                 if let Some(def_id) = child.res.opt_def_id() && !def_id.is_local() {
                     let scope_id = match child.res {
-                        Res::Def(DefKind::Variant, ..) => self.resolver.parent(def_id).unwrap(),
+                        Res::Def(DefKind::Variant, ..) => self.resolver.parent(def_id),
                         _ => def_id,
                     };
                     self.resolve_doc_links_extern_outer(def_id, scope_id); // Outer attribute scope

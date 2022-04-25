@@ -838,7 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.type_of(self.tcx.parent(def_id).expect("variant w/out parent"))
+            self.tcx.type_of(self.tcx.parent(def_id))
         } else {
             self.tcx.type_of(def_id)
         };

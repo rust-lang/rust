@@ -280,8 +280,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
-                    let impl_def_id =
-                        self.tcx.parent(search_item.to_def_id()).unwrap().expect_local();
+                    let impl_def_id = self.tcx.local_parent(search_item);
                     if method_might_be_inlined(self.tcx, impl_item, impl_def_id) {
                         self.visit_nested_body(body)
                     }

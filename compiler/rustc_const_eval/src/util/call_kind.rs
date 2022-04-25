@@ -128,9 +128,9 @@ pub fn call_kind<'tcx>(
         } else {
             None
         };
-        let parent_self_ty = tcx
-            .parent(method_did)
-            .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
+        let parent_did = tcx.parent(method_did);
+        let parent_self_ty = (tcx.def_kind(parent_did) == rustc_hir::def::DefKind::Impl)
+            .then_some(parent_did)
             .and_then(|did| match tcx.type_of(did).kind() {
                 ty::Adt(def, ..) => Some(def.did()),
                 _ => None,

@@ -3162,7 +3162,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 
     // #73631: closures inherit `#[target_feature]` annotations
     if tcx.features().target_feature_11 && tcx.is_closure(id) {
-        let owner_id = tcx.parent(id).expect("closure should have a parent");
+        let owner_id = tcx.parent(id);
         codegen_fn_attrs
             .target_features
             .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied())
