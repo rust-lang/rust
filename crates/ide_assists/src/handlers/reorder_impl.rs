@@ -1,8 +1,6 @@
-use itertools::Itertools;
-use rustc_hash::FxHashMap;
-
 use hir::{PathResolution, Semantics};
-use ide_db::RootDatabase;
+use ide_db::{FxHashMap, RootDatabase};
+use itertools::Itertools;
 use syntax::{
     ast::{self, HasName},
     ted, AstNode,

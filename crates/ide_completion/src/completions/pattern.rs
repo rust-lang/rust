@@ -1,7 +1,7 @@
 //! Completes constants and paths in unqualified patterns.
 
 use hir::{db::DefDatabase, AssocItem, ScopeDef};
-use rustc_hash::FxHashSet;
+use ide_db::FxHashSet;
 use syntax::ast::Pat;
 
 use crate::{

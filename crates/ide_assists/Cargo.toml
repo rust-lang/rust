@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-rustc-hash = "1.1.0"
+
 itertools = "0.10.3"
 either = "1.6.1"
 

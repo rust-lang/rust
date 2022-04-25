@@ -1,7 +1,7 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
 use hir::{ScopeDef, Trait};
-use rustc_hash::FxHashSet;
+use ide_db::FxHashSet;
 use syntax::ast;
 
 use crate::{

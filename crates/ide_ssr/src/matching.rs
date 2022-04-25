@@ -7,13 +7,11 @@ use crate::{
     SsrMatches,
 };
 use hir::Semantics;
-use ide_db::base_db::FileRange;
-use rustc_hash::FxHashMap;
+use ide_db::{base_db::FileRange, FxHashMap};
 use std::{cell::Cell, iter::Peekable};
-use syntax::{ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken};
 use syntax::{
-    ast::{AstNode, AstToken},
-    SmolStr,
+    ast::{self, AstNode, AstToken},
+    SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were

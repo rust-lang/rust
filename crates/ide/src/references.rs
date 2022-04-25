@@ -14,9 +14,8 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
-    RootDatabase,
+    FxHashMap, RootDatabase,
 };
-use rustc_hash::FxHashMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName},

@@ -14,8 +14,7 @@ mod html;
 mod tests;
 
 use hir::{InFile, Name, Semantics};
-use ide_db::RootDatabase;
-use rustc_hash::FxHashMap;
+use ide_db::{FxHashMap, RootDatabase};
 use syntax::{
     ast, AstNode, AstToken, NodeOrToken, SyntaxKind::*, SyntaxNode, TextRange, WalkEvent, T,
 };

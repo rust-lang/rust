@@ -1,7 +1,6 @@
 use either::Either;
+use ide_db::FxHashMap;
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
-
 use syntax::{ast, ted, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

@@ -7,10 +7,9 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
     search::FileReference,
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
 use itertools::{Itertools, Position};
-use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,

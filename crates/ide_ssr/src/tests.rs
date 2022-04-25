@@ -1,9 +1,12 @@
-use crate::{MatchFinder, SsrRule};
 use expect_test::{expect, Expect};
-use ide_db::base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
-use rustc_hash::FxHashSet;
+use ide_db::{
+    base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt},
+    FxHashSet,
+};
 use std::sync::Arc;
 use test_utils::RangeOrOffset;
+
+use crate::{MatchFinder, SsrRule};
 
 fn parse_error_text(query: &str) -> String {
     format!("{}", query.parse::<SsrRule>().unwrap_err())

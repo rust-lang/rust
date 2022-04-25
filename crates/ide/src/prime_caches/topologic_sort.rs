@@ -1,7 +1,7 @@
 //! helper data structure to schedule work for parallel prime caches.
 use std::{collections::VecDeque, hash::Hash};
 
-use rustc_hash::FxHashMap;
+use ide_db::FxHashMap;
 
 pub(crate) struct TopologicSortIterBuilder<T> {
     nodes: FxHashMap<T, Entry<T>>,

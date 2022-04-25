@@ -7,11 +7,10 @@ use ide_db::{
         Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
     },
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    SymbolKind,
+    FxHashMap, SymbolKind,
 };
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AttrKind},
     AstNode, SyntaxKind, T,

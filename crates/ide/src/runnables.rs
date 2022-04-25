@@ -9,10 +9,9 @@ use ide_db::{
     defs::Definition,
     helpers::visit_file_defs,
     search::SearchScope,
-    RootDatabase, SymbolKind,
+    FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, format_to};
 use syntax::{
     ast::{self, AstNode, HasAttrs as _},

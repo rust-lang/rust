@@ -1,12 +1,11 @@
 //! This module is responsible for resolving paths within rules.
 
-use crate::errors::error;
-use crate::{parsing, SsrError};
 use hir::AsAssocItem;
-use ide_db::base_db::FilePosition;
+use ide_db::{base_db::FilePosition, FxHashMap};
 use parsing::Placeholder;
-use rustc_hash::FxHashMap;
 use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
+
+use crate::{errors::error, parsing, SsrError};
 
 pub(crate) struct ResolutionScope<'db> {
     scope: hir::SemanticsScope<'db>,

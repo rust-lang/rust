@@ -5,9 +5,8 @@ use ide_db::{
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
     syntax_helpers::node_ext::{for_each_break_and_continue_expr, for_each_tail_expr, walk_expr},
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
-use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
