@@ -1,3 +1,4 @@
+use crate::pin::Pin;
 use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sys::futex::{futex_wait, futex_wake};
@@ -32,14 +33,15 @@ pub struct Parker {
 // Ordering::Release when writing NOTIFIED (the 'token') in unpark(), and using
 // Ordering::Acquire when checking for this state in park().
 impl Parker {
-    #[inline]
-    pub const fn new() -> Self {
-        Parker { state: AtomicU32::new(EMPTY) }
+    /// Construct the futex parker. The UNIX parker implementation
+    /// requires this to happen in-place.
+    pub unsafe fn new(parker: *mut Parker) {
+        parker.write(Self { state: AtomicU32::new(EMPTY) });
     }
 
     // Assumes this is only called by the thread that owns the Parker,
     // which means that `self.state != PARKED`.
-    pub unsafe fn park(&self) {
+    pub unsafe fn park(self: Pin<&Self>) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -58,8 +60,9 @@ impl Parker {
     }
 
     // Assumes this is only called by the thread that owns the Parker,
-    // which means that `self.state != PARKED`.
-    pub unsafe fn park_timeout(&self, timeout: Duration) {
+    // which means that `self.state != PARKED`. This implementation doesn't
+    // require `Pin`, but other implementations do.
+    pub unsafe fn park_timeout(self: Pin<&Self>, timeout: Duration) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -78,8 +81,9 @@ impl Parker {
         }
     }
 
+    // This implementation doesn't require `Pin`, but other implementations do.
     #[inline]
-    pub fn unpark(&self) {
+    pub fn unpark(self: Pin<&Self>) {
         // Change PARKED=>NOTIFIED, EMPTY=>NOTIFIED, or NOTIFIED=>NOTIFIED, and
         // wake the thread in the first case.
         //
