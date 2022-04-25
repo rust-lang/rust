@@ -193,7 +193,7 @@ fn find_sugg_for_if_let<'tcx>(
         PatKind::TupleStruct(ref qpath, [sub_pat], _) => {
             if let PatKind::Wild = sub_pat.kind {
                 let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
-                let Some(id) = res.opt_def_id().and_then(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
+                let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
                 let lang_items = cx.tcx.lang_items();
                 if Some(id) == lang_items.result_ok_variant() {
                     ("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty))
