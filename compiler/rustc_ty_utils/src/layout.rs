@@ -1345,6 +1345,12 @@ fn layout_of_uncached<'tcx>(
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
+        ty::TyAlias(def_id, substs) => {
+            let binder_ty = tcx.bound_type_of(def_id);
+            let ty = binder_ty.subst(tcx, substs);
+            return layout_of_uncached(cx, ty);
+        }
+
         ty::Bound(..) | ty::Param(_) | ty::Error(_) => {
             return Err(LayoutError::Unknown(ty));
         }

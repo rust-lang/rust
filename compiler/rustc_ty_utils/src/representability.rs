@@ -47,6 +47,16 @@ fn representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representabilit
             }
             Representability::Representable
         }
+        ty::TyAlias(def_id, substs) => {
+            let binder_ty = tcx.bound_type_of(def_id);
+            let ty = binder_ty.subst(tcx, substs);
+            representability_ty(tcx, ty)
+        }
+        ty::Closure(..) => {
+            // this check is run on type definitions, so we don't expect
+            // to see closure types
+            bug!("requires check invoked on inapplicable type: {:?}", ty)
+        }
         _ => Representability::Representable,
     }
 }
