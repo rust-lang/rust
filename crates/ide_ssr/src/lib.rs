@@ -80,15 +80,15 @@ mod errors;
 #[cfg(test)]
 mod tests;
 
-use crate::errors::bail;
-pub use crate::errors::SsrError;
-pub use crate::from_comment::ssr_from_comment;
-pub use crate::matching::Match;
-use crate::matching::MatchFailureReason;
+pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Match};
+
+use crate::{errors::bail, matching::MatchFailureReason};
 use hir::Semantics;
-use ide_db::base_db::{FileId, FilePosition, FileRange};
+use ide_db::{
+    base_db::{FileId, FilePosition, FileRange},
+    FxHashMap,
+};
 use resolving::ResolvedRule;
-use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
 use text_edit::TextEdit;
 

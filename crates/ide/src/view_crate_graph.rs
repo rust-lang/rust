@@ -3,9 +3,8 @@ use std::sync::Arc;
 use dot::{Id, LabelText};
 use ide_db::{
     base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
-use rustc_hash::FxHashSet;
 
 // Feature: View Crate Graph
 //

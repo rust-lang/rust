@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use ide_db::base_db::salsa::Durability;
-use ide_db::base_db::{CrateGraph, SourceDatabase};
-use ide_db::RootDatabase;
-use rustc_hash::FxHashMap;
+use ide_db::{
+    base_db::{salsa::Durability, CrateGraph, SourceDatabase},
+    FxHashMap, RootDatabase,
+};
 
 // Feature: Shuffle Crate Graph
 //

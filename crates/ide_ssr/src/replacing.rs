@@ -1,13 +1,14 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
-use crate::fragments;
-use crate::{resolving::ResolvedRule, Match, SsrMatches};
+use ide_db::{FxHashMap, FxHashSet};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::ast::{self, AstNode, AstToken};
-use syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
-
+use syntax::{
+    ast::{self, AstNode, AstToken},
+    SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+};
 use text_edit::TextEdit;
+
+use crate::{fragments, resolving::ResolvedRule, Match, SsrMatches};
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
 /// template. Placeholders in the template will have been substituted with whatever they matched to

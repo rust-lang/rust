@@ -1,7 +1,7 @@
 //! See [`complete_fn_param`].
 
 use hir::HirDisplay;
-use rustc_hash::FxHashMap;
+use ide_db::FxHashMap;
 use syntax::{
     algo,
     ast::{self, HasModuleItem},

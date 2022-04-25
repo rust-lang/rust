@@ -63,9 +63,8 @@ mod tests {
     use ide_db::{
         base_db::{fixture::WithFixture, salsa::Durability, FileRange},
         symbol_index::SymbolsDatabase,
-        RootDatabase,
+        FxHashSet, RootDatabase,
     };
-    use rustc_hash::FxHashSet;
 
     use super::ssr_assists;
 

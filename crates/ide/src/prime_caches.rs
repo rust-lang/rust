@@ -12,9 +12,8 @@ use ide_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
         Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
     },
-    FxIndexMap,
+    FxHashSet, FxIndexMap,
 };
-use rustc_hash::FxHashSet;
 
 use crate::RootDatabase;
 

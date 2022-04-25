@@ -7,9 +7,8 @@ use hir::{db::HirDatabase, Crate, Module, Semantics};
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
     defs::{Definition, IdentClass},
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
-use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{

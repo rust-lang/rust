@@ -59,9 +59,8 @@ use ide_db::{
     base_db::{FileId, SourceDatabase},
     label::Label,
     source_change::SourceChange,
-    RootDatabase,
+    FxHashSet, RootDatabase,
 };
-use rustc_hash::FxHashSet;
 use syntax::{ast::AstNode, TextRange};
 
 #[derive(Copy, Clone, Debug, PartialEq)]

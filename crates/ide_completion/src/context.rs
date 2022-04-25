@@ -10,9 +10,8 @@ use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
     famous_defs::FamousDefs,
-    RootDatabase,
+    FxHashMap, FxHashSet, RootDatabase,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasName, NameOrNameRef},

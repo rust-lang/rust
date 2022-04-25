@@ -7,9 +7,10 @@
 //! then we'll get 3 matches, however only the outermost and innermost matches can be accepted. The
 //! middle match would take the second `foo` from the outer match.
 
-use crate::{Match, SsrMatches};
-use rustc_hash::FxHashMap;
+use ide_db::FxHashMap;
 use syntax::SyntaxNode;
+
+use crate::{Match, SsrMatches};
 
 pub(crate) fn nest_and_remove_collisions(
     mut matches: Vec<Match>,

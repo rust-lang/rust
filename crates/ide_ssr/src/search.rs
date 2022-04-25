@@ -9,8 +9,8 @@ use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
+    FxHashSet,
 };
-use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the

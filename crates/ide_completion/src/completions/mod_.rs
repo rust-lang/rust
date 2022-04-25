@@ -3,11 +3,11 @@
 use std::iter;
 
 use hir::{Module, ModuleSource};
+use ide_db::FxHashSet;
 use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
     RootDatabase, SymbolKind,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{context::NameContext, CompletionItem};
 

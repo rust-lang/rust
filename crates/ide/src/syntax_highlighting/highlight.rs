@@ -3,9 +3,8 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
-    RootDatabase, SymbolKind,
+    FxHashMap, RootDatabase, SymbolKind,
 };
-use rustc_hash::FxHashMap;
 use syntax::{
     ast, match_ast, AstNode, AstToken, NodeOrToken,
     SyntaxKind::{self, *},

@@ -1,4 +1,4 @@
-use rustc_hash::FxHashSet;
+use ide_db::FxHashSet;
 use syntax::{
     ast::{self, edit_in_place::GenericParamsOwnerEdit, make, HasGenericParams},
     ted::{self, Position},

@@ -1,10 +1,10 @@
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
-    base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, RootDatabase,
+    base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap,
+    RootDatabase,
 };
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},

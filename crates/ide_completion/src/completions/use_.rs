@@ -1,7 +1,7 @@
 //! Completion for use trees
 
 use hir::ScopeDef;
-use rustc_hash::FxHashSet;
+use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{

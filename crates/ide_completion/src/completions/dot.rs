@@ -1,6 +1,6 @@
 //! Completes references after dot (fields and method calls).
 
-use rustc_hash::FxHashSet;
+use ide_db::FxHashSet;
 
 use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
 
