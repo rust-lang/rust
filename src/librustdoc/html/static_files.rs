@@ -92,17 +92,11 @@ crate mod themes {
 
 /// Files related to the Fira Sans font.
 crate mod fira_sans {
-    /// The file `FiraSans-Regular.woff`, the Regular variant of the Fira Sans font.
-    crate static REGULAR: &[u8] = include_bytes!("static/fonts/FiraSans-Regular.woff");
-
     /// The file `FiraSans-Regular.woff2`, the Regular variant of the Fira Sans font in woff2.
-    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/FiraSans-Regular.woff2");
-
-    /// The file `FiraSans-Medium.woff`, the Medium variant of the Fira Sans font.
-    crate static MEDIUM: &[u8] = include_bytes!("static/fonts/FiraSans-Medium.woff");
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/FiraSans-Regular.woff2");
 
     /// The file `FiraSans-Medium.woff2`, the Medium variant of the Fira Sans font in woff2.
-    crate static MEDIUM2: &[u8] = include_bytes!("static/fonts/FiraSans-Medium.woff2");
+    crate static MEDIUM: &[u8] = include_bytes!("static/fonts/FiraSans-Medium.woff2");
 
     /// The file `FiraSans-LICENSE.txt`, the license text for the Fira Sans font.
     crate static LICENSE: &[u8] = include_bytes!("static/fonts/FiraSans-LICENSE.txt");
@@ -110,26 +104,17 @@ crate mod fira_sans {
 
 /// Files related to the Source Serif 4 font.
 crate mod source_serif_4 {
-    /// The file `SourceSerif4-Regular.ttf.woff`, the Regular variant of the Source Serif 4 font.
-    crate static REGULAR: &[u8] = include_bytes!("static/fonts/SourceSerif4-Regular.ttf.woff");
-
     /// The file `SourceSerif4-Regular.ttf.woff2`, the Regular variant of the Source Serif 4 font in
     /// woff2.
-    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/SourceSerif4-Regular.ttf.woff2");
-
-    /// The file `SourceSerif4-Bold.ttf.woff`, the Bold variant of the Source Serif 4 font.
-    crate static BOLD: &[u8] = include_bytes!("static/fonts/SourceSerif4-Bold.ttf.woff");
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/SourceSerif4-Regular.ttf.woff2");
 
     /// The file `SourceSerif4-Bold.ttf.woff2`, the Bold variant of the Source Serif 4 font in
     /// woff2.
-    crate static BOLD2: &[u8] = include_bytes!("static/fonts/SourceSerif4-Bold.ttf.woff2");
-
-    /// The file `SourceSerif4-It.ttf.woff`, the Italic variant of the Source Serif 4 font.
-    crate static ITALIC: &[u8] = include_bytes!("static/fonts/SourceSerif4-It.ttf.woff");
+    crate static BOLD: &[u8] = include_bytes!("static/fonts/SourceSerif4-Bold.ttf.woff2");
 
     /// The file `SourceSerif4-It.ttf.woff2`, the Italic variant of the Source Serif 4 font in
     /// woff2.
-    crate static ITALIC2: &[u8] = include_bytes!("static/fonts/SourceSerif4-It.ttf.woff2");
+    crate static ITALIC: &[u8] = include_bytes!("static/fonts/SourceSerif4-It.ttf.woff2");
 
     /// The file `SourceSerif4-LICENSE.txt`, the license text for the Source Serif 4 font.
     crate static LICENSE: &[u8] = include_bytes!("static/fonts/SourceSerif4-LICENSE.md");
@@ -137,27 +122,17 @@ crate mod source_serif_4 {
 
 /// Files related to the Source Code Pro font.
 crate mod source_code_pro {
-    /// The file `SourceCodePro-Regular.ttf.woff`, the Regular variant of the Source Code Pro font.
-    crate static REGULAR: &[u8] = include_bytes!("static/fonts/SourceCodePro-Regular.ttf.woff");
-
     /// The file `SourceCodePro-Regular.ttf.woff2`, the Regular variant of the Source Code Pro font
     /// in woff2.
-    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/SourceCodePro-Regular.ttf.woff2");
-
-    /// The file `SourceCodePro-Semibold.ttf.woff`, the Semibold variant of the Source Code Pro
-    /// font.
-    crate static SEMIBOLD: &[u8] = include_bytes!("static/fonts/SourceCodePro-Semibold.ttf.woff");
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/SourceCodePro-Regular.ttf.woff2");
 
     /// The file `SourceCodePro-Semibold.ttf.woff2`, the Semibold variant of the Source Code Pro
     /// font in woff2.
-    crate static SEMIBOLD2: &[u8] = include_bytes!("static/fonts/SourceCodePro-Semibold.ttf.woff2");
-
-    /// The file `SourceCodePro-It.ttf.woff`, the Italic variant of the Source Code Pro font.
-    crate static ITALIC: &[u8] = include_bytes!("static/fonts/SourceCodePro-It.ttf.woff");
+    crate static SEMIBOLD: &[u8] = include_bytes!("static/fonts/SourceCodePro-Semibold.ttf.woff2");
 
     /// The file `SourceCodePro-It.ttf.woff2`, the Italic variant of the Source Code Pro font in
     /// woff2.
-    crate static ITALIC2: &[u8] = include_bytes!("static/fonts/SourceCodePro-It.ttf.woff2");
+    crate static ITALIC: &[u8] = include_bytes!("static/fonts/SourceCodePro-It.ttf.woff2");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
     crate static LICENSE: &[u8] = include_bytes!("static/fonts/SourceCodePro-LICENSE.txt");
@@ -176,19 +151,11 @@ crate mod source_code_pro {
 /// ```sh
 /// pyftsubset NanumBarunGothic.ttf \
 /// --unicodes=U+AC00-D7AF,U+1100-11FF,U+3130-318F,U+A960-A97F,U+D7B0-D7FF \
-/// --output-file=NanumBarunGothic.ttf.woff --flavor=woff
-/// ```
-/// ```sh
-/// pyftsubset NanumBarunGothic.ttf \
-/// --unicodes=U+AC00-D7AF,U+1100-11FF,U+3130-318F,U+A960-A97F,U+D7B0-D7FF \
 /// --output-file=NanumBarunGothic.ttf.woff2 --flavor=woff2
 /// ```
 crate mod nanum_barun_gothic {
-    /// The file `NanumBarunGothic.ttf.woff`, the Regular variant of the Nanum Barun Gothic font.
-    crate static REGULAR: &[u8] = include_bytes!("static/fonts/NanumBarunGothic.ttf.woff");
-
     /// The file `NanumBarunGothic.ttf.woff2`, the Regular variant of the Nanum Barun Gothic font.
-    crate static REGULAR2: &[u8] = include_bytes!("static/fonts/NanumBarunGothic.ttf.woff2");
+    crate static REGULAR: &[u8] = include_bytes!("static/fonts/NanumBarunGothic.ttf.woff2");
 
     /// The file `NanumBarunGothic-LICENSE.txt`, the license text of the Nanum Barun Gothic font.
     crate static LICENSE: &[u8] = include_bytes!("static/fonts/NanumBarunGothic-LICENSE.txt");
