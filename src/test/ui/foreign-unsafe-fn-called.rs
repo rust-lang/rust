@@ -9,5 +9,5 @@ mod test {
 
 fn main() {
     test::free();
-    //~^ ERROR call to unsafe function is unsafe
+    //~^ ERROR call to unsafe function `test::free` is unsafe
 }

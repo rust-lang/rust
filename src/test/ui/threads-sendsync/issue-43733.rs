@@ -1,5 +1,7 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
+// normalize-stderr-test: "__FastLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
+// normalize-stderr-test: "__OsLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
 
 #![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
@@ -16,11 +18,14 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> = std::thread::__FastLocalKe
 static __KEY: std::thread::__OsLocalKeyInner<Foo> = std::thread::__OsLocalKeyInner::new();
 
 fn __getit(_: Option<&mut Option<RefCell<String>>>) -> std::option::Option<&'static Foo> {
-    __KEY.get(Default::default) //~ ERROR call to unsafe function is unsafe
+    __KEY.get(Default::default)
+    //[mir]~^ ERROR call to unsafe function `std::thread::
+    //[thir]~^^ ERROR call to unsafe function `__
 }
 
 static FOO: std::thread::LocalKey<Foo> = std::thread::LocalKey::new(__getit);
-//~^ ERROR call to unsafe function is unsafe
+//[mir]~^ ERROR call to unsafe function `std::thread::LocalKey::<T>::new` is unsafe
+//[thir]~^^ ERROR call to unsafe function `LocalKey::<T>::new` is unsafe
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));

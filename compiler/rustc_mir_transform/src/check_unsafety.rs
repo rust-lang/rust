@@ -70,15 +70,17 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
             TerminatorKind::Call { ref func, .. } => {
                 let func_ty = func.ty(self.body, self.tcx);
+                let func_id =
+                    if let ty::FnDef(func_id, _) = func_ty.kind() { Some(func_id) } else { None };
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe(
                         UnsafetyViolationKind::General,
-                        UnsafetyViolationDetails::CallToUnsafeFunction,
+                        UnsafetyViolationDetails::CallToUnsafeFunction(func_id.copied()),
                     )
                 }
 
-                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                if let Some(func_id) = func_id {
                     self.check_target_features(*func_id);
                 }
             }
@@ -379,7 +381,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
             self.require_unsafe(
                 UnsafetyViolationKind::General,
-                UnsafetyViolationDetails::CallToFunctionWith,
+                UnsafetyViolationDetails::CallToFunctionWith(func_did),
             )
         }
     }
@@ -578,7 +580,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let (description, note) = details.description_and_note();
+        let (description, note) =
+            ty::print::with_no_trimmed_paths!(details.description_and_note(tcx));
 
         // Report an error.
         let unsafe_fn_msg =
@@ -595,7 +598,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     description,
                     unsafe_fn_msg,
                 )
-                .span_label(source_info.span, description)
+                .span_label(source_info.span, details.simple_description())
                 .note(note)
                 .emit();
             }

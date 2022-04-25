@@ -1,7 +1,6 @@
 // run-pass
 // no-prefer-dynamic
 // ignore-emscripten no threads support
-
 static mut HIT: bool = false;
 
 struct Foo;
