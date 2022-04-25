@@ -114,3 +114,8 @@ pub fn ios_sim_llvm_target(arch: &str) -> String {
     let (major, minor) = ios_deployment_target();
     format!("{}-apple-ios{}.{}.0-simulator", arch, major, minor)
 }
+
+pub fn macabi_llvm_target(arch: &str) -> String {
+    let (major, minor) = ios_deployment_target();
+    format!("{}-apple-ios{}.{}.0-macabi", arch, major, minor)
+}
