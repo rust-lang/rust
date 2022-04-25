@@ -453,9 +453,6 @@ macro_rules! impl_arena_allocatable_decoder {
             }
         }
     };
-    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
-        impl_arena_allocatable_decoder!([$($attrs),*]$args);
-    };
 }
 
 macro_rules! impl_arena_allocatable_decoders {

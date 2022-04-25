@@ -255,19 +255,6 @@ impl EmissionGuarantee for ! {
 /// instead of a `&DiagnosticBuilder<'a>`. This `forward!` macro makes
 /// it easy to declare such methods on the builder.
 macro_rules! forward {
-    // Forward pattern for &self -> &Self
-    (
-        $(#[$attrs:meta])*
-        pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
-    ) => {
-        $(#[$attrs])*
-        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&self, $($name: $ty),*) -> &Self {
-            self.diagnostic.$n($($name),*);
-            self
-        }
-    };
-
     // Forward pattern for &mut self -> &mut Self
     (
         $(#[$attrs:meta])*

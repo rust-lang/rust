@@ -1,10 +1,6 @@
 // implements the unary operator "op &T"
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
-    (impl $imp:ident, $method:ident for $t:ty) => {
-        forward_ref_unop!(impl $imp, $method for $t,
-                #[stable(feature = "rust1", since = "1.0.0")]);
-    };
     (impl const $imp:ident, $method:ident for $t:ty) => {
         forward_ref_unop!(impl const $imp, $method for $t,
                 #[stable(feature = "rust1", since = "1.0.0")]);
@@ -38,10 +34,6 @@ macro_rules! forward_ref_unop {
 // implements binary operators "&T op U", "T op &U", "&T op &U"
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_binop!(impl $imp, $method for $t, $u,
-                #[stable(feature = "rust1", since = "1.0.0")]);
-    };
     (impl const $imp:ident, $method:ident for $t:ty, $u:ty) => {
         forward_ref_binop!(impl const $imp, $method for $t, $u,
                 #[stable(feature = "rust1", since = "1.0.0")]);
@@ -227,22 +219,6 @@ macro_rules! cfg_if {
                 (( $i_meta ) ( $( $i_tokens )* )) ,
             )+
             (() ( $( $e_tokens )* )) ,
-        }
-    };
-
-    // match if/else chains lacking a final `else`
-    (
-        if #[cfg( $i_meta:meta )] { $( $i_tokens:tt )* }
-        $(
-            else if #[cfg( $e_meta:meta )] { $( $e_tokens:tt )* }
-        )*
-    ) => {
-        cfg_if! {
-            @__items () ;
-            (( $i_meta ) ( $( $i_tokens )* )) ,
-            $(
-                (( $e_meta ) ( $( $e_tokens )* )) ,
-            )*
         }
     };
 
