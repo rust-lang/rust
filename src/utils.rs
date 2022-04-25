@@ -512,6 +512,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Range(..)
         | ast::ExprKind::Repeat(..)
         | ast::ExprKind::Ret(..)
+        | ast::ExprKind::Yeet(..)
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(None)
