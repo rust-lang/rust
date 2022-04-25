@@ -1534,7 +1534,7 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// Whether we link to our own CRT objects instead of relying on gcc to pull them.
 /// We only provide such support for a very limited number of targets.
 fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
-    if let Some(self_contained) = sess.opts.cg.link_self_contained {
+    if let Some(self_contained) = sess.opts.cg.link_self_contained.crt.is_explicitly_set() {
         return self_contained;
     }
 

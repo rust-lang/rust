@@ -414,6 +414,8 @@ mod desc {
     pub const parse_split_dwarf_kind: &str =
         "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
+    pub const parse_link_self_contained: &str =
+        "one of: `y`, `yes`, `on`, `n`, `no`, `off`, `auto`, `crt`, `linker`, `all`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
@@ -1027,6 +1029,20 @@ mod parse {
         true
     }
 
+    /// Parses `-C link-self-contained`: it used to be a boolean without a static default, but now
+    /// also accepts some strings, in addition to the regular boolean values.
+    pub(crate) fn parse_link_self_contained(slot: &mut LinkSelfContained, v: Option<&str>) -> bool {
+        // Whenever `-C link-self-contained` is passed without a value, it's an opt-in
+        // just like `parse_opt_bool`.
+        let s = v.unwrap_or("y");
+
+        match LinkSelfContained::from_str(s).ok() {
+            Some(value) => *slot = value,
+            None => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
             Some(ssp) => *slot = ssp,
@@ -1116,7 +1132,7 @@ options! {
         "extra arguments to append to the linker invocation (space separated)"),
     link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
-    link_self_contained: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+    link_self_contained: LinkSelfContained = (LinkSelfContained::default(), parse_link_self_contained, [UNTRACKED],
         "control whether to link Rust provided C objects/libraries or rely
         on C toolchain installed in the system"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
