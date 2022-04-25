@@ -212,7 +212,7 @@ pub struct PerfStats {
 pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
-    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, T>;
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, T>;
 }
 
 impl Session {
@@ -334,7 +334,7 @@ impl Session {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        self.diagnostic().struct_err(msg)
+        self.parse_sess.struct_err(msg)
     }
     pub fn struct_err_with_code(
         &self,
@@ -414,10 +414,10 @@ impl Session {
         self.diagnostic().err(msg)
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
-        err.into_diagnostic(self).emit()
+        self.parse_sess.emit_err(err)
     }
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
-        warning.into_diagnostic(self).emit()
+        self.parse_sess.emit_warning(warning)
     }
     #[inline]
     pub fn err_count(&self) -> usize {
@@ -783,7 +783,11 @@ impl Session {
             Path::new(&rustlib_path),
             Path::new("bin"),
         ]);
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
+        if self_contained {
+            vec![p.clone(), p.join("self-contained")]
+        } else {
+            vec![p]
+        }
     }
 
     pub fn init_incr_comp_session(

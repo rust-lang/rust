@@ -119,7 +119,9 @@ fn span_err(span: impl proc_macro::MultiSpan, msg: &str) -> proc_macro::Diagnost
 /// Emit a diagnostic on span `$span` with msg `$msg` (optionally performing additional decoration
 /// using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 macro_rules! throw_span_err {
-    ($span:expr, $msg:expr) => {{ throw_span_err!($span, $msg, |diag| diag) }};
+    ($span:expr, $msg:expr) => {{
+        throw_span_err!($span, $msg, |diag| diag)
+    }};
     ($span:expr, $msg:expr, $f:expr) => {{
         return Err(_throw_span_err($span, $msg, $f));
     }};
@@ -308,7 +310,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
             {
                 fn into_diagnostic(
                     self,
-                    #sess: &'__session_diagnostic_sess rustc_session::Session
+                    #sess: &'__session_diagnostic_sess rustc_session::parse::ParseSess
                 ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, #param_ty> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
