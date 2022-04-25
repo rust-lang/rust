@@ -2580,6 +2580,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld` have
+    // a matching linker choice.
+    if let Some(LinkerFlavorCli::Gcc { use_ld }) = &cg.linker_flavor {
+        if use_ld != "lld" && debugging_opts.gcc_ld == Some(LdImpl::Lld) {
+            early_error(
+                error_format,
+                "`-Zgcc-ld=lld` and `-Clinker-flavor` differ in their \
+                    linker choice. The latter should be `-Clinker-flavor=gcc:lld`",
+            );
+        }
+    }
+
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
 
     let cg = cg;
