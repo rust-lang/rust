@@ -55,75 +55,93 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, 'tcx>,
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
     ) -> VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> {
-        opaque_ty_decls
-            .into_iter()
-            .map(|(opaque_type_key, (concrete_type, origin))| {
-                let substs = opaque_type_key.substs;
-                debug!(?concrete_type, ?substs);
+        let mut result: VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> = VecMap::new();
+        for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
+            let substs = opaque_type_key.substs;
+            debug!(?concrete_type, ?substs);
 
-                let mut subst_regions = vec![self.universal_regions.fr_static];
-                let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
-                    if let ty::RePlaceholder(..) = region.kind() {
-                        // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                        return region;
+            let mut subst_regions = vec![self.universal_regions.fr_static];
+            let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
+                if let ty::RePlaceholder(..) = region.kind() {
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    return region;
+                }
+                let vid = self.to_region_vid(region);
+                trace!(?vid);
+                let scc = self.constraint_sccs.scc(vid);
+                trace!(?scc);
+                match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
+                    self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
+                }) {
+                    Some(region) => {
+                        let vid = self.universal_regions.to_region_vid(region);
+                        subst_regions.push(vid);
+                        region
                     }
-                    let vid = self.to_region_vid(region);
-                    trace!(?vid);
-                    let scc = self.constraint_sccs.scc(vid);
-                    trace!(?scc);
-                    match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
-                        self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
-                    }) {
-                        Some(region) => {
-                            let vid = self.universal_regions.to_region_vid(region);
-                            subst_regions.push(vid);
-                            region
-                        }
-                        None => {
-                            subst_regions.push(vid);
-                            infcx.tcx.sess.delay_span_bug(
-                                concrete_type.span,
-                                "opaque type with non-universal region substs",
-                            );
-                            infcx.tcx.lifetimes.re_static
-                        }
+                    None => {
+                        subst_regions.push(vid);
+                        infcx.tcx.sess.delay_span_bug(
+                            concrete_type.span,
+                            "opaque type with non-universal region substs",
+                        );
+                        infcx.tcx.lifetimes.re_static
                     }
+                }
+            });
+
+            subst_regions.sort();
+            subst_regions.dedup();
+
+            let universal_concrete_type =
+                infcx.tcx.fold_regions(concrete_type, &mut false, |region, _| match *region {
+                    ty::ReVar(vid) => subst_regions
+                        .iter()
+                        .find(|ur_vid| self.eval_equal(vid, **ur_vid))
+                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
+                    _ => region,
                 });
 
-                subst_regions.sort();
-                subst_regions.dedup();
+            debug!(?universal_concrete_type, ?universal_substs);
 
-                let universal_concrete_type =
-                    infcx.tcx.fold_regions(concrete_type, &mut false, |region, _| match *region {
-                        ty::ReVar(vid) => subst_regions
-                            .iter()
-                            .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                            .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                            .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
-                        _ => region,
-                    });
-
-                debug!(?universal_concrete_type, ?universal_substs);
-
-                let opaque_type_key =
-                    OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
-                let remapped_type = infcx.infer_opaque_definition_from_instantiation(
-                    opaque_type_key,
-                    universal_concrete_type,
-                );
-                let ty = if check_opaque_type_parameter_valid(
-                    infcx.tcx,
-                    opaque_type_key,
-                    origin,
-                    concrete_type.span,
-                ) {
-                    remapped_type
-                } else {
-                    infcx.tcx.ty_error()
-                };
-                (opaque_type_key, OpaqueHiddenType { ty, span: concrete_type.span })
-            })
-            .collect()
+            let opaque_type_key =
+                OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
+            let remapped_type = infcx.infer_opaque_definition_from_instantiation(
+                opaque_type_key,
+                universal_concrete_type,
+            );
+            let ty = if check_opaque_type_parameter_valid(
+                infcx.tcx,
+                opaque_type_key,
+                origin,
+                concrete_type.span,
+            ) {
+                remapped_type
+            } else {
+                infcx.tcx.ty_error()
+            };
+            // Sometimes two opaque types are the same only after we remap the generic parameters
+            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
+            // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
+            // once we convert the generic parameters to those of the opaque type.
+            if let Some(prev) = result.get_mut(&opaque_type_key) {
+                if prev.ty != ty {
+                    let mut err = infcx.tcx.sess.struct_span_err(
+                        concrete_type.span,
+                        &format!("hidden type `{}` differed from previous `{}`", ty, prev.ty),
+                    );
+                    err.span_note(prev.span, "previous hidden type bound here");
+                    err.emit();
+                    prev.ty = infcx.tcx.ty_error();
+                }
+                // Pick a better span if there is one.
+                // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
+                prev.span = prev.span.substitute_dummy(concrete_type.span);
+            } else {
+                result.insert(opaque_type_key, OpaqueHiddenType { ty, span: concrete_type.span });
+            }
+        }
+        result
     }
 
     /// Map the regions in the type to named regions. This is similar to what

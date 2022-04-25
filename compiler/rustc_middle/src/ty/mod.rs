@@ -32,7 +32,7 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, NodeIdHashingMode, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -484,11 +484,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
 
             let stable_hash: Fingerprint = {
                 let mut hasher = StableHasher::new();
-                hcx.while_hashing_spans(false, |hcx| {
-                    hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                        kind.hash_stable(hcx, &mut hasher)
-                    })
-                });
+                hcx.while_hashing_spans(false, |hcx| kind.hash_stable(hcx, &mut hasher));
                 hasher.finish()
             };
             stable_hash.hash_stable(hcx, hasher);

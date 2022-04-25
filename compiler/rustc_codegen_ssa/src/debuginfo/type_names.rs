@@ -19,7 +19,6 @@ use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ExistentialProjection, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
-use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
@@ -704,11 +703,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // but we get a deterministic, virtually unique value for the constant.
                 let hcx = &mut tcx.create_stable_hashing_context();
                 let mut hasher = StableHasher::new();
-                hcx.while_hashing_spans(false, |hcx| {
-                    hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                        ct.val().hash_stable(hcx, &mut hasher);
-                    });
-                });
+                hcx.while_hashing_spans(false, |hcx| ct.val().hash_stable(hcx, &mut hasher));
                 // Let's only emit 64 bits of the hash value. That should be plenty for
                 // avoiding collisions and will make the emitted type names shorter.
                 let hash: u64 = hasher.finish();

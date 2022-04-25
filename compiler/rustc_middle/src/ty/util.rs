@@ -20,7 +20,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
@@ -138,11 +137,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // regions, which is desirable too.
         let ty = self.erase_regions(ty);
 
-        hcx.while_hashing_spans(false, |hcx| {
-            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                ty.hash_stable(hcx, &mut hasher);
-            });
-        });
+        hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
         hasher.finish()
     }
 
