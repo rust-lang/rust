@@ -3,6 +3,7 @@ use crate::interface::parse_cfgspecs;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::InstrumentCoverage;
+use rustc_session::config::LinkerFlavorCli;
 use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
@@ -551,7 +552,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, Some(true));
     untracked!(linker, Some(PathBuf::from("linker")));
-    untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
+    untracked!(linker_flavor, Some(LinkerFlavorCli::WellKnown(LinkerFlavor::Gcc)));
     untracked!(no_stack_check, true);
     untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
     untracked!(rpath, true);
