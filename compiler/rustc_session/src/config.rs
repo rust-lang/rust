@@ -199,6 +199,142 @@ impl LinkerPluginLto {
     }
 }
 
+/// The different values `-C link-self-contained` can take.
+///
+/// They are fine-grained, and control the behavior of:
+/// - linking to our own CRT objects (the historical default)
+/// - using a linker we distribute
+///
+/// Since this flag historically targeted the CRT use-case, the defaults haven't changed, but there
+/// are new values so that users can choose that behavior in combination with the linker use-case.
+///
+/// For example:
+/// - the absence of the `-C link-self-contained` was the historical default, and therefore this
+///   default value still targets `auto` (`LinkSelfContainedCrt::Auto`).
+/// - `-C link-self-contained=linker` turns on the linker, while keeping the default CRT behavior.
+/// - explicitly turning on the CRT linking can be done as the historical `-C link-self-contained=y`,
+///   or the fine-grained `-C link-self-contained=crt`
+/// - turning both on can be done with `-C link-self-contained=all`
+///
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct LinkSelfContained {
+    pub crt: LinkSelfContainedCrt,
+    pub linker: LinkSelfContainedLinker,
+}
+
+impl LinkSelfContained {
+    /// Explicitly turns off the self-contained linker facet, becoming an opt-out that is the
+    /// historically stable `-C link-self-contained=y` behavior.
+    fn crt_only() -> Self {
+        LinkSelfContained { crt: LinkSelfContainedCrt::On, linker: LinkSelfContainedLinker::Off }
+    }
+
+    /// Keeps stable behavior only turning the self-contained CRT linking on.
+    fn on() -> Self {
+        LinkSelfContained::crt_only()
+    }
+
+    fn off() -> Self {
+        LinkSelfContained { crt: LinkSelfContainedCrt::Off, linker: LinkSelfContainedLinker::Off }
+    }
+
+    /// Explicitly turns off the self-contained linker facet, becoming an opt-out that is the
+    /// historically stable default, target-defined, behavior.
+    ///
+    /// The current default.
+    fn auto() -> Self {
+        LinkSelfContained { crt: LinkSelfContainedCrt::Auto, linker: LinkSelfContainedLinker::Off }
+    }
+
+    fn linker() -> Self {
+        LinkSelfContained { crt: LinkSelfContainedCrt::Auto, linker: LinkSelfContainedLinker::On }
+    }
+
+    fn all() -> Self {
+        LinkSelfContained { crt: LinkSelfContainedCrt::On, linker: LinkSelfContainedLinker::On }
+    }
+}
+
+impl Default for LinkSelfContained {
+    fn default() -> Self {
+        LinkSelfContained::auto()
+    }
+}
+
+impl FromStr for LinkSelfContained {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        // TMP: do we also need "linker_only", crt:off and linker:on ? Except in rare targets, this
+        // use-case should be taken care of by "linker" for crt:auto linker:on.
+
+        Ok(match s {
+            // Historical value parsing: a bool option
+            "no" | "n" | "off" => LinkSelfContained::off(),
+            "yes" | "y" | "on" => LinkSelfContained::on(),
+
+            // New fine-grained facets
+            "crt" => {
+                // This is the same as `-C link-self-contained=y`, but allows to possibly change
+                // that while keeping the current only turning on self-contained CRT linking. Also
+                // makes an explicit value to opt into only a single facet.
+                LinkSelfContained::crt_only()
+            }
+            "auto" => LinkSelfContained::auto(),
+            "linker" => LinkSelfContained::linker(),
+
+            // Composite of both
+            "all" => LinkSelfContained::all(),
+            _ => return Err(()),
+        })
+    }
+}
+
+/// Historically, `-C link-self-contained` was mainly about linking to our own CRT objects. This has
+/// been extracted to a few dedicated values, while keeping the existing stable values as-is: the
+/// default value, or opt-in for the whole flag are still these CRT-related values.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum LinkSelfContainedCrt {
+    /// The historical default value, when `-C link-self-contained` was not specified.The
+    /// self-contained linking behavior is target-defined in this case.
+    Auto,
+
+    /// The historical value for `-C link-self-contained=y`.
+    On,
+
+    /// When self-contained linking is explicitly turned off, with `-C link-self-contained=n`
+    Off,
+}
+
+impl LinkSelfContainedCrt {
+    pub fn is_explicitly_set(&self) -> Option<bool> {
+        match self {
+            LinkSelfContainedCrt::On => Some(true),
+            LinkSelfContainedCrt::Off => Some(false),
+            LinkSelfContainedCrt::Auto => None,
+        }
+    }
+}
+
+/// The different linker-related options for `-C link-self-contained`, to choose between
+/// using system-installed linkers, or one present in the rust distribution.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum LinkSelfContainedLinker {
+    /// Whenever `-C link-self-contained=linker` is present. This opts in to using
+    /// a linker we distribute (e.g. `rust-lld`).
+    On,
+
+    /// The default case: when `-C link-self-contained=linker` is absent, and when self-contained
+    /// linking is explicitly turned off, with `-C link-self-contained=n`.
+    Off,
+}
+
+impl LinkSelfContainedLinker {
+    pub fn is_on(&self) -> bool {
+        *self == LinkSelfContainedLinker::On
+    }
+}
+
 /// The different settings that can be enabled via the `-Z location-detail` flag.
 #[derive(Clone, PartialEq, Hash, Debug)]
 pub struct LocationDetail {
