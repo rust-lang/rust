@@ -8,7 +8,7 @@ use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::helpers::HexRange;
-use crate::stacked_borrows::{AccessKind, SbTag, TagHistory};
+use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind, SbTag};
 use crate::*;
 
 /// Details of premature program termination.

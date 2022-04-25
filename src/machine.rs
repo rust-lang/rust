@@ -776,6 +776,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
 // This is potentially a performance hazard.
 // Factoring it into its own function lets us keep an eye on how much it shows up in a profile.
+///
 fn set_current_span<'mir, 'tcx: 'mir>(machine: &Evaluator<'mir, 'tcx>) {
     if let Some(sb) = machine.stacked_borrows.as_ref() {
         if sb.borrow().current_span != DUMMY_SP {

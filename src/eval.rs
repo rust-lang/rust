@@ -15,8 +15,8 @@ use rustc_target::spec::abi::Abi;
 
 use rustc_session::config::EntryFnType;
 
-use std::collections::HashSet;
 use rustc_span::DUMMY_SP;
+use std::collections::HashSet;
 
 use crate::*;
 
