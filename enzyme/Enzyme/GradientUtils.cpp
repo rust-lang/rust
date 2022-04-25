@@ -3736,10 +3736,13 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
-      Vals.push_back(cast<Constant>(
-          invertPointerM(CD->getElementAsConstant(i), BuilderM)));
+      Value *val = invertPointerM(CD->getElementAsConstant(i), BuilderM);
+      Vals.push_back(cast<Constant>(val));
     }
-    return ConstantArray::get(CD->getType(), Vals);
+    auto rule = [&CD](ArrayRef<Constant *> Vals) {
+      return ConstantArray::get(CD->getType(), Vals);
+    };
+    return applyChainRule(CD->getType(), Vals, BuilderM, rule);
   } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {

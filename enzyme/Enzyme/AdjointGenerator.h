@@ -1024,29 +1024,32 @@ public:
       phiBuilder.SetInsertPoint(
           gutils->getNewFromOriginal(&phi)->getNextNode());
 
-      Type *diffeType = gutils->getShadowType(phi.getType());
+      // TODO unify diffe/inverted pointer map for forward mode.
+      if (!phi.getType()->isPointerTy()) {
+        Type *diffeType = gutils->getShadowType(phi.getType());
 
-      auto newPhi = phiBuilder.CreatePHI(diffeType, 1, phi.getName() + "'");
+        auto newPhi = phiBuilder.CreatePHI(diffeType, 1, phi.getName() + "'");
 
-      for (unsigned int i = 0; i < phi.getNumIncomingValues(); ++i) {
-        auto val = phi.getIncomingValue(i);
-        auto block = phi.getIncomingBlock(i);
+        for (unsigned int i = 0; i < phi.getNumIncomingValues(); ++i) {
+          auto val = phi.getIncomingValue(i);
+          auto block = phi.getIncomingBlock(i);
 
-        auto newBlock = gutils->getNewFromOriginal(block);
-        IRBuilder<> pBuilder(newBlock->getTerminator());
-        pBuilder.setFastMathFlags(getFast());
+          auto newBlock = gutils->getNewFromOriginal(block);
+          IRBuilder<> pBuilder(newBlock->getTerminator());
+          pBuilder.setFastMathFlags(getFast());
 
-        if (gutils->isConstantValue(val)) {
-          newPhi->addIncoming(Constant::getNullValue(diffeType), newBlock);
-        } else {
-          auto diff = diffe(val, pBuilder);
-          newPhi->addIncoming(diff, newBlock);
+          if (gutils->isConstantValue(val)) {
+            newPhi->addIncoming(Constant::getNullValue(diffeType), newBlock);
+          } else {
+            auto diff = diffe(val, pBuilder);
+            newPhi->addIncoming(diff, newBlock);
+          }
         }
-      }
 
-      IRBuilder<> diffeBuilder(nBB->getFirstNonPHI());
-      diffeBuilder.setFastMathFlags(getFast());
-      setDiffe(&phi, newPhi, diffeBuilder);
+        IRBuilder<> diffeBuilder(nBB->getFirstNonPHI());
+        diffeBuilder.setFastMathFlags(getFast());
+        setDiffe(&phi, newPhi, diffeBuilder);
+      }
 
       return;
     }
