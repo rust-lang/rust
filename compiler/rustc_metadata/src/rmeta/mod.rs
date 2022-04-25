@@ -22,7 +22,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_middle::ty::{GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
-use rustc_serialize::opaque::MemEncoder;
+use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
@@ -323,7 +323,7 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut MemEncoder) -> LazyTables {
+            fn encode(&self, buf: &mut FileEncoder) -> LazyTables {
                 LazyTables {
                     $($name: self.$name.encode(buf)),+
                 }

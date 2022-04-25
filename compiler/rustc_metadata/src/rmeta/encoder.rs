@@ -27,8 +27,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::opaque::MemEncoder;
-use rustc_serialize::{Encodable, Encoder};
+use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
@@ -41,10 +40,11 @@ use std::borrow::Borrow;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroUsize;
+use std::path::Path;
 use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: MemEncoder,
+    opaque: opaque::FileEncoder,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
 
@@ -730,12 +730,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
-            let mut zero_bytes = 0;
-            for e in self.opaque.data.iter() {
-                if *e == 0 {
-                    zero_bytes += 1;
-                }
-            }
+            // let mut zero_bytes = 0;
+            // for e in self.opaque.data.iter() {
+            //     if *e == 0 {
+            //         zero_bytes += 1;
+            //     }
+            // }
 
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
             let p = |label, bytes| {
@@ -743,12 +743,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
 
             eprintln!("");
-            eprintln!(
-                "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
-                total_bytes,
-                zero_bytes,
-                perc(zero_bytes)
-            );
+            // FIXME print zero bytes
+            //eprintln!(
+            //    "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
+            //    total_bytes,
+            //    zero_bytes,
+            //    perc(zero_bytes)
+            //);
             p("preamble", preamble_bytes);
             p("dep", dep_bytes);
             p("lib feature", lib_feature_bytes);
@@ -2151,7 +2152,7 @@ impl EncodedMetadata {
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetadata {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2159,7 +2160,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     tcx.dep_graph.assert_ignored();
 
     join(
-        || encode_metadata_impl(tcx),
+        || encode_metadata_impl(tcx, path),
         || {
             if tcx.sess.threads() == 1 {
                 return;
@@ -2173,8 +2174,9 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     .0
 }
 
-fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
-    let mut encoder = MemEncoder::new();
+fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetadata {
+    let mut encoder = opaque::FileEncoder::new(path.as_ref())
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
@@ -2209,7 +2211,8 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    let mut result = ecx.opaque.finish();
+    ecx.opaque.flush();
+    let mut result = std::fs::read(path.as_ref()).unwrap();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
@@ -2218,6 +2221,8 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     result[header + 1] = (pos >> 16) as u8;
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
+
+    std::fs::write(path, &result).unwrap();
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);

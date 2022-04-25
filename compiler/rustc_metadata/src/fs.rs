@@ -55,27 +55,30 @@ pub fn encode_and_write_metadata(
         .max()
         .unwrap_or(MetadataKind::None);
 
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
+    let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
+    // To avoid races with another rustc process scanning the output directory,
+    // we need to write the file somewhere else and atomically move it to its
+    // final destination, with an `fs::rename` call. In order for the rename to
+    // always succeed, the temporary file needs to be on the same filesystem,
+    // which is why we create it inside the output directory specifically.
+    let metadata_tmpdir = TempFileBuilder::new()
+        .prefix("rmeta")
+        .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+    let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
+    let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
     let metadata = match metadata_kind {
         MetadataKind::None => EncodedMetadata::new(),
-        MetadataKind::Uncompressed | MetadataKind::Compressed => encode_metadata(tcx),
+        MetadataKind::Uncompressed | MetadataKind::Compressed => {
+            encode_metadata(tcx, metadata_filename)
+        }
     };
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     if need_metadata_file {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-        let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
-        // To avoid races with another rustc process scanning the output directory,
-        // we need to write the file somewhere else and atomically move it to its
-        // final destination, with an `fs::rename` call. In order for the rename to
-        // always succeed, the temporary file needs to be on the same filesystem,
-        // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = TempFileBuilder::new()
-            .prefix("rmeta")
-            .tempdir_in(out_filename.parent().unwrap())
-            .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-        let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
         let metadata_filename = emit_metadata(tcx.sess, metadata.raw_data(), &metadata_tmpdir);
         if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
