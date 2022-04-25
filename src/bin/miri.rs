@@ -374,6 +374,9 @@ fn main() {
                     miri_config.tag_raw = true;
                     miri_config.check_number_validity = true;
                 }
+                "-Zmiri-drop-stdout-stderr" => {
+                    miri_config.drop_stdout_stderr = true;
+                }
                 "-Zmiri-track-raw-pointers" => {
                     eprintln!(
                         "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."

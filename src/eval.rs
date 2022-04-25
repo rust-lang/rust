@@ -116,6 +116,9 @@ pub struct MiriConfig {
     /// Whether to enforce "strict provenance" rules. Enabling this means int2ptr casts return
     /// pointers with an invalid provenance, i.e., not valid for any memory access.
     pub strict_provenance: bool,
+    /// Whether to ignore any output by the program. This is helpful when debugging miri
+    /// as its messages don't get intermingled with the program messages.
+    pub drop_stdout_stderr: bool,
 }
 
 impl Default for MiriConfig {
@@ -142,6 +145,7 @@ impl Default for MiriConfig {
             panic_on_unsupported: false,
             backtrace_style: BacktraceStyle::Short,
             strict_provenance: false,
+            drop_stdout_stderr: false,
         }
     }
 }
