@@ -1136,7 +1136,7 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
         && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
-// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
+/// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
 pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
         sess: &Session,
@@ -1209,9 +1209,13 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         }
     }
 
-    // linker and linker flavor specified via command line have precedence over what the target
-    // specification specifies
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
+    // Lower the potential `-C linker-flavor` CLI flag to its principal linker-flavor
+    let linker_flavor =
+        sess.opts.cg.linker_flavor.as_ref().map(|surface_flavor| surface_flavor.to_flavor());
+
+    // The `-C linker` and `-C linker-flavor` CLI flags have higher priority than what the target
+    // specification declares.
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
 

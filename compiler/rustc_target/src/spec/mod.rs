@@ -158,6 +158,10 @@ macro_rules! flavor_mappings {
     )
 }
 
+// Note: until string concatenation can be done in const contexts, remember to update the
+// `parse_linker_flavor` error message in rustc_session/src/options.rs whenever adding a new allowed
+// value here, since it also mentions enriched CLI-allowed values like `gcc:lld` that are then
+// lowered to these target specs `LinkerFlavor`s.
 flavor_mappings! {
     ((LinkerFlavor::Em), "em"),
     ((LinkerFlavor::Gcc), "gcc"),

@@ -13,7 +13,9 @@ use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
     SymbolManglingVersion, WasiExecModel,
 };
-use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
+use rustc_session::config::{
+    CFGuard, ExternEntry, LinkerFlavorCli, LinkerPluginLto, LtoCli, SwitchWithOptPath,
+};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
@@ -552,7 +554,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, LinkSelfContained::on());
     untracked!(linker, Some(PathBuf::from("linker")));
-    untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
+    untracked!(linker_flavor, Some(LinkerFlavorCli::WellKnown(LinkerFlavor::Gcc)));
     untracked!(no_stack_check, true);
     untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
     untracked!(rpath, true);
