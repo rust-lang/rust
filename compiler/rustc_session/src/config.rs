@@ -199,6 +199,62 @@ impl LinkerPluginLto {
     }
 }
 
+/// The possible values `-C linker-flavor` can take: either one of the well-known linker flavors, or
+/// an enrichment to one of them, for example representing additional arguments to its principal
+/// linker flavor.
+///
+/// This a surface enum for the CLI syntax, so that target specs don't have to deal with the
+/// specifics of the CLI: they will always use the well-known principal linker flavor via the
+/// `to_flavor` method, and never the enrichment variants.
+///
+/// Currently used to represent finer-grained uses of `gcc`, to improve ease-of-use for wrapping a
+/// given linker like `lld`, `gold` or `mold`.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum LinkerFlavorCli {
+    /// When the CLI option is one of the well-known linker-flavors that don't need special
+    /// handling.
+    WellKnown(LinkerFlavor),
+
+    /// Enrichments to the `LinkerFlavor::Gcc` flavor, to specify the linker via `-fuse-ld`
+    Gcc { use_ld: String },
+}
+
+impl LinkerFlavorCli {
+    /// Returns the principal linker flavor that this CLI option represents.
+    pub fn to_flavor(&self) -> LinkerFlavor {
+        match *self {
+            LinkerFlavorCli::WellKnown(flavor) => flavor,
+            LinkerFlavorCli::Gcc { .. } => LinkerFlavor::Gcc,
+        }
+    }
+}
+
+/// Parses a `-C linker-flavor` option
+impl FromStr for LinkerFlavorCli {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        // If the value is one of the existing flavor mappings, return that.
+        if let Some(flavor) = LinkerFlavor::from_str(s) {
+            return Ok(LinkerFlavorCli::WellKnown(flavor));
+        }
+
+        // Otherwise, it should be the enrichments to the gcc/cc flavor: wrapping a given linker
+        // separated by a colon like `gcc:lld`.
+        let parts: Vec<_> = s.split("gcc:").collect();
+        if parts.len() != 2 {
+            return Err(());
+        }
+
+        let wrapped_linker = parts[1];
+        if !wrapped_linker.is_empty() {
+            Ok(LinkerFlavorCli::Gcc { use_ld: wrapped_linker.to_string() })
+        } else {
+            Err(())
+        }
+    }
+}
+
 /// The different values `-C link-self-contained` can take.
 ///
 /// They are fine-grained, and control the behavior of:
