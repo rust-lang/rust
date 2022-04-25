@@ -291,6 +291,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Failure rate of compare_exchange_weak, between 0.0 and 1.0
     pub(crate) cmpxchg_weak_failure_rate: f64,
+
+    /// Corresponds to -Zmiri-drop-stdout-stderr and doesn't write the output but acts as if it succeeded.
+    pub(crate) drop_stdout_stderr: bool,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -344,6 +347,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
+            drop_stdout_stderr: config.drop_stdout_stderr,
         }
     }
 
