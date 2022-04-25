@@ -1842,7 +1842,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }))
             }
 
-            ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
+            ty::Projection(_) | ty::Param(_) | ty::Opaque(..) | ty::TyAlias(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::Placeholder(..)
@@ -1942,7 +1942,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
+            ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) | ty::TyAlias(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -2034,8 +2034,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
             }
 
-            ty::Opaque(def_id, substs) => {
-                // We can resolve the `impl Trait` to its concrete type,
+            ty::Opaque(def_id, substs) | ty::TyAlias(def_id, substs) => {
+                // We can resolve the `impl Trait` and the type alias to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
                 t.rebind(vec![self.tcx().bound_type_of(def_id).subst(self.tcx(), substs)])

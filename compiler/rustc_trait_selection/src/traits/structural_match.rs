@@ -209,6 +209,11 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 }
             }
 
+            ty::TyAlias(..) => {
+                // Type aliases are transparent and should never be seen by structural match checking.
+                bug!("unexpected TyAlias in TypeVisitor::visit_ty");
+            }
+
             ty::Float(_) => {
                 if !self.adt_const_param {
                     return ControlFlow::CONTINUE;

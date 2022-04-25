@@ -735,6 +735,8 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
                 // that they implement, so we don't use this behavior.
                 self.found_non_local_ty(ty)
             }
+
+            ty::TyAlias(..) => self.visit_ty(self.tcx.peel_off_ty_alias(ty)),
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

@@ -10,8 +10,10 @@ use crate::traits::project::{needs_normalization, BoundVarReplacer, PlaceholderR
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir::def_id::DefId;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;
@@ -163,6 +165,40 @@ struct QueryNormalizer<'cx, 'tcx> {
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
+impl<'cx, 'tcx> QueryNormalizer<'cx, 'tcx> {
+    fn fold_reveal(
+        &mut self,
+        ty: Ty<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Result<Ty<'tcx>, <Self as FallibleTypeFolder<'tcx>>::Error> {
+        let substs = substs.try_fold_with(self)?;
+        let recursion_limit = self.tcx().recursion_limit();
+        if !recursion_limit.value_within_limit(self.anon_depth) {
+            let obligation =
+                Obligation::with_depth(self.cause.clone(), recursion_limit.0, self.param_env, ty);
+            self.infcx.err_ctxt().report_overflow_error(&obligation, true);
+        }
+
+        let generic_ty = self.tcx().bound_type_of(def_id);
+        let concrete_ty = generic_ty.subst(self.tcx(), substs);
+        self.anon_depth += 1;
+        if concrete_ty == ty {
+            bug!(
+                "infinite recursion generic_ty: {:#?}, substs: {:#?}, \
+                 concrete_ty: {:#?}, ty: {:#?}",
+                generic_ty,
+                substs,
+                concrete_ty,
+                ty
+            );
+        }
+        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
+        self.anon_depth -= 1;
+        folded_ty
+    }
+}
+
 impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
@@ -202,39 +238,11 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
-
-                    Reveal::All => {
-                        let substs = substs.try_fold_with(self)?;
-                        let recursion_limit = self.tcx().recursion_limit();
-                        if !recursion_limit.value_within_limit(self.anon_depth) {
-                            let obligation = Obligation::with_depth(
-                                self.cause.clone(),
-                                recursion_limit.0,
-                                self.param_env,
-                                ty,
-                            );
-                            self.infcx.err_ctxt().report_overflow_error(&obligation, true);
-                        }
-
-                        let generic_ty = self.tcx().bound_type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
-                        self.anon_depth += 1;
-                        if concrete_ty == ty {
-                            bug!(
-                                "infinite recursion generic_ty: {:#?}, substs: {:#?}, \
-                                 concrete_ty: {:#?}, ty: {:#?}",
-                                generic_ty,
-                                substs,
-                                concrete_ty,
-                                ty
-                            );
-                        }
-                        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
-                        self.anon_depth -= 1;
-                        folded_ty
-                    }
+                    Reveal::All => self.fold_reveal(ty, def_id, substs),
                 }
             }
+
+            ty::TyAlias(def_id, substs) => self.fold_reveal(ty, def_id, substs),
 
             ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This branch is just an optimization: when we don't have escaping bound vars,

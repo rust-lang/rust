@@ -153,6 +153,8 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
         infcx.tcx.def_path_str(def_id)
     );
 
+    let ty = infcx.tcx.peel_off_ty_alias(ty);
+
     let trait_ref =
         ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
     let obligation = Obligation {

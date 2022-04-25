@@ -959,7 +959,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Bound(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Projection(_) => {
+            | ty::Projection(_)
+            | ty::TyAlias(..) => {
                 // We don't know if these are `~const Destruct`, at least
                 // not structurally... so don't push a candidate.
             }
@@ -1018,7 +1019,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
+        let infcx = self.infcx();
+        let self_ty = infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = infcx.tcx.peel_off_ty_alias(self_ty);
         match self_ty.kind() {
             ty::Tuple(_) => {
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
@@ -1052,6 +1055,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
+            ty::TyAlias(..) => unreachable!(),
         }
     }
 }
