@@ -44,6 +44,7 @@ mod map_identity;
 mod map_unwrap_or;
 mod needless_option_as_deref;
 mod needless_option_take;
+mod no_effect_replace;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -2197,6 +2198,24 @@ declare_clippy_lint! {
     "using `.as_ref().take()` on a temporary value"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `replace` statements which have no effect.
+    ///
+    /// ### Why is this bad?
+    /// It's either a mistake or confusing.
+    ///
+    /// ### Example
+    /// ```rust
+    /// "1234".replace("12", "12");
+    /// "1234".replacen("12", "12", 1);
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub NO_EFFECT_REPLACE,
+    suspicious,
+    "replace with no effect"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2296,6 +2315,7 @@ impl_lint_pass!(Methods => [
     NEEDLESS_OPTION_AS_DEREF,
     IS_DIGIT_ASCII_RADIX,
     NEEDLESS_OPTION_TAKE,
+    NO_EFFECT_REPLACE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2706,6 +2726,9 @@ impl Methods {
                         unwrap_or_else_default::check(cx, expr, recv, u_arg);
                         unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                     },
+                },
+                ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
+                    no_effect_replace::check(cx, expr, arg1, arg2);
                 },
                 _ => {},
             }
