@@ -11,7 +11,7 @@ foreach(file ${BLAS_LL})
 
     file(READ ${file} hexString HEX)
 
-    # set(hexString "${hexString}00")
+    set(hexString "${hexString}00")
 
     string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," arrayValues ${hexString})
     string(REGEX REPLACE ",$" "" arrayValues ${arrayValues})
@@ -33,11 +33,13 @@ endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/blas_headers.h "\n};\n")
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../fblas/src/fblas/bclib32.ll" hexString HEX)
+set(hexString "${hexString}00")
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," arrayValues ${hexString})
 string(REGEX REPLACE ",$" "" arrayValues ${arrayValues})
 file(APPEND ${CMAKE_CURRENT_SOURCE_DIR}/blas_headers.h "const char __data_fblas32[] = {${arrayValues}};\n")
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../fblas/src/fblas/bclib64.ll" hexString HEX)
+set(hexString "${hexString}00")
 string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," arrayValues ${hexString})
 string(REGEX REPLACE ",$" "" arrayValues ${arrayValues})
 file(APPEND ${CMAKE_CURRENT_SOURCE_DIR}/blas_headers.h "const char __data_fblas64[] = {${arrayValues}};\n")

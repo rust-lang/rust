@@ -17,9 +17,10 @@ using namespace llvm;
 #undef DATA
 
 bool provideDefinitions(Module &M) {
-  std::vector<const char *> todo;
+  std::vector<StringRef> todo;
   bool seen32 = false;
   bool seen64 = false;
+  bool seenGemm = false;
   for (auto &F : M) {
     if (!F.empty())
       continue;
@@ -40,6 +41,8 @@ bool provideDefinitions(Module &M) {
           seen32 = true;
         if (index == 2)
           seen64 = true;
+        if (StringRef(str).endswith("gemm"))
+          seenGemm = true;
         break;
       }
       index++;
@@ -53,10 +56,13 @@ bool provideDefinitions(Module &M) {
     todo.insert(todo.begin(), __data_fblas32);
   if (seen64)
     todo.insert(todo.begin(), __data_fblas64);
+  if (seenGemm) {
+    todo.push_back(__data_xerbla);
+  }
   bool changed = false;
   for (auto mod : todo) {
     SMDiagnostic Err;
-    MemoryBufferRef buf(StringRef(mod), StringRef("bcloader"));
+    MemoryBufferRef buf(mod, StringRef("bcloader"));
 
 #if LLVM_VERSION_MAJOR <= 10
     auto BC = llvm::parseIR(buf, Err, M.getContext(), true,
@@ -78,8 +84,10 @@ bool provideDefinitions(Module &M) {
     Linker L(M);
     L.linkInModule(std::move(BC));
     for (auto name : toReplace) {
-      if (auto F = M.getFunction(name))
+      if (auto F = M.getFunction(name)) {
         F->setLinkage(Function::LinkageTypes::InternalLinkage);
+        F->addFnAttr(Attribute::AlwaysInline);
+      }
     }
     changed = true;
   }

@@ -45,7 +45,5 @@ jobs:
       run: |
           cd enzyme/build
           cmake .. -DLLVM_EXTERNAL_LIT=`which lit` -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
-    - name: make
-      run: cd enzyme/build && make -j`nproc`
     - name: make check-bcpass
       run: cd enzyme/build && make check-bcpass -j`nproc`
