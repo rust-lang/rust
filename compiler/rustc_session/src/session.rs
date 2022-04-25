@@ -783,11 +783,7 @@ impl Session {
             Path::new(&rustlib_path),
             Path::new("bin"),
         ]);
-        if self_contained {
-            vec![p.clone(), p.join("self-contained")]
-        } else {
-            vec![p]
-        }
+        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 
     pub fn init_incr_comp_session(
