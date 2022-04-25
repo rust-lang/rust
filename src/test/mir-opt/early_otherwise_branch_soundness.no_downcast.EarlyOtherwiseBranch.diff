@@ -6,6 +6,7 @@
       let mut _0: u32;                     // return place in scope 0 at $DIR/early_otherwise_branch_soundness.rs:12:26: 12:29
       let mut _2: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:20: 13:30
       let mut _3: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+      let mut _4: &E;                      // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:12:16: 12:17
   
       bb0: {
           _3 = discriminant((*_1));        // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
@@ -13,7 +14,10 @@
       }
   
       bb1: {
-          _2 = discriminant((*(((*_1) as Some).0: &E))); // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          StorageLive(_4);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          _4 = move (((*_1) as Some).0: &E); // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          _2 = discriminant((*_4));        // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
           switchInt(move _2) -> [1_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
       }
   

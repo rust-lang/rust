@@ -141,6 +141,7 @@ impl<'tcx> MirPatch<'tcx> {
 
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
+        let mut stmts_and_targets: Vec<(Statement<'_>, BasicBlock)> = Vec::new();
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -149,10 +150,29 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
+
+            // For mir-opt `Derefer` to work in all cases we need to
+            // get terminator's targets and apply the statement to all of them.
+            if loc.statement_index > body[loc.block].statements.len() {
+                let term = body[loc.block].terminator();
+                let successors = term.successors().clone();
+
+                for i in successors {
+                    stmts_and_targets
+                        .push((Statement { source_info, kind: stmt.clone() }, i.clone()));
+                }
+                delta += 1;
+                continue;
+            }
+
             body[loc.block]
                 .statements
                 .insert(loc.statement_index, Statement { source_info, kind: stmt });
             delta += 1;
+        }
+
+        for (stmt, target) in stmts_and_targets.into_iter().rev() {
+            body[target].statements.insert(0, stmt);
         }
     }
 
