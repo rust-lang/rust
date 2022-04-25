@@ -21,6 +21,7 @@ use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, Er
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
+use rustc_macros::SessionDiagnostic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -1170,16 +1171,29 @@ impl<'a> Parser<'a> {
         impl_dyn_multi: bool,
         ty: &Ty,
     ) {
+        #[derive(SessionDiagnostic)]
+        #[error(slug = "parser-maybe-report-ambiguous-plus")]
+        struct AmbiguousPlus {
+            pub sum_with_parens: String,
+            #[primary_span]
+            #[suggestion(code = "{sum_with_parens}")]
+            pub span: Span,
+        }
+
         if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
-            let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
-            self.struct_span_err(ty.span, "ambiguous `+` in a type")
-                .span_suggestion(
-                    ty.span,
-                    "use parentheses to disambiguate",
-                    sum_with_parens,
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(AmbiguousPlus {
+                sum_with_parens: format!("({})", pprust::ty_to_string(&ty)),
+                span: ty.span,
+            });
+            // let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
+            // self.struct_span_err(ty.span, "ambiguous `+` in a type")
+            //     .span_suggestion(
+            //         ty.span,
+            //         "use parentheses to disambiguate",
+            //         sum_with_parens,
+            //         Applicability::MachineApplicable,
+            //     )
+            //     .emit();
         }
     }
 
