@@ -17,6 +17,7 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
+use crate::sys::args::{self, Arg};
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
 use crate::sys::cvt;
@@ -27,7 +28,7 @@ use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys_common::IntoInner;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -147,7 +148,7 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
+pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
         Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
@@ -180,14 +181,6 @@ pub struct StdioPipes {
     pub stdin: Option<AnonPipe>,
     pub stdout: Option<AnonPipe>,
     pub stderr: Option<AnonPipe>,
-}
-
-#[derive(Debug)]
-enum Arg {
-    /// Add quotes (if needed)
-    Regular(OsString),
-    /// Append raw string without quoting
-    Raw(OsString),
 }
 
 impl Command {
@@ -275,8 +268,19 @@ impl Command {
             program.len().checked_sub(5).and_then(|i| program.get(i..)),
             Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
         );
-        let mut cmd_str =
-            make_command_line(&program, &self.args, self.force_quotes_enabled, is_batch_file)?;
+        let (program, mut cmd_str) = if is_batch_file {
+            (
+                command_prompt()?,
+                args::make_bat_command_line(
+                    &args::to_user_path(program)?,
+                    &self.args,
+                    self.force_quotes_enabled,
+                )?,
+            )
+        } else {
+            let cmd_str = make_command_line(&self.program, &self.args, self.force_quotes_enabled)?;
+            (program, cmd_str)
+        };
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -730,96 +734,36 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
-enum Quote {
-    // Every arg is quoted
-    Always,
-    // Whitespace and empty args are quoted
-    Auto,
-    // Arg appended without any changes (#29494)
-    Never,
-}
-
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(
-    prog: &[u16],
-    args: &[Arg],
-    force_quotes: bool,
-    is_batch_file: bool,
-) -> io::Result<Vec<u16>> {
+fn make_command_line(argv0: &OsStr, args: &[Arg], force_quotes: bool) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
-
-    // CreateFileW has special handling for .bat and .cmd files, which means we
-    // need to add an extra pair of quotes surrounding the whole command line
-    // so they are properly passed on to the script.
-    // See issue #91991.
-    if is_batch_file {
-        cmd.push(b'"' as u16);
-    }
 
     // Always quote the program name so CreateProcess to avoid ambiguity when
     // the child process parses its arguments.
     // Note that quotes aren't escaped here because they can't be used in arg0.
     // But that's ok because file paths can't contain quotes.
     cmd.push(b'"' as u16);
-    cmd.extend_from_slice(prog.strip_suffix(&[0]).unwrap_or(prog));
+    cmd.extend(argv0.encode_wide());
     cmd.push(b'"' as u16);
 
     for arg in args {
         cmd.push(' ' as u16);
-        let (arg, quote) = match arg {
-            Arg::Regular(arg) => (arg, if force_quotes { Quote::Always } else { Quote::Auto }),
-            Arg::Raw(arg) => (arg, Quote::Never),
-        };
-        append_arg(&mut cmd, arg, quote)?;
+        args::append_arg(&mut cmd, arg, force_quotes)?;
     }
-    if is_batch_file {
-        cmd.push(b'"' as u16);
-    }
-    return Ok(cmd);
+    Ok(cmd)
+}
 
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, quote: Quote) -> io::Result<()> {
-        // If an argument has 0 characters then we need to quote it to ensure
-        // that it actually gets passed through on the command line or otherwise
-        // it will be dropped entirely when parsed on the other end.
-        ensure_no_nuls(arg)?;
-        let arg_bytes = &arg.as_inner().inner.as_inner();
-        let (quote, escape) = match quote {
-            Quote::Always => (true, true),
-            Quote::Auto => {
-                (arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty(), true)
-            }
-            Quote::Never => (false, false),
-        };
-        if quote {
-            cmd.push('"' as u16);
-        }
-
-        let mut backslashes: usize = 0;
-        for x in arg.encode_wide() {
-            if escape {
-                if x == '\\' as u16 {
-                    backslashes += 1;
-                } else {
-                    if x == '"' as u16 {
-                        // Add n+1 backslashes to total 2n+1 before internal '"'.
-                        cmd.extend((0..=backslashes).map(|_| '\\' as u16));
-                    }
-                    backslashes = 0;
-                }
-            }
-            cmd.push(x);
-        }
-
-        if quote {
-            // Add n backslashes to total 2n before ending '"'.
-            cmd.extend((0..backslashes).map(|_| '\\' as u16));
-            cmd.push('"' as u16);
-        }
-        Ok(())
-    }
+// Get `cmd.exe` for use with bat scripts, encoded as a UTF-16 string.
+fn command_prompt() -> io::Result<Vec<u16>> {
+    let mut system: Vec<u16> = super::fill_utf16_buf(
+        |buf, size| unsafe { c::GetSystemDirectoryW(buf, size) },
+        |buf| buf.into(),
+    )?;
+    system.extend("\\cmd.exe".encode_utf16().chain([0]));
+    Ok(system)
 }
 
 fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut c_void, Vec<u16>)> {

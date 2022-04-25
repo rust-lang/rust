@@ -3,12 +3,11 @@ use super::Arg;
 use crate::env;
 use crate::ffi::{OsStr, OsString};
 use crate::process::Command;
-use crate::sys::to_u16s;
 
 #[test]
 fn test_raw_args() {
     let command_line = &make_command_line(
-        &to_u16s("quoted exe").unwrap(),
+        OsStr::new("quoted exe"),
         &[
             Arg::Regular(OsString::from("quote me")),
             Arg::Raw(OsString::from("quote me *not*")),
@@ -16,7 +15,6 @@ fn test_raw_args() {
             Arg::Raw(OsString::from("internal \\\"backslash-\"quote")),
             Arg::Regular(OsString::from("optional-quotes")),
         ],
-        false,
         false,
     )
     .unwrap();
@@ -30,10 +28,9 @@ fn test_raw_args() {
 fn test_make_command_line() {
     fn test_wrapper(prog: &str, args: &[&str], force_quotes: bool) -> String {
         let command_line = &make_command_line(
-            &to_u16s(prog).unwrap(),
+            OsStr::new(prog),
             &args.iter().map(|a| Arg::Regular(OsString::from(a))).collect::<Vec<_>>(),
             force_quotes,
-            false,
         )
         .unwrap();
         String::from_utf16(command_line).unwrap()
