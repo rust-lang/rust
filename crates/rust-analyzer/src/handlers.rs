@@ -43,6 +43,13 @@ use crate::{
     to_proto, LspError, Result,
 };
 
+pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<()> {
+    state.proc_macro_client = None;
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_string());
+    state.fetch_build_data_queue.request_op("reload workspace request".to_string());
+    Ok(())
+}
+
 pub(crate) fn handle_analyzer_status(
     snap: GlobalStateSnapshot,
     params: lsp_ext::AnalyzerStatusParams,
