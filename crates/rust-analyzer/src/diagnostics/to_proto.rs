@@ -2,7 +2,7 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::collections::HashMap;
 
-use flycheck::{DiagnosticLevel, DiagnosticSpan};
+use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
@@ -159,7 +159,17 @@ fn map_rust_child_diagnostic(
             }
             let location = location(config, workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
-            edit_map.entry(location.uri).or_default().push(edit);
+
+            // Only actually emit a quickfix if the suggestion is "valid enough".
+            // We accept both "MaybeIncorrect" and "MachineApplicable". "MaybeIncorrect" means that
+            // the suggestion is *complete* (contains no placeholders where code needs to be
+            // inserted), but might not be what the user wants, or might need minor adjustments.
+            if matches!(
+                span.suggestion_applicability,
+                None | Some(Applicability::MaybeIncorrect | Applicability::MachineApplicable)
+            ) {
+                edit_map.entry(location.uri).or_default().push(edit);
+            }
         }
     }
 
