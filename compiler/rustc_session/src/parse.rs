@@ -303,4 +303,8 @@ impl ParseSess {
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.span_diagnostic.struct_err(msg)
     }
+
+    pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
+        self.span_diagnostic.struct_warn(msg)
+    }
 }
