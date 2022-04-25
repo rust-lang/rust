@@ -498,7 +498,6 @@ macro_rules! peel {
 /// Therefore, the recursion depth is the binary logarithm of the number of
 /// tokens to count, and the expanded tree is likewise very small.
 macro_rules! count {
-    ()                     => (0usize);
     ($one:tt)              => (1usize);
     ($($pairs:tt $_p:tt)*) => (count!($($pairs)*) << 1usize);
     ($odd:tt $($rest:tt)*) => (count!($($rest)*) | 1usize);
