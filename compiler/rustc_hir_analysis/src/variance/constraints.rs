@@ -257,6 +257,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
+            ty::TyAlias(_, substs) => {
+                self.add_constraints_from_invariant_substs(current, substs, variance);
+            }
+
             ty::Dynamic(data, r, _) => {
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);

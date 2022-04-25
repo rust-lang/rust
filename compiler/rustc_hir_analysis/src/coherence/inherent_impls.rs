@@ -187,6 +187,8 @@ impl<'tcx> InherentCollect<'tcx> {
         };
 
         let self_ty = self.tcx.type_of(item.def_id);
+        let self_ty = self.tcx.peel_off_ty_alias(self_ty);
+
         match *self_ty.kind() {
             ty::Adt(def, _) => {
                 self.check_def_id(item, self_ty, def.did());
@@ -196,6 +198,9 @@ impl<'tcx> InherentCollect<'tcx> {
             }
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, self_ty, data.principal_def_id().unwrap());
+            }
+            ty::TyAlias(..) => {
+                span_bug!(ty.span, "unexpected TyAlias in InherentCollect::check_item");
             }
             ty::Dynamic(..) => {
                 struct_span_err!(

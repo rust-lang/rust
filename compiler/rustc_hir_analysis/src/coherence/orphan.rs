@@ -49,6 +49,8 @@ fn do_orphan_check_impl<'tcx>(
     let sp = tcx.def_span(def_id);
     let tr = impl_.of_trait.as_ref().unwrap();
 
+    let trait_ref = tcx.peel_off_ty_alias(trait_ref);
+
     // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
     // and #84660 where it would otherwise allow unsoundness.
     if trait_ref.has_opaque_types() {
