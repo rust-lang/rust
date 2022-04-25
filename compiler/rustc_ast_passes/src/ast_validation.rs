@@ -8,7 +8,7 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -342,23 +342,6 @@ impl<'a> AstValidator<'a> {
             )
             .span_label(span, "functions in traits cannot be const")
             .emit();
-        }
-    }
-
-    // FIXME(ecstaticmorse): Instead, use `bound_context` to check this in `visit_param_bound`.
-    fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
-        for bound in bounds {
-            if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
-                let mut err = self.err_handler().struct_span_err(
-                    poly.span,
-                    &format!("`?Trait` is not permitted in {}", where_),
-                );
-                if is_trait {
-                    let path_str = pprust::path_to_string(&poly.trait_ref.path);
-                    err.note(&format!("traits are `?{}` by default", path_str));
-                }
-                err.emit();
-            }
         }
     }
 
@@ -873,7 +856,6 @@ impl<'a> AstValidator<'a> {
                         any_lifetime_bounds = true;
                     }
                 }
-                self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(_, ref bounds) => {
                 if self.is_impl_trait_banned {
@@ -1242,14 +1224,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.deny_where_clause(&generics.where_clause, item.ident.span);
                     self.deny_items(items, item.ident.span);
                 }
-                self.no_questions_in_bounds(bounds, "supertraits", true);
 
                 // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                 // context for the supertraits.
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
-                self.with_banned_tilde_const(|this| walk_list!(this, visit_param_bound, bounds));
+                self.with_banned_tilde_const(|this| {
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
@@ -1476,23 +1459,39 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_param_bound(&mut self, bound: &'a GenericBound) {
-        match bound {
-            GenericBound::Trait(_, TraitBoundModifier::MaybeConst) => {
-                if !self.is_tilde_const_allowed {
-                    self.err_handler()
-                        .struct_span_err(bound.span(), "`~const` is not allowed here")
-                        .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
-                        .emit();
+    fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
+        if let GenericBound::Trait(ref poly, modify) = *bound {
+            match (ctxt, modify) {
+                (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
+                    let mut err = self.err_handler().struct_span_err(
+                        poly.span,
+                        &format!("`?Trait` is not permitted in supertraits"),
+                    );
+                    let path_str = pprust::path_to_string(&poly.trait_ref.path);
+                    err.note(&format!("traits are `?{}` by default", path_str));
+                    err.emit();
                 }
+                (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
+                    let mut err = self.err_handler().struct_span_err(
+                        poly.span,
+                        &format!("`?Trait` is not permitted in trait object types"),
+                    );
+                    err.emit();
+                }
+                (_, TraitBoundModifier::MaybeConst) => {
+                    if !self.is_tilde_const_allowed {
+                        self.err_handler()
+                            .struct_span_err(bound.span(), "`~const` is not allowed here")
+                            .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
+                            .emit();
+                    }
+                }
+                (_, TraitBoundModifier::MaybeConstMaybe) => {
+                    self.err_handler()
+                        .span_err(bound.span(), "`~const` and `?` are mutually exclusive");
+                }
+                _ => {}
             }
-
-            GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
-                self.err_handler()
-                    .span_err(bound.span(), "`~const` and `?` are mutually exclusive");
-            }
-
-            _ => {}
         }
 
         visit::walk_param_bound(self, bound)
@@ -1662,7 +1661,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.with_tilde_const_allowed(|this| {
                     this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
                 });
                 walk_list!(self, visit_ty, ty);
             }

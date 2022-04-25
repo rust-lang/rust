@@ -12,7 +12,7 @@ use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -835,7 +835,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         this.visit_generic_param_vec(&bound_generic_params, false);
                         this.visit_ty(bounded_ty);
                         for bound in bounds {
-                            this.visit_param_bound(bound)
+                            this.visit_param_bound(bound, BoundKind::Bound)
                         }
                     },
                 );
@@ -1026,12 +1026,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 match param.kind {
                     GenericParamKind::Lifetime => {
                         for bound in &param.bounds {
-                            this.visit_param_bound(bound);
+                            this.visit_param_bound(bound, BoundKind::Bound);
                         }
                     }
                     GenericParamKind::Type { ref default } => {
                         for bound in &param.bounds {
-                            this.visit_param_bound(bound);
+                            this.visit_param_bound(bound, BoundKind::Bound);
                         }
 
                         if let Some(ref ty) = default {
@@ -1496,7 +1496,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
                             |this| {
                                 this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds);
+                                walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
 
                                 let walk_assoc_item =
                                     |this: &mut Self,
@@ -1580,7 +1580,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             Res::SelfTy { trait_: Some(local_def_id), alias_to: None },
                             |this| {
                                 this.visit_generics(generics);
-                                walk_list!(this, visit_param_bound, bounds);
+                                walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
                             },
                         );
                     },

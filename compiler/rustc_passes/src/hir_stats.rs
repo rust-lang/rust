@@ -3,6 +3,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_ast::visit as ast_visit;
+use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, AttrId, NodeId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -302,7 +303,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
+    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound, _ctxt: BoundKind) {
         self.record("GenericBound", Id::None, bounds);
         ast_visit::walk_param_bound(self, bounds)
     }
