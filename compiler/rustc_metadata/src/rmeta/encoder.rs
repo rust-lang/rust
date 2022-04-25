@@ -22,7 +22,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+    metadata_symbol_name, ExportedSymbol, SymbolExportInfo,
 };
 use rustc_middle::mir::interpret;
 use rustc_middle::thir;
@@ -1874,8 +1874,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     // definition (as that's not defined in this crate).
     fn encode_exported_symbols(
         &mut self,
-        exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportLevel)],
-    ) -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]> {
+        exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
+    ) -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportInfo)]> {
         empty_proc_macro!(self);
         // The metadata symbol name is special. It should not show up in
         // downstream crates.

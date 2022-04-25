@@ -14,7 +14,7 @@ use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir;
 use rustc_middle::thir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -220,7 +220,7 @@ crate struct CrateRoot<'tcx> {
 
     tables: LazyTables<'tcx>,
 
-    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
+    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportInfo)]),
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,

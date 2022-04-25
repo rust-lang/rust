@@ -16,7 +16,7 @@ use rustc_errors::{FatalError, Handler};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
@@ -55,8 +55,8 @@ fn prepare_lto(
         Lto::No => panic!("didn't request LTO but we're doing LTO"),
     };
 
-    let symbol_filter = &|&(ref name, level): &(String, SymbolExportLevel)| {
-        if level.is_below_threshold(export_threshold) {
+    let symbol_filter = &|&(ref name, info): &(String, SymbolExportInfo)| {
+        if info.level.is_below_threshold(export_threshold) || info.used {
             Some(CString::new(name.as_str()).unwrap())
         } else {
             None

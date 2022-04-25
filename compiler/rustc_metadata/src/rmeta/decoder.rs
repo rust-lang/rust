@@ -22,7 +22,7 @@ use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::thir;
@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn exported_symbols(
         self,
         tcx: TyCtxt<'tcx>,
-    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
+    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
     }
 

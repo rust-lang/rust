@@ -5,7 +5,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
@@ -554,7 +554,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
     // C-export level items remain at `Default`, all other internal
     // items become `Hidden`.
     match tcx.reachable_non_generics(id.krate).get(&id) {
-        Some(SymbolExportLevel::C) => Visibility::Default,
+        Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => Visibility::Default,
         _ => Visibility::Hidden,
     }
 }

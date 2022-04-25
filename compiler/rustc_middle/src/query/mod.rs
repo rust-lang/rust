@@ -1359,7 +1359,7 @@ rustc_queries! {
     // Does not include external symbols that don't have a corresponding DefId,
     // like the compiler-generated `main` function and so on.
     query reachable_non_generics(_: CrateNum)
-        -> DefIdMap<SymbolExportLevel> {
+        -> DefIdMap<SymbolExportInfo> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "looking up the exported symbols of a crate" }
         separate_provide_extern
@@ -1675,7 +1675,7 @@ rustc_queries! {
     ///   correspond to a publicly visible symbol in `cnum` machine code.
     /// - The `exported_symbols` sets of different crates do not intersect.
     query exported_symbols(_: CrateNum)
-        -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
+        -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
         desc { "exported_symbols" }
         separate_provide_extern
     }
