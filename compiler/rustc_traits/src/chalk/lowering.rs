@@ -268,7 +268,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         let uint = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(i));
         let float = |f| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Float(f));
 
-        match *self.kind() {
+        let ty = interner.tcx.peel_off_ty_alias(self);
+
+        match *ty.kind() {
             ty::Bool => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Bool),
             ty::Char => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Char),
             ty::Int(ty) => match ty {
@@ -365,6 +367,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             }
             ty::Infer(_infer) => unimplemented!(),
             ty::Error(_) => chalk_ir::TyKind::Error,
+            ty::TyAlias(..) => {
+                bug!("TyAlias should have been normalized before reaching this point")
+            }
         }
         .intern(interner)
     }
