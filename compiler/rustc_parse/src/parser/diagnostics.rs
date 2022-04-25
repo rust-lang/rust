@@ -1185,15 +1185,6 @@ impl<'a> Parser<'a> {
                 sum_with_parens: format!("({})", pprust::ty_to_string(&ty)),
                 span: ty.span,
             });
-            // let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
-            // self.struct_span_err(ty.span, "ambiguous `+` in a type")
-            //     .span_suggestion(
-            //         ty.span,
-            //         "use parentheses to disambiguate",
-            //         sum_with_parens,
-            //         Applicability::MachineApplicable,
-            //     )
-            //     .emit();
         }
     }
 
