@@ -565,6 +565,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
         .collect();
     let mut checker = LifetimeChecker::<mir_nested_filter::All>::new(cx, hs);
 
+    walk_generics(&mut checker, &impl_.generics);
     if let Some(ref trait_ref) = impl_.of_trait {
         walk_trait_ref(&mut checker, trait_ref);
     }
