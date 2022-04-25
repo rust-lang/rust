@@ -504,29 +504,6 @@ function hideThemeButtonState() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    (function() {
-        const x = document.getElementsByClassName("version-selector");
-        if (x.length > 0) {
-            x[0].onchange = function() {
-                let url = document.location.href, stripped = "";
-                const len = window.rootPath.match(/\.\.\//g).length + 1;
-
-                for (let i = 0; i < len; ++i) {
-                    const match = url.match(/\/[^/]*$/);
-                    if (i < len - 1) {
-                        stripped = match[0] + stripped;
-                    }
-                    url = url.substring(0, url.length - match[0].length);
-                }
-
-                const selectedVersion = document.getElementsByClassName("version-selector")[0].value;
-                url += "/" + selectedVersion + stripped;
-
-                document.location.href = url;
-            };
-        }
-    }());
-
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
         const sidebar = document.getElementsByClassName("sidebar-elems")[0];
