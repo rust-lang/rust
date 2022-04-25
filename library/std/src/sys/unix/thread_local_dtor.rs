@@ -13,6 +13,7 @@
 // fallback implementation to use as well.
 #[cfg(any(
     target_os = "linux",
+    target_os = "android",
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "emscripten"

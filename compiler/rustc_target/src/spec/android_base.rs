@@ -5,7 +5,7 @@ pub fn opts() -> TargetOptions {
     base.os = "android".into();
     base.dwarf_version = Some(2);
     base.position_independent_executables = true;
-    base.has_thread_local = false;
+    base.has_thread_local = true;
     // This is for backward compatibility, see https://github.com/rust-lang/rust/issues/49867
     // for context. (At that time, there was no `-C force-unwind-tables`, so the only solution
     // was to always emit `uwtable`).
