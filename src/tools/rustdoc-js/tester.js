@@ -85,8 +85,11 @@ function extractFunction(content, functionName) {
 }
 
 // Stupid function extractor for array.
-function extractArrayVariable(content, arrayName) {
-    var splitter = "var " + arrayName;
+function extractArrayVariable(content, arrayName, kind) {
+    if (typeof kind === "undefined") {
+        kind = "let ";
+    }
+    var splitter = kind + arrayName;
     while (true) {
         var start = content.indexOf(splitter);
         if (start === -1) {
@@ -126,12 +129,18 @@ function extractArrayVariable(content, arrayName) {
         }
         content = content.slice(start + 1);
     }
+    if (kind === "let ") {
+        return extractArrayVariable(content, arrayName, "const ");
+    }
     return null;
 }
 
 // Stupid function extractor for variable.
-function extractVariable(content, varName) {
-    var splitter = "var " + varName;
+function extractVariable(content, varName, kind) {
+    if (typeof kind === "undefined") {
+        kind = "let ";
+    }
+    var splitter = kind + varName;
     while (true) {
         var start = content.indexOf(splitter);
         if (start === -1) {
@@ -161,6 +170,9 @@ function extractVariable(content, varName) {
             pos += 1;
         }
         content = content.slice(start + 1);
+    }
+    if (kind === "let ") {
+        return extractVariable(content, varName, "const ");
     }
     return null;
 }

@@ -1,4 +1,7 @@
 // Local js definitions:
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
 /* global getSettingValue, getVirtualKey, onEachLazy, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass */
 
@@ -55,9 +58,9 @@
     function setEvents() {
         updateLightAndDark();
         onEachLazy(document.getElementsByClassName("slider"), function(elem) {
-            var toggle = elem.previousElementSibling;
-            var settingId = toggle.id;
-            var settingValue = getSettingValue(settingId);
+            const toggle = elem.previousElementSibling;
+            const settingId = toggle.id;
+            const settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
                 toggle.checked = settingValue === "true";
             }
@@ -68,9 +71,9 @@
             toggle.onkeyrelease = handleKey;
         });
         onEachLazy(document.getElementsByClassName("select-wrapper"), function(elem) {
-            var select = elem.getElementsByTagName("select")[0];
-            var settingId = select.id;
-            var settingValue = getSettingValue(settingId);
+            const select = elem.getElementsByTagName("select")[0];
+            const settingId = select.id;
+            const settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
                 select.value = settingValue;
             }
