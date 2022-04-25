@@ -31,7 +31,9 @@ LL | | }
    | |_- this function returns a `Result`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u64, String>`
-   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Result<T, F> as FromResidual<Result<Infallible, E>>>
+             <Result<T, F> as FromResidual<Yeet<E>>>
 
 error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
   --> $DIR/bad-interconversion.rs:17:31
@@ -44,7 +46,9 @@ LL | | }
    | |_- this function returns a `Result`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Result<u64, String>`
-   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Result<T, F> as FromResidual<Result<Infallible, E>>>
+             <Result<T, F> as FromResidual<Yeet<E>>>
 
 error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:22:22
@@ -57,7 +61,9 @@ LL | | }
    | |_- this function returns an `Option`
    |
    = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `Option<u16>`
-   = help: the trait `FromResidual` is implemented for `Option<T>`
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Option<T> as FromResidual<Yeet<()>>>
+             <Option<T> as FromResidual>
 
 error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
   --> $DIR/bad-interconversion.rs:27:33
@@ -70,7 +76,9 @@ LL | | }
    | |_- this function returns an `Option`
    |
    = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Option<u64>`
-   = help: the trait `FromResidual` is implemented for `Option<T>`
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Option<T> as FromResidual<Yeet<()>>>
+             <Option<T> as FromResidual>
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
   --> $DIR/bad-interconversion.rs:32:39

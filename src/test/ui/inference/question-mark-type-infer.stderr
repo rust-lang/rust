@@ -1,15 +1,9 @@
-error[E0284]: type annotations needed
-  --> $DIR/question-mark-type-infer.rs:10:21
+error[E0282]: type annotations needed
+  --> $DIR/question-mark-type-infer.rs:10:30
    |
 LL |     l.iter().map(f).collect()?
-   |                     ^^^^^^^ cannot infer type
-   |
-   = note: cannot satisfy `<_ as Try>::Residual == _`
-help: consider specifying the type argument in the method call
-   |
-LL |     l.iter().map(f).collect::<B>()?
-   |                            +++++
+   |                              ^ cannot infer type
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0282`.
