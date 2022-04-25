@@ -169,6 +169,10 @@ fn compute_components<'tcx>(
                 out.push(Component::UnresolvedInferenceVariable(infer_ty));
             }
 
+            ty::TyAlias(def_id, _) => {
+                compute_components(tcx, tcx.type_of(def_id), out, visited);
+            }
+
             // Most types do not introduce any region binders, nor
             // involve any other subtle cases, and so the WF relation
             // simply constraints any regions referenced directly by

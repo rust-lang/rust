@@ -52,7 +52,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
-        if !value.has_opaque_types() {
+        if !value.has_opaque_types() && !value.has_ty_alias() {
             return InferOk { value, obligations: vec![] };
         }
         let mut obligations = vec![];
@@ -61,7 +61,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .as_local()
                 .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
         };
-        let value = value.fold_with(&mut ty::fold::BottomUpFolder {
+        let value = self.tcx.peel_off_ty_alias(value).fold_with(&mut ty::fold::BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
@@ -548,6 +548,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
 
         for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
+            debug!(?predicate);
+            let predicate = tcx.peel_off_ty_alias(predicate);
+
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
