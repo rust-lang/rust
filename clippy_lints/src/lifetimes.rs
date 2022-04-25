@@ -13,7 +13,7 @@ use rustc_hir::{
     TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter as mir_nested_filter;
+use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -563,7 +563,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
             _ => None,
         })
         .collect();
-    let mut checker = LifetimeChecker::<mir_nested_filter::All>::new(cx, hs);
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, hs);
 
     walk_generics(&mut checker, &impl_.generics);
     if let Some(ref trait_ref) = impl_.of_trait {
