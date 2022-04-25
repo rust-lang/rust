@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
@@ -1763,7 +1763,16 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && !self.config.dry_run {
-            println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
+            let step_string = format!("{:?}", step);
+            let brace_index = step_string.find("{").unwrap_or(0);
+            let type_string = type_name::<S>();
+            println!(
+                "[TIMING] {} {} -- {}.{:03}",
+                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
+                &step_string[brace_index..],
+                dur.as_secs(),
+                dur.subsec_millis()
+            );
         }
 
         {
