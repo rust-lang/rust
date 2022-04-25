@@ -48,6 +48,7 @@ macro_rules! unsafe_base {
 // cg_clif defaults to this, and scalar MIR shifts also default to wrapping
 macro_rules! wrap_bitshift {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $int:ident) => {
+        #[allow(clippy::suspicious_arithmetic_impl)]
         unsafe {
             $crate::simd::intrinsics::$simd_call(
                 $lhs,

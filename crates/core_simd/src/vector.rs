@@ -479,6 +479,7 @@ where
         mask.all()
     }
 
+    #[allow(clippy::partialeq_ne_impl)]
     #[inline]
     fn ne(&self, other: &Self) -> bool {
         // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
