@@ -286,7 +286,7 @@ impl LinkSelfContained {
     }
 
     /// Keeps stable behavior only turning the self-contained CRT linking on.
-    fn on() -> Self {
+    pub fn on() -> Self {
         LinkSelfContained::crt_only()
     }
 
