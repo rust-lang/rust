@@ -641,7 +641,6 @@ version = "0.0.0"
 dependencies = [
  "base_db",
  "cov-mark",
- "either",
  "expect-test",
  "hir",
  "ide_db",
