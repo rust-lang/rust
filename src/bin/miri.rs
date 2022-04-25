@@ -22,7 +22,9 @@ use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
 use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
-    middle::exported_symbols::{ExportedSymbol, SymbolExportLevel},
+    middle::exported_symbols::{
+        ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
+    },
     ty::{query::ExternProviders, TyCtxt},
 };
 use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
@@ -130,7 +132,14 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                                 && tcx.codegen_fn_attrs(local_def_id).contains_extern_indicator())
                             .then_some((
                                 ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
-                                SymbolExportLevel::C,
+                                // Some dummy `SymbolExportInfo` here. We only use
+                                // `exported_symbols` in shims/foreign_items.rs and the export info
+                                // is ignored.
+                                SymbolExportInfo {
+                                    level: SymbolExportLevel::C,
+                                    kind: SymbolExportKind::Text,
+                                    used: false,
+                                },
                             ))
                         }),
                     )
