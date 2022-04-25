@@ -157,9 +157,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
                     }),
                 ) {
-                    // We can ignore `_export_level` here: we are a Rust crate, and everything is exported
+                    // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
                     // from a Rust crate.
-                    for &(symbol, _export_level) in tcx.exported_symbols(cnum) {
+                    for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
                         if let ExportedSymbol::NonGeneric(def_id) = symbol {
                             let attrs = tcx.codegen_fn_attrs(def_id);
                             let symbol_name = if let Some(export_name) = attrs.export_name {
