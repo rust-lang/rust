@@ -671,6 +671,20 @@ public:
             return false;
           }
           continue;
+        } else if (*metaString == "enzyme_dupnoneedv") {
+          ty = DIFFE_TYPE::DUP_NONEED;
+          ++i;
+          Value *offset_arg = CI->getArgOperand(i);
+          if (offset_arg->getType()->isIntegerTy()) {
+            batchOffset[i + 1] = offset_arg;
+          } else {
+            EmitFailure("IllegalVectorOffset", CI->getDebugLoc(), CI,
+                        "enzyme_batch must be followd by an integer "
+                        "offset.",
+                        *CI->getArgOperand(i), " in", *CI);
+            return false;
+          }
+          continue;
         } else if (*metaString == "enzyme_dupnoneed") {
           ty = DIFFE_TYPE::DUP_NONEED;
         } else if (*metaString == "enzyme_out") {
