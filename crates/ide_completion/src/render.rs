@@ -58,7 +58,11 @@ impl<'a> RenderContext<'a> {
     }
 
     fn completion_relevance(&self) -> CompletionRelevance {
-        CompletionRelevance { is_private_editable: self.is_private_editable, ..Default::default() }
+        CompletionRelevance {
+            is_private_editable: self.is_private_editable,
+            requires_import: self.import_to_add.is_some(),
+            ..Default::default()
+        }
     }
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
@@ -247,6 +251,7 @@ fn render_resolution_simple_(
 
     let local_name = local_name.to_smol_str();
     let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.clone());
+    item.set_relevance(ctx.completion_relevance());
     if let ScopeDef::Local(local) = resolution {
         let ty = local.ty(db);
         if !ty.is_unknown() {
@@ -446,6 +451,7 @@ mod tests {
                     "snippet",
                 ),
                 (relevance.is_op_method, "op_method"),
+                (relevance.requires_import, "requires_import"),
             ]
             .into_iter()
             .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
@@ -626,6 +632,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_local: false,
                             is_item_from_trait: false,
                             is_name_already_imported: false,
+                            requires_import: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
@@ -650,6 +657,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_local: false,
                             is_item_from_trait: false,
                             is_name_already_imported: false,
+                            requires_import: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
@@ -740,6 +748,7 @@ fn foo() { A { the$0 } }
                             is_local: false,
                             is_item_from_trait: false,
                             is_name_already_imported: false,
+                            requires_import: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
@@ -1579,7 +1588,7 @@ fn main() {
             &[CompletionItemKind::Snippet, CompletionItemKind::Method],
             expect![[r#"
                 sn not [snippet]
-                me not() (use ops::Not) [type_could_unify]
+                me not() (use ops::Not) [type_could_unify+requires_import]
                 sn if []
                 sn while []
                 sn ref []
@@ -1618,6 +1627,34 @@ fn main() {
                 sn call []
                 sn let []
                 sn letm []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn flyimport_reduced_relevance() {
+        check_relevance(
+            r#"
+mod std {
+    pub mod io {
+        pub trait BufRead {}
+        pub struct BufReader;
+        pub struct BufWriter;
+    }
+}
+struct Buffer;
+
+fn f() {
+    Buf$0
+}
+"#,
+            expect![[r#"
+                md std []
+                st Buffer []
+                fn f() []
+                tt BufRead (use std::io::BufRead) [requires_import]
+                st BufReader (use std::io::BufReader) [requires_import]
+                st BufWriter (use std::io::BufWriter) [requires_import]
             "#]],
         );
     }
