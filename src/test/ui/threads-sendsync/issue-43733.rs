@@ -19,13 +19,13 @@ static __KEY: std::thread::__OsLocalKeyInner<Foo> = std::thread::__OsLocalKeyInn
 
 fn __getit(_: Option<&mut Option<RefCell<String>>>) -> std::option::Option<&'static Foo> {
     __KEY.get(Default::default)
-    //[mir]~^ ERROR call to unsafe function `std::thread::
+    //[mir]~^ ERROR call to unsafe function is unsafe
     //[thir]~^^ ERROR call to unsafe function `__
 }
 
 static FOO: std::thread::LocalKey<Foo> = std::thread::LocalKey::new(__getit);
-//[mir]~^ ERROR call to unsafe function `std::thread::LocalKey::<T>::new` is unsafe
-//[thir]~^^ ERROR call to unsafe function `LocalKey::<T>::new` is unsafe
+//[mir]~^ ERROR call to unsafe function is unsafe
+//[thir]~^^ ERROR call to unsafe function `LocalKey::<T>::new`
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));

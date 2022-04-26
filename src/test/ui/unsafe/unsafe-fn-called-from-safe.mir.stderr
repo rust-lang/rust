@@ -1,4 +1,4 @@
-error[E0133]: call to unsafe function `f` is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
   --> $DIR/unsafe-fn-called-from-safe.rs:7:5
    |
 LL |     f();

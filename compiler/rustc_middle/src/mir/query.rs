@@ -12,7 +12,6 @@ use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
@@ -29,7 +28,7 @@ pub enum UnsafetyViolationKind {
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
-    CallToUnsafeFunction(Option<DefId>),
+    CallToUnsafeFunction,
     UseOfInlineAssembly,
     InitializingTypeWith,
     CastOfPointerToInt,
@@ -40,95 +39,66 @@ pub enum UnsafetyViolationDetails {
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
-    CallToFunctionWith(DefId),
+    CallToFunctionWith,
 }
 
 impl UnsafetyViolationDetails {
-    pub fn simple_description(&self) -> &'static str {
-        use UnsafetyViolationDetails::*;
-
-        match self {
-            CallToUnsafeFunction(..) => "call to unsafe function",
-            UseOfInlineAssembly => "use of inline assembly",
-            InitializingTypeWith => "initializing type with `rustc_layout_scalar_valid_range` attr",
-            CastOfPointerToInt => "cast of pointer to int",
-            UseOfMutableStatic => "use of mutable static",
-            UseOfExternStatic => "use of extern static",
-            DerefOfRawPointer => "dereference of raw pointer",
-            AssignToDroppingUnionField => "assignment to union field that might need dropping",
-            AccessToUnionField => "access to union field",
-            MutationOfLayoutConstrainedField => "mutation of layout constrained field",
-            BorrowOfLayoutConstrainedField => {
-                "borrow of layout constrained field with interior mutability"
-            }
-            CallToFunctionWith(..) => "call to function with `#[target_feature]`",
-        }
-    }
-
-    pub fn description_and_note(&self, tcx: TyCtxt<'_>) -> (Cow<'static, str>, &'static str) {
+    pub fn description_and_note(&self) -> (&'static str, &'static str) {
         use UnsafetyViolationDetails::*;
         match self {
-            CallToUnsafeFunction(did) => (
-                if let Some(did) = did {
-                    Cow::from(format!("call to unsafe function `{}`", tcx.def_path_str(*did)))
-                } else {
-                    Cow::Borrowed(self.simple_description())
-                },
+            CallToUnsafeFunction => (
+                "call to unsafe function",
                 "consult the function's documentation for information on how to avoid undefined \
                  behavior",
             ),
             UseOfInlineAssembly => (
-                Cow::Borrowed(self.simple_description()),
+                "use of inline assembly",
                 "inline assembly is entirely unchecked and can cause undefined behavior",
             ),
             InitializingTypeWith => (
-                Cow::Borrowed(self.simple_description()),
+                "initializing type with `rustc_layout_scalar_valid_range` attr",
                 "initializing a layout restricted type's field with a value outside the valid \
                  range is undefined behavior",
             ),
-            CastOfPointerToInt => (
-                Cow::Borrowed(self.simple_description()),
-                "casting pointers to integers in constants",
-            ),
+            CastOfPointerToInt => {
+                ("cast of pointer to int", "casting pointers to integers in constants")
+            }
             UseOfMutableStatic => (
-                Cow::Borrowed(self.simple_description()),
+                "use of mutable static",
                 "mutable statics can be mutated by multiple threads: aliasing violations or data \
                  races will cause undefined behavior",
             ),
             UseOfExternStatic => (
-                Cow::Borrowed(self.simple_description()),
+                "use of extern static",
                 "extern statics are not controlled by the Rust type system: invalid data, \
                  aliasing violations or data races will cause undefined behavior",
             ),
             DerefOfRawPointer => (
-                Cow::Borrowed(self.simple_description()),
+                "dereference of raw pointer",
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
             AssignToDroppingUnionField => (
-                Cow::Borrowed(self.simple_description()),
+                "assignment to union field that might need dropping",
                 "the previous content of the field will be dropped, which causes undefined \
                  behavior if the field was not properly initialized",
             ),
             AccessToUnionField => (
-                Cow::Borrowed(self.simple_description()),
+                "access to union field",
                 "the field may not be properly initialized: using uninitialized data will cause \
                  undefined behavior",
             ),
             MutationOfLayoutConstrainedField => (
-                Cow::Borrowed(self.simple_description()),
+                "mutation of layout constrained field",
                 "mutating layout constrained fields cannot statically be checked for valid values",
             ),
             BorrowOfLayoutConstrainedField => (
-                Cow::Borrowed(self.simple_description()),
+                "borrow of layout constrained field with interior mutability",
                 "references to fields of layout constrained fields lose the constraints. Coupled \
                  with interior mutability, the field can be changed to invalid values",
             ),
-            CallToFunctionWith(did) => (
-                Cow::from(format!(
-                    "call to function `{}` with `#[target_feature]`",
-                    tcx.def_path_str(*did)
-                )),
+            CallToFunctionWith => (
+                "call to function with `#[target_feature]`",
                 "can only be called if the required target features are available",
             ),
         }
