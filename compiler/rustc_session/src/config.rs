@@ -2580,14 +2580,44 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld` have
-    // a matching linker choice.
     if let Some(LinkerFlavorCli::Gcc { use_ld }) = &cg.linker_flavor {
+        // For testing purposes, until we have more feedback about these options: ensure `-Z
+        // unstable-options` enabled when using the `gcc` linker flavor enrichments.
+        if !debugging_opts.unstable_options {
+            early_error(
+                error_format,
+                "the `gcc:*` linker flavor is unstable, the `-Z unstable-options` \
+                 flag must also be passed to use it",
+            );
+        }
+
+        // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld`
+        // have a matching linker choice.
         if use_ld != "lld" && debugging_opts.gcc_ld == Some(LdImpl::Lld) {
             early_error(
                 error_format,
                 "`-Zgcc-ld=lld` and `-Clinker-flavor` differ in their \
                     linker choice. The latter should be `-Clinker-flavor=gcc:lld`",
+            );
+        }
+    }
+
+    // For testing purposes, until we have more feedback about these options: ensure `-Z
+    // unstable-options` is enabled when using the unstable `-C link-self-contained` options.
+    if !debugging_opts.unstable_options {
+        let uses_unstable_self_contained_option =
+            matches.opt_strs("C").iter().any(|option| match option.as_str() {
+                "link-self-contained=crt"
+                | "link-self-contained=auto"
+                | "link-self-contained=linker"
+                | "link-self-contained=all" => true,
+                _ => false,
+            });
+        if uses_unstable_self_contained_option {
+            early_error(
+                error_format,
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
+                the `-Z unstable-options` flag must also be passed to use the unstable values",
             );
         }
     }
