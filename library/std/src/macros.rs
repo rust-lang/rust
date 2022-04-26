@@ -60,9 +60,9 @@ macro_rules! panic {
 #[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
-    ($($arg:tt)*) => {
-        $crate::io::_print($crate::format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard output, with a newline.
@@ -99,9 +99,9 @@ macro_rules! println {
     () => {
         $crate::print!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_print($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error.
@@ -130,9 +130,9 @@ macro_rules! println {
 #[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
-    ($($arg:tt)*) => {
-        $crate::io::_eprint($crate::format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error, with a newline.
@@ -164,9 +164,9 @@ macro_rules! eprintln {
     () => {
         $crate::eprint!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_eprint($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints and returns the value of a given expression for quick and dirty
