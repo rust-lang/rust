@@ -1,5 +1,6 @@
-#![feature(proc_macro_diagnostic)]
 #![feature(allow_internal_unstable)]
+#![feature(let_else)]
+#![feature(proc_macro_diagnostic)]
 #![allow(rustc::default_hash_types)]
 #![recursion_limit = "128"]
 
@@ -76,4 +77,19 @@ decl_derive!(
         suggestion_short,
         suggestion_hidden,
         suggestion_verbose)] => session_diagnostic::session_diagnostic_derive
+);
+decl_derive!(
+    [SessionSubdiagnostic, attributes(
+        // struct/variant attributes
+        label,
+        help,
+        note,
+        suggestion,
+        suggestion_short,
+        suggestion_hidden,
+        suggestion_verbose,
+        // field attributes
+        skip_arg,
+        primary_span,
+        applicability)] => session_diagnostic::session_subdiagnostic_derive
 );

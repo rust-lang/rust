@@ -78,6 +78,13 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     }
 }
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionSubdiagnostic)]` -- see [rustc_macros::SessionSubdiagnostic].
+pub trait AddSubdiagnostic {
+    /// Add a subdiagnostic to an existing diagnostic.
+    fn add_to_diagnostic(self, diag: &mut Diagnostic);
+}
+
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
@@ -765,6 +772,13 @@ impl Diagnostic {
             applicability,
             SuggestionStyle::CompletelyHidden,
         );
+        self
+    }
+
+    /// Add a subdiagnostic from a type that implements `SessionSubdiagnostic` - see
+    /// [rustc_macros::SessionSubdiagnostic].
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl AddSubdiagnostic) -> &mut Self {
+        subdiagnostic.add_to_diagnostic(self);
         self
     }
 

@@ -530,6 +530,11 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         name: impl Into<Cow<'static, str>>,
         arg: DiagnosticArgValue<'static>,
     ) -> &mut Self);
+
+    forward!(pub fn subdiagnostic(
+        &mut self,
+        subdiagnostic: impl crate::AddSubdiagnostic
+    ) -> &mut Self);
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {
