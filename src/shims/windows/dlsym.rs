@@ -75,7 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     use std::io::{self, Write};
 
                     let buf_cont = this.read_bytes_ptr(buf, Size::from_bytes(u64::from(n)))?;
-                    let res = if this.machine.drop_stdout_stderr {
+                    let res = if this.machine.mute_stdout_stderr {
                         Ok(buf_cont.len())
                     } else if handle == -11 {
                         io::stdout().write(buf_cont)

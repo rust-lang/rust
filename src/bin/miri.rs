@@ -374,8 +374,8 @@ fn main() {
                     miri_config.tag_raw = true;
                     miri_config.check_number_validity = true;
                 }
-                "-Zmiri-drop-stdout-stderr" => {
-                    miri_config.drop_stdout_stderr = true;
+                "-Zmiri-mute-stdout-stderr" => {
+                    miri_config.mute_stdout_stderr = true;
                 }
                 "-Zmiri-track-raw-pointers" => {
                     eprintln!(

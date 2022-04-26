@@ -252,11 +252,11 @@ impl FileDescriptor for io::Stderr {
 }
 
 #[derive(Debug)]
-struct DevNull;
+struct DummyOutput;
 
-impl FileDescriptor for DevNull {
+impl FileDescriptor for DummyOutput {
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("/dev/null cannot be used as FileHandle");
+        throw_unsup_format!("stderr and stdout cannot be used as FileHandle");
     }
 
     fn read<'tcx>(
@@ -264,7 +264,7 @@ impl FileDescriptor for DevNull {
         _communicate_allowed: bool,
         _bytes: &mut [u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
-        throw_unsup_format!("cannot read from /dev/null");
+        throw_unsup_format!("cannot read from stderr or stdout");
     }
 
     fn write<'tcx>(
@@ -272,7 +272,7 @@ impl FileDescriptor for DevNull {
         _communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
-        // We just don't write anything
+        // We just don't write anything, but report to the user that we did.
         Ok(Ok(bytes.len()))
     }
 
@@ -281,18 +281,18 @@ impl FileDescriptor for DevNull {
         _communicate_allowed: bool,
         _offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>> {
-        throw_unsup_format!("cannot seek on /dev/null");
+        throw_unsup_format!("cannot seek on stderr or stdout");
     }
 
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
     ) -> InterpResult<'tcx, io::Result<i32>> {
-        throw_unsup_format!("/dev/null cannot be closed");
+        throw_unsup_format!("stderr and stdout cannot be closed");
     }
 
     fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
-        Ok(Box::new(DevNull))
+        Ok(Box::new(DummyOutput))
     }
 }
 
@@ -302,11 +302,11 @@ pub struct FileHandler {
 }
 
 impl<'tcx> FileHandler {
-    pub(crate) fn new(drop_stdout_stderr: bool) -> FileHandler {
+    pub(crate) fn new(mute_stdout_stderr: bool) -> FileHandler {
         let mut handles: BTreeMap<_, Box<dyn FileDescriptor>> = BTreeMap::new();
-        if drop_stdout_stderr {
-            handles.insert(0i32, Box::new(DevNull));
-            handles.insert(1i32, Box::new(DevNull));
+        if mute_stdout_stderr {
+            handles.insert(0i32, Box::new(DummyOutput));
+            handles.insert(1i32, Box::new(DummyOutput));
         } else {
             handles.insert(0i32, Box::new(io::stdin()));
             handles.insert(1i32, Box::new(io::stdout()));

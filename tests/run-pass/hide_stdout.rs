@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-drop-stdout-stderr
+// compile-flags: -Zmiri-mute-stdout-stderr
 
 fn main() {
     println!("cake");
