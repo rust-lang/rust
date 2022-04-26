@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{is_automatically_derived, is_lint_allowed, match_def_path};
+use clippy_utils::{is_lint_allowed, match_def_path};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
@@ -171,8 +171,8 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         }) = item.kind
         {
             let ty = cx.tcx.type_of(item.def_id);
-            let attrs = cx.tcx.hir().attrs(item.hir_id());
-            let is_automatically_derived = is_automatically_derived(attrs);
+            let is_automatically_derived =
+                cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -201,7 +201,7 @@ fn check_hash_peq<'tcx>(
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-                let peq_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
+                let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
 
                 if peq_is_automatically_derived == hash_is_automatically_derived {
                     return;
@@ -255,7 +255,7 @@ fn check_ord_partial_ord<'tcx>(
         then {
             // Look for the PartialOrd implementations for `ty`
             cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-                let partial_ord_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
+                let partial_ord_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
 
                 if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                     return;

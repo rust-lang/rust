@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if clippy_utils::is_doc_hidden(cx.tcx.hir().attrs(id)) {
+                        if cx.tcx.is_doc_hidden(impl_item.def_id) {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
