@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
+use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{Cursor, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
@@ -203,7 +203,7 @@ fn rewrite_macro_inner(
     let is_forced_bracket = FORCED_BRACKET_MACROS.contains(&&macro_name[..]);
 
     let style = if is_forced_bracket && !is_nested_macro {
-        DelimToken::Bracket
+        Delimiter::Bracket
     } else {
         original_style
     };
@@ -212,15 +212,15 @@ fn rewrite_macro_inner(
     let has_comment = contains_comment(context.snippet(mac.span()));
     if ts.is_empty() && !has_comment {
         return match style {
-            DelimToken::Paren if position == MacroPosition::Item => {
+            Delimiter::Parenthesis if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
             }
-            DelimToken::Bracket if position == MacroPosition::Item => {
+            Delimiter::Bracket if position == MacroPosition::Item => {
                 Some(format!("{}[];", macro_name))
             }
-            DelimToken::Paren => Some(format!("{}()", macro_name)),
-            DelimToken::Bracket => Some(format!("{}[]", macro_name)),
-            DelimToken::Brace => Some(format!("{} {{}}", macro_name)),
+            Delimiter::Parenthesis => Some(format!("{}()", macro_name)),
+            Delimiter::Bracket => Some(format!("{}[]", macro_name)),
+            Delimiter::Brace => Some(format!("{} {{}}", macro_name)),
             _ => unreachable!(),
         };
     }
@@ -260,7 +260,7 @@ fn rewrite_macro_inner(
     }
 
     match style {
-        DelimToken::Paren => {
+        Delimiter::Parenthesis => {
             // Handle special case: `vec!(expr; expr)`
             if vec_with_semi {
                 handle_vec_semi(context, shape, arg_vec, macro_name, style)
@@ -286,7 +286,7 @@ fn rewrite_macro_inner(
                 })
             }
         }
-        DelimToken::Bracket => {
+        Delimiter::Bracket => {
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
                 handle_vec_semi(context, shape, arg_vec, macro_name, style)
@@ -323,7 +323,7 @@ fn rewrite_macro_inner(
                 Some(format!("{}{}", rewrite, comma))
             }
         }
-        DelimToken::Brace => {
+        Delimiter::Brace => {
             // For macro invocations with braces, always put a space between
             // the `macro_name!` and `{ /* macro_body */ }` but skip modifying
             // anything in between the braces (for now).
@@ -342,11 +342,11 @@ fn handle_vec_semi(
     shape: Shape,
     arg_vec: Vec<MacroArg>,
     macro_name: String,
-    delim_token: DelimToken,
+    delim_token: Delimiter,
 ) -> Option<String> {
     let (left, right) = match delim_token {
-        DelimToken::Paren => ("(", ")"),
-        DelimToken::Bracket => ("[", "]"),
+        Delimiter::Parenthesis => ("(", ")"),
+        Delimiter::Bracket => ("[", "]"),
         _ => unreachable!(),
     };
 
@@ -528,7 +528,7 @@ enum MacroArgKind {
     /// e.g., `$($foo: expr),*`
     Repeat(
         /// `()`, `[]` or `{}`.
-        DelimToken,
+        Delimiter,
         /// Inner arguments inside delimiters.
         Vec<ParsedMacroArg>,
         /// Something after the closing delimiter and the repeat token, if available.
@@ -537,7 +537,7 @@ enum MacroArgKind {
         Token,
     ),
     /// e.g., `[derive(Debug)]`
-    Delimited(DelimToken, Vec<ParsedMacroArg>),
+    Delimited(Delimiter, Vec<ParsedMacroArg>),
     /// A possible separator. e.g., `,` or `;`.
     Separator(String, String),
     /// Other random stuff that does not fit to other kinds.
@@ -547,22 +547,22 @@ enum MacroArgKind {
 
 fn delim_token_to_str(
     context: &RewriteContext<'_>,
-    delim_token: DelimToken,
+    delim_token: Delimiter,
     shape: Shape,
     use_multiple_lines: bool,
     inner_is_empty: bool,
 ) -> (String, String) {
     let (lhs, rhs) = match delim_token {
-        DelimToken::Paren => ("(", ")"),
-        DelimToken::Bracket => ("[", "]"),
-        DelimToken::Brace => {
+        Delimiter::Parenthesis => ("(", ")"),
+        Delimiter::Bracket => ("[", "]"),
+        Delimiter::Brace => {
             if inner_is_empty || use_multiple_lines {
                 ("{", "}")
             } else {
                 ("{ ", " }")
             }
         }
-        DelimToken::NoDelim => unreachable!(),
+        Delimiter::Invisible => unreachable!(),
     };
     if use_multiple_lines {
         let indent_str = shape.indent.to_string_with_newline(context.config);
@@ -583,8 +583,8 @@ impl MacroArgKind {
     fn starts_with_brace(&self) -> bool {
         matches!(
             *self,
-            MacroArgKind::Repeat(DelimToken::Brace, _, _, _)
-                | MacroArgKind::Delimited(DelimToken::Brace, _)
+            MacroArgKind::Repeat(Delimiter::Brace, _, _, _)
+                | MacroArgKind::Delimited(Delimiter::Brace, _)
         )
     }
 
@@ -753,7 +753,7 @@ impl MacroArgParser {
         }
     }
 
-    fn add_delimited(&mut self, inner: Vec<ParsedMacroArg>, delim: DelimToken) {
+    fn add_delimited(&mut self, inner: Vec<ParsedMacroArg>, delim: Delimiter) {
         self.result.push(ParsedMacroArg {
             kind: MacroArgKind::Delimited(delim, inner),
         });
@@ -763,7 +763,7 @@ impl MacroArgParser {
     fn add_repeat(
         &mut self,
         inner: Vec<ParsedMacroArg>,
-        delim: DelimToken,
+        delim: Delimiter,
         iter: &mut Cursor,
     ) -> Option<()> {
         let mut buffer = String::new();
@@ -1083,18 +1083,18 @@ pub(crate) fn convert_try_mac(
     }
 }
 
-pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> DelimToken {
+pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> Delimiter {
     let snippet = context.snippet(mac.span());
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
     let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
 
     if paren_pos < bracket_pos && paren_pos < brace_pos {
-        DelimToken::Paren
+        Delimiter::Parenthesis
     } else if bracket_pos < brace_pos {
-        DelimToken::Bracket
+        Delimiter::Bracket
     } else {
-        DelimToken::Brace
+        Delimiter::Brace
     }
 }
 
@@ -1174,7 +1174,7 @@ struct Macro {
 // rather than clone them, if we can make the borrowing work out.
 struct MacroBranch {
     span: Span,
-    args_paren_kind: DelimToken,
+    args_paren_kind: Delimiter,
     args: TokenStream,
     body: Span,
     whole_body: Span,
@@ -1188,7 +1188,7 @@ impl MacroBranch {
         multi_branch_style: bool,
     ) -> Option<String> {
         // Only attempt to format function-like macros.
-        if self.args_paren_kind != DelimToken::Paren {
+        if self.args_paren_kind != Delimiter::Parenthesis {
             // FIXME(#1539): implement for non-sugared macros.
             return None;
         }
@@ -1350,18 +1350,18 @@ fn rewrite_macro_with_items(
     items: &[MacroArg],
     macro_name: &str,
     shape: Shape,
-    style: DelimToken,
+    style: Delimiter,
     position: MacroPosition,
     span: Span,
 ) -> Option<String> {
     let (opener, closer) = match style {
-        DelimToken::Paren => ("(", ")"),
-        DelimToken::Bracket => ("[", "]"),
-        DelimToken::Brace => (" {", "}"),
+        Delimiter::Parenthesis => ("(", ")"),
+        Delimiter::Bracket => ("[", "]"),
+        Delimiter::Brace => (" {", "}"),
         _ => return None,
     };
     let trailing_semicolon = match style {
-        DelimToken::Paren | DelimToken::Bracket if position == MacroPosition::Item => ";",
+        Delimiter::Parenthesis | Delimiter::Bracket if position == MacroPosition::Item => ";",
         _ => "",
     };
 
