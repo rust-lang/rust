@@ -61,6 +61,10 @@ impl<T> List<T> {
         static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
         unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
     }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
 }
 
 impl<T: Copy> List<T> {
