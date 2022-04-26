@@ -617,6 +617,11 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
         return false;
     }
     if path.extension().unwrap_or_default() != "rs" {
+        if (file_name == "config.toml" || file_name == "config")
+            && path.parent().map(|parent| parent.as_ref().ends_with(".cargo")) == Some(true)
+        {
+            return true;
+        }
         return false;
     }
     if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_ref().ends_with(it)) {

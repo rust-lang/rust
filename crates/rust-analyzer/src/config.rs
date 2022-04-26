@@ -67,7 +67,7 @@ config_data! {
         callInfo_full: bool                                = "true",
 
         /// Automatically refresh project info via `cargo metadata` on
-        /// `Cargo.toml` changes.
+        /// `Cargo.toml` or `.cargo/config.toml` changes.
         cargo_autoreload: bool           = "true",
         /// Activate all available features (`--all-features`).
         cargo_allFeatures: bool          = "false",

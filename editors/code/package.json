@@ -439,7 +439,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.autoreload": {
-                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` changes.",
+                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` or `.cargo/config.toml` changes.",
                     "default": true,
                     "type": "boolean"
                 },
