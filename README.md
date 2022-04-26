@@ -265,6 +265,10 @@ environment variable:
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+* `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
+  but reports to the program that it did actually write. This is useful when you
+  are not interested in the actual program's messages, but only want to see miri's
+  errors and warnings.
 * `-Zmiri-isolation-error=<action>` configures Miri's response to operations
   requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
   and `warn-nobacktrace` are the supported actions. The default is to `abort`,
