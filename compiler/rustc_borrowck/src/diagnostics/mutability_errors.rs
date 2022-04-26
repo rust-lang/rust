@@ -237,7 +237,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span,
                         "consider changing this to be mutable",
-                        " mut ".into(),
+                        " mut ",
                         Applicability::MaybeIncorrect,
                     );
                 }

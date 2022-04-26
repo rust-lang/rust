@@ -241,7 +241,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                                 |x| Cow::from(format!("change `{}` to", x)),
                                             )
                                             .as_ref(),
-                                        suggestion.into(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }
@@ -271,7 +271,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                                 |x| Cow::from(format!("change `{}` to", x))
                                             )
                                             .as_ref(),
-                                        suggestion.into(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }

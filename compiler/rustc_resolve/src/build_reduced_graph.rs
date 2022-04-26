@@ -851,7 +851,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 .span_suggestion(
                     item.span,
                     "rename the `self` crate to be able to import it",
-                    "extern crate self as name;".into(),
+                    "extern crate self as name;",
                     Applicability::HasPlaceholders,
                 )
                 .emit();

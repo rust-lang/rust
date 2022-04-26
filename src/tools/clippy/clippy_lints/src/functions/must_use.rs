@@ -108,7 +108,7 @@ fn check_needless_must_use(
                 diag.span_suggestion(
                     attr.span,
                     "remove the attribute",
-                    "".into(),
+                    "",
                     Applicability::MachineApplicable,
                 );
             },

@@ -605,7 +605,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -623,13 +623,13 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart { snippet: suggestion, span: sp }],
+                parts: vec![SubstitutionPart { snippet: suggestion.to_string(), span: sp }],
             }],
             msg: msg.into(),
             style,
@@ -643,7 +643,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -711,7 +711,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -734,7 +734,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -755,7 +755,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(

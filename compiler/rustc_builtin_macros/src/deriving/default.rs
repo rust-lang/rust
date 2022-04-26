@@ -235,7 +235,7 @@ fn validate_default_attribute(
             .span_suggestion_hidden(
                 attr.span,
                 "try using `#[default]`",
-                "#[default]".into(),
+                "#[default]",
                 Applicability::MaybeIncorrect,
             )
             .emit();
