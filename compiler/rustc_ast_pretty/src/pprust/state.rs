@@ -6,7 +6,7 @@ use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
@@ -155,10 +155,10 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     }
     match tt {
         TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
-        TokenTree::Delimited(_, DelimToken::Paren, _) => {
+        TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
         }
-        TokenTree::Delimited(_, DelimToken::Bracket, _) => {
+        TokenTree::Delimited(_, Delimiter::Bracket, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
         }
         TokenTree::Delimited(..) => true,
@@ -556,12 +556,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         header: Option<MacHeader<'_>>,
         has_bang: bool,
         ident: Option<Ident>,
-        delim: Option<DelimToken>,
+        delim: Option<Delimiter>,
         tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
-        if delim == Some(DelimToken::Brace) {
+        if delim == Some(Delimiter::Brace) {
             self.cbox(INDENT_UNIT);
         }
         match header {
@@ -577,7 +577,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.print_ident(ident);
         }
         match delim {
-            Some(DelimToken::Brace) => {
+            Some(Delimiter::Brace) => {
                 if header.is_some() || has_bang || ident.is_some() {
                     self.nbsp();
                 }
@@ -758,13 +758,15 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::RArrow => "->".into(),
             token::LArrow => "<-".into(),
             token::FatArrow => "=>".into(),
-            token::OpenDelim(token::Paren) => "(".into(),
-            token::CloseDelim(token::Paren) => ")".into(),
-            token::OpenDelim(token::Bracket) => "[".into(),
-            token::CloseDelim(token::Bracket) => "]".into(),
-            token::OpenDelim(token::Brace) => "{".into(),
-            token::CloseDelim(token::Brace) => "}".into(),
-            token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".into(),
+            token::OpenDelim(Delimiter::Parenthesis) => "(".into(),
+            token::CloseDelim(Delimiter::Parenthesis) => ")".into(),
+            token::OpenDelim(Delimiter::Bracket) => "[".into(),
+            token::CloseDelim(Delimiter::Bracket) => "]".into(),
+            token::OpenDelim(Delimiter::Brace) => "{".into(),
+            token::CloseDelim(Delimiter::Brace) => "}".into(),
+            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
+                "".into()
+            }
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),

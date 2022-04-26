@@ -1,7 +1,7 @@
 //! Conditional compilation stripping.
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
@@ -418,7 +418,7 @@ impl<'a> StripUnconfigured<'a> {
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrAnnotatedTokenTree::Delimited(
             DelimSpan::from_single(pound_span),
-            DelimToken::Bracket,
+            Delimiter::Bracket,
             item.tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))

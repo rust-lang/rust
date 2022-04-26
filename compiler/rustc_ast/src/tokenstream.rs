@@ -13,7 +13,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::token::{self, DelimToken, Token, TokenKind};
+use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -42,7 +42,7 @@ pub enum TokenTree {
     /// A single token.
     Token(Token),
     /// A delimited sequence of token trees.
-    Delimited(DelimSpan, DelimToken, TokenStream),
+    Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
 #[derive(Copy, Clone)]
@@ -57,7 +57,7 @@ fn _dummy()
 where
     Token: Send + Sync,
     DelimSpan: Send + Sync,
-    DelimToken: Send + Sync,
+    Delimiter: Send + Sync,
     TokenStream: Send + Sync,
 {
 }
@@ -175,7 +175,7 @@ pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrAnnotatedTokenTree {
     Token(Token),
-    Delimited(DelimSpan, DelimToken, AttrAnnotatedTokenStream),
+    Delimited(DelimSpan, Delimiter, AttrAnnotatedTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
     /// See `AttributesData` for more information

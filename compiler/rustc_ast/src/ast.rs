@@ -23,7 +23,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, DelimToken, Token};
+use crate::token::{self, CommentKind, Delimiter, Token};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1542,7 +1542,7 @@ pub enum MacArgs {
 }
 
 impl MacArgs {
-    pub fn delim(&self) -> Option<DelimToken> {
+    pub fn delim(&self) -> Option<Delimiter> {
         match self {
             MacArgs::Delimited(_, delim, _) => Some(delim.to_token()),
             MacArgs::Empty | MacArgs::Eq(..) => None,
@@ -1582,20 +1582,20 @@ pub enum MacDelimiter {
 }
 
 impl MacDelimiter {
-    pub fn to_token(self) -> DelimToken {
+    pub fn to_token(self) -> Delimiter {
         match self {
-            MacDelimiter::Parenthesis => DelimToken::Paren,
-            MacDelimiter::Bracket => DelimToken::Bracket,
-            MacDelimiter::Brace => DelimToken::Brace,
+            MacDelimiter::Parenthesis => Delimiter::Parenthesis,
+            MacDelimiter::Bracket => Delimiter::Bracket,
+            MacDelimiter::Brace => Delimiter::Brace,
         }
     }
 
-    pub fn from_token(delim: DelimToken) -> Option<MacDelimiter> {
+    pub fn from_token(delim: Delimiter) -> Option<MacDelimiter> {
         match delim {
-            token::Paren => Some(MacDelimiter::Parenthesis),
-            token::Bracket => Some(MacDelimiter::Bracket),
-            token::Brace => Some(MacDelimiter::Brace),
-            token::NoDelim => None,
+            Delimiter::Parenthesis => Some(MacDelimiter::Parenthesis),
+            Delimiter::Bracket => Some(MacDelimiter::Bracket),
+            Delimiter::Brace => Some(MacDelimiter::Brace),
+            Delimiter::Invisible => None,
         }
     }
 }

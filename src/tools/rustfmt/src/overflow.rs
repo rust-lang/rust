@@ -3,7 +3,7 @@
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::DelimToken;
+use rustc_ast::token::Delimiter;
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 
@@ -297,11 +297,11 @@ pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>
     shape: Shape,
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
-    delim_token: Option<DelimToken>,
+    delim_token: Option<Delimiter>,
 ) -> Option<String> {
     let (lhs, rhs) = match delim_token {
-        Some(DelimToken::Paren) => ("(", ")"),
-        Some(DelimToken::Brace) => ("{", "}"),
+        Some(Delimiter::Parenthesis) => ("(", ")"),
+        Some(Delimiter::Brace) => ("{", "}"),
         _ => ("[", "]"),
     };
     Context::new(

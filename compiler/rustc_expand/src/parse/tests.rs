@@ -1,7 +1,7 @@
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, PatKind};
@@ -77,13 +77,14 @@ fn string_to_tts_macro() {
                         TokenTree::Delimited(_, first_delim, first_tts),
                         TokenTree::Token(Token { kind: token::FatArrow, .. }),
                         TokenTree::Delimited(_, second_delim, second_tts),
-                    ] if macro_delim == &token::Paren => {
+                    ] if macro_delim == &Delimiter::Parenthesis => {
                         let tts = &first_tts.trees().collect::<Vec<_>>();
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }),
                                 TokenTree::Token(Token { kind: token::Ident(name, false), .. }),
-                            ] if first_delim == &token::Paren && name.as_str() == "a" => {}
+                            ] if first_delim == &Delimiter::Parenthesis && name.as_str() == "a" => {
+                            }
                             _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                         }
                         let tts = &second_tts.trees().collect::<Vec<_>>();
@@ -91,7 +92,8 @@ fn string_to_tts_macro() {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }),
                                 TokenTree::Token(Token { kind: token::Ident(name, false), .. }),
-                            ] if second_delim == &token::Paren && name.as_str() == "a" => {}
+                            ] if second_delim == &Delimiter::Parenthesis
+                                && name.as_str() == "a" => {}
                             _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
                         }
                     }
@@ -113,7 +115,7 @@ fn string_to_tts_1() {
             TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(3, 4)).into(),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
-                token::DelimToken::Paren,
+                Delimiter::Parenthesis,
                 TokenStream::new(vec![
                     TokenTree::token(token::Ident(Symbol::intern("b"), false), sp(6, 7)).into(),
                     TokenTree::token(token::Colon, sp(8, 9)).into(),
@@ -124,7 +126,7 @@ fn string_to_tts_1() {
             .into(),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
-                token::DelimToken::Brace,
+                Delimiter::Brace,
                 TokenStream::new(vec![
                     TokenTree::token(token::Ident(Symbol::intern("b"), false), sp(17, 18)).into(),
                     TokenTree::token(token::Semi, sp(18, 19)).into(),

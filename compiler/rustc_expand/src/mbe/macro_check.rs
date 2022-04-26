@@ -106,7 +106,7 @@
 //! bound.
 use crate::mbe::{KleeneToken, TokenTree};
 
-use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
@@ -439,7 +439,7 @@ fn check_nested_occurrences(
             }
             (NestedMacroState::MacroRulesNotName, &TokenTree::Delimited(_, ref del))
             | (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Brace =>
+                if del.delim == Delimiter::Brace =>
             {
                 let macro_rules = state == NestedMacroState::MacroRulesNotName;
                 state = NestedMacroState::Empty;
@@ -469,7 +469,7 @@ fn check_nested_occurrences(
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
             (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Paren =>
+                if del.delim == Delimiter::Parenthesis =>
             {
                 state = NestedMacroState::MacroNameParen;
                 nested_binders = Binders::default();
@@ -484,7 +484,7 @@ fn check_nested_occurrences(
                 );
             }
             (NestedMacroState::MacroNameParen, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Brace =>
+                if del.delim == Delimiter::Brace =>
             {
                 state = NestedMacroState::Empty;
                 check_occurrences(

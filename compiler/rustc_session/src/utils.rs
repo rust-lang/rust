@@ -1,6 +1,6 @@
 use crate::parse::ParseSess;
 use crate::session::Session;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Token};
 use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -137,7 +137,7 @@ impl<'a> FlattenNonterminals<'a> {
                 let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
                 TokenTree::Delimited(
                     DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
+                    Delimiter::Invisible,
                     self.process_token_stream(tts),
                 )
                 .into()
