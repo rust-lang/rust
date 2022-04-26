@@ -35,6 +35,16 @@ use crate::{
     lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
+// Conventions for configuration keys to preserve maximal extendability without breakage:
+//  - Toggles (be it binary true/false or with more options in-between) should always suffix as `_enable`
+//  - In general be wary of using the namespace of something verbatim, it prevents us from adding subkeys in the future
+//  - Don't use abbreviations unless really necessary
+//  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting
+//    - We could in theory only use `command` and have it change behavior depending on whether its a string or array?
+// - TODO: conventions regarding config keys for commands and their args
+// - TODO: command, overrideCommand, extraArgs
+// - TODO: conventions regarding config polarity
+
 // Defines the server-side configuration of the rust-analyzer. We generate
 // *parts* of VS Code's `package.json` config from this.
 //
@@ -46,57 +56,51 @@ use crate::{
 config_data! {
     struct ConfigData {
         /// Placeholder for missing expressions in assists.
-        assist_exprFillDefault: ExprFillDefaultDef              = "\"todo\"",
+        assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
+
         /// How imports should be grouped into use statements.
-        assist_importGranularity |
-        assist_importMergeBehavior |
-        assist_importMergeBehaviour: ImportGranularityDef  = "\"crate\"",
+        imports_granularity: ImportGranularityDef  = "\"crate\"",
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
-        assist_importEnforceGranularity: bool              = "false",
+        imports_enforceGranularity: bool              = "false",
         /// The path structure for newly inserted paths to use.
-        assist_importPrefix: ImportPrefixDef               = "\"plain\"",
+        imports_prefix: ImportPrefixDef               = "\"plain\"",
         /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        assist_importGroup: bool                           = "true",
+        // TODO: Shouldn't be a bool
+        imports_group: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
-        assist_allowMergingIntoGlobImports: bool           = "true",
+        imports_mergeIntoGlob: bool           = "true",
 
-        /// Warm up caches on project load.
-        cache_warmup: bool = "true",
-
-        /// Show function name and docs in parameter hints.
-        callInfo_full: bool                                = "true",
+        // TODO: needs a better name
+        /// Show full signature of the callable. Only shows parameters if disabled.
+        signatureInfo_signature_enable: bool                           = "true",
+        /// Show documentation.
+        signatureInfo_documentation_enable: bool                       = "true",
 
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
-        /// Activate all available features (`--all-features`).
-        cargo_allFeatures: bool          = "false",
         /// Unsets `#[cfg(test)]` for the specified crates.
         cargo_unsetTest: Vec<String>   = "[\"core\"]",
-        /// List of features to activate.
-        cargo_features: Vec<String>      = "[]",
+        /// List of features to activate. Set to `"all"` to pass `--all-features` to cargo.
+        cargo_features: CargoFeatures      = "[]",
         /// Run build scripts (`build.rs`) for more precise code analysis.
-        cargo_runBuildScripts |
-        cargo_loadOutDirsFromCheck: bool = "true",
+        cargo_buildScripts_enable: bool = "true",
         /// Advanced option, fully override the command rust-analyzer uses to
         /// run build scripts and build procedural macros. The command should
         /// include `--message-format=json` or a similar option.
-        cargo_runBuildScriptsCommand: Option<Vec<String>> = "null",
+        cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid compiling unnecessary things.
-        cargo_useRustcWrapperForBuildScripts: bool = "true",
+        cargo_buildScripts_useRustcWrapper: bool = "true",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
-        /// Compilation target (target triple).
+        /// Compilation target override (target triple).
         cargo_target: Option<String>     = "null",
         /// Internal config for debugging, disables loading of sysroot crates.
         cargo_noSysroot: bool            = "false",
 
         /// Run specified `cargo check` command for diagnostics on save.
         checkOnSave_enable: bool                         = "true",
-        /// Check with all features (`--all-features`).
-        /// Defaults to `#rust-analyzer.cargo.allFeatures#`.
-        checkOnSave_allFeatures: Option<bool>            = "null",
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
         /// Cargo command to use for `cargo check`.
@@ -109,21 +113,19 @@ config_data! {
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// List of features to activate. Defaults to
-        /// `#rust-analyzer.cargo.features#`.
-        checkOnSave_features: Option<Vec<String>>        = "null",
+        /// `#rust-analyzer.cargo.features#`. Set to `"all"` to pass `--all-features` to cargo.
+        checkOnSave_features: Option<CargoFeatures>        = "null",
         /// Advanced option, fully override the command rust-analyzer uses for
         /// checking. The command should include `--message-format=json` or
         /// similar option.
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
 
-        /// Whether to add argument snippets when completing functions.
-        /// Only applies when `#rust-analyzer.completion.addCallParenthesis#` is set.
-        completion_addCallArgumentSnippets: bool = "true",
-        /// Whether to add parenthesis when completing functions.
-        completion_addCallParenthesis: bool      = "true",
+        // TODO: needs better name
+        /// Whether to add parenthesis and argument snippets when completing function.
+        completion_callable_snippets: CallableCompletionDef  = "fillArguments",
         /// Custom completion snippets.
         // NOTE: Keep this list in sync with the feature docs of user snippets.
-        completion_snippets: FxHashMap<String, SnippetDef> = r#"{
+        completion_snippets_custom: FxHashMap<String, SnippetDef> = r#"{
             "Arc::new": {
                 "postfix": "arc",
                 "body": "Arc::new(${receiver})",
@@ -169,6 +171,7 @@ config_data! {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
+        // TODO: Do we have a better name for this? I never really liked it
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = "true",
@@ -179,7 +182,7 @@ config_data! {
         diagnostics_enable: bool                = "true",
         /// Whether to show experimental rust-analyzer diagnostics that might
         /// have more false positives than usual.
-        diagnostics_enableExperimental: bool    = "false",
+        diagnostics_experimental_enable: bool    = "false",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
@@ -196,9 +199,6 @@ config_data! {
         /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
-        /// Expand attribute macros.
-        experimental_procAttrMacros: bool = "true",
-
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",
         /// These directories will be ignored by rust-analyzer. They are
@@ -207,44 +207,44 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
 
         /// Enables highlighting of related references while hovering your mouse above any identifier.
-        highlightRelated_references: bool = "true",
+        highlightRelated_references_enable: bool = "true",
         /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
-        highlightRelated_exitPoints: bool = "true",
+        highlightRelated_exitPoints_enable: bool = "true",
         /// Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
-        highlightRelated_breakPoints: bool = "true",
+        highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
-        highlightRelated_yieldPoints: bool = "true",
+        highlightRelated_yieldPoints_enable: bool = "true",
 
         /// Use semantic tokens for strings.
         ///
         /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
         /// By disabling semantic tokens for strings, other grammars can be used to highlight
         /// their contents.
-        highlighting_strings: bool = "true",
+        semanticHighlighting_strings_enable: bool = "true",
 
         /// Whether to show documentation on hover.
-        hover_documentation: bool       = "true",
+        hover_documentation_enable: bool       = "true",
         /// Use markdown syntax for links in hover.
-        hover_linksInHover |
-        hoverActions_linksInHover: bool = "true",
+        hover_links_enable: bool = "true",
 
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
-        hoverActions_debug: bool           = "true",
+        hover_actions_debug_enable: bool           = "true",
+        // TODO: There is not point in having a global option is there?
         /// Whether to show HoverActions in Rust files.
-        hoverActions_enable: bool          = "true",
+        hover_actions_enable: bool          = "true",
         /// Whether to show `Go to Type Definition` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
-        hoverActions_gotoTypeDef: bool     = "true",
+        hover_actions_gotoTypeDef_enable: bool     = "true",
         /// Whether to show `Implementations` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
-        hoverActions_implementations: bool = "true",
+        hover_actions_implementations_enable: bool = "true",
         /// Whether to show `References` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
-        hoverActions_references: bool      = "false",
+        hover_actions_references_enable: bool      = "false",
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
-        hoverActions_run: bool             = "true",
+        hover_actions_run_enable: bool             = "true",
 
         /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool                      = "true",
@@ -252,21 +252,21 @@ config_data! {
         inlayHints_maxLength: Option<usize>                = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
-        inlayHints_parameterHints: bool                     = "true",
+        inlayHints_parameterHints_enable: bool                     = "true",
         /// Whether to show inlay type hints for variables.
-        inlayHints_typeHints: bool                          = "true",
+        inlayHints_typeHints_enable: bool                          = "true",
         /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints: bool                      = "true",
+        inlayHints_chainingHints_enable: bool                      = "true",
+        /// Whether to hide inlay hints for constructors.
+        inlayHints_typeHints_hideNamedConstructor: bool          = "false",
         /// Whether to show inlay type hints for return types of closures with blocks.
-        inlayHints_closureReturnTypeHints: bool             = "false",
+        inlayHints_closureReturnTypeHints_enable: bool             = "false",
         /// Whether to show inlay type hints for compiler inserted reborrows.
-        inlayHints_reborrowHints: bool                      = "false",
+        inlayHints_reborrowHints_enable: bool                      = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
         inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
-        /// Whether to hide inlay hints for constructors.
-        inlayHints_hideNamedConstructorHints: bool          = "false",
 
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",
@@ -279,24 +279,28 @@ config_data! {
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
-        lens_debug: bool            = "true",
+        lens_debug_enable: bool            = "true",
+        // TODO: Does a global enable make sense even?
         /// Whether to show CodeLens in Rust files.
         lens_enable: bool           = "true",
         /// Whether to show `Implementations` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
-        lens_implementations: bool  = "true",
+        lens_implementations_enable: bool  = "true",
         /// Whether to show `Run` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
-        lens_run: bool              = "true",
+        lens_run_enable: bool              = "true",
         /// Whether to show `Method References` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
-        lens_methodReferences: bool = "false",
-        /// Whether to show `References` lens for Struct, Enum, Union and Trait.
+        lens_references_method_enable: bool = "false",
+        /// Whether to show `References` lens for Struct, Enum, and Union.
         /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references: bool = "false",
+        lens_references_adt_enable: bool = "false",
+        /// Whether to show `References` lens for Trait.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_trait_enable: bool = "false",
         /// Whether to show `References` lens for Enum Variants.
         /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_enumVariantReferences: bool = "false",
+        lens_references_adt_variant_enable: bool = "false",
         /// Internal config: use custom client-side commands even when the
         /// client doesn't set the corresponding capability.
         lens_forceCustomCommands: bool = "true",
@@ -309,13 +313,15 @@ config_data! {
         linkedProjects: Vec<ManifestOrProjectJson> = "[]",
 
         /// Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
-        lruCapacity: Option<usize>                 = "null",
+        lru_capacity: Option<usize>                 = "null",
 
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
         /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
         primeCaches_numThreads: ParallelPrimeCachesNumThreads = "0",
+        /// Warm up caches on project load.
+        primeCaches_enable: bool = "true",
 
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
         procMacro_enable: bool                     = "true",
@@ -326,12 +332,14 @@ config_data! {
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
+        /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
+        procMacro_attributes_enable: bool = "true",
 
         /// Command to be executed instead of 'cargo' for runnables.
-        runnables_overrideCargo: Option<String> = "null",
+        runnables_command: Option<String> = "null",
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
-        runnables_cargoExtraArgs: Vec<String>   = "[]",
+        runnables_extraArgs: Vec<String>   = "[]",
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -341,7 +349,7 @@ config_data! {
         /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
         ///
         /// This option does not take effect until rust-analyzer is restarted.
-        rustcSource: Option<String> = "null",
+        rustc_source: Option<String> = "null",
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
@@ -351,7 +359,7 @@ config_data! {
         /// Enables the use of rustfmt's unstable range formatting command for the
         /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
         /// available on a nightly build.
-        rustfmt_enableRangeFormatting: bool = "false",
+        rustfmt_rangeFormatting_enable: bool = "false",
 
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = "\"workspace\"",
@@ -400,6 +408,11 @@ impl From<ProjectJson> for LinkedProject {
     }
 }
 
+pub struct CallInfoConfig {
+    pub params_only: bool,
+    pub docs: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LensConfig {
     // runnables
@@ -411,7 +424,8 @@ pub struct LensConfig {
 
     // references
     pub method_refs: bool,
-    pub refs: bool, // for Struct, Enum, Union and Trait
+    pub refs_adt: bool,   // for Struct, Enum, Union and Trait
+    pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
 }
 
@@ -421,7 +435,8 @@ impl LensConfig {
             || self.debug
             || self.implementations
             || self.method_refs
-            || self.refs
+            || self.refs_adt
+            || self.refs_trait
             || self.enum_variant_refs
     }
 
@@ -434,7 +449,7 @@ impl LensConfig {
     }
 
     pub fn references(&self) -> bool {
-        self.method_refs || self.refs || self.enum_variant_refs
+        self.method_refs || self.refs_adt || self.refs_trait || self.enum_variant_refs
     }
 }
 
@@ -566,7 +581,7 @@ impl Config {
                 .collect();
         self.data = ConfigData::from_json(json, &mut errors);
         self.snippets.clear();
-        for (name, def) in self.data.completion_snippets.iter() {
+        for (name, def) in self.data.completion_snippets_custom.iter() {
             if def.prefix.is_empty() && def.postfix.is_empty() {
                 continue;
             }
@@ -685,7 +700,7 @@ impl Config {
     }
 
     pub fn prefill_caches(&self) -> bool {
-        self.data.cache_warmup
+        self.data.primeCaches_enable
     }
 
     pub fn location_link(&self) -> bool {
@@ -795,9 +810,9 @@ impl Config {
 
     pub fn diagnostics(&self) -> DiagnosticsConfig {
         DiagnosticsConfig {
-            disable_experimental: !self.data.diagnostics_enableExperimental,
+            disable_experimental: !self.data.diagnostics_experimental_enable,
             disabled: self.data.diagnostics_disabled.clone(),
-            expr_fill_default: match self.data.assist_exprFillDefault {
+            expr_fill_default: match self.data.assist_expressionFillDefault {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
@@ -813,7 +828,7 @@ impl Config {
     }
 
     pub fn lru_capacity(&self) -> Option<usize> {
-        self.data.lruCapacity
+        self.data.lru_capacity
     }
 
     pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, Vec<OsString>)> {
@@ -832,7 +847,7 @@ impl Config {
     }
 
     pub fn expand_proc_attr_macros(&self) -> bool {
-        self.data.experimental_procAttrMacros
+        self.data.procMacro_attributes_enable
     }
 
     pub fn files(&self) -> FilesConfig {
@@ -857,11 +872,11 @@ impl Config {
     }
 
     pub fn run_build_scripts(&self) -> bool {
-        self.data.cargo_runBuildScripts || self.data.procMacro_enable
+        self.data.cargo_buildScripts_enable || self.data.procMacro_enable
     }
 
     pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {
+        let rustc_source = self.data.rustc_source.as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustcSource::Discover
             } else {
@@ -871,14 +886,17 @@ impl Config {
 
         CargoConfig {
             no_default_features: self.data.cargo_noDefaultFeatures,
-            all_features: self.data.cargo_allFeatures,
-            features: self.data.cargo_features.clone(),
+            all_features: matches!(self.data.cargo_features, CargoFeatures::All),
+            features: match &self.data.cargo_features {
+                CargoFeatures::All => vec![],
+                CargoFeatures::Listed(it) => it.clone(),
+            },
             target: self.data.cargo_target.clone(),
             no_sysroot: self.data.cargo_noSysroot,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
-            wrap_rustc_in_build_scripts: self.data.cargo_useRustcWrapperForBuildScripts,
-            run_build_script_command: self.data.cargo_runBuildScriptsCommand.clone(),
+            wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
+            run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
         }
     }
 
@@ -891,7 +909,7 @@ impl Config {
             }
             Some(_) | None => RustfmtConfig::Rustfmt {
                 extra_args: self.data.rustfmt_extraArgs.clone(),
-                enable_range_formatting: self.data.rustfmt_enableRangeFormatting,
+                enable_range_formatting: self.data.rustfmt_rangeFormatting_enable,
             },
         }
     }
@@ -918,15 +936,19 @@ impl Config {
                     .data
                     .checkOnSave_noDefaultFeatures
                     .unwrap_or(self.data.cargo_noDefaultFeatures),
-                all_features: self
-                    .data
-                    .checkOnSave_allFeatures
-                    .unwrap_or(self.data.cargo_allFeatures),
-                features: self
+                all_features: matches!(
+                    self.data.checkOnSave_features.as_ref().unwrap_or(&self.data.cargo_features),
+                    CargoFeatures::All
+                ),
+                features: match self
                     .data
                     .checkOnSave_features
                     .clone()
-                    .unwrap_or_else(|| self.data.cargo_features.clone()),
+                    .unwrap_or_else(|| self.data.cargo_features.clone())
+                {
+                    CargoFeatures::All => vec![],
+                    CargoFeatures::Listed(it) => it,
+                },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
             },
         };
@@ -935,25 +957,25 @@ impl Config {
 
     pub fn runnables(&self) -> RunnablesConfig {
         RunnablesConfig {
-            override_cargo: self.data.runnables_overrideCargo.clone(),
-            cargo_extra_args: self.data.runnables_cargoExtraArgs.clone(),
+            override_cargo: self.data.runnables_command.clone(),
+            cargo_extra_args: self.data.runnables_extraArgs.clone(),
         }
     }
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
         InlayHintsConfig {
             render_colons: self.data.inlayHints_renderColons,
-            type_hints: self.data.inlayHints_typeHints,
-            parameter_hints: self.data.inlayHints_parameterHints,
-            chaining_hints: self.data.inlayHints_chainingHints,
-            closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
+            type_hints: self.data.inlayHints_typeHints_enable,
+            parameter_hints: self.data.inlayHints_parameterHints_enable,
+            chaining_hints: self.data.inlayHints_chainingHints_enable,
+            closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints_enable,
             lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints_enable {
                 LifetimeElisionDef::Always => LifetimeElisionHints::Always,
                 LifetimeElisionDef::Never => LifetimeElisionHints::Never,
                 LifetimeElisionDef::SkipTrivial => LifetimeElisionHints::SkipTrivial,
             },
-            hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
-            reborrow_hints: self.data.inlayHints_reborrowHints,
+            hide_named_constructor_hints: self.data.inlayHints_typeHints_hideNamedConstructor,
+            reborrow_hints: self.data.inlayHints_reborrowHints_enable,
             param_names_for_lifetime_elision_hints: self
                 .data
                 .inlayHints_lifetimeElisionHints_useParameterNames,
@@ -963,20 +985,20 @@ impl Config {
 
     fn insert_use_config(&self) -> InsertUseConfig {
         InsertUseConfig {
-            granularity: match self.data.assist_importGranularity {
+            granularity: match self.data.imports_granularity {
                 ImportGranularityDef::Preserve => ImportGranularity::Preserve,
                 ImportGranularityDef::Item => ImportGranularity::Item,
                 ImportGranularityDef::Crate => ImportGranularity::Crate,
                 ImportGranularityDef::Module => ImportGranularity::Module,
             },
-            enforce_granularity: self.data.assist_importEnforceGranularity,
-            prefix_kind: match self.data.assist_importPrefix {
+            enforce_granularity: self.data.imports_enforceGranularity,
+            prefix_kind: match self.data.imports_prefix {
                 ImportPrefixDef::Plain => PrefixKind::Plain,
                 ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
                 ImportPrefixDef::BySelf => PrefixKind::BySelf,
             },
-            group: self.data.assist_importGroup,
-            skip_glob_imports: !self.data.assist_allowMergingIntoGlobImports,
+            group: self.data.imports_group,
+            skip_glob_imports: !self.data.imports_mergeIntoGlob,
         }
     }
 
@@ -987,8 +1009,14 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
-            add_call_parenthesis: self.data.completion_addCallParenthesis,
-            add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
+            add_call_parenthesis: matches!(
+                self.data.completion_callable_snippets,
+                CallableCompletionDef::AddParentheses
+            ),
+            add_call_argument_snippets: matches!(
+                self.data.completion_callable_snippets,
+                CallableCompletionDef::FillArguments
+            ),
             insert_use: self.insert_use_config(),
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
@@ -1021,40 +1049,45 @@ impl Config {
         }
     }
 
-    pub fn call_info_full(&self) -> bool {
-        self.data.callInfo_full
+    pub fn call_info(&self) -> CallInfoConfig {
+        CallInfoConfig {
+            params_only: self.data.signatureInfo_signature_enable,
+            docs: self.data.signatureInfo_documentation_enable,
+        }
     }
 
     pub fn lens(&self) -> LensConfig {
         LensConfig {
-            run: self.data.lens_enable && self.data.lens_run,
-            debug: self.data.lens_enable && self.data.lens_debug,
-            implementations: self.data.lens_enable && self.data.lens_implementations,
-            method_refs: self.data.lens_enable && self.data.lens_methodReferences,
-            refs: self.data.lens_enable && self.data.lens_references,
-            enum_variant_refs: self.data.lens_enable && self.data.lens_enumVariantReferences,
+            run: self.data.lens_enable && self.data.lens_run_enable,
+            debug: self.data.lens_enable && self.data.lens_debug_enable,
+            implementations: self.data.lens_enable && self.data.lens_implementations_enable,
+            method_refs: self.data.lens_enable && self.data.lens_references_method_enable,
+            refs_adt: self.data.lens_enable && self.data.lens_references_adt_enable,
+            refs_trait: self.data.lens_enable && self.data.lens_references_trait_enable,
+            enum_variant_refs: self.data.lens_enable
+                && self.data.lens_references_adt_variant_enable,
         }
     }
 
     pub fn hover_actions(&self) -> HoverActionsConfig {
-        let enable = self.experimental("hoverActions") && self.data.hoverActions_enable;
+        let enable = self.experimental("hoverActions") && self.data.hover_actions_enable;
         HoverActionsConfig {
-            implementations: enable && self.data.hoverActions_implementations,
-            references: enable && self.data.hoverActions_references,
-            run: enable && self.data.hoverActions_run,
-            debug: enable && self.data.hoverActions_debug,
-            goto_type_def: enable && self.data.hoverActions_gotoTypeDef,
+            implementations: enable && self.data.hover_actions_implementations_enable,
+            references: enable && self.data.hover_actions_references_enable,
+            run: enable && self.data.hover_actions_run_enable,
+            debug: enable && self.data.hover_actions_debug_enable,
+            goto_type_def: enable && self.data.hover_actions_gotoTypeDef_enable,
         }
     }
 
     pub fn highlighting_strings(&self) -> bool {
-        self.data.highlighting_strings
+        self.data.semanticHighlighting_strings_enable
     }
 
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
-            links_in_hover: self.data.hover_linksInHover,
-            documentation: self.data.hover_documentation.then(|| {
+            links_in_hover: self.data.hover_links_enable,
+            documentation: self.data.hover_documentation_enable.then(|| {
                 let is_markdown = try_or_def!(self
                     .caps
                     .text_document
@@ -1132,10 +1165,10 @@ impl Config {
 
     pub fn highlight_related(&self) -> HighlightRelatedConfig {
         HighlightRelatedConfig {
-            references: self.data.highlightRelated_references,
-            break_points: self.data.highlightRelated_breakPoints,
-            exit_points: self.data.highlightRelated_exitPoints,
-            yield_points: self.data.highlightRelated_yieldPoints,
+            references: self.data.highlightRelated_references_enable,
+            break_points: self.data.highlightRelated_breakPoints_enable,
+            exit_points: self.data.highlightRelated_exitPoints_enable,
+            yield_points: self.data.highlightRelated_yieldPoints_enable,
         }
     }
 
@@ -1239,6 +1272,23 @@ enum ImportGranularityDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum CallableCompletionDef {
+    FillArguments,
+    AddParentheses,
+    #[serde(alias = "false")]
+    None,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+enum CargoFeatures {
+    All,
+    Listed(Vec<String>),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum LifetimeElisionDef {
     #[serde(alias = "true")]
     Always,
@@ -1317,6 +1367,12 @@ macro_rules! _config_data {
                 ])
             }
         }
+
+        // TODO: Uncomment this and sort once everything is done
+        // #[test]
+        // fn fields_are_sorted() {
+        //     [$(stringify!($field)),*].windows(2).for_each(|w| assert!(w[0] <= w[1], "{} <= {} does not hold", w[0], w[1]));
+        // }
     };
 }
 use _config_data as config_data;

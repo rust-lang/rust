@@ -18,7 +18,7 @@ use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
-    config::Config,
+    config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, OffsetEncoding},
     lsp_ext,
@@ -338,11 +338,11 @@ fn completion_item(
 
 pub(crate) fn signature_help(
     call_info: SignatureHelp,
-    concise: bool,
+    config: CallInfoConfig,
     label_offsets: bool,
 ) -> lsp_types::SignatureHelp {
-    let (label, parameters) = match (concise, label_offsets) {
-        (_, false) => {
+    let (label, parameters) = match (!config.params_only, label_offsets) {
+        (concise, false) => {
             let params = call_info
                 .parameter_labels()
                 .map(|label| lsp_types::ParameterInformation {
@@ -388,16 +388,12 @@ pub(crate) fn signature_help(
         }
     };
 
-    let documentation = if concise {
-        None
-    } else {
-        call_info.doc.map(|doc| {
-            lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
-                kind: lsp_types::MarkupKind::Markdown,
-                value: doc,
-            })
+    let documentation = call_info.doc.filter(|_| config.docs).map(|doc| {
+        lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+            kind: lsp_types::MarkupKind::Markdown,
+            value: doc,
         })
-    };
+    });
 
     let active_parameter = call_info.active_parameter.map(|it| it as u32);
 

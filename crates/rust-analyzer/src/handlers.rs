@@ -911,8 +911,8 @@ pub(crate) fn handle_signature_help(
         Some(it) => it,
         None => return Ok(None),
     };
-    let concise = !snap.config.call_info_full();
-    let res = to_proto::signature_help(help, concise, snap.config.signature_help_label_offsets());
+    let config = snap.config.call_info();
+    let res = to_proto::signature_help(help, config, snap.config.signature_help_label_offsets());
     Ok(Some(res))
 }
 
@@ -1215,7 +1215,7 @@ pub(crate) fn handle_code_lens(
                 .unwrap_or(false),
             annotate_runnables: lens_config.runnable(),
             annotate_impls: lens_config.implementations,
-            annotate_references: lens_config.refs,
+            annotate_references: lens_config.refs_adt,
             annotate_method_references: lens_config.method_refs,
             annotate_enum_variant_references: lens_config.enum_variant_refs,
         },
