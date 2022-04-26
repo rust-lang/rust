@@ -1018,6 +1018,10 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 }
 
 fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Result<()> {
+    // When deleting files we may loop this many times when certain error conditions occur.
+    // This allows remove_dir_all to succeed when the error is temporary.
+    const MAX_RETRIES: u32 = 10;
+
     let mut buffer = DirBuff::new();
     let mut dirlist = vec![f.duplicate()?];
 
@@ -1040,7 +1044,6 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
                 )?;
                 dirlist.push(child_dir);
             } else {
-                const MAX_RETRIES: u32 = 10;
                 for i in 1..=MAX_RETRIES {
                     let result = open_link_no_reparse(&dir, name, c::SYNCHRONIZE | c::DELETE);
                     match result {
@@ -1062,7 +1065,17 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
         // If there were no more files then delete the directory.
         if !more_data {
             if let Some(dir) = dirlist.pop() {
-                delete(&dir)?;
+                // Retry deleting a few times in case we need to wait for a file to be deleted.
+                for i in 1..=MAX_RETRIES {
+                    let result = delete(&dir);
+                    if let Err(e) = result {
+                        if i == MAX_RETRIES || e.kind() != io::ErrorKind::DirectoryNotEmpty {
+                            return Err(e);
+                        }
+                    } else {
+                        break;
+                    }
+                }
             }
         }
     }
