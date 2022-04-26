@@ -456,25 +456,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // the resulting predicate generates a more specific
                         // suggestion for the user.
                         let errors = self
-                        .lookup_op_method(lhs_ty, &[rhs_ty], Op::Binary(op, is_assign))
-                        .unwrap_err();
-                    let predicates = errors
-                        .into_iter()
-                        .filter_map(|error| error.obligation.predicate.to_opt_poly_trait_pred())
-                        .collect::<Vec<_>>();
-                    if !predicates.is_empty() {
-                        for pred in predicates {
-                            self.infcx.suggest_restricting_param_bound(&mut err,
-                                pred,
-                                self.body_id,
-                            );
+                            .lookup_op_method(
+                                lhs_ty,
+                                Some(rhs_ty),
+                                Some(rhs_expr),
+                                Op::Binary(op, is_assign),
+                            )
+                            .unwrap_err();
+                        let predicates = errors
+                            .into_iter()
+                            .filter_map(|error| error.obligation.predicate.to_opt_poly_trait_pred())
+                            .collect::<Vec<_>>();
+                        if !predicates.is_empty() {
+                            for pred in predicates {
+                                self.infcx.suggest_restricting_param_bound(
+                                    &mut err,
+                                    pred,
+                                    self.body_id,
+                                );
+                            }
+                        } else if *ty != lhs_ty {
+                            // When we know that a missing bound is responsible, we don't show
+                            // this note as it is redundant.
+                            err.note(&format!(
+                                "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
+                            ));
                         }
-                     } else if *ty != lhs_ty {
-                        // When we know that a missing bound is responsible, we don't show
-                        // this note as it is redundant.
-                        err.note(&format!(
-                            "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
-                        ));                    
                     }
                 }
                 err.emit();
@@ -663,24 +670,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
-                    let missing_trait = match op {
-                        hir::UnOp::Deref => unreachable!("check unary op `-` or `!` only"),
-                        hir::UnOp::Not => "std::ops::Not",
-                        hir::UnOp::Neg => "std::ops::Neg",
-                    };
+
                     let mut visitor = TypeParamVisitor(vec![]);
                     visitor.visit_ty(operand_ty);
-                    if let [ty] = &visitor.0[..] && let ty::Param(p) = *operand_ty.kind() {
-                        suggest_constraining_param(
-                            self.tcx,
-                            self.body_id,
-                            &mut err,
-                            *ty,
-                            operand_ty,
-                            missing_trait,
-                            p,
-                            true,
-                        );
+                    if let [_] = &visitor.0[..] && let ty::Param(_) = *operand_ty.kind() {
+                        let predicates = errors
+                            .iter()
+                            .filter_map(|error| {
+                                error.obligation.predicate.clone().to_opt_poly_trait_pred()
+                            });
+                        for pred in predicates {
+                            self.infcx.suggest_restricting_param_bound(
+                                &mut err,
+                                pred,
+                                self.body_id,
+                            );
+                        }
                     }
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span);
