@@ -527,10 +527,25 @@ impl Stdio {
             },
 
             Stdio::MakePipe => {
-                // If stdin then make synchronous
+                // Handles that are passed to a child process must be synchronous
+                // because they will be read synchronously (see #95759).
+                // Therefore we prefer to make both ends of a pipe synchronous
+                // just in case our end of the pipe is passed to another process.
+                //
+                // However, we may need to read from both the child's stdout and
+                // stderr simultaneously when waiting for output. This requires
+                // async reads so as to avoid blocking either pipe.
+                //
+                // The solution used here is to make handles synchronous
+                // except for our side of the stdout and sterr pipes.
+                // If our side of those pipes do end up being given to another
+                // process then we use a "pipe relay" to synchronize access
+                // (see `Stdio::AsyncPipe` below).
                 let pipes = if stdio_id == c::STD_INPUT_HANDLE {
+                    // For stdin both sides of the pipe are synchronous.
                     Pipes::new_synchronous(false, true)?
                 } else {
+                    // For stdout/stderr our side of the pipe is async and their side is synchronous.
                     pipe::anon_pipe(true, true)?
                 };
                 *pipe = Some(pipes.ours);
@@ -567,6 +582,9 @@ impl Stdio {
 
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
+        // Note that it's very important we don't give async handles to child processes.
+        // Therefore if the pipe is asynchronous we must have a way to turn it synchronous.
+        // See #95759.
         match pipe {
             AnonPipe::Sync(handle) => Stdio::Handle(handle),
             AnonPipe::Async(handle) => Stdio::AsyncPipe(handle),
