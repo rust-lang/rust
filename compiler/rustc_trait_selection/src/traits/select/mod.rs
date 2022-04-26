@@ -1767,7 +1767,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             !needs_infer
                         }
                         Some(_) => true,
-                        None => false,
+                        None => {
+                            if let Some(other) = tcx.impl_trait_ref(other_def)
+                                && let Some(victim) = tcx.impl_trait_ref(victim_def)
+                                && tcx.is_diagnostic_item(sym::AsRef, other.def_id)
+                                && tcx.is_diagnostic_item(sym::AsRef, victim.def_id)
+                                && other.substs.len() > 1
+                                && victim.substs.len() > 1
+                                && let ty::Slice(other) = other.substs.type_at(1).kind()
+                                && let ty::Adt(def, substs) = victim.substs.type_at(1).kind()
+                                && tcx.is_diagnostic_item(sym::Vec, def.did())
+                            {
+                                // If this is an `AsRef` implementation that can go either way for
+                                // `AsRef<[T]>` or `AsRef<Vec[T]>`, prefer the former.
+                               other == &substs.type_at(0)
+                            } else {
+                                false
+                            }
+                        }
                     }
                 } else {
                     false
