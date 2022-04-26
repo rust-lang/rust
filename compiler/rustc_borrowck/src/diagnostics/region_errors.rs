@@ -1,17 +1,17 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::{
-    error_reporting::nice_region_error::NiceRegionError,
-    error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
-    RelateParamBound,
+    error_reporting::nice_region_error::{self, find_param_with_region, NiceRegionError},
+    error_reporting::unexpected_hidden_region_diagnostic,
+    NllRegionVariableOrigin, RelateParamBound,
 };
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 use crate::borrowck_errors;
 
@@ -651,82 +651,47 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         fr_name: RegionName,
         outlived_fr: RegionVid,
     ) {
-        if let (Some(f), Some(ty::ReStatic)) =
-            (self.to_error_region(fr), self.to_error_region(outlived_fr).as_deref())
+        if let (Some(f), Some(outlived_f)) =
+            (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if let Some(&ty::Opaque(did, substs)) = self
+            if *outlived_f != ty::ReStatic {
+                return;
+            }
+
+            let fn_returns = self
                 .infcx
                 .tcx
                 .is_suitable_region(f)
-                .map(|r| r.def_id)
-                .and_then(|id| self.infcx.tcx.return_type_impl_trait(id))
-                .map(|(ty, _)| ty.kind())
-            {
-                // Check whether or not the impl trait return type is intended to capture
-                // data with the static lifetime.
-                //
-                // eg. check for `impl Trait + 'static` instead of `impl Trait`.
-                let has_static_predicate = {
-                    let bounds = self.infcx.tcx.explicit_item_bounds(did);
+                .map(|r| self.infcx.tcx.return_type_impl_or_dyn_traits(r.def_id))
+                .unwrap_or_default();
 
-                    let mut found = false;
-                    for (bound, _) in bounds {
-                        if let ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_, r)) =
-                            bound.kind().skip_binder()
-                        {
-                            let r = r.subst(self.infcx.tcx, substs);
-                            if r.is_static() {
-                                found = true;
-                                break;
-                            } else {
-                                // If there's already a lifetime bound, don't
-                                // suggest anything.
-                                return;
-                            }
-                        }
-                    }
-
-                    found
-                };
-
-                debug!(
-                    "add_static_impl_trait_suggestion: has_static_predicate={:?}",
-                    has_static_predicate
-                );
-                let static_str = kw::StaticLifetime;
-                // If there is a static predicate, then the only sensible suggestion is to replace
-                // fr with `'static`.
-                if has_static_predicate {
-                    diag.help(&format!("consider replacing `{fr_name}` with `{static_str}`"));
-                } else {
-                    // Otherwise, we should suggest adding a constraint on the return type.
-                    let span = self.infcx.tcx.def_span(did);
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-                        let suggestable_fr_name = if fr_name.was_named() {
-                            fr_name.to_string()
-                        } else {
-                            "'_".to_string()
-                        };
-                        let span = if snippet.ends_with(';') {
-                            // `type X = impl Trait;`
-                            span.with_hi(span.hi() - BytePos(1))
-                        } else {
-                            span
-                        };
-                        let suggestion = format!(" + {suggestable_fr_name}");
-                        let span = span.shrink_to_hi();
-                        diag.span_suggestion(
-                            span,
-                            &format!(
-                                "to allow this `impl Trait` to capture borrowed data with lifetime \
-                                 `{fr_name}`, add `{suggestable_fr_name}` as a bound",
-                            ),
-                            suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
+            if fn_returns.is_empty() {
+                return;
             }
+
+            let param = if let Some(param) = find_param_with_region(self.infcx.tcx, f, outlived_f) {
+                param
+            } else {
+                return;
+            };
+
+            let lifetime = if f.has_name() { fr_name.to_string() } else { "'_".to_string() };
+
+            let arg = match param.param.pat.simple_ident() {
+                Some(simple_ident) => format!("argument `{}`", simple_ident),
+                None => "the argument".to_string(),
+            };
+            let captures = format!("captures data from {}", arg);
+
+            return nice_region_error::suggest_new_region_bound(
+                self.infcx.tcx,
+                diag,
+                fn_returns,
+                lifetime,
+                Some(arg),
+                captures,
+                Some((param.param_ty_span, param.param_ty.to_string())),
+            );
         }
     }
 }
