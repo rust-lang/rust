@@ -2596,6 +2596,17 @@ fn handle_cli_linker_flavors(
     }
 
     let cg = &sess.opts.cg;
+    let unstable_self_contained_linker = cg.link_self_contained.linker.is_on();
+
+    // Sanity check for distro-builds: they don't distribute `rust-lld`, and the `-C
+    // link-self-contained=linker` flag cannot be used there: the `rust.lld` flag has to be enabled
+    // in `config.toml` so that `#[cfg(rust_lld_enabled)] applies.
+    if unstable_self_contained_linker && !cfg!(rust_lld_enabled) {
+        sess.fatal(
+            "Using `-Clink-self-contained=linker` requires the \
+            compiler to be built with the `rust.lld` flag enabled",
+        );
+    }
 
     // The `-C linker-flavor` CLI flag can optionally enrich linker-flavors. Check whether that's
     // applicable, and emit errors if sanity checks fail. There's currently only one enrichment:
@@ -2660,12 +2671,10 @@ fn handle_cli_linker_flavors(
 
         // Now, handle `rust-lld`. If both the `-Clink-self-contained=linker` and
         // `-Clinker-flavor=gcc:lld` flags were provided, we use `rust-lld`, the rustup-distributed
-        // version of `lld` (when applicable, i.e. not in distro-builds) by:
+        // version of `lld` (when applicable`, i.e. not in distro-builds) by:
         // - checking the `lld-wrapper`s exist in the sysroot
         // - adding their folder as a search path, or requesting to use a wrapper directly
-        //
-        // FIXME: make sure rust.lld config flag is turned on before adding the sysroot magic handling
-        if sess.opts.cg.link_self_contained.linker.is_on() || unstable_gcc_lld {
+        if unstable_self_contained_linker || unstable_gcc_lld {
             // A `gcc-ld` folder (containing the `lld-wrapper`s that will run `rust-lld`) is present in
             // the sysroot's target-specific tool binaries folder.
             let tools_path = sess.get_tools_search_paths(false);
