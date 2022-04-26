@@ -93,8 +93,6 @@ pub enum LifetimeName {
     Param(ParamName),
 
     /// User wrote nothing (e.g., the lifetime in `&u32`).
-    ///
-    /// The bool indicates whether the user should have written something.
     Implicit,
 
     /// Implicit lifetime in a context like `dyn Foo`. This is
