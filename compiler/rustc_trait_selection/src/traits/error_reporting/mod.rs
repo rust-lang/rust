@@ -665,6 +665,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.suggest_restricting_param_bound(
                                 &mut err,
                                 trait_predicate,
+                                None,
                                 obligation.cause.body_id,
                             );
                         } else if !suggested {
