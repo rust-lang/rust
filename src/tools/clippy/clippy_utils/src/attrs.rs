@@ -1,6 +1,7 @@
-use rustc_ast::{ast, attr};
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_session::Session;
+use rustc_ast::attr;
 use rustc_span::sym;
 use std::str::FromStr;
 
@@ -158,7 +159,3 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
 
-/// Return true if the attributes contain `#[unstable]`
-pub fn is_unstable(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.has_name(sym::unstable))
-}
