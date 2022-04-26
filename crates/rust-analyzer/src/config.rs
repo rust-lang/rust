@@ -39,10 +39,7 @@ use crate::{
 //  - Toggles (be it binary true/false or with more options in-between) should almost always suffix as `_enable`
 //  - In general be wary of using the namespace of something verbatim, it prevents us from adding subkeys in the future
 //  - Don't use abbreviations unless really necessary
-//  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting
-//    - We could in theory only use `command` and have it change behavior depending on whether its a string or array?
-// - TODO: conventions regarding config keys for commands and their args
-// - TODO: conventions regarding config polarity
+//  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
 
 // Defines the server-side configuration of the rust-analyzer. We generate
 // *parts* of VS Code's `package.json` config from this.
@@ -108,7 +105,7 @@ config_data! {
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
-        completion_callable_snippets: CallableCompletionDef  = "fillArguments",
+        completion_callable_snippets: Option<CallableCompletionDef>  = "\"fill_arguments\"",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
@@ -217,13 +214,11 @@ config_data! {
         /// Use markdown syntax for links in hover.
         hover_links_enable: bool = "true",
 
-        // TODO: this should be in granulatiry?
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_enforceGranularity: bool              = "false",
         /// How imports should be grouped into use statements.
         imports_granularity: ImportGranularityDef  = "\"crate\"",
         /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        // TODO: Shouldn't be a bool
         imports_group: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_mergeIntoGlob: bool           = "true",
@@ -353,7 +348,6 @@ config_data! {
 
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = "true",
-        // TODO: needs a better name
         /// Show full signature of the callable. Only shows parameters if disabled.
         signatureInfo_signature_enable: bool                           = "true",
 
@@ -1007,11 +1001,11 @@ impl Config {
             enable_private_editable: self.data.completion_privateEditable_enable,
             add_call_parenthesis: matches!(
                 self.data.completion_callable_snippets,
-                CallableCompletionDef::AddParentheses
+                Some(CallableCompletionDef::AddParentheses)
             ),
             add_call_argument_snippets: matches!(
                 self.data.completion_callable_snippets,
-                CallableCompletionDef::FillArguments
+                Some(CallableCompletionDef::FillArguments)
             ),
             insert_use: self.insert_use_config(),
             snippet_cap: SnippetCap::new(try_or_def!(
@@ -1175,8 +1169,75 @@ impl Config {
         }
     }
 }
-
 // Deserialization definitions
+
+macro_rules! create_bool_or_string_de {
+    ($ident:ident<$bool:literal, $string:literal>) => {
+        fn $ident<'de, D>(d: D) -> Result<(), D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct V;
+            impl<'de> serde::de::Visitor<'de> for V {
+                type Value = ();
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str(concat!(
+                        stringify!($bool),
+                        " or \"",
+                        stringify!($string),
+                        "\""
+                    ))
+                }
+
+                fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    match v {
+                        $bool => Ok(()),
+                        _ => Err(serde::de::Error::invalid_value(
+                            serde::de::Unexpected::Bool(v),
+                            &self,
+                        )),
+                    }
+                }
+
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    match v {
+                        $string => Ok(()),
+                        _ => Err(serde::de::Error::invalid_value(
+                            serde::de::Unexpected::Str(v),
+                            &self,
+                        )),
+                    }
+                }
+
+                fn visit_enum<A>(self, a: A) -> Result<Self::Value, A::Error>
+                where
+                    A: serde::de::EnumAccess<'de>,
+                {
+                    use serde::de::VariantAccess;
+                    let (variant, va) = a.variant::<&'de str>()?;
+                    va.unit_variant()?;
+                    match variant {
+                        $string => Ok(()),
+                        _ => Err(serde::de::Error::invalid_value(
+                            serde::de::Unexpected::Str(variant),
+                            &self,
+                        )),
+                    }
+                }
+            }
+            d.deserialize_any(V)
+        }
+    };
+}
+create_bool_or_string_de!(true_or_always<true, "always">);
+create_bool_or_string_de!(false_or_never<false, "never">);
 
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
@@ -1248,9 +1309,7 @@ enum ManifestOrProjectJson {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ExprFillDefaultDef {
-    #[serde(alias = "todo")]
     Todo,
-    #[serde(alias = "default")]
     Default,
 }
 
@@ -1258,11 +1317,8 @@ pub enum ExprFillDefaultDef {
 #[serde(rename_all = "snake_case")]
 enum ImportGranularityDef {
     Preserve,
-    #[serde(alias = "none")]
     Item,
-    #[serde(alias = "full")]
     Crate,
-    #[serde(alias = "last")]
     Module,
 }
 
@@ -1271,8 +1327,6 @@ enum ImportGranularityDef {
 enum CallableCompletionDef {
     FillArguments,
     AddParentheses,
-    #[serde(alias = "false")]
-    None,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1285,10 +1339,11 @@ enum CargoFeatures {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+#[serde(untagged)]
 enum LifetimeElisionDef {
-    #[serde(alias = "true")]
+    #[serde(deserialize_with = "true_or_always")]
     Always,
-    #[serde(alias = "false")]
+    #[serde(deserialize_with = "false_or_never")]
     Never,
     SkipTrivial,
 }
@@ -1550,12 +1605,36 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "maximum": 255
         },
         "LifetimeElisionDef" => set! {
-            "type": "string",
+            "type": ["string", "boolean"],
             "enum": ["always", "never", "skip_trivial"],
             "enumDescriptions": [
                 "Always show lifetime elision hints.",
                 "Never show lifetime elision hints.",
                 "Only show lifetime elision hints if a return type is involved."
+            ],
+        },
+        "CargoFeatures" => set! {
+            "type": ["string", "array"],
+            "items": { "type": "string" },
+            "enum": ["all"],
+            "enumDescriptions": [
+                "Pass `--all-features` to cargo",
+            ],
+        },
+        "Option<CargoFeatures>" => set! {
+            "type": ["string", "array", "null"],
+            "items": { "type": "string" },
+            "enum": ["all"],
+            "enumDescriptions": [
+                "Pass `--all-features` to cargo",
+            ],
+        },
+        "Option<CallableCompletionDef>" => set! {
+            "type": ["string", "null"],
+            "enum": ["fill_arguments", "add_parentheses"],
+            "enumDescriptions": [
+                "Add call parentheses and pre-fill arguments",
+                "Add call parentheses",
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),
