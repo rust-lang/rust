@@ -2543,6 +2543,26 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    // For testing purposes, until we have more feedback about these options: ensure `-Z
+    // unstable-options` is enabled when using the unstable `-C link-self-contained` options.
+    if !debugging_opts.unstable_options {
+        let uses_unstable_self_contained_option =
+            matches.opt_strs("C").iter().any(|option| match option.as_str() {
+                "link-self-contained=crt"
+                | "link-self-contained=auto"
+                | "link-self-contained=linker"
+                | "link-self-contained=all" => true,
+                _ => false,
+            });
+        if uses_unstable_self_contained_option {
+            early_error(
+                error_format,
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
+                the `-Z unstable-options` flag must also be passed to use the unstable values",
+            );
+        }
+    }
+
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
 
     let cg = cg;
