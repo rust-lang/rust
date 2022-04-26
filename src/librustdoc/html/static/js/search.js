@@ -1,10 +1,13 @@
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
 /* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
 /* global onEachLazy, removeClass, searchState, hasClass */
 
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
-var itemTypes = [
+const itemTypes = [
     "mod",
     "externcrate",
     "import",
@@ -34,15 +37,15 @@ var itemTypes = [
 ];
 
 // used for special search precedence
-var TY_PRIMITIVE = itemTypes.indexOf("primitive");
-var TY_KEYWORD = itemTypes.indexOf("keyword");
+const TY_PRIMITIVE = itemTypes.indexOf("primitive");
+const TY_KEYWORD = itemTypes.indexOf("keyword");
 
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     if (nb === 0 || nb === 1 || nb === 2) {
         searchState.currentTab = nb;
     }
-    var nb_copy = nb;
+    let nb_copy = nb;
     onEachLazy(document.getElementById("titles").childNodes, function(elem) {
         if (nb_copy === 0) {
             addClass(elem, "selected");
@@ -68,14 +71,15 @@ function printTab(nb) {
  * This code is an unmodified version of the code written by Marco de Wit
  * and was found at https://stackoverflow.com/a/18514751/745719
  */
-var levenshtein_row2 = [];
+const levenshtein_row2 = [];
 function levenshtein(s1, s2) {
     if (s1 === s2) {
         return 0;
     }
-    var s1_len = s1.length, s2_len = s2.length;
+    const s1_len = s1.length, s2_len = s2.length;
     if (s1_len && s2_len) {
-        var i1 = 0, i2 = 0, a, b, c, c2, row = levenshtein_row2;
+        let i1 = 0, i2 = 0, a, b, c, c2;
+        const row = levenshtein_row2;
         while (i1 < s1_len) {
             row[i1] = ++i1;
         }
@@ -97,24 +101,24 @@ function levenshtein(s1, s2) {
 }
 
 window.initSearch = function(rawSearchIndex) {
-    var MAX_LEV_DISTANCE = 3;
-    var MAX_RESULTS = 200;
-    var GENERICS_DATA = 2;
-    var NAME = 0;
-    var INPUTS_DATA = 0;
-    var OUTPUT_DATA = 1;
-    var NO_TYPE_FILTER = -1;
+    const MAX_LEV_DISTANCE = 3;
+    const MAX_RESULTS = 200;
+    const GENERICS_DATA = 2;
+    const NAME = 0;
+    const INPUTS_DATA = 0;
+    const OUTPUT_DATA = 1;
+    const NO_TYPE_FILTER = -1;
     /**
      *  @type {Array<Row>}
      */
-    var searchIndex;
+    let searchIndex;
     /**
      *  @type {Array<string>}
      */
-    var searchWords;
-    var currentResults;
-    var ALIASES = {};
-    var params = searchState.getQueryStringParams();
+    let searchWords = [];
+    let currentResults;
+    const ALIASES = {};
+    const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
     // but only if the input bar is empty. This avoid the obnoxious issue
@@ -145,7 +149,7 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function itemTypeFromName(typename) {
-        for (var i = 0, len = itemTypes.length; i < len; ++i) {
+        for (let i = 0, len = itemTypes.length; i < len; ++i) {
             if (itemTypes[i] === typename) {
                 return i;
             }
@@ -176,8 +180,8 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("Cannot use literal search when there is more than one element");
         }
         parserState.pos += 1;
-        var start = parserState.pos;
-        var end = getIdentEndPosition(parserState);
+        const start = parserState.pos;
+        const end = getIdentEndPosition(parserState);
         if (parserState.pos >= parserState.length) {
             throw new Error("Unclosed `\"`");
         } else if (parserState.userQuery[end] !== "\"") {
@@ -264,10 +268,10 @@ window.initSearch = function(rawSearchIndex) {
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
             throw new Error("You cannot have more than one element if you use quotes");
         }
-        var pathSegments = name.split("::");
+        const pathSegments = name.split("::");
         if (pathSegments.length > 1) {
-            for (var i = 0, len = pathSegments.length; i < len; ++i) {
-                var pathSegment = pathSegments[i];
+            for (let i = 0, len = pathSegments.length; i < len; ++i) {
+                const pathSegment = pathSegments[i];
 
                 if (pathSegment.length === 0) {
                     if (i === 0) {
@@ -305,9 +309,9 @@ window.initSearch = function(rawSearchIndex) {
      * @return {integer}
      */
     function getIdentEndPosition(parserState) {
-        var end = parserState.pos;
+        let end = parserState.pos;
         while (parserState.pos < parserState.length) {
-            var c = parserState.userQuery[parserState.pos];
+            const c = parserState.userQuery[parserState.pos];
             if (!isIdentCharacter(c)) {
                 if (isErrorCharacter(c)) {
                     throw new Error(`Unexpected \`${c}\``);
@@ -342,10 +346,10 @@ window.initSearch = function(rawSearchIndex) {
      * @param {boolean} isInGenerics
      */
     function getNextElem(query, parserState, elems, isInGenerics) {
-        var generics = [];
+        const generics = [];
 
-        var start = parserState.pos;
-        var end;
+        let start = parserState.pos;
+        let end;
         // We handle the strings on their own mostly to make code easier to follow.
         if (parserState.userQuery[parserState.pos] === "\"") {
             start += 1;
@@ -393,10 +397,10 @@ window.initSearch = function(rawSearchIndex) {
      *                                      character.
      */
     function getItemsBefore(query, parserState, elems, endChar) {
-        var foundStopChar = true;
+        let foundStopChar = true;
 
         while (parserState.pos < parserState.length) {
-            var c = parserState.userQuery[parserState.pos];
+            const c = parserState.userQuery[parserState.pos];
             if (c === endChar) {
                 break;
             } else if (isSeparatorCharacter(c)) {
@@ -406,7 +410,7 @@ window.initSearch = function(rawSearchIndex) {
             } else if (c === ":" && isPathStart(parserState)) {
                 throw new Error("Unexpected `::`: paths cannot start with `::`");
             } else if (c === ":" || isEndCharacter(c)) {
-                var extra = "";
+                let extra = "";
                 if (endChar === ">") {
                     extra = "`<`";
                 } else if (endChar === "") {
@@ -420,7 +424,7 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 throw new Error(`Expected \`,\` or \` \`, found \`${c}\``);
             }
-            var posBefore = parserState.pos;
+            const posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
             // This case can be encountered if `getNextElem` encounted a "stop character" right from
             // the start. For example if you have `,,` or `<>`. In this case, we simply move up the
@@ -442,9 +446,9 @@ window.initSearch = function(rawSearchIndex) {
      * @param {ParserState} parserState
      */
     function checkExtraTypeFilterCharacters(parserState) {
-        var query = parserState.userQuery;
+        const query = parserState.userQuery;
 
-        for (var pos = 0; pos < parserState.pos; ++pos) {
+        for (let pos = 0; pos < parserState.pos; ++pos) {
             if (!isIdentCharacter(query[pos]) && !isWhitespaceCharacter(query[pos])) {
                 throw new Error(`Unexpected \`${query[pos]}\` in type filter`);
             }
@@ -459,8 +463,8 @@ window.initSearch = function(rawSearchIndex) {
      * @param {ParserState} parserState
      */
     function parseInput(query, parserState) {
-        var c, before;
-        var foundStopChar = true;
+        let c, before;
+        let foundStopChar = true;
 
         while (parserState.pos < parserState.length) {
             c = parserState.userQuery[parserState.pos];
@@ -557,7 +561,7 @@ window.initSearch = function(rawSearchIndex) {
      * @return {string}
      */
     function buildUrl(search, filterCrates) {
-        var extra = "?search=" + encodeURIComponent(search);
+        let extra = "?search=" + encodeURIComponent(search);
 
         if (filterCrates !== null) {
             extra += "&filter-crate=" + encodeURIComponent(filterCrates);
@@ -571,7 +575,7 @@ window.initSearch = function(rawSearchIndex) {
      * @return {string|null}
      */
     function getFilterCrates() {
-        var elem = document.getElementById("crate-search");
+        const elem = document.getElementById("crate-search");
 
         if (elem &&
             elem.value !== "All crates" &&
@@ -650,7 +654,7 @@ window.initSearch = function(rawSearchIndex) {
      */
     function parseQuery(userQuery) {
         userQuery = userQuery.trim();
-        var parserState = {
+        const parserState = {
             length: userQuery.length,
             pos: 0,
             // Total number of elements (includes generics).
@@ -659,12 +663,12 @@ window.initSearch = function(rawSearchIndex) {
             typeFilter: null,
             userQuery: userQuery.toLowerCase(),
         };
-        var query = newParsedQuery(userQuery);
+        let query = newParsedQuery(userQuery);
 
         try {
             parseInput(query, parserState);
             if (parserState.typeFilter !== null) {
-                var typeFilter = parserState.typeFilter;
+                let typeFilter = parserState.typeFilter;
                 if (typeFilter === "const") {
                     typeFilter = "constant";
                 }
@@ -715,19 +719,17 @@ window.initSearch = function(rawSearchIndex) {
      * @return {ResultsTable}
      */
     function execQuery(parsedQuery, searchWords, filterCrates) {
-        var results_others = {}, results_in_args = {}, results_returned = {};
+        const results_others = {}, results_in_args = {}, results_returned = {};
 
         function transformResults(results) {
-            var duplicates = {};
-            var out = [];
+            const duplicates = {};
+            const out = [];
 
-            for (var i = 0, len = results.length; i < len; ++i) {
-                var result = results[i];
-
+            for (const result of results) {
                 if (result.id > -1) {
-                    var obj = searchIndex[result.id];
+                    const obj = searchIndex[result.id];
                     obj.lev = result.lev;
-                    var res = buildHrefAndPath(obj);
+                    const res = buildHrefAndPath(obj);
                     obj.displayPath = pathSplitter(res[0]);
                     obj.fullPath = obj.displayPath + obj.name;
                     // To be sure than it some items aren't considered as duplicate.
@@ -749,11 +751,11 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         function sortResults(results, isType) {
-            var userQuery = parsedQuery.userQuery;
-            var ar = [];
-            for (var entry in results) {
+            const userQuery = parsedQuery.userQuery;
+            const ar = [];
+            for (const entry in results) {
                 if (hasOwnPropertyRustdoc(results, entry)) {
-                    var result = results[entry];
+                    const result = results[entry];
                     result.word = searchWords[result.id];
                     result.item = searchIndex[result.id] || {};
                     ar.push(result);
@@ -766,7 +768,7 @@ window.initSearch = function(rawSearchIndex) {
             }
 
             results.sort(function(aaa, bbb) {
-                var a, b;
+                let a, b;
 
                 // sort by exact match with regard to the last word (mismatch goes later)
                 a = (aaa.word !== userQuery);
@@ -832,20 +834,18 @@ window.initSearch = function(rawSearchIndex) {
                 return 0;
             });
 
-            var nameSplit = null;
+            let nameSplit = null;
             if (parsedQuery.elems.length === 1) {
-                var hasPath = typeof parsedQuery.elems[0].path === "undefined";
+                const hasPath = typeof parsedQuery.elems[0].path === "undefined";
                 nameSplit = hasPath ? null : parsedQuery.elems[0].path;
             }
 
-            for (var i = 0, len = results.length; i < len; ++i) {
-                result = results[i];
-
+            for (const result of results) {
                 // this validation does not make sense when searching by types
                 if (result.dontValidate) {
                     continue;
                 }
-                var name = result.item.name.toLowerCase(),
+                const name = result.item.name.toLowerCase(),
                     path = result.item.path.toLowerCase(),
                     parent = result.item.parent;
 
@@ -877,15 +877,14 @@ window.initSearch = function(rawSearchIndex) {
             }
             // The names match, but we need to be sure that all generics kinda
             // match as well.
-            var elem_name;
+            let elem_name;
             if (elem.generics.length > 0 && row[GENERICS_DATA].length >= elem.generics.length) {
-                var elems = Object.create(null);
-                for (var x = 0, length = row[GENERICS_DATA].length; x < length; ++x) {
-                    elem_name = row[GENERICS_DATA][x][NAME];
+                const elems = Object.create(null);
+                for (const entry of row[GENERICS_DATA]) {
+                    elem_name = entry[NAME];
                     if (elem_name === "") {
                         // Pure generic, needs to check into it.
-                        if (checkGenerics(
-                                row[GENERICS_DATA][x], elem, MAX_LEV_DISTANCE + 1) !== 0) {
+                        if (checkGenerics(entry, elem, MAX_LEV_DISTANCE + 1) !== 0) {
                             return MAX_LEV_DISTANCE + 1;
                         }
                         continue;
@@ -897,9 +896,8 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 // We need to find the type that matches the most to remove it in order
                 // to move forward.
-                for (x = 0, length = elem.generics.length; x < length; ++x) {
-                    var generic = elem.generics[x];
-                    var match = null;
+                for (const generic of elem.generics) {
+                    let match = null;
                     if (elems[generic.name]) {
                         match = generic.name;
                     } else {
@@ -936,12 +934,12 @@ window.initSearch = function(rawSearchIndex) {
           * @return {integer} - Returns a Levenshtein distance to the best match.
           */
         function checkIfInGenerics(row, elem) {
-            var lev = MAX_LEV_DISTANCE + 1;
-            for (var x = 0, length = row[GENERICS_DATA].length; x < length && lev !== 0; ++x) {
-                lev = Math.min(
-                    checkType(row[GENERICS_DATA][x], elem, true),
-                    lev
-                );
+            let lev = MAX_LEV_DISTANCE + 1;
+            for (const entry of row[GENERICS_DATA]) {
+                lev = Math.min(checkType(entry, elem, true), lev);
+                if (lev === 0) {
+                    break;
+                }
             }
             return lev;
         }
@@ -966,12 +964,12 @@ window.initSearch = function(rawSearchIndex) {
                 return MAX_LEV_DISTANCE + 1;
             }
 
-            var lev = levenshtein(row[NAME], elem.name);
+            let lev = levenshtein(row[NAME], elem.name);
             if (literalSearch) {
                 if (lev !== 0) {
                     // The name didn't match, let's try to check if the generics do.
                     if (elem.generics.length === 0) {
-                        var checkGeneric = (row.length > GENERICS_DATA &&
+                        const checkGeneric = (row.length > GENERICS_DATA &&
                             row[GENERICS_DATA].length > 0);
                         if (checkGeneric && row[GENERICS_DATA].findIndex(function(tmp_elem) {
                             return tmp_elem[NAME] === elem.name;
@@ -1004,7 +1002,7 @@ window.initSearch = function(rawSearchIndex) {
                 } else {
                     // At this point, the name kinda match and we have generics to check, so
                     // let's go!
-                    var tmp_lev = checkGenerics(row, elem, lev);
+                    const tmp_lev = checkGenerics(row, elem, lev);
                     if (tmp_lev > MAX_LEV_DISTANCE) {
                         return MAX_LEV_DISTANCE + 1;
                     }
@@ -1032,16 +1030,14 @@ window.initSearch = function(rawSearchIndex) {
          *                      match, returns `MAX_LEV_DISTANCE + 1`.
          */
         function findArg(row, elem, typeFilter) {
-            var lev = MAX_LEV_DISTANCE + 1;
+            let lev = MAX_LEV_DISTANCE + 1;
 
             if (row && row.type && row.type[INPUTS_DATA] && row.type[INPUTS_DATA].length > 0) {
-                var length = row.type[INPUTS_DATA].length;
-                for (var i = 0; i < length; i++) {
-                    var tmp = row.type[INPUTS_DATA][i];
-                    if (!typePassesFilter(typeFilter, tmp[1])) {
+                for (const input of row.type[INPUTS_DATA]) {
+                    if (!typePassesFilter(typeFilter, input[1])) {
                         continue;
                     }
-                    lev = Math.min(lev, checkType(tmp, elem, parsedQuery.literalSearch));
+                    lev = Math.min(lev, checkType(input, elem, parsedQuery.literalSearch));
                     if (lev === 0) {
                         return 0;
                     }
@@ -1061,19 +1057,18 @@ window.initSearch = function(rawSearchIndex) {
          *                      match, returns `MAX_LEV_DISTANCE + 1`.
          */
         function checkReturned(row, elem, typeFilter) {
-            var lev = MAX_LEV_DISTANCE + 1;
+            let lev = MAX_LEV_DISTANCE + 1;
 
             if (row && row.type && row.type.length > OUTPUT_DATA) {
-                var ret = row.type[OUTPUT_DATA];
+                let ret = row.type[OUTPUT_DATA];
                 if (typeof ret[0] === "string") {
                     ret = [ret];
                 }
-                for (var x = 0, len = ret.length; x < len; ++x) {
-                    var tmp = ret[x];
-                    if (!typePassesFilter(typeFilter, tmp[1])) {
+                for (const ret_ty of ret) {
+                    if (!typePassesFilter(typeFilter, ret_ty[1])) {
                         continue;
                     }
-                    lev = Math.min(lev, checkType(tmp, elem, parsedQuery.literalSearch));
+                    lev = Math.min(lev, checkType(ret_ty, elem, parsedQuery.literalSearch));
                     if (lev === 0) {
                         return 0;
                     }
@@ -1086,26 +1081,26 @@ window.initSearch = function(rawSearchIndex) {
             if (contains.length === 0) {
                 return 0;
             }
-            var ret_lev = MAX_LEV_DISTANCE + 1;
-            var path = ty.path.split("::");
+            let ret_lev = MAX_LEV_DISTANCE + 1;
+            const path = ty.path.split("::");
 
             if (ty.parent && ty.parent.name) {
                 path.push(ty.parent.name.toLowerCase());
             }
 
-            var length = path.length;
-            var clength = contains.length;
+            const length = path.length;
+            const clength = contains.length;
             if (clength > length) {
                 return MAX_LEV_DISTANCE + 1;
             }
-            for (var i = 0; i < length; ++i) {
+            for (let i = 0; i < length; ++i) {
                 if (i + clength > length) {
                     break;
                 }
-                var lev_total = 0;
-                var aborted = false;
-                for (var x = 0; x < clength; ++x) {
-                    var lev = levenshtein(path[i + x], contains[x]);
+                let lev_total = 0;
+                let aborted = false;
+                for (let x = 0; x < clength; ++x) {
+                    const lev = levenshtein(path[i + x], contains[x]);
                     if (lev > MAX_LEV_DISTANCE) {
                         aborted = true;
                         break;
@@ -1124,7 +1119,7 @@ window.initSearch = function(rawSearchIndex) {
             if (filter <= NO_TYPE_FILTER || filter === type) return true;
 
             // Match related items
-            var name = itemTypes[type];
+            const name = itemTypes[type];
             switch (itemTypes[filter]) {
                 case "constant":
                     return name === "associatedconstant";
@@ -1154,33 +1149,31 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         function handleAliases(ret, query, filterCrates) {
-            var lowerQuery = query.toLowerCase();
+            const lowerQuery = query.toLowerCase();
             // We separate aliases and crate aliases because we want to have current crate
             // aliases to be before the others in the displayed results.
-            var aliases = [];
-            var crateAliases = [];
+            const aliases = [];
+            const crateAliases = [];
             if (filterCrates !== null) {
                 if (ALIASES[filterCrates] && ALIASES[filterCrates][lowerQuery]) {
-                    var query_aliases = ALIASES[filterCrates][lowerQuery];
-                    var len = query_aliases.length;
-                    for (var i = 0; i < len; ++i) {
-                        aliases.push(createAliasFromItem(searchIndex[query_aliases[i]]));
+                    const query_aliases = ALIASES[filterCrates][lowerQuery];
+                    for (const alias of query_aliases) {
+                        aliases.push(createAliasFromItem(searchIndex[alias]));
                     }
                 }
             } else {
                 Object.keys(ALIASES).forEach(function(crate) {
                     if (ALIASES[crate][lowerQuery]) {
-                        var pushTo = crate === window.currentCrate ? crateAliases : aliases;
-                        var query_aliases = ALIASES[crate][lowerQuery];
-                        var len = query_aliases.length;
-                        for (var i = 0; i < len; ++i) {
-                            pushTo.push(createAliasFromItem(searchIndex[query_aliases[i]]));
+                        const pushTo = crate === window.currentCrate ? crateAliases : aliases;
+                        const query_aliases = ALIASES[crate][lowerQuery];
+                        for (const alias of query_aliases) {
+                            pushTo.push(createAliasFromItem(searchIndex[alias]));
                         }
                     }
                 });
             }
 
-            var sortFunc = function(aaa, bbb) {
+            const sortFunc = function(aaa, bbb) {
                 if (aaa.path < bbb.path) {
                     return 1;
                 } else if (aaa.path === bbb.path) {
@@ -1191,9 +1184,9 @@ window.initSearch = function(rawSearchIndex) {
             crateAliases.sort(sortFunc);
             aliases.sort(sortFunc);
 
-            var pushFunc = function(alias) {
+            const pushFunc = function(alias) {
                 alias.alias = query;
-                var res = buildHrefAndPath(alias);
+                const res = buildHrefAndPath(alias);
                 alias.displayPath = pathSplitter(res[0]);
                 alias.fullPath = alias.displayPath + alias.name;
                 alias.href = res[1];
@@ -1230,7 +1223,7 @@ window.initSearch = function(rawSearchIndex) {
         function addIntoResults(results, fullId, id, index, lev) {
             if (lev === 0 || (!parsedQuery.literalSearch && lev <= MAX_LEV_DISTANCE)) {
                 if (results[fullId] !== undefined) {
-                    var result = results[fullId];
+                    const result = results[fullId];
                     if (result.dontValidate || result.lev <= lev) {
                         return;
                     }
@@ -1270,11 +1263,11 @@ window.initSearch = function(rawSearchIndex) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-            var lev, lev_add = 0, index = -1;
-            var fullId = row.id;
+            let lev, lev_add = 0, index = -1;
+            const fullId = row.id;
 
-            var in_args = findArg(row, elem, parsedQuery.typeFilter);
-            var returned = checkReturned(row, elem, parsedQuery.typeFilter);
+            const in_args = findArg(row, elem, parsedQuery.typeFilter);
+            const returned = checkReturned(row, elem, parsedQuery.typeFilter);
 
             addIntoResults(results_in_args, fullId, pos, index, in_args);
             addIntoResults(results_returned, fullId, pos, index, returned);
@@ -1282,7 +1275,7 @@ window.initSearch = function(rawSearchIndex) {
             if (!typePassesFilter(parsedQuery.typeFilter, row.ty)) {
                 return;
             }
-            var searchWord = searchWords[pos];
+            const searchWord = searchWords[pos];
 
             if (parsedQuery.literalSearch) {
                 if (searchWord === elem.name) {
@@ -1352,16 +1345,14 @@ window.initSearch = function(rawSearchIndex) {
                 return;
             }
 
-            var totalLev = 0;
-            var nbLev = 0;
-            var lev;
+            let totalLev = 0;
+            let nbLev = 0;
 
             // If the result is too "bad", we return false and it ends this search.
             function checkArgs(elems, callback) {
-                for (var i = 0, len = elems.length; i < len; ++i) {
-                    var elem = elems[i];
+                for (const elem of elems) {
                     // There is more than one parameter to the query so all checks should be "exact"
-                    lev = callback(row, elem, NO_TYPE_FILTER);
+                    const lev = callback(row, elem, NO_TYPE_FILTER);
                     if (lev <= 1) {
                         nbLev += 1;
                         totalLev += lev;
@@ -1381,12 +1372,12 @@ window.initSearch = function(rawSearchIndex) {
             if (nbLev === 0) {
                 return;
             }
-            lev = Math.round(totalLev / nbLev);
+            const lev = Math.round(totalLev / nbLev);
             addIntoResults(results, row.id, pos, 0, lev);
         }
 
         function innerRunQuery() {
-            var elem, i, nSearchWords, in_returned, row;
+            let elem, i, nSearchWords, in_returned, row;
 
             if (parsedQuery.foundElems === 1) {
                 if (parsedQuery.elems.length === 1) {
@@ -1413,7 +1404,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
-                var container = results_others;
+                let container = results_others;
                 // In the special case where only a "returned" information is available, we want to
                 // put the information into the "results_returned" dict.
                 if (parsedQuery.returned.length !== 0 && parsedQuery.elems.length === 0) {
@@ -1429,7 +1420,7 @@ window.initSearch = function(rawSearchIndex) {
             innerRunQuery();
         }
 
-        var ret = createQueryResults(
+        const ret = createQueryResults(
             sortResults(results_in_args, true),
             sortResults(results_returned, true),
             sortResults(results_others, false),
@@ -1462,18 +1453,18 @@ window.initSearch = function(rawSearchIndex) {
         if (!keys || !keys.length) {
             return true;
         }
-        for (var i = 0, len = keys.length; i < len; ++i) {
+        for (const key of keys) {
             // each check is for validation so we negate the conditions and invalidate
             if (!(
                 // check for an exact name match
-                name.indexOf(keys[i]) > -1 ||
+                name.indexOf(key) > -1 ||
                 // then an exact path match
-                path.indexOf(keys[i]) > -1 ||
+                path.indexOf(key) > -1 ||
                 // next if there is a parent, check for exact parent match
                 (parent !== undefined && parent.name !== undefined &&
-                    parent.name.toLowerCase().indexOf(keys[i]) > -1) ||
+                    parent.name.toLowerCase().indexOf(key) > -1) ||
                 // lastly check to see if the name was a levenshtein match
-                levenshtein(name, keys[i]) <= MAX_LEV_DISTANCE)) {
+                levenshtein(name, key) <= MAX_LEV_DISTANCE)) {
                 return false;
             }
         }
@@ -1481,7 +1472,7 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function nextTab(direction) {
-        var next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
+        const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
         searchState.focusedByTab[searchState.currentTab] = document.activeElement;
         printTab(next);
         focusSearchResult();
@@ -1490,7 +1481,7 @@ window.initSearch = function(rawSearchIndex) {
     // Focus the first search result on the active tab, or the result that
     // was focused last time this tab was active.
     function focusSearchResult() {
-        var target = searchState.focusedByTab[searchState.currentTab] ||
+        const target = searchState.focusedByTab[searchState.currentTab] ||
             document.querySelectorAll(".search-results.active a").item(0) ||
             document.querySelectorAll("#titles > button").item(searchState.currentTab);
         if (target) {
@@ -1499,11 +1490,11 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function buildHrefAndPath(item) {
-        var displayPath;
-        var href;
-        var type = itemTypes[item.ty];
-        var name = item.name;
-        var path = item.path;
+        let displayPath;
+        let href;
+        const type = itemTypes[item.ty];
+        const name = item.name;
+        let path = item.path;
 
         if (type === "mod") {
             displayPath = path + "::";
@@ -1517,19 +1508,19 @@ window.initSearch = function(rawSearchIndex) {
             displayPath = "";
             href = window.rootPath + name + "/index.html";
         } else if (item.parent !== undefined) {
-            var myparent = item.parent;
-            var anchor = "#" + type + "." + name;
-            var parentType = itemTypes[myparent.ty];
-            var pageType = parentType;
-            var pageName = myparent.name;
+            const myparent = item.parent;
+            let anchor = "#" + type + "." + name;
+            const parentType = itemTypes[myparent.ty];
+            let pageType = parentType;
+            let pageName = myparent.name;
 
             if (parentType === "primitive") {
                 displayPath = myparent.name + "::";
             } else if (type === "structfield" && parentType === "variant") {
                 // Structfields belonging to variants are special: the
                 // final path element is the enum name.
-                var enumNameIdx = item.path.lastIndexOf("::");
-                var enumName = item.path.substr(enumNameIdx + 2);
+                const enumNameIdx = item.path.lastIndexOf("::");
+                const enumName = item.path.substr(enumNameIdx + 2);
                 path = item.path.substr(0, enumNameIdx);
                 displayPath = path + "::" + enumName + "::" + myparent.name + "::";
                 anchor = "#variant." + myparent.name + ".field." + name;
@@ -1551,13 +1542,13 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function escape(content) {
-        var h1 = document.createElement("h1");
+        const h1 = document.createElement("h1");
         h1.textContent = content;
         return h1.innerHTML;
     }
 
     function pathSplitter(path) {
-        var tmp = "<span>" + path.replace(/::/g, "::</span><span>");
+        const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
         if (tmp.endsWith("<span>")) {
             return tmp.slice(0, tmp.length - 6);
         }
@@ -1571,42 +1562,42 @@ window.initSearch = function(rawSearchIndex) {
      * @param {boolean}     display - True if this is the active tab
      */
     function addTab(array, query, display) {
-        var extraClass = "";
+        let extraClass = "";
         if (display === true) {
             extraClass = " active";
         }
 
-        var output = document.createElement("div");
-        var length = 0;
+        const output = document.createElement("div");
+        let length = 0;
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
-                var name = item.name;
-                var type = itemTypes[item.ty];
+                const name = item.name;
+                const type = itemTypes[item.ty];
 
                 length += 1;
 
-                var extra = "";
+                let extra = "";
                 if (type === "primitive") {
                     extra = " <i>(primitive type)</i>";
                 } else if (type === "keyword") {
                     extra = " <i>(keyword)</i>";
                 }
 
-                var link = document.createElement("a");
+                const link = document.createElement("a");
                 link.className = "result-" + type;
                 link.href = item.href;
 
-                var wrapper = document.createElement("div");
-                var resultName = document.createElement("div");
+                const wrapper = document.createElement("div");
+                const resultName = document.createElement("div");
                 resultName.className = "result-name";
 
                 if (item.is_alias) {
-                    var alias = document.createElement("span");
+                    const alias = document.createElement("span");
                     alias.className = "alias";
 
-                    var bold = document.createElement("b");
+                    const bold = document.createElement("b");
                     bold.innerText = item.alias;
                     alias.appendChild(bold);
 
@@ -1621,9 +1612,9 @@ window.initSearch = function(rawSearchIndex) {
                     item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
                 wrapper.appendChild(resultName);
 
-                var description = document.createElement("div");
+                const description = document.createElement("div");
                 description.className = "desc";
-                var spanDesc = document.createElement("span");
+                const spanDesc = document.createElement("span");
                 spanDesc.insertAdjacentHTML("beforeend", item.desc);
 
                 description.appendChild(spanDesc);
@@ -1664,7 +1655,7 @@ window.initSearch = function(rawSearchIndex) {
      * @param {string} filterCrates
      */
     function showResults(results, go_to_first, filterCrates) {
-        var search = searchState.outputElement();
+        const search = searchState.outputElement();
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true"
             // By default, the search DOM element is "empty" (meaning it has no children not
@@ -1672,7 +1663,7 @@ window.initSearch = function(rawSearchIndex) {
             // ESC or empty the search input (which also "cancels" the search).
             && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText)))
         {
-            var elem = document.createElement("a");
+            const elem = document.createElement("a");
             elem.href = results.others[0].href;
             removeClass(elem, "active");
             // For firefox, we need the element to be in the DOM so it can be clicked.
@@ -1686,14 +1677,14 @@ window.initSearch = function(rawSearchIndex) {
 
         currentResults = results.query.userQuery;
 
-        var ret_others = addTab(results.others, results.query, true);
-        var ret_in_args = addTab(results.in_args, results.query, false);
-        var ret_returned = addTab(results.returned, results.query, false);
+        const ret_others = addTab(results.others, results.query, true);
+        const ret_in_args = addTab(results.in_args, results.query, false);
+        const ret_returned = addTab(results.returned, results.query, false);
 
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
         // it again.
-        var currentTab = searchState.currentTab;
+        let currentTab = searchState.currentTab;
         if ((currentTab === 0 && ret_others[1] === 0) ||
                 (currentTab === 1 && ret_in_args[1] === 0) ||
                 (currentTab === 2 && ret_returned[1] === 0)) {
@@ -1709,18 +1700,18 @@ window.initSearch = function(rawSearchIndex) {
         let crates = "";
         if (window.ALL_CRATES.length > 1) {
             crates = ` in <select id="crate-search"><option value="All crates">All crates</option>`;
-            for (let c of window.ALL_CRATES) {
+            for (const c of window.ALL_CRATES) {
                 crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
             }
             crates += `</select>`;
         }
 
-        var typeFilter = "";
+        let typeFilter = "";
         if (results.query.typeFilter !== NO_TYPE_FILTER) {
             typeFilter = " (type: " + escape(itemTypes[results.query.typeFilter]) + ")";
         }
 
-        var output = `<div id="search-settings">` +
+        let output = `<div id="search-settings">` +
             `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
             `${typeFilter}</h1> in ${crates} </div>`;
         if (results.query.error !== null) {
@@ -1732,14 +1723,14 @@ window.initSearch = function(rawSearchIndex) {
             makeTabHeader(2, "In Return Types", ret_returned[1]) +
             "</div>";
 
-        var resultsElem = document.createElement("div");
+        const resultsElem = document.createElement("div");
         resultsElem.id = "results";
         resultsElem.appendChild(ret_others[0]);
         resultsElem.appendChild(ret_in_args[0]);
         resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
-        let crateSearch = document.getElementById("crate-search");
+        const crateSearch = document.getElementById("crate-search");
         if (crateSearch) {
             crateSearch.addEventListener("input", updateCrate);
         }
@@ -1747,7 +1738,7 @@ window.initSearch = function(rawSearchIndex) {
         // Reset focused elements.
         searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
-        var elems = document.getElementById("titles").childNodes;
+        const elems = document.getElementById("titles").childNodes;
         elems[0].onclick = function() { printTab(0); };
         elems[1].onclick = function() { printTab(1); };
         elems[2].onclick = function() { printTab(2); };
@@ -1761,8 +1752,8 @@ window.initSearch = function(rawSearchIndex) {
      * @param {boolean} [forced]
      */
     function search(e, forced) {
-        var params = searchState.getQueryStringParams();
-        var query = parseQuery(searchState.input.value.trim());
+        const params = searchState.getQueryStringParams();
+        const query = parseQuery(searchState.input.value.trim());
 
         if (e) {
             e.preventDefault();
@@ -1775,7 +1766,7 @@ window.initSearch = function(rawSearchIndex) {
             return;
         }
 
-        var filterCrates = getFilterCrates();
+        let filterCrates = getFilterCrates();
 
         // In case we have no information about the saved crate and there is a URL query parameter,
         // we override it with the URL query parameter.
@@ -1789,7 +1780,7 @@ window.initSearch = function(rawSearchIndex) {
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
         if (searchState.browserSupportsHistoryApi()) {
-            var newURL = buildUrl(query.original, filterCrates);
+            const newURL = buildUrl(query.original, filterCrates);
             if (!history.state && !params.search) {
                 history.pushState(null, "", newURL);
             } else {
@@ -1808,17 +1799,17 @@ window.initSearch = function(rawSearchIndex) {
         /**
          * @type {Array<string>}
          */
-        var searchWords = [];
-        var i, word;
-        var currentIndex = 0;
-        var id = 0;
+        const searchWords = [];
+        let i, word;
+        let currentIndex = 0;
+        let id = 0;
 
-        for (var crate in rawSearchIndex) {
+        for (const crate in rawSearchIndex) {
             if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
                 continue;
             }
 
-            var crateSize = 0;
+            let crateSize = 0;
 
             /**
              * The raw search data for a given crate. `n`, `t`, `d`, and `q`, `i`, and `f`
@@ -1850,13 +1841,13 @@ window.initSearch = function(rawSearchIndex) {
              *   p: Array<Object>,
              * }}
              */
-            var crateCorpus = rawSearchIndex[crate];
+            const crateCorpus = rawSearchIndex[crate];
 
             searchWords.push(crate);
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
-            var crateRow = {
+            const crateRow = {
                 crate: crate,
                 ty: 1, // == ExternCrate
                 name: crate,
@@ -1872,26 +1863,26 @@ window.initSearch = function(rawSearchIndex) {
             currentIndex += 1;
 
             // an array of (Number) item types
-            var itemTypes = crateCorpus.t;
+            const itemTypes = crateCorpus.t;
             // an array of (String) item names
-            var itemNames = crateCorpus.n;
+            const itemNames = crateCorpus.n;
             // an array of (String) full paths (or empty string for previous path)
-            var itemPaths = crateCorpus.q;
+            const itemPaths = crateCorpus.q;
             // an array of (String) descriptions
-            var itemDescs = crateCorpus.d;
+            const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
-            var itemParentIdxs = crateCorpus.i;
+            const itemParentIdxs = crateCorpus.i;
             // an array of (Object | null) the type of the function, if any
-            var itemFunctionSearchTypes = crateCorpus.f;
+            const itemFunctionSearchTypes = crateCorpus.f;
             // an array of [(Number) item type,
             //              (String) name]
-            var paths = crateCorpus.p;
+            const paths = crateCorpus.p;
             // an array of [(String) alias name
             //             [Number] index to items]
-            var aliases = crateCorpus.a;
+            const aliases = crateCorpus.a;
 
             // convert `rawPaths` entries into object form
-            var len = paths.length;
+            let len = paths.length;
             for (i = 0; i < len; ++i) {
                 paths[i] = {ty: paths[i][0], name: paths[i][1]};
             }
@@ -1904,7 +1895,7 @@ window.initSearch = function(rawSearchIndex) {
             // all other search operations have access to this cached data for
             // faster analysis operations
             len = itemTypes.length;
-            var lastPath = "";
+            let lastPath = "";
             for (i = 0; i < len; ++i) {
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
@@ -1915,7 +1906,7 @@ window.initSearch = function(rawSearchIndex) {
                     word = "";
                     searchWords.push("");
                 }
-                var row = {
+                const row = {
                     crate: crate,
                     ty: itemTypes[i],
                     name: itemNames[i],
@@ -1934,8 +1925,7 @@ window.initSearch = function(rawSearchIndex) {
 
             if (aliases) {
                 ALIASES[crate] = {};
-                var j, local_aliases;
-                for (var alias_name in aliases) {
+                for (const alias_name in aliases) {
                     if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
                         continue;
                     }
@@ -1943,9 +1933,8 @@ window.initSearch = function(rawSearchIndex) {
                     if (!hasOwnPropertyRustdoc(ALIASES[crate], alias_name)) {
                         ALIASES[crate][alias_name] = [];
                     }
-                    local_aliases = aliases[alias_name];
-                    for (j = 0, len = local_aliases.length; j < len; ++j) {
-                        ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
+                    for (const local_alias of aliases[alias_name]) {
+                        ALIASES[crate][alias_name].push(local_alias + currentIndex);
                     }
                 }
             }
@@ -1965,11 +1954,11 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function putBackSearch() {
-        var search_input = searchState.input;
+        const search_input = searchState.input;
         if (!searchState.input) {
             return;
         }
-        var search = searchState.outputElement();
+        const search = searchState.outputElement();
         if (search_input.value !== "" && hasClass(search, "hidden")) {
             searchState.showResults(search);
             if (searchState.browserSupportsHistoryApi()) {
@@ -1981,7 +1970,7 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function registerSearchEvents() {
-        var searchAfter500ms = function() {
+        const searchAfter500ms = function() {
             searchState.clearInputTimeout();
             if (searchState.input.value.length === 0) {
                 if (searchState.browserSupportsHistoryApi()) {
@@ -2019,7 +2008,7 @@ window.initSearch = function(rawSearchIndex) {
             // up and down arrow select next/previous search result, or the
             // search box if we're already at the top.
             if (e.which === 38) { // up
-                var previous = document.activeElement.previousElementSibling;
+                const previous = document.activeElement.previousElementSibling;
                 if (previous) {
                     previous.focus();
                 } else {
@@ -2027,11 +2016,11 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 e.preventDefault();
             } else if (e.which === 40) { // down
-                var next = document.activeElement.nextElementSibling;
+                const next = document.activeElement.nextElementSibling;
                 if (next) {
                     next.focus();
                 }
-                var rect = document.activeElement.getBoundingClientRect();
+                const rect = document.activeElement.getBoundingClientRect();
                 if (window.innerHeight - rect.bottom < rect.height) {
                     window.scrollBy(0, rect.height);
                 }
@@ -2064,10 +2053,10 @@ window.initSearch = function(rawSearchIndex) {
         // history.
         if (searchState.browserSupportsHistoryApi()) {
             // Store the previous <title> so we can revert back to it later.
-            var previousTitle = document.title;
+            const previousTitle = document.title;
 
             window.addEventListener("popstate", function(e) {
-                var params = searchState.getQueryStringParams();
+                const params = searchState.getQueryStringParams();
                 // Revert to the previous title manually since the History
                 // API ignores the title parameter.
                 document.title = previousTitle;
@@ -2103,7 +2092,7 @@ window.initSearch = function(rawSearchIndex) {
         // that try to sync state between the URL and the search input. To work around it,
         // do a small amount of re-init on page show.
         window.onpageshow = function(){
-            var qSearch = searchState.getQueryStringParams().search;
+            const qSearch = searchState.getQueryStringParams().search;
             if (searchState.input.value === "" && qSearch) {
                 searchState.input.value = qSearch;
             }
@@ -2114,8 +2103,8 @@ window.initSearch = function(rawSearchIndex) {
     function updateCrate(ev) {
         if (ev.target.value === "All crates") {
             // If we don't remove it from the URL, it'll be picked up again by the search.
-            var params = searchState.getQueryStringParams();
-            var query = searchState.input.value.trim();
+            const params = searchState.getQueryStringParams();
+            const query = searchState.input.value.trim();
             if (!history.state && !params.search) {
                 history.pushState(null, "", buildUrl(query, null));
             } else {
