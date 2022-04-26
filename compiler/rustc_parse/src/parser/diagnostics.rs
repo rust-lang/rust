@@ -1176,13 +1176,13 @@ impl<'a> Parser<'a> {
         struct AmbiguousPlus {
             pub sum_with_parens: String,
             #[primary_span]
-            #[suggestion(code = "{sum_with_parens}")]
+            #[suggestion(code = "({sum_with_parens})")]
             pub span: Span,
         }
 
         if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
             self.sess.emit_err(AmbiguousPlus {
-                sum_with_parens: format!("({})", pprust::ty_to_string(&ty)),
+                sum_with_parens: pprust::ty_to_string(&ty),
                 span: ty.span,
             });
         }
