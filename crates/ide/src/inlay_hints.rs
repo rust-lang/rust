@@ -36,13 +36,13 @@ pub enum LifetimeElisionHints {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
-    ImplicitReborrow,
-    TypeHint,
-    ParameterHint,
-    ClosureReturnTypeHint,
     ChainingHint,
+    ClosureReturnTypeHint,
     GenericParamListHint,
+    ImplicitReborrow,
     LifetimeHint,
+    ParameterHint,
+    TypeHint,
 }
 
 #[derive(Debug)]
@@ -110,11 +110,11 @@ fn hints(
     config: &InlayHintsConfig,
     node: SyntaxNode,
 ) {
-    let krate = match sema.scope(&node) {
-        Some(it) => it.krate(),
+    let famous_defs = match sema.scope(&node) {
+        Some(it) => FamousDefs(sema, it.krate()),
         None => return,
     };
-    let famous_defs = FamousDefs(sema, krate);
+
     if let Some(expr) = ast::Expr::cast(node.clone()) {
         chaining_hints(hints, sema, &famous_defs, config, &expr);
         match expr {
@@ -1637,10 +1637,7 @@ fn main() {
     fn skip_constructor_and_enum_type_hints() {
         check_with_config(
             InlayHintsConfig {
-                render_colons: true,
                 type_hints: true,
-                parameter_hints: true,
-                chaining_hints: true,
                 hide_named_constructor_hints: true,
                 ..DISABLED_CONFIG
             },
@@ -2147,7 +2144,7 @@ impl () {
     #[test]
     fn hints_implicit_reborrow() {
         check_with_config(
-            InlayHintsConfig { reborrow_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig { reborrow_hints: true, parameter_hints: true, ..DISABLED_CONFIG },
             r#"
 fn __() {
     let unique = &mut ();
@@ -2155,12 +2152,15 @@ fn __() {
     let foo: &mut _ = unique;
                     //^^^^^^ &mut *
     ref_mut_id(unique);
+             //^^^^^^ mut_ref
              //^^^^^^ &mut *
     let shared = ref_id(unique);
+                      //^^^^^^ shared_ref
                       //^^^^^^ &*
     let mov = shared;
     let r_mov: &_ = shared;
     ref_id(shared);
+         //^^^^^^ shared_ref
 
     identity(unique);
     identity(shared);
@@ -2168,12 +2168,12 @@ fn __() {
 fn identity<T>(t: T) -> T {
     t
 }
-fn ref_mut_id(x: &mut ()) -> &mut () {
-    x
-  //^ &mut *
+fn ref_mut_id(mut_ref: &mut ()) -> &mut () {
+    mut_ref
+  //^^^^^^^ &mut *
 }
-fn ref_id(x: &()) -> &() {
-    x
+fn ref_id(shared_ref: &()) -> &() {
+    shared_ref
 }
 "#,
         );
