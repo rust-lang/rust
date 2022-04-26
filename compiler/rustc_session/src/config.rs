@@ -894,6 +894,7 @@ pub const fn default_lib_output() -> CrateType {
 
 fn default_configuration(sess: &Session) -> CrateConfig {
     // NOTE: This should be kept in sync with `CrateCheckConfig::fill_well_known` below.
+    let tar = &sess.opts.target_triple.triple();
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
@@ -909,8 +910,10 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     });
 
     let mut ret = FxHashSet::default();
-    ret.reserve(7); // the minimum number of insertions
+    ret.reserve(9); // the minimum number of insertions
+
     // Target bindings.
+    ret.insert((sym::target, Some(Symbol::intern(tar))));
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
     for fam in sess.target.families.as_ref() {
         ret.insert((sym::target_family, Some(Symbol::intern(fam))));
@@ -1031,6 +1034,7 @@ impl CrateCheckConfig {
             // rustc
             sym::unix,
             sym::windows,
+            sym::target,
             sym::target_os,
             sym::target_family,
             sym::target_arch,
@@ -1120,9 +1124,11 @@ impl CrateCheckConfig {
             .extend(atomic_values);
 
         // Target specific values
-        for target in
-            TARGETS.iter().map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+        for (name, target) in TARGETS
+            .iter()
+            .map(|target| (target, Target::expect_builtin(&TargetTriple::from_triple(target))))
         {
+            self.values_valid.entry(sym::target).or_default().insert(Symbol::intern(&name));
             self.values_valid
                 .entry(sym::target_os)
                 .or_default()

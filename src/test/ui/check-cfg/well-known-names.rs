@@ -3,12 +3,21 @@
 // check-pass
 // compile-flags: --check-cfg=names() -Z unstable-options
 
+#![feature(cfg_target)]
+
 #[cfg(target_oz = "linux")]
 //~^ WARNING unexpected `cfg` condition name
 fn target_os_misspell() {}
 
 #[cfg(target_os = "linux")]
 fn target_os() {}
+
+#[cfg(targeT = "x86_64-unknown-linux-gnu")]
+//~^ WARNING unexpected `cfg` condition name
+fn target_misspell() {}
+
+#[cfg(target = "x86_64-unknown-linux-gnu")]
+fn target() {}
 
 #[cfg(features = "foo")]
 //~^ WARNING unexpected `cfg` condition name

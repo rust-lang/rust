@@ -317,6 +317,8 @@ declare_features! (
     (incomplete, capture_disjoint_fields, "1.49.0", Some(53488), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
+    /// Allows `cfg(target = "...")`.
+    (active, cfg_target, "1.62.0", Some(96901), None),
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
