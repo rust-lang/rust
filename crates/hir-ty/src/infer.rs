@@ -19,7 +19,7 @@ use std::sync::Arc;
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
     body::Body,
-    data::{ConstData, FunctionData, StaticData},
+    data::{ConstData, StaticData},
     expr::{BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
@@ -32,12 +32,13 @@ use hir_expand::name::{name, Name};
 use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
-use stdx::impl_from;
+use stdx::{always, impl_from};
 
 use crate::{
-    db::HirDatabase, fold_tys_and_consts, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal, GenericArg, Goal, InEnvironment,
-    Interner, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
+    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -64,7 +65,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
 
     match def {
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
-        DefWithBodyId::FunctionId(f) => ctx.collect_fn(&db.function_data(f)),
+        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
     }
 
@@ -457,7 +458,8 @@ impl<'a> InferenceContext<'a> {
         self.return_ty = self.make_ty(&data.type_ref);
     }
 
-    fn collect_fn(&mut self, data: &FunctionData) {
+    fn collect_fn(&mut self, func: FunctionId) {
+        let data = self.db.function_data(func);
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let param_tys =
@@ -474,8 +476,42 @@ impl<'a> InferenceContext<'a> {
         } else {
             &*data.ret_type
         };
-        let return_ty = self.make_ty_with_mode(return_ty, ImplTraitLoweringMode::Disallowed); // FIXME implement RPIT
+        let return_ty = self.make_ty_with_mode(return_ty, ImplTraitLoweringMode::Opaque);
         self.return_ty = return_ty;
+
+        if let Some(rpits) = self.db.return_type_impl_traits(func) {
+            // RPIT opaque types use substitution of their parent function.
+            let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
+            self.return_ty = fold_tys(
+                self.return_ty.clone(),
+                |ty, _| {
+                    let opaque_ty_id = match ty.kind(Interner) {
+                        TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
+                        _ => return ty,
+                    };
+                    let idx = match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                        ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
+                        _ => unreachable!(),
+                    };
+                    let bounds = (*rpits).map_ref(|rpits| {
+                        rpits.impl_traits[idx as usize].bounds.map_ref(|it| it.into_iter())
+                    });
+                    let var = self.table.new_type_var();
+                    let var_subst = Substitution::from1(Interner, var.clone());
+                    for bound in bounds {
+                        let predicate =
+                            bound.map(|it| it.cloned()).substitute(Interner, &fn_placeholders);
+                        let (var_predicate, binders) = predicate
+                            .substitute(Interner, &var_subst)
+                            .into_value_and_skipped_binders();
+                        always!(binders.len(Interner) == 0); // quantified where clauses not yet handled
+                        self.push_obligation(var_predicate.cast(Interner));
+                    }
+                    var
+                },
+                DebruijnIndex::INNERMOST,
+            );
+        }
     }
 
     fn infer_body(&mut self) {
