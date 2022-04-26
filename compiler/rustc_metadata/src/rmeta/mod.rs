@@ -219,6 +219,7 @@ crate struct CrateRoot<'tcx> {
     proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables<'tcx>,
+    debugger_visualizers: Lazy<[rustc_span::DebuggerVisualizerFile]>,
 
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportInfo)]),
 
