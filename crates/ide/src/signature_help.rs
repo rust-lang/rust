@@ -115,7 +115,10 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
             format_to!(res.signature, "fn {}", func.name(db));
-            fn_params = Some(func.assoc_fn_params(db));
+            fn_params = Some(match func.self_param(db) {
+                Some(_self) => func.params_without_self(db),
+                None => func.assoc_fn_params(db),
+            });
         }
         hir::CallableKind::TupleStruct(strukt) => {
             res.doc = strukt.docs(db).map(|it| it.into());
@@ -1032,6 +1035,25 @@ fn f() {
             expect![[r#"
                 fn f<T>
                      ^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_generic_param_in_method_call() {
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn test<V>(&mut self, val: V) {}
+}
+fn sup() {
+    Foo.test($0)
+}
+"#,
+            expect![[r#"
+                fn test(&mut self, val: V)
+                                   ^^^^^^
             "#]],
         );
     }
