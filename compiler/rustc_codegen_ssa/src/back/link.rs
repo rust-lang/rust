@@ -1696,6 +1696,10 @@ fn add_linked_symbol_object(
     // so add an empty section.
     if file.format() == object::BinaryFormat::Coff {
         file.add_section(Vec::new(), ".text".into(), object::SectionKind::Text);
+
+        // We handle the name decoration of COFF targets in `symbol_export.rs`, so disable the
+        // default mangler in `object` crate.
+        file.set_mangling(object::write::Mangling::None);
     }
 
     for (sym, kind) in symbols.iter() {
