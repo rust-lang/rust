@@ -280,10 +280,6 @@ fn main() {
 fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
     let mut long_codes: Vec<(&'static str, Option<&'static str>)> = Vec::new();
     macro_rules! register_diagnostics {
-        ($($ecode:ident: $message:expr,)*) => (
-            register_diagnostics!{$($ecode:$message,)* ;}
-        );
-
         ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
             $(
                 {long_codes.extend([

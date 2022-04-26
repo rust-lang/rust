@@ -711,6 +711,9 @@ pub struct SyntaxExtension {
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
     pub builtin_name: Option<Symbol>,
+    /// Rule spans. Used for linting. If the macro is not made up of rules,
+    /// it's empty.
+    pub rule_spans: Vec<Span>,
 }
 
 impl SyntaxExtension {
@@ -740,6 +743,7 @@ impl SyntaxExtension {
             edition,
             builtin_name: None,
             kind,
+            rule_spans: Vec::new(),
         }
     }
 
@@ -753,6 +757,7 @@ impl SyntaxExtension {
         edition: Edition,
         name: Symbol,
         attrs: &[ast::Attribute],
+        rule_spans: Vec<Span>,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
@@ -800,6 +805,7 @@ impl SyntaxExtension {
             helper_attrs,
             edition,
             builtin_name,
+            rule_spans,
         }
     }
 
@@ -886,6 +892,8 @@ pub trait ResolverExpand {
         eager_expansion_root: LocalExpnId,
         force: bool,
     ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
+
+    fn record_macro_rule_usage(&mut self, mac_id: NodeId, rule_index: usize);
 
     fn check_unused_macros(&mut self);
 

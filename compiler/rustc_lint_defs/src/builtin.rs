@@ -776,6 +776,35 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unused_macro_rules` lint detects macro rules that were not used.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// macro_rules! unused_empty {
+    ///     (hello) => { println!("Hello, world!") };
+    ///     () => { println!("empty") };
+    /// }
+    ///
+    /// fn main() {
+    ///     unused_empty!(hello);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unused macro rules may signal a mistake or unfinished code. Furthermore,
+    /// they slow down compilation. Right now, silencing the warning is not
+    /// supported on a single rule level, so you have to add an allow to the
+    /// entire macro definition.
+    pub UNUSED_MACRO_RULES,
+    Warn,
+    "detects macro rules that were not used"
+}
+
+declare_lint! {
     /// The `warnings` lint allows you to change the level of other
     /// lints which produce warnings.
     ///
@@ -3138,6 +3167,7 @@ declare_lint_pass! {
         OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         WARNINGS,
         UNUSED_FEATURES,
         STABLE_FEATURES,
