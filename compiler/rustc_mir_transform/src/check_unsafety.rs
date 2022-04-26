@@ -76,7 +76,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe(
                         UnsafetyViolationKind::General,
-                        UnsafetyViolationDetails::CallToUnsafeFunction(func_id.copied()),
+                        UnsafetyViolationDetails::CallToUnsafeFunction,
                     )
                 }
 
@@ -381,7 +381,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
             self.require_unsafe(
                 UnsafetyViolationKind::General,
-                UnsafetyViolationDetails::CallToFunctionWith(func_did),
+                UnsafetyViolationDetails::CallToFunctionWith,
             )
         }
     }
@@ -580,8 +580,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let (description, note) =
-            ty::print::with_no_trimmed_paths!(details.description_and_note(tcx));
+        let (description, note) = details.description_and_note();
 
         // Report an error.
         let unsafe_fn_msg =
@@ -598,7 +597,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     description,
                     unsafe_fn_msg,
                 )
-                .span_label(source_info.span, details.simple_description())
+                .span_label(source_info.span, description)
                 .note(note)
                 .emit();
             }
