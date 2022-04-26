@@ -242,6 +242,16 @@ impl MultiSugg {
         err.multipart_suggestions(msg, suggestions.map(|s| s.patches), applicability);
     }
 }
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-maybe-report-ambiguous-plus")]
+struct AmbiguousPlus {
+    pub sum_with_parens: String,
+    #[primary_span]
+    #[suggestion(code = "({sum_with_parens})")]
+    pub span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1171,15 +1181,6 @@ impl<'a> Parser<'a> {
         impl_dyn_multi: bool,
         ty: &Ty,
     ) {
-        #[derive(SessionDiagnostic)]
-        #[error(slug = "parser-maybe-report-ambiguous-plus")]
-        struct AmbiguousPlus {
-            pub sum_with_parens: String,
-            #[primary_span]
-            #[suggestion(code = "({sum_with_parens})")]
-            pub span: Span,
-        }
-
         if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
             self.sess.emit_err(AmbiguousPlus {
                 sum_with_parens: pprust::ty_to_string(&ty),
