@@ -1727,6 +1727,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         } else if cat_a == cat_b {
             match (a.kind(), b.kind()) {
                 (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
+                (ty::Foreign(def_a), ty::Foreign(def_b)) => def_a == def_b,
                 // Matching on references results in a lot of unhelpful
                 // suggestions, so let's just not do that for now.
                 //

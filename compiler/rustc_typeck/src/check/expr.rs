@@ -78,10 +78,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            assert!(
-                !self.typeck_results.borrow().adjustments().contains_key(expr.hir_id),
-                "expression with never type wound up being adjusted"
-            );
+            if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
+                self.tcx().sess.delay_span_bug(
+                    expr.span,
+                    "expression with never type wound up being adjusted",
+                );
+                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
+                    target.to_owned()
+                } else {
+                    self.tcx().ty_error()
+                };
+            }
+
             let adj_ty = self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::AdjustmentType,
                 span: expr.span,

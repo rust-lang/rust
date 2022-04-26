@@ -431,10 +431,11 @@ impl<'a> Parser<'a> {
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(token::Brace)
-                    || (
-                        t.can_begin_expr() && t != &token::Semi && t != &token::Pound
-                        // Avoid triggering with too many trailing `#` in raw string.
-                    )
+                    || (t.can_begin_expr() && t != &token::Semi && t != &token::Pound)
+                    // Avoid triggering with too many trailing `#` in raw string.
+                    || (sm.is_multiline(
+                        self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo())
+                    ) && t == &token::Pound)
             }) {
                 // Missing semicolon typo. This is triggered if the next token could either start a
                 // new statement or is a block close. For example:
@@ -508,7 +509,12 @@ impl<'a> Parser<'a> {
         }
 
         if self.check_too_many_raw_str_terminators(&mut err) {
-            return Err(err);
+            if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
+                err.emit();
+                return Ok(true);
+            } else {
+                return Err(err);
+            }
         }
 
         if self.prev_token.span == DUMMY_SP {
@@ -538,6 +544,7 @@ impl<'a> Parser<'a> {
     }
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
+        let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
             (
                 TokenKind::Literal(Lit {
@@ -545,15 +552,33 @@ impl<'a> Parser<'a> {
                     ..
                 }),
                 TokenKind::Pound,
-            ) => {
+            ) if !sm.is_multiline(
+                self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo()),
+            ) =>
+            {
+                let n_hashes: u8 = *n_hashes;
                 err.set_primary_message("too many `#` when terminating raw string");
+                let str_span = self.prev_token.span;
+                let mut span = self.token.span;
+                let mut count = 0;
+                while self.token.kind == TokenKind::Pound
+                    && !sm.is_multiline(span.shrink_to_hi().until(self.token.span.shrink_to_lo()))
+                {
+                    span = span.with_hi(self.token.span.hi());
+                    self.bump();
+                    count += 1;
+                }
+                err.set_span(span);
                 err.span_suggestion(
-                    self.token.span,
-                    "remove the extra `#`",
+                    span,
+                    &format!("remove the extra `#`{}", pluralize!(count)),
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-                err.note(&format!("the raw string started with {n_hashes} `#`s"));
+                err.span_label(
+                    str_span,
+                    &format!("this raw string started with {n_hashes} `#`{}", pluralize!(n_hashes)),
+                );
                 true
             }
             _ => false,
