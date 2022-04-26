@@ -696,7 +696,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx" => nvptx::compute_abi_info(self),
-            "nvptx64" => nvptx64::compute_abi_info(self),
+            "nvptx64" => {
+                if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::PtxKernel {
+                    nvptx64::compute_ptx_kernel_abi_info(cx, self)
+                } else {
+                    nvptx64::compute_abi_info(self)
+                }
+            }
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => {
