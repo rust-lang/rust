@@ -36,13 +36,12 @@ use crate::{
 };
 
 // Conventions for configuration keys to preserve maximal extendability without breakage:
-//  - Toggles (be it binary true/false or with more options in-between) should always suffix as `_enable`
+//  - Toggles (be it binary true/false or with more options in-between) should almost always suffix as `_enable`
 //  - In general be wary of using the namespace of something verbatim, it prevents us from adding subkeys in the future
 //  - Don't use abbreviations unless really necessary
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting
 //    - We could in theory only use `command` and have it change behavior depending on whether its a string or array?
 // - TODO: conventions regarding config keys for commands and their args
-// - TODO: command, overrideCommand, extraArgs
 // - TODO: conventions regarding config polarity
 
 // Defines the server-side configuration of the rust-analyzer. We generate
@@ -58,31 +57,9 @@ config_data! {
         /// Placeholder for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
-        /// How imports should be grouped into use statements.
-        imports_granularity: ImportGranularityDef  = "\"crate\"",
-        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
-        imports_enforceGranularity: bool              = "false",
-        /// The path structure for newly inserted paths to use.
-        imports_prefix: ImportPrefixDef               = "\"plain\"",
-        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        // TODO: Shouldn't be a bool
-        imports_group: bool                           = "true",
-        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
-        imports_mergeIntoGlob: bool           = "true",
-
-        // TODO: needs a better name
-        /// Show full signature of the callable. Only shows parameters if disabled.
-        signatureInfo_signature_enable: bool                           = "true",
-        /// Show documentation.
-        signatureInfo_documentation_enable: bool                       = "true",
-
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
-        /// Unsets `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>   = "[\"core\"]",
-        /// List of features to activate. Set to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeatures      = "[]",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool = "true",
         /// Advanced option, fully override the command rust-analyzer uses to
@@ -92,37 +69,50 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid compiling unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// List of features to activate. Set to `"all"` to pass `--all-features` to cargo.
+        cargo_features: CargoFeatures      = "[]",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
-        /// Compilation target override (target triple).
-        cargo_target: Option<String>     = "null",
         /// Internal config for debugging, disables loading of sysroot crates.
         cargo_noSysroot: bool            = "false",
+        /// Compilation target override (target triple).
+        cargo_target: Option<String>     = "null",
+        /// Unsets `#[cfg(test)]` for the specified crates.
+        cargo_unsetTest: Vec<String>   = "[\"core\"]",
 
-        /// Run specified `cargo check` command for diagnostics on save.
-        checkOnSave_enable: bool                         = "true",
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
         /// Cargo command to use for `cargo check`.
         checkOnSave_command: String                      = "\"check\"",
-        /// Do not activate the `default` feature.
-        checkOnSave_noDefaultFeatures: Option<bool>      = "null",
-        /// Check for a specific target. Defaults to
-        /// `#rust-analyzer.cargo.target#`.
-        checkOnSave_target: Option<String>               = "null",
+        /// Run specified `cargo check` command for diagnostics on save.
+        checkOnSave_enable: bool                         = "true",
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`. Set to `"all"` to pass `--all-features` to cargo.
         checkOnSave_features: Option<CargoFeatures>        = "null",
+        /// Do not activate the `default` feature.
+        checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Advanced option, fully override the command rust-analyzer uses for
         /// checking. The command should include `--message-format=json` or
         /// similar option.
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
+        /// Check for a specific target. Defaults to
+        /// `#rust-analyzer.cargo.target#`.
+        checkOnSave_target: Option<String>               = "null",
 
-        // TODO: needs better name
+        /// Toggles the additional completions that automatically add imports when completed.
+        /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
+        completion_autoimport_enable: bool       = "true",
+        /// Toggles the additional completions that automatically show method calls and field accesses
+        /// with `self` prefixed to them when inside a method.
+        completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = "fillArguments",
+        /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
+        completion_postfix_enable: bool         = "true",
+        /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
+        completion_privateEditable_enable: bool = "false",
         /// Custom completion snippets.
         // NOTE: Keep this list in sync with the feature docs of user snippets.
         completion_snippets_custom: FxHashMap<String, SnippetDef> = r#"{
@@ -166,25 +156,14 @@ config_data! {
                 "scope": "expr"
             }
         }"#,
-        /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
-        completion_postfix_enable: bool         = "true",
-        /// Toggles the additional completions that automatically add imports when completed.
-        /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
-        completion_autoimport_enable: bool       = "true",
-        // TODO: Do we have a better name for this? I never really liked it
-        /// Toggles the additional completions that automatically show method calls and field accesses
-        /// with `self` prefixed to them when inside a method.
-        completion_autoself_enable: bool        = "true",
-        /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
-        completion_privateEditable_enable: bool = "false",
 
+        /// List of rust-analyzer diagnostics to disable.
+        diagnostics_disabled: FxHashSet<String> = "[]",
         /// Whether to show native rust-analyzer diagnostics.
         diagnostics_enable: bool                = "true",
         /// Whether to show experimental rust-analyzer diagnostics that might
         /// have more false positives than usual.
         diagnostics_experimental_enable: bool    = "false",
-        /// List of rust-analyzer diagnostics to disable.
-        diagnostics_disabled: FxHashSet<String> = "[]",
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
         /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
         diagnostics_remapPrefix: FxHashMap<String, String> = "{}",
@@ -199,38 +178,25 @@ config_data! {
         /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
-        /// Controls file watching implementation.
-        files_watcher: String = "\"client\"",
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
         files_excludeDirs: Vec<PathBuf> = "[]",
+        /// Controls file watching implementation.
+        files_watcher: String = "\"client\"",
 
-        /// Enables highlighting of related references while hovering your mouse above any identifier.
-        highlightRelated_references_enable: bool = "true",
-        /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
-        highlightRelated_exitPoints_enable: bool = "true",
         /// Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
+        /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+        highlightRelated_exitPoints_enable: bool = "true",
+        /// Enables highlighting of related references while hovering your mouse above any identifier.
+        highlightRelated_references_enable: bool = "true",
         /// Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
         highlightRelated_yieldPoints_enable: bool = "true",
-
-        /// Use semantic tokens for strings.
-        ///
-        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
-        /// By disabling semantic tokens for strings, other grammars can be used to highlight
-        /// their contents.
-        semanticHighlighting_strings_enable: bool = "true",
-
-        /// Whether to show documentation on hover.
-        hover_documentation_enable: bool       = "true",
-        /// Use markdown syntax for links in hover.
-        hover_links_enable: bool = "true",
 
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hover_actions_debug_enable: bool           = "true",
-        // TODO: There is not point in having a global option is there?
         /// Whether to show HoverActions in Rust files.
         hover_actions_enable: bool          = "true",
         /// Whether to show `Go to Type Definition` action. Only applies when
@@ -246,64 +212,81 @@ config_data! {
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hover_actions_run_enable: bool             = "true",
 
-        /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
-        inlayHints_renderColons: bool                      = "true",
+        /// Whether to show documentation on hover.
+        hover_documentation_enable: bool       = "true",
+        /// Use markdown syntax for links in hover.
+        hover_links_enable: bool = "true",
+
+        // TODO: this should be in granulatiry?
+        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
+        imports_enforceGranularity: bool              = "false",
+        /// How imports should be grouped into use statements.
+        imports_granularity: ImportGranularityDef  = "\"crate\"",
+        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
+        // TODO: Shouldn't be a bool
+        imports_group: bool                           = "true",
+        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+        imports_mergeIntoGlob: bool           = "true",
+        /// The path structure for newly inserted paths to use.
+        imports_prefix: ImportPrefixDef               = "\"plain\"",
+
+        /// Whether to show inlay type hints for method chains.
+        inlayHints_chainingHints_enable: bool                      = "true",
+        /// Whether to show inlay type hints for return types of closures with blocks.
+        inlayHints_closureReturnTypeHints_enable: bool             = "false",
+        /// Whether to show inlay type hints for elided lifetimes in function signatures.
+        inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
+        /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
+        inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
         inlayHints_maxLength: Option<usize>                = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
-        /// Whether to show inlay type hints for variables.
-        inlayHints_typeHints_enable: bool                          = "true",
-        /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints_enable: bool                      = "true",
-        /// Whether to hide inlay hints for constructors.
-        inlayHints_typeHints_hideNamedConstructor: bool          = "false",
-        /// Whether to show inlay type hints for return types of closures with blocks.
-        inlayHints_closureReturnTypeHints_enable: bool             = "false",
         /// Whether to show inlay type hints for compiler inserted reborrows.
         inlayHints_reborrowHints_enable: bool                      = "false",
-        /// Whether to show inlay type hints for elided lifetimes in function signatures.
-        inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
-        /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
-        inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
+        /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
+        inlayHints_renderColons: bool                      = "true",
+        /// Whether to show inlay type hints for variables.
+        inlayHints_typeHints_enable: bool                          = "true",
+        /// Whether to hide inlay hints for constructors.
+        inlayHints_typeHints_hideNamedConstructor: bool          = "false",
 
+        /// Join lines merges consecutive declaration and initialization of an assignment.
+        joinLines_joinAssignments: bool = "true",
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",
         /// Join lines removes trailing commas.
         joinLines_removeTrailingComma: bool = "true",
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = "true",
-        /// Join lines merges consecutive declaration and initialization of an assignment.
-        joinLines_joinAssignments: bool = "true",
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_debug_enable: bool            = "true",
-        // TODO: Does a global enable make sense even?
         /// Whether to show CodeLens in Rust files.
         lens_enable: bool           = "true",
-        /// Whether to show `Implementations` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_implementations_enable: bool  = "true",
-        /// Whether to show `Run` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_run_enable: bool              = "true",
-        /// Whether to show `Method References` lens. Only applies when
-        /// `#rust-analyzer.lens.enable#` is set.
-        lens_references_method_enable: bool = "false",
-        /// Whether to show `References` lens for Struct, Enum, and Union.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_adt_enable: bool = "false",
-        /// Whether to show `References` lens for Trait.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_trait_enable: bool = "false",
-        /// Whether to show `References` lens for Enum Variants.
-        /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_adt_variant_enable: bool = "false",
         /// Internal config: use custom client-side commands even when the
         /// client doesn't set the corresponding capability.
         lens_forceCustomCommands: bool = "true",
+        /// Whether to show `Implementations` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_implementations_enable: bool  = "true",
+        /// Whether to show `References` lens for Struct, Enum, and Union.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_adt_enable: bool = "false",
+        /// Whether to show `References` lens for Enum Variants.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_adt_variant_enable: bool = "false",
+        /// Whether to show `Method References` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_references_method_enable: bool = "false",
+        /// Whether to show `References` lens for Trait.
+        /// Only applies when `#rust-analyzer.lens.enable#` is set.
+        lens_references_trait_enable: bool = "false",
+        /// Whether to show `Run` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_run_enable: bool              = "true",
 
         /// Disable project auto-discovery in favor of explicitly specified set
         /// of projects.
@@ -318,22 +301,22 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
-        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
-        primeCaches_numThreads: ParallelPrimeCachesNumThreads = "0",
         /// Warm up caches on project load.
         primeCaches_enable: bool = "true",
+        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+        primeCaches_numThreads: ParallelPrimeCachesNumThreads = "0",
 
+        /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
+        procMacro_attributes_enable: bool = "true",
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
         procMacro_enable: bool                     = "true",
-        /// Internal config, path to proc-macro server executable (typically,
-        /// this is rust-analyzer itself, but we override this in tests).
-        procMacro_server: Option<PathBuf>          = "null",
         /// These proc-macros will be ignored when trying to expand them.
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
-        /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
-        procMacro_attributes_enable: bool = "true",
+        /// Internal config, path to proc-macro server executable (typically,
+        /// this is rust-analyzer itself, but we override this in tests).
+        procMacro_server: Option<PathBuf>          = "null",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -361,14 +344,27 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = "false",
 
-        /// Workspace symbol search scope.
-        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = "\"workspace\"",
+        /// Use semantic tokens for strings.
+        ///
+        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+        /// By disabling semantic tokens for strings, other grammars can be used to highlight
+        /// their contents.
+        semanticHighlighting_strings_enable: bool = "true",
+
+        /// Show documentation.
+        signatureInfo_documentation_enable: bool                       = "true",
+        // TODO: needs a better name
+        /// Show full signature of the callable. Only shows parameters if disabled.
+        signatureInfo_signature_enable: bool                           = "true",
+
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = "\"only_types\"",
         /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
         /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
         /// Other clients requires all results upfront and might require a higher limit.
         workspace_symbol_search_limit: usize = "128",
+        /// Workspace symbol search scope.
+        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = "\"workspace\"",
     }
 }
 
@@ -1368,11 +1364,10 @@ macro_rules! _config_data {
             }
         }
 
-        // TODO: Uncomment this and sort once everything is done
-        // #[test]
-        // fn fields_are_sorted() {
-        //     [$(stringify!($field)),*].windows(2).for_each(|w| assert!(w[0] <= w[1], "{} <= {} does not hold", w[0], w[1]));
-        // }
+        #[test]
+        fn fields_are_sorted() {
+            [$(stringify!($field)),*].windows(2).for_each(|w| assert!(w[0] <= w[1], "{} <= {} does not hold", w[0], w[1]));
+        }
     };
 }
 use _config_data as config_data;
