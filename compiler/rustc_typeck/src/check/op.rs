@@ -11,13 +11,12 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc_middle::ty::{
-    self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
 
 use std::ops::ControlFlow;
@@ -266,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
-                let (mut err, missing_trait, use_output) = match is_assign {
+                let (mut err, missing_trait, _use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
@@ -449,39 +448,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
-                        if let ty::Param(p) = *ty.kind() {
-                            // Check if the method would be found if the type param wasn't
-                            // involved. If so, it means that adding a trait bound to the param is
-                            // enough. Otherwise we do not give the suggestion.
-                            let mut eraser = TypeParamEraser(self, expr.span);
-                            let needs_bound = self
-                                .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    Some(eraser.fold_ty(rhs_ty)),
-                                    Some(rhs_expr),
-                                    Op::Binary(op, is_assign),
-                                )
-                                .is_ok();
-                            if needs_bound {
-                                suggest_constraining_param(
-                                    self.tcx,
-                                    self.body_id,
+                        // Look for a TraitPredicate in the Fulfillment errors,
+                        // and use it to generate a suggestion.
+                        //
+                        // Note that lookup_op_method must be called again but
+                        // with a specific rhs_ty instead of a placeholder so
+                        // the resulting predicate generates a more specific
+                        // suggestion for the user.
+                        let errors = self
+                            .lookup_op_method(
+                                lhs_ty,
+                                Some(rhs_ty),
+                                Some(rhs_expr),
+                                Op::Binary(op, is_assign),
+                            )
+                            .unwrap_err();
+                        let predicates = errors
+                            .into_iter()
+                            .filter_map(|error| error.obligation.predicate.to_opt_poly_trait_pred())
+                            .collect::<Vec<_>>();
+                        if !predicates.is_empty() {
+                            for pred in predicates {
+                                self.infcx.suggest_restricting_param_bound(
                                     &mut err,
-                                    *ty,
-                                    rhs_ty,
-                                    missing_trait,
-                                    p,
-                                    use_output,
+                                    pred,
+                                    self.body_id,
                                 );
-                            } else if *ty != lhs_ty {
-                                // When we know that a missing bound is responsible, we don't show
-                                // this note as it is redundant.
-                                err.note(&format!(
-                                    "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
-                                ));
                             }
-                        } else {
-                            bug!("type param visitor stored a non type param: {:?}", ty.kind());
+                        } else if *ty != lhs_ty {
+                            // When we know that a missing bound is responsible, we don't show
+                            // this note as it is redundant.
+                            err.note(&format!(
+                                "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
+                            ));
                         }
                     }
                 }
@@ -671,24 +670,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
-                    let missing_trait = match op {
-                        hir::UnOp::Deref => unreachable!("check unary op `-` or `!` only"),
-                        hir::UnOp::Not => "std::ops::Not",
-                        hir::UnOp::Neg => "std::ops::Neg",
-                    };
+
                     let mut visitor = TypeParamVisitor(vec![]);
                     visitor.visit_ty(operand_ty);
-                    if let [ty] = &visitor.0[..] && let ty::Param(p) = *operand_ty.kind() {
-                        suggest_constraining_param(
-                            self.tcx,
-                            self.body_id,
-                            &mut err,
-                            *ty,
-                            operand_ty,
-                            missing_trait,
-                            p,
-                            true,
-                        );
+                    if let [_] = &visitor.0[..] && let ty::Param(_) = *operand_ty.kind() {
+                        let predicates = errors
+                            .iter()
+                            .filter_map(|error| {
+                                error.obligation.predicate.clone().to_opt_poly_trait_pred()
+                            });
+                        for pred in predicates {
+                            self.infcx.suggest_restricting_param_bound(
+                                &mut err,
+                                pred,
+                                self.body_id,
+                            );
+                        }
                     }
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span);
@@ -970,46 +967,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
         }
-    }
-}
-
-fn suggest_constraining_param(
-    tcx: TyCtxt<'_>,
-    body_id: hir::HirId,
-    mut err: &mut Diagnostic,
-    lhs_ty: Ty<'_>,
-    rhs_ty: Ty<'_>,
-    missing_trait: &str,
-    p: ty::ParamTy,
-    set_output: bool,
-) {
-    let hir = tcx.hir();
-    let msg = &format!("`{lhs_ty}` might need a bound for `{missing_trait}`");
-    // Try to find the def-id and details for the parameter p. We have only the index,
-    // so we have to find the enclosing function's def-id, then look through its declared
-    // generic parameters to get the declaration.
-    let def_id = hir.body_owner_def_id(hir::BodyId { hir_id: body_id });
-    let generics = tcx.generics_of(def_id);
-    let param_def_id = generics.type_param(&p, tcx).def_id;
-    if let Some(generics) = param_def_id
-        .as_local()
-        .map(|id| hir.local_def_id_to_hir_id(id))
-        .and_then(|id| hir.find_by_def_id(hir.get_parent_item(id)))
-        .as_ref()
-        .and_then(|node| node.generics())
-    {
-        let output = if set_output { format!("<Output = {rhs_ty}>") } else { String::new() };
-        suggest_constraining_type_param(
-            tcx,
-            generics,
-            &mut err,
-            &lhs_ty.to_string(),
-            &format!("{missing_trait}{output}"),
-            None,
-        );
-    } else {
-        let span = tcx.def_span(param_def_id);
-        err.span_label(span, msg);
     }
 }
 
