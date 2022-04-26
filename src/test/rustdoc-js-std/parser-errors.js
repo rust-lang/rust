@@ -35,6 +35,8 @@ const QUERY = [
     "a,:",
     "  a<>  :",
     "mod : :",
+    "a!a",
+    "a!!",
 ];
 
 const PARSED = [
@@ -361,5 +363,23 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "mod : :",
         error: 'Unexpected `:`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a!a",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a!a",
+        error: '`!` can only be at the end of an ident',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a!!",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a!!",
+        error: 'Cannot have more than one `!` in an ident',
     },
 ];
