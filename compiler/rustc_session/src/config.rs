@@ -2442,9 +2442,19 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld` have
-    // a matching linker choice.
     if let Some(LinkerFlavorCli::Gcc { use_ld }) = &cg.linker_flavor {
+        // For testing purposes, until we have more feedback about these options: ensure `-Z
+        // unstable-options` is enabled when using the `gcc` linker flavor enrichments.
+        if !unstable_opts.unstable_options {
+            early_error(
+                error_format,
+                "the `gcc:*` linker flavor is unstable, the `-Z unstable-options` \
+                 flag must also be passed to use it",
+            );
+        }
+
+        // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld`
+        // have a matching linker choice.
         if use_ld != "lld" && unstable_opts.gcc_ld == Some(LdImpl::Lld) {
             early_error(
                 error_format,
