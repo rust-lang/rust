@@ -366,6 +366,40 @@ impl<T: ?Sized> RwLock<T> {
         self.poison.get()
     }
 
+    /// Clear the poisoned state from a lock
+    ///
+    /// If the lock is poisoned, it will remain poisoned until this function is called
+    /// with a write guard. This allows recovering from a poisoned state and marking
+    /// that it has recovered. For example, if the value is overwritten by a known-good value,
+    /// then the mutex can be marked as un-poisoned. Or possibly, the value could be inspected to
+    /// determine if it is in a consistent state, and if so the poison is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mutex_unpoison)]
+    ///
+    /// use std::sync::{Arc, RwLock};
+    /// use std::thread;
+    ///
+    /// let lock = Arc::new(RwLock::new(0));
+    /// let c_lock = Arc::clone(&lock);
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_lock.write().unwrap();
+    ///     panic!(); // the mutex gets poisoned
+    /// }).join();
+    ///
+    /// let guard = lock.write().unwrap_err().into_inner();
+    /// RwLock::clear_poison(&guard);
+    /// assert_eq!(lock.is_poisoned(), false);
+    /// ```
+    #[inline]
+    #[unstable(feature = "mutex_unpoison", issue = "none")]
+    pub fn clear_poison(guard: &RwLockWriteGuard<'_, T>) {
+        guard.lock.poison.clear();
+    }
+
     /// Consumes this `RwLock`, returning the underlying data.
     ///
     /// # Errors
