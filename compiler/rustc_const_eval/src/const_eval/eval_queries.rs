@@ -215,16 +215,16 @@ fn turn_into_const_value<'tcx>(
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
 
+    // Turn this into a proper constant.
+    let const_val = op_to_const(&ecx, &mplace.into());
+    debug!(?const_val);
+
     if cfg!(debug_assertions) {
         if let Some(valtree) = const_to_valtree(tcx, key.param_env, constant) {
             let const_val = tcx.valtree_to_const_val((constant.ty, valtree));
             debug!(?const_val);
         }
     }
-
-    // Turn this into a proper constant.
-    let const_val = op_to_const(&ecx, &mplace.into());
-    debug!(?const_val);
 
     const_val
 }

@@ -115,6 +115,12 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     }
 }
 
+impl<'tcx, Tag: Provenance> std::ops::DerefMut for MPlaceTy<'tcx, Tag> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mplace
+    }
+}
+
 impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
