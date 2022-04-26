@@ -3314,6 +3314,12 @@ impl<'hir> Node<'hir> {
             _ => None,
         }
     }
+
+    /// Get the fields for the tuple-constructor,
+    /// if this node is a tuple constructor, otherwise None
+    pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
+        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

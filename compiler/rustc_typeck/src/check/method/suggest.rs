@@ -8,6 +8,7 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
@@ -29,7 +30,7 @@ use std::cmp::Ordering;
 use std::iter;
 
 use super::probe::{Mode, ProbeScope};
-use super::{CandidateSource, MethodError, NoMatchData};
+use super::{super::suggest_call_constructor, CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -488,19 +489,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if self.is_fn_ty(rcvr_ty, span) {
-                    fn report_function<T: std::fmt::Display>(err: &mut Diagnostic, name: T) {
-                        err.note(
-                            &format!("`{}` is a function, perhaps you wish to call it", name,),
-                        );
-                    }
-
                     if let SelfSource::MethodCall(expr) = source {
-                        if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
-                            report_function(&mut err, expr_string);
-                        } else if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind {
-                            if let Some(segment) = path.segments.last() {
-                                report_function(&mut err, segment.ident);
+                        let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() {
+                            let local_id = def_id.expect_local();
+                            let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
+                            let node = tcx.hir().get(hir_id);
+                            let fields = node.tuple_fields();
+
+                            if let Some(fields) = fields
+                                && let Some(DefKind::Ctor(of, _)) = self.tcx.opt_def_kind(local_id) {
+                                    Some((fields, of))
+                            } else {
+                                None
                             }
+                        } else {
+                            None
+                        };
+
+                        // If the function is a tuple constructor, we recommend that they call it
+                        if let Some((fields, kind)) = suggest {
+                            suggest_call_constructor(expr.span, kind, fields.len(), &mut err);
+                        } else {
+                            // General case
+                            err.span_label(
+                                expr.span,
+                                "this is a function, perhaps you wish to call it",
+                            );
                         }
                     }
                 }
