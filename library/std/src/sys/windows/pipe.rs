@@ -18,19 +18,55 @@ use crate::sys_common::IntoInner;
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct AnonPipe {
-    inner: Handle,
+// A 64kb pipe capacity is the same as a typical Linux default.
+const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
+
+pub enum AnonPipe {
+    Sync(Handle),
+    Async(Handle),
 }
 
 impl IntoInner<Handle> for AnonPipe {
     fn into_inner(self) -> Handle {
-        self.inner
+        match self {
+            Self::Sync(handle) => handle,
+            Self::Async(handle) => handle,
+        }
     }
 }
 
 pub struct Pipes {
     pub ours: AnonPipe,
     pub theirs: AnonPipe,
+}
+impl Pipes {
+    /// Create a new pair of pipes where both pipes are synchronous.
+    ///
+    /// These must not be used asynchronously.
+    pub fn new_synchronous(
+        ours_readable: bool,
+        their_handle_inheritable: bool,
+    ) -> io::Result<Self> {
+        unsafe {
+            // If `CreatePipe` succeeds, these will be our pipes.
+            let mut read = ptr::null_mut();
+            let mut write = ptr::null_mut();
+
+            if c::CreatePipe(&mut read, &mut write, ptr::null(), PIPE_BUFFER_CAPACITY) == 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                let (ours, theirs) = if ours_readable { (read, write) } else { (write, read) };
+                let ours = Handle::from_raw_handle(ours);
+                let theirs = Handle::from_raw_handle(theirs);
+
+                if their_handle_inheritable {
+                    theirs.set_inheritable()?;
+                }
+
+                Ok(Pipes { ours: AnonPipe::Sync(ours), theirs: AnonPipe::Sync(theirs) })
+            }
+        }
+    }
 }
 
 /// Although this looks similar to `anon_pipe` in the Unix module it's actually
@@ -53,9 +89,6 @@ pub struct Pipes {
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
 pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
-    // A 64kb pipe capacity is the same as a typical Linux default.
-    const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
-
     // Note that we specifically do *not* use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
     // operations. Instead, we create a "hopefully unique" name and create a
@@ -156,12 +189,9 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         };
         opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
-        let theirs = AnonPipe { inner: theirs.into_inner() };
+        let theirs = AnonPipe::Sync(theirs.into_inner());
 
-        Ok(Pipes {
-            ours: AnonPipe { inner: ours },
-            theirs: AnonPipe { inner: theirs.into_inner() },
-        })
+        Ok(Pipes { ours: AnonPipe::Async(ours), theirs })
     }
 }
 
@@ -171,12 +201,12 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
 /// This is achieved by creating a new set of pipes and spawning a thread that
 /// relays messages between the source and the synchronous pipe.
 pub fn spawn_pipe_relay(
-    source: &AnonPipe,
+    source: &Handle,
     ours_readable: bool,
     their_handle_inheritable: bool,
 ) -> io::Result<AnonPipe> {
     // We need this handle to live for the lifetime of the thread spawned below.
-    let source = source.duplicate()?;
+    let source = AnonPipe::Async(source.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)?);
 
     // create a new pair of anon pipes.
     let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
@@ -227,19 +257,24 @@ type AlertableIoFn = unsafe extern "system" fn(
 
 impl AnonPipe {
     pub fn handle(&self) -> &Handle {
-        &self.inner
+        match self {
+            Self::Async(ref handle) => handle,
+            Self::Sync(ref handle) => handle,
+        }
     }
     pub fn into_handle(self) -> Handle {
-        self.inner
-    }
-    fn duplicate(&self) -> io::Result<Self> {
-        self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| AnonPipe { inner })
+        self.into_inner()
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
-            self.alertable_io_internal(c::ReadFileEx, buf.as_mut_ptr() as _, len)
+            match self {
+                Self::Sync(ref handle) => handle.read(buf),
+                Self::Async(_) => {
+                    self.alertable_io_internal(c::ReadFileEx, buf.as_mut_ptr() as _, len)
+                }
+            }
         };
 
         match result {
@@ -253,28 +288,33 @@ impl AnonPipe {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.inner.read_vectored(bufs)
+        io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        self.inner.is_read_vectored()
+        false
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         unsafe {
             let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
-            self.alertable_io_internal(c::WriteFileEx, buf.as_ptr() as _, len)
+            match self {
+                Self::Sync(ref handle) => handle.write(buf),
+                Self::Async(_) => {
+                    self.alertable_io_internal(c::WriteFileEx, buf.as_ptr() as _, len)
+                }
+            }
         }
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.inner.write_vectored(bufs)
+        io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        self.inner.is_write_vectored()
+        false
     }
 
     /// Synchronizes asynchronous reads or writes using our anonymous pipe.
@@ -346,7 +386,7 @@ impl AnonPipe {
 
         // Asynchronous read of the pipe.
         // If successful, `callback` will be called once it completes.
-        let result = io(self.inner.as_handle(), buf, len, &mut overlapped, callback);
+        let result = io(self.handle().as_handle(), buf, len, &mut overlapped, callback);
         if result == c::FALSE {
             // We can return here because the call failed.
             // After this we must not return until the I/O completes.

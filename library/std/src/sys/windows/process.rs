@@ -24,7 +24,7 @@ use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path;
-use crate::sys::pipe::{self, AnonPipe};
+use crate::sys::pipe::{self, AnonPipe, Pipes};
 use crate::sys::stdio;
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
@@ -173,7 +173,7 @@ pub enum Stdio {
     Inherit,
     Null,
     MakePipe,
-    Pipe(AnonPipe),
+    AsyncPipe(Handle),
     Handle(Handle),
 }
 
@@ -527,13 +527,18 @@ impl Stdio {
             },
 
             Stdio::MakePipe => {
-                let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                let pipes = pipe::anon_pipe(ours_readable, true)?;
+                // If stdin then make synchronous
+                let pipes = if stdio_id == c::STD_INPUT_HANDLE {
+                    Pipes::new_synchronous(false, true)?
+                } else {
+                    pipe::anon_pipe(true, true)?
+                };
                 *pipe = Some(pipes.ours);
                 Ok(pipes.theirs.into_handle())
             }
 
-            Stdio::Pipe(ref source) => {
+            Stdio::AsyncPipe(ref source) => {
+                // We need to synchronize asynchronous pipes by using a pipe relay.
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
                 pipe::spawn_pipe_relay(source, ours_readable, true).map(AnonPipe::into_handle)
             }
@@ -562,7 +567,10 @@ impl Stdio {
 
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
-        Stdio::Pipe(pipe)
+        match pipe {
+            AnonPipe::Sync(handle) => Stdio::Handle(handle),
+            AnonPipe::Async(handle) => Stdio::AsyncPipe(handle),
+        }
     }
 }
 
