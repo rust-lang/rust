@@ -22,7 +22,7 @@ use crate::clean::{
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
-type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
+type Attrs<'hir> = &'hir [ast::Attribute];
 
 /// Attempt to inline a definition into this AST.
 ///
@@ -155,7 +155,7 @@ crate fn try_inline_glob(
 }
 
 crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
-    cx.tcx.get_attrs(did)
+    cx.tcx.get_attrs_unchecked(did)
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -691,7 +691,7 @@ crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
 
     let trait_ = clean::TraitWithExtraInfo {
         trait_,
-        is_notable: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::notable_trait),
+        is_notable: clean::utils::has_doc_flag(cx.tcx, did, sym::notable_trait),
     };
     cx.external_traits.borrow_mut().insert(did, trait_);
     cx.active_extern_traits.remove(&did);
