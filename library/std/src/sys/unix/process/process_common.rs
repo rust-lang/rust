@@ -35,7 +35,8 @@ cfg_if::cfg_if! {
 // Android with api less than 21 define sig* functions inline, so it is not
 // available for dynamic link. Implementing sigemptyset and sigaddset allow us
 // to support older Android version (independent of libc version).
-// The following implementations are based on https://git.io/vSkNf
+// The following implementations are based on
+// https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
