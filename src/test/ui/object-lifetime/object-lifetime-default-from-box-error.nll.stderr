@@ -6,6 +6,11 @@ LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
 ...
 LL |     ss.r
    |     ^^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
+   |                                                   ++++
 
 error[E0507]: cannot move out of `ss.r` which is behind a mutable reference
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5

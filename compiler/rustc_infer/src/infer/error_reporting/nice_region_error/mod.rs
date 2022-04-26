@@ -15,6 +15,7 @@ mod trait_impl_difference;
 mod util;
 
 pub use static_impl_trait::suggest_new_region_bound;
+pub use util::find_param_with_region;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {

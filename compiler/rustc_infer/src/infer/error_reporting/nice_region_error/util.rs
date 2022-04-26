@@ -2,6 +2,7 @@
 //! anonymous regions.
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, Binder, DefIdTree, Region, Ty, TypeFoldable};
@@ -9,7 +10,7 @@ use rustc_span::Span;
 
 /// Information about the anonymous region we are searching for.
 #[derive(Debug)]
-pub(super) struct AnonymousParamInfo<'tcx> {
+pub struct AnonymousParamInfo<'tcx> {
     /// The parameter corresponding to the anonymous region.
     pub param: &'tcx hir::Param<'tcx>,
     /// The type corresponding to the anonymous region parameter.
@@ -22,76 +23,83 @@ pub(super) struct AnonymousParamInfo<'tcx> {
     pub is_first: bool,
 }
 
+// This method walks the Type of the function body parameters using
+// `fold_regions()` function and returns the
+// &hir::Param of the function parameter corresponding to the anonymous
+// region and the Ty corresponding to the named region.
+// Currently only the case where the function declaration consists of
+// one named region and one anonymous region is handled.
+// Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
+// Here, we would return the hir::Param for y, we return the type &'a
+// i32, which is the type of y but with the anonymous region replaced
+// with 'a, the corresponding bound region and is_first which is true if
+// the hir::Param is the first parameter in the function declaration.
+pub fn find_param_with_region<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    anon_region: Region<'tcx>,
+    replace_region: Region<'tcx>,
+) -> Option<AnonymousParamInfo<'tcx>> {
+    let (id, bound_region) = match *anon_region {
+        ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
+        ty::ReEarlyBound(ebr) => {
+            (tcx.parent(ebr.def_id).unwrap(), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
+        }
+        _ => return None, // not a free region
+    };
+
+    let hir = &tcx.hir();
+    let hir_id = hir.local_def_id_to_hir_id(id.as_local()?);
+    let body_id = hir.maybe_body_owned_by(hir_id)?;
+    let body = hir.body(body_id);
+    let owner_id = hir.body_owner(body_id);
+    let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
+    let poly_fn_sig = tcx.fn_sig(id);
+    let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
+    body.params
+        .iter()
+        .take(if fn_sig.c_variadic {
+            fn_sig.inputs().len()
+        } else {
+            assert_eq!(fn_sig.inputs().len(), body.params.len());
+            body.params.len()
+        })
+        .enumerate()
+        .find_map(|(index, param)| {
+            // May return None; sometimes the tables are not yet populated.
+            let ty = fn_sig.inputs()[index];
+            let mut found_anon_region = false;
+            let new_param_ty = tcx.fold_regions(ty, &mut false, |r, _| {
+                if r == anon_region {
+                    found_anon_region = true;
+                    replace_region
+                } else {
+                    r
+                }
+            });
+            if found_anon_region {
+                let ty_hir_id = fn_decl.inputs[index].hir_id;
+                let param_ty_span = hir.span(ty_hir_id);
+                let is_first = index == 0;
+                Some(AnonymousParamInfo {
+                    param,
+                    param_ty: new_param_ty,
+                    param_ty_span,
+                    bound_region,
+                    is_first,
+                })
+            } else {
+                None
+            }
+        })
+}
+
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    // This method walks the Type of the function body parameters using
-    // `fold_regions()` function and returns the
-    // &hir::Param of the function parameter corresponding to the anonymous
-    // region and the Ty corresponding to the named region.
-    // Currently only the case where the function declaration consists of
-    // one named region and one anonymous region is handled.
-    // Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
-    // Here, we would return the hir::Param for y, we return the type &'a
-    // i32, which is the type of y but with the anonymous region replaced
-    // with 'a, the corresponding bound region and is_first which is true if
-    // the hir::Param is the first parameter in the function declaration.
     pub(super) fn find_param_with_region(
         &self,
         anon_region: Region<'tcx>,
         replace_region: Region<'tcx>,
     ) -> Option<AnonymousParamInfo<'_>> {
-        let (id, bound_region) = match *anon_region {
-            ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-            ty::ReEarlyBound(ebr) => (
-                self.tcx().parent(ebr.def_id).unwrap(),
-                ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
-            ),
-            _ => return None, // not a free region
-        };
-
-        let hir = &self.tcx().hir();
-        let hir_id = hir.local_def_id_to_hir_id(id.as_local()?);
-        let body_id = hir.maybe_body_owned_by(hir_id)?;
-        let body = hir.body(body_id);
-        let owner_id = hir.body_owner(body_id);
-        let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
-        let poly_fn_sig = self.tcx().fn_sig(id);
-        let fn_sig = self.tcx().liberate_late_bound_regions(id, poly_fn_sig);
-        body.params
-            .iter()
-            .take(if fn_sig.c_variadic {
-                fn_sig.inputs().len()
-            } else {
-                assert_eq!(fn_sig.inputs().len(), body.params.len());
-                body.params.len()
-            })
-            .enumerate()
-            .find_map(|(index, param)| {
-                // May return None; sometimes the tables are not yet populated.
-                let ty = fn_sig.inputs()[index];
-                let mut found_anon_region = false;
-                let new_param_ty = self.tcx().fold_regions(ty, &mut false, |r, _| {
-                    if r == anon_region {
-                        found_anon_region = true;
-                        replace_region
-                    } else {
-                        r
-                    }
-                });
-                if found_anon_region {
-                    let ty_hir_id = fn_decl.inputs[index].hir_id;
-                    let param_ty_span = hir.span(ty_hir_id);
-                    let is_first = index == 0;
-                    Some(AnonymousParamInfo {
-                        param,
-                        param_ty: new_param_ty,
-                        param_ty_span,
-                        bound_region,
-                        is_first,
-                    })
-                } else {
-                    None
-                }
-            })
+        find_param_with_region(self.tcx(), anon_region, replace_region)
     }
 
     // Here, we check for the case where the anonymous region

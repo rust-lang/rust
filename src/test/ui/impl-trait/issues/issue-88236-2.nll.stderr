@@ -24,10 +24,14 @@ LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send 
 LL |     x
    |     ^ returning this value requires that `'b` must outlive `'static`
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'b`, add `'b` as a bound
+help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'b` lifetime bound
    |
 LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> + 'b {
    |                                                                                  ++++
+help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'b` lifetime bound
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a + 'b> {
+   |                                                                                 ++++
 
 error: implementation of `Hrtb` is not general enough
   --> $DIR/issue-88236-2.rs:20:5
