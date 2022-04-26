@@ -40,6 +40,7 @@ crate use outlives_suggestion::OutlivesSuggestionBuilder;
 crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 crate use region_name::{RegionName, RegionNameSource};
 crate use rustc_const_eval::util::CallKind;
+use rustc_middle::mir::tcx::PlaceTy;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -329,30 +330,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, place: PlaceRef<'tcx>, field: Field) -> String {
-        // FIXME Place2 Make this work iteratively
-        match place {
-            PlaceRef { local, projection: [] } => {
-                let local = &self.body.local_decls[local];
-                self.describe_field_from_ty(local.ty, field, None)
-            }
+        let place_ty = match place {
+            PlaceRef { local, projection: [] } => PlaceTy::from_ty(self.body.local_decls[local].ty),
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {
-                ProjectionElem::Deref => {
-                    self.describe_field(PlaceRef { local, projection: proj_base }, field)
-                }
-                ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
-                    self.describe_field_from_ty(base_ty, field, Some(*variant_index))
-                }
-                ProjectionElem::Field(_, field_type) => {
-                    self.describe_field_from_ty(*field_type, field, None)
-                }
-                ProjectionElem::Index(..)
+                ProjectionElem::Deref
+                | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(PlaceRef { local, projection: proj_base }, field)
+                    PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
+                ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
+                ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
-        }
+        };
+        self.describe_field_from_ty(place_ty.ty, field, place_ty.variant_index)
     }
 
     /// End-user visible description of the `field_index`nth field of `ty`
