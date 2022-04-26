@@ -120,6 +120,9 @@ unsafe fn configure_llvm(sess: &Session) {
         // Use non-zero `import-instr-limit` multiplier for cold callsites.
         add("-import-cold-multiplier=0.1", false);
 
+        // DONOTLAND: just testing the perf impact of this.
+        add("-disable-i2p-p2i-opt", false);
+
         for arg in sess_args {
             add(&(*arg), true);
         }
