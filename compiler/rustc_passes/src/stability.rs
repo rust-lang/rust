@@ -1,8 +1,10 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use attr::StabilityLevel;
-use rustc_attr::{self as attr, ConstStability, Stability, Unstable, UnstableReason};
+use rustc_attr::{
+    self as attr, ConstStability, DefaultBodyStability, Stability, StabilityLevel, Unstable,
+    UnstableReason,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -89,6 +91,7 @@ struct Annotator<'a, 'tcx> {
     index: &'a mut Index,
     parent_stab: Option<Stability>,
     parent_const_stab: Option<ConstStability>,
+    parent_body_stab: Option<DefaultBodyStability>,
     parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
@@ -156,12 +159,13 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
                 None,
                 None,
+                None,
                 visit_children,
             );
             return;
         }
 
-        let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
+        let (stab, const_stab, body_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
@@ -208,6 +212,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 .emit();
             }
         }
+
+        let body_stab = body_stab.map(|(body_stab, _span)| {
+            // FIXME: check that this item can have body stability
+
+            self.index.default_body_stab_map.insert(def_id, body_stab);
+            debug!(?self.index.default_body_stab_map);
+
+            body_stab
+        });
 
         let stab = stab.map(|(stab, span)| {
             // Error if prohibited, or can't inherit anything from a container.
@@ -286,6 +299,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
             stab,
             if inherit_const_stability.yes() { const_stab } else { None },
+            body_stab,
             visit_children,
         );
     }
@@ -295,12 +309,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         depr: Option<DeprecationEntry>,
         stab: Option<Stability>,
         const_stab: Option<ConstStability>,
+        body_stab: Option<DefaultBodyStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
         let mut replaced_parent_depr = None;
         let mut replaced_parent_stab = None;
         let mut replaced_parent_const_stab = None;
+        let mut replaced_parent_body_stab = None;
 
         if let Some(depr) = depr {
             replaced_parent_depr = Some(replace(&mut self.parent_depr, Some(depr)));
@@ -311,6 +327,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(const_stab) = const_stab {
             replaced_parent_const_stab =
                 Some(replace(&mut self.parent_const_stab, Some(const_stab)));
+        }
+        if let Some(body_stab) = body_stab {
+            replaced_parent_body_stab = Some(self.parent_body_stab.replace(body_stab));
         }
 
         f(self);
@@ -323,6 +342,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
         if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
             self.parent_const_stab = orig_parent_const_stab;
+        }
+        if let Some(orig_parent_body_stab) = replaced_parent_body_stab {
+            self.parent_body_stab = orig_parent_body_stab;
         }
     }
 }
@@ -613,6 +635,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
+        default_body_stab_map: Default::default(),
         depr_map: Default::default(),
         implications: Default::default(),
     };
@@ -623,6 +646,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             index: &mut index,
             parent_stab: None,
             parent_const_stab: None,
+            parent_body_stab: None,
             parent_depr: None,
             in_trait_impl: false,
         };
@@ -673,6 +697,9 @@ pub(crate) fn provide(providers: &mut Providers) {
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
         lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
+        lookup_default_body_stability: |tcx, id| {
+            tcx.stability().local_default_body_stability(id.expect_local())
+        },
         lookup_deprecation_entry: |tcx, id| {
             tcx.stability().local_deprecation_entry(id.expect_local())
         },
@@ -723,7 +750,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
-                    let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item.span);
+                    let (stab, const_stab, _) =
+                        attr::find_stability(&self.tcx.sess, attrs, item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

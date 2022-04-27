@@ -772,7 +772,7 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
+        let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
@@ -781,6 +781,17 @@ impl SyntaxExtension {
                 .span_label(
                     sess.source_map().guess_head_span(span),
                     "const stability attribute affects this macro",
+                )
+                .emit();
+        }
+        if let Some((_, sp)) = body_stability {
+            sess.parse_sess
+                .span_diagnostic
+                .struct_span_err(sp, "macros cannot have body stability attributes")
+                .span_label(sp, "invalid body stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "body stability attribute affects this macro",
                 )
                 .emit();
         }

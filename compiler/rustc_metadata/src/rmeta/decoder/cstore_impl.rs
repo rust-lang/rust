@@ -207,6 +207,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     def_ident_span => { table }
     lookup_stability => { table }
     lookup_const_stability => { table }
+    lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     visibility => { table }
     unused_generic_params => { table }

@@ -343,6 +343,7 @@ define_tables! {
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
     lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,
     lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<attr::DefaultBodyStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,

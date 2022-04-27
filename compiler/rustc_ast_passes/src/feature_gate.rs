@@ -417,6 +417,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 || attr.has_name(sym::stable)
                 || attr.has_name(sym::rustc_const_unstable)
                 || attr.has_name(sym::rustc_const_stable)
+                || attr.has_name(sym::rustc_default_body_unstable)
             {
                 struct_span_err!(
                     self.sess,
