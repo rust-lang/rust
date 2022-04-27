@@ -153,6 +153,7 @@ impl Unit {
             kw return
             sn pd
             sn ppd
+            sn macro_rules
             kw self
             kw super
             kw crate
@@ -246,10 +247,11 @@ fn complete_in_block() {
             kw return
             sn pd
             sn ppd
+            sn macro_rules
             kw self
             kw super
             kw crate
-            fn foo()     fn()
+            fn foo()       fn()
             bt u32
         "#]],
     )
@@ -293,10 +295,11 @@ fn complete_after_if_expr() {
             kw return
             sn pd
             sn ppd
+            sn macro_rules
             kw self
             kw super
             kw crate
-            fn foo()     fn()
+            fn foo()       fn()
             bt u32
         "#]],
     )
@@ -366,10 +369,11 @@ fn completes_in_loop_ctx() {
             kw return
             sn pd
             sn ppd
+            sn macro_rules
             kw self
             kw super
             kw crate
-            fn my()      fn()
+            fn my()        fn()
             bt u32
         "#]],
     );
