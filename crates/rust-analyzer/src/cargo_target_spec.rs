@@ -26,22 +26,16 @@ pub(crate) struct CargoTargetSpec {
 impl CargoTargetSpec {
     pub(crate) fn runnable_args(
         snap: &GlobalStateSnapshot,
-        mut spec: Option<CargoTargetSpec>,
+        spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
 
-        let target_required_features =
-            spec.as_mut().map(|spec| mem::take(&mut spec.required_features)).unwrap_or(Vec::new());
-
         match kind {
             RunnableKind::Test { test_id, attr } => {
                 args.push("test".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut args, kind);
-                }
                 extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
                     extra_args.push("--exact".to_string());
@@ -53,17 +47,11 @@ impl CargoTargetSpec {
             }
             RunnableKind::TestMod { path } => {
                 args.push("test".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut args, kind);
-                }
                 extra_args.push(path.to_string());
                 extra_args.push("--nocapture".to_string());
             }
             RunnableKind::Bench { test_id } => {
                 args.push("bench".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut args, kind);
-                }
                 extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
                     extra_args.push("--exact".to_string());
@@ -73,9 +61,6 @@ impl CargoTargetSpec {
             RunnableKind::DocTest { test_id } => {
                 args.push("test".to_string());
                 args.push("--doc".to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut args, kind);
-                }
                 extra_args.push(test_id.to_string());
                 extra_args.push("--nocapture".to_string());
             }
@@ -85,11 +70,16 @@ impl CargoTargetSpec {
                     _ => "run",
                 };
                 args.push(subcommand.to_string());
-                if let Some(spec) = spec {
-                    spec.push_to(&mut args, kind);
-                }
             }
         }
+
+        let target_required_features = if let Some(mut spec) = spec {
+            let required_features = mem::take(&mut spec.required_features);
+            spec.push_to(&mut args, kind);
+            required_features
+        } else {
+            Vec::new()
+        };
 
         let cargo_config = snap.config.cargo();
         if cargo_config.all_features {
@@ -122,9 +112,9 @@ impl CargoTargetSpec {
         global_state_snapshot: &GlobalStateSnapshot,
         file_id: FileId,
     ) -> Result<Option<CargoTargetSpec>> {
-        let crate_id = match global_state_snapshot.analysis.crate_for(file_id)?.first() {
-            Some(&crate_id) => crate_id,
-            None => return Ok(None),
+        let crate_id = match &*global_state_snapshot.analysis.crate_for(file_id)? {
+            &[crate_id, ..] => crate_id,
+            _ => return Ok(None),
         };
         let (cargo_ws, target) = match global_state_snapshot.cargo_target_for_crate_root(crate_id) {
             Some(it) => it,

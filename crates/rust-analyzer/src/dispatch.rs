@@ -39,9 +39,9 @@ impl<'a> RequestDispatcher<'a> {
         f: fn(&mut GlobalState, R::Params) -> Result<R::Result>,
     ) -> Result<&mut Self>
     where
-        R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug + 'static,
-        R::Result: Serialize + 'static,
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug,
+        R::Result: Serialize,
     {
         let (id, params, panic_context) = match self.parse::<R>() {
             Some(it) => it,
@@ -63,8 +63,8 @@ impl<'a> RequestDispatcher<'a> {
     ) -> Result<&mut Self>
     where
         R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug + 'static,
-        R::Result: Serialize + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug,
+        R::Result: Serialize,
     {
         let (id, params, panic_context) = match self.parse::<R>() {
             Some(it) => it,
@@ -89,8 +89,8 @@ impl<'a> RequestDispatcher<'a> {
     ) -> &mut Self
     where
         R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug + 'static,
-        R::Result: Serialize + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
     {
         let (id, params, panic_context) = match self.parse::<R>() {
             Some(it) => it,
@@ -126,11 +126,11 @@ impl<'a> RequestDispatcher<'a> {
 
     fn parse<R>(&mut self) -> Option<(lsp_server::RequestId, R::Params, String)>
     where
-        R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + fmt::Debug + 'static,
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + fmt::Debug,
     {
         let req = match &self.req {
-            Some(req) if req.method == R::METHOD => self.req.take().unwrap(),
+            Some(req) if req.method == R::METHOD => self.req.take()?,
             _ => return None,
         };
 
@@ -159,9 +159,9 @@ fn thread_result_to_response<R>(
     result: thread::Result<Result<R::Result>>,
 ) -> lsp_server::Response
 where
-    R: lsp_types::request::Request + 'static,
-    R::Params: DeserializeOwned + 'static,
-    R::Result: Serialize + 'static,
+    R: lsp_types::request::Request,
+    R::Params: DeserializeOwned,
+    R::Result: Serialize,
 {
     match result {
         Ok(result) => result_to_response::<R>(id, result),
@@ -188,9 +188,9 @@ fn result_to_response<R>(
     result: Result<R::Result>,
 ) -> lsp_server::Response
 where
-    R: lsp_types::request::Request + 'static,
-    R::Params: DeserializeOwned + 'static,
-    R::Result: Serialize + 'static,
+    R: lsp_types::request::Request,
+    R::Params: DeserializeOwned,
+    R::Result: Serialize,
 {
     match result {
         Ok(resp) => lsp_server::Response::new_ok(id, &resp),
@@ -226,8 +226,8 @@ impl<'a> NotificationDispatcher<'a> {
         f: fn(&mut GlobalState, N::Params) -> Result<()>,
     ) -> Result<&mut Self>
     where
-        N: lsp_types::notification::Notification + 'static,
-        N::Params: DeserializeOwned + Send + 'static,
+        N: lsp_types::notification::Notification,
+        N::Params: DeserializeOwned + Send,
     {
         let not = match self.not.take() {
             Some(it) => it,
