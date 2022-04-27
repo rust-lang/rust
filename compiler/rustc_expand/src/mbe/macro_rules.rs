@@ -260,16 +260,15 @@ fn generic_extension<'cx, 'tt>(
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
-                // Ignore the delimiters on the RHS.
-                let rhs = match &rhses[i] {
-                    mbe::TokenTree::Delimited(_, delimited) => &delimited.tts,
+                let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
+                    mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 let arm_span = rhses[i].span();
 
-                let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
+                let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = match transcribe(cx, &named_matches, &rhs, transparency) {
+                let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
                     Ok(tts) => tts,
                     Err(mut err) => {
                         err.emit();

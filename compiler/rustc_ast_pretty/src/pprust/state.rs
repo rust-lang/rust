@@ -464,7 +464,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 Some(MacHeader::Path(&item.path)),
                 false,
                 None,
-                delim.to_token(),
+                Some(delim.to_token()),
                 tokens,
                 true,
                 span,
@@ -530,7 +530,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     None,
                     false,
                     None,
-                    *delim,
+                    Some(*delim),
                     tts,
                     convert_dollar_crate,
                     dspan.entire(),
@@ -556,12 +556,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         header: Option<MacHeader<'_>>,
         has_bang: bool,
         ident: Option<Ident>,
-        delim: DelimToken,
+        delim: Option<DelimToken>,
         tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
-        if delim == DelimToken::Brace {
+        if delim == Some(DelimToken::Brace) {
             self.cbox(INDENT_UNIT);
         }
         match header {
@@ -577,7 +577,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.print_ident(ident);
         }
         match delim {
-            DelimToken::Brace => {
+            Some(DelimToken::Brace) => {
                 if header.is_some() || has_bang || ident.is_some() {
                     self.nbsp();
                 }
@@ -585,23 +585,25 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 if !tts.is_empty() {
                     self.space();
                 }
-            }
-            _ => {
-                let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
-                self.word(token_str)
-            }
-        }
-        self.ibox(0);
-        self.print_tts(tts, convert_dollar_crate);
-        self.end();
-        match delim {
-            DelimToken::Brace => {
+                self.ibox(0);
+                self.print_tts(tts, convert_dollar_crate);
+                self.end();
                 let empty = tts.is_empty();
                 self.bclose(span, empty);
             }
-            _ => {
+            Some(delim) => {
+                let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
+                self.word(token_str);
+                self.ibox(0);
+                self.print_tts(tts, convert_dollar_crate);
+                self.end();
                 let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
-                self.word(token_str)
+                self.word(token_str);
+            }
+            None => {
+                self.ibox(0);
+                self.print_tts(tts, convert_dollar_crate);
+                self.end();
             }
         }
     }
