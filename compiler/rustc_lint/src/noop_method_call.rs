@@ -43,9 +43,21 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let ExprKind::MethodCall(call, elements, _) = &expr.kind else {
             return
         };
+
+        let typeck_results = cx.typeck_results();
+
+        let receiver = &elements[0];
+        let receiver_ty = typeck_results.expr_ty(receiver);
+        let expr_ty = typeck_results.expr_ty_adjusted(expr);
+        if receiver_ty != expr_ty {
+            // This lint will only trigger if the receiver type and resulting expression \
+            // type are the same, implying that the method call is unnecessary.
+            return;
+        }
+
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
-        let (trait_id, did) = match cx.typeck_results().type_dependent_def(expr.hir_id) {
+        let (trait_id, did) = match typeck_results.type_dependent_def(expr.hir_id) {
             // Verify we are dealing with a method/associated function.
             Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
                 // Check that we're dealing with a trait method for one of the traits we care about.
@@ -61,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             },
             _ => return,
         };
-        let substs = cx.typeck_results().node_substs(expr.hir_id);
+        let substs = typeck_results.node_substs(expr.hir_id);
         if substs.needs_subst() {
             // We can't resolve on types that require monomorphization, so we don't handle them if
             // we need to perform substitution.
@@ -87,14 +99,6 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             return;
         }
         let method = &call.ident.name;
-        let receiver = &elements[0];
-        let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
-        if receiver_ty != expr_ty {
-            // This lint will only trigger if the receiver type and resulting expression \
-            // type are the same, implying that the method call is unnecessary.
-            return;
-        }
         let expr_span = expr.span;
         let note = format!(
             "the type `{:?}` which `{}` is being called on is the same as \
