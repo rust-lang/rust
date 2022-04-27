@@ -525,6 +525,7 @@ pub struct ClientCommandsConfig {
     pub trigger_parameter_hints: bool,
 }
 
+#[derive(Debug)]
 pub struct ConfigUpdateError {
     errors: Vec<(String, serde_json::Error)>,
 }
@@ -1442,7 +1443,6 @@ fn get_field<T: DeserializeOwned>(
     default: &str,
 ) -> T {
     let default = serde_json::from_str(default).unwrap();
-
     // XXX: check alias first, to work-around the VS Code where it pre-fills the
     // defaults instead of sending an empty object.
     alias
