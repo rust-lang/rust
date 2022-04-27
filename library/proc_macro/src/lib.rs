@@ -1505,7 +1505,10 @@ pub mod tracked_env {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = env::var(key);
+        let injected_value = crate::bridge::client::FreeFunctions::injected_env_var(key);
+        let env_value = env::var(key);
+
+        let value = injected_value.map_or_else(env_value, Ok);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }
