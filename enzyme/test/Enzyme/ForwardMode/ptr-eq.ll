@@ -28,7 +28,14 @@ entry:
 ; CHECK-NEXT:   %"ptr'ipc" = bitcast double* %"x'" to i8*
 ; CHECK-NEXT:   %ptr = bitcast double* %x to i8*
 ; CHECK-NEXT:   call void @free(i8* %ptr)
-; CHECK-NEXT:   call void @__enzyme_checked_free_1(i8* %ptr, i8* %"ptr'ipc")
+; CHECK-NEXT:   %1 = icmp ne i8* %ptr, %"ptr'ipc"
+; CHECK-NEXT:   br i1 %1, label %free0.i, label %__enzyme_checked_free_1.exit
+
+; CHECK: free0.i:                                          ; preds = %entry
+; CHECK-NEXT:   call void @free(i8* %"ptr'ipc")
+; CHECK-NEXT:   br label %__enzyme_checked_free_1.exit
+
+; CHECK: __enzyme_checked_free_1.exit:                     ; preds = %entry, %free0.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

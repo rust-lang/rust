@@ -50,7 +50,23 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"recv_buf'", i8 0, i64 %13, i1 false)
 ; CHECK-NEXT:   %14 = bitcast i8* %6 to double*
 ; CHECK-NEXT:   %15 = udiv i64 %5, 8
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %14, double* %"b'", i64 %15)
+; CHECK-NEXT:   %16 = icmp eq i64 %15, 0
+; CHECK-NEXT:   br i1 %16, label %__enzyme_memcpyadd_doubleda1sa1.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:  %idx.i = phi i64 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:  %dst.i.i = getelementptr inbounds double, double* %14, i64 %idx.i
+; CHECK-NEXT:  %dst.i.l.i = load double, double* %dst.i.i, align 1
+; CHECK-NEXT:  store double 0.000000e+00, double* %dst.i.i, align 1
+; CHECK-NEXT:  %src.i.i = getelementptr inbounds double, double* %"b'", i64 %idx.i
+; CHECK-NEXT:  %src.i.l.i = load double, double* %src.i.i, align 1
+; CHECK-NEXT:  %17 = fadd fast double %src.i.l.i, %dst.i.l.i
+; CHECK-NEXT:  store double %17, double* %src.i.i, align 1
+; CHECK-NEXT:  %idx.next.i = add nuw i64 %idx.i, 1
+; CHECK-NEXT:  %18 = icmp eq i64 %15, %idx.next.i
+; CHECK-NEXT:  br i1 %18, label %__enzyme_memcpyadd_doubleda1sa1.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpyadd_doubleda1sa1.exit:             ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %6)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

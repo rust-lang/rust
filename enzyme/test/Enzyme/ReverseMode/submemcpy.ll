@@ -60,17 +60,6 @@ attributes #6 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: define internal void @diffefoo(float* nocapture %fdst, float* nocapture %"fdst'", float* nocapture readonly %fsrc, float* nocapture %"fsrc'", i32 %fN)
-; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[ipc:.+]] = bitcast float* %"fdst'" to i8*
-; CHECK-NEXT:   %[[uw:.+]] = bitcast float* %fdst to i8*
-; CHECK-NEXT:   %[[ipc2:.+]] = bitcast float* %"fsrc'" to i8*
-; CHECK-NEXT:   %[[uw1:.+]] = bitcast float* %fsrc to i8*
-; CHECK-NEXT:   %[[mul:.+]] = shl i32 %fN, 2
-; CHECK-NEXT:   call void @diffesubmemcpy(i8* %[[uw]], i8* %[[ipc]], i8* %[[uw1]], i8* %[[ipc2]], i32 %[[mul]])
-; CHECK-NEXT:   ret void
-; CHECK-NEXT: }
-
 ; CHECK: define internal void @diffesubmemcpy(i8* nocapture %sdst, i8* nocapture %"sdst'", i8* nocapture readonly %ssrc, i8* nocapture %"ssrc'", i32 %sN)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = sext i32 %sN to i64
@@ -78,6 +67,22 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %0 = bitcast i8* %"sdst'" to float*
 ; CHECK-NEXT:   %1 = bitcast i8* %"ssrc'" to float*
 ; CHECK-NEXT:   %2 = lshr i64 %conv, 2
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %0, float* %1, i64 %2)
+; CHECK-NEXT:   %3 = {{(icmp eq i64 %2, 0|icmp ult i32 %sN, 4)}}
+; CHECK-NEXT:   br i1 %3, label %__enzyme_memcpyadd_floatda1sa1.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %idx.i = phi i64 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:   %dst.i.i = getelementptr inbounds float, float* %0, i64 %idx.i
+; CHECK-NEXT:   %dst.i.l.i = load float, float* %dst.i.i, align 1
+; CHECK-NEXT:   store float 0.000000e+00, float* %dst.i.i, align 1
+; CHECK-NEXT:   %src.i.i = getelementptr inbounds float, float* %1, i64 %idx.i
+; CHECK-NEXT:   %src.i.l.i = load float, float* %src.i.i, align 1
+; CHECK-NEXT:   %4 = fadd fast float %src.i.l.i, %dst.i.l.i
+; CHECK-NEXT:   store float %4, float* %src.i.i, align 1
+; CHECK-NEXT:   %idx.next.i = add nuw i64 %idx.i, 1
+; CHECK-NEXT:   %5 = icmp eq i64 %2, %idx.next.i
+; CHECK-NEXT:   br i1 %5, label %__enzyme_memcpyadd_floatda1sa1.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpyadd_floatda1sa1.exit:              ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

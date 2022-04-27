@@ -115,14 +115,44 @@ entry:
 ; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
-; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %0, float* %m, i32 %len, i32 %incm)
+; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
+; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %idx.i = phi i32 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:   %sidx.i = phi i32 [ 0, %entry ], [ %sidx.next.i, %for.body.i ]
+; CHECK-NEXT:   %dst.i.i = getelementptr inbounds float, float* %0, i32 %idx.i
+; CHECK-NEXT:   %src.i.i = getelementptr inbounds float, float* %m, i32 %sidx.i
+; CHECK-NEXT:   %src.i.l.i = load float, float* %src.i.i
+; CHECK-NEXT:   store float %src.i.l.i, float* %dst.i.i
+; CHECK-NEXT:   %idx.next.i = add nuw i32 %idx.i, 1
+; CHECK-NEXT:   %sidx.next.i = add nuw i32 %sidx.i, %incm
+; CHECK-NEXT:   %2 = icmp eq i32 %len, %idx.next.i
+; CHECK-NEXT:   br i1 %2, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpy_float_32_da0sa0stride.exit:       ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   %mallocsize1 = mul i32 %len, 4
 ; CHECK-NEXT:   %malloccall2 = tail call i8* @malloc(i32 %mallocsize1)
-; CHECK-NEXT:   %1 = bitcast i8* %malloccall2 to float*
-; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %1, float* %n, i32 %len, i32 %incn)
-; CHECK-NEXT:   %2 = insertvalue { float*, float* } undef, float* %0, 0
-; CHECK-NEXT:   %3 = insertvalue { float*, float* } %2, float* %1, 1
-; CHECK-NEXT:   ret { float*, float* } %3
+; CHECK-NEXT:   %3 = bitcast i8* %malloccall2 to float*
+; CHECK-NEXT:   %4 = icmp eq i32 %len, 0
+; CHECK-NEXT:   br i1 %4, label %__enzyme_memcpy_float_32_da0sa0stride.exit9, label %for.body.i8
+
+; CHECK: for.body.i8:                                      ; preds = %for.body.i8, %__enzyme_memcpy_float_32_da0sa0stride.exit
+; CHECK-NEXT:   %idx.i1 = phi i32 [ 0, %__enzyme_memcpy_float_32_da0sa0stride.exit ], [ %idx.next.i6, %for.body.i8 ]
+; CHECK-NEXT:   %sidx.i2 = phi i32 [ 0, %__enzyme_memcpy_float_32_da0sa0stride.exit ], [ %sidx.next.i7, %for.body.i8 ]
+; CHECK-NEXT:   %dst.i.i3 = getelementptr inbounds float, float* %3, i32 %idx.i1
+; CHECK-NEXT:   %src.i.i4 = getelementptr inbounds float, float* %n, i32 %sidx.i2
+; CHECK-NEXT:   %src.i.l.i5 = load float, float* %src.i.i4
+; CHECK-NEXT:   store float %src.i.l.i5, float* %dst.i.i3
+; CHECK-NEXT:   %idx.next.i6 = add nuw i32 %idx.i1, 1
+; CHECK-NEXT:   %sidx.next.i7 = add nuw i32 %sidx.i2, %incn
+; CHECK-NEXT:   %5 = icmp eq i32 %len, %idx.next.i6
+; CHECK-NEXT:   br i1 %5, label %__enzyme_memcpy_float_32_da0sa0stride.exit9, label %for.body.i8
+
+; CHECK: __enzyme_memcpy_float_32_da0sa0stride.exit9:      ; preds = %__enzyme_memcpy_float_32_da0sa0stride.exit, %for.body.i8
+; CHECK-NEXT:   %6 = insertvalue { float*, float* } undef, float* %0, 0
+; CHECK-NEXT:   %7 = insertvalue { float*, float* } %6, float* %3, 1
+; CHECK-NEXT:   ret { float*, float* } %7
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @[[revMod]](i32 %len, float* noalias %m, float* %"m'", i32 %incm, float* noalias %n, float* %"n'", i32 %incn, float %differeturn, { float*, float* }
@@ -150,7 +180,22 @@ entry:
 ; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
-; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %0, float* %m, i32 %len, i32 %incm)
+; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
+; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %idx.i = phi i32 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:   %sidx.i = phi i32 [ 0, %entry ], [ %sidx.next.i, %for.body.i ]
+; CHECK-NEXT:   %dst.i.i = getelementptr inbounds float, float* %0, i32 %idx.i
+; CHECK-NEXT:   %src.i.i = getelementptr inbounds float, float* %m, i32 %sidx.i
+; CHECK-NEXT:   %src.i.l.i = load float, float* %src.i.i
+; CHECK-NEXT:   store float %src.i.l.i, float* %dst.i.i
+; CHECK-NEXT:   %idx.next.i = add nuw i32 %idx.i, 1
+; CHECK-NEXT:   %sidx.next.i = add nuw i32 %sidx.i, %incm
+; CHECK-NEXT:   %2 = icmp eq i32 %len, %idx.next.i
+; CHECK-NEXT:   br i1 %2, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpy_float_32_da0sa0stride.exit:       ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   ret float* %0
 ; CHECK-NEXT: }
 
@@ -174,7 +219,22 @@ entry:
 ; CHECK-NEXT:   %mallocsize = mul i32 %len, 4
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
-; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %0, float* %n, i32 %len, i32 %incn)
+; CHECK-NEXT:   %1 = icmp eq i32 %len, 0
+; CHECK-NEXT:   br i1 %1, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %idx.i = phi i32 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:   %sidx.i = phi i32 [ 0, %entry ], [ %sidx.next.i, %for.body.i ]
+; CHECK-NEXT:   %dst.i.i = getelementptr inbounds float, float* %0, i32 %idx.i
+; CHECK-NEXT:   %src.i.i = getelementptr inbounds float, float* %n, i32 %sidx.i
+; CHECK-NEXT:   %src.i.l.i = load float, float* %src.i.i
+; CHECK-NEXT:   store float %src.i.l.i, float* %dst.i.i
+; CHECK-NEXT:   %idx.next.i = add nuw i32 %idx.i, 1
+; CHECK-NEXT:   %sidx.next.i = add nuw i32 %sidx.i, %incn
+; CHECK-NEXT:   %2 = icmp eq i32 %len, %idx.next.i
+; CHECK-NEXT:   br i1 %2, label %__enzyme_memcpy_float_32_da0sa0stride.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpy_float_32_da0sa0stride.exit:       ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   ret float* %0
 ; CHECK-NEXT: }
 

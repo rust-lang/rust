@@ -133,7 +133,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %0 = alloca i32
 ; CHECK-NEXT:   %1 = alloca %struct.ompi_status_public_t
 ; CHECK-NEXT:   %2 = alloca i32
-; CHECK-NEXT:   %statut = alloca %struct.ompi_status_public_t, align 8
+; CHECK-NEXT:   %statut = alloca %struct.ompi_status_public_t
 ; CHECK-NEXT:   %3 = bitcast float* %val1 to i8*
 ; CHECK-NEXT:   %call = call i32 @MPI_Send(i8* %3, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %"'ipc" = bitcast float* %"val2'" to i8*
@@ -151,7 +151,23 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %13 = call i32 @MPI_Recv(i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* %1)
 ; CHECK-NEXT:   %14 = bitcast i8* %12 to float*
 ; CHECK-NEXT:   %15 = udiv i64 %11, 4
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %14, float* %"val1'", i64 %15)
+; CHECK-NEXT:   %16 = icmp eq i64 %15, 0
+; CHECK-NEXT:   br i1 %16, label %__enzyme_memcpyadd_floatda1sa1.exit, label %for.body.i
+
+; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
+; CHECK-NEXT:   %idx.i = phi i64 [ 0, %entry ], [ %idx.next.i, %for.body.i ]
+; CHECK-NEXT:   %dst.i.i = getelementptr inbounds float, float* %14, i64 %idx.i
+; CHECK-NEXT:   %dst.i.l.i = load float, float* %dst.i.i
+; CHECK-NEXT:   store float 0.000000e+00, float* %dst.i.i
+; CHECK-NEXT:   %src.i.i = getelementptr inbounds float, float* %"val1'", i64 %idx.i
+; CHECK-NEXT:   %src.i.l.i = load float, float* %src.i.i
+; CHECK-NEXT:   %17 = fadd fast float %src.i.l.i, %dst.i.l.i
+; CHECK-NEXT:   store float %17, float* %src.i.i
+; CHECK-NEXT:   %idx.next.i = add nuw i64 %idx.i, 1
+; CHECK-NEXT:   %18 = icmp eq i64 %15, %idx.next.i
+; CHECK-NEXT:   br i1 %18, label %__enzyme_memcpyadd_floatda1sa1.exit, label %for.body.i
+
+; CHECK: __enzyme_memcpyadd_floatda1sa1.exit:              ; preds = %entry, %for.body.i
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %12)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -55,7 +55,22 @@ entry:
 ; CHECK-NEXT:   %21 = extractvalue [3 x i8*] %20, 0
 ; CHECK-NEXT:   %22 = extractvalue [3 x i8*] %20, 1
 ; CHECK-NEXT:   %23 = extractvalue [3 x i8*] %20, 2
-; CHECK-NEXT:   call void @__enzyme_checked_free_3(i8* %ptr, i8* %21, i8* %22, i8* %23)
+; CHECK-NEXT:   %24 = icmp ne i8* %ptr, %21
+; CHECK-NEXT:   br i1 %24, label %free0.i, label %__enzyme_checked_free_3.exit
+
+; CHECK: free0.i:                                          ; preds = %entry
+; CHECK-NEXT:   call void @free(i8* %21)
+; CHECK-NEXT:   %25 = icmp ne i8* %21, %22
+; CHECK-NEXT:   %26 = icmp ne i8* %22, %23
+; CHECK-NEXT:   %27 = and i1 %26, %25
+; CHECK-NEXT:   br i1 %27, label %free1.i, label %__enzyme_checked_free_3.exit
+
+; CHECK: free1.i:                                          ; preds = %free0.i
+; CHECK-NEXT:   call void @free(i8* %22)
+; CHECK-NEXT:   call void @free(i8* %23)
+; CHECK-NEXT:   br label %__enzyme_checked_free_3.exit
+
+; CHECK: __enzyme_checked_free_3.exit:                     ; preds = %entry, %free0.i, %free1.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

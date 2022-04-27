@@ -88,25 +88,38 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %9 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8, i8* } %4, 4
 ; CHECK-NEXT:   %10 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8, i8* } %4, 5
 ; CHECK-NEXT:   %11 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8, i8* } %4, 6
-; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %5, i64 %6, i8* %7, i64 %8, i64 %9, i8* %10, i8 %11, %struct.ompi_request_t** %r2) 
+; CHECK-NEXT:   %12 = trunc i64 %6 to i32
+; CHECK-NEXT:   %13 = bitcast i8* %7 to %struct.ompi_datatype_t*
+; CHECK-NEXT:   %14 = trunc i64 %8 to i32
+; CHECK-NEXT:   %15 = trunc i64 %9 to i32
+; CHECK-NEXT:   %16 = bitcast i8* %10 to %struct.ompi_communicator_t*
+; CHECK-NEXT:   %17 = icmp eq i8 %11, 1
+; CHECK-NEXT:   br i1 %17, label %invertISend.i, label %invertIRecv.i
+
+; CHECK: invertISend.i:                                    ; preds = %invertentry_nonnull
+; CHECK-NEXT:   %18 = call i32 @MPI_Irecv(i8* %5, i32 %12, %struct.ompi_datatype_t* %13, i32 %14, i32 %15, %struct.ompi_communicator_t* %16, %struct.ompi_request_t** %r2)
 ; CHECK-NEXT:   br label %invertentry_end
 
-; CHECK: invertentry_end:                                  ; preds = %invertentry_nonnull, %entry
-; CHECK-NEXT:   %12 = bitcast %struct.ompi_request_t** %"r2'ipc" to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }**
-; CHECK-NEXT:   %13 = load { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %12
-; CHECK-NEXT:   %14 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %13, i64 0, i32 0
-; CHECK-NEXT:   %15 = load i8*, i8** %14
-; CHECK-NEXT:   %16 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %13, i64 0, i32 7
-; CHECK-NEXT:   %17 = load i8*, i8** %16
-; CHECK-NEXT:   %18 = bitcast %struct.ompi_request_t** %"r2'ipc" to i8**
-; CHECK-NEXT:   store i8* %17, i8** %18
-; CHECK-NEXT:   %19 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %0)
-; CHECK-NEXT:   %20 = load i32, i32* %0
-; CHECK-NEXT:   %21 = call i32 @MPI_Wait(%struct.ompi_request_t** %r2, %struct.ompi_status_public_t* %1)
-; CHECK-NEXT:   %22 = zext i32 %20 to i64
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %15, i8 0, i64 %22, i1 false)
-; CHECK-NEXT:   %23 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %13 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %23)
+; CHECK: invertIRecv.i:                                    ; preds = %invertentry_nonnull
+; CHECK-NEXT:   %19 = call i32 @MPI_Isend(i8* %5, i32 %12, %struct.ompi_datatype_t* %13, i32 %14, i32 %15, %struct.ompi_communicator_t* %16, %struct.ompi_request_t** %r2)
+; CHECK-NEXT:   br label %invertentry_end
+
+; CHECK: invertentry_end:                                  ; preds = %invertISend.i, %invertIRecv.i, %entry
+; CHECK-NEXT:   %20 = bitcast %struct.ompi_request_t** %"r2'ipc" to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }**
+; CHECK-NEXT:   %21 = load { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %20
+; CHECK-NEXT:   %22 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %21, i64 0, i32 0
+; CHECK-NEXT:   %23 = load i8*, i8** %22
+; CHECK-NEXT:   %24 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %21, i64 0, i32 7
+; CHECK-NEXT:   %25 = load i8*, i8** %24
+; CHECK-NEXT:   %26 = bitcast %struct.ompi_request_t** %"r2'ipc" to i8**
+; CHECK-NEXT:   store i8* %25, i8** %26
+; CHECK-NEXT:   %27 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %0)
+; CHECK-NEXT:   %28 = load i32, i32* %0
+; CHECK-NEXT:   %29 = call i32 @MPI_Wait(%struct.ompi_request_t** %r2, %struct.ompi_status_public_t* %1)
+; CHECK-NEXT:   %30 = zext i32 %28 to i64
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %23, i8 0, i64 %30, i1 false)
+; CHECK-NEXT:   %31 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %21 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %31)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %malloccall)
 ; CHECK-NEXT:   ret void
