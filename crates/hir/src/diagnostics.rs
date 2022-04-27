@@ -67,8 +67,9 @@ pub struct UnresolvedImport {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedMacroCall {
-    pub macro_call: InFile<AstPtr<ast::MacroCall>>,
+    pub macro_call: InFile<SyntaxNodePtr>,
     pub path: ModPath,
+    pub is_bang: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

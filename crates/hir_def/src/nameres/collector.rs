@@ -1359,13 +1359,24 @@ impl DefCollector<'_> {
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                             directive.module_id,
-                            ast_id.ast_id,
+                            MacroCallKind::FnLike { ast_id: ast_id.ast_id, expand_to: *expand_to },
                             path,
                         ));
                     }
                 }
-                MacroDirectiveKind::Derive { .. } | MacroDirectiveKind::Attr { .. } => {
-                    // FIXME: we might want to diagnose this too
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
+                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                        directive.module_id,
+                        MacroCallKind::Derive {
+                            ast_id: ast_id.ast_id,
+                            derive_attr_index: derive_attr.ast_index,
+                            derive_index: *derive_pos as u32,
+                        },
+                        ast_id.path.clone(),
+                    ));
+                }
+                MacroDirectiveKind::Attr { .. } => {
+                    // FIXME: these should get diagnosed by `reseed_with_unresolved_attribute`
                 }
             }
         }

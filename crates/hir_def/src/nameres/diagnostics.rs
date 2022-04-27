@@ -25,7 +25,7 @@ pub enum DefDiagnosticKind {
 
     UnresolvedProcMacro { ast: MacroCallKind },
 
-    UnresolvedMacroCall { ast: AstId<ast::MacroCall>, path: ModPath },
+    UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
 
     MacroError { ast: MacroCallKind, message: String },
 
@@ -95,7 +95,7 @@ impl DefDiagnostic {
 
     pub(super) fn unresolved_macro_call(
         container: LocalModuleId,
-        ast: AstId<ast::MacroCall>,
+        ast: MacroCallKind,
         path: ModPath,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedMacroCall { ast, path } }

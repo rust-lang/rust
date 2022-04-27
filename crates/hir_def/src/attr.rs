@@ -813,12 +813,15 @@ impl Attr {
         let paths = args
             .token_trees
             .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
-            .map(|tts| {
+            .filter_map(|tts| {
+                if tts.is_empty() {
+                    return None;
+                }
                 let segments = tts.iter().filter_map(|tt| match tt {
                     tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
                     _ => None,
                 });
-                ModPath::from_segments(PathKind::Plain, segments)
+                Some(ModPath::from_segments(PathKind::Plain, segments))
             });
 
         Some(paths)
