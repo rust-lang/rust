@@ -701,8 +701,9 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
             let node = ast.to_node(db.upcast());
             acc.push(
                 UnresolvedMacroCall {
-                    macro_call: InFile::new(ast.file_id, AstPtr::new(&node)),
+                    macro_call: InFile::new(node.file_id, SyntaxNodePtr::new(&node.value)),
                     path: path.clone(),
+                    is_bang: matches!(ast, MacroCallKind::FnLike { .. }),
                 }
                 .into(),
             );
@@ -1170,7 +1171,12 @@ impl DefWithBody {
                     .into(),
                 ),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
-                    UnresolvedMacroCall { macro_call: node.clone(), path: path.clone() }.into(),
+                    UnresolvedMacroCall {
+                        macro_call: node.clone().map(|ast_ptr| ast_ptr.into()),
+                        path: path.clone(),
+                        is_bang: true,
+                    }
+                    .into(),
                 ),
             }
         }
