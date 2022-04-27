@@ -1942,10 +1942,10 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
 
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
-impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
+impl<K, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
-            .entries(self.inner.iter().map(|(k, _)| k))
+            .entries(self.inner.iter().map(|(_, v)| v))
             .finish()
     }
 }
@@ -3149,13 +3149,9 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 }
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
-impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
-where
-    K: fmt::Debug,
-    V: fmt::Debug,
-{
+impl<K, V: Debug> fmt::Debug for ValuesMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter()).finish()
+        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
     }
 }
 
