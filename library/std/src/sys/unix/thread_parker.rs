@@ -41,52 +41,18 @@ unsafe fn wait(cond: *mut libc::pthread_cond_t, lock: *mut libc::pthread_mutex_t
 const TIMESPEC_MAX: libc::timespec =
     libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
-fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
-    if value > <libc::time_t>::MAX as u64 { <libc::time_t>::MAX } else { value as libc::time_t }
-}
-
-// This implementation is used on systems that support pthread_condattr_setclock
-// where we configure the condition variable to use the monotonic clock (instead of
-// the default system clock). This approach avoids all problems that result
-// from changes made to the system time.
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "espidf")))]
 unsafe fn wait_timeout(
     cond: *mut libc::pthread_cond_t,
     lock: *mut libc::pthread_mutex_t,
     dur: Duration,
 ) {
-    use crate::mem;
+    // Use the system clock on systems that do not support pthread_condattr_setclock.
+    // This unfortunately results in problems when the system time changes.
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "espidf"))]
+    let (now, dur) = {
+        use super::time::SystemTime;
+        use crate::cmp::min;
 
-    let mut now: libc::timespec = mem::zeroed();
-    let r = libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut now);
-    assert_eq!(r, 0);
-    // Nanosecond calculations can't overflow because both values are below 1e9.
-    let nsec = dur.subsec_nanos() + now.tv_nsec as u32;
-    let sec = saturating_cast_to_time_t(dur.as_secs())
-        .checked_add((nsec / 1_000_000_000) as libc::time_t)
-        .and_then(|s| s.checked_add(now.tv_sec));
-    let nsec = nsec % 1_000_000_000;
-    let timeout =
-        sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
-    let r = libc::pthread_cond_timedwait(cond, lock, &timeout);
-    assert!(r == libc::ETIMEDOUT || r == 0);
-}
-
-// This implementation is modeled after libcxx's condition_variable
-// https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
-// https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "espidf"))]
-unsafe fn wait_timeout(
-    cond: *mut libc::pthread_cond_t,
-    lock: *mut libc::pthread_mutex_t,
-    mut dur: Duration,
-) {
-    use crate::ptr;
-
-    // 1000 years
-    let max_dur = Duration::from_secs(1000 * 365 * 86400);
-
-    if dur > max_dur {
         // OSX implementation of `pthread_cond_timedwait` is buggy
         // with super long durations. When duration is greater than
         // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
@@ -98,23 +64,19 @@ unsafe fn wait_timeout(
         // To work around this issue, and possible bugs of other OSes, timeout
         // is clamped to 1000 years, which is allowable per the API of `park_timeout`
         // because of spurious wakeups.
-        dur = max_dur;
-    }
+        let dur = min(dur, Duration::from_secs(1000 * 365 * 86400));
+        let now = SystemTime::now().t;
+        (now, dur)
+    };
+    // Use the monotonic clock on other systems.
+    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "espidf")))]
+    let (now, dur) = {
+        use super::time::Timespec;
 
-    let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
-    let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
-    debug_assert_eq!(r, 0);
-    let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
-    let extra = (nsec / 1_000_000_000) as libc::time_t;
-    let nsec = nsec % 1_000_000_000;
-    let seconds = saturating_cast_to_time_t(dur.as_secs());
-    let timeout = sys_now
-        .tv_sec
-        .checked_add(extra)
-        .and_then(|s| s.checked_add(seconds))
-        .map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec })
-        .unwrap_or(TIMESPEC_MAX);
-    // And wait!
+        (Timespec::now(libc::CLOCK_MONOTONIC), dur)
+    };
+
+    let timeout = now.checked_add_duration(&dur).map(|t| t.t).unwrap_or(TIMESPEC_MAX);
     let r = libc::pthread_cond_timedwait(cond, lock, &timeout);
     debug_assert!(r == libc::ETIMEDOUT || r == 0);
 }
