@@ -495,6 +495,7 @@ mod dist {
         config.stage = 0;
         config.cmd = Subcommand::Test {
             paths: vec!["library/std".into()],
+            skip: vec![],
             test_args: vec![],
             rustc_args: vec![],
             fail_fast: true,
@@ -565,6 +566,7 @@ mod dist {
         let mut config = configure(&["A"], &["A"]);
         config.cmd = Subcommand::Test {
             paths: vec![],
+            skip: vec![],
             test_args: vec![],
             rustc_args: vec![],
             fail_fast: true,
