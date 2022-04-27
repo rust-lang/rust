@@ -2718,6 +2718,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
         _ => tcx.sess.span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
     }
 }
+
 fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     let did = did.expect_local();
     let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
