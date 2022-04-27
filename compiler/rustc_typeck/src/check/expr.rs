@@ -21,11 +21,13 @@ use crate::errors::{
 };
 use crate::type_error_struct;
 
+use super::suggest_call_constructor;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Diagnostic;
+use rustc_errors::EmissionGuarantee;
 use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
@@ -1986,6 +1988,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx().ty_error()
     }
 
+    fn check_call_constructor<G: EmissionGuarantee>(
+        &self,
+        err: &mut DiagnosticBuilder<'_, G>,
+        base: &'tcx hir::Expr<'tcx>,
+        def_id: DefId,
+    ) {
+        let local_id = def_id.expect_local();
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_id);
+        let node = self.tcx.hir().get(hir_id);
+
+        if let Some(fields) = node.tuple_fields() {
+            let kind = match self.tcx.opt_def_kind(local_id) {
+                Some(DefKind::Ctor(of, _)) => of,
+                _ => return,
+            };
+
+            suggest_call_constructor(base.span, kind, fields.len(), err);
+        }
+    }
+
     fn suggest_await_on_field_access(
         &self,
         err: &mut Diagnostic,
@@ -2054,6 +2076,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Opaque(_, _) => {
                 self.suggest_await_on_field_access(&mut err, field, base, expr_t.peel_refs());
+            }
+            ty::FnDef(def_id, _) => {
+                self.check_call_constructor(&mut err, base, def_id);
             }
             _ => {}
         }

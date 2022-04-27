@@ -310,10 +310,20 @@ window.initSearch = function(rawSearchIndex) {
      */
     function getIdentEndPosition(parserState) {
         let end = parserState.pos;
+        let foundExclamation = false;
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
             if (!isIdentCharacter(c)) {
-                if (isErrorCharacter(c)) {
+                if (c === "!") {
+                    if (foundExclamation) {
+                        throw new Error("Cannot have more than one `!` in an ident");
+                    } else if (parserState.pos + 1 < parserState.length &&
+                        isIdentCharacter(parserState.userQuery[parserState.pos + 1]))
+                    {
+                        throw new Error("`!` can only be at the end of an ident");
+                    }
+                    foundExclamation = true;
+                } else if (isErrorCharacter(c)) {
                     throw new Error(`Unexpected \`${c}\``);
                 } else if (
                     isStopCharacter(c) ||
@@ -329,6 +339,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                     // Skip current ":".
                     parserState.pos += 1;
+                    foundExclamation = false;
                 } else {
                     throw new Error(`Unexpected \`${c}\``);
                 }
@@ -591,7 +602,7 @@ window.initSearch = function(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *(ALPHA / DIGIT / "_")
+     * ident = *(ALPHA / DIGIT / "_") [!]
      * path = ident *(DOUBLE-COLON ident)
      * arg = path [generics]
      * arg-without-generic = path

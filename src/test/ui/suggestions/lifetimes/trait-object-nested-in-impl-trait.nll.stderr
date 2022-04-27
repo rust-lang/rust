@@ -9,10 +9,14 @@ LL | |             remaining: self.0.iter(),
 LL | |         }
    | |_________^ returning this value requires that `'1` must outlive `'static`
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
+help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
    |                                                          ++++
+help: to declare that the trait object captures data from argument `self`, you can add an explicit `'_` lifetime bound
+   |
+LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> {
+   |                                                        ++++
 
 error: lifetime may not live long enough
   --> $DIR/trait-object-nested-in-impl-trait.rs:39:9
@@ -24,6 +28,11 @@ LL | |             current: None,
 LL | |             remaining: self.0.iter(),
 LL | |         }
    | |_________^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `self`, you can add an explicit `'_` lifetime bound
+   |
+LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> + '_ {
+   |                                                        ++++
 
 error: lifetime may not live long enough
   --> $DIR/trait-object-nested-in-impl-trait.rs:50:9
@@ -35,6 +44,11 @@ LL | |             current: None,
 LL | |             remaining: self.0.iter(),
 LL | |         }
    | |_________^ returning this value requires that `'a` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `self`, you can add an explicit `'a` lifetime bound
+   |
+LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo + 'a>> + 'a {
+   |                                                               ++++
 
 error: lifetime may not live long enough
   --> $DIR/trait-object-nested-in-impl-trait.rs:61:9
@@ -47,10 +61,14 @@ LL | |             remaining: self.0.iter(),
 LL | |         }
    | |_________^ returning this value requires that `'a` must outlive `'static`
    |
-help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
+help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
    |                                                                 ++++
+help: to declare that the trait object captures data from argument `self`, you can add an explicit `'a` lifetime bound
+   |
+LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo + 'a>> {
+   |                                                               ++++
 
 error: aborting due to 4 previous errors
 
