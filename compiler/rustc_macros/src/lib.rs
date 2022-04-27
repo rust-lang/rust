@@ -8,12 +8,12 @@ use synstructure::decl_derive;
 
 use proc_macro::TokenStream;
 
+mod diagnostics;
 mod hash_stable;
 mod lift;
 mod newtype;
 mod query;
 mod serialize;
-mod session_diagnostic;
 mod symbols;
 mod type_foldable;
 
@@ -76,7 +76,7 @@ decl_derive!(
         suggestion,
         suggestion_short,
         suggestion_hidden,
-        suggestion_verbose)] => session_diagnostic::session_diagnostic_derive
+        suggestion_verbose)] => diagnostics::session_diagnostic_derive
 );
 decl_derive!(
     [SessionSubdiagnostic, attributes(
@@ -91,5 +91,5 @@ decl_derive!(
         // field attributes
         skip_arg,
         primary_span,
-        applicability)] => session_diagnostic::session_subdiagnostic_derive
+        applicability)] => diagnostics::session_subdiagnostic_derive
 );
