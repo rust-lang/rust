@@ -1508,7 +1508,7 @@ pub mod tracked_env {
         let injected_value = crate::bridge::client::FreeFunctions::injected_env_var(key);
         let env_value = env::var(key);
 
-        let value = injected_value.map_or_else(env_value, Ok);
+        let value = injected_value.map_or(env_value, Ok);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }
