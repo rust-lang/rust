@@ -29,11 +29,16 @@ impl<'tcx> LibFeatureCollector<'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
-        let stab_attrs =
-            [sym::stable, sym::unstable, sym::rustc_const_stable, sym::rustc_const_unstable];
+        let stab_attrs = [
+            sym::stable,
+            sym::unstable,
+            sym::rustc_const_stable,
+            sym::rustc_const_unstable,
+            sym::rustc_default_body_unstable,
+        ];
 
         // Find a stability attribute: one of #[stable(…)], #[unstable(…)],
-        // #[rustc_const_stable(…)], or #[rustc_const_unstable(…)].
+        // #[rustc_const_stable(…)], #[rustc_const_unstable(…)] or #[rustc_default_body_unstable].
         if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| attr.has_name(**stab_attr)) {
             let meta_kind = attr.meta_kind();
             if let Some(MetaItemKind::List(ref metas)) = meta_kind {
@@ -53,8 +58,12 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     // This additional check for stability is to make sure we
                     // don't emit additional, irrelevant errors for malformed
                     // attributes.
-                    let is_unstable =
-                        matches!(*stab_attr, sym::unstable | sym::rustc_const_unstable);
+                    let is_unstable = matches!(
+                        *stab_attr,
+                        sym::unstable
+                            | sym::rustc_const_unstable
+                            | sym::rustc_default_body_unstable
+                    );
                     if since.is_some() || is_unstable {
                         return Some((feature, since, attr.span));
                     }
