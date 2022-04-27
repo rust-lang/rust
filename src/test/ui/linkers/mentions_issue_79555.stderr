@@ -1,0 +1,4 @@
+warning: Using `lld`, self-contained linking, and coverage or profile generation has known issues. See issue #79555 for more details, at https://github.com/rust-lang/rust/issues/79555
+
+warning: 1 warning emitted
+
