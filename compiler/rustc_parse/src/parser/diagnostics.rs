@@ -246,9 +246,9 @@ impl MultiSugg {
 #[derive(SessionDiagnostic)]
 #[error(slug = "parser-maybe-report-ambiguous-plus")]
 struct AmbiguousPlus {
-    pub sum_with_parens: String,
+    pub sum_ty: String,
     #[primary_span]
-    #[suggestion(code = "({sum_with_parens})")]
+    #[suggestion(code = "({sum_ty})")]
     pub span: Span,
 }
 
@@ -1182,10 +1182,7 @@ impl<'a> Parser<'a> {
         ty: &Ty,
     ) {
         if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
-            self.sess.emit_err(AmbiguousPlus {
-                sum_with_parens: pprust::ty_to_string(&ty),
-                span: ty.span,
-            });
+            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
         }
     }
 
