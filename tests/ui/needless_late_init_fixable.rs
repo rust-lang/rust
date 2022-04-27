@@ -14,12 +14,6 @@ fn main() {
     let d: usize;
     d = 1;
 
-    let mut e;
-    e = 1;
-    e = 2;
-
-    let h;
-    h = format!("{}", e);
-
-    println!("{}", a);
+    let e;
+    e = format!("{}", d);
 }
