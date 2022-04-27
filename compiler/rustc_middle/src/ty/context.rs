@@ -123,9 +123,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PlaceholderRegion = ty::PlaceholderRegion;
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-pub struct RawLocalDefId(LocalDefId);
-
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
@@ -1477,23 +1474,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id = self.definitions.write().create_def(parent, data);
 
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // When the incr. comp. engine considers marking this query as green, eval_always requires
-        // we run the function to run.  To invoke it, the parameter cannot be reconstructed from
-        // the DepNode, so the caller query is run.  Luckily, we are inside the caller query,
-        // therefore the definition is properly created.
-        debug_assert!({
-            use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
-            self.is_eval_always(crate::dep_graph::DepKind::register_def)
-                && !<RawLocalDefId as DepNodeParams<TyCtxt<'_>>>::fingerprint_style()
-                    .reconstructible()
-        });
+        use rustc_query_system::dep_graph::DepNodeIndex;
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         // Any LocalDefId which is used within queries, either as key or result, either:
         // - has been created before the construction of the TyCtxt;
-        // - has been created by this call to `register_def`.
+        // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        self.register_def(RawLocalDefId(def_id))
+        def_id
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
@@ -3033,5 +3022,4 @@ pub fn provide(providers: &mut ty::query::Providers) {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };
-    providers.register_def = |_, raw_id| raw_id.0;
 }
