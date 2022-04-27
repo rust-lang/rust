@@ -15,7 +15,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 extern crate rustc_macros;
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
@@ -462,4 +462,15 @@ struct ValidApplicability {
 struct NoApplicability {
     #[suggestion(message = "bar", code = "...")]
     suggestion: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[note(slug = "note")]
+struct Note;
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "subdiagnostic")]
+struct Subdiagnostic {
+    #[subdiagnostic]
+    note: Note,
 }

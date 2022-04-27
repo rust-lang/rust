@@ -211,7 +211,7 @@ error: `#[nonsense]` is not a valid attribute
 LL |     #[nonsense]
    |     ^^^^^^^^^^^
    |
-   = help: only `skip_arg`, `primary_span`, `label`, `note` and `help` are valid field attributes
+   = help: only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes
 
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
   --> $DIR/diagnostic-derive.rs:156:5

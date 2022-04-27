@@ -404,9 +404,10 @@ impl SessionDiagnosticDeriveBuilder {
                     report_error_if_not_applied_to_span(attr, &info)?;
                     Ok(self.add_subdiagnostic(field_binding, name, name))
                 }
+                "subdiagnostic" => Ok(quote! { #diag.subdiagnostic(*#field_binding); }),
                 _ => throw_invalid_attr!(attr, &meta, |diag| {
                     diag
-                        .help("only `skip_arg`, `primary_span`, `label`, `note` and `help` are valid field attributes")
+                        .help("only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes")
                 }),
             },
             Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(ref s), .. }) => match name {

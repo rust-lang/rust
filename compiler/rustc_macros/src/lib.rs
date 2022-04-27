@@ -73,6 +73,7 @@ decl_derive!(
         skip_arg,
         primary_span,
         label,
+        subdiagnostic,
         suggestion,
         suggestion_short,
         suggestion_hidden,
