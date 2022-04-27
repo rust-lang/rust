@@ -20,12 +20,6 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
-    /// Create a new definition within the incr. comp. engine.
-    query register_def(_: ty::RawLocalDefId) -> LocalDefId {
-        eval_always
-        desc { "register a DefId with the incr. comp. engine" }
-    }
-
     query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
         eval_always
         no_hash
