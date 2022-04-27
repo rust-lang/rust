@@ -212,7 +212,12 @@ pub trait Emitter {
     fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
 
     /// Emit list of unused externs
-    fn emit_unused_externs(&mut self, _lint_level: &str, _unused_externs: &[&str]) {}
+    fn emit_unused_externs(
+        &mut self,
+        _lint_level: rustc_lint_defs::Level,
+        _unused_externs: &[&str],
+    ) {
+    }
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {

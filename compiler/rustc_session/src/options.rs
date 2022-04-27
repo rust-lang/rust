@@ -221,7 +221,7 @@ top_level_options!(
         json_artifact_notifications: bool [TRACKED],
 
         /// `true` if we're emitting a JSON blob containing the unused externs
-        json_unused_externs: bool [UNTRACKED],
+        json_unused_externs: JsonUnusedExterns [UNTRACKED],
 
         /// `true` if we're emitting a JSON job containing a future-incompat report for lints
         json_future_incompat: bool [TRACKED],
