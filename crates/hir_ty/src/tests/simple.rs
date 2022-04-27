@@ -1588,6 +1588,16 @@ fn infer_type_alias() {
             z.x;
             z.y;
         }
+        mod m {
+            pub enum Enum {
+                Foo(u8),
+            }
+            pub type Alias = Enum;
+        }
+        fn f() {
+            let e = m::Alias::Foo(0);
+            let m::Alias::Foo(x) = &e;
+        }
         "#,
         expect![[r#"
             115..116 'x': A<u32, i128>
@@ -1606,6 +1616,15 @@ fn infer_type_alias() {
             195..198 'z.x': u8
             204..205 'z': A<u8, i8>
             204..207 'z.y': i8
+            298..362 '{     ... &e; }': ()
+            308..309 'e': Enum
+            312..325 'm::Alias::Foo': Foo(u8) -> Enum
+            312..328 'm::Ali...Foo(0)': Enum
+            326..327 '0': u8
+            338..354 'm::Ali...Foo(x)': Enum
+            352..353 'x': &u8
+            357..359 '&e': &Enum
+            358..359 'e': Enum
         "#]],
     )
 }
