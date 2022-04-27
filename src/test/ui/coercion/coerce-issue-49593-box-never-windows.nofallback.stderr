@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): std::error::Error` is not satisfied
-  --> $DIR/coerce-issue-49593-box-never.rs:18:53
+  --> $DIR/coerce-issue-49593-box-never-windows.rs:18:53
    |
 LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
@@ -13,11 +13,11 @@ LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x
              BorrowError
              BorrowMutError
              Box<T>
-           and 43 others
+           and 45 others
    = note: required for the cast to the object type `dyn std::error::Error`
 
 error[E0277]: the trait bound `(): std::error::Error` is not satisfied
-  --> $DIR/coerce-issue-49593-box-never.rs:23:49
+  --> $DIR/coerce-issue-49593-box-never-windows.rs:23:49
    |
 LL |     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
@@ -31,7 +31,7 @@ LL |     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
              BorrowError
              BorrowMutError
              Box<T>
-           and 43 others
+           and 45 others
    = note: required for the cast to the object type `(dyn std::error::Error + 'static)`
 
 error: aborting due to 2 previous errors
