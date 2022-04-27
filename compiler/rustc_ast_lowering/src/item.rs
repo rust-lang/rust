@@ -1,11 +1,11 @@
-use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition, ResolverAstLowering};
+use super::{LoweringContext, ParamMode};
 use crate::{Arena, FnDeclKind};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -81,13 +81,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             is_in_loop_condition: false,
             is_in_trait_impl: false,
             is_in_dyn_type: false,
-            anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
             generator_kind: None,
             task_context: None,
             current_item: None,
-            lifetimes_to_define: Vec::new(),
-            is_collecting_anonymous_lifetimes: None,
-            in_scope_lifetimes: Vec::new(),
+            captured_lifetimes: None,
             allow_try_trait: Some([sym::try_trait_v2][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
@@ -143,32 +140,14 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             LocalDefId { local_def_index }
         };
 
-        let parent_hir = self.lower_node(parent_id).unwrap().node().expect_item();
+        let parent_hir = self.lower_node(parent_id).unwrap();
         self.with_lctx(item.id, |lctx| {
             // Evaluate with the lifetimes in `params` in-scope.
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
-            match parent_hir.kind {
-                hir::ItemKind::Impl(hir::Impl { ref of_trait, ref generics, .. }) => {
+            match parent_hir.node().expect_item().kind {
+                hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }) => {
                     lctx.is_in_trait_impl = of_trait.is_some();
-                    lctx.in_scope_lifetimes = generics
-                        .params
-                        .iter()
-                        .filter(|param| {
-                            matches!(param.kind, hir::GenericParamKind::Lifetime { .. })
-                        })
-                        .map(|param| param.name)
-                        .collect();
-                }
-                hir::ItemKind::Trait(_, _, ref generics, ..) => {
-                    lctx.in_scope_lifetimes = generics
-                        .params
-                        .iter()
-                        .filter(|param| {
-                            matches!(param.kind, hir::GenericParamKind::Lifetime { .. })
-                        })
-                        .map(|param| param.name)
-                        .collect();
                 }
                 _ => {}
             };
@@ -276,7 +255,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref body,
                 ..
             }) => {
-                let fn_def_id = self.resolver.local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -288,20 +266,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
-                    let (generics, decl) = this.add_in_band_defs(
-                        generics,
-                        fn_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this, idty| {
+                    let (generics, decl) =
+                        this.add_implicit_generics(generics, id, |this, idty| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(
-                                &decl,
-                                Some((fn_def_id, idty)),
-                                FnDeclKind::Fn,
-                                ret_id,
-                            )
-                        },
-                    );
+                            this.lower_fn_decl(&decl, Some((id, idty)), FnDeclKind::Fn, ret_id)
+                        });
                     let sig = hir::FnSig {
                         decl,
                         header: this.lower_fn_header(header),
@@ -339,12 +308,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // type Foo = Foo1
                 // opaque type Foo1: Trait
-                let ty = self.lower_ty(
-                    ty,
-                    ImplTraitContext::TypeAliasesOpaqueTy {
-                        capturable_lifetimes: &mut FxHashSet::default(),
-                    },
-                );
+                let ty = self.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy);
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, where_clauses, true);
                 let generics = self.lower_generics(
@@ -419,12 +383,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_def_id = hir_id.expect_owner();
-                let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
-                    ast_generics,
-                    lowered_trait_def_id,
-                    AnonymousLifetimeMode::CreateParameter,
-                    |this, _| {
+                let (generics, (trait_ref, lowered_ty)) =
+                    self.add_implicit_generics(ast_generics, id, |this, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -436,15 +396,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
 
                         (trait_ref, lowered_ty)
-                    },
-                );
-
-                let new_impl_items =
-                    self.with_in_scope_lifetime_defs(&ast_generics.params, |this| {
-                        this.arena.alloc_from_iter(
-                            impl_items.iter().map(|item| this.lower_impl_item_ref(item)),
-                        )
                     });
+
+                let new_impl_items = self
+                    .arena
+                    .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -692,18 +648,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: match i.kind {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
-                    let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
-                        generics,
-                        def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this, _| {
+                    let (generics, (fn_dec, fn_args)) =
+                        self.add_implicit_generics(generics, i.id, |this, _| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
                                 this.lower_fn_params_to_names(fdec),
                             )
-                        },
-                    );
+                        });
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
@@ -810,13 +762,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: None, .. }) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
-                let (generics, sig) = self.lower_method_sig(
-                    generics,
-                    sig,
-                    trait_item_def_id,
-                    FnDeclKind::Trait,
-                    None,
-                );
+                let (generics, sig) =
+                    self.lower_method_sig(generics, sig, i.id, FnDeclKind::Trait, None);
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)))
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: Some(ref body), .. }) => {
@@ -826,7 +773,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
-                    trait_item_def_id,
+                    i.id,
                     FnDeclKind::Trait,
                     asyncness.opt_return_id(),
                 );
@@ -900,8 +847,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
-        let impl_item_def_id = self.resolver.local_def_id(i.id);
-
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
@@ -918,7 +863,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
-                    impl_item_def_id,
+                    i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     asyncness.opt_return_id(),
                 );
@@ -938,12 +883,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ImplItemKind::TyAlias(ty)
                     }
                     Some(ty) => {
-                        let ty = self.lower_ty(
-                            ty,
-                            ImplTraitContext::TypeAliasesOpaqueTy {
-                                capturable_lifetimes: &mut FxHashSet::default(),
-                            },
-                        );
+                        let ty = self.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy);
                         hir::ImplItemKind::TyAlias(ty)
                     }
                 };
@@ -1283,17 +1223,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
-        fn_def_id: LocalDefId,
+        id: NodeId,
         kind: FnDeclKind,
         is_async: Option<NodeId>,
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        let (generics, decl) = self.add_in_band_defs(
-            generics,
-            fn_def_id,
-            AnonymousLifetimeMode::PassThrough,
-            |this, idty| this.lower_fn_decl(&sig.decl, Some((fn_def_id, idty)), kind, is_async),
-        );
+        let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty| {
+            this.lower_fn_decl(&sig.decl, Some((id, idty)), kind, is_async)
+        });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
@@ -1418,14 +1355,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause<'hir> {
-        self.with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
-            hir::WhereClause {
-                predicates: this.arena.alloc_from_iter(
-                    wc.predicates.iter().map(|predicate| this.lower_where_predicate(predicate)),
-                ),
-                span: this.lower_span(wc.span),
-            }
-        })
+        hir::WhereClause {
+            predicates: self.arena.alloc_from_iter(
+                wc.predicates.iter().map(|predicate| self.lower_where_predicate(predicate)),
+            ),
+            span: self.lower_span(wc.span),
+        }
     }
 
     fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
@@ -1435,24 +1370,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounded_ty,
                 ref bounds,
                 span,
-            }) => self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
-                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    bound_generic_params: this.lower_generic_params(
-                        bound_generic_params,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    ),
-                    bounded_ty: this.lower_ty(
-                        bounded_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Type),
-                    ),
-                    bounds: this.arena.alloc_from_iter(bounds.iter().map(|bound| {
-                        this.lower_param_bound(
-                            bound,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                        )
-                    })),
-                    span: this.lower_span(span),
-                })
+            }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                bound_generic_params: self.lower_generic_params(
+                    bound_generic_params,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                ),
+                bounded_ty: self
+                    .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
+                    self.lower_param_bound(
+                        bound,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    )
+                })),
+                span: self.lower_span(span),
             }),
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,

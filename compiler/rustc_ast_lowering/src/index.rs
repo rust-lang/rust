@@ -30,6 +30,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     definitions: &'a definitions::Definitions,
 }
 
+#[tracing::instrument(level = "debug", skip(sess, definitions, bodies))]
 pub(super) fn index_hir<'hir>(
     sess: &Session,
     definitions: &definitions::Definitions,
@@ -65,6 +66,7 @@ pub(super) fn index_hir<'hir>(
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
+    #[tracing::instrument(level = "debug", skip(self))]
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
         debug_assert_eq!(self.owner, hir_id.owner);
         debug_assert_ne!(hir_id.local_id.as_u32(), 0);
@@ -138,8 +140,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
-        debug!("visit_item: {:?}", i);
         debug_assert_eq!(i.def_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
             if let ItemKind::Struct(ref struct_def, _) = i.kind {
@@ -152,6 +154,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
         debug_assert_eq!(fi.def_id, self.owner);
         self.with_parent(fi.hir_id(), |this| {
@@ -170,6 +173,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         })
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
         debug_assert_eq!(ti.def_id, self.owner);
         self.with_parent(ti.hir_id(), |this| {
@@ -177,6 +181,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
         debug_assert_eq!(ii.def_id, self.owner);
         self.with_parent(ii.hir_id(), |this| {

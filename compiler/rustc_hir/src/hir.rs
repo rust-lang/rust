@@ -93,8 +93,6 @@ pub enum LifetimeName {
     Param(ParamName),
 
     /// User wrote nothing (e.g., the lifetime in `&u32`).
-    ///
-    /// The bool indicates whether the user should have written something.
     Implicit,
 
     /// Implicit lifetime in a context like `dyn Foo`. This is
@@ -443,9 +441,6 @@ pub enum GenericBound<'hir> {
     LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
     Outlives(Lifetime),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericBound<'_>, 48);
 
 impl GenericBound<'_> {
     pub fn trait_ref(&self) -> Option<&TraitRef<'_>> {
@@ -3330,6 +3325,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 160);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
