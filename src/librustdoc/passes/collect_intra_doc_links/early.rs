@@ -9,7 +9,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, CRATE_DEF_ID};
 use rustc_hir::TraitCandidate;
 use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_resolve::{ParentScope, Resolver};
@@ -27,10 +27,12 @@ crate fn early_resolve_intra_doc_links(
     externs: Externs,
     document_private_items: bool,
 ) -> ResolverCaches {
+    let parent_scope =
+        ParentScope::module(resolver.expect_module(CRATE_DEF_ID.to_def_id()), resolver);
     let mut link_resolver = EarlyDocLinkResolver {
         resolver,
         sess,
-        current_mod: CRATE_DEF_ID,
+        parent_scope,
         visited_mods: Default::default(),
         markdown_links: Default::default(),
         doc_link_resolutions: Default::default(),
@@ -52,7 +54,7 @@ crate fn early_resolve_intra_doc_links(
     // DO NOT REMOVE THIS without first testing on the reproducer in
     // https://github.com/jyn514/objr/commit/edcee7b8124abf0e4c63873e8422ff81beb11ebb
     for (extern_name, _) in externs.iter().filter(|(_, entry)| entry.add_prelude) {
-        link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, CRATE_DEF_ID.to_def_id());
+        link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, parent_scope);
     }
 
     ResolverCaches {
@@ -72,7 +74,7 @@ fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes 
 struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
     sess: &'r Session,
-    current_mod: LocalDefId,
+    parent_scope: ParentScope<'ra>,
     visited_mods: DefIdSet,
     markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
     doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<ast::NodeId>>>,
@@ -82,7 +84,7 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     document_private_items: bool,
 }
 
-impl EarlyDocLinkResolver<'_, '_> {
+impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
     fn add_traits_in_scope(&mut self, def_id: DefId) {
         // Calls to `traits_in_scope` are expensive, so try to avoid them if only possible.
         // Keys in the `traits_in_scope` cache are always module IDs.
@@ -205,20 +207,24 @@ impl EarlyDocLinkResolver<'_, '_> {
         if !attrs.iter().any(|attr| attr.may_have_doc_links()) {
             return;
         }
-        let module_id = self.current_mod.to_def_id();
-        self.resolve_doc_links(doc_attrs(attrs.iter()), module_id);
+        self.resolve_doc_links(doc_attrs(attrs.iter()), self.parent_scope);
     }
 
-    fn resolve_and_cache(&mut self, path_str: &str, ns: Namespace, module_id: DefId) -> bool {
+    fn resolve_and_cache(
+        &mut self,
+        path_str: &str,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+    ) -> bool {
         self.doc_link_resolutions
-            .entry((Symbol::intern(path_str), ns, module_id))
-            .or_insert_with_key(|(path, ns, module_id)| {
-                self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *module_id)
+            .entry((Symbol::intern(path_str), ns, parent_scope.module.def_id()))
+            .or_insert_with_key(|(path, ns, _)| {
+                self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *parent_scope)
             })
             .is_some()
     }
 
-    fn resolve_doc_links(&mut self, attrs: Attributes, module_id: DefId) {
+    fn resolve_doc_links(&mut self, attrs: Attributes, parent_scope: ParentScope<'ra>) {
         let mut need_traits_in_scope = false;
         for (doc_module, doc) in attrs.prepare_to_doc_link_resolution() {
             assert_eq!(doc_module, None);
@@ -230,7 +236,7 @@ impl EarlyDocLinkResolver<'_, '_> {
                     // The logic here is a conservative approximation for path resolution in
                     // `resolve_with_disambiguator`.
                     if let Some(ns) = pinfo.disambiguator.map(Disambiguator::ns) {
-                        if self.resolve_and_cache(&pinfo.path_str, ns, module_id) {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, &parent_scope) {
                             continue;
                         }
                     }
@@ -239,7 +245,7 @@ impl EarlyDocLinkResolver<'_, '_> {
                     let mut any_resolved = false;
                     let mut need_assoc = false;
                     for ns in [TypeNS, ValueNS, MacroNS] {
-                        if self.resolve_and_cache(&pinfo.path_str, ns, module_id) {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, &parent_scope) {
                             any_resolved = true;
                         } else if ns != MacroNS {
                             need_assoc = true;
@@ -256,7 +262,7 @@ impl EarlyDocLinkResolver<'_, '_> {
         }
 
         if need_traits_in_scope {
-            self.add_traits_in_scope(module_id);
+            self.add_traits_in_scope(parent_scope.module.def_id());
         }
     }
 
@@ -298,11 +304,13 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
     fn visit_item(&mut self, item: &ast::Item) {
         self.resolve_doc_links_local(&item.attrs); // Outer attribute scope
         if let ItemKind::Mod(..) = item.kind {
-            let old_mod = mem::replace(&mut self.current_mod, self.resolver.local_def_id(item.id));
+            let module_def_id = self.resolver.local_def_id(item.id).to_def_id();
+            let module = self.resolver.expect_module(module_def_id);
+            let old_module = mem::replace(&mut self.parent_scope.module, module);
             self.resolve_doc_links_local(&item.attrs); // Inner attribute scope
-            self.process_module_children_or_reexports(self.current_mod.to_def_id());
+            self.process_module_children_or_reexports(module_def_id);
             visit::walk_item(self, item);
-            self.current_mod = old_mod;
+            self.parent_scope.module = old_module;
         } else {
             match item.kind {
                 ItemKind::Trait(..) => {

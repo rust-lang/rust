@@ -12,6 +12,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
+use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -564,7 +565,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .copied()
             .unwrap_or_else(|| {
                 self.cx.enter_resolver(|resolver| {
-                    resolver.resolve_rustdoc_path(path_str, ns, module_id)
+                    let parent_scope =
+                        ParentScope::module(resolver.expect_module(module_id), resolver);
+                    resolver.resolve_rustdoc_path(path_str, ns, parent_scope)
                 })
             })
             .and_then(|res| res.try_into().ok())
