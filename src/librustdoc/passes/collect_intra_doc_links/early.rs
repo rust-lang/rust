@@ -1,7 +1,7 @@
 use crate::clean::Attributes;
 use crate::core::ResolverCaches;
 use crate::passes::collect_intra_doc_links::preprocessed_markdown_links;
-use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
+use crate::passes::collect_intra_doc_links::{Disambiguator, PreprocessedMarkdownLink};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
@@ -209,26 +209,50 @@ impl EarlyDocLinkResolver<'_, '_> {
         self.resolve_doc_links(doc_attrs(attrs.iter()), module_id);
     }
 
+    fn resolve_and_cache(&mut self, path_str: &str, ns: Namespace, module_id: DefId) -> bool {
+        self.doc_link_resolutions
+            .entry((Symbol::intern(path_str), ns, module_id))
+            .or_insert_with_key(|(path, ns, module_id)| {
+                self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *module_id)
+            })
+            .is_some()
+    }
+
     fn resolve_doc_links(&mut self, attrs: Attributes, module_id: DefId) {
         let mut need_traits_in_scope = false;
         for (doc_module, doc) in attrs.prepare_to_doc_link_resolution() {
             assert_eq!(doc_module, None);
-            let links = self
-                .markdown_links
-                .entry(doc)
-                .or_insert_with_key(|doc| preprocessed_markdown_links(doc));
+            let mut tmp_links = mem::take(&mut self.markdown_links);
+            let links =
+                tmp_links.entry(doc).or_insert_with_key(|doc| preprocessed_markdown_links(doc));
             for PreprocessedMarkdownLink(pp_link, _) in links {
                 if let Ok(pinfo) = pp_link {
-                    // FIXME: Resolve the path in all namespaces and resolve its prefixes too.
-                    let ns = TypeNS;
-                    self.doc_link_resolutions
-                        .entry((Symbol::intern(&pinfo.path_str), ns, module_id))
-                        .or_insert_with_key(|(path, ns, module_id)| {
-                            self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *module_id)
-                        });
-                    need_traits_in_scope = true;
+                    // The logic here is a conservative approximation for path resolution in
+                    // `resolve_with_disambiguator`.
+                    if let Some(ns) = pinfo.disambiguator.map(Disambiguator::ns) {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, module_id) {
+                            continue;
+                        }
+                    }
+
+                    // Resolve all namespaces due to no disambiguator or for diagnostics.
+                    let mut any_resolved = false;
+                    let mut need_assoc = false;
+                    for ns in [TypeNS, ValueNS, MacroNS] {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, module_id) {
+                            any_resolved = true;
+                        } else if ns != MacroNS {
+                            need_assoc = true;
+                        }
+                    }
+
+                    // FIXME: Resolve all prefixes for type-relative resolution or for diagnostics.
+                    if (need_assoc || !any_resolved) && pinfo.path_str.contains("::") {
+                        need_traits_in_scope = true;
+                    }
                 }
             }
+            self.markdown_links = tmp_links;
         }
 
         if need_traits_in_scope {
