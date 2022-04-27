@@ -433,3 +433,33 @@ struct ErrorWithNoteWrongOrder {
 struct ErrorWithNoteCustomWrongOrder {
     val: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ApplicabilityInBoth {
+    #[suggestion(message = "bar", code = "...", applicability = "maybe-incorrect")]
+    //~^ ERROR applicability cannot be set in both the field and attribute
+    suggestion: (Span, Applicability),
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct InvalidApplicability {
+    #[suggestion(message = "bar", code = "...", applicability = "batman")]
+    //~^ ERROR invalid applicability
+    suggestion: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ValidApplicability {
+    #[suggestion(message = "bar", code = "...", applicability = "maybe-incorrect")]
+    suggestion: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct NoApplicability {
+    #[suggestion(message = "bar", code = "...")]
+    suggestion: Span,
+}

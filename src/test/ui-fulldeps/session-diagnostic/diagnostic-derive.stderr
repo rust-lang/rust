@@ -257,7 +257,7 @@ error: `#[suggestion(nonsense = ...)]` is not a valid attribute
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
    |
-   = help: only `message` and `code` are valid field attributes
+   = help: only `message`, `code` and `applicability` are valid field attributes
 
 error: `#[suggestion(msg = ...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:232:18
@@ -265,7 +265,7 @@ error: `#[suggestion(msg = ...)]` is not a valid attribute
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
    |
-   = help: only `message` and `code` are valid field attributes
+   = help: only `message`, `code` and `applicability` are valid field attributes
 
 error: wrong field type for suggestion
   --> $DIR/diagnostic-derive.rs:254:5
@@ -325,6 +325,18 @@ error: `#[note = ...]` must come after `#[error(..)]` or `#[warn(..)]`
 LL | #[note = "bar"]
    | ^^^^^^^^^^^^^^^
 
+error: applicability cannot be set in both the field and attribute
+  --> $DIR/diagnostic-derive.rs:440:49
+   |
+LL |     #[suggestion(message = "bar", code = "...", applicability = "maybe-incorrect")]
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid applicability
+  --> $DIR/diagnostic-derive.rs:448:49
+   |
+LL |     #[suggestion(message = "bar", code = "...", applicability = "batman")]
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:51:3
    |
@@ -348,6 +360,6 @@ LL | #[derive(SessionDiagnostic)]
    |
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 41 previous errors
+error: aborting due to 43 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

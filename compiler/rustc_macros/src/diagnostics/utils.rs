@@ -3,6 +3,7 @@ use proc_macro::Span;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::collections::BTreeSet;
+use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, Type, Visibility};
 use synstructure::BindingInfo;
 
@@ -220,5 +221,47 @@ pub(crate) trait HasFieldMap {
         quote! {
             format!(#input #(,#args)*)
         }
+    }
+}
+
+/// `Applicability` of a suggestion - mirrors `rustc_errors::Applicability` - and used to represent
+/// the user's selection of applicability if specified in an attribute.
+pub(crate) enum Applicability {
+    MachineApplicable,
+    MaybeIncorrect,
+    HasPlaceholders,
+    Unspecified,
+}
+
+impl FromStr for Applicability {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "machine-applicable" => Ok(Applicability::MachineApplicable),
+            "maybe-incorrect" => Ok(Applicability::MaybeIncorrect),
+            "has-placeholders" => Ok(Applicability::HasPlaceholders),
+            "unspecified" => Ok(Applicability::Unspecified),
+            _ => Err(()),
+        }
+    }
+}
+
+impl quote::ToTokens for Applicability {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.extend(match self {
+            Applicability::MachineApplicable => {
+                quote! { rustc_errors::Applicability::MachineApplicable }
+            }
+            Applicability::MaybeIncorrect => {
+                quote! { rustc_errors::Applicability::MaybeIncorrect }
+            }
+            Applicability::HasPlaceholders => {
+                quote! { rustc_errors::Applicability::HasPlaceholders }
+            }
+            Applicability::Unspecified => {
+                quote! { rustc_errors::Applicability::Unspecified }
+            }
+        });
     }
 }

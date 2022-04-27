@@ -5,12 +5,13 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, FieldInfo,
-    HasFieldMap, SetOnce,
+    option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, Applicability,
+    FieldInfo, HasFieldMap, SetOnce,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::collections::HashMap;
+use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, Type};
 use synstructure::Structure;
 
@@ -430,7 +431,7 @@ impl SessionDiagnosticDeriveBuilder {
                     }),
                 };
 
-                let (span_, applicability) = self.span_and_applicability_of_ty(info)?;
+                let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
 
                 let mut msg = None;
                 let mut code = None;
@@ -445,6 +446,7 @@ impl SessionDiagnosticDeriveBuilder {
                     let nested_name = nested_name.as_str();
                     match meta {
                         Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
+                            let span = meta.span().unwrap();
                             match nested_name {
                                 "message" => {
                                     msg = Some(s.value());
@@ -453,9 +455,27 @@ impl SessionDiagnosticDeriveBuilder {
                                     let formatted_str = self.build_format(&s.value(), s.span());
                                     code = Some(formatted_str);
                                 }
+                                "applicability" => {
+                                    applicability = match applicability {
+                                        Some(v) => {
+                                            span_err(
+                                                span,
+                                                "applicability cannot be set in both the field and attribute"
+                                            ).emit();
+                                            Some(v)
+                                        }
+                                        None => match Applicability::from_str(&s.value()) {
+                                            Ok(v) => Some(quote! { #v }),
+                                            Err(()) => {
+                                                span_err(span, "invalid applicability").emit();
+                                                None
+                                            }
+                                        },
+                                    }
+                                }
                                 _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                                     diag.help(
-                                        "only `message` and `code` are valid field attributes",
+                                        "only `message`, `code` and `applicability` are valid field attributes",
                                     )
                                 }),
                             }
@@ -463,6 +483,9 @@ impl SessionDiagnosticDeriveBuilder {
                         _ => throw_invalid_nested_attr!(attr, &nested_attr),
                     }
                 }
+
+                let applicability = applicability
+                    .unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
 
                 let method = format_ident!("span_{}", name);
 
@@ -475,7 +498,7 @@ impl SessionDiagnosticDeriveBuilder {
                 let msg = quote! { rustc_errors::DiagnosticMessage::fluent_attr(#slug, #msg) };
                 let code = code.unwrap_or_else(|| quote! { String::new() });
 
-                Ok(quote! { #diag.#method(#span_, #msg, #code, #applicability); })
+                Ok(quote! { #diag.#method(#span_field, #msg, #code, #applicability); })
             }
             _ => throw_invalid_attr!(attr, &meta),
         }
@@ -505,12 +528,12 @@ impl SessionDiagnosticDeriveBuilder {
     fn span_and_applicability_of_ty(
         &self,
         info: FieldInfo<'_>,
-    ) -> Result<(TokenStream, TokenStream), SessionDiagnosticDeriveError> {
+    ) -> Result<(TokenStream, Option<TokenStream>), SessionDiagnosticDeriveError> {
         match &info.ty {
             // If `ty` is `Span` w/out applicability, then use `Applicability::Unspecified`.
             ty @ Type::Path(..) if type_matches_path(ty, &["rustc_span", "Span"]) => {
                 let binding = &info.binding.binding;
-                Ok((quote!(*#binding), quote!(rustc_errors::Applicability::Unspecified)))
+                Ok((quote!(*#binding), None))
             }
             // If `ty` is `(Span, Applicability)` then return tokens accessing those.
             Type::Tuple(tup) => {
@@ -546,7 +569,7 @@ impl SessionDiagnosticDeriveBuilder {
                         .map(|applicability_idx| quote!(#binding.#applicability_idx))
                         .unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
 
-                    return Ok((span, applicability));
+                    return Ok((span, Some(applicability)));
                 }
 
                 throw_span_err!(info.span.unwrap(), "wrong types for suggestion", |diag| {
