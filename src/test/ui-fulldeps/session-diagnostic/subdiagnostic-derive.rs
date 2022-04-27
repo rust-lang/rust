@@ -52,7 +52,7 @@ struct C {
 
 #[derive(SessionSubdiagnostic)]
 #[label]
-//~^ ERROR `#[label]` is not a valid `SessionSubdiagnostic` attribute 
+//~^ ERROR `#[label]` is not a valid attribute
 struct D {
     #[primary_span]
     span: Span,
@@ -61,7 +61,7 @@ struct D {
 
 #[derive(SessionSubdiagnostic)]
 #[foo]
-//~^ ERROR `#[foo]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[foo]` is not a valid attribute
 //~^^ ERROR cannot find attribute `foo` in this scope
 struct E {
     #[primary_span]
@@ -71,7 +71,7 @@ struct E {
 
 #[derive(SessionSubdiagnostic)]
 #[label = "..."]
-//~^ ERROR `#[label = ...]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label = ...]` is not a valid attribute
 struct F {
     #[primary_span]
     span: Span,
@@ -80,7 +80,7 @@ struct F {
 
 #[derive(SessionSubdiagnostic)]
 #[label(bug = "...")]
-//~^ ERROR `#[label(bug = ...)]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label(bug = ...)]` is not a valid attribute
 struct G {
     #[primary_span]
     span: Span,
@@ -89,7 +89,7 @@ struct G {
 
 #[derive(SessionSubdiagnostic)]
 #[label("...")]
-//~^ ERROR `#[label("...")]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label("...")]` is not a valid attribute
 struct H {
     #[primary_span]
     span: Span,
@@ -98,7 +98,7 @@ struct H {
 
 #[derive(SessionSubdiagnostic)]
 #[label(slug = 4)]
-//~^ ERROR `#[label(slug = ...)]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label(slug = ...)]` is not a valid attribute
 struct J {
     #[primary_span]
     span: Span,
@@ -107,7 +107,7 @@ struct J {
 
 #[derive(SessionSubdiagnostic)]
 #[label(slug("..."))]
-//~^ ERROR `#[label(slug(...))]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label(slug(...))]` is not a valid attribute
 struct K {
     #[primary_span]
     span: Span,
@@ -116,7 +116,7 @@ struct K {
 
 #[derive(SessionSubdiagnostic)]
 #[label(slug)]
-//~^ ERROR `#[label(slug)]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[label(slug)]` is not a valid attribute
 struct L {
     #[primary_span]
     span: Span,
@@ -157,7 +157,7 @@ enum O {
 #[derive(SessionSubdiagnostic)]
 enum P {
     #[bar]
-//~^ ERROR `#[bar]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[bar]` is not a valid attribute
 //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
@@ -169,7 +169,7 @@ enum P {
 #[derive(SessionSubdiagnostic)]
 enum Q {
     #[bar = "..."]
-//~^ ERROR `#[bar = ...]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[bar = ...]` is not a valid attribute
 //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
@@ -181,7 +181,7 @@ enum Q {
 #[derive(SessionSubdiagnostic)]
 enum R {
     #[bar = 4]
-//~^ ERROR `#[bar = ...]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[bar = ...]` is not a valid attribute
 //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
@@ -193,7 +193,7 @@ enum R {
 #[derive(SessionSubdiagnostic)]
 enum S {
     #[bar("...")]
-//~^ ERROR `#[bar("...")]` is not a valid `SessionSubdiagnostic` attribute
+//~^ ERROR `#[bar("...")]` is not a valid attribute
 //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
@@ -254,7 +254,7 @@ struct X {
     #[primary_span]
     span: Span,
     #[bar]
-    //~^ ERROR `#[bar]` is not a valid `SessionSubdiagnostic` field attribute
+    //~^ ERROR `#[bar]` is not a valid attribute
     //~^^ ERROR cannot find attribute `bar` in this scope
     bar: String,
 }
@@ -265,7 +265,7 @@ struct Y {
     #[primary_span]
     span: Span,
     #[bar = "..."]
-    //~^ ERROR `#[bar = ...]` is not a valid `SessionSubdiagnostic` field attribute
+    //~^ ERROR `#[bar = ...]` is not a valid attribute
     //~^^ ERROR cannot find attribute `bar` in this scope
     bar: String,
 }
@@ -276,7 +276,7 @@ struct Z {
     #[primary_span]
     span: Span,
     #[bar("...")]
-    //~^ ERROR `#[bar(...)]` is not a valid `SessionSubdiagnostic` field attribute
+    //~^ ERROR `#[bar(...)]` is not a valid attribute
     //~^^ ERROR cannot find attribute `bar` in this scope
     bar: String,
 }

@@ -9,17 +9,19 @@ LL | |     Bar,
 LL | | }
    | |_^
 
-error: `#[error = ...]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error = ...]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:46:1
    |
 LL | #[error = "E0123"]
    | ^^^^^^^^^^^^^^^^^^
 
-error: `#[nonsense(...)]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[nonsense(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:51:1
    |
 LL | #[nonsense(code = "E0123", slug = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `error` and `warning` are valid attributes
 
 error: diagnostic kind not specified
   --> $DIR/diagnostic-derive.rs:51:1
@@ -33,7 +35,7 @@ LL | | struct InvalidStructAttr {}
    |
    = help: use the `#[error(...)]` attribute to create an error
 
-error: `#[error("...")]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error("...")]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:58:9
    |
 LL | #[error("E0123")]
@@ -50,37 +52,39 @@ LL | | struct InvalidLitNestedAttr {}
    |
    = help: use the `#[error(slug = "...")]` attribute to set this diagnostic's slug
 
-error: `#[error(nonsense)]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error(nonsense)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:64:9
    |
 LL | #[error(nonsense, code = "E0123", slug = "foo")]
    |         ^^^^^^^^
 
-error: `#[error(nonsense(...))]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error(nonsense(...))]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:69:9
    |
 LL | #[error(nonsense("foo"), code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^^^^
 
-error: `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error(nonsense = ...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:74:9
    |
 LL | #[error(nonsense = "...", code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `slug` and `code` are valid nested attributes
 
-error: `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+error: `#[error(nonsense = ...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:79:9
    |
 LL | #[error(nonsense = 4, code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^
-   |
-   = help: value must be a string
 
-error: `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
+error: `#[suggestion = ...]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:86:5
    |
 LL |     #[suggestion = "bar"]
    |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `label`, `note` and `help` are valid field attributes
 
 error: `error` specified multiple times
   --> $DIR/diagnostic-derive.rs:93:1
@@ -153,11 +157,13 @@ error: the `#[primary_span]` attribute can only be applied to fields of type `Sp
 LL |     #[primary_span]
    |     ^^^^^^^^^^^^^^^
 
-error: `#[nonsense]` is not a valid `SessionDiagnostic` field attribute
+error: `#[nonsense]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:132:5
    |
 LL |     #[nonsense]
    |     ^^^^^^^^^^^
+   |
+   = help: only `skip_arg`, `primary_span`, `label`, `note` and `help` are valid field attributes
 
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
   --> $DIR/diagnostic-derive.rs:149:5
@@ -197,17 +203,21 @@ error: the `#[label = ...]` attribute can only be applied to fields of type `Spa
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
-error: `#[suggestion(nonsense = ...)]` is not a valid `SessionDiagnostic` field attribute
+error: `#[suggestion(nonsense = ...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:217:18
    |
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
+   |
+   = help: only `message` and `code` are valid field attributes
 
-error: `#[suggestion(msg = ...)]` is not a valid `SessionDiagnostic` field attribute
+error: `#[suggestion(msg = ...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:225:18
    |
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
+   |
+   = help: only `message` and `code` are valid field attributes
 
 error: wrong field type for suggestion
   --> $DIR/diagnostic-derive.rs:247:5
@@ -235,11 +245,13 @@ LL | |
 LL | |     suggestion: (Applicability, Applicability, Span),
    | |____________________________________________________^
 
-error: `#[label(...)]` is not a valid `SessionDiagnostic` field attribute
+error: `#[label(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:278:5
    |
 LL |     #[label("bar")]
    |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `suggestion{,_short,_hidden,_verbose}` are valid field attributes
 
 error: `#[help]` must come after `#[error(..)]` or `#[warn(..)]`
   --> $DIR/diagnostic-derive.rs:399:1

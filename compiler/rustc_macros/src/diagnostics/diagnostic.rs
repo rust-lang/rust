@@ -1,6 +1,9 @@
 #![deny(unused_must_use)]
 
-use crate::diagnostics::error::{span_err, throw_span_err, SessionDiagnosticDeriveError};
+use crate::diagnostics::error::{
+    invalid_nested_attr, span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
+    SessionDiagnosticDeriveError,
+};
 use crate::diagnostics::utils::{
     option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, FieldInfo, HasFieldMap,
 };
@@ -292,39 +295,24 @@ impl SessionDiagnosticDeriveBuilder {
         }
 
         let nested = match meta {
-            Meta::List(MetaList { nested, .. }) => nested,
-            Meta::Path(..) => throw_span_err!(
-                span,
-                &format!("`#[{}]` is not a valid `SessionDiagnostic` struct attribute", name)
-            ),
-            Meta::NameValue(..) => throw_span_err!(
-                span,
-                &format!("`#[{} = ...]` is not a valid `SessionDiagnostic` struct attribute", name)
-            ),
+            Meta::List(MetaList { ref nested, .. }) => nested,
+            _ => throw_invalid_attr!(attr, &meta),
         };
 
         let kind = match name {
             "error" => SessionDiagnosticKind::Error,
             "warning" => SessionDiagnosticKind::Warn,
-            other => throw_span_err!(
-                span,
-                &format!("`#[{}(...)]` is not a valid `SessionDiagnostic` struct attribute", other)
-            ),
+            _ => throw_invalid_attr!(attr, &meta, |diag| {
+                diag.help("only `error` and `warning` are valid attributes")
+            }),
         };
         self.set_kind_once(kind, span)?;
 
         let mut tokens = Vec::new();
-        for attr in nested {
-            let span = attr.span().unwrap();
-            let meta = match attr {
+        for nested_attr in nested {
+            let meta = match nested_attr {
                 syn::NestedMeta::Meta(meta) => meta,
-                syn::NestedMeta::Lit(_) => throw_span_err!(
-                    span,
-                    &format!(
-                        "`#[{}(\"...\")]` is not a valid `SessionDiagnostic` struct attribute",
-                        name
-                    )
-                ),
+                _ => throw_invalid_nested_attr!(attr, &nested_attr),
             };
 
             let path = meta.path();
@@ -340,49 +328,12 @@ impl SessionDiagnosticDeriveBuilder {
                         "code" => {
                             tokens.push(self.set_code_once(s.value(), s.span().unwrap()));
                         }
-                        other => {
-                            let diag = span_err(
-                                span,
-                                &format!(
-                                    "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
-                                    name, other
-                                ),
-                            );
-                            diag.emit();
-                        }
+                        _ => invalid_nested_attr(attr, &nested_attr)
+                            .help("only `slug` and `code` are valid nested attributes")
+                            .emit(),
                     }
                 }
-                Meta::NameValue(..) => {
-                    span_err(
-                        span,
-                        &format!(
-                            "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
-                            name, nested_name
-                        ),
-                    )
-                    .help("value must be a string")
-                    .emit();
-                }
-                Meta::Path(..) => {
-                    span_err(
-                        span,
-                        &format!(
-                            "`#[{}({})]` is not a valid `SessionDiagnostic` struct attribute",
-                            name, nested_name
-                        ),
-                    )
-                    .emit();
-                }
-                Meta::List(..) => {
-                    span_err(
-                        span,
-                        &format!(
-                            "`#[{}({}(...))]` is not a valid `SessionDiagnostic` struct attribute",
-                            name, nested_name
-                        ),
-                    )
-                    .emit();
-                }
+                _ => invalid_nested_attr(attr, &nested_attr).emit(),
             }
         }
 
@@ -478,7 +429,6 @@ impl SessionDiagnosticDeriveBuilder {
         info: FieldInfo<'_>,
     ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
         let diag = &self.diag;
-        let span = attr.span().unwrap();
         let field_binding = &info.binding.binding;
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
@@ -502,43 +452,31 @@ impl SessionDiagnosticDeriveBuilder {
                     report_error_if_not_applied_to_span(attr, &info)?;
                     Ok(self.add_subdiagnostic(field_binding, name, name))
                 }
-                other => throw_span_err!(
-                    span,
-                    &format!("`#[{}]` is not a valid `SessionDiagnostic` field attribute", other)
-                ),
+                _ => throw_invalid_attr!(attr, &meta, |diag| {
+                    diag
+                        .help("only `skip_arg`, `primary_span`, `label`, `note` and `help` are valid field attributes")
+                }),
             },
-            Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => match name {
+            Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(ref s), .. }) => match name {
                 "label" | "note" | "help" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
                     Ok(self.add_subdiagnostic(field_binding, name, &s.value()))
                 }
-                other => throw_span_err!(
-                    span,
-                    &format!(
-                        "`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute",
-                        other
-                    )
-                ),
+                _ => throw_invalid_attr!(attr, &meta, |diag| {
+                    diag.help("only `label`, `note` and `help` are valid field attributes")
+                }),
             },
-            Meta::NameValue(_) => throw_span_err!(
-                span,
-                &format!("`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute", name),
-                |diag| diag.help("value must be a string")
-            ),
-            Meta::List(MetaList { path, nested, .. }) => {
+            Meta::List(MetaList { ref path, ref nested, .. }) => {
                 let name = path.segments.last().unwrap().ident.to_string();
                 let name = name.as_ref();
 
                 match name {
                     "suggestion" | "suggestion_short" | "suggestion_hidden"
                     | "suggestion_verbose" => (),
-                    other => throw_span_err!(
-                        span,
-                        &format!(
-                            "`#[{}(...)]` is not a valid `SessionDiagnostic` field attribute",
-                            other
-                        )
-                    ),
+                    _ => throw_invalid_attr!(attr, &meta, |diag| {
+                        diag
+                            .help("only `suggestion{,_short,_hidden,_verbose}` are valid field attributes")
+                    }),
                 };
 
                 let (span_, applicability) = self.span_and_applicability_of_ty(info)?;
@@ -546,22 +484,14 @@ impl SessionDiagnosticDeriveBuilder {
                 let mut msg = None;
                 let mut code = None;
 
-                for attr in nested {
-                    let meta = match attr {
-                        syn::NestedMeta::Meta(meta) => meta,
-                        syn::NestedMeta::Lit(_) => throw_span_err!(
-                            span,
-                            &format!(
-                                "`#[{}(\"...\")]` is not a valid `SessionDiagnostic` field attribute",
-                                name
-                            )
-                        ),
+                for nested_attr in nested {
+                    let meta = match nested_attr {
+                        syn::NestedMeta::Meta(ref meta) => meta,
+                        syn::NestedMeta::Lit(_) => throw_invalid_nested_attr!(attr, &nested_attr),
                     };
 
-                    let span = meta.span().unwrap();
                     let nested_name = meta.path().segments.last().unwrap().ident.to_string();
                     let nested_name = nested_name.as_str();
-
                     match meta {
                         Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
                             match nested_name {
@@ -572,37 +502,14 @@ impl SessionDiagnosticDeriveBuilder {
                                     let formatted_str = self.build_format(&s.value(), s.span());
                                     code = Some(formatted_str);
                                 }
-                                other => throw_span_err!(
-                                    span,
-                                    &format!(
-                                        "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` field attribute",
-                                        name, other
+                                _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+                                    diag.help(
+                                        "only `message` and `code` are valid field attributes",
                                     )
-                                ),
+                                }),
                             }
                         }
-                        Meta::NameValue(..) => throw_span_err!(
-                            span,
-                            &format!(
-                                "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
-                                name, nested_name
-                            ),
-                            |diag| diag.help("value must be a string")
-                        ),
-                        Meta::Path(..) => throw_span_err!(
-                            span,
-                            &format!(
-                                "`#[{}({})]` is not a valid `SessionDiagnostic` struct attribute",
-                                name, nested_name
-                            )
-                        ),
-                        Meta::List(..) => throw_span_err!(
-                            span,
-                            &format!(
-                                "`#[{}({}(...))]` is not a valid `SessionDiagnostic` struct attribute",
-                                name, nested_name
-                            )
-                        ),
+                        _ => throw_invalid_nested_attr!(attr, &nested_attr),
                     }
                 }
 
@@ -619,6 +526,7 @@ impl SessionDiagnosticDeriveBuilder {
 
                 Ok(quote! { #diag.#method(#span_, #msg, #code, #applicability); })
             }
+            _ => throw_invalid_attr!(attr, &meta),
         }
     }
 

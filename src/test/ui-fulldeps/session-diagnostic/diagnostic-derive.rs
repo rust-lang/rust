@@ -44,47 +44,47 @@ enum SessionDiagnosticOnEnum {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 #[error = "E0123"]
-//~^ ERROR `#[error = ...]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error = ...]` is not a valid attribute
 struct WrongStructAttrStyle {}
 
 #[derive(SessionDiagnostic)]
 #[nonsense(code = "E0123", slug = "foo")]
-//~^ ERROR `#[nonsense(...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[nonsense(...)]` is not a valid attribute
 //~^^ ERROR diagnostic kind not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error("E0123")]
-//~^ ERROR `#[error("...")]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error("...")]` is not a valid attribute
 //~^^ ERROR `slug` not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense)]` is not a valid attribute
 struct InvalidNestedStructAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense(...))]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense(...))]` is not a valid attribute
 struct InvalidNestedStructAttr1 {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense = "...", code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
 struct InvalidNestedStructAttr2 {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense = 4, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
 struct InvalidNestedStructAttr3 {}
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct WrongPlaceField {
     #[suggestion = "bar"]
-    //~^ ERROR `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion = ...]` is not a valid attribute
     sp: Span,
 }
 
@@ -130,7 +130,7 @@ struct MessageWrongType {
 #[error(code = "E0123", slug = "foo")]
 struct InvalidPathFieldAttr {
     #[nonsense]
-    //~^ ERROR `#[nonsense]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[nonsense]` is not a valid attribute
     //~^^ ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
@@ -215,7 +215,7 @@ struct SuggestWithoutCode {
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
-    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
     suggestion: (Span, Applicability),
 }
 
@@ -223,7 +223,7 @@ struct SuggestWithBadKey {
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
-    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
     suggestion: (Span, Applicability),
 }
 
@@ -276,7 +276,7 @@ struct SuggestWithDuplicateApplicabilityAndSpan {
 #[error(code = "E0123", slug = "foo")]
 struct WrongKindOfAnnotation {
     #[label("bar")]
-    //~^ ERROR `#[label(...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[label(...)]` is not a valid attribute
     z: Span,
 }
 

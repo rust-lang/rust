@@ -1,6 +1,9 @@
 #![deny(unused_must_use)]
 
-use crate::diagnostics::error::{span_err, throw_span_err, SessionDiagnosticDeriveError};
+use crate::diagnostics::error::{
+    span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
+    SessionDiagnosticDeriveError,
+};
 use crate::diagnostics::utils::{
     option_inner_ty, report_error_if_not_applied_to_applicability,
     report_error_if_not_applied_to_span, FieldInfo, HasFieldMap, SetOnce,
@@ -253,25 +256,11 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
 
             let meta = attr.parse_meta()?;
             let kind = match meta {
-                Meta::Path(_) => throw_span_err!(
-                    span,
-                    &format!("`#[{}]` is not a valid `SessionSubdiagnostic` attribute", name)
-                ),
-                Meta::NameValue(_) => throw_span_err!(
-                    span,
-                    &format!("`#[{} = ...]` is not a valid `SessionSubdiagnostic` attribute", name)
-                ),
-                Meta::List(MetaList { nested, .. }) => {
-                    for attr in nested {
-                        let meta = match attr {
-                            syn::NestedMeta::Meta(meta) => meta,
-                            syn::NestedMeta::Lit(_) => throw_span_err!(
-                                span,
-                                &format!(
-                                    "`#[{}(\"...\")]` is not a valid `SessionSubdiagnostic` attribute",
-                                    name
-                                )
-                            ),
+                Meta::List(MetaList { ref nested, .. }) => {
+                    for nested_attr in nested {
+                        let meta = match nested_attr {
+                            syn::NestedMeta::Meta(ref meta) => meta,
+                            _ => throw_invalid_nested_attr!(attr, &nested_attr),
                         };
 
                         let span = meta.span().unwrap();
@@ -296,51 +285,22 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
                                         };
                                         self.applicability.set_once((quote! { #value }, span));
                                     }
-                                    other => throw_span_err!(
-                                        span,
-                                        &format!(
-                                            "`#[{}({} = ...)]` is not a valid `SessionSubdiagnostic` attribute",
-                                            name, other
-                                        )
-                                    ),
+                                    _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+                                        diag.help("only `code`, `slug` and `applicability` are valid nested attributes")
+                                    }),
                                 }
                             }
-                            Meta::NameValue(..) => throw_span_err!(
-                                span,
-                                &format!(
-                                    "`#[{}({} = ...)]` is not a valid `SessionSubdiagnostic` attribute",
-                                    name, nested_name
-                                ),
-                                |diag| diag.help("value must be a string")
-                            ),
-                            Meta::Path(..) => throw_span_err!(
-                                span,
-                                &format!(
-                                    "`#[{}({})]` is not a valid `SessionSubdiagnostic` attribute",
-                                    name, nested_name
-                                )
-                            ),
-                            Meta::List(..) => throw_span_err!(
-                                span,
-                                &format!(
-                                    "`#[{}({}(...))]` is not a valid `SessionSubdiagnostic` attribute",
-                                    name, nested_name
-                                )
-                            ),
+                            _ => throw_invalid_nested_attr!(attr, &nested_attr),
                         }
                     }
 
                     let Ok(kind) = SubdiagnosticKind::from_str(name) else {
-                        throw_span_err!(
-                            span,
-                            &format!(
-                                "`#[{}(...)]` is not a valid `SessionSubdiagnostic` attribute",
-                                name
-                            )
-                        );
+                        throw_invalid_attr!(attr, &meta)
                     };
+
                     kind
                 }
+                _ => throw_invalid_attr!(attr, &meta),
             };
 
             if matches!(
@@ -408,31 +368,11 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
                     "skip_arg" => {
                         return Ok(quote! {});
                     }
-                    other => span_err(
-                        span,
-                        &format!(
-                            "`#[{}]` is not a valid `SessionSubdiagnostic` field attribute",
-                            other
-                        ),
-                    )
-                    .emit(),
+                    _ => throw_invalid_attr!(attr, &meta, |diag| {
+                        diag.help("only `primary_span`, `applicability` and `skip_arg` are valid field attributes")
+                    }),
                 },
-                Meta::NameValue(_) => span_err(
-                    span,
-                    &format!(
-                        "`#[{} = ...]` is not a valid `SessionSubdiagnostic` field attribute",
-                        name
-                    ),
-                )
-                .emit(),
-                Meta::List(_) => span_err(
-                    span,
-                    &format!(
-                        "`#[{}(...)]` is not a valid `SessionSubdiagnostic` field attribute",
-                        name
-                    ),
-                )
-                .emit(),
+                _ => throw_invalid_attr!(attr, &meta),
             }
         }
 

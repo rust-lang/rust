@@ -8,51 +8,51 @@ LL | |     var: String,
 LL | | }
    | |_^
 
-error: `#[label]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:54:1
    |
 LL | #[label]
    | ^^^^^^^^
 
-error: `#[foo]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[foo]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:63:1
    |
 LL | #[foo]
    | ^^^^^^
 
-error: `#[label = ...]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label = ...]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:73:1
    |
 LL | #[label = "..."]
    | ^^^^^^^^^^^^^^^^
 
-error: `#[label(bug = ...)]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label(bug = ...)]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:82:9
    |
 LL | #[label(bug = "...")]
    |         ^^^^^^^^^^^
+   |
+   = help: only `code`, `slug` and `applicability` are valid nested attributes
 
-error: `#[label("...")]` is not a valid `SessionSubdiagnostic` attribute
-  --> $DIR/subdiagnostic-derive.rs:91:1
+error: `#[label("...")]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:91:9
    |
 LL | #[label("...")]
-   | ^^^^^^^^^^^^^^^
+   |         ^^^^^
 
-error: `#[label(slug = ...)]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label(slug = ...)]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:100:9
    |
 LL | #[label(slug = 4)]
    |         ^^^^^^^^
-   |
-   = help: value must be a string
 
-error: `#[label(slug(...))]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label(slug(...))]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:109:9
    |
 LL | #[label(slug("..."))]
    |         ^^^^^^^^^^^
 
-error: `#[label(slug)]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[label(slug)]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:118:9
    |
 LL | #[label(slug)]
@@ -76,29 +76,29 @@ error: unsupported type attribute for subdiagnostic enum
 LL | #[foo]
    | ^^^^^^
 
-error: `#[bar]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[bar]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:159:5
    |
 LL |     #[bar]
    |     ^^^^^^
 
-error: `#[bar = ...]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[bar = ...]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:171:5
    |
 LL |     #[bar = "..."]
    |     ^^^^^^^^^^^^^^
 
-error: `#[bar = ...]` is not a valid `SessionSubdiagnostic` attribute
+error: `#[bar = ...]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:183:5
    |
 LL |     #[bar = 4]
    |     ^^^^^^^^^^
 
-error: `#[bar("...")]` is not a valid `SessionSubdiagnostic` attribute
-  --> $DIR/subdiagnostic-derive.rs:195:5
+error: `#[bar("...")]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:195:11
    |
 LL |     #[bar("...")]
-   |     ^^^^^^^^^^^^^
+   |           ^^^^^
 
 error: `code` is not a valid nested attribute of a `label` attribute
   --> $DIR/subdiagnostic-derive.rs:207:5
@@ -136,19 +136,21 @@ error: `#[applicability]` is only valid on suggestions
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
-error: `#[bar]` is not a valid `SessionSubdiagnostic` field attribute
+error: `#[bar]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:256:5
    |
 LL |     #[bar]
    |     ^^^^^^
+   |
+   = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
 
-error: `#[bar = ...]` is not a valid `SessionSubdiagnostic` field attribute
+error: `#[bar = ...]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:267:5
    |
 LL |     #[bar = "..."]
    |     ^^^^^^^^^^^^^^
 
-error: `#[bar(...)]` is not a valid `SessionSubdiagnostic` field attribute
+error: `#[bar(...)]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:278:5
    |
 LL |     #[bar("...")]
