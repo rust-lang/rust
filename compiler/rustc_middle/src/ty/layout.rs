@@ -6,6 +6,7 @@ use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
@@ -2762,14 +2763,22 @@ impl<'tcx> ty::Instance<'tcx> {
 /// with `-Cpanic=abort` will look like they can't unwind when in fact they
 /// might (from a foreign exception or similar).
 #[inline]
-pub fn fn_can_unwind<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    codegen_fn_attr_flags: CodegenFnAttrFlags,
-    abi: SpecAbi,
-) -> bool {
-    // Special attribute for functions which can't unwind.
-    if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
-        return false;
+pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
+    if let Some(did) = fn_def_id {
+        // Special attribute for functions which can't unwind.
+        if tcx.codegen_fn_attrs(did).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
+            return false;
+        }
+
+        // With -Z panic-in-drop=abort, drop_in_place never unwinds.
+        //
+        // This is not part of `codegen_fn_attrs` as it can differ between crates
+        // and therefore cannot be computed in core.
+        if tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Abort {
+            if Some(did) == tcx.lang_items().drop_in_place_fn() {
+                return false;
+            }
+        }
     }
 
     // Otherwise if this isn't special then unwinding is generally determined by
@@ -2991,13 +3000,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
     let (param_env, (sig, extra_args)) = query.into_parts();
 
-    LayoutCx { tcx, param_env }.fn_abi_new_uncached(
-        sig,
-        extra_args,
-        None,
-        CodegenFnAttrFlags::empty(),
-        false,
-    )
+    LayoutCx { tcx, param_env }.fn_abi_new_uncached(sig, extra_args, None, None, false)
 }
 
 fn fn_abi_of_instance<'tcx>(
@@ -3014,13 +3017,11 @@ fn fn_abi_of_instance<'tcx>(
         None
     };
 
-    let attrs = tcx.codegen_fn_attrs(instance.def_id()).flags;
-
     LayoutCx { tcx, param_env }.fn_abi_new_uncached(
         sig,
         extra_args,
         caller_location,
-        attrs,
+        Some(instance.def_id()),
         matches!(instance.def, ty::InstanceDef::Virtual(..)),
     )
 }
@@ -3033,7 +3034,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
-        codegen_fn_attr_flags: CodegenFnAttrFlags,
+        fn_def_id: Option<DefId>,
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
     ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
@@ -3205,7 +3206,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(self.tcx(), codegen_fn_attr_flags, sig.abi),
+            can_unwind: fn_can_unwind(self.tcx(), fn_def_id, sig.abi),
         };
         self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
         debug!("fn_abi_new_uncached = {:?}", fn_abi);
