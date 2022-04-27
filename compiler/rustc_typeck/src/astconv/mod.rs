@@ -2681,21 +2681,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let trait_ref =
             self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
 
-        let x: &ty::AssocItem = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
+        let assoc = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
             tcx,
             *ident,
             ty::AssocKind::Fn,
             trait_ref.def_id,
         )?;
 
-        let fn_sig = tcx.fn_sig(x.def_id).subst(
+        let fn_sig = tcx.fn_sig(assoc.def_id).subst(
             tcx,
-            trait_ref.substs.extend_to(tcx, x.def_id, |param, _| tcx.mk_param_from_def(param)),
+            trait_ref.substs.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
         );
 
         let ty = if let Some(arg_idx) = arg_idx { fn_sig.input(arg_idx) } else { fn_sig.output() };
 
-        Some(tcx.erase_late_bound_regions(ty))
+        Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
     }
 
     fn validate_late_bound_regions(
