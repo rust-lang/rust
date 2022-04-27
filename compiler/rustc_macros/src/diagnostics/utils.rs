@@ -102,6 +102,8 @@ pub(crate) struct FieldInfo<'a> {
     pub(crate) span: &'a proc_macro2::Span,
 }
 
+/// Small helper trait for abstracting over `Option` fields that contain a value and a `Span`
+/// for error reporting if they are set more than once.
 pub(crate) trait SetOnce<T> {
     fn set_once(&mut self, value: T);
 }
@@ -122,6 +124,7 @@ impl<T> SetOnce<(T, Span)> for Option<(T, Span)> {
 }
 
 pub(crate) trait HasFieldMap {
+    /// Returns the binding for the field with the given name, if it exists on the type.
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream>;
 
     /// In the strings in the attributes supplied to this macro, we want callers to be able to

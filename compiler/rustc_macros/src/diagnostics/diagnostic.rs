@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, Type};
 use synstructure::Structure;
 
-/// The central struct for constructing the `as_error` method from an annotated struct.
+/// The central struct for constructing the `into_diagnostic` method from an annotated struct.
 pub(crate) struct SessionDiagnosticDerive<'a> {
     structure: Structure<'a>,
     builder: SessionDiagnosticDeriveBuilder,

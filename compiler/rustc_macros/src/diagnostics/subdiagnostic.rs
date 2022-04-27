@@ -16,6 +16,8 @@ use std::str::FromStr;
 use syn::{spanned::Spanned, Meta, MetaList, MetaNameValue};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+/// `Applicability` of a suggestion - mirrors `rustc_errors::Applicability` - and used to represent
+/// the user's selection of applicability if specified in an attribute.
 enum Applicability {
     MachineApplicable,
     MaybeIncorrect,
@@ -56,6 +58,7 @@ impl quote::ToTokens for Applicability {
     }
 }
 
+/// Which kind of suggestion is being created?
 #[derive(Clone, Copy)]
 enum SubdiagnosticSuggestionKind {
     /// `#[suggestion]`
@@ -68,6 +71,7 @@ enum SubdiagnosticSuggestionKind {
     Verbose,
 }
 
+/// Which kind of subdiagnostic is being created from a variant?
 #[derive(Clone, Copy)]
 enum SubdiagnosticKind {
     /// `#[label(...)]`
@@ -129,6 +133,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
     }
 }
 
+/// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SessionSubdiagnosticDerive<'a> {
     structure: Structure<'a>,
     diag: syn::Ident,
@@ -210,6 +215,10 @@ impl<'a> SessionSubdiagnosticDerive<'a> {
     }
 }
 
+/// Tracks persistent information required for building up the call to add to the diagnostic
+/// for the final generated method. This is a separate struct to `SessionSubdiagnosticDerive`
+/// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
+/// double mut borrow later on.
 struct SessionSubdiagnosticDeriveBuilder<'a> {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
     diag: &'a syn::Ident,
