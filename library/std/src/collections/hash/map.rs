@@ -136,7 +136,7 @@ use crate::sys;
 /// ]);
 /// ```
 ///
-/// `HashMap` implements an [`Entry API`](#method.entry), which allows
+/// `HashMap` implements an [`Entry` API](#method.entry), which allows
 /// for complex methods of getting, setting, updating and removing keys and
 /// their values:
 ///
