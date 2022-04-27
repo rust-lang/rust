@@ -43,7 +43,7 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.expects_item()
+    if !(ctx.expects_item() || ctx.has_block_expr_parent())
         || ctx.previous_token_is(T![unsafe])
         || ctx.path_qual().is_some()
         || ctx.has_impl_or_trait_prev_sibling()
@@ -63,11 +63,13 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
         add_custom_completions(acc, ctx, cap, SnippetScope::Item);
     }
 
-    let mut item = snippet(
-        ctx,
-        cap,
-        "tmod (Test module)",
-        "\
+    // Test-related snippets shouldn't be shown in blocks.
+    if !ctx.has_block_expr_parent() {
+        let mut item = snippet(
+            ctx,
+            cap,
+            "tmod (Test module)",
+            "\
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,22 +79,23 @@ mod tests {
         $0
     }
 }",
-    );
-    item.lookup_by("tmod");
-    item.add_to(acc);
+        );
+        item.lookup_by("tmod");
+        item.add_to(acc);
 
-    let mut item = snippet(
-        ctx,
-        cap,
-        "tfn (Test function)",
-        "\
+        let mut item = snippet(
+            ctx,
+            cap,
+            "tfn (Test function)",
+            "\
 #[test]
 fn ${1:feature}() {
     $0
 }",
-    );
-    item.lookup_by("tfn");
-    item.add_to(acc);
+        );
+        item.lookup_by("tfn");
+        item.add_to(acc);
+    }
 
     let item = snippet(
         ctx,
