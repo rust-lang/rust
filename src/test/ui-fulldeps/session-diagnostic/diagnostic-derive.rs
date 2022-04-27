@@ -90,21 +90,28 @@ struct WrongPlaceField {
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
-#[error(code = "E0456", slug = "bar")] //~ ERROR `error` specified multiple times
+#[error(code = "E0456", slug = "bar")]
+//~^ ERROR specified multiple times
+//~^^ ERROR specified multiple times
+//~^^^ ERROR specified multiple times
 struct ErrorSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 #[warning(code = "E0293", slug = "bar")]
-//~^ ERROR `warning` specified when `error` was already specified
+//~^ ERROR specified multiple times
+//~^^ ERROR specified multiple times
+//~^^^ ERROR specified multiple times
 struct WarnSpecifiedAfterError {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", code = "E0457", slug = "bar")] //~ ERROR `code` specified multiple times
+#[error(code = "E0456", code = "E0457", slug = "bar")]
+//~^ ERROR specified multiple times
 struct CodeSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", slug = "foo", slug = "bar")] //~ ERROR `slug` specified multiple times
+#[error(code = "E0456", slug = "foo", slug = "bar")]
+//~^ ERROR specified multiple times
 struct SlugSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]

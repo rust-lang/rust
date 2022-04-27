@@ -5,7 +5,8 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, FieldInfo, HasFieldMap,
+    option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, FieldInfo,
+    HasFieldMap, SetOnce,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -240,7 +241,7 @@ struct SessionDiagnosticDeriveBuilder {
     slug: Option<(String, proc_macro::Span)>,
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
-    code: Option<proc_macro::Span>,
+    code: Option<(String, proc_macro::Span)>,
 }
 
 impl HasFieldMap for SessionDiagnosticDeriveBuilder {
@@ -306,7 +307,7 @@ impl SessionDiagnosticDeriveBuilder {
                 diag.help("only `error` and `warning` are valid attributes")
             }),
         };
-        self.set_kind_once(kind, span)?;
+        self.kind.set_once((kind, span));
 
         let mut tokens = Vec::new();
         for nested_attr in nested {
@@ -321,12 +322,17 @@ impl SessionDiagnosticDeriveBuilder {
                 // Struct attributes are only allowed to be applied once, and the diagnostic
                 // changes will be set in the initialisation code.
                 Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
+                    let span = s.span().unwrap();
                     match nested_name.as_str() {
                         "slug" => {
-                            self.set_slug_once(s.value(), s.span().unwrap());
+                            self.slug.set_once((s.value(), span));
                         }
                         "code" => {
-                            tokens.push(self.set_code_once(s.value(), s.span().unwrap()));
+                            self.code.set_once((s.value(), span));
+                            let (diag, code) = (&self.diag, &self.code.as_ref().map(|(v, _)| v));
+                            tokens.push(quote! {
+                                #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                            });
                         }
                         _ => invalid_nested_attr(attr, &nested_attr)
                             .help("only `slug` and `code` are valid nested attributes")
@@ -338,61 +344,6 @@ impl SessionDiagnosticDeriveBuilder {
         }
 
         Ok(tokens.drain(..).collect())
-    }
-
-    #[must_use]
-    fn set_kind_once(
-        &mut self,
-        kind: SessionDiagnosticKind,
-        span: proc_macro::Span,
-    ) -> Result<(), SessionDiagnosticDeriveError> {
-        match self.kind {
-            None => {
-                self.kind = Some((kind, span));
-                Ok(())
-            }
-            Some((prev_kind, prev_span)) => {
-                let existing = prev_kind.descr();
-                let current = kind.descr();
-
-                let msg = if current == existing {
-                    format!("`{}` specified multiple times", existing)
-                } else {
-                    format!("`{}` specified when `{}` was already specified", current, existing)
-                };
-                throw_span_err!(span, &msg, |diag| diag
-                    .span_note(prev_span, "previously specified here"));
-            }
-        }
-    }
-
-    fn set_code_once(&mut self, code: String, span: proc_macro::Span) -> TokenStream {
-        match self.code {
-            None => {
-                self.code = Some(span);
-            }
-            Some(prev_span) => {
-                span_err(span, "`code` specified multiple times")
-                    .span_note(prev_span, "previously specified here")
-                    .emit();
-            }
-        }
-
-        let diag = &self.diag;
-        quote! { #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string())); }
-    }
-
-    fn set_slug_once(&mut self, slug: String, span: proc_macro::Span) {
-        match self.slug {
-            None => {
-                self.slug = Some((slug, span));
-            }
-            Some((_, prev_span)) => {
-                span_err(span, "`slug` specified multiple times")
-                    .span_note(prev_span, "previously specified here")
-                    .emit();
-            }
-        }
     }
 
     fn generate_field_attr_code(

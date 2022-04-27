@@ -86,7 +86,7 @@ LL |     #[suggestion = "bar"]
    |
    = help: only `label`, `note` and `help` are valid field attributes
 
-error: `error` specified multiple times
+error: specified multiple times
   --> $DIR/diagnostic-derive.rs:93:1
    |
 LL | #[error(code = "E0456", slug = "bar")]
@@ -98,44 +98,92 @@ note: previously specified here
 LL | #[error(code = "E0123", slug = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `warning` specified when `error` was already specified
-  --> $DIR/diagnostic-derive.rs:98:1
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:93:16
+   |
+LL | #[error(code = "E0456", slug = "bar")]
+   |                ^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:92:16
+   |
+LL | #[error(code = "E0123", slug = "foo")]
+   |                ^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:93:32
+   |
+LL | #[error(code = "E0456", slug = "bar")]
+   |                                ^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:92:32
+   |
+LL | #[error(code = "E0123", slug = "foo")]
+   |                                ^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:101:1
    |
 LL | #[warning(code = "E0293", slug = "bar")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:97:1
+  --> $DIR/diagnostic-derive.rs:100:1
    |
 LL | #[error(code = "E0123", slug = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `code` specified multiple times
-  --> $DIR/diagnostic-derive.rs:103:32
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:101:18
+   |
+LL | #[warning(code = "E0293", slug = "bar")]
+   |                  ^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:100:16
+   |
+LL | #[error(code = "E0123", slug = "foo")]
+   |                ^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:101:34
+   |
+LL | #[warning(code = "E0293", slug = "bar")]
+   |                                  ^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:100:32
+   |
+LL | #[error(code = "E0123", slug = "foo")]
+   |                                ^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:108:32
    |
 LL | #[error(code = "E0456", code = "E0457", slug = "bar")]
    |                                ^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:103:16
+  --> $DIR/diagnostic-derive.rs:108:16
    |
 LL | #[error(code = "E0456", code = "E0457", slug = "bar")]
    |                ^^^^^^^
 
-error: `slug` specified multiple times
-  --> $DIR/diagnostic-derive.rs:107:46
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:113:46
    |
 LL | #[error(code = "E0456", slug = "foo", slug = "bar")]
    |                                              ^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:107:32
+  --> $DIR/diagnostic-derive.rs:113:32
    |
 LL | #[error(code = "E0456", slug = "foo", slug = "bar")]
    |                                ^^^^^
 
 error: diagnostic kind not specified
-  --> $DIR/diagnostic-derive.rs:111:1
+  --> $DIR/diagnostic-derive.rs:118:1
    |
 LL | struct KindNotProvided {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +191,7 @@ LL | struct KindNotProvided {}
    = help: use the `#[error(...)]` attribute to create an error
 
 error: `slug` not specified
-  --> $DIR/diagnostic-derive.rs:114:1
+  --> $DIR/diagnostic-derive.rs:121:1
    |
 LL | / #[error(code = "E0456")]
 LL | | struct SlugNotProvided {}
@@ -152,13 +200,13 @@ LL | | struct SlugNotProvided {}
    = help: use the `#[error(slug = "...")]` attribute to set this diagnostic's slug
 
 error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:124:5
+  --> $DIR/diagnostic-derive.rs:131:5
    |
 LL |     #[primary_span]
    |     ^^^^^^^^^^^^^^^
 
 error: `#[nonsense]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:132:5
+  --> $DIR/diagnostic-derive.rs:139:5
    |
 LL |     #[nonsense]
    |     ^^^^^^^^^^^
@@ -166,19 +214,19 @@ LL |     #[nonsense]
    = help: only `skip_arg`, `primary_span`, `label`, `note` and `help` are valid field attributes
 
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:149:5
+  --> $DIR/diagnostic-derive.rs:156:5
    |
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
 error: `name` doesn't refer to a field on this type
-  --> $DIR/diagnostic-derive.rs:157:42
+  --> $DIR/diagnostic-derive.rs:164:42
    |
 LL |     #[suggestion(message = "bar", code = "{name}")]
    |                                          ^^^^^^^^
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/diagnostic-derive.rs:162:16
+  --> $DIR/diagnostic-derive.rs:169:16
    |
 LL | #[derive(SessionDiagnostic)]
    |           -    ^ expected `'}'` in format string
@@ -189,7 +237,7 @@ LL | #[derive(SessionDiagnostic)]
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/diagnostic-derive.rs:172:15
+  --> $DIR/diagnostic-derive.rs:179:15
    |
 LL | #[derive(SessionDiagnostic)]
    |               ^ unmatched `}` in format string
@@ -198,13 +246,13 @@ LL | #[derive(SessionDiagnostic)]
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:192:5
+  --> $DIR/diagnostic-derive.rs:199:5
    |
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
 error: `#[suggestion(nonsense = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:217:18
+  --> $DIR/diagnostic-derive.rs:224:18
    |
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
@@ -212,7 +260,7 @@ LL |     #[suggestion(nonsense = "bar")]
    = help: only `message` and `code` are valid field attributes
 
 error: `#[suggestion(msg = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:225:18
+  --> $DIR/diagnostic-derive.rs:232:18
    |
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
@@ -220,7 +268,7 @@ LL |     #[suggestion(msg = "bar")]
    = help: only `message` and `code` are valid field attributes
 
 error: wrong field type for suggestion
-  --> $DIR/diagnostic-derive.rs:247:5
+  --> $DIR/diagnostic-derive.rs:254:5
    |
 LL | /     #[suggestion(message = "bar", code = "This is suggested code")]
 LL | |
@@ -230,7 +278,7 @@ LL | |     suggestion: Applicability,
    = help: `#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`
 
 error: type of field annotated with `#[suggestion(...)]` contains more than one `Span`
-  --> $DIR/diagnostic-derive.rs:262:5
+  --> $DIR/diagnostic-derive.rs:269:5
    |
 LL | /     #[suggestion(message = "bar", code = "This is suggested code")]
 LL | |
@@ -238,7 +286,7 @@ LL | |     suggestion: (Span, Span, Applicability),
    | |___________________________________________^
 
 error: type of field annotated with `#[suggestion(...)]` contains more than one Applicability
-  --> $DIR/diagnostic-derive.rs:270:5
+  --> $DIR/diagnostic-derive.rs:277:5
    |
 LL | /     #[suggestion(message = "bar", code = "This is suggested code")]
 LL | |
@@ -246,7 +294,7 @@ LL | |     suggestion: (Applicability, Applicability, Span),
    | |____________________________________________________^
 
 error: `#[label(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:278:5
+  --> $DIR/diagnostic-derive.rs:285:5
    |
 LL |     #[label("bar")]
    |     ^^^^^^^^^^^^^^^
@@ -254,25 +302,25 @@ LL |     #[label("bar")]
    = help: only `suggestion{,_short,_hidden,_verbose}` are valid field attributes
 
 error: `#[help]` must come after `#[error(..)]` or `#[warn(..)]`
-  --> $DIR/diagnostic-derive.rs:399:1
+  --> $DIR/diagnostic-derive.rs:406:1
    |
 LL | #[help]
    | ^^^^^^^
 
 error: `#[help = ...]` must come after `#[error(..)]` or `#[warn(..)]`
-  --> $DIR/diagnostic-derive.rs:407:1
+  --> $DIR/diagnostic-derive.rs:414:1
    |
 LL | #[help = "bar"]
    | ^^^^^^^^^^^^^^^
 
 error: `#[note]` must come after `#[error(..)]` or `#[warn(..)]`
-  --> $DIR/diagnostic-derive.rs:415:1
+  --> $DIR/diagnostic-derive.rs:422:1
    |
 LL | #[note]
    | ^^^^^^^
 
 error: `#[note = ...]` must come after `#[error(..)]` or `#[warn(..)]`
-  --> $DIR/diagnostic-derive.rs:423:1
+  --> $DIR/diagnostic-derive.rs:430:1
    |
 LL | #[note = "bar"]
    | ^^^^^^^^^^^^^^^
@@ -284,13 +332,13 @@ LL | #[nonsense(code = "E0123", slug = "foo")]
    |   ^^^^^^^^
 
 error: cannot find attribute `nonsense` in this scope
-  --> $DIR/diagnostic-derive.rs:132:7
+  --> $DIR/diagnostic-derive.rs:139:7
    |
 LL |     #[nonsense]
    |       ^^^^^^^^
 
 error[E0599]: no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
-  --> $DIR/diagnostic-derive.rs:322:10
+  --> $DIR/diagnostic-derive.rs:329:10
    |
 LL | struct Hello {}
    | ------------ method `into_diagnostic_arg` not found for this
@@ -300,6 +348,6 @@ LL | #[derive(SessionDiagnostic)]
    |
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 37 previous errors
+error: aborting due to 41 previous errors
 
 For more information about this error, try `rustc --explain E0599`.
