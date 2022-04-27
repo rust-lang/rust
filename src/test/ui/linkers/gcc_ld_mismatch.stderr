@@ -1,0 +1,2 @@
+error: `-Zgcc-ld=lld` and `-Clinker-flavor` differ in their linker choice. The latter should be `-Clinker-flavor=gcc:lld`
+
