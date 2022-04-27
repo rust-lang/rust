@@ -39,7 +39,7 @@ function base_sysroot_tests() {
     $MY_RUSTC example/issue-91827-extern-types.rs --crate-name issue_91827_extern_types --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/issue_91827_extern_types
 
-    echo "[AOT] alloc_system"
+    echo "[BUILD] alloc_system"
     $MY_RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
 
     echo "[AOT] alloc_example"
@@ -56,13 +56,13 @@ function base_sysroot_tests() {
         echo "[JIT] std_example (skipped)"
     fi
 
-    echo "[AOT] dst_field_align"
-    $MY_RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target "$TARGET_TRIPLE"
-    $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
-
     echo "[AOT] std_example"
     $MY_RUSTC example/std_example.rs --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/std_example arg
+
+    echo "[AOT] dst_field_align"
+    $MY_RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target "$TARGET_TRIPLE"
+    $RUN_WRAPPER ./target/out/dst_field_align
 
     echo "[AOT] subslice-patterns-const-eval"
     $MY_RUSTC example/subslice-patterns-const-eval.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
