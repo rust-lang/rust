@@ -757,7 +757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_args: &[Ty<'tcx>],
     ) -> Option<Vec<Ty<'tcx>>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let Some(ret_ty) = expected_ret.only_has_type(self) else { return None };
+        let ret_ty = expected_ret.only_has_type(self)?;
 
         // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
         // Without it, the inference
