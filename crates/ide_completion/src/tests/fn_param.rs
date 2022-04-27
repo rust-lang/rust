@@ -67,6 +67,17 @@ fn bar(file_id: u32, $0) {}
             kw mut
         "#]],
     );
+
+    check(
+        r#"
+fn f(#[foo = "bar"] baz: u32,) {}
+fn g(baz: (), ba$0)
+"#,
+        expect![[r##"
+                kw ref
+                kw mut
+            "##]],
+    )
 }
 
 #[test]
