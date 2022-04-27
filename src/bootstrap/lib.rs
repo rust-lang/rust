@@ -609,7 +609,7 @@ impl Build {
     /// This avoids contributors checking in a submodule change by accident.
     pub fn maybe_update_submodules(&self) {
         // WARNING: keep this in sync with the submodules hard-coded in bootstrap.py
-        const BOOTSTRAP_SUBMODULES: &[&str] = &[
+        let mut bootstrap_submodules: Vec<&str> = vec![
             "src/tools/rust-installer",
             "src/tools/cargo",
             "src/tools/rls",
@@ -617,6 +617,11 @@ impl Build {
             "library/backtrace",
             "library/stdarch",
         ];
+        // As in bootstrap.py, we include `rust-analyzer` if `build.vendor` was set in
+        // `config.toml`.
+        if self.config.vendor {
+            bootstrap_submodules.push("src/tools/rust-analyzer");
+        }
         // Avoid running git when there isn't a git checkout.
         if !self.config.submodules(&self.rust_info) {
             return;
@@ -632,7 +637,7 @@ impl Build {
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
             // avoid updating submodules twice
-            if !BOOTSTRAP_SUBMODULES.iter().any(|&p| Path::new(p) == submodule)
+            if !bootstrap_submodules.iter().any(|&p| Path::new(p) == submodule)
                 && channel::GitInfo::new(false, submodule).is_git()
             {
                 self.update_submodule(submodule);
