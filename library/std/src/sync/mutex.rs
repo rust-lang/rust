@@ -392,7 +392,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(mutex.is_poisoned(), false);
     /// ```
     #[inline]
-    #[unstable(feature = "mutex_unpoison", issue = "none")]
+    #[unstable(feature = "mutex_unpoison", issue = "96469")]
     pub fn clear_poison(guard: &MutexGuard<'_, T>) {
         guard.lock.poison.clear();
     }

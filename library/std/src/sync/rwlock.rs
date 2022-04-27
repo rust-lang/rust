@@ -395,7 +395,7 @@ impl<T: ?Sized> RwLock<T> {
     /// assert_eq!(lock.is_poisoned(), false);
     /// ```
     #[inline]
-    #[unstable(feature = "mutex_unpoison", issue = "none")]
+    #[unstable(feature = "mutex_unpoison", issue = "96469")]
     pub fn clear_poison(guard: &RwLockWriteGuard<'_, T>) {
         guard.lock.poison.clear();
     }
