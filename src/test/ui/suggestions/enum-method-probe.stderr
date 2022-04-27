@@ -1,0 +1,67 @@
+error[E0599]: no method named `get` found for enum `Result` in the current scope
+  --> $DIR/enum-method-probe.rs:14:9
+   |
+LL |     res.get();
+   |         ^^^ method not found in `Result<Foo, ()>`
+   |
+note: the method `get` exists on the type `Foo`
+  --> $DIR/enum-method-probe.rs:7:5
+   |
+LL |     fn get(&self) -> u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+help: use the `?` operator to extract the `Foo` value, propagating a `Result::Err` value to the caller
+   |
+LL |     res?.get();
+   |        +
+
+error[E0599]: no method named `get` found for enum `Result` in the current scope
+  --> $DIR/enum-method-probe.rs:22:9
+   |
+LL |     res.get();
+   |         ^^^ method not found in `Result<Foo, ()>`
+   |
+note: the method `get` exists on the type `Foo`
+  --> $DIR/enum-method-probe.rs:7:5
+   |
+LL |     fn get(&self) -> u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+help: consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is an `Err`
+   |
+LL |     res.expect("REASON").get();
+   |        +++++++++++++++++
+
+error[E0599]: no method named `get` found for enum `Option` in the current scope
+  --> $DIR/enum-method-probe.rs:29:9
+   |
+LL |     res.get();
+   |         ^^^ method not found in `Option<Foo>`
+   |
+note: the method `get` exists on the type `Foo`
+  --> $DIR/enum-method-probe.rs:7:5
+   |
+LL |     fn get(&self) -> u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+help: use the `?` operator to extract the `Foo` value, propagating a `None` to the caller
+   |
+LL |     res?.get();
+   |        +
+
+error[E0599]: no method named `get` found for enum `Option` in the current scope
+  --> $DIR/enum-method-probe.rs:37:9
+   |
+LL |     res.get();
+   |         ^^^ method not found in `Option<Foo>`
+   |
+note: the method `get` exists on the type `Foo`
+  --> $DIR/enum-method-probe.rs:7:5
+   |
+LL |     fn get(&self) -> u8 {
+   |     ^^^^^^^^^^^^^^^^^^^
+help: consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is `None`
+   |
+LL |     res.expect("REASON").get();
+   |        +++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
