@@ -475,24 +475,14 @@ fn clean_generic_param<'tcx>(
     generics: Option<&hir::Generics<'tcx>>,
     param: &hir::GenericParam<'tcx>,
 ) -> GenericParamDef {
+    let did = cx.tcx.hir().local_def_id(param.hir_id);
     let (name, kind) = match param.kind {
         hir::GenericParamKind::Lifetime { .. } => {
             let outlives = if let Some(generics) = generics {
                 generics
-                    .predicates
-                    .iter()
-                    .flat_map(|pred| {
-                        match pred {
-                            hir::WherePredicate::RegionPredicate(rp)
-                                if rp.lifetime.name == hir::LifetimeName::Param(param.name)
-                                    && !rp.in_where_clause =>
-                            {
-                                rp.bounds
-                            }
-                            _ => &[],
-                        }
-                        .iter()
-                    })
+                    .outlives_for_param(did)
+                    .filter(|bp| !bp.in_where_clause)
+                    .flat_map(|bp| bp.bounds)
                     .map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt.clean(cx),
                         _ => panic!(),
@@ -504,7 +494,6 @@ fn clean_generic_param<'tcx>(
             (param.name.ident().name, GenericParamDefKind::Lifetime { outlives })
         }
         hir::GenericParamKind::Type { ref default, synthetic } => {
-            let did = cx.tcx.hir().local_def_id(param.hir_id);
             let bounds = if let Some(generics) = generics {
                 generics
                     .bounds_for_param(did)
@@ -528,7 +517,7 @@ fn clean_generic_param<'tcx>(
         hir::GenericParamKind::Const { ty, default } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
-                did: cx.tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                did: did.to_def_id(),
                 ty: Box::new(ty.clean(cx)),
                 default: default.map(|ct| {
                     let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
@@ -1459,7 +1448,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                 // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
                 // there's no case where it could cause the function to fail to compile.
                 let elided =
-                    l.is_elided() || matches!(l.name, LifetimeName::Param(ParamName::Fresh(_)));
+                    l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
                 let lifetime = if elided { None } else { Some(l.clean(cx)) };
                 BorrowedRef { lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx) }
             }

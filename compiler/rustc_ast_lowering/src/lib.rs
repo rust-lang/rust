@@ -672,9 +672,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Param { .. } => {
                 (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            LifetimeRes::Fresh { param, .. } => {
-                (hir::ParamName::Fresh(param), hir::LifetimeParamKind::Elided)
-            }
+            LifetimeRes::Fresh { .. } => (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided),
             LifetimeRes::Static | LifetimeRes::Error => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
@@ -1576,10 +1574,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     (hir::ParamName::Plain(ident), LifetimeRes::Param { param, binder: fn_node_id })
                 }
                 // Input lifetime like `'1`:
-                LifetimeRes::Fresh { param, .. } => (
-                    hir::ParamName::Fresh(outer_def_id),
-                    LifetimeRes::Fresh { param, binder: fn_node_id },
-                ),
+                LifetimeRes::Fresh { param, .. } => {
+                    (hir::ParamName::Fresh, LifetimeRes::Fresh { param, binder: fn_node_id })
+                }
                 LifetimeRes::Static | LifetimeRes::Error => continue,
                 res => {
                     panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span)
@@ -1749,7 +1746,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::Lifetime {
         debug!(?self.captured_lifetimes);
         let name = match res {
-            LifetimeRes::Param { param, binder } => {
+            LifetimeRes::Param { mut param, binder } => {
                 debug_assert_ne!(ident.name, kw::UnderscoreLifetime);
                 let p_name = ParamName::Plain(ident);
                 if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
@@ -1757,10 +1754,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     && !binders_to_ignore.contains(&binder)
                 {
                     match captures.entry(param) {
-                        Entry::Occupied(_) => {}
+                        Entry::Occupied(o) => param = self.resolver.local_def_id(o.get().1),
                         Entry::Vacant(v) => {
                             let p_id = self.resolver.next_node_id();
-                            self.resolver.create_def(
+                            let p_def_id = self.resolver.create_def(
                                 *parent_def_id,
                                 p_id,
                                 DefPathData::LifetimeNs(p_name.ident().name),
@@ -1769,10 +1766,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             );
 
                             v.insert((span, p_id, p_name, res));
+                            param = p_def_id;
                         }
                     }
                 }
-                hir::LifetimeName::Param(p_name)
+                hir::LifetimeName::Param(param, p_name)
             }
             LifetimeRes::Fresh { mut param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
@@ -1792,21 +1790,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span.with_parent(None),
                             );
 
-                            let p_name = ParamName::Fresh(param);
-                            v.insert((span, p_id, p_name, res));
+                            v.insert((span, p_id, ParamName::Fresh, res));
                             param = p_def_id;
                         }
                     }
                 }
-                let p_name = ParamName::Fresh(param);
-                hir::LifetimeName::Param(p_name)
+                hir::LifetimeName::Param(param, ParamName::Fresh)
             }
             LifetimeRes::Anonymous { binder, elided } => {
-                let l_name = if elided {
-                    hir::LifetimeName::Implicit
-                } else {
-                    hir::LifetimeName::Underscore
-                };
                 if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
                     &mut self.captured_lifetimes
                     && !binders_to_ignore.contains(&binder)
@@ -1819,11 +1810,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ExpnId::root(),
                         span.with_parent(None),
                     );
-                    let p_name = ParamName::Fresh(p_def_id);
-                    captures.insert(p_def_id, (span, p_id, p_name, res));
-                    hir::LifetimeName::Param(p_name)
+                    captures.insert(p_def_id, (span, p_id, ParamName::Fresh, res));
+                    hir::LifetimeName::Param(p_def_id, ParamName::Fresh)
+                } else if elided {
+                    hir::LifetimeName::Implicit
                 } else {
-                    l_name
+                    hir::LifetimeName::Underscore
                 }
             }
             LifetimeRes::Static => hir::LifetimeName::Static,
@@ -1831,6 +1823,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             res => panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span),
         };
         debug!(?self.captured_lifetimes);
+        debug!(?name);
         hir::Lifetime { hir_id: self.lower_node_id(id), span: self.lower_span(span), name }
     }
 

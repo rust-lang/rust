@@ -26,7 +26,7 @@ use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::fmt;
 
-#[derive(Copy, Clone, Encodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
     pub span: Span,
@@ -60,7 +60,7 @@ pub enum ParamName {
     /// ```
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
-    Fresh(LocalDefId),
+    Fresh,
 
     /// Indicates an illegal name was given and an error has been
     /// reported (so we should squelch other derived errors). Occurs
@@ -72,9 +72,7 @@ impl ParamName {
     pub fn ident(&self) -> Ident {
         match *self {
             ParamName::Plain(ident) => ident,
-            ParamName::Fresh(_) | ParamName::Error => {
-                Ident::with_dummy_span(kw::UnderscoreLifetime)
-            }
+            ParamName::Fresh | ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
 
@@ -90,7 +88,7 @@ impl ParamName {
 #[derive(HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
-    Param(ParamName),
+    Param(LocalDefId, ParamName),
 
     /// User wrote nothing (e.g., the lifetime in `&u32`).
     Implicit,
@@ -127,7 +125,7 @@ impl LifetimeName {
             | LifetimeName::Error => Ident::empty(),
             LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
-            LifetimeName::Param(param_name) => param_name.ident(),
+            LifetimeName::Param(_, param_name) => param_name.ident(),
         }
     }
 
@@ -136,9 +134,9 @@ impl LifetimeName {
             LifetimeName::ImplicitObjectLifetimeDefault
             | LifetimeName::Implicit
             | LifetimeName::Underscore
-            | LifetimeName::Param(ParamName::Fresh(_))
+            | LifetimeName::Param(_, ParamName::Fresh)
             | LifetimeName::Error => true,
-            LifetimeName::Static | LifetimeName::Param(_) => false,
+            LifetimeName::Static | LifetimeName::Param(..) => false,
         }
     }
 
@@ -148,12 +146,12 @@ impl LifetimeName {
             | LifetimeName::Implicit
             | LifetimeName::Underscore => true,
 
-            // It might seem surprising that `Fresh(_)` counts as
+            // It might seem surprising that `Fresh` counts as
             // *not* elided -- but this is because, as far as the code
-            // in the compiler is concerned -- `Fresh(_)` variants act
+            // in the compiler is concerned -- `Fresh` variants act
             // equivalently to "some fresh name". They correspond to
             // early-bound regions on an impl, in other words.
-            LifetimeName::Error | LifetimeName::Param(_) | LifetimeName::Static => false,
+            LifetimeName::Error | LifetimeName::Param(..) | LifetimeName::Static => false,
         }
     }
 
@@ -163,8 +161,8 @@ impl LifetimeName {
 
     pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
         match *self {
-            LifetimeName::Param(param_name) => {
-                LifetimeName::Param(param_name.normalize_to_macros_2_0())
+            LifetimeName::Param(def_id, param_name) => {
+                LifetimeName::Param(def_id, param_name.normalize_to_macros_2_0())
             }
             lifetime_name => lifetime_name,
         }
@@ -174,12 +172,6 @@ impl LifetimeName {
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.name.ident().fmt(f)
-    }
-}
-
-impl fmt::Debug for Lifetime {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "lifetime({}: {})", self.hir_id, self.name.ident())
     }
 }
 
@@ -628,6 +620,16 @@ impl<'hir> Generics<'hir> {
         })
     }
 
+    pub fn outlives_for_param(
+        &self,
+        param_def_id: LocalDefId,
+    ) -> impl Iterator<Item = &WhereRegionPredicate<'_>> {
+        self.predicates.iter().filter_map(move |pred| match pred {
+            WherePredicate::RegionPredicate(rp) if rp.is_param_bound(param_def_id) => Some(rp),
+            _ => None,
+        })
+    }
+
     pub fn bounds_span_for_suggestions(&self, param_def_id: LocalDefId) -> Option<Span> {
         self.bounds_for_param(param_def_id).flat_map(|bp| bp.bounds.iter().rev()).find_map(
             |bound| {
@@ -767,6 +769,16 @@ pub struct WhereRegionPredicate<'hir> {
     pub in_where_clause: bool,
     pub lifetime: Lifetime,
     pub bounds: GenericBounds<'hir>,
+}
+
+impl<'hir> WhereRegionPredicate<'hir> {
+    /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
+    pub fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
+        match self.lifetime.name {
+            LifetimeName::Param(id, _) => id == param_def_id,
+            _ => false,
+        }
+    }
 }
 
 /// An equality predicate (e.g., `T = int`); currently unsupported.
