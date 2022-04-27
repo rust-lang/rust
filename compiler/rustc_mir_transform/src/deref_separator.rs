@@ -34,7 +34,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
             if p_elem == ProjectionElem::Deref && !p_ref.projection.is_empty() {
                 let ty = p_ref.ty(&self.local_decls, self.tcx).ty;
                 let temp =
-                    self.patcher.new_temp(ty, self.local_decls[p_ref.local].source_info.span);
+                    self.patcher.new_local_temp(ty, self.local_decls[p_ref.local].source_info.span);
 
                 self.patcher.add_statement(loc, StatementKind::StorageLive(temp));
 
@@ -42,12 +42,12 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                 // temp value, excluding projections we already covered.
                 let deref_place = Place::from(place_local)
                     .project_deeper(&p_ref.projection[last_len..], self.tcx);
+
                 self.patcher.add_assign(
                     loc,
                     Place::from(temp),
                     Rvalue::Use(Operand::Move(deref_place)),
                 );
-
                 place_local = temp;
                 last_len = p_ref.projection.len();
 
@@ -58,7 +58,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                     *place = temp_place;
                 }
 
-                // We are destroying last temp since it's no longer used.
+                // We are destroying the previous temp since it's no longer used.
                 if let Some(prev_temp) = prev_temp {
                     self.patcher.add_statement(loc, StatementKind::StorageDead(prev_temp));
                 }

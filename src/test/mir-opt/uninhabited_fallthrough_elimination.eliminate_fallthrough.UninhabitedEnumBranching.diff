@@ -9,7 +9,7 @@
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:22:11: 22:12
 -         switchInt(move _2) -> [1_isize: bb3, 2_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:22:5: 22:12
-+         switchInt(move _2) -> [1_isize: bb3, 2_isize: bb2, otherwise: bb6]; // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:22:5: 22:12
++         switchInt(move _2) -> [1_isize: bb3, 2_isize: bb2, otherwise: bb5]; // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:22:5: 22:12
       }
   
       bb1: {
@@ -29,13 +29,9 @@
   
       bb4: {
           return;                          // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:27:2: 27:2
-      }
-  
-      bb5 (cleanup): {
-          resume;                          // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:21:1: 27:2
 +     }
 + 
-+     bb6: {
++     bb5: {
 +         unreachable;                     // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:25:14: 25:15
       }
   }

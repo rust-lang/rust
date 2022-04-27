@@ -54,9 +54,5 @@
           StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:49:1: 49:2
           return;                          // scope 0 at $DIR/if-condition-int.rs:49:2: 49:2
       }
-  
-      bb4 (cleanup): {
-          resume;                          // scope 0 at $DIR/if-condition-int.rs:43:1: 49:2
-      }
   }
   

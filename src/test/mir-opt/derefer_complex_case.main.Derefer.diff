@@ -102,10 +102,10 @@
           StorageDead(_6);                 // scope 1 at $DIR/derefer_complex_case.rs:4:39: 4:40
           _5 = const ();                   // scope 1 at $DIR/derefer_complex_case.rs:4:5: 4:40
           goto -> bb2;                     // scope 1 at $DIR/derefer_complex_case.rs:4:5: 4:40
-+     }
-+ 
-+     bb8 (cleanup): {
-+         resume;                          // scope 0 at $DIR/derefer_complex_case.rs:3:1: 5:2
+      }
+  
+      bb8 (cleanup): {
+          resume;                          // scope 0 at $DIR/derefer_complex_case.rs:3:1: 5:2
       }
   }
   

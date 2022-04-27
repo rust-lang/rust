@@ -43,9 +43,5 @@
       bb5: {
           return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:27:2: 27:2
       }
-  
-      bb6 (cleanup): {
-          resume;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:18:1: 27:2
-      }
   }
   

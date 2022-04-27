@@ -78,6 +78,15 @@ impl<'tcx> MirPatch<'tcx> {
         Location { block: bb, statement_index: offset }
     }
 
+    pub fn new_local_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+        let index = self.next_local;
+        self.next_local += 1;
+        let mut new_decl = LocalDecl::new(ty, span);
+        new_decl.local_info = Some(Box::new(LocalInfo::Temp));
+        self.new_locals.push(new_decl);
+        Local::new(index as usize)
+    }
+
     pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;

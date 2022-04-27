@@ -1079,6 +1079,8 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during the creation of an aggregate
     /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
     AggregateTemp,
+    /// A temporary created during the pass `Derefer` to avoid it's retagging
+    Temp,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -1176,6 +1178,10 @@ impl<'tcx> LocalDecl<'tcx> {
             user_ty: None,
             source_info,
         }
+    }
+
+    pub fn temp(mut self) {
+        self.local_info = Some(Box::new(LocalInfo::Temp));
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as internal.
