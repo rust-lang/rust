@@ -6,7 +6,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::AstNodeEdit, HasName},
-    AstNode, TextRange,
+    AstNode, SmolStr, TextRange,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -58,9 +58,18 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
                 }
                 let segments = iter::successors(Some(module_ast.clone()), |module| module.parent())
                     .filter_map(|it| it.name())
+                    .map(|name| SmolStr::from(name.text().trim_start_matches("r#")))
                     .collect::<Vec<_>>();
+
                 format_to!(buf, "{}", segments.into_iter().rev().format("/"));
-                format_to!(buf, ".rs");
+
+                // We need to special case mod named `r#mod` and place the file in a
+                // subdirectory as "mod.rs" would be of its parent module otherwise.
+                if module_name.text() == "r#mod" {
+                    format_to!(buf, "/mod.rs");
+                } else {
+                    format_to!(buf, ".rs");
+                }
                 buf
             };
             let contents = {
@@ -250,5 +259,79 @@ mod bar {
 //- /foo/bar/baz/qux.rs
 "#,
         );
+    }
+
+    #[test]
+    fn extract_mod_with_raw_ident() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+mod $0r#static {}
+"#,
+            r#"
+//- /main.rs
+mod r#static;
+//- /static.rs
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_r_mod() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+mod $0r#mod {}
+"#,
+            r#"
+//- /main.rs
+mod r#mod;
+//- /mod/mod.rs
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_r_mod_from_mod_rs() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+mod foo;
+//- /foo/mod.rs
+mod $0r#mod {}
+"#,
+            r#"
+//- /foo/mod.rs
+mod r#mod;
+//- /foo/mod/mod.rs
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_nested_r_mod() {
+        check_assist(
+            move_module_to_file,
+            r#"
+//- /main.rs
+mod r#mod {
+    mod foo {
+        mod $0r#mod {}
+    }
+}
+"#,
+            r#"
+//- /main.rs
+mod r#mod {
+    mod foo {
+        mod r#mod;
+    }
+}
+//- /mod/foo/mod/mod.rs
+"#,
+        )
     }
 }
