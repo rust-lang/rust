@@ -619,14 +619,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
-            ast::ExprKind::Yeet(_) => {
-                gate_feature_post!(
-                    &self,
-                    yeet_expr,
-                    e.span,
-                    "`do yeet` expression is experimental"
-                );
-            }
             ast::ExprKind::Block(_, Some(label)) => {
                 gate_feature_post!(
                     &self,
@@ -791,6 +783,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
+    gate_all!(yeet_expr, "`do yeet` expression is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
