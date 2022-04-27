@@ -413,7 +413,7 @@ Whether to show `Implementations` lens. Only applies when
 Whether to show `References` lens for Struct, Enum, and Union.
 Only applies when `#rust-analyzer.lens.enable#` is set.
 --
-[[rust-analyzer.lens.references.adt.variant.enable]]rust-analyzer.lens.references.adt.variant.enable (default: `false`)::
+[[rust-analyzer.lens.references.enumVariant.enable]]rust-analyzer.lens.references.enumVariant.enable (default: `false`)::
 +
 --
 Whether to show `References` lens for Enum Variants.
@@ -539,15 +539,15 @@ In some editors (e.g. vscode) semantic tokens override other highlighting gramma
 By disabling semantic tokens for strings, other grammars can be used to highlight
 their contents.
 --
+[[rust-analyzer.signatureInfo.detail]]rust-analyzer.signatureInfo.detail (default: `"full"`)::
++
+--
+Show full signature of the callable. Only shows parameters if disabled.
+--
 [[rust-analyzer.signatureInfo.documentation.enable]]rust-analyzer.signatureInfo.documentation.enable (default: `true`)::
 +
 --
 Show documentation.
---
-[[rust-analyzer.signatureInfo.signature.enable]]rust-analyzer.signatureInfo.signature.enable (default: `true`)::
-+
---
-Show full signature of the callable. Only shows parameters if disabled.
 --
 [[rust-analyzer.workspace.symbol.search.kind]]rust-analyzer.workspace.symbol.search.kind (default: `"only_types"`)::
 +

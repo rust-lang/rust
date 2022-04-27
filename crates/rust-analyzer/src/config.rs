@@ -272,7 +272,7 @@ config_data! {
         lens_references_adt_enable: bool = "false",
         /// Whether to show `References` lens for Enum Variants.
         /// Only applies when `#rust-analyzer.lens.enable#` is set.
-        lens_references_adt_variant_enable: bool = "false",
+        lens_references_enumVariant_enable: bool = "false",
         /// Whether to show `Method References` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_references_method_enable: bool = "false",
@@ -346,10 +346,10 @@ config_data! {
         /// their contents.
         semanticHighlighting_strings_enable: bool = "true",
 
+        /// Show full signature of the callable. Only shows parameters if disabled.
+        signatureInfo_detail: SignatureDetail                           = "\"full\"",
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = "true",
-        /// Show full signature of the callable. Only shows parameters if disabled.
-        signatureInfo_signature_enable: bool                           = "true",
 
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = "\"only_types\"",
@@ -1041,7 +1041,7 @@ impl Config {
 
     pub fn call_info(&self) -> CallInfoConfig {
         CallInfoConfig {
-            params_only: self.data.signatureInfo_signature_enable,
+            params_only: matches!(self.data.signatureInfo_detail, SignatureDetail::Parameters),
             docs: self.data.signatureInfo_documentation_enable,
         }
     }
@@ -1055,7 +1055,7 @@ impl Config {
             refs_adt: self.data.lens_enable && self.data.lens_references_adt_enable,
             refs_trait: self.data.lens_enable && self.data.lens_references_trait_enable,
             enum_variant_refs: self.data.lens_enable
-                && self.data.lens_references_adt_variant_enable,
+                && self.data.lens_references_enumVariant_enable,
         }
     }
 
@@ -1367,6 +1367,13 @@ enum WorkspaceSymbolSearchScopeDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum SignatureDetail {
+    Full,
+    Parameters,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum WorkspaceSymbolSearchKindDef {
     OnlyTypes,
     AllSymbols,
@@ -1635,6 +1642,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Add call parentheses and pre-fill arguments",
                 "Add call parentheses",
+            ],
+        },
+        "SignatureDetail" => set! {
+            "type": "string",
+            "enum": ["full", "parameters"],
+            "enumDescriptions": [
+                "Show the entire signature.",
+                "Show only the parameters."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

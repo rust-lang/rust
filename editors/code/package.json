@@ -873,7 +873,7 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.lens.references.adt.variant.enable": {
+                "rust-analyzer.lens.references.enumVariant.enable": {
                     "markdownDescription": "Whether to show `References` lens for Enum Variants.\nOnly applies when `#rust-analyzer.lens.enable#` is set.",
                     "default": false,
                     "type": "boolean"
@@ -1006,13 +1006,21 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.signatureInfo.detail": {
+                    "markdownDescription": "Show full signature of the callable. Only shows parameters if disabled.",
+                    "default": "full",
+                    "type": "string",
+                    "enum": [
+                        "full",
+                        "parameters"
+                    ],
+                    "enumDescriptions": [
+                        "Show the entire signature.",
+                        "Show only the parameters."
+                    ]
+                },
                 "rust-analyzer.signatureInfo.documentation.enable": {
                     "markdownDescription": "Show documentation.",
-                    "default": true,
-                    "type": "boolean"
-                },
-                "rust-analyzer.signatureInfo.signature.enable": {
-                    "markdownDescription": "Show full signature of the callable. Only shows parameters if disabled.",
                     "default": true,
                     "type": "boolean"
                 },
