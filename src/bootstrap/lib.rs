@@ -1391,6 +1391,16 @@ impl Build {
         paths
     }
 
+    /// Create a temporary directory in `out` and return its path.
+    ///
+    /// NOTE: this temporary directory is shared between all steps;
+    /// if you need an empty directory, create a new subdirectory inside it.
+    fn tempdir(&self) -> PathBuf {
+        let tmp = self.out.join("tmp");
+        t!(fs::create_dir_all(&tmp));
+        tmp
+    }
+
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run {

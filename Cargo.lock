@@ -225,8 +225,10 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
+ "tar",
  "toml",
  "winapi",
+ "xz2",
 ]
 
 [[package]]

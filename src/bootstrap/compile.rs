@@ -737,7 +737,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             );
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
-        if builder.config.llvm_link_shared {
+        if builder.llvm_link_shared() {
             cargo.env("LLVM_LINK_SHARED", "1");
         }
         if builder.config.llvm_use_libcxx {

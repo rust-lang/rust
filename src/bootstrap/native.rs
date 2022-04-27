@@ -12,9 +12,12 @@ use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, BufRead, BufReader, ErrorKind};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+use once_cell::sync::OnceCell;
+use xz2::bufread::XzDecoder;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
@@ -62,6 +65,8 @@ pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
 ) -> Result<PathBuf, Meta> {
+    maybe_download_ci_llvm(builder);
+
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
     if let Some(config) = builder.config.target_config.get(&target) {
@@ -111,6 +116,285 @@ pub fn prebuilt_llvm_config(
     Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
 }
 
+pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
+    let config = &builder.config;
+    if !config.llvm_from_ci {
+        return;
+    }
+    let mut rev_list = Command::new("git");
+    rev_list.args(&[
+        PathBuf::from("rev-list"),
+        "--author=bors@rust-lang.org".into(),
+        "-n1".into(),
+        "--first-parent".into(),
+        "HEAD".into(),
+        "--".into(),
+        builder.src.join("src/llvm-project"),
+        builder.src.join("src/bootstrap/download-ci-llvm-stamp"),
+        // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+        builder.src.join("src/version"),
+    ]);
+    let llvm_sha = output(&mut rev_list);
+    let llvm_sha = llvm_sha.trim();
+
+    if llvm_sha == "" {
+        println!("error: could not find commit hash for downloading LLVM");
+        println!("help: maybe your repository history is too shallow?");
+        println!("help: consider disabling `download-ci-llvm`");
+        println!("help: or fetch enough history to include one upstream commit");
+        panic!();
+    }
+
+    let llvm_root = config.ci_llvm_root();
+    let llvm_stamp = llvm_root.join(".llvm-stamp");
+    let key = format!("{}{}", llvm_sha, config.llvm_assertions);
+    if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
+        download_ci_llvm(builder, &llvm_sha);
+        for binary in ["llvm-config", "FileCheck"] {
+            fix_bin_or_dylib(builder, &llvm_root.join("bin").join(binary));
+        }
+        let llvm_lib = llvm_root.join("lib");
+        for entry in t!(fs::read_dir(&llvm_lib)) {
+            let lib = t!(entry).path();
+            if lib.ends_with(".so") {
+                fix_bin_or_dylib(builder, &lib);
+            }
+        }
+        t!(fs::write(llvm_stamp, key));
+    }
+}
+
+fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
+    let llvm_assertions = builder.config.llvm_assertions;
+
+    let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
+    let cache_dst = builder.out.join("cache");
+    let rustc_cache = cache_dst.join(cache_prefix);
+    if !rustc_cache.exists() {
+        t!(fs::create_dir_all(&rustc_cache));
+    }
+    let base = "https://ci-artifacts.rust-lang.org";
+    let url = if llvm_assertions {
+        format!("rustc-builds-alt/{}", llvm_sha)
+    } else {
+        format!("rustc-builds/{}", llvm_sha)
+    };
+    let filename = format!("rust-dev-nightly-{}.tar.xz", builder.build.build.triple);
+    let tarball = rustc_cache.join(&filename);
+    if !tarball.exists() {
+        download_component(builder, base, &format!("{}/{}", url, filename), &tarball);
+    }
+    let llvm_root = builder.config.ci_llvm_root();
+    unpack(builder, &tarball, &llvm_root);
+}
+
+/// Modifies the interpreter section of 'fname' to fix the dynamic linker,
+/// or the RPATH section, to fix the dynamic library search path
+///
+/// This is only required on NixOS and uses the PatchELF utility to
+/// change the interpreter/RPATH of ELF executables.
+///
+/// Please see https://nixos.org/patchelf.html for more information
+fn fix_bin_or_dylib(builder: &Builder<'_>, fname: &Path) {
+    // FIXME: cache NixOS detection?
+    match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
+        Err(_) => return,
+        Ok(output) if !output.status.success() => return,
+        Ok(output) => {
+            let mut s = output.stdout;
+            if s.last() == Some(&b'\n') {
+                s.pop();
+            }
+            if s != b"Linux" {
+                return;
+            }
+        }
+    }
+
+    // If the user has asked binaries to be patched for Nix, then
+    // don't check for NixOS or `/lib`, just continue to the patching.
+    // FIXME: shouldn't this take precedence over the `uname` check above?
+    if !builder.config.patch_binaries_for_nix {
+        // Use `/etc/os-release` instead of `/etc/NIXOS`.
+        // The latter one does not exist on NixOS when using tmpfs as root.
+        const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
+        let os_release = match File::open("/etc/os-release") {
+            Err(e) if e.kind() == ErrorKind::NotFound => return,
+            Err(e) => panic!("failed to access /etc/os-release: {}", e),
+            Ok(f) => f,
+        };
+        if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
+            return;
+        }
+        if Path::new("/lib").exists() {
+            return;
+        }
+    }
+
+    // At this point we're pretty sure the user is running NixOS or using Nix
+    println!("info: you seem to be using Nix. Attempting to patch {}", fname.display());
+
+    // Only build `.nix-deps` once.
+    static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
+    let mut nix_build_succeeded = true;
+    let nix_deps_dir = NIX_DEPS_DIR.get_or_init(|| {
+        // Run `nix-build` to "build" each dependency (which will likely reuse
+        // the existing `/nix/store` copy, or at most download a pre-built copy).
+        //
+        // Importantly, we create a gc-root called `.nix-deps` in the `build/`
+        // directory, but still reference the actual `/nix/store` path in the rpath
+        // as it makes it significantly more robust against changes to the location of
+        // the `.nix-deps` location.
+        //
+        // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+        // zlib: Needed as a system dependency of `libLLVM-*.so`.
+        // patchelf: Needed for patching ELF binaries (see doc comment above).
+        let nix_deps_dir = builder.out.join(".nix-deps");
+        const NIX_EXPR: &str = "
+        with (import <nixpkgs> {});
+        symlinkJoin {
+            name = \"rust-stage0-dependencies\";
+            paths = [
+                zlib
+                patchelf
+                stdenv.cc.bintools
+            ];
+        }
+        ";
+        nix_build_succeeded = builder.try_run(Command::new("nix-build").args(&[
+            Path::new("-E"),
+            Path::new(NIX_EXPR),
+            Path::new("-o"),
+            &nix_deps_dir,
+        ]));
+        nix_deps_dir
+    });
+    if !nix_build_succeeded {
+        return;
+    }
+
+    let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
+    let rpath_entries = {
+        // ORIGIN is a relative default, all binary and dynamic libraries we ship
+        // appear to have this (even when `../lib` is redundant).
+        // NOTE: there are only two paths here, delimited by a `:`
+        let mut entries = OsString::from("$ORIGIN/../lib:");
+        entries.push(t!(fs::canonicalize(nix_deps_dir)));
+        entries.push("/lib");
+        entries
+    };
+    patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+    if !fname.ends_with(".so") {
+        // Finally, set the corret .interp for binaries
+        let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
+        // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
+        let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+        patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
+    }
+
+    builder.try_run(patchelf.arg(fname));
+}
+
+fn download_component(builder: &Builder<'_>, base: &str, url: &str, dest_path: &Path) {
+    // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
+    let tempfile = builder.tempdir().join(dest_path.file_name().unwrap());
+    // FIXME: support `do_verify` (only really needed for nightly rustfmt)
+    // FIXME: support non-utf8 paths?
+    download_with_retries(builder, tempfile.to_str().unwrap(), &format!("{}/{}", base, url));
+    t!(std::fs::rename(&tempfile, dest_path));
+}
+
+fn download_with_retries(builder: &Builder<'_>, tempfile: &str, url: &str) {
+    println!("downloading {}", url);
+
+    // FIXME: check if curl is installed instead of skipping straight to powershell
+    if builder.build.build.contains("windows-msvc") {
+        for _ in 0..3 {
+            if builder.try_run(Command::new("PowerShell.exe").args(&[
+                "/nologo",
+                "-Command",
+                "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                &format!(
+                    "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
+                    url, tempfile
+                ),
+            ])) {
+                return;
+            }
+            println!("\nspurious failure, trying again");
+        }
+    } else {
+        builder.run(Command::new("curl").args(&[
+            "-#",
+            "-y",
+            "30",
+            "-Y",
+            "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--connect-timeout",
+            "30", // timeout if cannot connect within 30 seconds
+            "--retry",
+            "3",
+            "-Sf",
+            "-o",
+            tempfile,
+            url,
+        ]));
+    }
+}
+
+fn unpack(builder: &Builder<'_>, tarball: &Path, dst: &Path) {
+    println!("extracting {} to {}", tarball.display(), dst.display());
+    if !dst.exists() {
+        t!(fs::create_dir_all(dst));
+    }
+
+    // FIXME: will need to be a parameter once `download-rustc` is moved to rustbuild
+    const MATCH: &str = "rust-dev";
+
+    // `tarball` ends with `.tar.xz`; strip that suffix
+    // example: `rust-dev-nightly-x86_64-unknown-linux-gnu`
+    let uncompressed_filename =
+        Path::new(tarball.file_name().expect("missing tarball filename")).file_stem().unwrap();
+    let directory_prefix = Path::new(Path::new(uncompressed_filename).file_stem().unwrap());
+
+    // decompress the file
+    let data = t!(File::open(tarball));
+    let decompressor = XzDecoder::new(BufReader::new(data));
+
+    let mut tar = tar::Archive::new(decompressor);
+    for member in t!(tar.entries()) {
+        let mut member = t!(member);
+        let original_path = t!(member.path()).into_owned();
+        // skip the top-level directory
+        if original_path == directory_prefix {
+            continue;
+        }
+        let mut short_path = t!(original_path.strip_prefix(directory_prefix));
+        if !short_path.starts_with(MATCH) {
+            continue;
+        }
+        short_path = t!(short_path.strip_prefix(MATCH));
+        let dst_path = dst.join(short_path);
+        builder.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
+        if !t!(member.unpack_in(dst)) {
+            panic!("path traversal attack ??");
+        }
+        let src_path = dst.join(original_path);
+        if src_path.is_dir() && dst_path.exists() {
+            continue;
+        }
+        t!(fs::rename(src_path, dst_path));
+    }
+    t!(fs::remove_dir_all(dst.join(directory_prefix)));
+}
+
+fn program_out_of_date(stamp: &Path, key: &str) -> bool {
+    if !stamp.exists() {
+        return true;
+    }
+    t!(fs::read_to_string(stamp)) != key
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
@@ -153,7 +437,7 @@ impl Step for Llvm {
             };
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
-        if builder.config.llvm_link_shared
+        if builder.llvm_link_shared()
             && (target.contains("windows") || target.contains("apple-darwin"))
         {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
@@ -255,7 +539,7 @@ impl Step for Llvm {
         //
         // If we're not linking rustc to a dynamic LLVM, though, then don't link
         // tools to it.
-        if builder.llvm_link_tools_dynamically(target) && builder.config.llvm_link_shared {
+        if builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared() {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 

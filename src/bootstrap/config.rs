@@ -3,6 +3,7 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
+use std::cell::Cell;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -11,7 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::builder::TaskPath;
+use crate::builder::{Builder, TaskPath};
 use crate::cache::{Interned, INTERNER};
 use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
@@ -69,13 +70,14 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub llvm_libunwind: LlvmLibunwind,
     pub color: Color,
+    pub patch_binaries_for_nix: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
-    // defaults to `config.toml`
+    /// defaults to `config.toml`
     pub config: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -96,7 +98,11 @@ pub struct Config {
     pub llvm_release_debuginfo: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
-    pub llvm_link_shared: bool,
+    /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
+    #[cfg(not(test))]
+    llvm_link_shared: Cell<Option<bool>>,
+    #[cfg(test)]
+    pub llvm_link_shared: Cell<Option<bool>>,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: Option<String>,
@@ -858,6 +864,7 @@ impl Config {
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
+        set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -913,7 +920,9 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
-            set(&mut config.llvm_link_shared, llvm.link_shared);
+            if let Some(v) = llvm.link_shared {
+                config.llvm_link_shared.set(Some(v));
+            }
             config.llvm_targets = llvm.targets.clone();
             config.llvm_experimental_targets = llvm.experimental_targets.clone();
             config.llvm_link_jobs = llvm.link_jobs;
@@ -983,6 +992,7 @@ impl Config {
                 check_ci_llvm!(llvm.optimize);
                 check_ci_llvm!(llvm.thin_lto);
                 check_ci_llvm!(llvm.release_debuginfo);
+                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
                 check_ci_llvm!(llvm.link_shared);
                 check_ci_llvm!(llvm.static_libstdcpp);
                 check_ci_llvm!(llvm.targets);
@@ -1000,26 +1010,14 @@ impl Config {
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
-
-                // CI-built LLVM can be either dynamic or static.
-                let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
-                config.llvm_link_shared = if config.dry_run {
-                    // just assume dynamic for now
-                    true
-                } else {
-                    let link_type = t!(
-                        std::fs::read_to_string(ci_llvm.join("link-type.txt")),
-                        format!("CI llvm missing: {}", ci_llvm.display())
-                    );
-                    link_type == "dynamic"
-                };
             }
 
+            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
             if config.llvm_thin_lto && llvm.link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
-                config.llvm_link_shared = true;
+                config.llvm_link_shared.set(Some(true));
             }
         }
 
@@ -1272,6 +1270,42 @@ impl Config {
             // Try to make it relative to the prefix.
             libdir.strip_prefix(self.prefix.as_ref()?).ok()
         }
+    }
+
+    /// The absolute path to the downloaded LLVM artifacts.
+    pub(crate) fn ci_llvm_root(&self) -> PathBuf {
+        assert!(self.llvm_from_ci);
+        self.out.join(&*self.build.triple).join("ci-llvm")
+    }
+
+    /// Determine whether llvm should be linked dynamically.
+    ///
+    /// If `false`, llvm should be linked statically.
+    /// This is computed on demand since LLVM might have to first be downloaded from CI.
+    pub(crate) fn llvm_link_shared(builder: &Builder<'_>) -> bool {
+        let mut opt = builder.config.llvm_link_shared.get();
+        if opt.is_none() && builder.config.dry_run {
+            // just assume static for now - dynamic linking isn't supported on all platforms
+            return false;
+        }
+
+        let llvm_link_shared = *opt.get_or_insert_with(|| {
+            if builder.config.llvm_from_ci {
+                crate::native::maybe_download_ci_llvm(builder);
+                let ci_llvm = builder.config.ci_llvm_root();
+                let link_type = t!(
+                    std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                    format!("CI llvm missing: {}", ci_llvm.display())
+                );
+                link_type == "dynamic"
+            } else {
+                // unclear how thought-through this default is, but it maintains compatibility with
+                // previous behavior
+                false
+            }
+        });
+        builder.config.llvm_link_shared.set(opt);
+        llvm_link_shared
     }
 
     pub fn verbose(&self) -> bool {

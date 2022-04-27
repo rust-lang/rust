@@ -1904,7 +1904,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
-    if target.contains("apple-darwin") && builder.config.llvm_link_shared {
+    if target.contains("apple-darwin") && builder.llvm_link_shared() {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
@@ -1939,7 +1939,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.config.llvm_link_shared {
+    if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir);
     }
 }
@@ -1951,7 +1951,7 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.config.llvm_link_shared {
+    if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir);
     }
 }
@@ -2077,7 +2077,7 @@ impl Step for RustDev {
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir);
-        let link_type = if builder.config.llvm_link_shared { "dynamic" } else { "static" };
+        let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
         Some(tarball.generate())
