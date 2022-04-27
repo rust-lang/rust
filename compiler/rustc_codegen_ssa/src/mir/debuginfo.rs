@@ -39,8 +39,7 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct DebugScope<S, L> {
-    // FIXME(eddyb) this should never be `None`, after initialization.
-    pub dbg_scope: Option<S>,
+    pub dbg_scope: S,
 
     /// Call site location, if this scope was inlined from another function.
     pub inlined_at: Option<L>,
@@ -61,17 +60,12 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
         cx: &Cx,
         span: Span,
     ) -> S {
-        // FIXME(eddyb) this should never be `None`.
-        let dbg_scope = self
-            .dbg_scope
-            .unwrap_or_else(|| bug!("`dbg_scope` is only `None` during initialization"));
-
         let pos = span.lo();
         if pos < self.file_start_pos || pos >= self.file_end_pos {
             let sm = cx.sess().source_map();
-            cx.extend_scope_to_file(dbg_scope, &sm.lookup_char_pos(pos).file)
+            cx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
         } else {
-            dbg_scope
+            self.dbg_scope
         }
     }
 }
