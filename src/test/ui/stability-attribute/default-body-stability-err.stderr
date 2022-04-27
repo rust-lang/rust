@@ -1,0 +1,32 @@
+error[E0658]: use of unstable library feature 'constant_default_body'
+  --> $DIR/default-body-stability-err.rs:10:1
+   |
+LL | impl JustTrait for Type {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(constant_default_body)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'fun_default_body'
+  --> $DIR/default-body-stability-err.rs:10:1
+   |
+LL | impl JustTrait for Type {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'eq_default_body'
+  --> $DIR/default-body-stability-err.rs:14:1
+   |
+LL | / impl Equal for Type {
+LL | |
+LL | |     fn neq(&self, other: &Self) -> bool {
+LL | |         false
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: add `#![feature(eq_default_body)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
