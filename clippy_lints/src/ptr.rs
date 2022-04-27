@@ -343,7 +343,7 @@ impl fmt::Display for RefPrefix {
         use fmt::Write;
         f.write_char('&')?;
         match self.lt {
-            LifetimeName::Param(ParamName::Plain(name)) => {
+            LifetimeName::Param(_, ParamName::Plain(name)) => {
                 name.fmt(f)?;
                 f.write_char(' ')?;
             },
