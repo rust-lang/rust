@@ -220,7 +220,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ty: Ty<'tcx>,
         mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-        // This is a hack that is currently used to allow us to walk a ValTree
+        // This is currently used to allow us to walk a ValTree
         // in lockstep with the type in order to get the ValTree branch that
         // corresponds to an unsized field.
         mut f: impl FnMut() -> (),

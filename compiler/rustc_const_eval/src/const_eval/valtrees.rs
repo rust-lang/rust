@@ -194,55 +194,48 @@ fn create_pointee_place<'tcx>(
 ) -> MPlaceTy<'tcx> {
     let tcx = ecx.tcx.tcx;
 
-    match ty.kind() {
-        ty::Slice(_) | ty::Str => {
-            let slice_ty = match ty.kind() {
-                ty::Slice(slice_ty) => *slice_ty,
-                ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
-                _ => bug!("expected ty::Slice | ty::Str"),
-            };
+    if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty()) {
+        // We need to create `Allocation`s for custom DSTs
 
-            // Create a place for the underlying array
-            let len = valtree.unwrap_branch().len() as u64;
-            let arr_ty = tcx.mk_array(slice_ty, len as u64);
-            let place = create_mplace_from_layout(ecx, arr_ty);
-            debug!(?place);
+        let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
+        let unsized_inner_ty = match unsized_inner_ty.kind() {
+            ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
+            _ => unsized_inner_ty,
+        };
+        let unsized_inner_ty_size =
+            tcx.layout_of(ty::ParamEnv::empty().and(unsized_inner_ty)).unwrap().layout.size();
+        debug!(?unsized_inner_ty, ?unsized_inner_ty_size, ?num_elems);
 
-            place
-        }
-        ty::Adt(_, _) if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty()) => {
-            // We need to create `Allocation`s for custom DSTs
+        // for custom DSTs only the last field/element is unsized, but we need to also allocate
+        // space for the other fields/elements
+        let layout = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap();
+        let size_of_sized_part = layout.layout.size();
 
-            let layout = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap();
-            let sized_fields_size = layout.layout.size();
-            let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
-            let unsized_inner_ty_size =
-                tcx.layout_of(ty::ParamEnv::empty().and(unsized_inner_ty)).unwrap().layout.size();
-            debug!(?unsized_inner_ty, ?unsized_inner_ty_size, ?num_elems);
+        // Get the size of the memory behind the DST
+        let dst_size = unsized_inner_ty_size.checked_mul(num_elems as u64, &tcx).unwrap();
 
-            // Get the size of the array behind the DST
-            let dst_size = unsized_inner_ty_size.checked_mul(num_elems as u64, &tcx).unwrap();
+        let ptr = ecx
+            .allocate_ptr(
+                size_of_sized_part.checked_add(dst_size, &tcx).unwrap(),
+                Align::from_bytes(1).unwrap(),
+                MemoryKind::Stack,
+            )
+            .unwrap();
+        debug!(?ptr);
 
-            let ptr = ecx
-                .allocate_ptr(
-                    sized_fields_size.checked_add(dst_size, &tcx).unwrap(),
-                    Align::from_bytes(1).unwrap(),
-                    MemoryKind::Stack,
-                )
-                .unwrap();
-            debug!(?ptr);
+        let mut place = MPlaceTy::from_aligned_ptr(ptr.into(), layout);
+        place.meta = MemPlaceMeta::Meta(Scalar::from_u64(num_elems as u64));
+        debug!(?place);
 
-            let place = MPlaceTy::from_aligned_ptr(ptr.into(), layout);
-            debug!(?place);
-
-            place
-        }
-        _ => create_mplace_from_layout(ecx, ty),
+        place
+    } else {
+        create_mplace_from_layout(ecx, ty)
     }
 }
 
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir
 /// construction has finished.
+// FIXME Merge `valtree_to_const_value` and `fill_place_recursively` into one function
 #[instrument(skip(tcx), level = "debug")]
 pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -374,11 +367,8 @@ fn fill_place_recursively<'tcx>(
 
             ecx.write_immediate(imm, &(*place).into()).unwrap();
         }
-        ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str => {
+        ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
             let branches = valtree.unwrap_branch();
-
-            // Need to collect the length of the unsized field for meta info
-            let mut unsized_meta_info = None;
 
             // Need to downcast place for enums
             let (place_adjusted, branches, variant_idx) = match ty.kind() {
@@ -399,48 +389,52 @@ fn fill_place_recursively<'tcx>(
             };
             debug!(?place_adjusted, ?branches);
 
-            // Create the places for the fields and fill them recursively
+            // Create the places (by indexing into `place`) for the fields and fill
+            // them recursively
             for (i, inner_valtree) in branches.iter().enumerate() {
                 debug!(?i, ?inner_valtree);
 
-                if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty()) && i == branches.len() - 1 {
-                    // Note: For custom DSTs we need to manually process the last unsized field.
-                    // We created a `Pointer` for the `Allocation` of the complete sized version of
-                    // the Adt in `create_pointee_place` and now we fill that `Allocation` with the
-                    // values in the ValTree. For the unsized field we have to additionally add the meta
-                    // data.
+                let mut place_inner = match ty.kind() {
+                    ty::Str | ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
+                    _ if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty())
+                        && i == branches.len() - 1 =>
+                    {
+                        // Note: For custom DSTs we need to manually process the last unsized field.
+                        // We created a `Pointer` for the `Allocation` of the complete sized version of
+                        // the Adt in `create_pointee_place` and now we fill that `Allocation` with the
+                        // values in the ValTree. For the unsized field we have to additionally add the meta
+                        // data.
 
-                    let offset = place.layout.fields.offset(i);
-                    let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
-                    unsized_meta_info = Some(num_elems);
+                        let (unsized_inner_ty, num_elems) =
+                            get_info_on_unsized_field(ty, valtree, tcx);
+                        debug!(?unsized_inner_ty);
 
-                    // We create an array type to allow the recursive call to fill the place
-                    // corresponding to the array
-                    let arr_ty = tcx.mk_array(unsized_inner_ty, num_elems as u64);
-                    debug!(?arr_ty);
-                    let arr_layout = tcx.layout_of(ty::ParamEnv::empty().and(arr_ty)).unwrap();
-                    let mut place_arr =
-                        place.offset(offset, MemPlaceMeta::None, arr_layout, &tcx).unwrap();
-                    debug!(?place_arr);
+                        let inner_ty = match ty.kind() {
+                            ty::Adt(def, substs) => {
+                                def.variant(VariantIdx::from_u32(0)).fields[i].ty(tcx, substs)
+                            }
+                            ty::Tuple(inner_tys) => inner_tys[i],
+                            _ => bug!("unexpected unsized type {:?}", ty),
+                        };
 
-                    fill_place_recursively(ecx, &mut place_arr, *inner_valtree);
-                    dump_place(&ecx, place_arr.into());
+                        let inner_layout =
+                            tcx.layout_of(ty::ParamEnv::empty().and(inner_ty)).unwrap();
+                        debug!(?inner_layout);
 
-                    // Add the meta information for the unsized type
-                    place_arr.meta = MemPlaceMeta::Meta(Scalar::from_u64(num_elems as u64));
-
-                    break;
-                }
-
-                let mut place_inner = match *ty.kind() {
-                    ty::Adt(_, _) | ty::Tuple(_) => ecx.mplace_field(&place_adjusted, i).unwrap(),
-                    ty::Array(_, _) | ty::Str => {
-                        ecx.mplace_index(&place_adjusted, i as u64).unwrap()
+                        let offset = place_adjusted.layout.fields.offset(i);
+                        place
+                            .offset(
+                                offset,
+                                MemPlaceMeta::Meta(Scalar::from_u64(num_elems as u64)),
+                                inner_layout,
+                                &tcx,
+                            )
+                            .unwrap()
                     }
-                    _ => bug!(),
+                    _ => ecx.mplace_field(&place_adjusted, i).unwrap(),
                 };
-                debug!(?place_inner);
 
+                debug!(?place_inner);
                 fill_place_recursively(ecx, &mut place_inner, *inner_valtree);
                 dump_place(&ecx, place_inner.into());
             }
@@ -453,12 +447,7 @@ fn fill_place_recursively<'tcx>(
                 ecx.write_discriminant(variant_idx, &(*place).into()).unwrap();
             }
 
-            // add meta information for unsized type
-            if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty()) {
-                place.meta =
-                    MemPlaceMeta::Meta(Scalar::from_u64(unsized_meta_info.unwrap() as u64));
-            }
-
+            debug!("dump of place after writing discriminant:");
             dump_place(ecx, (*place).into());
         }
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
