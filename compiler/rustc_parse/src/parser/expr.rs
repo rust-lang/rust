@@ -2043,7 +2043,8 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
-        if self.token.kind == TokenKind::Semi && self.token_cursor.frame.delim == DelimToken::Paren
+        if self.token.kind == TokenKind::Semi
+            && matches!(self.token_cursor.frame.delim_sp, Some((DelimToken::Paren, _)))
         {
             // It is likely that the closure body is a block but where the
             // braces have been removed. We will recover and eat the next
