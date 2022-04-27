@@ -570,7 +570,7 @@ fn main() {
     fn complete_fn_param() {
         // has mut kw
         check_edit(
-            "mut ba",
+            "mut bar: u32",
             r#"
 fn f(foo: (), mut bar: u32) {}
 fn g(foo: (), mut ba$0)
@@ -583,7 +583,7 @@ fn g(foo: (), mut bar: u32)
 
         // has type param
         check_edit(
-            "mut ba: u32",
+            "mut bar: u32",
             r#"
 fn g(foo: (), mut ba$0: u32)
 fn f(foo: (), mut bar: u32) {}
@@ -599,7 +599,7 @@ fn f(foo: (), mut bar: u32) {}
     fn complete_fn_mut_param_add_comma() {
         // add leading and trailing comma
         check_edit(
-            ", mut ba",
+            ", mut bar: u32,",
             r#"
 fn f(foo: (), mut bar: u32) {}
 fn g(foo: ()mut ba$0 baz: ())
@@ -614,7 +614,7 @@ fn g(foo: (), mut bar: u32, baz: ())
     #[test]
     fn complete_fn_mut_param_has_attribute() {
         check_edit(
-            "mut ba",
+            r#"#[baz = "qux"] mut bar: u32"#,
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: (), mut ba$0)
@@ -626,7 +626,7 @@ fn g(foo: (), #[baz = "qux"] mut bar: u32)
         );
 
         check_edit(
-            r#"#[baz = "qux"] mut ba"#,
+            r#"#[baz = "qux"] mut bar: u32"#,
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: (), #[baz = "qux"] mut ba$0)
@@ -638,7 +638,7 @@ fn g(foo: (), #[baz = "qux"] mut bar: u32)
         );
 
         check_edit(
-            r#", #[baz = "qux"] mut ba"#,
+            r#", #[baz = "qux"] mut bar: u32"#,
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: ()#[baz = "qux"] mut ba$0)

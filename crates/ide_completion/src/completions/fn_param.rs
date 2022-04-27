@@ -15,8 +15,7 @@ use crate::{
 
 /// Complete repeated parameters, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
-/// `spam: &mut Spam` insert text/label and `spam` lookup string will be
-/// suggested.
+/// `spam: &mut Spam` insert text/label will be suggested.
 ///
 /// Also complete parameters for closure or local functions from the surrounding defined locals.
 pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -26,14 +25,16 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     };
 
     let comma_wrapper = comma_wrapper(ctx);
-    let mut add_new_item_to_acc = |label: &str, lookup: String| {
+    let mut add_new_item_to_acc = |label: &str| {
         let mk_item = |label: &str, range: TextRange| {
             CompletionItem::new(CompletionItemKind::Binding, range, label)
         };
         let item = match &comma_wrapper {
-            Some((fmt, range, lookup)) => mk_item(&fmt(label), *range).lookup_by(lookup).to_owned(),
-            None => mk_item(label, ctx.source_range()).lookup_by(lookup).to_owned(),
+            Some((fmt, range)) => mk_item(&fmt(label), *range),
+            None => mk_item(label, ctx.source_range()),
         };
+        // Completion lookup is omitted intentionally here.
+        // See the full discussion: https://github.com/rust-lang/rust-analyzer/issues/12073
         item.add_to(acc)
     };
 
@@ -44,7 +45,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         ParamKind::Closure(closure) => {
             let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
             params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
-                add_new_item_to_acc(&format!("{name}: {ty}"), name.to_string());
+                add_new_item_to_acc(&format!("{name}: {ty}"));
             });
         }
     }
@@ -56,7 +57,7 @@ fn fill_fn_params(
     ctx: &CompletionContext,
     function: &ast::Fn,
     param_list: &ast::ParamList,
-    mut add_new_item_to_acc: impl FnMut(&str, String),
+    mut add_new_item_to_acc: impl FnMut(&str),
 ) {
     let mut file_params = FxHashMap::default();
 
@@ -96,18 +97,13 @@ fn fill_fn_params(
             file_params.entry(format!("{name}: {ty}")).or_insert(name.to_string());
         });
     }
-
     remove_duplicated(&mut file_params, param_list.params());
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
     if should_add_self_completions(ctx, param_list) {
-        self_completion_items
-            .into_iter()
-            .for_each(|self_item| add_new_item_to_acc(self_item, self_item.to_string()));
+        self_completion_items.into_iter().for_each(|self_item| add_new_item_to_acc(self_item));
     }
 
-    file_params
-        .into_iter()
-        .for_each(|(whole_param, binding)| add_new_item_to_acc(&whole_param, binding));
+    file_params.keys().for_each(|whole_param| add_new_item_to_acc(whole_param));
 }
 
 fn params_from_stmt_list_scope(
@@ -161,7 +157,7 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: &ast::ParamL
     inside_impl && no_params
 }
 
-fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange, String)> {
+fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange)> {
     let param = ctx.token.ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
     let next_token_kind = {
@@ -183,9 +179,5 @@ fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, Te
         matches!(prev_token_kind, SyntaxKind::COMMA | SyntaxKind::L_PAREN | SyntaxKind::PIPE);
     let leading = if has_leading_comma { "" } else { ", " };
 
-    Some((
-        move |label: &_| (format!("{}{}{}", leading, label, trailing)),
-        param.text_range(),
-        format!("{}{}", leading, param.text()),
-    ))
+    Some((move |label: &_| (format!("{}{}{}", leading, label, trailing)), param.text_range()))
 }
