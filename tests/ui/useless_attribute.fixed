@@ -57,6 +57,12 @@ pub use std::io::prelude::*;
 #[allow(clippy::enum_glob_use)]
 pub use std::cmp::Ordering::*;
 
+// don't lint on clippy::redundant_pub_crate
+mod c {
+    #[allow(clippy::redundant_pub_crate)]
+    pub(crate) struct S;
+}
+
 fn test_indented_attr() {
     #![allow(clippy::almost_swapped)]
     use std::collections::HashSet;
