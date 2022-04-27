@@ -11,7 +11,7 @@ use rustc_lexer::unescape::{
 
 use crate::{
     algo,
-    ast::{self, HasVisibility},
+    ast::{self, HasAttrs, HasVisibility},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
@@ -231,7 +231,9 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         Some(it) => it,
         None => return,
     };
-    if impl_def.trait_().is_some() {
+    // FIXME: disable validation if there's an attribute, since some proc macros use this syntax.
+    // ideally the validation would run only on the fully expanded code, then this wouldn't be necessary.
+    if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
         errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
     }
 }
