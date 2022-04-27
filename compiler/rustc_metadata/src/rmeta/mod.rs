@@ -14,6 +14,7 @@ use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::metadata::ModChild;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir;
 use rustc_middle::thir;
@@ -329,6 +330,7 @@ define_tables! {
     type_of: Table<DefIndex, Lazy!(Ty<'tcx>)>,
     variances_of: Table<DefIndex, Lazy<[ty::Variance]>>,
     fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
+    codegen_fn_attrs: Table<DefIndex, Lazy!(CodegenFnAttrs)>,
     impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
     const_param_default: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
     optimized_mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,

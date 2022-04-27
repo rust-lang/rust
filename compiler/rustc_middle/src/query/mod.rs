@@ -1081,6 +1081,7 @@ rustc_queries! {
         desc { |tcx| "computing codegen attributes of `{}`", tcx.def_path_str(def_id) }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { true }
+        separate_provide_extern
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {

@@ -129,6 +129,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { table }
     variances_of => { table }
     fn_sig => { table }
+    codegen_fn_attrs => { table }
     impl_trait_ref => { table }
     const_param_default => { table }
     thir_abstract_const => { table }
