@@ -217,22 +217,42 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((sym::_Self, Some(shortname.to_owned())));
             }
 
+            // Slices give us `[]`, `[{ty}]`
+            if let ty::Slice(aty) = self_ty.kind() {
+                flags.push((sym::_Self, Some("[]".to_string())));
+                if let Some(def) = aty.ty_adt_def() {
+                    // We also want to be able to select the slice's type's original
+                    // signature with no type arguments resolved
+                    let type_string = self.tcx.type_of(def.did()).to_string();
+                    flags.push((sym::_Self, Some(format!("[{type_string}]"))));
+                }
+                if aty.is_integral() {
+                    flags.push((sym::_Self, Some("[{integral}]".to_string())));
+                }
+            }
+
+            // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
-                flags.push((sym::_Self, Some("[]".to_owned())));
-                flags.push((sym::_Self, Some(format!("[{}]", aty))));
+                flags.push((sym::_Self, Some("[]".to_string())));
+                let len = len.val().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
+                flags.push((sym::_Self, Some(format!("[{}; _]", aty))));
+                if let Some(n) = len {
+                    flags.push((sym::_Self, Some(format!("[{}; {}]", aty, n))));
+                }
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
                     let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{}]", type_string))));
-
-                    let len =
-                        len.val().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
-                    let string = match len {
-                        Some(n) => format!("[{}; {}]", type_string, n),
-                        None => format!("[{}; _]", type_string),
-                    };
-                    flags.push((sym::_Self, Some(string)));
+                    flags.push((sym::_Self, Some(format!("[{type_string}; _]"))));
+                    if let Some(n) = len {
+                        flags.push((sym::_Self, Some(format!("[{type_string}; {n}]"))));
+                    }
+                }
+                if aty.is_integral() {
+                    flags.push((sym::_Self, Some("[{integral}; _]".to_string())));
+                    if let Some(n) = len {
+                        flags.push((sym::_Self, Some(format!("[{{integral}}; {n}]"))));
+                    }
                 }
             }
             if let ty::Dynamic(traits, _) = self_ty.kind() {
