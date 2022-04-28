@@ -119,17 +119,10 @@ mod temp_stable_hash_impls {
 pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
     span: Option<Span>,
-    msg: &str,
     li: LangItem,
 ) -> (Bx::FnAbiOfResult, Bx::Value) {
     let tcx = bx.tcx();
-    let def_id = tcx.lang_items().require(li).unwrap_or_else(|s| {
-        let msg = format!("{} {}", msg, s);
-        match span {
-            Some(span) => tcx.sess.span_fatal(span, &msg),
-            None => tcx.sess.fatal(&msg),
-        }
-    });
+    let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
     (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance))
 }

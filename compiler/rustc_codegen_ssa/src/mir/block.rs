@@ -489,7 +489,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), "", lang_item);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
@@ -505,7 +505,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), "", LangItem::PanicNoUnwind);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None);
@@ -567,7 +567,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // Obtain the panic entry point.
                 let (fn_abi, llfn) =
-                    common::build_langcall(bx, Some(source_info.span), "", LangItem::Panic);
+                    common::build_langcall(bx, Some(source_info.span), LangItem::Panic);
 
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
@@ -1429,7 +1429,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let llretty = self.landing_pad_type();
             bx.cleanup_landing_pad(llretty, llpersonality);
 
-            let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, "", LangItem::PanicNoUnwind);
+            let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
             let llret = bx.call(fn_ty, fn_ptr, &[], None);
