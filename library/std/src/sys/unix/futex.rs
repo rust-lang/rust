@@ -1,7 +1,8 @@
 #![cfg(any(
     target_os = "linux",
     target_os = "android",
-    all(target_os = "emscripten", target_feature = "atomics")
+    all(target_os = "emscripten", target_feature = "atomics"),
+    target_os = "openbsd",
 ))]
 
 use crate::sync::atomic::AtomicU32;
@@ -77,6 +78,55 @@ pub fn futex_wake_all(futex: &AtomicU32) {
             futex as *const AtomicU32,
             libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
             i32::MAX,
+        );
+    }
+}
+
+#[cfg(target_os = "openbsd")]
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+    use crate::convert::TryInto;
+    use crate::ptr::{null, null_mut};
+    let timespec = timeout.and_then(|d| {
+        Some(libc::timespec {
+            // Sleep forever if the timeout is longer than fits in a timespec.
+            tv_sec: d.as_secs().try_into().ok()?,
+            // This conversion never truncates, as subsec_nanos is always <1e9.
+            tv_nsec: d.subsec_nanos() as _,
+        })
+    });
+
+    let r = unsafe {
+        libc::futex(
+            futex as *const AtomicU32 as *mut u32,
+            libc::FUTEX_WAIT,
+            expected as i32,
+            timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
+            null_mut(),
+        )
+    };
+
+    r == 0 || super::os::errno() != libc::ETIMEDOUT
+}
+
+#[cfg(target_os = "openbsd")]
+pub fn futex_wake(futex: &AtomicU32) -> bool {
+    use crate::ptr::{null, null_mut};
+    unsafe {
+        libc::futex(futex as *const AtomicU32 as *mut u32, libc::FUTEX_WAKE, 1, null(), null_mut())
+            > 0
+    }
+}
+
+#[cfg(target_os = "openbsd")]
+pub fn futex_wake_all(futex: &AtomicU32) {
+    use crate::ptr::{null, null_mut};
+    unsafe {
+        libc::futex(
+            futex as *const AtomicU32 as *mut u32,
+            libc::FUTEX_WAKE,
+            i32::MAX,
+            null(),
+            null_mut(),
         );
     }
 }
