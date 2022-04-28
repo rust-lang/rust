@@ -6,21 +6,8 @@ LL | fn rawr() -> impl Trait {
    |
    = help: the trait `Trait` is implemented for `Uwu<N>`
 
-error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
-  --> $DIR/rp_impl_trait_fail.rs:6:25
-   |
-LL |   fn rawr() -> impl Trait {
-   |  _________________________^
-LL | |
-LL | |
-LL | |     Uwu::<10, 12>
-LL | | }
-   | |_^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
-   |
-   = help: the trait `Trait` is implemented for `Uwu<N>`
-
 error[E0277]: the trait bound `u32: Traitor<N, N>` is not satisfied
-  --> $DIR/rp_impl_trait_fail.rs:18:26
+  --> $DIR/rp_impl_trait_fail.rs:17:26
    |
 LL | fn uwu<const N: u8>() -> impl Traitor<N> {
    |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N, N>` is not implemented for `u32`
@@ -29,23 +16,8 @@ LL | fn uwu<const N: u8>() -> impl Traitor<N> {
              <u32 as Traitor<N, 2_u8>>
              <u64 as Traitor<1_u8, 2_u8>>
 
-error[E0277]: the trait bound `u32: Traitor<N, N>` is not satisfied
-  --> $DIR/rp_impl_trait_fail.rs:18:42
-   |
-LL |   fn uwu<const N: u8>() -> impl Traitor<N> {
-   |  __________________________________________^
-LL | |
-LL | |
-LL | |     1_u32
-LL | | }
-   | |_^ the trait `Traitor<N, N>` is not implemented for `u32`
-   |
-   = help: the following other types implement trait `Traitor<N, M>`:
-             <u32 as Traitor<N, 2_u8>>
-             <u64 as Traitor<1_u8, 2_u8>>
-
 error[E0277]: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
-  --> $DIR/rp_impl_trait_fail.rs:24:13
+  --> $DIR/rp_impl_trait_fail.rs:22:13
    |
 LL | fn owo() -> impl Traitor {
    |             ^^^^^^^^^^^^ the trait `Traitor<1_u8, 1_u8>` is not implemented for `u64`
@@ -54,21 +26,6 @@ LL | fn owo() -> impl Traitor {
              <u32 as Traitor<N, 2_u8>>
              <u64 as Traitor<1_u8, 2_u8>>
 
-error[E0277]: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
-  --> $DIR/rp_impl_trait_fail.rs:24:26
-   |
-LL |   fn owo() -> impl Traitor {
-   |  __________________________^
-LL | |
-LL | |
-LL | |     1_u64
-LL | | }
-   | |_^ the trait `Traitor<1_u8, 1_u8>` is not implemented for `u64`
-   |
-   = help: the following other types implement trait `Traitor<N, M>`:
-             <u32 as Traitor<N, 2_u8>>
-             <u64 as Traitor<1_u8, 2_u8>>
-
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

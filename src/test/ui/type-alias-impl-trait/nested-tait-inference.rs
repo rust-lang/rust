@@ -11,7 +11,6 @@ impl Foo<()> for () { }
 
 fn foo() -> impl Foo<FooX> {
     //~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
-    //~| ERROR: the trait bound `(): Foo<FooX>` is not satisfied
     // FIXME(type-alias-impl-trait): We could probably make this work.
     ()
 }

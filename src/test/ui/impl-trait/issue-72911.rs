@@ -5,7 +5,7 @@ pub struct Lint {}
 impl Lint {}
 
 pub fn gather_all() -> impl Iterator<Item = Lint> {
-    //~^ ERROR `()` is not an iterator
+    //~^ ERROR type annotations needed
     lint_files().flat_map(|f| gather_from_file(&f))
 }
 

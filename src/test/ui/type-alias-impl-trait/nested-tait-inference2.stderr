@@ -8,21 +8,6 @@ LL | fn foo() -> impl Foo<FooX> {
              <() as Foo<()>>
              <() as Foo<u32>>
 
-error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
-  --> $DIR/nested-tait-inference2.rs:13:28
-   |
-LL |   fn foo() -> impl Foo<FooX> {
-   |  ____________________________^
-LL | |
-LL | |
-LL | |     ()
-LL | | }
-   | |_^ the trait `Foo<FooX>` is not implemented for `()`
-   |
-   = help: the following other types implement trait `Foo<A>`:
-             <() as Foo<()>>
-             <() as Foo<u32>>
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.
