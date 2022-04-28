@@ -286,9 +286,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         // Initialize fn debug context (including scopes).
-        // FIXME(eddyb) figure out a way to not need `Option` for `dbg_scope`.
         let empty_scope = DebugScope {
-            dbg_scope: None,
+            dbg_scope: self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
             inlined_at: None,
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
@@ -297,13 +296,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             FunctionDebugContext { scopes: IndexVec::from_elem(empty_scope, &mir.source_scopes) };
 
         // Fill in all the scopes, with the information from the MIR body.
-        compute_mir_scopes(
-            self,
-            instance,
-            mir,
-            self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
-            &mut fn_debug_context,
-        );
+        compute_mir_scopes(self, instance, mir, &mut fn_debug_context);
 
         Some(fn_debug_context)
     }
