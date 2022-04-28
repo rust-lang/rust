@@ -9,7 +9,7 @@ tests. `panic!` is closely tied with the `unwrap` method of both
 `panic!` when they are set to [`None`] or [`Err`] variants.
 
 When using `panic!()` you can specify a string payload, that is built using
-the [`format!`] syntax. That payload is used when injecting the panic into
+the [`format!` syntax]. That payload is used when injecting the panic into
 the calling Rust thread, causing the thread to panic entirely.
 
 The behavior of the default `std` hook, i.e. the code that runs directly
@@ -55,7 +55,7 @@ For more detailed information about error handling check out the [book] or the
 [`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
-[`format!`]: ../std/macro.format.html
+[`format!` syntax]: ../std/fmt/index.html
 [book]: ../book/ch09-00-error-handling.html
 [`std::result`]: ../std/result/index.html
 
