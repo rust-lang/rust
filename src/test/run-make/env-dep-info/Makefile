@@ -7,7 +7,7 @@ ADDITIONAL_ARGS := $(RUSTFLAGS)
 endif
 
 all:
-	EXISTING_ENV=1 EXISTING_OPT_ENV=1 OVERRIDEN_INJECTED_ENV=0 $(RUSTC) --emit dep-info -Zunstable-options --env INJECTED_ENV=1 --env OVERRIDEN_ENV=1 main.rs
+	EXISTING_ENV=1 EXISTING_OPT_ENV=1 OVERRIDEN_ENV=0 $(RUSTC) --emit dep-info -Zunstable-options --env INJECTED_ENV=1 --env OVERRIDEN_ENV=1 main.rs
 	$(CGREP) "# env-dep:EXISTING_ENV=1" < $(TMPDIR)/main.d
 	$(CGREP) "# env-dep:EXISTING_OPT_ENV=1" < $(TMPDIR)/main.d
 	$(CGREP) "# env-dep:NONEXISTENT_OPT_ENV" < $(TMPDIR)/main.d
