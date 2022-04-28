@@ -738,7 +738,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
-            visit_interpolated(&mut nt, vis);
+            visit_nonterminal(&mut nt, vis);
         }
         _ => {}
     }
@@ -769,7 +769,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // contain multiple items, but decided against it when I looked at
 // `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
-pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
+pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
         token::NtItem(item) => visit_clobber(item, |item| {
             // This is probably okay, because the only visitors likely to
