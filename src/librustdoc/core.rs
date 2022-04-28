@@ -21,6 +21,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span, Symbol};
 
 use std::cell::RefCell;
+use std::collections::btree_map::Entry;
 use std::lazy::SyncLazy;
 use std::mem;
 use std::rc::Rc;
@@ -455,6 +456,44 @@ pub(crate) fn run_global_ctxt(
 
         if attr.is_word() && name == sym::document_private_items {
             ctxt.render_options.document_private = true;
+        }
+
+        if name == sym::extern_html_root_url {
+            if let Some(attr) = attr.meta_item_list() {
+                for sub_attr in attr {
+                    let name = sub_attr.name_or_empty().as_str().to_owned();
+                    match sub_attr.value_str() {
+                        Some(value) => {
+                            let value = value.as_str().to_owned();
+                            if value.is_empty() {
+                                tcx.sess.span_err(sub_attr.span(), "URL cannot be empty");
+                                continue;
+                            }
+                            match ctxt.render_options.extern_html_root_urls.entry(name) {
+                                Entry::Occupied(_) => {
+                                    // do nothing since command line `--extern_html_root_url`
+                                    // takes precedence.
+                                }
+                                Entry::Vacant(v) => {
+                                    v.insert(value);
+                                }
+                            }
+                        }
+                        None => {
+                            tcx.sess.span_err(
+                                sub_attr.span(),
+                                "extern_html_root_url() only accepts `crate_name = \"url\"`",
+                            );
+                        }
+                    }
+                }
+            } else {
+                diag.span_err(
+                    attr.span(),
+                    "extern_html_root_url only accepts this form: \
+                     `extern_html_root_url(crate = \"url\")`",
+                );
+            }
         }
     }
 

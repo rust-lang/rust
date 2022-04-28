@@ -653,6 +653,7 @@ symbols! {
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
+        extern_html_root_url,
         extern_in_paths,
         extern_prelude,
         extern_types,

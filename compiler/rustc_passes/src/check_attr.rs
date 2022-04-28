@@ -1020,6 +1020,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::html_root_url
                         | sym::html_no_source
                         | sym::test
+                        | sym::extern_html_root_url
                             if !self.check_attr_crate_level(attr, meta, hir_id) =>
                         {
                             is_valid = false;
@@ -1052,6 +1053,7 @@ impl CheckAttrVisitor<'_> {
                         sym::alias
                         | sym::cfg
                         | sym::cfg_hide
+                        | sym::extern_html_root_url
                         | sym::hidden
                         | sym::html_favicon_url
                         | sym::html_logo_url
