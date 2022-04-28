@@ -38,7 +38,6 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
-use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
@@ -874,23 +873,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )
             }
             // This is an inert key-value attribute - it will never be visible to macros
-            // after it gets lowered to HIR. Therefore, we can synthesize tokens with fake
-            // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            MacArgs::Eq(eq_span, ref token) => {
-                // In valid code the value is always representable as a single literal token.
-                // Otherwise, a dummy token suffices because the error is handled elsewhere.
-                let token = if let token::Interpolated(nt) = &token.kind
-                    && let token::NtExpr(expr) = &**nt
-                {
-                    if let ExprKind::Lit(Lit { token, span, .. }) = expr.kind {
-                        Token::new(TokenKind::Literal(token), span)
-                    } else {
-                        Token::dummy()
-                    }
+            // after it gets lowered to HIR. Therefore, we can extract literals to handle
+            // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
+            MacArgs::Eq(eq_span, MacArgsEq::Ast(ref expr)) => {
+                // In valid code the value always ends up as a single literal. Otherwise, a dummy
+                // literal suffices because the error is handled elsewhere.
+                let lit = if let ExprKind::Lit(lit) = &expr.kind {
+                    lit.clone()
                 } else {
-                    unreachable!()
+                    Lit {
+                        token: token::Lit::new(token::LitKind::Err, kw::Empty, None),
+                        kind: LitKind::Err(kw::Empty),
+                        span: DUMMY_SP,
+                    }
                 };
-                MacArgs::Eq(eq_span, token)
+                MacArgs::Eq(eq_span, MacArgsEq::Hir(lit))
+            }
+            MacArgs::Eq(_, MacArgsEq::Hir(ref lit)) => {
+                unreachable!("in literal form when lowering mac args eq: {:?}", lit)
             }
         }
     }
