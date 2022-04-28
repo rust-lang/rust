@@ -171,8 +171,8 @@ LL |     [t, t];
    |
 help: consider restricting type parameter `T`
    |
-LL | fn existing_colon<T: Copy:>(t: T) {
-   |                    ++++++
+LL | fn existing_colon<T: Copy>(t: T) {
+   |                      ++++
 
 error: aborting due to 11 previous errors
 

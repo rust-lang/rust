@@ -707,6 +707,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(ident.span),
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind },
+            colon_span: None,
         })
     }
 
@@ -1304,6 +1305,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             pure_wrt_drop: false,
                             span: self.lower_span(span),
                             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
+                            colon_span: None,
                         });
                         if let Some(preds) = self.lower_generic_bound_predicate(
                             ident,
@@ -1396,6 +1398,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span,
                         pure_wrt_drop: false,
                         kind: hir::GenericParamKind::Lifetime { kind },
+                        colon_span: None,
                     }
                 },
             ));
@@ -1735,6 +1738,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span,
                         pure_wrt_drop: false,
                         kind: hir::GenericParamKind::Lifetime { kind },
+                        colon_span: None,
                     }
                 }));
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
@@ -2006,6 +2010,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(param.span()),
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
             kind,
+            colon_span: param.colon_span.map(|s| self.lower_span(s)),
         }
     }
 

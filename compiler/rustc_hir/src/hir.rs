@@ -17,7 +17,7 @@ use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -499,6 +499,7 @@ pub struct GenericParam<'hir> {
     pub span: Span,
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
+    pub colon_span: Option<Span>,
 }
 
 impl<'hir> GenericParam<'hir> {
@@ -514,40 +515,6 @@ impl<'hir> GenericParam<'hir> {
     /// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
-    }
-
-    /// Returns the span of `:` after a generic parameter.
-    ///
-    /// For example:
-    ///
-    /// ```text
-    /// fn a<T:>()
-    ///       ^
-    ///       |      here
-    ///       here   |
-    ///              v
-    /// fn b<T       :>()
-    ///
-    /// fn c<T
-    ///
-    /// :>()
-    /// ^
-    /// |
-    /// here
-    /// ```
-    pub fn colon_span_for_suggestions(&self, source_map: &SourceMap) -> Option<Span> {
-        let sp = source_map
-            .span_extend_while(self.span.shrink_to_hi(), |c| c.is_whitespace() || c == ':')
-            .ok()?;
-
-        let snippet = source_map.span_to_snippet(sp).ok()?;
-        let offset = snippet.find(':')?;
-
-        let colon_sp = sp
-            .with_lo(BytePos(sp.lo().0 + offset as u32))
-            .with_hi(BytePos(sp.lo().0 + (offset + ':'.len_utf8()) as u32));
-
-        Some(colon_sp)
     }
 }
 

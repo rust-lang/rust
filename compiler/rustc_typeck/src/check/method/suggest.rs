@@ -1868,18 +1868,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // instead we suggest `T: Foo + Bar` in that case.
                     match hir.get(id) {
                         Node::GenericParam(param) => {
-                            let impl_trait = matches!(
-                                param.kind,
-                                hir::GenericParamKind::Type { synthetic: true, .. },
-                            );
+                            enum Introducer {
+                                Plus,
+                                Colon,
+                                Nothing,
+                            }
                             let ast_generics = hir.get_generics(id.owner).unwrap();
-                            let (sp, has_bounds) = if let Some(span) =
+                            let (sp, mut introducer) = if let Some(span) =
                                 ast_generics.bounds_span_for_suggestions(def_id)
                             {
-                                (span, true)
+                                (span, Introducer::Plus)
+                            } else if let Some(colon_span) = param.colon_span {
+                                (colon_span.shrink_to_hi(), Introducer::Nothing)
                             } else {
-                                (hir.span(id).shrink_to_hi(), false)
+                                (param.span.shrink_to_hi(), Introducer::Colon)
                             };
+                            if matches!(
+                                param.kind,
+                                hir::GenericParamKind::Type { synthetic: true, .. },
+                            ) {
+                                introducer = Introducer::Plus
+                            }
                             let trait_def_ids: FxHashSet<DefId> = ast_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
@@ -1895,7 +1904,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     candidates.iter().map(|t| {
                                         format!(
                                             "{} {}",
-                                            if has_bounds || impl_trait { " +" } else { ":" },
+                                            match introducer {
+                                                Introducer::Plus => " +",
+                                                Introducer::Colon => ":",
+                                                Introducer::Nothing => "",
+                                            },
                                             self.tcx.def_path_str(t.def_id),
                                         )
                                     }),

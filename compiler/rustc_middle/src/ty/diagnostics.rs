@@ -363,6 +363,19 @@ pub fn suggest_constraining_type_params<'a>(
             continue;
         }
 
+        // If user has provided a colon, don't suggest adding another:
+        //
+        //   fn foo<T:>(t: T) { ... }
+        //            - insert: consider restricting this type parameter with `T: Foo`
+        if let Some(colon_span) = param.colon_span {
+            suggestions.push((
+                colon_span.shrink_to_hi(),
+                format!(" {}", constraint),
+                SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
+            ));
+            continue;
+        }
+
         // If user hasn't provided any bounds, suggest adding a new one:
         //
         //   fn foo<T>(t: T) { ... }

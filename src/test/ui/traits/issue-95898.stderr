@@ -7,8 +7,8 @@ LL |     t.clone();
    = help: items from traits can only be used if the type parameter is bounded by the trait
 help: the following trait defines an item `clone`, perhaps you need to restrict type parameter `T` with it:
    |
-LL | fn foo<T: Clone:>(t: T) {
-   |         +++++++
+LL | fn foo<T: Clone>(t: T) {
+   |           +++++
 
 error: aborting due to previous error
 

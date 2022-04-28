@@ -30,8 +30,10 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
+        let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(Some(self.prev_token.span))?
+            colon_span = Some(self.prev_token.span);
+            self.parse_generic_bounds(colon_span)?
         } else {
             Vec::new()
         };
@@ -45,6 +47,7 @@ impl<'a> Parser<'a> {
             bounds,
             kind: GenericParamKind::Type { default },
             is_placeholder: false,
+            colon_span,
         })
     }
 
@@ -69,6 +72,7 @@ impl<'a> Parser<'a> {
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
             is_placeholder: false,
+            colon_span: None,
         })
     }
 
@@ -97,10 +101,10 @@ impl<'a> Parser<'a> {
                     let param = if this.check_lifetime() {
                         let lifetime = this.expect_lifetime();
                         // Parse lifetime parameter.
-                        let bounds = if this.eat(&token::Colon) {
-                            this.parse_lt_param_bounds()
+                        let (colon_span, bounds) = if this.eat(&token::Colon) {
+                            (Some(this.prev_token.span), this.parse_lt_param_bounds())
                         } else {
-                            Vec::new()
+                            (None, Vec::new())
                         };
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
@@ -109,6 +113,7 @@ impl<'a> Parser<'a> {
                             bounds,
                             kind: ast::GenericParamKind::Lifetime,
                             is_placeholder: false,
+                            colon_span,
                         })
                     } else if this.check_keyword(kw::Const) {
                         // Parse const parameter.

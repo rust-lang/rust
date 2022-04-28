@@ -149,6 +149,7 @@ pub fn placeholder(
                 ident,
                 is_placeholder: true,
                 kind: ast::GenericParamKind::Lifetime,
+                colon_span: None,
             }
         }]),
         AstFragmentKind::Params => AstFragment::Params(smallvec![ast::Param {
