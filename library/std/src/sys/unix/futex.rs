@@ -4,6 +4,7 @@
     all(target_os = "emscripten", target_feature = "atomics"),
     target_os = "openbsd",
     target_os = "netbsd",
+    target_os = "dragonfly",
 ))]
 
 use crate::sync::atomic::AtomicU32;
@@ -156,6 +157,35 @@ pub fn futex_wake_all(futex: &AtomicU32) {
             null_mut(),
         );
     }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+    use crate::convert::TryFrom;
+    let r = unsafe {
+        libc::umtx_sleep(
+            futex as *const AtomicU32 as *const i32,
+            expected as i32,
+            // A timeout of 0 means infinite, so we round smaller timeouts up to 1 millisecond.
+            // Timeouts larger than i32::MAX milliseconds saturate.
+            timeout.map_or(0, |d| {
+                i32::try_from(d.as_millis()).map_or(i32::MAX, |millis| millis.max(1))
+            }),
+        )
+    };
+
+    r == 0 || super::os::errno() != libc::ETIMEDOUT
+}
+
+// DragonflyBSD doesn't tell us how many threads are woken up, so this doesn't return a bool.
+#[cfg(target_os = "dragonfly")]
+pub fn futex_wake(futex: &AtomicU32) {
+    unsafe { libc::umtx_wakeup(futex as *const AtomicU32 as *const i32, 1) };
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn futex_wake_all(futex: &AtomicU32) {
+    unsafe { libc::umtx_wakeup(futex as *const AtomicU32 as *const i32, i32::MAX) };
 }
 
 #[cfg(target_os = "emscripten")]

@@ -5,6 +5,7 @@ cfg_if::cfg_if! {
         all(target_arch = "wasm32", target_feature = "atomics"),
         target_os = "openbsd",
         target_os = "netbsd",
+        target_os = "dragonfly",
     ))] {
         mod futex;
         pub use futex::Parker;
