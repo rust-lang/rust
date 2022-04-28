@@ -470,14 +470,12 @@ impl From<ErrorKind> for Error {
 impl From<TryReserveError> for Error {
     #[inline]
     fn from(error: TryReserveError) -> Error {
-        match error.kind() {
-            TryReserveErrorKind::CapacityOverflow => {
-                const_io_error!(ErrorKind::InvalidInput, "collection capacity overflowed")
-            }
-            TryReserveErrorKind::AllocError { .. } => {
-                const_io_error!(ErrorKind::OutOfMemory, "collection cannot allocate memory")
-            }
-        }
+        let kind = match error.kind() {
+            TryReserveErrorKind::CapacityOverflow => ErrorKind::InvalidInput,
+            TryReserveErrorKind::AllocError { .. } => ErrorKind::OutOfMemory,
+        };
+
+        Error::new(kind, error)
     }
 }
 
