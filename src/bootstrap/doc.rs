@@ -463,7 +463,10 @@ impl Step for Std {
                 .arg("--resource-suffix")
                 .arg(&builder.version)
                 .arg("--index-page")
-                .arg(&builder.src.join("src/doc/index.md"));
+                .arg(&builder.src.join("src/doc/index.md"))
+                .arg("--extern-html-root-url")
+                .arg("std_detect=https://docs.rs/std_detect/0.1.5/")
+                .arg("--extern-html-root-takes-precedence");
 
             if !builder.config.docs_minification {
                 cargo.arg("--disable-minification");
