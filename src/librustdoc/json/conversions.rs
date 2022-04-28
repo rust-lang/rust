@@ -351,11 +351,8 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
     fn from_tcx(kind: clean::GenericParamDefKind, tcx: TyCtxt<'_>) -> Self {
         use clean::GenericParamDefKind::*;
         match kind {
-            Lifetime { outlives } => GenericParamDefKind::Lifetime {
-                outlives: outlives.into_iter().map(|lt| lt.0.to_string()).collect(),
-            },
-            Type { did: _, bounds, default, synthetic } => GenericParamDefKind::Type {
-                bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            Lifetime => GenericParamDefKind::Lifetime,
+            Type { did: _, default, synthetic } => GenericParamDefKind::Type {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
@@ -378,7 +375,7 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                     .into_iter()
                     .map(|x| GenericParamDef {
                         name: x.0.to_string(),
-                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                        kind: GenericParamDefKind::Lifetime,
                     })
                     .collect(),
             },

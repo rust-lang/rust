@@ -1362,15 +1362,9 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: Vec<Lifetime> },
-    Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Lifetime,
+    Type { did: DefId, default: Option<Box<Type>>, synthetic: bool },
     Const { did: DefId, ty: Box<Type>, default: Option<Box<String>> },
-}
-
-impl GenericParamDefKind {
-    pub(crate) fn is_type(&self) -> bool {
-        matches!(self, GenericParamDefKind::Type { .. })
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1381,24 +1375,13 @@ pub(crate) struct GenericParamDef {
 
 // `GenericParamDef` is used in many places. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericParamDef, 56);
+rustc_data_structures::static_assert_size!(GenericParamDef, 40);
 
 impl GenericParamDef {
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
-        }
-    }
-
-    pub(crate) fn is_type(&self) -> bool {
-        self.kind.is_type()
-    }
-
-    pub(crate) fn get_bounds(&self) -> Option<&[GenericBound]> {
-        match self.kind {
-            GenericParamDefKind::Type { ref bounds, .. } => Some(bounds),
-            _ => None,
         }
     }
 }

@@ -332,10 +332,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => Some(GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-                    }),
+                    ty::BrNamed(_, name) => {
+                        Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
+                    }
                     _ => None,
                 }
             })
@@ -610,18 +609,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             };
         }
 
-        let final_bounds = self.make_final_bounds(ty_to_bounds, ty_to_fn, lifetime_to_bounds);
-
-        existing_predicates.extend(final_bounds);
-
         for param in generic_params.iter_mut() {
             match param.kind {
-                GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
+                GenericParamDefKind::Type { ref mut default, .. } => {
                     // We never want something like `impl<T=Foo>`.
                     default.take();
                     let generic_ty = Type::Generic(param.name);
                     if !has_sized.contains(&generic_ty) {
-                        bounds.insert(0, GenericBound::maybe_sized(self.cx));
+                        let b = GenericBound::maybe_sized(self.cx);
+                        ty_to_bounds.entry(generic_ty).or_default().insert(b);
                     }
                 }
                 GenericParamDefKind::Lifetime { .. } => {}
@@ -631,6 +627,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
             }
         }
+
+        let final_bounds = self.make_final_bounds(ty_to_bounds, ty_to_fn, lifetime_to_bounds);
+
+        existing_predicates.extend(final_bounds);
 
         self.sort_where_predicates(&mut existing_predicates);
 

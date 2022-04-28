@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 15;
+pub const FORMAT_VERSION: u32 = 16;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -346,11 +346,8 @@ pub struct GenericParamDef {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum GenericParamDefKind {
-    Lifetime {
-        outlives: Vec<String>,
-    },
+    Lifetime,
     Type {
-        bounds: Vec<GenericBound>,
         default: Option<Type>,
         /// This is normally `false`, which means that this generic parameter is
         /// declared in the Rust source text.

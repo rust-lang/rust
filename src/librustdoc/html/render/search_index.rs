@@ -351,7 +351,7 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
 
     // If this argument is a type parameter and not a trait bound or a type, we need to look
     // for its bounds.
-    if let Type::Generic(arg_s) = *arg {
+    if let Type::Generic(_) = *arg {
         // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
@@ -377,25 +377,6 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
                             _ => {}
                         }
                     }
-                }
-            }
-            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
-        }
-        // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
-        if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
-            let mut ty_generics = Vec::new();
-            for bound in bound.get_bounds().unwrap_or(&[]) {
-                if let Some(path) = bound.get_trait_path() {
-                    let ty = Type::Path { path };
-                    add_generics_and_bounds_as_types(
-                        self_,
-                        generics,
-                        &ty,
-                        tcx,
-                        recurse + 1,
-                        &mut ty_generics,
-                        cache,
-                    );
                 }
             }
             insert_ty(res, tcx, arg.clone(), ty_generics, cache);
