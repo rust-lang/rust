@@ -11,7 +11,7 @@ use crate::maybe_whole;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{
     AstLike, AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle,
@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(&attrs.take_for_recovery());
             self.mk_stmt(lo, StmtKind::Empty)
-        } else if self.token != token::CloseDelim(token::Brace) {
+        } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
             let e = if force_collect == ForceCollect::Yes {
                 self.collect_tokens_no_attrs(|this| {
@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let expr = if this.eat(&token::OpenDelim(token::Brace)) {
+            let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
                 this.parse_struct_expr(None, path, AttrVec::new(), true)?
             } else {
                 let hi = this.prev_token.span;
@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         let hi = self.prev_token.span;
 
         let style = match delim {
-            Some(token::Brace) => MacStmtStyle::Braces,
+            Some(Delimiter::Brace) => MacStmtStyle::Braces,
             Some(_) => MacStmtStyle::NoBraces,
             None => unreachable!(),
         };
@@ -434,7 +434,7 @@ impl<'a> Parser<'a> {
             // If the next token is an open brace (e.g., `if a b {`), the place-
             // inside-a-block suggestion would be more likely wrong than right.
             Ok(Some(_))
-                if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+                if self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace))
                     || do_not_suggest_help => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
@@ -488,7 +488,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         self.maybe_recover_unexpected_block_label();
-        if !self.eat(&token::OpenDelim(token::Brace)) {
+        if !self.eat(&token::OpenDelim(Delimiter::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
@@ -509,7 +509,7 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
-        while !self.eat(&token::CloseDelim(token::Brace)) {
+        while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
                 break;
             }
@@ -553,7 +553,7 @@ impl<'a> Parser<'a> {
             {
                 // Just check for errors and recover; do not eat semicolon yet.
                 if let Err(mut e) =
-                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)])
                 {
                     if let TokenKind::DocComment(..) = self.token.kind {
                         if let Ok(snippet) = self.span_to_snippet(self.token.span) {

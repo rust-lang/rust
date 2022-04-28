@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::AstLike;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match token.kind {
-                token::OpenDelim(token::Brace) => true,
+                token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(ref nt) => !matches!(
                     **nt,
                     token::NtItem(_)
@@ -67,8 +67,8 @@ impl<'a> Parser<'a> {
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 match token.kind {
                 token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
-                token::OpenDelim(token::Paren) |    // tuple pattern
-                token::OpenDelim(token::Bracket) |  // slice pattern
+                token::OpenDelim(Delimiter::Parenthesis) |    // tuple pattern
+                token::OpenDelim(Delimiter::Bracket) |  // slice pattern
                 token::BinOp(token::And) |          // reference
                 token::BinOp(token::Minus) |        // negative literal
                 token::AndAnd |                     // double reference

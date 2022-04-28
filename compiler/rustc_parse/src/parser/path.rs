@@ -2,7 +2,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -236,14 +236,14 @@ impl<'a> Parser<'a> {
                 token.kind,
                 token::Lt
                     | token::BinOp(token::Shl)
-                    | token::OpenDelim(token::Paren)
+                    | token::OpenDelim(Delimiter::Parenthesis)
                     | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(&[
                 TokenType::Token(token::Lt),
-                TokenType::Token(token::OpenDelim(token::Paren)),
+                TokenType::Token(token::OpenDelim(Delimiter::Parenthesis)),
             ]);
             is_args_start(&this.token)
         };
@@ -639,7 +639,7 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+        let value = if let token::OpenDelim(Delimiter::Brace) = self.token.kind {
             self.parse_block_expr(
                 None,
                 self.token.span,
@@ -667,7 +667,8 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
-            let is_const_fn = self.look_ahead(1, |t| t.kind == token::OpenDelim(token::Paren));
+            let is_const_fn =
+                self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis));
             let mut snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),

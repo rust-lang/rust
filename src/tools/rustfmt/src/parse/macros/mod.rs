@@ -1,4 +1,4 @@
-use rustc_ast::token::{DelimToken, TokenKind};
+use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -81,7 +81,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             && parser.look_ahead(1, |t| {
                 t.kind == TokenKind::Eof
                     || t.kind == TokenKind::Comma
-                    || t.kind == TokenKind::CloseDelim(DelimToken::NoDelim)
+                    || t.kind == TokenKind::CloseDelim(Delimiter::Invisible)
             })
         {
             parser.bump();
@@ -97,7 +97,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 pub(crate) fn parse_macro_args(
     context: &RewriteContext<'_>,
     tokens: TokenStream,
-    style: DelimToken,
+    style: Delimiter,
     forced_bracket: bool,
 ) -> Option<ParsedMacroArgs> {
     let mut parser = build_parser(context, tokens);
@@ -105,7 +105,7 @@ pub(crate) fn parse_macro_args(
     let mut vec_with_semi = false;
     let mut trailing_comma = false;
 
-    if DelimToken::Brace != style {
+    if Delimiter::Brace != style {
         loop {
             if let Some(arg) = check_keyword(&mut parser) {
                 args.push(arg);

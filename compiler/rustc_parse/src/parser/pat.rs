@@ -2,7 +2,7 @@ use super::{ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token;
+use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{
     self as ast, AttrVec, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat,
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -260,9 +260,9 @@ impl<'a> Parser<'a> {
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
                 | token::Comma // e.g. `let (a |,)`.
-                | token::CloseDelim(token::Bracket) // e.g. `let [a | ]`.
-                | token::CloseDelim(token::Paren) // e.g. `let (a | )`.
-                | token::CloseDelim(token::Brace) // e.g. `let A { f: a | }`.
+                | token::CloseDelim(Delimiter::Bracket) // e.g. `let [a | ]`.
+                | token::CloseDelim(Delimiter::Parenthesis) // e.g. `let (a | )`.
+                | token::CloseDelim(Delimiter::Brace) // e.g. `let A { f: a | }`.
             )
         });
         match (is_end_ahead, &self.token.kind) {
@@ -323,11 +323,11 @@ impl<'a> Parser<'a> {
 
         let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
             self.parse_pat_deref(expected)?
-        } else if self.check(&token::OpenDelim(token::Paren)) {
+        } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             self.parse_pat_tuple_or_parens()?
-        } else if self.check(&token::OpenDelim(token::Bracket)) {
+        } else if self.check(&token::OpenDelim(Delimiter::Bracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
-            let (pats, _) = self.parse_delim_comma_seq(token::Bracket, |p| {
+            let (pats, _) = self.parse_delim_comma_seq(Delimiter::Bracket, |p| {
                 p.parse_pat_allow_top_alt(
                     None,
                     RecoverComma::No,
@@ -389,9 +389,9 @@ impl<'a> Parser<'a> {
             } else if let Some(form) = self.parse_range_end() {
                 let begin = self.mk_expr(span, ExprKind::Path(qself, path), AttrVec::new());
                 self.parse_pat_range_begin_with(begin, form)?
-            } else if self.check(&token::OpenDelim(token::Brace)) {
+            } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_pat_struct(qself, path)?
-            } else if self.check(&token::OpenDelim(token::Paren)) {
+            } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                 self.parse_pat_tuple_struct(qself, path)?
             } else {
                 PatKind::Path(qself, path)
@@ -845,8 +845,8 @@ impl<'a> Parser<'a> {
         // Avoid `in`. Due to recovery in the list parser this messes with `for ( $pat in $expr )`.
         && !self.token.is_keyword(kw::In)
         // Try to do something more complex?
-        && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(token::Paren) // A tuple struct pattern.
-            | token::OpenDelim(token::Brace) // A struct pattern.
+        && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(Delimiter::Parenthesis) // A tuple struct pattern.
+            | token::OpenDelim(Delimiter::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
@@ -868,7 +868,7 @@ impl<'a> Parser<'a> {
         // This shortly leads to a parse error. Note that if there is no explicit
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
-        if self.token == token::OpenDelim(token::Paren) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             return Err(self
                 .struct_span_err(self.prev_token.span, "expected identifier, found enum pattern"));
         }
@@ -917,7 +917,7 @@ impl<'a> Parser<'a> {
         let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
         let mut etc_span = None;
 
-        while self.token != token::CloseDelim(token::Brace) {
+        while self.token != token::CloseDelim(Delimiter::Brace) {
             let attrs = match self.parse_outer_attributes() {
                 Ok(attrs) => attrs,
                 Err(err) => {
@@ -946,7 +946,7 @@ impl<'a> Parser<'a> {
                 self.recover_one_fewer_dotdot();
                 self.bump(); // `..` || `...`
 
-                if self.token == token::CloseDelim(token::Brace) {
+                if self.token == token::CloseDelim(Delimiter::Brace) {
                     etc_span = Some(etc_sp);
                     break;
                 }
@@ -970,7 +970,7 @@ impl<'a> Parser<'a> {
                 }
 
                 etc_span = Some(etc_sp.until(self.token.span));
-                if self.token == token::CloseDelim(token::Brace) {
+                if self.token == token::CloseDelim(Delimiter::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
                         err.span_suggestion_short(
