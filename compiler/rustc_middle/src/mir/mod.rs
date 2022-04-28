@@ -62,7 +62,9 @@ pub mod spanview;
 mod switch_sources;
 pub mod tcx;
 pub mod terminator;
+use crate::mir::traversal::PostorderCache;
 pub use terminator::*;
+
 pub mod traversal;
 mod type_foldable;
 pub mod visit;
@@ -323,6 +325,7 @@ pub struct Body<'tcx> {
     predecessor_cache: PredecessorCache,
     switch_source_cache: SwitchSourceCache,
     is_cyclic: GraphIsCyclicCache,
+    postorder_cache: PostorderCache,
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
@@ -372,6 +375,7 @@ impl<'tcx> Body<'tcx> {
             predecessor_cache: PredecessorCache::new(),
             switch_source_cache: SwitchSourceCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            postorder_cache: PostorderCache::new(),
             tainted_by_errors,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
@@ -401,6 +405,7 @@ impl<'tcx> Body<'tcx> {
             predecessor_cache: PredecessorCache::new(),
             switch_source_cache: SwitchSourceCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            postorder_cache: PostorderCache::new(),
             tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
@@ -422,6 +427,7 @@ impl<'tcx> Body<'tcx> {
         self.predecessor_cache.invalidate();
         self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
+        self.postorder_cache.invalidate();
         &mut self.basic_blocks
     }
 
@@ -432,6 +438,7 @@ impl<'tcx> Body<'tcx> {
         self.predecessor_cache.invalidate();
         self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
+        self.postorder_cache.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
@@ -446,6 +453,7 @@ impl<'tcx> Body<'tcx> {
         self.predecessor_cache.invalidate();
         self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
+        self.postorder_cache.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
 
