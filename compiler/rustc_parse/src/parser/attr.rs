@@ -1,7 +1,7 @@
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
@@ -130,9 +130,9 @@ impl<'a> Parser<'a> {
                     ast::AttrStyle::Outer
                 };
 
-                this.expect(&token::OpenDelim(token::Bracket))?;
+                this.expect(&token::OpenDelim(Delimiter::Bracket))?;
                 let item = this.parse_attr_item(false)?;
-                this.expect(&token::CloseDelim(token::Bracket))?;
+                this.expect(&token::CloseDelim(Delimiter::Bracket))?;
                 let attr_sp = lo.to(this.prev_token.span);
 
                 // Emit error if inner attribute is encountered and forbidden.
@@ -403,7 +403,7 @@ impl<'a> Parser<'a> {
     crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
-        } else if self.check(&token::OpenDelim(token::Paren)) {
+        } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
             ast::MetaItemKind::List(list)

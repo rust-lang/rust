@@ -38,7 +38,7 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{Delimiter, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
@@ -886,7 +886,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     match tokens.into_trees().next() {
                         Some(TokenTree::Token(token)) => token,
                         Some(TokenTree::Delimited(_, delim, tokens)) => {
-                            if delim != token::NoDelim {
+                            if delim != Delimiter::Invisible {
                                 sess.diagnostic().delay_span_bug(
                                     span,
                                     "unexpected delimiter in key-value attribute's value",

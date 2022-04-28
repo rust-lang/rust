@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
@@ -27,23 +27,14 @@ impl MutVisitor for Marker {
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame<'a> {
-    Delimited {
-        tts: &'a [mbe::TokenTree],
-        idx: usize,
-        delim_token: token::DelimToken,
-        span: DelimSpan,
-    },
-    Sequence {
-        tts: &'a [mbe::TokenTree],
-        idx: usize,
-        sep: Option<Token>,
-    },
+    Delimited { tts: &'a [mbe::TokenTree], idx: usize, delim: Delimiter, span: DelimSpan },
+    Sequence { tts: &'a [mbe::TokenTree], idx: usize, sep: Option<Token> },
 }
 
 impl<'a> Frame<'a> {
     /// Construct a new frame around the delimited set of tokens.
     fn new(src: &'a mbe::Delimited, span: DelimSpan) -> Frame<'a> {
-        Frame::Delimited { tts: &src.tts, idx: 0, delim_token: src.delim, span }
+        Frame::Delimited { tts: &src.tts, idx: 0, delim: src.delim, span }
     }
 }
 
@@ -150,14 +141,14 @@ pub(super) fn transcribe<'a>(
                 // We are done processing a Delimited. If this is the top-level delimited, we are
                 // done. Otherwise, we unwind the result_stack to append what we have produced to
                 // any previous results.
-                Frame::Delimited { delim_token, span, .. } => {
+                Frame::Delimited { delim, span, .. } => {
                     if result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
                         return Ok(TokenStream::new(result));
                     }
 
                     // Step back into the parent Delimited.
-                    let tree = TokenTree::Delimited(span, delim_token, TokenStream::new(result));
+                    let tree = TokenTree::Delimited(span, delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }
@@ -240,7 +231,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedNonterminal(ref nt) => {
                             // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::None` to maintain parsing priorities.
+                            // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
                             let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
@@ -278,7 +269,7 @@ pub(super) fn transcribe<'a>(
                 mut_visit::visit_delim_span(&mut span, &mut marker);
                 stack.push(Frame::Delimited {
                     tts: &delimited.tts,
-                    delim_token: delimited.delim,
+                    delim: delimited.delim,
                     idx: 0,
                     span,
                 });

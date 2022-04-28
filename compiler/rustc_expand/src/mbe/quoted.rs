@@ -1,7 +1,7 @@
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -147,11 +147,11 @@ fn parse_tree(
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
         tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => {
-            // FIXME: Handle `None`-delimited groups in a more systematic way
+            // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
             let mut trees: Box<dyn Iterator<Item = tokenstream::TokenTree>>;
-            if let Some(tokenstream::TokenTree::Delimited(_, token::NoDelim, tts)) = next {
+            if let Some(tokenstream::TokenTree::Delimited(_, Delimiter::Invisible, tts)) = next {
                 trees = Box::new(tts.into_trees());
                 next = trees.next();
             } else {
@@ -162,7 +162,7 @@ fn parse_tree(
                 // `tree` is followed by a delimited set of token trees.
                 Some(tokenstream::TokenTree::Delimited(delim_span, delim, tts)) => {
                     if parsing_patterns {
-                        if delim != token::Paren {
+                        if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
                                 &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
@@ -170,7 +170,7 @@ fn parse_tree(
                         }
                     } else {
                         match delim {
-                            token::Brace => {
+                            Delimiter::Brace => {
                                 // The delimiter is `{`.  This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
@@ -191,7 +191,7 @@ fn parse_tree(
                                     }
                                 }
                             }
-                            token::Paren => {}
+                            Delimiter::Parenthesis => {}
                             _ => {
                                 let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
                                 let msg = format!("expected `(` or `{{`, found `{}`", tok);

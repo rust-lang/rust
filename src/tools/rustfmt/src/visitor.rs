@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, token::DelimToken, visit, AstLike};
+use rustc_ast::{ast, token::Delimiter, visit, AstLike};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{symbol, BytePos, Pos, Span};
 
@@ -689,7 +689,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
         // are formatted correctly.
         let (span, rewrite) = match macro_style(mac, &self.get_context()) {
-            DelimToken::Bracket | DelimToken::Paren if MacroPosition::Item == pos => {
+            Delimiter::Bracket | Delimiter::Parenthesis if MacroPosition::Item == pos => {
                 let search_span = mk_sp(mac.span().hi(), self.snippet_provider.end_pos());
                 let hi = self.snippet_provider.span_before(search_span, ";");
                 let target_span = mk_sp(mac.span().lo(), hi + BytePos(1));

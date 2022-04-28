@@ -704,10 +704,10 @@ pub enum Delimiter {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Bracket,
     /// `Ø ... Ø`
-    /// An implicit delimiter, that may, for example, appear around tokens coming from a
+    /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
-    /// Implicit delimiters might not survive roundtrip of a token stream through a string.
+    /// Invisible delimiters might not survive roundtrip of a token stream through a string.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     None,
 }

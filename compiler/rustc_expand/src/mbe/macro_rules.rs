@@ -8,7 +8,7 @@ use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, NonterminalKind, Token, TokenKind, TokenKind::*};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -1250,8 +1250,8 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 ];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        OpenDelim(token::DelimToken::Brace)
-                        | OpenDelim(token::DelimToken::Bracket)
+                        OpenDelim(Delimiter::Brace)
+                        | OpenDelim(Delimiter::Bracket)
                         | Comma
                         | FatArrow
                         | Colon
