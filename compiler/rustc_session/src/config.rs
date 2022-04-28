@@ -1043,6 +1043,7 @@ impl CrateCheckConfig {
             sym::target_has_atomic_load_store,
             sym::target_has_atomic,
             sym::target_has_atomic_equal_alignment,
+            sym::target_feature,
             sym::panic,
             sym::sanitize,
             sym::debug_assertions,
@@ -1085,6 +1086,10 @@ impl CrateCheckConfig {
         let sanitize_values = SanitizerSet::all()
             .into_iter()
             .map(|sanitizer| Symbol::intern(sanitizer.as_str().unwrap()));
+
+        // Unknown possible values:
+        //  - `feature`
+        //  - `target_feature`
 
         // No-values
         for name in [
