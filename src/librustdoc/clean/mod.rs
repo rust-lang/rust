@@ -1305,7 +1305,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
 fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>) -> Option<Type> {
     let Res::Def(DefKind::TyAlias, def_id) = path.res else { return None };
     // Substitute private type aliases
-    let Some(def_id) = def_id.as_local() else { return None };
+    let def_id = def_id.as_local()?;
     let alias = if !cx.cache.access_levels.is_exported(def_id.to_def_id()) {
         &cx.tcx.hir().expect_item(def_id).kind
     } else {

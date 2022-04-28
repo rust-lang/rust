@@ -86,7 +86,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let param_type = tcx.infer_ctxt().enter(|infcx| {
                             infcx.resolve_numeric_literals_with_default(tcx.type_of(param.def_id))
                         });
-                        if param_type.is_suggestable() {
+                        if param_type.is_suggestable(tcx) {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
                                 "consider changing this type parameter to be a `const` generic",

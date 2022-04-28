@@ -3,8 +3,8 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::TyKind::*;
 use crate::ty::{
-    ConstKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, InferTy,
-    ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
+    ConstKind, DefIdTree, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef,
+    InferTy, ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -74,10 +74,10 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Whether the type can be safely suggested during error recovery.
-    pub fn is_suggestable(self) -> bool {
-        fn generic_arg_is_suggestible(arg: GenericArg<'_>) -> bool {
+    pub fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
+        fn generic_arg_is_suggestible<'tcx>(arg: GenericArg<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
             match arg.unpack() {
-                GenericArgKind::Type(ty) => ty.is_suggestable(),
+                GenericArgKind::Type(ty) => ty.is_suggestable(tcx),
                 GenericArgKind::Const(c) => const_is_suggestable(c.val()),
                 _ => true,
             }
@@ -99,8 +99,7 @@ impl<'tcx> Ty<'tcx> {
         // temporary, so I'll leave this as a fixme.
 
         match self.kind() {
-            Opaque(..)
-            | FnDef(..)
+            FnDef(..)
             | Closure(..)
             | Infer(..)
             | Generator(..)
@@ -108,27 +107,38 @@ impl<'tcx> Ty<'tcx> {
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => false,
+            Opaque(did, substs) => {
+                let parent = tcx.parent(*did).expect("opaque types always have a parent");
+                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = tcx.def_kind(parent)
+                    && let Opaque(parent_did, _) = tcx.type_of(parent).kind()
+                    && parent_did == did
+                {
+                    substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
+                } else {
+                    false
+                }
+            }
             Dynamic(dty, _) => dty.iter().all(|pred| match pred.skip_binder() {
                 ExistentialPredicate::Trait(ExistentialTraitRef { substs, .. }) => {
-                    substs.iter().all(generic_arg_is_suggestible)
+                    substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
                 }
                 ExistentialPredicate::Projection(ExistentialProjection {
                     substs, term, ..
                 }) => {
                     let term_is_suggestable = match term {
-                        Term::Ty(ty) => ty.is_suggestable(),
+                        Term::Ty(ty) => ty.is_suggestable(tcx),
                         Term::Const(c) => const_is_suggestable(c.val()),
                     };
-                    term_is_suggestable && substs.iter().all(generic_arg_is_suggestible)
+                    term_is_suggestable && substs.iter().all(|a| generic_arg_is_suggestible(a, tcx))
                 }
                 _ => true,
             }),
             Projection(ProjectionTy { substs: args, .. }) | Adt(_, args) => {
-                args.iter().all(generic_arg_is_suggestible)
+                args.iter().all(|a| generic_arg_is_suggestible(a, tcx))
             }
-            Tuple(args) => args.iter().all(|ty| ty.is_suggestable()),
-            Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(),
-            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val()),
+            Tuple(args) => args.iter().all(|ty| ty.is_suggestable(tcx)),
+            Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(tcx),
+            Array(ty, c) => ty.is_suggestable(tcx) && const_is_suggestable(c.val()),
             _ => true,
         }
     }

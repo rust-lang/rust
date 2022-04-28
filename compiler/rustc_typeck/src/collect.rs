@@ -41,7 +41,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
-use rustc_middle::ty::{ReprOptions, ToPredicate, TypeFoldable};
+use rustc_middle::ty::{ReprOptions, ToPredicate};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -2004,28 +2004,29 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.skip_binder().output();
-            if !ret_ty.references_error() {
-                if !ret_ty.is_closure() {
-                    let ret_ty_str = match ret_ty.kind() {
-                        // Suggest a function pointer return type instead of a unique function definition
-                        // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
-                        // syntax)
-                        ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
-                        _ => ret_ty.to_string(),
-                    };
+            if ret_ty.is_suggestable(tcx) {
+                diag.span_suggestion(
+                    ty.span,
+                    "replace with the correct return type",
+                    ret_ty.to_string(),
+                    Applicability::MachineApplicable,
+                );
+            } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
+                let fn_sig = ret_ty.fn_sig(tcx);
+                if fn_sig.skip_binder().inputs_and_output.iter().all(|t| t.is_suggestable(tcx)) {
                     diag.span_suggestion(
                         ty.span,
                         "replace with the correct return type",
-                        ret_ty_str,
-                        Applicability::MaybeIncorrect,
+                        fn_sig.to_string(),
+                        Applicability::MachineApplicable,
                     );
-                } else {
-                    // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
-                    // to prevent the user from getting a papercut while trying to use the unique closure
-                    // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
-                    diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-                    diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
                 }
+            } else if ret_ty.is_closure() {
+                // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
+                // to prevent the user from getting a papercut while trying to use the unique closure
+                // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
+                diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+                diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
             }
             diag.emit();
 

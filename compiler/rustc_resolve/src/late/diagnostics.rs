@@ -1183,9 +1183,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         ident: Symbol,
         kind: &AssocItemKind,
     ) -> Option<Symbol> {
-        let Some((module, _)) = &self.current_trait_ref else {
-            return None;
-        };
+        let (module, _) = self.current_trait_ref.as_ref()?;
         if ident == kw::Underscore {
             // We do nothing for `_`.
             return None;

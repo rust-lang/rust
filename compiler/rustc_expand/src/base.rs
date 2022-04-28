@@ -1272,9 +1272,7 @@ pub fn parse_macro_name_and_helper_attrs(
     // Once we've located the `#[proc_macro_derive]` attribute, verify
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-    let Some(list) = attr.meta_item_list() else {
-        return None;
-    };
+    let list = attr.meta_item_list()?;
     if list.len() != 1 && list.len() != 2 {
         diag.span_err(attr.span, "attribute must have either one or two arguments");
         return None;

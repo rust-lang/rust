@@ -338,9 +338,7 @@ pub(super) fn check_for_substitution<'a>(
     ch: char,
     err: &mut Diagnostic,
 ) -> Option<token::TokenKind> {
-    let Some(&(_u_char, u_name, ascii_char)) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) else {
-        return None;
-    };
+    let &(_u_char, u_name, ascii_char) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch)?;
 
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 

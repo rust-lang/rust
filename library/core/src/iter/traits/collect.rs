@@ -96,29 +96,23 @@
 #[rustc_on_unimplemented(
     on(
         _Self = "[{A}]",
-        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(
-            A = "{integer}",
-            any(
-                _Self = "[i8]",
-                _Self = "[i16]",
-                _Self = "[i32]",
-                _Self = "[i64]",
-                _Self = "[i128]",
-                _Self = "[isize]",
-                _Self = "[u8]",
-                _Self = "[u16]",
-                _Self = "[u32]",
-                _Self = "[u64]",
-                _Self = "[u128]",
-                _Self = "[usize]"
-            )
-        ),
-        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        all(A = "{integer}", any(_Self = "[{integral}]",)),
+        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
+    on(
+        _Self = "[{A}; _]",
+        message = "an array of type `{Self}` cannot be built directly from an iterator",
+        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+    ),
+    on(
+        all(A = "{integer}", any(_Self = "[{integral}; _]",)),
+        message = "an array of type `{Self}` cannot be built directly from an iterator",
+        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     message = "a value of type `{Self}` cannot be built from an iterator \
                over elements of type `{A}`",

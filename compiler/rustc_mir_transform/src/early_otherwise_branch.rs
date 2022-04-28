@@ -336,9 +336,7 @@ fn evaluate_candidate<'tcx>(
             Some(poss)
         }
     };
-    let Some((_, child)) = targets.iter().next() else {
-        return None
-    };
+    let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
     let TerminatorKind::SwitchInt {
         switch_ty: child_ty,
