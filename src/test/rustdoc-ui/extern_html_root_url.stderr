@@ -1,0 +1,38 @@
+error: extern_html_root_url only accepts this form: `extern_html_root_url(crate = "url")`
+  --> $DIR/extern_html_root_url.rs:3:8
+   |
+LL | #![doc(extern_html_root_url)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: extern_html_root_url only accepts this form: `extern_html_root_url(crate = "url")`
+  --> $DIR/extern_html_root_url.rs:5:8
+   |
+LL | #![doc(extern_html_root_url = "a")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: extern_html_root_url() only accepts `crate_name = "url"`
+  --> $DIR/extern_html_root_url.rs:7:29
+   |
+LL | #![doc(extern_html_root_url(a))]
+   |                             ^
+
+error: extern_html_root_url() only accepts `crate_name = "url"`
+  --> $DIR/extern_html_root_url.rs:9:29
+   |
+LL | #![doc(extern_html_root_url(a()))]
+   |                             ^^^
+
+error: extern_html_root_url() only accepts `crate_name = "url"`
+  --> $DIR/extern_html_root_url.rs:11:29
+   |
+LL | #![doc(extern_html_root_url(a = 1))]
+   |                             ^^^^^
+
+error: URL cannot be empty
+  --> $DIR/extern_html_root_url.rs:13:29
+   |
+LL | #![doc(extern_html_root_url(a = ""))]
+   |                             ^^^^^^
+
+error: aborting due to 6 previous errors
+
