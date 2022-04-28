@@ -3,6 +3,7 @@ cfg_if::cfg_if! {
         target_os = "linux",
         target_os = "android",
         all(target_os = "emscripten", target_feature = "atomics"),
+        target_os = "openbsd",
     ))] {
         mod futex;
         mod futex_rwlock;
