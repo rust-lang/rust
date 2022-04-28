@@ -25,7 +25,7 @@ LL |     assert_eq!(foo, y);
              extern "C" fn(A, B, C) -> Ret
              extern "C" fn(A, B, C, ...) -> Ret
              extern "C" fn(A, B, C, D) -> Ret
-           and 68 others
+           and 94 others
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
