@@ -84,6 +84,7 @@
 //!
 //! If a named parameter does not appear in the argument list, `format!` will
 //! reference a variable with that name in the current scope.
+//! (Rust 1.58 and later; in [`panic!`], requires Rust 2021.)
 //!
 //! ```
 //! let argument = 2 + 2;
