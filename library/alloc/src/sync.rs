@@ -270,10 +270,12 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Arc<U, A>> fo
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
+    #[inline]
     unsafe fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
         unsafe { Self::from_inner_in(ptr, Global) }
     }
 
+    #[inline]
     unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
         unsafe { Self::from_ptr_in(ptr, Global) }
     }
@@ -359,6 +361,7 @@ struct ArcInner<T: ?Sized> {
 }
 
 /// Calculate layout for `ArcInner<T>` using the inner value's layout
+// Do not inline this function, it causes the test for #111603  to fail
 fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
@@ -380,8 +383,8 @@ impl<T> Arc<T> {
     ///
     /// let five = Arc::new(5);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
@@ -445,8 +448,8 @@ impl<T> Arc<T> {
     /// }
     /// ```
     /// [`upgrade`]: Weak::upgrade
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
     pub fn new_cyclic<F>(data_fn: F) -> Arc<T>
     where
@@ -521,10 +524,9 @@ impl<T> Arc<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
@@ -555,10 +557,10 @@ impl<T> Arc<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
@@ -571,16 +573,17 @@ impl<T> Arc<T> {
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
+    #[inline]
+    #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[must_use]
     pub fn pin(data: T) -> Pin<Arc<T>> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
     /// Constructs a new `Pin<Arc<T>>`, return an error if allocation fails.
-    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {
         unsafe { Ok(Pin::new_unchecked(Arc::try_new(data)?)) }
     }
@@ -596,8 +599,8 @@ impl<T> Arc<T> {
     /// let five = Arc::try_new(5)?;
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
@@ -630,6 +633,7 @@ impl<T> Arc<T> {
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
@@ -663,6 +667,7 @@ impl<T> Arc<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
@@ -740,10 +745,10 @@ impl<T, A: Allocator> Arc<T, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
+    #[inline]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn new_uninit_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
         unsafe {
             Arc::from_ptr_in(
@@ -779,10 +784,10 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[inline]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn new_zeroed_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
         unsafe {
             Arc::from_ptr_in(
@@ -798,9 +803,9 @@ impl<T, A: Allocator> Arc<T, A> {
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
     /// then `data` will be pinned in memory and unable to be moved.
+    #[inline]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
     pub fn pin_in(data: T, alloc: A) -> Pin<Arc<T, A>> {
         unsafe { Pin::new_unchecked(Arc::new_in(data, alloc)) }
     }
@@ -828,7 +833,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
     pub fn try_new_in(data: T, alloc: A) -> Result<Arc<T, A>, AllocError> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
@@ -868,9 +872,9 @@ impl<T, A: Allocator> Arc<T, A> {
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
             Ok(Arc::from_ptr_in(
@@ -907,9 +911,9 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
             Ok(Arc::from_ptr_in(
@@ -1116,10 +1120,10 @@ impl<T> Arc<[T]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
     }
@@ -1144,10 +1148,10 @@ impl<T> Arc<[T]> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
@@ -1189,9 +1193,9 @@ impl<T, A: Allocator> Arc<[T], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
+    #[inline]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
         unsafe { Arc::from_ptr_in(Arc::allocate_for_slice_in(len, &alloc), alloc) }
     }
@@ -1218,9 +1222,9 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[inline]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
         unsafe {
             Arc::from_ptr_in(
@@ -1268,9 +1272,9 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[inline]
     pub unsafe fn assume_init(self) -> Arc<T, A>
     where
         A: Clone,
@@ -1313,9 +1317,9 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T], A>
     where
         A: Clone,
@@ -2108,8 +2112,8 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// assert!(76 == *data);
     /// assert!(weak.upgrade().is_none());
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         // Note that we hold both a strong reference and a weak reference.
@@ -2502,9 +2506,9 @@ impl<T> Weak<T> {
     /// assert!(empty.upgrade().is_none());
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_weak_new", since = "CURRENT_RUSTC_VERSION")]
-    #[must_use]
     pub const fn new() -> Weak<T> {
         Weak {
             ptr: unsafe { NonNull::new_unchecked(ptr::invalid_mut::<ArcInner<T>>(usize::MAX)) },
@@ -2623,6 +2627,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// ```
     ///
     /// [`null`]: core::ptr::null "ptr::null"
+    #[inline]
     #[must_use]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
@@ -2667,6 +2672,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// [`from_raw`]: Weak::from_raw
     /// [`as_ptr`]: Weak::as_ptr
+    #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
@@ -2763,6 +2769,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// assert!(weak_five.upgrade().is_none());
     /// ```
+    #[inline]
     #[must_use = "this returns a new `Arc`, \
                   without modifying the original weak pointer"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -2800,6 +2807,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
+    #[inline]
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
@@ -2817,6 +2825,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// Due to implementation details, the returned value can be off by 1 in
     /// either direction when other threads are manipulating any `Arc`s or
     /// `Weak`s pointing to the same allocation.
+    #[inline]
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
@@ -3106,6 +3115,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
     ///
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Arc::new(6)));
     /// ```
+    #[inline]
     fn partial_cmp(&self, other: &Arc<T, A>) -> Option<Ordering> {
         (**self).partial_cmp(&**other)
     }
@@ -3123,6 +3133,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
     ///
     /// assert!(five < Arc::new(6));
     /// ```
+    #[inline]
     fn lt(&self, other: &Arc<T, A>) -> bool {
         *(*self) < *(*other)
     }
@@ -3140,6 +3151,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
     ///
     /// assert!(five <= Arc::new(5));
     /// ```
+    #[inline]
     fn le(&self, other: &Arc<T, A>) -> bool {
         *(*self) <= *(*other)
     }
@@ -3157,6 +3169,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
     ///
     /// assert!(five > Arc::new(4));
     /// ```
+    #[inline]
     fn gt(&self, other: &Arc<T, A>) -> bool {
         *(*self) > *(*other)
     }
@@ -3174,6 +3187,7 @@ impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Arc<T, A> {
     ///
     /// assert!(five >= Arc::new(5));
     /// ```
+    #[inline]
     fn ge(&self, other: &Arc<T, A>) -> bool {
         *(*self) >= *(*other)
     }
@@ -3194,6 +3208,7 @@ impl<T: ?Sized + Ord, A: Allocator> Ord for Arc<T, A> {
     ///
     /// assert_eq!(Ordering::Less, five.cmp(&Arc::new(6)));
     /// ```
+    #[inline]
     fn cmp(&self, other: &Arc<T, A>) -> Ordering {
         (**self).cmp(&**other)
     }
