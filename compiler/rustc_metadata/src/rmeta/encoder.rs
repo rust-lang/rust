@@ -2147,12 +2147,17 @@ impl EncodedMetadata {
     }
 
     #[inline]
+    pub fn from_raw_data(raw_data: Vec<u8>) -> Self {
+        Self { raw_data }
+    }
+
+    #[inline]
     pub fn raw_data(&self) -> &[u8] {
         &self.raw_data
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetadata {
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2170,11 +2175,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetada
             // It can be removed if it turns out to cause trouble or be detrimental to performance.
             join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
         },
-    )
-    .0
+    );
 }
 
-fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetadata {
+fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
     let mut encoder = opaque::FileEncoder::new(path.as_ref())
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
@@ -2226,8 +2230,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) -> EncodedMetad
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
-
-    EncodedMetadata { raw_data: result }
 }
 
 pub fn provide(providers: &mut Providers) {

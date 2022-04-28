@@ -68,11 +68,9 @@ pub fn encode_and_write_metadata(
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
-    let metadata = match metadata_kind {
+    match metadata_kind {
         MetadataKind::None => {
-            let metadata = EncodedMetadata::new();
-            let _ = emit_metadata(tcx.sess, metadata.raw_data(), &metadata_tmpdir);
-            metadata
+            let _ = emit_metadata(tcx.sess, &[], &metadata_tmpdir);
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
             encode_metadata(tcx, &metadata_filename)
@@ -82,7 +80,7 @@ pub fn encode_and_write_metadata(
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
-    if need_metadata_file {
+    let metadata_filename = if need_metadata_file {
         if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
@@ -92,7 +90,12 @@ pub fn encode_and_write_metadata(
                 .span_diagnostic
                 .emit_artifact_notification(&out_filename, "metadata");
         }
-    }
+        out_filename
+    } else {
+        metadata_filename
+    };
+    let raw_data = std::fs::read(metadata_filename).unwrap();
+    let metadata = EncodedMetadata::from_raw_data(raw_data);
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
