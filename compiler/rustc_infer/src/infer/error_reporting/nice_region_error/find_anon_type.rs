@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// ```
 /// The function returns the nested type corresponding to the anonymous region
 /// for e.g., `&u8` and `Vec<&u8>`.
-pub(crate) fn find_anon_type<'tcx>(
+pub fn find_anon_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: Region<'tcx>,
     br: &ty::BoundRegionKind,
