@@ -849,7 +849,8 @@ pub(crate) mod builtin {
     /// assert_eq!(display, debug);
     /// ```
     ///
-    /// For more information, see the documentation in [`std::fmt`].
+    /// See [the formatting documentation in `std::fmt`](../std/fmt/index.html)
+    /// for details of the macro argument syntax, and further information.
     ///
     /// [`Display`]: crate::fmt::Display
     /// [`Debug`]: crate::fmt::Debug
