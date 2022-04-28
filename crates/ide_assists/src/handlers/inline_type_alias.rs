@@ -3,7 +3,7 @@
 // - "inline_alias_to_users" assist #10881.
 // - Remove unused aliases if there are no longer any users, see inline_call.rs.
 
-use hir::PathResolution;
+use hir::{HasSource, PathResolution};
 use itertools::Itertools;
 use std::collections::HashMap;
 use syntax::{
@@ -41,31 +41,48 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let alias_instance = ctx.find_node_at_offset::<ast::PathType>()?;
-    let alias = get_type_alias(&ctx, &alias_instance)?;
-    let concrete_type = alias.ty()?;
-
     enum Replacement {
         Generic { lifetime_map: LifetimeMap, const_and_type_map: ConstAndTypeMap },
         Plain,
     }
 
-    let replacement = if let Some(alias_generics) = alias.generic_param_list() {
-        if alias_generics.generic_params().next().is_none() {
-            cov_mark::hit!(no_generics_params);
-            return None;
-        }
+    let alias_instance = ctx.find_node_at_offset::<ast::PathType>()?;
+    let concrete_type;
+    let replacement;
+    match alias_instance.path()?.as_single_name_ref() {
+        Some(nameref) if nameref.Self_token().is_some() => {
+            match ctx.sema.resolve_path(&alias_instance.path()?)? {
+                PathResolution::SelfType(imp) => {
+                    concrete_type = imp.source(ctx.db())?.value.self_ty()?;
+                }
+                // FIXME: should also work in ADT definitions
+                _ => return None,
+            }
 
-        let instance_args =
-            alias_instance.syntax().descendants().find_map(ast::GenericArgList::cast);
-
-        Replacement::Generic {
-            lifetime_map: LifetimeMap::new(&instance_args, &alias_generics)?,
-            const_and_type_map: ConstAndTypeMap::new(&instance_args, &alias_generics)?,
+            replacement = Replacement::Plain;
         }
-    } else {
-        Replacement::Plain
-    };
+        _ => {
+            let alias = get_type_alias(&ctx, &alias_instance)?;
+            concrete_type = alias.ty()?;
+
+            replacement = if let Some(alias_generics) = alias.generic_param_list() {
+                if alias_generics.generic_params().next().is_none() {
+                    cov_mark::hit!(no_generics_params);
+                    return None;
+                }
+
+                let instance_args =
+                    alias_instance.syntax().descendants().find_map(ast::GenericArgList::cast);
+
+                Replacement::Generic {
+                    lifetime_map: LifetimeMap::new(&instance_args, &alias_generics)?,
+                    const_and_type_map: ConstAndTypeMap::new(&instance_args, &alias_generics)?,
+                }
+            } else {
+                Replacement::Plain
+            };
+        }
+    }
 
     let target = alias_instance.syntax().text_range();
 
@@ -751,6 +768,65 @@ mod foo {
 }
 fn main() {
     let a: String;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_self_type() {
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Strukt;
+
+impl Strukt {
+    fn new() -> Self$0 {}
+}
+"#,
+            r#"
+struct Strukt;
+
+impl Strukt {
+    fn new() -> Strukt {}
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Strukt<'a, T, const C: usize>(&'a [T; C]);
+
+impl<T, const C: usize> Strukt<'_, T, C> {
+    fn new() -> Self$0 {}
+}
+"#,
+            r#"
+struct Strukt<'a, T, const C: usize>(&'a [T; C]);
+
+impl<T, const C: usize> Strukt<'_, T, C> {
+    fn new() -> Strukt<'_, T, C> {}
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Strukt<'a, T, const C: usize>(&'a [T; C]);
+
+trait Tr<'b, T> {}
+
+impl<T, const C: usize> Tr<'static, u8> for Strukt<'_, T, C> {
+    fn new() -> Self$0 {}
+}
+"#,
+            r#"
+struct Strukt<'a, T, const C: usize>(&'a [T; C]);
+
+trait Tr<'b, T> {}
+
+impl<T, const C: usize> Tr<'static, u8> for Strukt<'_, T, C> {
+    fn new() -> Strukt<'_, T, C> {}
 }
 "#,
         );
