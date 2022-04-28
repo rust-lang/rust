@@ -1519,18 +1519,22 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // Any type with multiple potential metadata types is therefore not eligible.
                 let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
-                let tail = selcx.tcx().struct_tail_with_normalize(self_ty, |ty| {
-                    // We throw away any obligations we get from this, since we normalize
-                    // and confirm these obligations once again during confirmation
-                    normalize_with_depth(
-                        selcx,
-                        obligation.param_env,
-                        obligation.cause.clone(),
-                        obligation.recursion_depth + 1,
-                        ty,
-                    )
-                    .value
-                });
+                let tail = selcx.tcx().struct_tail_with_normalize(
+                    self_ty,
+                    |ty| {
+                        // We throw away any obligations we get from this, since we normalize
+                        // and confirm these obligations once again during confirmation
+                        normalize_with_depth(
+                            selcx,
+                            obligation.param_env,
+                            obligation.cause.clone(),
+                            obligation.recursion_depth + 1,
+                            ty,
+                        )
+                        .value
+                    },
+                    || {},
+                );
 
                 match tail.kind() {
                     ty::Bool

@@ -424,6 +424,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn operand_projection(
         &self,
         base: &OpTy<'tcx, M::PointerTag>,

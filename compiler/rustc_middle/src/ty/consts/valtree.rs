@@ -20,6 +20,9 @@ pub enum ValTree<'tcx> {
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
     /// of these types have the same representation.
     Leaf(ScalarInt),
+
+    //SliceOrStr(ValSlice<'tcx>),
+    // dont use SliceOrStr for now
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
     /// Enums are represented by storing their discriminant as a field, followed by all
@@ -30,5 +33,21 @@ pub enum ValTree<'tcx> {
 impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])
+    }
+
+    #[inline]
+    pub fn unwrap_leaf(self) -> ScalarInt {
+        match self {
+            Self::Leaf(s) => s,
+            _ => bug!("expected leaf, got {:?}", self),
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_branch(self) -> &'tcx [Self] {
+        match self {
+            Self::Branch(branch) => branch,
+            _ => bug!("expected branch, got {:?}", self),
+        }
     }
 }

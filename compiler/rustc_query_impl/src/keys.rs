@@ -502,3 +502,14 @@ impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
         self.0.default_span(tcx)
     }
 }
+
+impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}

@@ -418,6 +418,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     /// Most likely, you want to call `InterpCx::write_scalar` instead of this method.
+    #[instrument(skip(self, cx), level = "debug")]
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,

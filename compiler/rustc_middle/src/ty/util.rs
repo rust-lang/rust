@@ -187,7 +187,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// if input `ty` is not a structure at all.
     pub fn struct_tail_without_normalization(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_with_normalize(ty, |ty| ty)
+        tcx.struct_tail_with_normalize(ty, |ty| ty, || {})
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -203,7 +203,7 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty))
+        tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty), || {})
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -220,6 +220,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ty: Ty<'tcx>,
         mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        // This is currently used to allow us to walk a ValTree
+        // in lockstep with the type in order to get the ValTree branch that
+        // corresponds to an unsized field.
+        mut f: impl FnMut() -> (),
     ) -> Ty<'tcx> {
         let recursion_limit = self.recursion_limit();
         for iteration in 0.. {
@@ -235,12 +239,16 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                     match def.non_enum_variant().fields.last() {
-                        Some(f) => ty = f.ty(self, substs),
+                        Some(field) => {
+                            f();
+                            ty = field.ty(self, substs);
+                        }
                         None => break,
                     }
                 }
 
                 ty::Tuple(tys) if let Some((&last_ty, _)) = tys.split_last() => {
+                    f();
                     ty = last_ty;
                 }
 

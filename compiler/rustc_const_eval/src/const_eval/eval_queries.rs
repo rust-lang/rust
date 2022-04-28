@@ -106,6 +106,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 
 /// This function converts an interpreter value into a constant that is meant for use in the
 /// type system.
+#[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
@@ -140,21 +141,26 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace()
     };
 
+    debug!(?immediate);
+
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
-    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr.into_parts() {
-        (Some(alloc_id), offset) => {
-            let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-            ConstValue::ByRef { alloc, offset }
-        }
-        (None, offset) => {
-            assert!(mplace.layout.is_zst());
-            assert_eq!(
-                offset.bytes() % mplace.layout.align.abi.bytes(),
-                0,
-                "this MPlaceTy must come from a validated constant, thus we can assume the \
+    let to_const_value = |mplace: &MPlaceTy<'_>| {
+        debug!("to_const_value(mplace: {:?})", mplace);
+        match mplace.ptr.into_parts() {
+            (Some(alloc_id), offset) => {
+                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
+                ConstValue::ByRef { alloc, offset }
+            }
+            (None, offset) => {
+                assert!(mplace.layout.is_zst());
+                assert_eq!(
+                    offset.bytes() % mplace.layout.align.abi.bytes(),
+                    0,
+                    "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
-            );
-            ConstValue::Scalar(Scalar::ZST)
+                );
+                ConstValue::Scalar(Scalar::ZST)
+            }
         }
     };
     match immediate {
@@ -166,6 +172,7 @@ pub(super) fn op_to_const<'tcx>(
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
             },
             Immediate::ScalarPair(a, b) => {
+                debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
                 let (data, start) =
                     match ecx.scalar_to_ptr(a.check_init().unwrap()).unwrap().into_parts() {
@@ -209,7 +216,10 @@ fn turn_into_const_value<'tcx>(
     );
 
     // Turn this into a proper constant.
-    op_to_const(&ecx, &mplace.into())
+    let const_val = op_to_const(&ecx, &mplace.into());
+    debug!(?const_val);
+
+    const_val
 }
 
 pub fn eval_to_const_value_raw_provider<'tcx>(
