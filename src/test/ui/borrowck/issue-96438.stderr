@@ -1,0 +1,16 @@
+error[E0507]: cannot move out of dereference of `RefMut<'_, Option<Vec<()>>>`
+  --> $DIR/issue-96438.rs:4:5
+   |
+LL |     cell.borrow_mut().unwrap().pop().unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ move occurs because value has type `Option<Vec<()>>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the `Option`'s content
+   |
+LL |     cell.borrow_mut().as_mut().unwrap().pop().unwrap();
+   |                      +++++++++
+LL |     cell.borrow_mut().as_ref().unwrap().pop().unwrap();
+   |                      +++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

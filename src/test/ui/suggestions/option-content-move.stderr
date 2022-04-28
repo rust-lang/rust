@@ -6,6 +6,8 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |
 help: consider borrowing the `Option`'s content
    |
+LL |                 if selection.1.as_mut().unwrap().contains(selection.0) {
+   |                               +++++++++
 LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
    |                               +++++++++
 
@@ -17,6 +19,8 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |
 help: consider borrowing the `Result`'s content
    |
+LL |                 if selection.1.as_mut().unwrap().contains(selection.0) {
+   |                               +++++++++
 LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
    |                               +++++++++
 
