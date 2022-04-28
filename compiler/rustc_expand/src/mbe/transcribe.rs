@@ -29,8 +29,8 @@ impl MutVisitor for Marker {
 enum Frame<'a> {
     Delimited {
         tts: &'a [mbe::TokenTree],
-        delim_token: token::DelimToken,
         idx: usize,
+        delim_token: token::DelimToken,
         span: DelimSpan,
     },
     Sequence {
@@ -42,8 +42,8 @@ enum Frame<'a> {
 
 impl<'a> Frame<'a> {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(tts: &'a [mbe::TokenTree]) -> Frame<'a> {
-        Frame::Delimited { tts, delim_token: token::NoDelim, idx: 0, span: DelimSpan::dummy() }
+    fn new(src: &'a mbe::Delimited, span: DelimSpan) -> Frame<'a> {
+        Frame::Delimited { tts: &src.tts, idx: 0, delim_token: src.delim, span }
     }
 }
 
@@ -85,17 +85,18 @@ impl<'a> Iterator for Frame<'a> {
 pub(super) fn transcribe<'a>(
     cx: &ExtCtxt<'a>,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-    src: &[mbe::TokenTree],
+    src: &mbe::Delimited,
+    src_span: DelimSpan,
     transparency: Transparency,
 ) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...
-    if src.is_empty() {
+    if src.tts.is_empty() {
         return Ok(TokenStream::default());
     }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS.
-    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(&src)];
+    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(&src, src_span)];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being

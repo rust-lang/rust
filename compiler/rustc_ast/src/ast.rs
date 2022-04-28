@@ -1542,10 +1542,10 @@ pub enum MacArgs {
 }
 
 impl MacArgs {
-    pub fn delim(&self) -> DelimToken {
+    pub fn delim(&self) -> Option<DelimToken> {
         match self {
-            MacArgs::Delimited(_, delim, _) => delim.to_token(),
-            MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
+            MacArgs::Delimited(_, delim, _) => Some(delim.to_token()),
+            MacArgs::Empty | MacArgs::Eq(..) => None,
         }
     }
 

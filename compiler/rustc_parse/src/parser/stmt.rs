@@ -164,25 +164,29 @@ impl<'a> Parser<'a> {
         let delim = args.delim();
         let hi = self.prev_token.span;
 
-        let style =
-            if delim == token::Brace { MacStmtStyle::Braces } else { MacStmtStyle::NoBraces };
+        let style = match delim {
+            Some(token::Brace) => MacStmtStyle::Braces,
+            Some(_) => MacStmtStyle::NoBraces,
+            None => unreachable!(),
+        };
 
         let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
 
-        let kind =
-            if (delim == token::Brace && self.token != token::Dot && self.token != token::Question)
-                || self.token == token::Semi
-                || self.token == token::Eof
-            {
-                StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
-            } else {
-                // Since none of the above applied, this is an expression statement macro.
-                let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
-                let e = self.maybe_recover_from_bad_qpath(e, true)?;
-                let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
-                let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                StmtKind::Expr(e)
-            };
+        let kind = if (style == MacStmtStyle::Braces
+            && self.token != token::Dot
+            && self.token != token::Question)
+            || self.token == token::Semi
+            || self.token == token::Eof
+        {
+            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
+        } else {
+            // Since none of the above applied, this is an expression statement macro.
+            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
+            let e = self.maybe_recover_from_bad_qpath(e, true)?;
+            let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
+            let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+            StmtKind::Expr(e)
+        };
         Ok(self.mk_stmt(lo.to(hi), kind))
     }
 
