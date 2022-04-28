@@ -3,13 +3,14 @@
 
 use crate::config::CheckCfg;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
+use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     error_code, fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan,
+    DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -286,5 +287,24 @@ impl ParseSess {
 
     pub fn proc_macro_quoted_spans(&self) -> Vec<Span> {
         self.proc_macro_quoted_spans.lock().clone()
+    }
+
+    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+        err.into_diagnostic(self).emit()
+    }
+
+    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+        warning.into_diagnostic(self).emit()
+    }
+
+    pub fn struct_err(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        self.span_diagnostic.struct_err(msg)
+    }
+
+    pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
+        self.span_diagnostic.struct_warn(msg)
     }
 }
