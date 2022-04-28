@@ -3,6 +3,7 @@ cfg_if::cfg_if! {
         target_os = "linux",
         target_os = "android",
         all(target_arch = "wasm32", target_feature = "atomics"),
+        target_os = "freebsd",
         target_os = "openbsd",
         target_os = "netbsd",
         target_os = "dragonfly",

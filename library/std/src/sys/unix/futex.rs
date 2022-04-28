@@ -2,6 +2,7 @@
     target_os = "linux",
     target_os = "android",
     all(target_os = "emscripten", target_feature = "atomics"),
+    target_os = "freebsd",
     target_os = "openbsd",
     target_os = "netbsd",
     target_os = "dragonfly",
@@ -18,7 +19,12 @@ pub const SYS___futex: i32 = 166;
 /// Returns directly if the futex doesn't hold the expected value.
 ///
 /// Returns false on timeout, and true in all other cases.
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
     use crate::ptr::null;
@@ -40,7 +46,26 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
         // absolute time rather than a relative time.
         let r = unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(target_os = "netbsd")] {
+                if #[cfg(target_os = "freebsd")] {
+                    // FreeBSD doesn't have futex(), but it has
+                    // _umtx_op(UMTX_OP_WAIT_UINT_PRIVATE), which is nearly
+                    // identical. It supports absolute timeouts through a flag
+                    // in the _umtx_time struct.
+                    let umtx_timeout = timespec.map(|t| libc::_umtx_time {
+                        _timeout: t.t,
+                        _flags: libc::UMTX_ABSTIME,
+                        _clockid: libc::CLOCK_MONOTONIC as u32,
+                    });
+                    let umtx_timeout_ptr = umtx_timeout.as_ref().map_or(null(), |t| t as *const _);
+                    let umtx_timeout_size = umtx_timeout.as_ref().map_or(0, |t| crate::mem::size_of_val(t));
+                    libc::_umtx_op(
+                        futex as *const AtomicU32 as *mut _,
+                        libc::UMTX_OP_WAIT_UINT_PRIVATE,
+                        expected as libc::c_ulong,
+                        crate::ptr::invalid_mut(umtx_timeout_size),
+                        umtx_timeout_ptr as *mut _,
+                    )
+                } else if #[cfg(target_os = "netbsd")] {
                     // Netbsd's futex syscall takes addr2 and val2 as separate arguments.
                     // (Both are unused for FUTEX_WAIT[_BITSET].)
                     libc::syscall(
@@ -108,6 +133,35 @@ pub fn futex_wake_all(futex: &AtomicU32) {
             }
         }
     }
+}
+
+// FreeBSD doesn't tell us how many threads are woken up, so this doesn't return a bool.
+#[cfg(target_os = "freebsd")]
+pub fn futex_wake(futex: &AtomicU32) {
+    use crate::ptr::null_mut;
+    unsafe {
+        libc::_umtx_op(
+            futex as *const AtomicU32 as *mut _,
+            libc::UMTX_OP_WAKE_PRIVATE,
+            1,
+            null_mut(),
+            null_mut(),
+        )
+    };
+}
+
+#[cfg(target_os = "freebsd")]
+pub fn futex_wake_all(futex: &AtomicU32) {
+    use crate::ptr::null_mut;
+    unsafe {
+        libc::_umtx_op(
+            futex as *const AtomicU32 as *mut _,
+            libc::UMTX_OP_WAKE_PRIVATE,
+            i32::MAX as libc::c_ulong,
+            null_mut(),
+            null_mut(),
+        )
+    };
 }
 
 #[cfg(target_os = "openbsd")]

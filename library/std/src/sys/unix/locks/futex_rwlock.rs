@@ -284,8 +284,8 @@ impl RwLock {
     fn wake_writer(&self) -> bool {
         self.writer_notify.fetch_add(1, Release);
         cfg_if::cfg_if! {
-            if #[cfg(target_os = "dragonfly")] {
-                // DragonFlyBSD doesn't tell us whether it woke up any threads or not.
+            if #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))] {
+                // FreeBSD and DragonFlyBSD don't tell us whether they woke up any threads or not.
                 // So, we always return `false` here, as that still results in correct behaviour.
                 // The downside is an extra syscall in case both readers and writers were waiting,
                 // and unnecessarily waking up readers when a writer is about to attempt to lock the lock.
