@@ -14,6 +14,7 @@ use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::thread;
 
 use super::path::maybe_verbatim;
 use super::to_u16s;
@@ -1059,6 +1060,7 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
                         // Otherwise return the error.
                         Err(e) => return Err(e),
                     }
+                    thread::yield_now();
                 }
             }
         }
@@ -1072,6 +1074,7 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
                         if i == MAX_RETRIES || e.kind() != io::ErrorKind::DirectoryNotEmpty {
                             return Err(e);
                         }
+                        thread::yield_now();
                     } else {
                         break;
                     }
