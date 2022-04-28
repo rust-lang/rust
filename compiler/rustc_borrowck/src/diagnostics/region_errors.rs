@@ -2,7 +2,10 @@
 
 use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::{
-    error_reporting::nice_region_error::{self, find_param_with_region, NiceRegionError},
+    error_reporting::nice_region_error::{
+        self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
+        NiceRegionError,
+    },
     error_reporting::unexpected_hidden_region_diagnostic,
     NllRegionVariableOrigin, RelateParamBound,
 };
@@ -630,6 +633,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
+        self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
 
         diag
     }
@@ -693,5 +697,34 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 Some((param.param_ty_span, param.param_ty.to_string())),
             );
         }
+    }
+
+    fn suggest_adding_lifetime_params(
+        &self,
+        diag: &mut Diagnostic,
+        sub: RegionVid,
+        sup: RegionVid,
+    ) {
+        let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
+            return
+        };
+
+        let Some((ty_sub, _)) = self
+            .infcx
+            .tcx
+            .is_suitable_region(sub)
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sub, &anon_reg.boundregion)) else {
+            return
+        };
+
+        let Some((ty_sup, _)) = self
+            .infcx
+            .tcx
+            .is_suitable_region(sup)
+            .and_then(|anon_reg| find_anon_type(self.infcx.tcx, sup, &anon_reg.boundregion)) else {
+            return
+        };
+
+        suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
     }
 }

@@ -14,6 +14,8 @@ mod static_impl_trait;
 mod trait_impl_difference;
 mod util;
 
+pub use different_lifetimes::suggest_adding_lifetime_params;
+pub use find_anon_type::find_anon_type;
 pub use static_impl_trait::suggest_new_region_bound;
 pub use util::find_param_with_region;
 
