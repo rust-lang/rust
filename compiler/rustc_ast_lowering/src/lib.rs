@@ -38,8 +38,8 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
-use rustc_ast::token::{Delimiter, Token};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
@@ -878,33 +878,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
             MacArgs::Eq(eq_span, ref token) => {
                 // In valid code the value is always representable as a single literal token.
-                fn unwrap_single_token(sess: &Session, tokens: TokenStream, span: Span) -> Token {
-                    if tokens.len() != 1 {
-                        sess.diagnostic()
-                            .delay_span_bug(span, "multiple tokens in key-value attribute's value");
+                // Otherwise, a dummy token suffices because the error is handled elsewhere.
+                let token = if let token::Interpolated(nt) = &token.kind
+                    && let token::NtExpr(expr) = &**nt
+                {
+                    if let ExprKind::Lit(Lit { token, span, .. }) = expr.kind {
+                        Token::new(TokenKind::Literal(token), span)
+                    } else {
+                        Token::dummy()
                     }
-                    match tokens.into_trees().next() {
-                        Some(TokenTree::Token(token)) => token,
-                        Some(TokenTree::Delimited(_, delim, tokens)) => {
-                            if delim != Delimiter::Invisible {
-                                sess.diagnostic().delay_span_bug(
-                                    span,
-                                    "unexpected delimiter in key-value attribute's value",
-                                );
-                            }
-                            unwrap_single_token(sess, tokens, span)
-                        }
-                        None => Token::dummy(),
-                    }
-                }
-
-                let tokens = FlattenNonterminals {
-                    parse_sess: &self.sess.parse_sess,
-                    synthesize_tokens: CanSynthesizeMissingTokens::Yes,
-                    nt_to_tokenstream: self.nt_to_tokenstream,
-                }
-                .process_token(token.clone());
-                MacArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
+                } else {
+                    unreachable!()
+                };
+                MacArgs::Eq(eq_span, token)
             }
         }
     }
