@@ -469,14 +469,15 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 true,
                 span,
             ),
-            MacArgs::Empty | MacArgs::Eq(..) => {
+            MacArgs::Empty => {
                 self.print_path(&item.path, false, 0);
-                if let MacArgs::Eq(_, token) = &item.args {
-                    self.space();
-                    self.word_space("=");
-                    let token_str = self.token_to_string_ext(token, true);
-                    self.word(token_str);
-                }
+            }
+            MacArgs::Eq(_, token) => {
+                self.print_path(&item.path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.token_to_string_ext(token, true);
+                self.word(token_str);
             }
         }
         self.end();
