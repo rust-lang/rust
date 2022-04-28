@@ -364,7 +364,7 @@ dependencies = [
  "tar",
  "tempfile",
  "termcolor",
- "toml_edit",
+ "toml_edit 0.14.3",
  "unicode-width",
  "unicode-xid",
  "url 2.2.2",
@@ -450,7 +450,7 @@ dependencies = [
  "serde_json",
  "tar",
  "termcolor",
- "toml_edit",
+ "toml_edit 0.13.4",
  "url 2.2.2",
 ]
 
@@ -2048,6 +2048,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kstring"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec3066350882a1cd6d950d055997f379ac37fd39f81cd4d8ed186032eb3c5747"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3234,7 +3243,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "toml",
- "toml_edit",
+ "toml_edit 0.13.4",
  "url 2.2.2",
  "walkdir",
 ]
@@ -4893,6 +4902,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "std"
 version = "0.0.0"
 dependencies = [
@@ -5309,7 +5324,20 @@ dependencies = [
  "combine",
  "indexmap",
  "itertools",
- "kstring",
+ "kstring 1.0.6",
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba98375fd631b83696f87c64e4ed8e29e6a1f3404d6aed95fa95163bad38e705"
+dependencies = [
+ "combine",
+ "indexmap",
+ "itertools",
+ "kstring 2.0.0",
  "serde",
 ]
 
