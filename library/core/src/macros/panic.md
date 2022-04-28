@@ -73,7 +73,7 @@ This is true even if the argument is a string literal.
 
 For example, in Rust 2015 `panic!("problem: {reason}")` panics with a
 payload of literally `"problem: {reason}"` (a `&'static str`), which
-is probably not what was intended.  In current Rust this usage 
+is probably not what was intended.  In current Rust this usage
 captures and formats a variable `reason` from the surrounding scope.
 
 In Rust editions prior to 2021, `core::panic!(x)` requires that
