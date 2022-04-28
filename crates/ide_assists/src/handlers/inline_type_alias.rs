@@ -830,5 +830,14 @@ impl<T, const C: usize> Tr<'static, u8> for Strukt<'_, T, C> {
 }
 "#,
         );
+
+        check_assist_not_applicable(
+            inline_type_alias,
+            r#"
+trait Tr {
+    fn new() -> Self$0;
+}
+"#,
+        );
     }
 }
