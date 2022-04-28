@@ -1,6 +1,6 @@
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -24,8 +24,8 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
-    pub expected_delim: token::DelimToken,
-    pub found_delim: Option<token::DelimToken>,
+    pub expected_delim: Delimiter,
+    pub found_delim: Option<Delimiter>,
     pub found_span: Span,
     pub unclosed_span: Option<Span>,
     pub candidate_span: Option<Span>,
@@ -284,12 +284,12 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Semi => token::Semi,
             rustc_lexer::TokenKind::Comma => token::Comma,
             rustc_lexer::TokenKind::Dot => token::Dot,
-            rustc_lexer::TokenKind::OpenParen => token::OpenDelim(token::Paren),
-            rustc_lexer::TokenKind::CloseParen => token::CloseDelim(token::Paren),
-            rustc_lexer::TokenKind::OpenBrace => token::OpenDelim(token::Brace),
-            rustc_lexer::TokenKind::CloseBrace => token::CloseDelim(token::Brace),
-            rustc_lexer::TokenKind::OpenBracket => token::OpenDelim(token::Bracket),
-            rustc_lexer::TokenKind::CloseBracket => token::CloseDelim(token::Bracket),
+            rustc_lexer::TokenKind::OpenParen => token::OpenDelim(Delimiter::Parenthesis),
+            rustc_lexer::TokenKind::CloseParen => token::CloseDelim(Delimiter::Parenthesis),
+            rustc_lexer::TokenKind::OpenBrace => token::OpenDelim(Delimiter::Brace),
+            rustc_lexer::TokenKind::CloseBrace => token::CloseDelim(Delimiter::Brace),
+            rustc_lexer::TokenKind::OpenBracket => token::OpenDelim(Delimiter::Bracket),
+            rustc_lexer::TokenKind::CloseBracket => token::CloseDelim(Delimiter::Bracket),
             rustc_lexer::TokenKind::At => token::At,
             rustc_lexer::TokenKind::Pound => token::Pound,
             rustc_lexer::TokenKind::Tilde => token::Tilde,

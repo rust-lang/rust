@@ -11,16 +11,16 @@ crate mod quoted;
 crate mod transcribe;
 
 use metavar_expr::MetaVarExpr;
-use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiters
-/// might be `NoDelim`, but they are not represented explicitly.
+/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`.
+/// The delimiters are not represented explicitly in the `tts` vector.
 #[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
-    delim: token::DelimToken,
+    delim: Delimiter,
     /// FIXME: #67062 has details about why this is sub-optimal.
     tts: Vec<TokenTree>,
 }

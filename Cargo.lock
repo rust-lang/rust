@@ -4158,6 +4158,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
+ "rustc_macros",
  "rustc_session",
  "rustc_span",
  "tracing",

@@ -6,6 +6,11 @@ LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                    |         |
    |                    |         let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn a<'a>(self: Pin<&'a Foo>, f: &'a Foo) -> &Foo { f }
+   |         ++++            ++           ++
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:14:69
@@ -15,6 +20,11 @@ LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, 
    |                    |          |
    |                    |          let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn c<'a>(self: Pin<&'a Self>, f: &'a Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |         ++++            ++            ++
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:21:58

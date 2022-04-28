@@ -8,7 +8,7 @@ use super::{
 use crate::lexer::UnmatchedBrace;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Lit, LitKind, TokenKind};
+use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
@@ -21,6 +21,7 @@ use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, Er
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
+use rustc_macros::SessionDiagnostic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -241,6 +242,16 @@ impl MultiSugg {
         err.multipart_suggestions(msg, suggestions.map(|s| s.patches), applicability);
     }
 }
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "parser-maybe-report-ambiguous-plus")]
+struct AmbiguousPlus {
+    pub sum_ty: String,
+    #[primary_span]
+    #[suggestion(code = "({sum_ty})")]
+    pub span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -326,10 +337,10 @@ impl<'a> Parser<'a> {
             TokenKind::Comma,
             TokenKind::Semi,
             TokenKind::ModSep,
-            TokenKind::OpenDelim(token::DelimToken::Brace),
-            TokenKind::OpenDelim(token::DelimToken::Paren),
-            TokenKind::CloseDelim(token::DelimToken::Brace),
-            TokenKind::CloseDelim(token::DelimToken::Paren),
+            TokenKind::OpenDelim(Delimiter::Brace),
+            TokenKind::OpenDelim(Delimiter::Parenthesis),
+            TokenKind::CloseDelim(Delimiter::Brace),
+            TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
         match self.token.ident() {
             Some((ident, false))
@@ -402,7 +413,7 @@ impl<'a> Parser<'a> {
             } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
                 // The current token is in the same line as the prior token, not recoverable.
             } else if [token::Comma, token::Colon].contains(&self.token.kind)
-                && self.prev_token.kind == token::CloseDelim(token::Paren)
+                && self.prev_token.kind == token::CloseDelim(Delimiter::Parenthesis)
             {
                 // Likely typo: The current token is on a new line and is expected to be
                 // `.`, `;`, `?`, or an operator after a close delimiter token.
@@ -413,7 +424,7 @@ impl<'a> Parser<'a> {
                 //         ^
                 // https://github.com/rust-lang/rust/issues/72253
             } else if self.look_ahead(1, |t| {
-                t == &token::CloseDelim(token::Brace)
+                t == &token::CloseDelim(Delimiter::Brace)
                     || t.can_begin_expr() && t.kind != token::Colon
             }) && [token::Comma, token::Colon].contains(&self.token.kind)
             {
@@ -430,7 +441,7 @@ impl<'a> Parser<'a> {
                     .emit();
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
-                t == &token::CloseDelim(token::Brace)
+                t == &token::CloseDelim(Delimiter::Brace)
                     || (t.can_begin_expr() && t != &token::Semi && t != &token::Pound)
                     // Avoid triggering with too many trailing `#` in raw string.
                     || (sm.is_multiline(
@@ -644,7 +655,7 @@ impl<'a> Parser<'a> {
                 (Err(snapshot_err), Err(err)) => {
                     // We don't know what went wrong, emit the normal error.
                     snapshot_err.cancel();
-                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     Err(err)
                 }
                 (Ok(_), Ok(mut tail)) => {
@@ -855,7 +866,7 @@ impl<'a> Parser<'a> {
                         trailing_span = trailing_span.to(self.token.span);
                         self.bump();
                     }
-                    if self.token.kind == token::OpenDelim(token::Paren) {
+                    if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
                         // Recover from bad turbofish: `foo.collect::Vec<_>()`.
                         let args = AngleBracketedArgs { args, span }.into();
                         segment.args = args;
@@ -1087,7 +1098,7 @@ impl<'a> Parser<'a> {
                             [(token::Lt, 1), (token::Gt, -1), (token::BinOp(token::Shr), -2)];
                         self.consume_tts(1, &modifiers);
 
-                        if !&[token::OpenDelim(token::Paren), token::ModSep]
+                        if !&[token::OpenDelim(Delimiter::Parenthesis), token::ModSep]
                             .contains(&self.token.kind)
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
@@ -1121,7 +1132,7 @@ impl<'a> Parser<'a> {
                                 Err(err)
                             }
                         }
-                    } else if token::OpenDelim(token::Paren) == self.token.kind {
+                    } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
                         suggest(&mut err);
@@ -1175,8 +1186,10 @@ impl<'a> Parser<'a> {
         self.bump(); // `(`
 
         // Consume the fn call arguments.
-        let modifiers =
-            [(token::OpenDelim(token::Paren), 1), (token::CloseDelim(token::Paren), -1)];
+        let modifiers = [
+            (token::OpenDelim(Delimiter::Parenthesis), 1),
+            (token::CloseDelim(Delimiter::Parenthesis), -1),
+        ];
         self.consume_tts(1, &modifiers);
 
         if self.token.kind == token::Eof {
@@ -1196,15 +1209,7 @@ impl<'a> Parser<'a> {
         ty: &Ty,
     ) {
         if matches!(allow_plus, AllowPlus::No) && impl_dyn_multi {
-            let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
-            self.struct_span_err(ty.span, "ambiguous `+` in a type")
-                .span_suggestion(
-                    ty.span,
-                    "use parentheses to disambiguate",
-                    sum_with_parens,
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(AmbiguousPlus { sum_ty: pprust::ty_to_string(&ty), span: ty.span });
         }
     }
 
@@ -1576,15 +1581,15 @@ impl<'a> Parser<'a> {
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
         self.expect(&token::Not)?;
-        self.expect(&token::OpenDelim(token::Paren))?;
+        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
         let expr = self.parse_expr()?;
-        self.expect(&token::CloseDelim(token::Paren))?;
+        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
         Ok((self.prev_token.span, expr, false))
     }
 
     fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
         let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
-        let expr = if self.token == token::OpenDelim(token::Brace) {
+        let expr = if self.token == token::OpenDelim(Delimiter::Brace) {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
@@ -1616,8 +1621,8 @@ impl<'a> Parser<'a> {
 
     /// If encountering `future.await()`, consumes and emits an error.
     pub(super) fn recover_from_await_method_call(&mut self) {
-        if self.token == token::OpenDelim(token::Paren)
-            && self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
+        if self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
         {
             // future.await()
             let lo = self.token.span;
@@ -1638,7 +1643,7 @@ impl<'a> Parser<'a> {
     pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
-        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
+        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(Delimiter::Parenthesis)); //check for (
 
         if is_try && is_questionmark && is_open {
             let lo = self.token.span;
@@ -1646,8 +1651,8 @@ impl<'a> Parser<'a> {
             self.bump(); //remove !
             let try_span = lo.to(self.token.span); //we take the try!( span
             self.bump(); //remove (
-            let is_empty = self.token == token::CloseDelim(token::Paren); //check if the block is empty
-            self.consume_block(token::Paren, ConsumeClosingDelim::No); //eat the block
+            let is_empty = self.token == token::CloseDelim(Delimiter::Parenthesis); //check if the block is empty
+            self.consume_block(Delimiter::Parenthesis, ConsumeClosingDelim::No); //eat the block
             let hi = self.token.span;
             self.bump(); //remove )
             let mut err = self.struct_span_err(lo.to(hi), "use of deprecated `try` macro");
@@ -1678,7 +1683,7 @@ impl<'a> Parser<'a> {
         begin_paren: Option<Span>,
     ) -> P<Pat> {
         match (&self.token.kind, begin_paren) {
-            (token::CloseDelim(token::Paren), Some(begin_par_sp)) => {
+            (token::CloseDelim(Delimiter::Parenthesis), Some(begin_par_sp)) => {
                 self.bump();
 
                 self.struct_span_err(
@@ -1711,8 +1716,8 @@ impl<'a> Parser<'a> {
             || self.token.is_ident() &&
             matches!(node, ast::ExprKind::Path(..) | ast::ExprKind::Field(..)) &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
-            self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren))
-            || self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace)) // `foo:bar {`
+            self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Parenthesis))
+            || self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)) // `foo:bar {`
             || self.look_ahead(1, |t| t == &token::Colon) &&     // `foo:bar::<baz`
             self.look_ahead(2, |t| t == &token::Lt) &&
             self.look_ahead(3, |t| t.is_ident())
@@ -1725,7 +1730,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_seq_parse_error(
         &mut self,
-        delim: token::DelimToken,
+        delim: Delimiter,
         lo: Span,
         result: PResult<'a, P<Expr>>,
     ) -> P<Expr> {
@@ -1842,7 +1847,7 @@ impl<'a> Parser<'a> {
         loop {
             debug!("recover_stmt_ loop {:?}", self.token);
             match self.token.kind {
-                token::OpenDelim(token::DelimToken::Brace) => {
+                token::OpenDelim(Delimiter::Brace) => {
                     brace_depth += 1;
                     self.bump();
                     if break_on_block == BlockMode::Break && brace_depth == 1 && bracket_depth == 0
@@ -1850,11 +1855,11 @@ impl<'a> Parser<'a> {
                         in_block = true;
                     }
                 }
-                token::OpenDelim(token::DelimToken::Bracket) => {
+                token::OpenDelim(Delimiter::Bracket) => {
                     bracket_depth += 1;
                     self.bump();
                 }
-                token::CloseDelim(token::DelimToken::Brace) => {
+                token::CloseDelim(Delimiter::Brace) => {
                     if brace_depth == 0 {
                         debug!("recover_stmt_ return - close delim {:?}", self.token);
                         break;
@@ -1866,7 +1871,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
-                token::CloseDelim(token::DelimToken::Bracket) => {
+                token::CloseDelim(Delimiter::Bracket) => {
                     bracket_depth -= 1;
                     if bracket_depth < 0 {
                         bracket_depth = 0;
@@ -1924,11 +1929,11 @@ impl<'a> Parser<'a> {
             .emit();
             self.bump();
         } else if self.token == token::Pound
-            && self.look_ahead(1, |t| *t == token::OpenDelim(token::Bracket))
+            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Bracket))
         {
             let lo = self.token.span;
             // Skip every token until next possible arg.
-            while self.token != token::CloseDelim(token::Bracket) {
+            while self.token != token::CloseDelim(Delimiter::Bracket) {
                 self.bump();
             }
             let sp = lo.to(self.token.span);
@@ -1949,7 +1954,9 @@ impl<'a> Parser<'a> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
         if self.check_ident()
-            && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseDelim(token::Paren))
+            && self.look_ahead(1, |t| {
+                *t == token::Comma || *t == token::CloseDelim(Delimiter::Parenthesis)
+            })
         {
             // `fn foo(String s) {}`
             let ident = self.parse_ident().unwrap();
@@ -1965,7 +1972,7 @@ impl<'a> Parser<'a> {
         } else if require_name
             && (self.token == token::Comma
                 || self.token == token::Lt
-                || self.token == token::CloseDelim(token::Paren))
+                || self.token == token::CloseDelim(Delimiter::Parenthesis))
         {
             let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
 
@@ -2083,11 +2090,7 @@ impl<'a> Parser<'a> {
         Ok(param)
     }
 
-    pub(super) fn consume_block(
-        &mut self,
-        delim: token::DelimToken,
-        consume_close: ConsumeClosingDelim,
-    ) {
+    pub(super) fn consume_block(&mut self, delim: Delimiter, consume_close: ConsumeClosingDelim) {
         let mut brace_depth = 0;
         loop {
             if self.eat(&token::OpenDelim(delim)) {
@@ -2106,7 +2109,8 @@ impl<'a> Parser<'a> {
                     brace_depth -= 1;
                     continue;
                 }
-            } else if self.token == token::Eof || self.eat(&token::CloseDelim(token::NoDelim)) {
+            } else if self.token == token::Eof || self.eat(&token::CloseDelim(Delimiter::Invisible))
+            {
                 return;
             } else {
                 self.bump();
@@ -2552,7 +2556,7 @@ impl<'a> Parser<'a> {
 
     crate fn maybe_recover_unexpected_block_label(&mut self) -> bool {
         let Some(label) = self.eat_label().filter(|_| {
-            self.eat(&token::Colon) && self.token.kind == token::OpenDelim(token::Brace)
+            self.eat(&token::Colon) && self.token.kind == token::OpenDelim(Delimiter::Brace)
         }) else {
             return false;
         };
@@ -2649,7 +2653,7 @@ impl<'a> Parser<'a> {
     /// Parse and throw away a parenthesized comma separated
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
-        while !self.check(&token::CloseDelim(token::Paren)) {
+        while !self.check(&token::CloseDelim(Delimiter::Parenthesis)) {
             self.parse_pat_no_top_alt(None)?;
             if !self.eat(&token::Comma) {
                 return Ok(());

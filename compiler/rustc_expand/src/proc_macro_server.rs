@@ -28,24 +28,24 @@ trait ToInternal<T> {
     fn to_internal(self) -> T;
 }
 
-impl FromInternal<token::DelimToken> for Delimiter {
-    fn from_internal(delim: token::DelimToken) -> Delimiter {
+impl FromInternal<token::Delimiter> for Delimiter {
+    fn from_internal(delim: token::Delimiter) -> Delimiter {
         match delim {
-            token::Paren => Delimiter::Parenthesis,
-            token::Brace => Delimiter::Brace,
-            token::Bracket => Delimiter::Bracket,
-            token::NoDelim => Delimiter::None,
+            token::Delimiter::Parenthesis => Delimiter::Parenthesis,
+            token::Delimiter::Brace => Delimiter::Brace,
+            token::Delimiter::Bracket => Delimiter::Bracket,
+            token::Delimiter::Invisible => Delimiter::None,
         }
     }
 }
 
-impl ToInternal<token::DelimToken> for Delimiter {
-    fn to_internal(self) -> token::DelimToken {
+impl ToInternal<token::Delimiter> for Delimiter {
+    fn to_internal(self) -> token::Delimiter {
         match self {
-            Delimiter::Parenthesis => token::Paren,
-            Delimiter::Brace => token::Brace,
-            Delimiter::Bracket => token::Bracket,
-            Delimiter::None => token::NoDelim,
+            Delimiter::Parenthesis => token::Delimiter::Parenthesis,
+            Delimiter::Brace => token::Delimiter::Brace,
+            Delimiter::Bracket => token::Delimiter::Bracket,
+            Delimiter::None => token::Delimiter::Invisible,
         }
     }
 }
@@ -61,7 +61,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
         let joint = spacing == Joint;
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
-                let delimiter = Delimiter::from_internal(delim);
+                let delimiter = pm::Delimiter::from_internal(delim);
                 return TokenTree::Group(Group { delimiter, stream: tts, span, flatten: false });
             }
             tokenstream::TokenTree::Token(token) => token,
@@ -164,7 +164,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
                 .map(|kind| tokenstream::TokenTree::token(kind, span))
                 .collect();
                 stack.push(TokenTree::Group(Group {
-                    delimiter: Delimiter::Bracket,
+                    delimiter: pm::Delimiter::Bracket,
                     stream,
                     span: DelimSpan::from_single(span),
                     flatten: false,
@@ -181,7 +181,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
             Interpolated(nt) => {
                 let stream = nt_to_tokenstream(&nt, rustc.sess(), CanSynthesizeMissingTokens::No);
                 TokenTree::Group(Group {
-                    delimiter: Delimiter::None,
+                    delimiter: pm::Delimiter::None,
                     stream,
                     span: DelimSpan::from_single(span),
                     flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess()),
