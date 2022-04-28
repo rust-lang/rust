@@ -121,6 +121,11 @@ impl<T, A: Allocator> IntoIter<T, A> {
             ptr::drop_in_place(remaining);
         }
     }
+
+    /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
+    pub(crate) fn forget_remaining_elements(&mut self) {
+        self.ptr = self.end;
+    }
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
