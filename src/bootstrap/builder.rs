@@ -348,7 +348,11 @@ impl StepDescription {
             eprintln!(
                 "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
             );
+            #[cfg(not(test))]
             std::process::exit(1);
+            #[cfg(test)]
+            // so we can use #[should_panic]
+            panic!()
         }
     }
 }
