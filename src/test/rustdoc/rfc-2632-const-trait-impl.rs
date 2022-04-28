@@ -13,13 +13,11 @@ use std::marker::Destruct;
 pub struct S<T>(T);
 
 // @!has foo/trait.Tr.html '//pre[@class="rust trait"]/code/a[@class="trait"]' '~const'
-// @has - '//pre[@class="rust trait"]/code/a[@class="trait"]' 'Clone'
 // @!has - '//pre[@class="rust trait"]/code/span[@class="where"]' '~const'
 // @has - '//pre[@class="rust trait"]/code/span[@class="where"]' ': Clone'
 #[const_trait]
 pub trait Tr<T> {
     // @!has - '//div[@id="method.a"]/h4[@class="code-header"]' '~const'
-    // @has - '//div[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
     // @!has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
     // @has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
     fn a<A: ~const Clone + ~const Destruct>()
@@ -30,9 +28,9 @@ pub trait Tr<T> {
 }
 
 // @!has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/a[@class="trait"]' 'Clone'
 // @!has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where"]' '~const'
-// @has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where fmt-newline"]' ': Clone'
+// @has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where fmt-newline"]/a[@class="trait"]' 'Clone'
+// @!has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where fmt-newline"]/a[@class="trait"]' 'Destruct'
 impl<T: ~const Clone + ~const Destruct> const Tr<T> for T
 where
     Option<T>: ~const Clone + ~const Destruct,
@@ -45,8 +43,9 @@ where
 }
 
 // @!has foo/fn.foo.html '//pre[@class="rust fn"]/code/a[@class="trait"]' '~const'
-// @has - '//pre[@class="rust fn"]/code/a[@class="trait"]' 'Clone'
 // @!has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]' '~const'
+// @has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]/a[@class="trait"]' 'Clone'
+// @!has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]/a[@class="trait"]' 'Destruct'
 // @has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]' ': Clone'
 pub const fn foo<F: ~const Clone + ~const Destruct>()
 where
@@ -57,9 +56,9 @@ where
 
 impl<T> S<T> {
     // @!has foo/struct.S.html '//section[@id="method.foo"]/h4[@class="code-header"]' '~const'
-    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
     // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '~const'
-    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
+    // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]/a[@class="trait"]' 'Clone'
+    // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]/a[@class="trait"]' 'Destruct'
     pub const fn foo<B: ~const Clone + ~const Destruct>()
     where
         B: ~const Clone + ~const Destruct,

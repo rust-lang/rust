@@ -12,7 +12,8 @@ pub trait Stream {
 }
 
 // @has 'foo/trait.Stream.html'
-// @has - '//*[@class="code-header in-band"]' 'impl<S: ?Sized + Stream + Unpin> Stream for &mut S'
+// @has - '//*[@class="code-header in-band"]' 'impl<S> Stream for &mut S'
+// @has - '//*[@class="where fmt-newline"]' 'where S: ?Sized + Stream + Unpin'
 impl<S: ?Sized + Stream + Unpin> Stream for &mut S {
     type Item = S::Item;
 

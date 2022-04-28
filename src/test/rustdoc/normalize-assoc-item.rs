@@ -36,10 +36,10 @@ impl<Inner: Trait> Trait for Generic<Inner> {
 // These can't be normalized because they depend on a generic parameter.
 // However the user can choose whether the text should be displayed as `Inner::X` or `<Inner as Trait>::X`.
 
-// @has 'normalize_assoc_item/struct.Unknown.html' '//pre[@class="rust struct"]' 'pub struct Unknown<Inner: Trait>(pub <Inner as Trait>::X);'
+// @has 'normalize_assoc_item/struct.Unknown.html' '//pre[@class="rust struct"]' 'pub struct Unknown<Inner>(pub <Inner as Trait>::X) where Inner: Trait;'
 pub struct Unknown<Inner: Trait>(pub <Inner as Trait>::X);
 
-// @has 'normalize_assoc_item/struct.Unknown2.html' '//pre[@class="rust struct"]' 'pub struct Unknown2<Inner: Trait>(pub Inner::X);'
+// @has 'normalize_assoc_item/struct.Unknown2.html' '//pre[@class="rust struct"]' 'pub struct Unknown2<Inner>(pub Inner::X) where Inner: Trait;'
 pub struct Unknown2<Inner: Trait>(pub Inner::X);
 
 trait Lifetimes<'a> {

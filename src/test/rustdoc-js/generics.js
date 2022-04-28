@@ -50,15 +50,11 @@ const EXPECTED = [
     },
     {
         // TraitCat
-        'in_args': [
-            { 'path': 'generics', 'name': 'gamma' },
-        ],
+        'in_args': [],
     },
     {
         // TraitDog
-        'in_args': [
-            { 'path': 'generics', 'name': 'gamma' },
-        ],
+        'in_args': [],
     },
     {
         // Result<String>

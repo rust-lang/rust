@@ -4,8 +4,8 @@
 #![no_core]
 
 // @is longest.json "$.index[*][?(@.name=='longest')].inner.generics.params[0].name"  \"\'a\"
-// @is - "$.index[*][?(@.name=='longest')].inner.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'
-// @is - "$.index[*][?(@.name=='longest')].inner.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'
+// @is - "$.index[*][?(@.name=='longest')].inner.generics.params[0].kind"  '"lifetime"'
+// @is - "$.index[*][?(@.name=='longest')].inner.generics.params[0].kind"  '"lifetime"'
 // @count - "$.index[*][?(@.name=='longest')].inner.generics.params[*]" 1
 // @is - "$.index[*][?(@.name=='longest')].inner.generics.where_predicates" []
 

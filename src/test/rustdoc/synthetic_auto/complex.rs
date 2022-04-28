@@ -21,16 +21,12 @@ mod foo {
 
 // @has complex/struct.NotOuter.html
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
-// "impl<'a, T, K: ?Sized> Send for Outer<'a, T, K> where K: for<'b> Fn((&'b bool, &'a u8)) \
+// "impl<'a, T, K> Send for Outer<'a, T, K> where K: ?Sized + for<'b> Fn((&'b bool, &'a u8)) \
 // -> &'b i8, T: MyTrait<'a>, <T as MyTrait<'a>>::MyItem: Copy, 'a: 'static"
 
 pub use foo::{Foo, Inner as NotInner, MyTrait as NotMyTrait, Outer as NotOuter};
 
-unsafe impl<T> Send for Foo<T>
-where
-    T: NotMyTrait<'static>,
-{
-}
+unsafe impl<T> Send for Foo<T> where T: NotMyTrait<'static> {}
 
 unsafe impl<'a, Q, R: ?Sized> Send for NotInner<'a, Q, R>
 where

@@ -13,6 +13,7 @@ impl<T> Foo for (T,) {}
 pub trait Bar {}
 
 // @has foo/trait.Bar.html
-// @has - '//section[@id="impl-Bar-for-(U%2C)"]/h3' 'impl<U: Foo> Bar for (U₁, U₂, …, Uₙ)'
+// @has - '//section[@id="impl-Bar-for-(U%2C)"]/h3' 'impl<U> Bar for (U₁, U₂, …, Uₙ)'
+// @has - '//section[@id="impl-Bar-for-(U%2C)"]/h3' 'where U: Foo'
 #[doc(tuple_variadic)]
 impl<U: Foo> Bar for (U,) {}

@@ -5,19 +5,11 @@ const QUERY = [
 
 const EXPECTED = [
     {
-        'in_args': [
-            { 'path': 'generics_trait', 'name': 'beta' },
-        ],
-        'returned': [
-            { 'path': 'generics_trait', 'name': 'bet' },
-        ],
+        'in_args': [],
+        'returned': [],
     },
     {
-        'in_args': [
-            { 'path': 'generics_trait', 'name': 'alpha' },
-        ],
-        'returned': [
-            { 'path': 'generics_trait', 'name': 'alef' },
-        ],
+        'in_args': [],
+        'returned': [],
     },
 ];

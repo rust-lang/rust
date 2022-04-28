@@ -9,20 +9,12 @@ const QUERY = [
 const EXPECTED = [
     // check one of the generic items
     {
-        'in_args': [
-            { 'path': 'generics_multi_trait', 'name': 'beta' },
-        ],
-        'returned': [
-            { 'path': 'generics_multi_trait', 'name': 'bet' },
-        ],
+        'in_args': [],
+        'returned': [],
     },
     {
-        'in_args': [
-            { 'path': 'generics_multi_trait', 'name': 'beta' },
-        ],
-        'returned': [
-            { 'path': 'generics_multi_trait', 'name': 'bet' },
-        ],
+        'in_args': [],
+        'returned': [],
     },
     // ignore the name of the generic itself
     {

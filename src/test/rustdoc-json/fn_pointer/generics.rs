@@ -10,5 +10,5 @@
 // @is - "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.type.inner.decl.output" '{ "kind": "primitive", "inner": "i32" }'
 // @count - "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.type.inner.generic_params[*]" 1
 // @is - "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.type.inner.generic_params[0].name" \"\'c\"
-// @is - "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.type.inner.generic_params[0].kind" '{ "lifetime": { "outlives": [] } }'
+// @is - "$.index[*][?(@.name=='WithHigherRankTraitBounds')].inner.type.inner.generic_params[0].kind" '"lifetime"'
 pub type WithHigherRankTraitBounds = for<'c> fn(val: &'c i32) -> i32;

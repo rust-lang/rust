@@ -5,7 +5,7 @@ extern crate issue_20727;
 
 // @has issue_20727_4/trait.Index.html
 pub trait Index<Idx: ?Sized> {
-    // @has - '//*[@class="rust trait"]' 'trait Index<Idx: ?Sized> {'
+    // @has - '//*[@class="rust trait"]' 'trait Index<Idx> where Idx: ?Sized, {'
     // @has - '//*[@class="rust trait"]' 'type Output: ?Sized'
     type Output: ?Sized;
 
@@ -17,7 +17,7 @@ pub trait Index<Idx: ?Sized> {
 // @has issue_20727_4/trait.IndexMut.html
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     // @has - '//*[@class="rust trait"]' \
-    //        'trait IndexMut<Idx: ?Sized>: Index<Idx> {'
+    //        'trait IndexMut<Idx>: Index<Idx> where Idx: ?Sized, {'
     // @has - '//*[@class="rust trait"]' \
     //        'fn index_mut(&mut self, index: Idx) -> &mut Self::Output;'
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;

@@ -1,8 +1,8 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 // @has assoc_types/trait.Index.html
 pub trait Index<I: ?Sized> {
-        // @has - '//*[@id="associatedtype.Output"]//h4[@class="code-header"]' 'type Output: ?Sized'
+    // @has - '//*[@id="associatedtype.Output"]//h4[@class="code-header"]' 'type Output: ?Sized'
     type Output: ?Sized;
     // @has - '//*[@id="tymethod.index"]//h4[@class="code-header"]' \
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
@@ -25,13 +25,16 @@ pub trait Feed {
 // @has assoc_types/fn.use_input.html
 // @has - '//*[@class="rust fn"]' 'T::Input'
 // @has - '//*[@class="rust fn"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
-pub fn use_input<T: Feed>(_feed: &T, _element: T::Input) { }
+pub fn use_input<T: Feed>(_feed: &T, _element: T::Input) {}
 
 // @has assoc_types/fn.cmp_input.html
-// @has - '//*[@class="rust fn"]' 'where T::Input: PartialEq<U::Input>'
+// @has - '//*[@class="rust fn"]' 'where T: Feed,'
+// @has - '//*[@class="rust fn"]' 'U: Feed,'
+// @has - '//*[@class="rust fn"]' 'T::Input: PartialEq<U::Input>'
 // @has - '//*[@class="rust fn"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
 pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
-    where T::Input: PartialEq<U::Input>
+where
+    T::Input: PartialEq<U::Input>,
 {
     a == b
 }
