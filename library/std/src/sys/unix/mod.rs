@@ -39,6 +39,7 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]

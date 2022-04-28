@@ -1,5 +1,6 @@
 //! Parker implementation based on a Mutex and Condvar.
 
+use crate::pin::Pin;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::{Condvar, Mutex};
@@ -16,13 +17,18 @@ pub struct Parker {
 }
 
 impl Parker {
-    pub fn new() -> Self {
-        Parker { state: AtomicUsize::new(EMPTY), lock: Mutex::new(()), cvar: Condvar::new() }
+    /// Construct the generic parker. The UNIX parker implementation
+    /// requires this to happen in-place.
+    pub unsafe fn new(parker: *mut Parker) {
+        parker.write(Parker {
+            state: AtomicUsize::new(EMPTY),
+            lock: Mutex::new(()),
+            cvar: Condvar::new(),
+        });
     }
 
-    // This implementation doesn't require `unsafe`, but other implementations
-    // may assume this is only called by the thread that owns the Parker.
-    pub unsafe fn park(&self) {
+    // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
+    pub unsafe fn park(self: Pin<&Self>) {
         // If we were previously notified then we consume this notification and
         // return quickly.
         if self.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
@@ -55,9 +61,8 @@ impl Parker {
         }
     }
 
-    // This implementation doesn't require `unsafe`, but other implementations
-    // may assume this is only called by the thread that owns the Parker.
-    pub unsafe fn park_timeout(&self, dur: Duration) {
+    // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
+    pub unsafe fn park_timeout(self: Pin<&Self>, dur: Duration) {
         // Like `park` above we have a fast path for an already-notified thread, and
         // afterwards we start coordinating for a sleep.
         // return quickly.
@@ -88,7 +93,8 @@ impl Parker {
         }
     }
 
-    pub fn unpark(&self) {
+    // This implementation doesn't require `Pin`, but other implementations do.
+    pub fn unpark(self: Pin<&Self>) {
         // To ensure the unparked thread will observe any writes we made
         // before this call, we must perform a release operation that `park`
         // can synchronize with. To do that we must write `NOTIFIED` even if

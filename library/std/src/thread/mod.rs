@@ -163,6 +163,8 @@ use crate::num::NonZeroU64;
 use crate::num::NonZeroUsize;
 use crate::panic;
 use crate::panicking;
+use crate::pin::Pin;
+use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
@@ -923,7 +925,7 @@ pub fn sleep(dur: Duration) {
 pub fn park() {
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.parker.park();
+        current().inner.as_ref().parker().park();
     }
 }
 
@@ -987,7 +989,7 @@ pub fn park_timeout_ms(ms: u32) {
 pub fn park_timeout(dur: Duration) {
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.parker.park_timeout(dur);
+        current().inner.as_ref().parker().park_timeout(dur);
     }
 }
 
@@ -1073,6 +1075,12 @@ struct Inner {
     parker: Parker,
 }
 
+impl Inner {
+    fn parker(self: Pin<&Self>) -> Pin<&Parker> {
+        unsafe { Pin::map_unchecked(self, |inner| &inner.parker) }
+    }
+}
+
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
@@ -1094,14 +1102,28 @@ struct Inner {
 ///
 /// [`thread::current`]: current
 pub struct Thread {
-    inner: Arc<Inner>,
+    inner: Pin<Arc<Inner>>,
 }
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<CString>) -> Thread {
-        Thread { inner: Arc::new(Inner { name, id: ThreadId::new(), parker: Parker::new() }) }
+        // We have to use `unsafe` here to constuct the `Parker` in-place,
+        // which is required for the UNIX implementation.
+        //
+        // SAFETY: We pin the Arc immediately after creation, so its address never
+        // changes.
+        let inner = unsafe {
+            let mut arc = Arc::<Inner>::new_uninit();
+            let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
+            addr_of_mut!((*ptr).name).write(name);
+            addr_of_mut!((*ptr).id).write(ThreadId::new());
+            Parker::new(addr_of_mut!((*ptr).parker));
+            Pin::new_unchecked(arc.assume_init())
+        };
+
+        Thread { inner }
     }
 
     /// Atomically makes the handle's token available if it is not already.
@@ -1137,7 +1159,7 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn unpark(&self) {
-        self.inner.parker.unpark();
+        self.inner.as_ref().parker().unpark();
     }
 
     /// Gets the thread's unique identifier.

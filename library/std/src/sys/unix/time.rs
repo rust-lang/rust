@@ -132,7 +132,7 @@ mod inner {
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct SystemTime {
-        t: Timespec,
+        pub(in crate::sys::unix) t: Timespec,
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
@@ -279,7 +279,7 @@ mod inner {
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct SystemTime {
-        t: Timespec,
+        pub(in crate::sys::unix) t: Timespec,
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
