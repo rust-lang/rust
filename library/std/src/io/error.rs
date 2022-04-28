@@ -11,6 +11,7 @@ mod repr_unpacked;
 #[cfg(not(target_pointer_width = "64"))]
 use repr_unpacked::Repr;
 
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::convert::From;
 use crate::error;
 use crate::fmt;
@@ -462,6 +463,21 @@ impl From<ErrorKind> for Error {
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error { repr: Repr::new_simple(kind) }
+    }
+}
+
+#[stable(feature = "io_error_from_try_reserve", since = "1.62.0")]
+impl From<TryReserveError> for Error {
+    #[inline]
+    fn from(error: TryReserveError) -> Error {
+        match error.kind() {
+            TryReserveErrorKind::CapacityOverflow => {
+                ErrorKind::InvalidInput.into()
+            }
+            TryReserveErrorKind::AllocError { .. } => {
+                ErrorKind::OutOfMemory.into()
+            }
+        }
     }
 }
 
