@@ -314,7 +314,7 @@ impl GlobalState {
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
-                                    .request_op("restart after cancelation".to_string());
+                                    .request_op("restart after cancellation".to_string());
                             }
                         }
                     };

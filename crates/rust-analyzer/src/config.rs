@@ -584,7 +584,12 @@ impl Config {
                 scope,
             ) {
                 Some(snippet) => self.snippets.push(snippet),
-                None => tracing::info!("Invalid snippet {}", name),
+                None => errors.push((
+                    format!("snippet {name} is invalid"),
+                    <serde_json::Error as serde::de::Error>::custom(
+                        "snippet path is invalid or triggers are missing",
+                    ),
+                )),
             }
         }
 
