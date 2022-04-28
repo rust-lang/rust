@@ -81,7 +81,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
     }
 
     for id in crate_items.foreign_items() {
-        if let DefKind::AssocFn = tcx.hir().def_kind(id.def_id) {
+        if let DefKind::Fn = tcx.hir().def_kind(id.def_id) {
             constraint_cx.check_node_helper(id.hir_id());
         }
     }
