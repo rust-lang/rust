@@ -64,6 +64,25 @@ For more detailed information about error handling check out the [book] or the
 If the main thread panics it will terminate all your threads and end your
 program with code `101`.
 
+# Editions
+
+In Rust Editions prior to 2021, `std::panic!(x)` with a single
+argument is equivalent to
+[`std::panic::panic_any(x)`](../std/panic/fn.panic_any.html).
+This is true even if the argument is a string literal.
+
+For example, in Rust 2015 `panic!("problem: {reason}")` panics with a
+payload of literally `"problem: {reason}"` (a `&'static str`), which
+is probably not what was intended.  In current Rust this usage 
+captures and formats a variable `reason` from the surrounding scope.
+
+In Rust editions prior to 2021, `core::panic!(x)` requires that
+`x` be `&str`, but does not require it to be a literal.  In Rust 2021,
+these cases must be written `panic!("{}", x)`.
+
+In Rust 2021 and later, `panic!` always requires a format string and
+the applicable format arguments, and is the same in `core` and `std`.
+
 # Examples
 
 ```should_panic
