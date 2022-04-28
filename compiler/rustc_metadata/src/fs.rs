@@ -69,9 +69,13 @@ pub fn encode_and_write_metadata(
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
     let metadata = match metadata_kind {
-        MetadataKind::None => EncodedMetadata::new(),
+        MetadataKind::None => {
+            let metadata = EncodedMetadata::new();
+            let _ = emit_metadata(tcx.sess, metadata.raw_data(), &metadata_tmpdir);
+            metadata
+        }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
-            encode_metadata(tcx, metadata_filename)
+            encode_metadata(tcx, &metadata_filename)
         }
     };
 
@@ -79,7 +83,6 @@ pub fn encode_and_write_metadata(
 
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     if need_metadata_file {
-        let metadata_filename = emit_metadata(tcx.sess, metadata.raw_data(), &metadata_tmpdir);
         if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
