@@ -15,6 +15,7 @@ use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_resolve::{ParentScope, Resolver};
 use rustc_session::config::Externs;
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_span::{Symbol, SyntaxContext};
 
 use std::collections::hash_map::Entry;
@@ -216,6 +217,8 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
     ) -> bool {
+        // FIXME: This caching may be incorrect in case of multiple `macro_rules`
+        // items with the same name in the same module.
         self.doc_link_resolutions
             .entry((Symbol::intern(path_str), ns, parent_scope.module.def_id()))
             .or_insert_with_key(|(path, ns, _)| {
@@ -307,17 +310,29 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
             let module_def_id = self.resolver.local_def_id(item.id).to_def_id();
             let module = self.resolver.expect_module(module_def_id);
             let old_module = mem::replace(&mut self.parent_scope.module, module);
+            let old_macro_rules = self.parent_scope.macro_rules;
             self.resolve_doc_links_local(&item.attrs); // Inner attribute scope
             self.process_module_children_or_reexports(module_def_id);
             visit::walk_item(self, item);
+            if item
+                .attrs
+                .iter()
+                .all(|attr| !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape))
+            {
+                self.parent_scope.macro_rules = old_macro_rules;
+            }
             self.parent_scope.module = old_module;
         } else {
-            match item.kind {
+            match &item.kind {
                 ItemKind::Trait(..) => {
                     self.all_traits.push(self.resolver.local_def_id(item.id).to_def_id());
                 }
                 ItemKind::Impl(box ast::Impl { of_trait: Some(..), .. }) => {
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
+                }
+                ItemKind::MacroDef(macro_def) if macro_def.macro_rules => {
+                    self.parent_scope.macro_rules =
+                        self.resolver.macro_rules_scope(self.resolver.local_def_id(item.id));
                 }
                 _ => {}
             }
@@ -343,6 +358,12 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
     fn visit_field_def(&mut self, field: &ast::FieldDef) {
         self.resolve_doc_links_local(&field.attrs);
         visit::walk_field_def(self, field)
+    }
+
+    fn visit_block(&mut self, block: &ast::Block) {
+        let old_macro_rules = self.parent_scope.macro_rules;
+        visit::walk_block(self, block);
+        self.parent_scope.macro_rules = old_macro_rules;
     }
 
     // NOTE: if doc-comments are ever allowed on other nodes (e.g. function parameters),
