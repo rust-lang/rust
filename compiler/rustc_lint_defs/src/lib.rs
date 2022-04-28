@@ -214,6 +214,13 @@ impl Level {
             _ => None,
         }
     }
+
+    pub fn is_error(self) -> bool {
+        match self {
+            Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn => false,
+            Level::Deny | Level::Forbid => true,
+        }
+    }
 }
 
 /// Specification of a single lint.

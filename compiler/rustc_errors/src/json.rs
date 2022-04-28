@@ -171,7 +171,8 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+    fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
+        let lint_level = lint_level.as_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))

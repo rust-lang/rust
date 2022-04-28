@@ -757,7 +757,7 @@ impl Default for Options {
             real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
-            json_unused_externs: false,
+            json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
@@ -1498,8 +1498,35 @@ pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
 pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
     pub json_artifact_notifications: bool,
-    pub json_unused_externs: bool,
+    pub json_unused_externs: JsonUnusedExterns,
     pub json_future_incompat: bool,
+}
+
+/// Report unused externs in event stream
+#[derive(Copy, Clone)]
+pub enum JsonUnusedExterns {
+    /// Do not
+    No,
+    /// Report, but do not exit with failure status for deny/forbid
+    Silent,
+    /// Report, and also exit with failure status for deny/forbid
+    Loud,
+}
+
+impl JsonUnusedExterns {
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            JsonUnusedExterns::No => false,
+            JsonUnusedExterns::Loud | JsonUnusedExterns::Silent => true,
+        }
+    }
+
+    pub fn is_loud(&self) -> bool {
+        match self {
+            JsonUnusedExterns::No | JsonUnusedExterns::Silent => false,
+            JsonUnusedExterns::Loud => true,
+        }
+    }
 }
 
 /// Parse the `--json` flag.
@@ -1511,7 +1538,7 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
         HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
-    let mut json_unused_externs = false;
+    let mut json_unused_externs = JsonUnusedExterns::No;
     let mut json_future_incompat = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
@@ -1529,7 +1556,8 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
-                "unused-externs" => json_unused_externs = true,
+                "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
+                "unused-externs-silent" => json_unused_externs = JsonUnusedExterns::Silent,
                 "future-incompat" => json_future_incompat = true,
                 s => early_error(
                     ErrorOutputType::default(),
@@ -2229,7 +2257,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
 
-    if !debugging_opts.unstable_options && json_unused_externs {
+    if !debugging_opts.unstable_options && json_unused_externs.is_enabled() {
         early_error(
             error_format,
             "the `-Z unstable-options` flag must also be passed to enable \

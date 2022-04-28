@@ -168,7 +168,7 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
-    if json_unused_externs {
+    if json_unused_externs.is_enabled() {
         let unused_extern_reports: Vec<_> =
             std::mem::take(&mut unused_extern_reports.lock().unwrap());
         if unused_extern_reports.len() == compiling_test_count {
@@ -337,7 +337,7 @@ fn run_test(
     if lang_string.test_harness {
         compiler.arg("--test");
     }
-    if rustdoc_options.json_unused_externs && !lang_string.compile_fail {
+    if rustdoc_options.json_unused_externs.is_enabled() && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-Z").arg("unstable-options");

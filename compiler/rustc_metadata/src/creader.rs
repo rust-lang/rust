@@ -195,10 +195,12 @@ impl CStore {
     }
 
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        let json_unused_externs = tcx.sess.opts.json_unused_externs;
+
         // We put the check for the option before the lint_level_at_node call
         // because the call mutates internal state and introducing it
         // leads to some ui tests failing.
-        if !tcx.sess.opts.json_unused_externs {
+        if !json_unused_externs.is_enabled() {
             return;
         }
         let level = tcx
@@ -208,10 +210,11 @@ impl CStore {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_unused_externs(level.as_str(), &unused_externs);
+            tcx.sess.parse_sess.span_diagnostic.emit_unused_externs(
+                level,
+                json_unused_externs.is_loud(),
+                &unused_externs,
+            );
         }
     }
 }
@@ -917,7 +920,7 @@ impl<'a> CrateLoader<'a> {
             }
 
             // Got a real unused --extern
-            if self.sess.opts.json_unused_externs {
+            if self.sess.opts.json_unused_externs.is_enabled() {
                 self.cstore.unused_externs.push(name_interned);
                 continue;
             }

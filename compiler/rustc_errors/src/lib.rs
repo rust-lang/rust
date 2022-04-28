@@ -969,8 +969,19 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 
-    pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
-        self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
+    pub fn emit_unused_externs(
+        &self,
+        lint_level: rustc_lint_defs::Level,
+        loud: bool,
+        unused_externs: &[&str],
+    ) {
+        let mut inner = self.inner.borrow_mut();
+
+        if loud && lint_level.is_error() {
+            inner.bump_err_count();
+        }
+
+        inner.emit_unused_externs(lint_level, unused_externs)
     }
 
     pub fn update_unstable_expectation_id(
@@ -1141,7 +1152,7 @@ impl HandlerInner {
         self.emitter.emit_artifact_notification(path, artifact_type);
     }
 
-    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+    fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
         self.emitter.emit_unused_externs(lint_level, unused_externs);
     }
 
