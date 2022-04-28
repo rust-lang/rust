@@ -25,7 +25,7 @@ use crate::char;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::FromIterator;
+use crate::iter::{FromIterator, FusedIterator};
 use crate::mem;
 use crate::ops;
 use crate::rc::Rc;
@@ -898,6 +898,9 @@ impl<'a> Iterator for EncodeWide<'a> {
         (low + ext, high.and_then(|n| n.checked_mul(2)).and_then(|n| n.checked_add(ext)))
     }
 }
+
+#[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
+impl FusedIterator for EncodeWide<'_> {}
 
 impl Hash for CodePoint {
     #[inline]
