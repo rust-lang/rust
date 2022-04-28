@@ -472,10 +472,10 @@ impl From<TryReserveError> for Error {
     fn from(error: TryReserveError) -> Error {
         match error.kind() {
             TryReserveErrorKind::CapacityOverflow => {
-                ErrorKind::InvalidInput.into()
+                const_io_error!(ErrorKind::InvalidInput, "collection capacity overflowed")
             }
             TryReserveErrorKind::AllocError { .. } => {
-                ErrorKind::OutOfMemory.into()
+                const_io_error!(ErrorKind::OutOfMemory, "collection cannot allocate memory")
             }
         }
     }
