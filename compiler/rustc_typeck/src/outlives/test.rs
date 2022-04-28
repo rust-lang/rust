@@ -8,7 +8,14 @@ pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
         // attribute and report an error with various results if found.
         if tcx.has_attr(id.def_id.to_def_id(), sym::rustc_outlives) {
             let inferred_outlives_of = tcx.inferred_outlives_of(id.def_id);
-            struct_span_err!(tcx.sess, tcx.hir().span(id.hir_id()), E0640, "{:?}", inferred_outlives_of).emit();
+            struct_span_err!(
+                tcx.sess,
+                tcx.hir().span(id.hir_id()),
+                E0640,
+                "{:?}",
+                inferred_outlives_of
+            )
+            .emit();
         }
     }
 }
