@@ -1714,7 +1714,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
-        if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
+        self.rows.get(row)?.as_ref()
     }
 
     /// Intersects `row` with `set`. `set` can be either `BitSet` or

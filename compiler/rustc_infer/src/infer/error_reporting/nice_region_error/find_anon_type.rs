@@ -25,21 +25,16 @@ pub(crate) fn find_anon_type<'tcx>(
     region: Region<'tcx>,
     br: &ty::BoundRegionKind,
 ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnSig<'tcx>)> {
-    if let Some(anon_reg) = tcx.is_suitable_region(region) {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
-        let Some(fn_sig) = tcx.hir().get(hir_id).fn_sig() else {
-            return None
-        };
+    let anon_reg = tcx.is_suitable_region(region)?;
+    let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+    let fn_sig = tcx.hir().get(hir_id).fn_sig()?;
 
-        fn_sig
-            .decl
-            .inputs
-            .iter()
-            .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
-            .map(|ty| (ty, fn_sig))
-    } else {
-        None
-    }
+    fn_sig
+        .decl
+        .inputs
+        .iter()
+        .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
+        .map(|ty| (ty, fn_sig))
 }
 
 // This method creates a FindNestedTypeVisitor which returns the type corresponding
