@@ -4,7 +4,7 @@ use rustc_middle::ty;
 use rustc_mir_dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, LookupResult, MoveError, MovePathIndex,
 };
-use rustc_span::{sym, Span, BytePos};
+use rustc_span::{sym, BytePos, Span};
 
 use crate::diagnostics::UseSpans;
 use crate::prefixes::PrefixSet;
@@ -416,22 +416,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             && !has_complex_bindings
         {
             let span = match use_spans {
-                    Some(UseSpans::FnSelfUse { var_span, fn_call_span, .. }) => {
-                        // `fn_call_span` is the span of `unwrap()`
-                        // This gets the 'variable' span excluding the unwrap
-                        let span = var_span.until(fn_call_span);
+                Some(UseSpans::FnSelfUse { var_span, fn_call_span, .. }) => {
+                    // `fn_call_span` is the span of `unwrap()`
+                    // This gets the 'variable' span excluding the unwrap
+                    let span = var_span.until(fn_call_span);
 
-                        // Unfortunately the new span has a "." on the end which makes
-                        // the suggestion format strangely, so we adjust the hi bound manually
-                        span.with_hi(span.hi() - BytePos(1))
-                    },
-                _ => span
+                    // Unfortunately the new span has a "." on the end which makes
+                    // the suggestion format strangely, so we adjust the hi bound manually
+                    span.with_hi(span.hi() - BytePos(1))
+                }
+                _ => span,
             };
             err.span_suggestions(
                 span.shrink_to_hi(),
                 &format!("consider borrowing the `{}`'s content", diag_name.unwrap()),
                 vec![".as_ref()".to_string(), ".as_mut()".to_string()].into_iter(),
-                Applicability::MachineApplicable
+                Applicability::MachineApplicable,
             );
         } else if let Some(use_spans) = use_spans {
             self.explain_captures(
