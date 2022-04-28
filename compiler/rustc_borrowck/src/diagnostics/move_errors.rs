@@ -409,7 +409,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             | ty::Opaque(def_id, _) => def_id,
             _ => return err,
         };
-        // self.infcx.tcx.
         let diag_name = self.infcx.tcx.get_diagnostic_name(def_id);
         if matches!(diag_name, Some(sym::Option | sym::Result))
             && use_spans.map_or(true, |v| !v.for_closure())
