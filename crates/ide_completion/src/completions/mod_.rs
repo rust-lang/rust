@@ -8,6 +8,7 @@ use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
     RootDatabase, SymbolKind,
 };
+use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{context::NameContext, CompletionItem};
 
@@ -24,7 +25,21 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
 
     let _p = profile::span("completion::complete_mod");
 
-    let current_module = ctx.module;
+    let mut current_module = ctx.module;
+    // For `mod $0`, `ctx.module` is its parent, but for `mod f$0`, it's `mod f` itself, but we're
+    // interested in its parent.
+    if ctx.original_token.kind() == SyntaxKind::IDENT {
+        if let Some(module) = ctx.original_token.ancestors().nth(1).and_then(ast::Module::cast) {
+            match current_module.definition_source(ctx.db).value {
+                ModuleSource::Module(src) if src == module => {
+                    if let Some(parent) = current_module.parent(ctx.db) {
+                        current_module = parent;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
 
     let module_definition_file =
         current_module.definition_source(ctx.db).file_id.original_file(ctx.db);
@@ -312,6 +327,28 @@ fn bar() {}
 fn bar_ignored() {}
 "#,
             expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn name_partially_typed() {
+        check(
+            r#"
+//- /lib.rs
+mod f$0
+//- /foo.rs
+fn foo() {}
+//- /foo/ignored_foo.rs
+fn ignored_foo() {}
+//- /bar/mod.rs
+fn bar() {}
+//- /bar/ignored_bar.rs
+fn ignored_bar() {}
+"#,
+            expect![[r#"
+                md foo;
+                md bar;
+            "#]],
         );
     }
 }
