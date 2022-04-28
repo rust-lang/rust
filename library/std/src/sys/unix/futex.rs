@@ -3,17 +3,21 @@
     target_os = "android",
     all(target_os = "emscripten", target_feature = "atomics"),
     target_os = "openbsd",
+    target_os = "netbsd",
 ))]
 
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
+
+#[cfg(target_os = "netbsd")]
+pub const SYS___futex: i32 = 166;
 
 /// Wait for a futex_wake operation to wake us.
 ///
 /// Returns directly if the futex doesn't hold the expected value.
 ///
 /// Returns false on timeout, and true in all other cases.
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
     use crate::ptr::null;
@@ -34,15 +38,32 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
         // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
         // absolute time rather than a relative time.
         let r = unsafe {
-            libc::syscall(
-                libc::SYS_futex,
-                futex as *const AtomicU32,
-                libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
-                expected,
-                timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
-                null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
-                !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
-            )
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "netbsd")] {
+                    // Netbsd's futex syscall takes addr2 and val2 as separate arguments.
+                    // (Both are unused for FUTEX_WAIT[_BITSET].)
+                    libc::syscall(
+                        SYS___futex,
+                        futex as *const AtomicU32,
+                        libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
+                        expected,
+                        timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
+                        null::<u32>(), // addr2: This argument is unused for FUTEX_WAIT_BITSET.
+                        0,             // val2: This argument is unused for FUTEX_WAIT_BITSET.
+                        !0u32,         // val3 / bitmask: A full bitmask, to make it behave like a regular FUTEX_WAIT.
+                    )
+                } else {
+                    libc::syscall(
+                        libc::SYS_futex,
+                        futex as *const AtomicU32,
+                        libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
+                        expected,
+                        timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
+                        null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
+                        !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
+                    )
+                }
+            }
         };
 
         match (r < 0).then(super::os::errno) {
@@ -57,28 +78,34 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 ///
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
 pub fn futex_wake(futex: &AtomicU32) -> bool {
+    let ptr = futex as *const AtomicU32;
+    let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {
-        libc::syscall(
-            libc::SYS_futex,
-            futex as *const AtomicU32,
-            libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
-            1,
-        ) > 0
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "netbsd")] {
+                libc::syscall(SYS___futex, ptr, op, 1) > 0
+            } else {
+                libc::syscall(libc::SYS_futex, ptr, op, 1) > 0
+            }
+        }
     }
 }
 
 /// Wake up all threads that are waiting on futex_wait on this futex.
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
 pub fn futex_wake_all(futex: &AtomicU32) {
+    let ptr = futex as *const AtomicU32;
+    let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {
-        libc::syscall(
-            libc::SYS_futex,
-            futex as *const AtomicU32,
-            libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
-            i32::MAX,
-        );
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "netbsd")] {
+                libc::syscall(SYS___futex, ptr, op, i32::MAX);
+            } else {
+                libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);
+            }
+        }
     }
 }
 

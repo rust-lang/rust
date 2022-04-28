@@ -4,6 +4,7 @@ cfg_if::cfg_if! {
         target_os = "android",
         all(target_arch = "wasm32", target_feature = "atomics"),
         target_os = "openbsd",
+        target_os = "netbsd",
     ))] {
         mod futex;
         pub use futex::Parker;
