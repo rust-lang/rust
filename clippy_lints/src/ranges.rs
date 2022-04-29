@@ -219,15 +219,17 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
         _ => return,
     };
     // value, name, order (higher/lower), inclusiveness
-    if let (Some((lval, lid, name_span, lval_span, lord, linc)), Some((rval, rid, _, rval_span, rord, rinc))) =
-        (check_range_bounds(cx, l), check_range_bounds(cx, r))
+    if let (
+        Some((lval, lexpr, lid, name_span, lval_span, lord, linc)),
+        Some((rval, _, rid, _, rval_span, rord, rinc)),
+    ) = (check_range_bounds(cx, l), check_range_bounds(cx, r))
     {
         // we only lint comparisons on the same name and with different
         // direction
         if lid != rid || lord == rord {
             return;
         }
-        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l), &lval, &rval);
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(lexpr), &lval, &rval);
         if combine_and && ord == Some(rord) {
             // order lower bound and upper bound
             let (l_span, u_span, l_inc, u_inc) = if rord == Ordering::Less {
@@ -292,7 +294,10 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
     }
 }
 
-fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, HirId, Span, Span, Ordering, bool)> {
+fn check_range_bounds<'a>(
+    cx: &'a LateContext<'_>,
+    ex: &'a Expr<'_>,
+) -> Option<(Constant, &'a Expr<'a>, HirId, Span, Span, Ordering, bool)> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -303,11 +308,11 @@ fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, 
         };
         if let Some(id) = path_to_local(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
-                return Some((c, id, l.span, r.span, ordering, inclusive));
+                return Some((c, r, id, l.span, r.span, ordering, inclusive));
             }
         } else if let Some(id) = path_to_local(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
-                return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
+                return Some((c, l, id, r.span, l.span, ordering.reverse(), inclusive));
             }
         }
     }

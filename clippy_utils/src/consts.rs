@@ -130,12 +130,10 @@ impl Constant {
         match (left, right) {
             (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
-            (&Self::Int(l), &Self::Int(r)) => {
-                if let ty::Int(int_ty) = *cmp_type.kind() {
-                    Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
-                } else {
-                    Some(l.cmp(&r))
-                }
+            (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
+                ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
+                ty::Uint(_) => Some(l.cmp(&r)),
+                _ => bug!("Not an int type"),
             },
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
