@@ -40,7 +40,7 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
-use std::io::{Seek, Write};
+use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -734,12 +734,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
-            // let mut zero_bytes = 0;
-            // for e in self.opaque.data.iter() {
-            //     if *e == 0 {
-            //         zero_bytes += 1;
-            //     }
-            // }
+            let mut zero_bytes = 0;
+            let file = std::io::BufReader::new(self.opaque.file());
+            for e in file.bytes() {
+                if e.unwrap() == 0 {
+                    zero_bytes += 1;
+                }
+            }
 
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
             let p = |label, bytes| {
@@ -747,13 +748,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
 
             eprintln!("");
-            // FIXME print zero bytes
-            //eprintln!(
-            //    "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
-            //    total_bytes,
-            //    zero_bytes,
-            //    perc(zero_bytes)
-            //);
+            eprintln!(
+                "{} metadata bytes, of which {} bytes ({:.1}%) are zero",
+                total_bytes,
+                zero_bytes,
+                perc(zero_bytes)
+            );
             p("preamble", preamble_bytes);
             p("dep", dep_bytes);
             p("lib feature", lib_feature_bytes);
