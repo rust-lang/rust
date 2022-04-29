@@ -802,7 +802,7 @@ pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
     // Convert the local crate names from the passed-in config into CrateNums so that they can
     // be looked up quickly during execution
     let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
-        .map(|crates| crates.split(",").map(|krate| krate.to_string()).collect::<Vec<_>>())
+        .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
         .unwrap_or_default();
     let mut local_crates = Vec::new();
     for &crate_num in tcx.crates(()) {

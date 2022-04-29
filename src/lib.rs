@@ -20,7 +20,6 @@
     clippy::manual_map,
     clippy::needless_lifetimes,
     clippy::new_without_default,
-    clippy::single_char_pattern,
     clippy::single_match,
     clippy::unnecessary_mut_passed,
     clippy::useless_conversion,
