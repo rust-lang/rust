@@ -23,10 +23,6 @@ fn foo() -> i32 {
         _0 = move (_1.0: i32);           // scope 0 at main.rs:5:5: 5:10
         return;                          // scope 0 at main.rs:6:2: 6:2
     }
-
-    bb2 (cleanup): {
-        resume;                          // scope 0 at main.rs:4:1: 6:2
-    }
 }
 
 fn main() -> () {

@@ -59,8 +59,8 @@ fn may_be_reference(ty: Ty<'_>) -> bool {
 
 /// Determines whether or not this LocalDecl is temp, if not it needs retagging.
 fn is_not_temp<'tcx>(local_decl: &LocalDecl<'tcx>) -> bool {
-    if local_decl.local_info.is_some() {
-        match local_decl.local_info.as_ref().unwrap().as_ref() {
+    if let Some(local_info) = &local_decl.local_info {
+        match local_info.as_ref() {
             LocalInfo::Temp => return false,
             _ => (),
         };

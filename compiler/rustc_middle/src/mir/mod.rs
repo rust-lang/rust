@@ -1180,10 +1180,6 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
-    pub fn temp(mut self) {
-        self.local_info = Some(Box::new(LocalInfo::Temp));
-    }
-
     /// Converts `self` into same `LocalDecl` except tagged as internal.
     #[inline]
     pub fn internal(mut self) -> Self {
