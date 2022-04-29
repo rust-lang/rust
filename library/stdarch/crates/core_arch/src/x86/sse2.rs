@@ -1774,7 +1774,7 @@ pub unsafe fn _mm_or_pd(a: __m128d, b: __m128d) -> __m128d {
     transmute(_mm_or_si128(a, b))
 }
 
-/// Computes the bitwise OR of `a` and `b`.
+/// Computes the bitwise XOR of `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_xor_pd)
 #[inline]
