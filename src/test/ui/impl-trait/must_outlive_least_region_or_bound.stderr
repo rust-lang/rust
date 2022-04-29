@@ -132,19 +132,6 @@ LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 |
    |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
 
-error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:38:72
-   |
-LL |   fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
-   |  _________________________________--_____________________________________^
-   | |                                 |
-   | |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
-LL | |
-LL | |
-LL | |     x
-LL | | }
-   | |_^ ...so that the type `T` will meet its required lifetime bounds
-
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/must_outlive_least_region_or_bound.rs:16:50
    |
@@ -231,7 +218,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                     ~~~~~~~~~~~~
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0310, E0621, E0700, E0759.
 For more information about an error, try `rustc --explain E0310`.

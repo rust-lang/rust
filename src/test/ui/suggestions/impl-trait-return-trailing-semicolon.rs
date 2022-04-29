@@ -8,16 +8,12 @@ impl Bar for Qux {}
 
 fn foo() -> impl Bar {
     //~^ ERROR the trait bound `(): Bar` is not satisfied
-    //~| ERROR the trait bound `(): Bar` is not satisfied
-    //~| HELP the following other types implement trait `Bar`:
     5;
     //~^ HELP remove this semicolon
 }
 
 fn bar() -> impl Bar {
     //~^ ERROR the trait bound `(): Bar` is not satisfied
-    //~| ERROR the trait bound `(): Bar` is not satisfied
-    //~| HELP the following other types implement trait `Bar`:
     //~| HELP the following other types implement trait `Bar`:
     "";
 }

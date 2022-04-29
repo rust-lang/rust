@@ -6,20 +6,6 @@ LL | fn foo() -> impl Foo<FooX> {
    |
    = help: the trait `Foo<()>` is implemented for `()`
 
-error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
-  --> $DIR/nested-tait-inference.rs:12:28
-   |
-LL |   fn foo() -> impl Foo<FooX> {
-   |  ____________________________^
-LL | |
-LL | |
-LL | |     // FIXME(type-alias-impl-trait): We could probably make this work.
-LL | |     ()
-LL | | }
-   | |_^ the trait `Foo<FooX>` is not implemented for `()`
-   |
-   = help: the trait `Foo<()>` is implemented for `()`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

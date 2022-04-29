@@ -1,6 +1,5 @@
 fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
     //~^ ERROR `u32` is not a future
-    //~| ERROR `u32` is not a future
     *x
 }
 
