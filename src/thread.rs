@@ -235,7 +235,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         threads.push(main_thread);
         Self {
             active_thread: ThreadId::new(0),
-            threads: threads,
+            threads,
             sync: SynchronizationState::default(),
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
