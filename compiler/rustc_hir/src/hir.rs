@@ -566,8 +566,7 @@ impl<'hir> Generics<'hir> {
         }
     }
 
-    /// If there are generic parameters, return wher to introduce a new one, and false.
-    /// If there is none, return where to introduce `<>` and true.
+    /// If there are generic parameters, return where to introduce a new one.
     pub fn span_for_param_suggestion(&self) -> Option<Span> {
         if self.params.iter().any(|p| self.span.contains(p.span)) {
             // `fn foo<A>(t: impl Trait)`
