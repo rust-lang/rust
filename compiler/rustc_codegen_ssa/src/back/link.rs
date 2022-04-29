@@ -234,7 +234,7 @@ pub fn each_linked_rlib(
     Ok(())
 }
 
-/// Create an 'arlib'.
+/// Create an 'rlib'.
 ///
 /// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
 /// the object file of the crate, but it also contains all of the object files from native
