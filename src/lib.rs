@@ -10,7 +10,6 @@
 #![allow(clippy::cast_lossless)]
 // TODO: Uncategorized. Some of these we'll want to fix, some keep ignored.
 #![allow(
-    clippy::assign_op_pattern,
     clippy::clone_on_copy,
     clippy::collapsible_else_if,
     clippy::collapsible_if,

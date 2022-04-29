@@ -670,7 +670,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if byte == 0 {
                 break;
             } else {
-                len = len + size1;
+                len += size1;
             }
         }
 
