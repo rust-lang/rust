@@ -36,3 +36,32 @@ click: "#settings-menu"
 wait-for: "#alternative-display #settings"
 assert: "#not-displayed #search"
 assert: "#main-content.hidden"
+
+// Now let's check the content of the settings menu.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+click: "#settings-menu"
+wait-for: "#settings"
+
+// We check that the "Use system theme" is disabled.
+assert-property: ("#use-system-theme", {"checked": "false"})
+assert: "//*[@class='setting-line']/*[text()='Use system theme']"
+// Meaning that only the "theme" menu is showing up.
+assert: ".setting-line:not(.hidden) #theme"
+assert: ".setting-line.hidden #preferred-dark-theme"
+assert: ".setting-line.hidden #preferred-light-theme"
+
+// We check that the correct theme is selected.
+assert-property: ("#theme .choices #theme-dark", {"checked": "true"})
+
+// We now switch the display.
+click: "#use-system-theme"
+// Wait for the hidden element to show up.
+wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
+assert: ".setting-line:not(.hidden) #preferred-light-theme"
+// Check that the theme picking is hidden.
+assert: ".setting-line.hidden #theme"
+
+// We check their text as well.
+assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
+assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
