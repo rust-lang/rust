@@ -7,6 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
+use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{
@@ -39,9 +40,11 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
+use std::io::Write;
 use std::iter;
 use std::num::NonZeroUsize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
@@ -2138,25 +2141,25 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 
 pub struct EncodedMetadata {
     mmap: Option<Mmap>,
-    decoded: Vec<u8>,
+    // We need to carry MaybeTempDir to avoid deleting the temporary
+    // directory while accessing the Mmap.
+    _temp_dir: Option<MaybeTempDir>,
 }
 
 impl EncodedMetadata {
     #[inline]
-    pub fn from_file(file: std::fs::File) -> std::io::Result<Self> {
+    pub fn from_path(path: PathBuf, temp_dir: Option<MaybeTempDir>) -> std::io::Result<Self> {
+        let file = std::fs::File::open(&path)?;
         let file_metadata = file.metadata()?;
         if file_metadata.len() == 0 {
-            return Ok(Self { mmap: None, decoded: Vec::new() });
+            return Ok(Self { mmap: None, _temp_dir: temp_dir });
         }
         let mmap = unsafe { Some(Mmap::map(file)?) };
-        Ok(Self { mmap, decoded: Vec::new() })
+        Ok(Self { mmap, _temp_dir: temp_dir })
     }
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
-        if !self.decoded.is_empty() {
-            return &self.decoded;
-        }
         self.mmap.as_ref().map(|mmap| mmap.as_ref()).unwrap_or_default()
     }
 }
@@ -2170,9 +2173,19 @@ impl<S: Encoder> Encodable<S> for EncodedMetadata {
 
 impl<D: Decoder> Decodable<D> for EncodedMetadata {
     fn decode(d: &mut D) -> Self {
-        // FIXME: Write decorded data to a file and map to Mmap.
-        let decoded = Decodable::decode(d);
-        EncodedMetadata { mmap: None, decoded }
+        let temp_dir = TempFileBuilder::new().prefix("decoded").tempdir().unwrap();
+        let temp_dir = MaybeTempDir::new(temp_dir, false);
+        let filename = temp_dir.as_ref().join("decoded");
+        let file = std::fs::File::create(&filename).unwrap();
+        let mut file = std::io::BufWriter::new(file);
+
+        let len = d.read_usize();
+        for _ in 0..len {
+            file.write(&[d.read_u8()]).unwrap();
+        }
+        file.flush().unwrap();
+
+        Self::from_path(filename, Some(temp_dir)).unwrap()
     }
 }
 
@@ -2269,5 +2282,5 @@ pub fn provide(providers: &mut Providers) {
         },
 
         ..*providers
-    };
+    }
 }

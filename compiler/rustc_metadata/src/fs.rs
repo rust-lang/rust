@@ -80,7 +80,7 @@ pub fn encode_and_write_metadata(
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
 
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
-    let metadata_filename = if need_metadata_file {
+    let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
@@ -90,14 +90,14 @@ pub fn encode_and_write_metadata(
                 .span_diagnostic
                 .emit_artifact_notification(&out_filename, "metadata");
         }
-        out_filename
+        (out_filename, None)
     } else {
-        metadata_filename
+        (metadata_filename, Some(metadata_tmpdir))
     };
-    let file = std::fs::File::open(metadata_filename).unwrap();
-    let metadata = EncodedMetadata::from_file(file).unwrap_or_else(|e| {
-        tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
-    });
+    let metadata =
+        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
+            tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
+        });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
