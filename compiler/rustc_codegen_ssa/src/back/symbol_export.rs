@@ -12,7 +12,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::{SymbolName, TyCtxt};
+use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::SanitizerSet;
 
@@ -491,6 +491,76 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
         ),
         ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
+}
+
+/// This is the symbol name of the given instance as seen by the linker.
+///
+/// On 32-bit Windows symbols are decorated according to their calling conventions.
+pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    instantiating_crate: CrateNum,
+) -> String {
+    use rustc_target::abi::call::Conv;
+
+    let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
+
+    let target = &tcx.sess.target;
+    if !target.is_like_windows {
+        // Mach-O has a global "_" suffix and `object` crate will handle it.
+        // ELF does not have any symbol decorations.
+        return undecorated;
+    }
+
+    let x86 = match &target.arch[..] {
+        "x86" => true,
+        "x86_64" => false,
+        // Only x86/64 use symbol decorations.
+        _ => return undecorated,
+    };
+
+    let instance = match symbol {
+        ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
+            if tcx.is_static(def_id) =>
+        {
+            None
+        }
+        ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
+        ExportedSymbol::Generic(def_id, substs) => Some(Instance::new(def_id, substs)),
+        // DropGlue always use the Rust calling convention and thus follow the target's default
+        // symbol decoration scheme.
+        ExportedSymbol::DropGlue(..) => None,
+        // NoDefId always follow the target's default symbol decoration scheme.
+        ExportedSymbol::NoDefId(..) => None,
+    };
+
+    let (conv, args) = instance
+        .map(|i| {
+            tcx.fn_abi_of_instance(ty::ParamEnv::reveal_all().and((i, ty::List::empty())))
+                .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
+        })
+        .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
+        .unwrap_or((Conv::Rust, &[]));
+
+    // Decorate symbols with prefices, suffices and total number of bytes of arguments.
+    // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
+    let (prefix, suffix) = match conv {
+        Conv::X86Fastcall => ("@", "@"),
+        Conv::X86Stdcall => ("_", "@"),
+        Conv::X86VectorCall => ("", "@@"),
+        _ => {
+            if x86 {
+                undecorated.insert(0, '_');
+            }
+            return undecorated;
+        }
+    };
+
+    let args_in_bytes: u64 = args
+        .iter()
+        .map(|abi| abi.layout.size.bytes().next_multiple_of(target.pointer_width as u64 / 8))
+        .sum();
+    format!("{prefix}{undecorated}{suffix}{args_in_bytes}")
 }
 
 fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
