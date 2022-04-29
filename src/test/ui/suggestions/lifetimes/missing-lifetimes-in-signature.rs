@@ -28,7 +28,6 @@ fn bar<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
 where
     G: Get<T>,
 {
-    //~^ ERROR the parameter type `G` may not live long enough
     move || {
         *dest = g.get();
     }
@@ -51,7 +50,6 @@ fn qux<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
 where
     G: Get<T>,
 {
-    //~^ ERROR the parameter type `G` may not live long enough
     move || {
         *dest = g.get();
     }
@@ -61,7 +59,6 @@ where
 impl<'a> Foo {
     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
         //~^ ERROR the parameter type `G` may not live long enough
-        //~| ERROR the parameter type `G` may not live long enough
         move || {
             *dest = g.get();
         }
@@ -85,7 +82,6 @@ fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
 where
     G: Get<T>,
 {
-    //~^ ERROR the parameter type `G` may not live long enough
     move || {
         *dest = g.get();
     }

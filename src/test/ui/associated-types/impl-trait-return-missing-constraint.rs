@@ -24,7 +24,6 @@ fn bar() -> impl Bar {
 
 fn baz() -> impl Bar<Item = i32> {
     //~^ ERROR type mismatch resolving `<impl Bar as Foo>::Item == i32`
-    //~| ERROR type mismatch resolving `<impl Bar as Foo>::Item == i32`
     bar()
 }
 

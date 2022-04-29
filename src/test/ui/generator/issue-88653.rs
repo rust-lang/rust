@@ -7,13 +7,10 @@ use std::ops::Generator;
 
 fn foo(bar: bool) -> impl Generator<(bool,)> {
     //~^ ERROR: type mismatch in generator arguments [E0631]
-    //~| ERROR: type mismatch in generator arguments [E0631]
-    //~| NOTE: expected signature of `fn((bool,)) -> _`
     //~| NOTE: expected signature of `fn((bool,)) -> _`
     //~| NOTE: in this expansion of desugaring of `impl Trait`
     |bar| {
         //~^ NOTE: found signature of `fn(bool) -> _`
-        //~| NOTE: found signature of `fn(bool) -> _`
         if bar {
             yield bar;
         }
