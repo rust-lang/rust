@@ -137,9 +137,7 @@ impl<'tcx> InherentCollect<'tcx> {
             return;
         }
 
-        if self.tcx.features().rustc_attrs
-            && self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls)
-        {
+        if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
             let hir::ItemKind::Impl(hir::Impl { items, .. }) = item.kind else {
                 bug!("expected `impl` item: {:?}", item);
             };
