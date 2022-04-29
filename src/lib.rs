@@ -20,7 +20,6 @@
     clippy::manual_map,
     clippy::needless_lifetimes,
     clippy::new_without_default,
-    clippy::op_ref,
     clippy::redundant_closure,
     clippy::redundant_field_names,
     clippy::single_char_add_str,
