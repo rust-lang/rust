@@ -388,12 +388,6 @@ impl<'a> Parser<'a> {
 /// Converts a flattened iterator of tokens (including open and close delimiter tokens)
 /// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
 /// of open and close delims.
-// FIXME(#67062): Currently, we don't parse `Invisible`-delimited groups correctly,
-// which can cause us to end up with mismatched `Invisible` delimiters in our
-// captured tokens. This function contains several hacks to work around this -
-// essentially, we throw away mismatched `Invisible` delimiters when we encounter them.
-// Once we properly parse `Invisible` delimiters, they can be captured just like any
-// other tokens, and these hacks can be removed.
 fn make_token_stream(
     mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
@@ -412,34 +406,9 @@ fn make_token_stream(
                 stack.push(FrameData { open_delim_sp: Some((delim, span)), inner: vec![] });
             }
             FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
-                // HACK: If we encounter a mismatched `Invisible` delimiter at the top
-                // level, just ignore it.
-                if matches!(delim, Delimiter::Invisible)
-                    && (stack.len() == 1
-                        || !matches!(
-                            stack.last_mut().unwrap().open_delim_sp.unwrap().0,
-                            Delimiter::Invisible
-                        ))
-                {
-                    token_and_spacing = iter.next();
-                    continue;
-                }
                 let frame_data = stack
                     .pop()
                     .unwrap_or_else(|| panic!("Token stack was empty for token: {:?}", token));
-
-                // HACK: If our current frame has a mismatched opening `Invisible` delimiter,
-                // merge our current frame with the one above it. That is, transform
-                // `[ { < first second } third ]` into `[ { first second } third ]`
-                if !matches!(delim, Delimiter::Invisible)
-                    && matches!(frame_data.open_delim_sp.unwrap().0, Delimiter::Invisible)
-                {
-                    stack.last_mut().unwrap().inner.extend(frame_data.inner);
-                    // Process our closing delimiter again, this time at the previous
-                    // frame in the stack
-                    token_and_spacing = Some((token, spacing));
-                    continue;
-                }
 
                 let (open_delim, open_sp) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
@@ -471,13 +440,6 @@ fn make_token_stream(
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();
-    }
-    // HACK: If we don't have a closing `Invisible` delimiter for our last
-    // frame, merge the frame with the top-level frame. That is,
-    // turn `< first second` into `first second`
-    if stack.len() == 2 && stack[1].open_delim_sp.unwrap().0 == Delimiter::Invisible {
-        let temp_buf = stack.pop().unwrap();
-        stack.last_mut().unwrap().inner.extend(temp_buf.inner);
     }
     let mut final_buf = stack.pop().expect("Missing final buf!");
     if break_last_token {
