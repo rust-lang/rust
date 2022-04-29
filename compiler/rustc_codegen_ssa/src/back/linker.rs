@@ -1576,7 +1576,7 @@ pub(crate) fn linked_symbols(
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         if info.level.is_below_threshold(export_threshold) || info.used {
             symbols.push((
-                symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,
             ));
         }
