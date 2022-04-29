@@ -11,7 +11,7 @@ macro_rules! features {
     ) => {
         #[macro_export]
         $(#[$macro_attrs])*
-        #[allow_internal_unstable(stdsimd_internal)]
+        #[allow_internal_unstable(stdsimd_internal, stdsimd)]
         #[cfg($cfg)]
         #[doc(cfg($cfg))]
         macro_rules! $macro_name {
