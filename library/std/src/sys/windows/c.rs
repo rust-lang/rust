@@ -1022,6 +1022,12 @@ extern "system" {
         bWaitAll: BOOL,
         dwMilliseconds: DWORD,
     ) -> DWORD;
+    pub fn CreatePipe(
+        hReadPipe: *mut HANDLE,
+        hWritePipe: *mut HANDLE,
+        lpPipeAttributes: *const SECURITY_ATTRIBUTES,
+        nSize: DWORD,
+    ) -> BOOL;
     pub fn CreateNamedPipeW(
         lpName: LPCWSTR,
         dwOpenMode: DWORD,
