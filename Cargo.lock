@@ -4171,7 +4171,6 @@ name = "rustc_parse_format"
 version = "0.0.0"
 dependencies = [
  "rustc_lexer",
- "rustc_span",
 ]
 
 [[package]]

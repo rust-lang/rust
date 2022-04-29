@@ -254,7 +254,10 @@ fn check_panic_str<'tcx>(
     if n_arguments > 0 && fmt_parser.errors.is_empty() {
         let arg_spans: Vec<_> = match &fmt_parser.arg_places[..] {
             [] => vec![fmt_span],
-            v => v.iter().map(|span| fmt_span.from_inner(*span)).collect(),
+            v => v
+                .iter()
+                .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
+                .collect(),
         };
         cx.struct_span_lint(NON_FMT_PANICS, arg_spans, |lint| {
             let mut l = lint.build(match n_arguments {
