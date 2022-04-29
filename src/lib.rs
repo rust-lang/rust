@@ -17,7 +17,6 @@
     clippy::field_reassign_with_default,
     clippy::from_over_into,
     clippy::if_same_then_else,
-    clippy::len_zero,
     clippy::manual_map,
     clippy::mem_replace_with_default,
     clippy::needless_borrow,
