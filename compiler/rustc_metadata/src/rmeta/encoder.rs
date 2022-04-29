@@ -2189,7 +2189,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: impl AsRef<Path> + Send) {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
