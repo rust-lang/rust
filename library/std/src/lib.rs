@@ -307,7 +307,6 @@
 // Only for re-exporting:
 #![feature(assert_matches)]
 #![feature(async_iterator)]
-#![feature(c_size_t)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
 #![feature(cfg_eval)]
