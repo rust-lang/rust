@@ -1,7 +1,7 @@
 [[rust-analyzer.assist.expressionFillDefault]]rust-analyzer.assist.expressionFillDefault (default: `"todo"`)::
 +
 --
-Placeholder for missing expressions in assists.
+Placeholder expression to use for missing expressions in assists.
 --
 [[rust-analyzer.cargo.autoreload]]rust-analyzer.cargo.autoreload (default: `true`)::
 +
@@ -17,9 +17,18 @@ Run build scripts (`build.rs`) for more precise code analysis.
 [[rust-analyzer.cargo.buildScripts.overrideCommand]]rust-analyzer.cargo.buildScripts.overrideCommand (default: `null`)::
 +
 --
-Advanced option, fully override the command rust-analyzer uses to
-run build scripts and build procedural macros. The command should
-include `--message-format=json` or a similar option.
+Override the command rust-analyzer uses to run build scripts and
+build procedural macros. The command is required to output json
+and should therefor include `--message-format=json` or a similar
+option.
+
+By default, a cargo invocation will be constructed for the configured
+targets and features, with the following base command line:
+
+```bash
+cargo check --quiet --workspace --message-format=json --all-targets
+```
+.
 --
 [[rust-analyzer.cargo.buildScripts.useRustcWrapper]]rust-analyzer.cargo.buildScripts.useRustcWrapper (default: `true`)::
 +
@@ -30,12 +39,14 @@ avoid compiling unnecessary things.
 [[rust-analyzer.cargo.features]]rust-analyzer.cargo.features (default: `[]`)::
 +
 --
-List of features to activate. Set to `"all"` to pass `--all-features` to cargo.
+List of features to activate.
+
+Set this to `"all"` to pass `--all-features` to cargo.
 --
 [[rust-analyzer.cargo.noDefaultFeatures]]rust-analyzer.cargo.noDefaultFeatures (default: `false`)::
 +
 --
-Do not activate the `default` feature.
+Whether to pass `--no-default-features` to cargo.
 --
 [[rust-analyzer.cargo.noSysroot]]rust-analyzer.cargo.noSysroot (default: `false`)::
 +
@@ -76,7 +87,9 @@ Extra arguments for `cargo check`.
 +
 --
 List of features to activate. Defaults to
-`#rust-analyzer.cargo.features#`. Set to `"all"` to pass `--all-features` to cargo.
+`#rust-analyzer.cargo.features#`.
+
+Set to `"all"` to pass `--all-features` to cargo.
 --
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +
@@ -86,9 +99,17 @@ Do not activate the `default` feature.
 [[rust-analyzer.checkOnSave.overrideCommand]]rust-analyzer.checkOnSave.overrideCommand (default: `null`)::
 +
 --
-Advanced option, fully override the command rust-analyzer uses for
-checking. The command should include `--message-format=json` or
-similar option.
+Override the command rust-analyzer uses to  run build scripts and
+build procedural macros. The command is required to output json
+and should therefor include `--message-format=json` or a similar
+option.
+
+An example command would be:
+
+```bash
+cargo check --workspace --message-format=json --all-targets
+```
+.
 --
 [[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
 +
@@ -226,22 +247,22 @@ Controls file watching implementation.
 [[rust-analyzer.highlightRelated.breakPoints.enable]]rust-analyzer.highlightRelated.breakPoints.enable (default: `true`)::
 +
 --
-Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
+Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
 --
 [[rust-analyzer.highlightRelated.exitPoints.enable]]rust-analyzer.highlightRelated.exitPoints.enable (default: `true`)::
 +
 --
-Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
 --
 [[rust-analyzer.highlightRelated.references.enable]]rust-analyzer.highlightRelated.references.enable (default: `true`)::
 +
 --
-Enables highlighting of related references while hovering your mouse above any identifier.
+Enables highlighting of related references while the cursor is on any identifier.
 --
 [[rust-analyzer.highlightRelated.yieldPoints.enable]]rust-analyzer.highlightRelated.yieldPoints.enable (default: `true`)::
 +
 --
-Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
+Enables highlighting of all break points for a loop or block context while the cursor is on any `async` or `await` keywords.
 --
 [[rust-analyzer.hover.actions.debug.enable]]rust-analyzer.hover.actions.debug.enable (default: `true`)::
 +
@@ -362,7 +383,7 @@ Whether to show inlay type hints for variables.
 [[rust-analyzer.inlayHints.typeHints.hideNamedConstructor]]rust-analyzer.inlayHints.typeHints.hideNamedConstructor (default: `false`)::
 +
 --
-Whether to hide inlay hints for constructors.
+Whether to hide inlay type hints for constructors.
 --
 [[rust-analyzer.joinLines.joinAssignments]]rust-analyzer.joinLines.joinAssignments (default: `true`)::
 +
@@ -474,7 +495,7 @@ Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
 [[rust-analyzer.procMacro.enable]]rust-analyzer.procMacro.enable (default: `true`)::
 +
 --
-Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
+Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
 --
 [[rust-analyzer.procMacro.ignored]]rust-analyzer.procMacro.ignored (default: `{}`)::
 +

@@ -52,7 +52,7 @@ use crate::{
 // parsing the old name.
 config_data! {
     struct ConfigData {
-        /// Placeholder for missing expressions in assists.
+        /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
         /// Automatically refresh project info via `cargo metadata` on
@@ -60,16 +60,27 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
-        /// Advanced option, fully override the command rust-analyzer uses to
-        /// run build scripts and build procedural macros. The command should
-        /// include `--message-format=json` or a similar option.
+        /// Override the command rust-analyzer uses to run build scripts and
+        /// build procedural macros. The command is required to output json
+        /// and should therefor include `--message-format=json` or a similar
+        /// option.
+        ///
+        /// By default, a cargo invocation will be constructed for the configured
+        /// targets and features, with the following base command line:
+        ///
+        /// ```bash
+        /// cargo check --quiet --workspace --message-format=json --all-targets
+        /// ```
+        /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid compiling unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
-        /// List of features to activate. Set to `"all"` to pass `--all-features` to cargo.
+        /// List of features to activate.
+        ///
+        /// Set this to `"all"` to pass `--all-features` to cargo.
         cargo_features: CargoFeatures      = "[]",
-        /// Do not activate the `default` feature.
+        /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = "false",
         /// Internal config for debugging, disables loading of sysroot crates.
         cargo_noSysroot: bool            = "false",
@@ -87,13 +98,23 @@ config_data! {
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// List of features to activate. Defaults to
-        /// `#rust-analyzer.cargo.features#`. Set to `"all"` to pass `--all-features` to cargo.
+        /// `#rust-analyzer.cargo.features#`.
+        ///
+        /// Set to `"all"` to pass `--all-features` to cargo.
         checkOnSave_features: Option<CargoFeatures>      = "null",
         /// Do not activate the `default` feature.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// checking. The command should include `--message-format=json` or
-        /// similar option.
+        /// Override the command rust-analyzer uses to  run build scripts and
+        /// build procedural macros. The command is required to output json
+        /// and should therefor include `--message-format=json` or a similar
+        /// option.
+        ///
+        /// An example command would be:
+        ///
+        /// ```bash
+        /// cargo check --workspace --message-format=json --all-targets
+        /// ```
+        /// .
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
         /// Check for a specific target. Defaults to
         /// `#rust-analyzer.cargo.target#`.
@@ -183,13 +204,13 @@ config_data! {
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",
 
-        /// Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
+        /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
-        /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+        /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
         highlightRelated_exitPoints_enable: bool = "true",
-        /// Enables highlighting of related references while hovering your mouse above any identifier.
+        /// Enables highlighting of related references while the cursor is on any identifier.
         highlightRelated_references_enable: bool = "true",
-        /// Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
+        /// Enables highlighting of all break points for a loop or block context while the cursor is on any `async` or `await` keywords.
         highlightRelated_yieldPoints_enable: bool = "true",
 
         /// Whether to show `Debug` action. Only applies when
@@ -233,20 +254,20 @@ config_data! {
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
-        inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
+        inlayHints_lifetimeElisionHints_useParameterNames: bool    = "false",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
-        inlayHints_maxLength: Option<usize>                = "25",
+        inlayHints_maxLength: Option<usize>                        = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
         /// Whether to show inlay type hints for compiler inserted reborrows.
         inlayHints_reborrowHints_enable: bool                      = "false",
         /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
-        inlayHints_renderColons: bool                      = "true",
+        inlayHints_renderColons: bool                              = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints_enable: bool                          = "true",
-        /// Whether to hide inlay hints for constructors.
-        inlayHints_typeHints_hideNamedConstructor: bool          = "false",
+        /// Whether to hide inlay type hints for constructors.
+        inlayHints_typeHints_hideNamedConstructor: bool            = "false",
 
         /// Join lines merges consecutive declaration and initialization of an assignment.
         joinLines_joinAssignments: bool = "true",
@@ -304,7 +325,7 @@ config_data! {
 
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = "true",
-        /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
+        /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
         procMacro_enable: bool                     = "true",
         /// These proc-macros will be ignored when trying to expand them.
         ///
