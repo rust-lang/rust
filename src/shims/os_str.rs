@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(OsString::from_wide(&u16_vec[..]))
         }
         #[cfg(not(windows))]
-        pub fn u16vec_to_osstring<'tcx, 'a>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
+        pub fn u16vec_to_osstring<'tcx>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
             let s = String::from_utf16(&u16_vec[..])
                 .map_err(|_| err_unsup_format!("{:?} is not a valid utf-16 string", u16_vec))?;
             Ok(s.into())

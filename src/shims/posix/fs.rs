@@ -46,7 +46,7 @@ trait FileDescriptor: std::fmt::Debug {
         _communicate_allowed: bool,
     ) -> InterpResult<'tcx, io::Result<i32>>;
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 }
 
 impl FileDescriptor for FileHandle {
@@ -107,7 +107,7 @@ impl FileDescriptor for FileHandle {
         }
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         let duplicated = self.file.try_clone()?;
         Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
@@ -153,7 +153,7 @@ impl FileDescriptor for io::Stdin {
         throw_unsup_format!("stdin cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
     }
 }
@@ -203,7 +203,7 @@ impl FileDescriptor for io::Stdout {
         throw_unsup_format!("stdout cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdout()))
     }
 }
@@ -246,7 +246,7 @@ impl FileDescriptor for io::Stderr {
         throw_unsup_format!("stderr cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stderr()))
     }
 }

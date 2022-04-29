@@ -14,7 +14,6 @@
     clippy::collapsible_if,
     clippy::comparison_chain,
     clippy::enum_variant_names,
-    clippy::extra_unused_lifetimes,
     clippy::field_reassign_with_default,
     clippy::from_over_into,
     clippy::if_same_then_else,

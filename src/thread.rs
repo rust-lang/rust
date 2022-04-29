@@ -69,7 +69,7 @@ impl From<u32> for ThreadId {
 }
 
 impl ThreadId {
-    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
+    pub fn to_u32_scalar(&self) -> Scalar<Tag> {
         Scalar::from_u32(u32::try_from(self.0).unwrap())
     }
 }
