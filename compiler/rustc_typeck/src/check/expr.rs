@@ -1292,6 +1292,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return tcx.ty_error();
         }
 
+        self.check_repeat_element_needs_copy_bound(element, count, element_ty);
+
+        tcx.mk_ty(ty::Array(t, count))
+    }
+
+    fn check_repeat_element_needs_copy_bound(
+        &self,
+        element: &hir::Expr<'_>,
+        count: ty::Const<'tcx>,
+        element_ty: Ty<'tcx>,
+    ) {
+        let tcx = self.tcx;
         let is_const = match &element.kind {
             hir::ExprKind::ConstBlock(..) => true,
             hir::ExprKind::Path(qpath) => {
@@ -1303,7 +1315,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-
         if !is_const {
             let is_const_fn = match element.kind {
                 hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
@@ -1319,8 +1330,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.require_type_meets(element_ty, element.span, code, lang_item);
             }
         }
-
-        tcx.mk_ty(ty::Array(t, count))
     }
 
     fn check_expr_tuple(
