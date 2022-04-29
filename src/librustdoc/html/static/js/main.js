@@ -1,3 +1,6 @@
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
 /* global onEach, onEachLazy, removeClass */
@@ -11,7 +14,7 @@ if (!String.prototype.startsWith) {
 }
 if (!String.prototype.endsWith) {
     String.prototype.endsWith = function(suffix, length) {
-        var l = length || this.length;
+        const l = length || this.length;
         return this.indexOf(suffix, l - suffix.length) !== -1;
     };
 }
@@ -40,7 +43,7 @@ if (!DOMTokenList.prototype.remove) {
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 function getVar(name) {
-    var el = document.getElementById("rustdoc-vars");
+    const el = document.getElementById("rustdoc-vars");
     if (el) {
         return el.attributes["data-" + name].value;
     } else {
@@ -59,7 +62,7 @@ function resourcePath(basename, extension) {
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
     window.searchIndexJS = resourcePath("search-index", ".js");
-    var sidebarVars = document.getElementById("sidebar-vars");
+    const sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {
             name: sidebarVars.attributes["data-name"].value,
@@ -68,8 +71,8 @@ function resourcePath(basename, extension) {
         };
         // FIXME: It would be nicer to generate this text content directly in HTML,
         // but with the current code it's hard to get the right information in the right place.
-        var mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
-        var locationTitle = document.querySelector(".sidebar h2.location");
+        const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+        const locationTitle = document.querySelector(".sidebar h2.location");
         if (mobileLocationTitle && locationTitle) {
             mobileLocationTitle.innerHTML = locationTitle.innerHTML;
         }
@@ -91,16 +94,16 @@ function getVirtualKey(ev) {
         return ev.key;
     }
 
-    var c = ev.charCode || ev.keyCode;
+    const c = ev.charCode || ev.keyCode;
     if (c == 27) {
         return "Escape";
     }
     return String.fromCharCode(c);
 }
 
-var THEME_PICKER_ELEMENT_ID = "theme-picker";
-var THEMES_ELEMENT_ID = "theme-choices";
-var MAIN_ID = "main-content";
+const THEME_PICKER_ELEMENT_ID = "theme-picker";
+const THEMES_ELEMENT_ID = "theme-choices";
+const MAIN_ID = "main-content";
 
 function getThemesElement() {
     return document.getElementById(THEMES_ELEMENT_ID);
@@ -116,8 +119,8 @@ function getNakedUrl() {
 }
 
 function showThemeButtonState() {
-    var themePicker = getThemePickerElement();
-    var themeChoices = getThemesElement();
+    const themePicker = getThemePickerElement();
+    const themeChoices = getThemesElement();
 
     themeChoices.style.display = "block";
     themePicker.style.borderBottomRightRadius = "0";
@@ -125,8 +128,8 @@ function showThemeButtonState() {
 }
 
 function hideThemeButtonState() {
-    var themePicker = getThemePickerElement();
-    var themeChoices = getThemesElement();
+    const themePicker = getThemePickerElement();
+    const themeChoices = getThemesElement();
 
     themeChoices.style.display = "none";
     themePicker.style.borderBottomRightRadius = "3px";
@@ -138,9 +141,9 @@ function hideThemeButtonState() {
     if (!document.location.href.startsWith("file:///")) {
         return;
     }
-    var themeChoices = getThemesElement();
-    var themePicker = getThemePickerElement();
-    var availableThemes = getVar("themes").split(",");
+    const themeChoices = getThemesElement();
+    const themePicker = getThemePickerElement();
+    const availableThemes = getVar("themes").split(",");
 
     removeClass(themeChoices.parentElement, "hidden");
 
@@ -153,8 +156,8 @@ function hideThemeButtonState() {
     }
 
     function handleThemeButtonsBlur(e) {
-        var active = document.activeElement;
-        var related = e.relatedTarget;
+        const active = document.activeElement;
+        const related = e.relatedTarget;
 
         if (active.id !== THEME_PICKER_ELEMENT_ID &&
             (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
@@ -168,7 +171,7 @@ function hideThemeButtonState() {
     themePicker.onclick = switchThemeButtonState;
     themePicker.onblur = handleThemeButtonsBlur;
     availableThemes.forEach(function(item) {
-        var but = document.createElement("button");
+        const but = document.createElement("button");
         but.textContent = item;
         but.onclick = function() {
             switchTheme(window.currentTheme, window.mainTheme, item, true);
@@ -236,10 +239,10 @@ function hideThemeButtonState() {
             }
         },
         getQueryStringParams: function() {
-            var params = {};
+            const params = {};
             window.location.search.substring(1).split("&").
                 map(function(s) {
-                    var pair = s.split("=");
+                    const pair = s.split("=");
                     params[decodeURIComponent(pair[0])] =
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
@@ -249,17 +252,17 @@ function hideThemeButtonState() {
             return window.history && typeof window.history.pushState === "function";
         },
         setup: function() {
-            var search_input = searchState.input;
+            const search_input = searchState.input;
             if (!searchState.input) {
                 return;
             }
             function loadScript(url) {
-                var script = document.createElement('script');
+                const script = document.createElement('script');
                 script.src = url;
                 document.head.append(script);
             }
 
-            var searchLoaded = false;
+            let searchLoaded = false;
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
@@ -278,9 +281,9 @@ function hideThemeButtonState() {
                 loadSearch();
             }
 
-            var params = searchState.getQueryStringParams();
+            const params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                var search = searchState.outputElement();
+                const search = searchState.outputElement();
                 search.innerHTML = "<h3 class=\"search-loading\">" +
                     searchState.loadingText + "</h3>";
                 searchState.showResults(search);
@@ -291,7 +294,7 @@ function hideThemeButtonState() {
 
     function getPageId() {
         if (window.location.hash) {
-            var tmp = window.location.hash.replace(/^#/, "");
+            const tmp = window.location.hash.replace(/^#/, "");
             if (tmp.length > 0) {
                 return tmp;
             }
@@ -299,18 +302,18 @@ function hideThemeButtonState() {
         return null;
     }
 
-    var toggleAllDocsId = "toggle-all-docs";
-    var main = document.getElementById(MAIN_ID);
-    var savedHash = "";
+    const toggleAllDocsId = "toggle-all-docs";
+    const main = document.getElementById(MAIN_ID);
+    let savedHash = "";
 
     function handleHashes(ev) {
-        var elem;
-        var search = searchState.outputElement();
+        let elem;
+        const search = searchState.outputElement();
         if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
             searchState.hideResults(search);
-            var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
+            const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (searchState.browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
                 history.replaceState(null, "",
@@ -333,7 +336,7 @@ function hideThemeButtonState() {
 
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
-        var sidebar = document.getElementsByClassName("sidebar")[0];
+        const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
         handleHashes(ev);
     }
@@ -386,8 +389,8 @@ function hideThemeButtonState() {
     }
 
     function handleEscape(ev) {
-        var help = getHelpElement(false);
-        var search = searchState.outputElement();
+        const help = getHelpElement(false);
+        const search = searchState.outputElement();
         if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
         } else if (search && !hasClass(search, "hidden")) {
@@ -399,12 +402,14 @@ function hideThemeButtonState() {
         hideThemeButtonState();
     }
 
-    var disableShortcuts = getSettingValue("disable-shortcuts") === "true";
+    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
+
+        let themePicker;
 
         if (document.activeElement.tagName === "INPUT") {
             switch (getVirtualKey(ev)) {
@@ -439,7 +444,7 @@ function hideThemeButtonState() {
             case "T":
                 displayHelp(false, ev);
                 ev.preventDefault();
-                var themePicker = getThemePickerElement();
+                themePicker = getThemePickerElement();
                 themePicker.click();
                 themePicker.focus();
                 break;
@@ -453,8 +458,8 @@ function hideThemeButtonState() {
     }
 
     function handleThemeKeyDown(ev) {
-        var active = document.activeElement;
-        var themes = getThemesElement();
+        const active = document.activeElement;
+        const themes = getThemesElement();
         switch (getVirtualKey(ev)) {
         case "ArrowUp":
             ev.preventDefault();
@@ -499,36 +504,11 @@ function hideThemeButtonState() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    (function() {
-        var x = document.getElementsByClassName("version-selector");
-        if (x.length > 0) {
-            x[0].onchange = function() {
-                var i, match,
-                    url = document.location.href,
-                    stripped = "",
-                    len = window.rootPath.match(/\.\.\//g).length + 1;
-
-                for (i = 0; i < len; ++i) {
-                    match = url.match(/\/[^/]*$/);
-                    if (i < len - 1) {
-                        stripped = match[0] + stripped;
-                    }
-                    url = url.substring(0, url.length - match[0].length);
-                }
-
-                var selectedVersion = document.getElementsByClassName("version-selector")[0].value;
-                url += "/" + selectedVersion + stripped;
-
-                document.location.href = url;
-            };
-        }
-    }());
-
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
-        var sidebar = document.getElementsByClassName("sidebar-elems")[0];
-        var others;
-        var current = window.sidebarCurrent;
+        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        let others;
+        const current = window.sidebarCurrent;
 
         function addSidebarCrates(crates) {
             if (!hasClass(document.body, "crate")) {
@@ -536,23 +516,23 @@ function hideThemeButtonState() {
                 return;
             }
             // Draw a convenient sidebar of known crates if we have a listing
-            var div = document.createElement("div");
+            const div = document.createElement("div");
             div.className = "block crate";
             div.innerHTML = "<h3>Crates</h3>";
-            var ul = document.createElement("ul");
+            const ul = document.createElement("ul");
             div.appendChild(ul);
 
-            for (var i = 0; i < crates.length; ++i) {
-                var klass = "crate";
-                if (window.rootPath !== "./" && crates[i] === window.currentCrate) {
+            for (const crate of crates) {
+                let klass = "crate";
+                if (window.rootPath !== "./" && crate === window.currentCrate) {
                     klass += " current";
                 }
-                var link = document.createElement("a");
-                link.href = window.rootPath + crates[i] + "/index.html";
+                const link = document.createElement("a");
+                link.href = window.rootPath + crate + "/index.html";
                 link.className = klass;
-                link.textContent = crates[i];
+                link.textContent = crate;
 
-                var li = document.createElement("li");
+                const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
@@ -568,39 +548,38 @@ function hideThemeButtonState() {
          *                          "Modules", or "Macros".
          */
         function block(shortty, id, longty) {
-            var filtered = items[shortty];
+            const filtered = items[shortty];
             if (!filtered) {
                 return;
             }
 
-            var div = document.createElement("div");
+            const div = document.createElement("div");
             div.className = "block " + shortty;
-            var h3 = document.createElement("h3");
+            const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
             div.appendChild(h3);
-            var ul = document.createElement("ul");
+            const ul = document.createElement("ul");
 
-            for (var i = 0, len = filtered.length; i < len; ++i) {
-                var item = filtered[i];
-                var name = item[0];
-                var desc = item[1]; // can be null
+            for (const item of filtered) {
+                const name = item[0];
+                const desc = item[1]; // can be null
 
-                var klass = shortty;
+                let klass = shortty;
                 if (name === current.name && shortty === current.ty) {
                     klass += " current";
                 }
-                var path;
+                let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
                 } else {
                     path = shortty + "." + name + ".html";
                 }
-                var link = document.createElement("a");
+                const link = document.createElement("a");
                 link.href = current.relpath + path;
                 link.title = desc;
                 link.className = klass;
                 link.textContent = name;
-                var li = document.createElement("li");
+                const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
@@ -613,7 +592,7 @@ function hideThemeButtonState() {
             others.className = "others";
             sidebar.appendChild(others);
 
-            var isModule = hasClass(document.body, "mod");
+            const isModule = hasClass(document.body, "mod");
             if (!isModule) {
                 block("primitive", "primitives", "Primitive Types");
                 block("mod", "modules", "Modules");
@@ -638,8 +617,9 @@ function hideThemeButtonState() {
     };
 
     window.register_implementors = function(imp) {
-        var implementors = document.getElementById("implementors-list");
-        var synthetic_implementors = document.getElementById("synthetic-implementors-list");
+        const implementors = document.getElementById("implementors-list");
+        const synthetic_implementors = document.getElementById("synthetic-implementors-list");
+        const inlined_types = new Set();
 
         if (synthetic_implementors) {
             // This `inlined_types` variable is used to avoid having the same implementation
@@ -647,9 +627,8 @@ function hideThemeButtonState() {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            var inlined_types = new Set();
             onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
-                var aliases = el.getAttribute("data-aliases");
+                const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
                 }
@@ -659,48 +638,48 @@ function hideThemeButtonState() {
             });
         }
 
-        var currentNbImpls = implementors.getElementsByClassName("impl").length;
-        var traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
-        var baseIdName = "impl-" + traitName + "-";
-        var libs = Object.getOwnPropertyNames(imp);
-        for (var i = 0, llength = libs.length; i < llength; ++i) {
-            if (libs[i] === window.currentCrate) { continue; }
-            var structs = imp[libs[i]];
+        let currentNbImpls = implementors.getElementsByClassName("impl").length;
+        const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        const baseIdName = "impl-" + traitName + "-";
+        const libs = Object.getOwnPropertyNames(imp);
+        for (const lib of libs) {
+            if (lib === window.currentCrate) {
+                continue;
+            }
+            const structs = imp[lib];
 
             struct_loop:
-            for (var j = 0, slength = structs.length; j < slength; ++j) {
-                var struct = structs[j];
-
-                var list = struct.synthetic ? synthetic_implementors : implementors;
+            for (const struct of structs) {
+                const list = struct.synthetic ? synthetic_implementors : implementors;
 
                 if (struct.synthetic) {
-                    for (var k = 0, stlength = struct.types.length; k < stlength; k++) {
-                        if (inlined_types.has(struct.types[k])) {
+                    for (const struct_type of struct.types) {
+                        if (inlined_types.has(struct_type)) {
                             continue struct_loop;
                         }
-                        inlined_types.add(struct.types[k]);
+                        inlined_types.add(struct_type);
                     }
                 }
 
-                var code = document.createElement("h3");
+                const code = document.createElement("h3");
                 code.innerHTML = struct.text;
                 addClass(code, "code-header");
                 addClass(code, "in-band");
 
                 onEachLazy(code.getElementsByTagName("a"), function(elem) {
-                    var href = elem.getAttribute("href");
+                    const href = elem.getAttribute("href");
 
                     if (href && href.indexOf("http") !== 0) {
                         elem.setAttribute("href", window.rootPath + href);
                     }
                 });
 
-                var currentId = baseIdName + currentNbImpls;
-                var anchor = document.createElement("a");
+                const currentId = baseIdName + currentNbImpls;
+                const anchor = document.createElement("a");
                 anchor.href = "#" + currentId;
                 addClass(anchor, "anchor");
 
-                var display = document.createElement("div");
+                const display = document.createElement("div");
                 display.id = currentId;
                 addClass(display, "impl");
                 display.appendChild(anchor);
@@ -725,11 +704,11 @@ function hideThemeButtonState() {
     }
 
     function toggleAllDocs() {
-        var innerToggle = document.getElementById(toggleAllDocsId);
+        const innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
         }
-        var sectionIsCollapsed = false;
+        let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
             removeClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
@@ -759,17 +738,17 @@ function hideThemeButtonState() {
     }
 
     (function() {
-        var toggles = document.getElementById(toggleAllDocsId);
+        const toggles = document.getElementById(toggleAllDocsId);
         if (toggles) {
             toggles.onclick = toggleAllDocs;
         }
 
-        var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
-        var hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
-        var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
+        const hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
+        const hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
+        const hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
         function setImplementorsTogglesOpen(id, open) {
-            var list = document.getElementById(id);
+            const list = document.getElementById(id);
             if (list !== null) {
                 onEachLazy(list.getElementsByClassName("implementors-toggle"), function(e) {
                     e.open = open;
@@ -792,7 +771,7 @@ function hideThemeButtonState() {
 
         });
 
-        var pageId = getPageId();
+        const pageId = getPageId();
         if (pageId !== null) {
             expandSection(pageId);
         }
@@ -800,15 +779,15 @@ function hideThemeButtonState() {
 
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        var lineNumbersFunc = function() {};
+        let lineNumbersFunc = function() {};
         if (getSettingValue("line-numbers") === "true") {
             lineNumbersFunc = function(x) {
-                var count = x.textContent.split("\n").length;
-                var elems = [];
-                for (var i = 0; i < count; ++i) {
+                const count = x.textContent.split("\n").length;
+                const elems = [];
+                for (let i = 0; i < count; ++i) {
                     elems.push(i + 1);
                 }
-                var node = document.createElement("pre");
+                const node = document.createElement("pre");
                 addClass(node, "line-number");
                 node.innerHTML = elems.join("\n");
                 x.parentNode.insertBefore(node, x);
@@ -835,12 +814,12 @@ function hideThemeButtonState() {
     }());
 
     function hideSidebar() {
-        var sidebar = document.getElementsByClassName("sidebar")[0];
+        const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
 
     function handleClick(id, f) {
-        var elem = document.getElementById(id);
+        const elem = document.getElementById(id);
         if (elem) {
             elem.addEventListener("click", f);
         }
@@ -879,10 +858,10 @@ function hideThemeButtonState() {
         };
     });
 
-    var sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
+    const sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
     if (sidebar_menu_toggle) {
         sidebar_menu_toggle.addEventListener("click", function() {
-            var sidebar = document.getElementsByClassName("sidebar")[0];
+            const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
                 addClass(sidebar, "shown");
             } else {
@@ -891,8 +870,8 @@ function hideThemeButtonState() {
         });
     }
 
-    var buildHelperPopup = function() {
-        var popup = document.createElement("aside");
+    let buildHelperPopup = function() {
+        const popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
 
@@ -903,13 +882,13 @@ function hideThemeButtonState() {
             }
         });
 
-        var book_info = document.createElement("span");
+        const book_info = document.createElement("span");
         book_info.className = "top";
         book_info.innerHTML = "You can find more information in \
             <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
 
-        var container = document.createElement("div");
-        var shortcuts = [
+        const container = document.createElement("div");
+        const shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
             ["T", "Focus the theme picker menu"],
@@ -927,11 +906,11 @@ function hideThemeButtonState() {
                     })
                     .join("") + "</dt><dd>" + x[1] + "</dd>";
         }).join("");
-        var div_shortcuts = document.createElement("div");
+        const div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
 
-        var infos = [
+        const infos = [
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
@@ -947,7 +926,7 @@ function hideThemeButtonState() {
         ].map(function(x) {
             return "<p>" + x + "</p>";
         }).join("");
-        var div_infos = document.createElement("div");
+        const div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
 
@@ -955,9 +934,9 @@ function hideThemeButtonState() {
         container.appendChild(div_shortcuts);
         container.appendChild(div_infos);
 
-        var rustdoc_version = document.createElement("span");
+        const rustdoc_version = document.createElement("span");
         rustdoc_version.className = "bottom";
-        var rustdoc_version_code = document.createElement("code");
+        const rustdoc_version_code = document.createElement("code");
         rustdoc_version_code.innerText = "rustdoc " + getVar("rustdoc-version");
         rustdoc_version.appendChild(rustdoc_version_code);
 
@@ -975,11 +954,11 @@ function hideThemeButtonState() {
 }());
 
 (function () {
-    var reset_button_timeout = null;
+    let reset_button_timeout = null;
 
     window.copy_path = function(but) {
-        var parent = but.parentElement;
-        var path = [];
+        const parent = but.parentElement;
+        const path = [];
 
         onEach(parent.childNodes, function(child) {
             if (child.tagName === 'A') {
@@ -987,7 +966,7 @@ function hideThemeButtonState() {
             }
         });
 
-        var el = document.createElement('textarea');
+        const el = document.createElement('textarea');
         el.value = path.join('::');
         el.setAttribute('readonly', '');
         // To not make it appear on the screen.
@@ -1002,7 +981,7 @@ function hideThemeButtonState() {
         // There is always one children, but multiple childNodes.
         but.children[0].style.display = 'none';
 
-        var tmp;
+        let tmp;
         if (but.childNodes.length < 2) {
             tmp = document.createTextNode('✓');
             but.appendChild(tmp);
