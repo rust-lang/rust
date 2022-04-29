@@ -312,3 +312,83 @@ impl SourceMapExtension for SourceMap {
         }
     }
 }
+
+fn map_path_prefix(mapping: &FilePathMapping, path: &str) -> String {
+    // It's important that we convert to a string here because that's what
+    // later stages do too (e.g. in the backend), and comparing `Path` values
+    // won't catch some differences at the string level, e.g. "abc" and "abc/"
+    // compare as equal.
+    mapping.map_prefix(path.into()).0.to_string_lossy().to_string()
+}
+
+#[cfg(unix)]
+#[test]
+fn path_prefix_remapping() {
+    // Relative to relative
+    {
+        let mapping = &FilePathMapping::new(vec![("abc/def".into(), "foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), "foo/src/main.rs");
+        assert_eq!(map_path_prefix(mapping, "abc/def"), "foo");
+    }
+
+    // Relative to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![("abc/def".into(), "/foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), "/foo/src/main.rs");
+        assert_eq!(map_path_prefix(mapping, "abc/def"), "/foo");
+    }
+
+    // Absolute to relative
+    {
+        let mapping = &FilePathMapping::new(vec![("/abc/def".into(), "foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), "foo/src/main.rs");
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), "foo");
+    }
+
+    // Absolute to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![("/abc/def".into(), "/foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), "/foo/src/main.rs");
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), "/foo");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn path_prefix_remapping_from_relative2() {
+    // Relative to relative
+    {
+        let mapping = &FilePathMapping::new(vec![("abc\\def".into(), "foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "abc\\def\\src\\main.rs"), "foo\\src\\main.rs");
+        assert_eq!(map_path_prefix(mapping, "abc\\def"), "foo");
+    }
+
+    // Relative to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![("abc\\def".into(), "X:\\foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "abc\\def\\src\\main.rs"), "X:\\foo\\src\\main.rs");
+        assert_eq!(map_path_prefix(mapping, "abc\\def"), "X:\\foo");
+    }
+
+    // Absolute to relative
+    {
+        let mapping = &FilePathMapping::new(vec![("X:\\abc\\def".into(), "foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def\\src\\main.rs"), "foo\\src\\main.rs");
+        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def"), "foo");
+    }
+
+    // Absolute to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![("X:\\abc\\def".into(), "X:\\foo".into())]);
+
+        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def\\src\\main.rs"), "X:\\foo\\src\\main.rs");
+        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def"), "X:\\foo");
+    }
+}
