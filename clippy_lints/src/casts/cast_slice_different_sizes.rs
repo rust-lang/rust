@@ -1,4 +1,4 @@
-use clippy_utils::{diagnostics::span_lint_and_then, meets_msrv, msrvs, source::snippet_opt};
+use clippy_utils::{diagnostics::span_lint_and_then, meets_msrv, msrvs, source};
 use if_chain::if_chain;
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, Node};
@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Opti
                         start_ty.ty, from_size, end_ty.ty, to_size,
                     ),
                     |diag| {
-                        let ptr_snippet = snippet_opt(cx, left_cast.span).unwrap();
+                        let ptr_snippet = source::snippet(cx, left_cast.span, "..");
 
                         let (mutbl_fn_str, mutbl_ptr_str) = match end_ty.mutbl {
                             Mutability::Mut => ("_mut", "mut"),
@@ -119,16 +119,14 @@ fn expr_cast_chain_tys<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Optio
     if let ExprKind::Cast(cast_expr, _cast_to_hir_ty) = expr.peel_blocks().kind {
         let cast_to = cx.typeck_results().expr_ty(expr);
         let to_slice_ty = get_raw_slice_ty_mut(cast_to)?;
-        if let Some(CastChainInfo {
-            left_cast,
-            start_ty,
-            end_ty: _,
-        }) = expr_cast_chain_tys(cx, cast_expr)
-        {
+
+        // If the expression that makes up the source of this cast is itself a cast, recursively
+        // call `expr_cast_chain_tys` and update the end type with the final tartet type.
+        // Otherwise, this cast is not immediately nested, just construct the info for this cast
+        if let Some(prev_info) = expr_cast_chain_tys(cx, cast_expr) {
             Some(CastChainInfo {
-                left_cast,
-                start_ty,
                 end_ty: to_slice_ty,
+                ..prev_info
             })
         } else {
             let cast_from = cx.typeck_results().expr_ty(cast_expr);
