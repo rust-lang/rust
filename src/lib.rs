@@ -7,9 +7,8 @@
 #![feature(bool_to_option)]
 #![feature(io_error_more)]
 #![warn(rust_2018_idioms)]
-#![allow(clippy::cast_lossless)]
-// TODO: Uncategorized. Some of these we'll want to fix, some keep ignored.
 #![allow(
+    clippy::cast_lossless,
     clippy::collapsible_else_if,
     clippy::collapsible_if,
     clippy::comparison_chain,
