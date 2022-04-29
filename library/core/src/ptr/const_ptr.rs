@@ -260,7 +260,7 @@ impl<T: ?Sized> *const T {
         //
         // As a result, we use the following implementation, which would be
         // wrong on CHERI, but right everywhere else.
-        self.cast::<u8>().wrapping_sub(self_addr).wrapping_add(addr).cast::<T>()
+        self.cast::<u8>().wrapping_add(addr).wrapping_sub(self_addr).cast::<T>()
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
