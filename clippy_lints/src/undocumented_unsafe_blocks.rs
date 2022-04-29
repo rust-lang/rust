@@ -2,12 +2,14 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, UnsafeSource};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{BytePos, Pos, SyntaxContext};
+use rustc_span::{BytePos, Pos, Span, SyntaxContext};
+use std::rc::Rc;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -84,6 +86,66 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
                 None,
                 "consider adding a safety comment on the preceding line",
             );
+        }
+    }
+
+    fn check_mod(&mut self, cx: &LateContext<'_>, module: &'_ hir::Mod<'_>, mod_span: Span, hir_id: hir::HirId) {
+        let source_map = cx.sess().source_map();
+        let mut item_and_spans: Vec<(&hir::Item<'_>, Span)> = Vec::new(); // (start, end, item)
+
+        // Collect all items and their spans
+        for item_id in module.item_ids {
+            let item = cx.tcx.hir().item(*item_id);
+            item_and_spans.push((item, item.span));
+        }
+        // Sort items by start position
+        item_and_spans.sort_by_key(|e| e.1.lo());
+
+        for (idx, (item, item_span)) in item_and_spans.iter().enumerate() {
+            if let hir::ItemKind::Impl(imple) = &item.kind
+                && imple.unsafety == hir::Unsafety::Unsafe
+                && !item_span.from_expansion()
+                && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, hir_id)
+            {
+                // Checks if the lines immediately preceding the impl contain a safety comment.
+                let impl_has_safety_comment = {
+                    let span_before_impl = if idx == 0 {
+                        // mod A { /* comment */ unsafe impl T {} }
+                        // ^--------------------^
+                        todo!();
+                        //mod_span.until(module.spans)
+                    } else {
+                        // unsafe impl S {} /* comment */ unsafe impl T {}
+                        //                 ^-------------^
+                        item_and_spans[idx - 1].1.between(*item_span)
+                    };
+
+                    if let Ok(start) = source_map.lookup_line(span_before_impl.lo())
+                        && let Ok(end) = source_map.lookup_line(span_before_impl.hi())
+                        && let Some(src) = start.sf.src.as_deref()
+                    {
+                        start.line < end.line && text_has_safety_comment(
+                            src,
+                            &start.sf.lines[start.line + 1 ..= end.line],
+                            start.sf.start_pos.to_usize()
+                        )
+                    } else {
+                        // Problem getting source text. Pretend a comment was found.
+                        true
+                    }
+                };
+
+                if !impl_has_safety_comment {
+                    span_lint_and_help(
+                        cx,
+                        UNDOCUMENTED_UNSAFE_BLOCKS,
+                        *item_span,
+                        "unsafe impl missing a safety comment",
+                        None,
+                        "consider adding a safety comment on the preceding line",
+                    );
+                }
+            }
         }
     }
 }

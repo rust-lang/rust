@@ -147,5 +147,53 @@ LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 18 previous errors
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:341:5
+   |
+LL |     unsafe impl A for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:348:9
+   |
+LL |         unsafe impl B for (u32) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:420:5
+   |
+LL |     unsafe impl NoComment for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:424:19
+   |
+LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:428:5
+   |
+LL |     unsafe impl TrailingComment for () {} // SAFETY:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:433:5
+   |
+LL |     unsafe impl Interference for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 24 previous errors
 
