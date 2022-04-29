@@ -17,7 +17,7 @@ standard library does not ship with CET enabled by default, so you may need to r
 modules with a `cargo` command like:
 
 ```sh
-$ RUSTFLAGS="-Z cf-protection=full" RUSTC="rustc-custom" cargo +nightly build -Z build-std --target x86_64-unknown-linux-gnu
+$ RUSTFLAGS="-Z cf-protection=full" cargo +nightly build -Z build-std --target x86_64-unknown-linux-gnu
 ```
 
 ### Detection
