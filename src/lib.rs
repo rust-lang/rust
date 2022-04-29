@@ -19,7 +19,6 @@
     clippy::if_same_then_else,
     clippy::manual_map,
     clippy::needless_lifetimes,
-    clippy::needless_question_mark,
     clippy::needless_return,
     clippy::new_without_default,
     clippy::op_ref,

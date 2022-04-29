@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let cid = GlobalId { instance, promoted: None };
         let const_val = this.eval_to_allocation(cid)?;
         let const_val = this.read_scalar(&const_val.into())?;
-        return Ok(const_val.check_init()?);
+        const_val.check_init()
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
