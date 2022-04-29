@@ -104,6 +104,8 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 ///
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
+///
+/// On some platforms, this always returns false.
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
 pub fn futex_wake(futex: &AtomicU32) -> bool {
     let ptr = futex as *const AtomicU32;
@@ -135,9 +137,9 @@ pub fn futex_wake_all(futex: &AtomicU32) {
     }
 }
 
-// FreeBSD doesn't tell us how many threads are woken up, so this doesn't return a bool.
+// FreeBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "freebsd")]
-pub fn futex_wake(futex: &AtomicU32) {
+pub fn futex_wake(futex: &AtomicU32) -> bool {
     use crate::ptr::null_mut;
     unsafe {
         libc::_umtx_op(
@@ -148,6 +150,7 @@ pub fn futex_wake(futex: &AtomicU32) {
             null_mut(),
         )
     };
+    false
 }
 
 #[cfg(target_os = "freebsd")]
@@ -231,10 +234,11 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     r == 0 || super::os::errno() != libc::ETIMEDOUT
 }
 
-// DragonflyBSD doesn't tell us how many threads are woken up, so this doesn't return a bool.
+// DragonflyBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "dragonfly")]
-pub fn futex_wake(futex: &AtomicU32) {
+pub fn futex_wake(futex: &AtomicU32) -> bool {
     unsafe { libc::umtx_wakeup(futex as *const AtomicU32 as *const i32, 1) };
+    false
 }
 
 #[cfg(target_os = "dragonfly")]
