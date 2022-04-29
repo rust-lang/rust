@@ -40,7 +40,7 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
-use std::io::Write;
+use std::io::{Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -2165,7 +2165,7 @@ impl EncodedMetadata {
 }
 
 impl<S: Encoder> Encodable<S> for EncodedMetadata {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice = self.raw_data();
         slice.encode(s)
     }
@@ -2248,20 +2248,25 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
     let root = ecx.encode_crate_root();
 
     ecx.opaque.flush();
-    let mut result = std::fs::read(path.as_ref()).unwrap();
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(path.as_ref())
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to open the file: {}", err)));
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
+    file.seek(std::io::SeekFrom::Start(header as u64))
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to seek the file: {}", err)));
     let pos = root.position.get();
-    result[header + 0] = (pos >> 24) as u8;
-    result[header + 1] = (pos >> 16) as u8;
-    result[header + 2] = (pos >> 8) as u8;
-    result[header + 3] = (pos >> 0) as u8;
-
-    std::fs::write(path, &result).unwrap();
+    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
 
     // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
+    tcx.prof.artifact_size(
+        "crate_metadata",
+        "crate_metadata",
+        file.metadata().unwrap().len() as u64,
+    );
 }
 
 pub fn provide(providers: &mut Providers) {
