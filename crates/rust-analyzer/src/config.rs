@@ -1241,6 +1241,36 @@ macro_rules! create_bool_or_string_de {
 create_bool_or_string_de!(true_or_always<true, "always">);
 create_bool_or_string_de!(false_or_never<false, "never">);
 
+macro_rules! named_unit_variant {
+    ($variant:ident) => {
+        pub(super) fn $variant<'de, D>(deserializer: D) -> Result<(), D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct V;
+            impl<'de> serde::de::Visitor<'de> for V {
+                type Value = ();
+                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    f.write_str(concat!("\"", stringify!($variant), "\""))
+                }
+                fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                    if value == stringify!($variant) {
+                        Ok(())
+                    } else {
+                        Err(E::invalid_value(serde::de::Unexpected::Str(value), &self))
+                    }
+                }
+            }
+            deserializer.deserialize_str(V)
+        }
+    };
+}
+
+mod de_unit_v {
+    named_unit_variant!(all);
+    named_unit_variant!(skip_trivial);
+}
+
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 enum SnippetScopeDef {
@@ -1332,21 +1362,21 @@ enum CallableCompletionDef {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
 #[serde(untagged)]
 enum CargoFeatures {
+    #[serde(deserialize_with = "de_unit_v::all")]
     All,
     Listed(Vec<String>),
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
 #[serde(untagged)]
 enum LifetimeElisionDef {
     #[serde(deserialize_with = "true_or_always")]
     Always,
     #[serde(deserialize_with = "false_or_never")]
     Never,
+    #[serde(deserialize_with = "de_unit_v::skip_trivial")]
     SkipTrivial,
 }
 
