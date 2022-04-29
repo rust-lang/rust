@@ -1304,31 +1304,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element_ty: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
-        let is_const = match &element.kind {
-            hir::ExprKind::ConstBlock(..) => true,
+        // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy.
+        match &element.kind {
+            hir::ExprKind::ConstBlock(..) => return,
             hir::ExprKind::Path(qpath) => {
                 let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                matches!(
-                    res,
-                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _)
-                )
+                if let Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _) = res
+                {
+                    return;
+                }
             }
+            _ => {}
+        }
+        // If someone calls a const fn, they can extract that call out into a separate constant (or a const
+        // block in the future), so we check that to tell them that in the diagnostic. Does not affect typeck.
+        let is_const_fn = match element.kind {
+            hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+                ty::FnDef(def_id, _) => tcx.is_const_fn(def_id),
+                _ => false,
+            },
             _ => false,
         };
-        if !is_const {
-            let is_const_fn = match element.kind {
-                hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                    ty::FnDef(def_id, _) => tcx.is_const_fn(def_id),
-                    _ => false,
-                },
-                _ => false,
-            };
 
-            if count.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
-                let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-                let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
-                self.require_type_meets(element_ty, element.span, code, lang_item);
-            }
+        // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
+        // don't copy that one element, we move it. Only check for Copy if the length is larger.
+        if count.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+            let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
+            self.require_type_meets(element_ty, element.span, code, lang_item);
         }
     }
 
