@@ -58,7 +58,7 @@ impl Idx for ThreadId {
 impl TryFrom<u64> for ThreadId {
     type Error = TryFromIntError;
     fn try_from(id: u64) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(|id_u32| Self(id_u32))
+        u32::try_from(id).map(Self)
     }
 }
 

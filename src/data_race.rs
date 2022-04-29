@@ -784,7 +784,7 @@ impl VClockAlloc {
                     None
                 }
             })
-            .map(|idx| VectorIdx::new(idx))
+            .map(VectorIdx::new)
     }
 
     /// Report a data-race found in the program.
