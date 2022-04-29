@@ -83,9 +83,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
+        let tcx = self.tcx;
         let hir = self.tcx.hir();
         let (def_id, sig) = match *found.kind() {
-            ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
+            ty::FnDef(def_id, _) => (def_id, found.fn_sig(tcx)),
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
             _ => return false,
         };
@@ -151,7 +152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
                     sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                    match def_id.as_local().map(|def_id| hir.def_kind(def_id)) {
+                    match def_id.as_local().map(|def_id| tcx.def_kind(def_id)) {
                         Some(DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
                             msg = "instantiate this tuple variant";
                         }

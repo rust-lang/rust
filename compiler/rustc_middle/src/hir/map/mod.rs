@@ -222,7 +222,8 @@ impl<'hir> Map<'hir> {
         self.tcx.untracked_resolutions.definitions.iter_local_def_id()
     }
 
-    pub fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
+    /// Do not call this function directly.  The query should be called.
+    pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
@@ -306,11 +307,6 @@ impl<'hir> Map<'hir> {
             | Node::Block(_) => return None,
         };
         Some(def_kind)
-    }
-
-    pub fn def_kind(self, local_def_id: LocalDefId) -> DefKind {
-        self.opt_def_kind(local_def_id)
-            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", local_def_id))
     }
 
     pub fn find_parent_node(self, id: HirId) -> Option<HirId> {

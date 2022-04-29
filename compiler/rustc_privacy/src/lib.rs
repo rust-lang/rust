@@ -459,7 +459,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let item_def_id = local_def_id.to_def_id();
         let macro_module_def_id =
             ty::DefIdTree::parent(self.tcx, item_def_id).unwrap().expect_local();
-        if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
+        if self.tcx.def_kind(macro_module_def_id) != DefKind::Mod {
             // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
             return;
         }

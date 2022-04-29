@@ -17,7 +17,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     }
 
     for id in tcx.hir().items() {
-        if matches!(tcx.hir().def_kind(id.def_id), DefKind::Use) {
+        if matches!(tcx.def_kind(id.def_id), DefKind::Use) {
             if tcx.visibility(id.def_id).is_public() {
                 continue;
             }
@@ -101,7 +101,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     let mut crates_to_lint = vec![];
 
     for id in tcx.hir().items() {
-        if matches!(tcx.hir().def_kind(id.def_id), DefKind::ExternCrate) {
+        if matches!(tcx.def_kind(id.def_id), DefKind::ExternCrate) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
                 crates_to_lint.push(ExternCrateToLint {
