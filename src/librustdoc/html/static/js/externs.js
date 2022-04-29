@@ -1,9 +1,12 @@
 // This file contains type definitions that are processed by the Closure Compiler but are
 // not put into the JavaScript we include as part of the documentation. It is used for
 // type checking. See README.md in this directory for more info.
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
 
 /* eslint-disable */
-var searchState;
+let searchState;
 function initSearch(searchIndex){}
 
 /**
@@ -15,7 +18,7 @@ function initSearch(searchIndex){}
  *     generics: Array<QueryElement>,
  * }}
  */
-var QueryElement;
+let QueryElement;
 
 /**
  * @typedef {{
@@ -25,7 +28,7 @@ var QueryElement;
  *      userQuery: string,
  * }}
  */
-var ParserState;
+let ParserState;
 
 /**
  * @typedef {{
@@ -38,7 +41,7 @@ var ParserState;
  *     foundElems: number,
  * }}
  */
-var ParsedQuery;
+let ParsedQuery;
 
 /**
  * @typedef {{
@@ -53,7 +56,7 @@ var ParsedQuery;
  *    type: (Array<?>|null)
  * }}
  */
-var Row;
+let Row;
 
 /**
  * @typedef {{
@@ -63,7 +66,7 @@ var Row;
  *    query: ParsedQuery,
  * }}
  */
-var ResultsTable;
+let ResultsTable;
 
 /**
  * @typedef {{
@@ -80,4 +83,4 @@ var ResultsTable;
  *     ty: number,
  * }}
  */
-var Results;
+let Results;

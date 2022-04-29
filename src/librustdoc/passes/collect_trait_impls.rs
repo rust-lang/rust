@@ -33,104 +33,14 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         coll.items
     };
 
-    let mut new_items = Vec::new();
+    let mut new_items_external = Vec::new();
+    let mut new_items_local = Vec::new();
 
     // External trait impls.
     cx.with_all_trait_impls(|cx, all_trait_impls| {
         let _prof_timer = cx.tcx.sess.prof.generic_activity("build_extern_trait_impls");
         for &impl_def_id in all_trait_impls.iter().skip_while(|def_id| def_id.is_local()) {
-            inline::build_impl(cx, None, impl_def_id, None, &mut new_items);
-        }
-    });
-
-    cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for def_id in PrimitiveType::all_impls(cx.tcx) {
-            // Try to inline primitive impls from other crates.
-            if !def_id.is_local() {
-                inline::build_impl(cx, None, def_id, None, &mut new_items);
-            }
-        }
-        for (prim, did) in PrimitiveType::primitive_locations(cx.tcx) {
-            // Do not calculate blanket impl list for docs that are not going to be rendered.
-            // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
-            // attached is directly included in `libstd` as well.
-            if did.is_local() {
-                for def_id in prim.impls(cx.tcx) {
-                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
-                    new_items.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
-                }
-            }
-        }
-    });
-
-    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
-    let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
-
-    // Follow all `Deref` targets of included items and recursively add them as valid
-    fn add_deref_target(
-        cx: &DocContext<'_>,
-        map: &FxHashMap<DefId, &Type>,
-        cleaner: &mut BadImplStripper<'_>,
-        type_did: DefId,
-    ) {
-        if let Some(target) = map.get(&type_did) {
-            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
-            if let Some(target_prim) = target.primitive_type() {
-                cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id(&cx.cache) {
-                // `impl Deref<Target = S> for S`
-                if target_did == type_did {
-                    // Avoid infinite cycles
-                    return;
-                }
-                cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, target_did);
-            }
-        }
-    }
-
-    // scan through included items ahead of time to splice in Deref targets to the "valid" sets
-    for it in &new_items {
-        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
-            if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
-                && cleaner.keep_impl(for_, true)
-            {
-                let target = items
-                    .iter()
-                    .find_map(|item| match *item.kind {
-                        AssocTypeItem(ref t, _) => Some(&t.type_),
-                        _ => None,
-                    })
-                    .expect("Deref impl without Target type");
-
-                if let Some(prim) = target.primitive_type() {
-                    cleaner.prims.insert(prim);
-                } else if let Some(did) = target.def_id(&cx.cache) {
-                    cleaner.items.insert(did.into());
-                }
-                if let Some(for_did) = for_.def_id(&cx.cache) {
-                    if type_did_to_deref_target.insert(for_did, target).is_none() {
-                        // Since only the `DefId` portion of the `Type` instances is known to be same for both the
-                        // `Deref` target type and the impl for type positions, this map of types is keyed by
-                        // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-                        if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
-            cleaner.keep_impl(
-                for_,
-                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
-            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || kind.is_blanket()
-        } else {
-            true
+            inline::build_impl(cx, None, impl_def_id, None, &mut new_items_external);
         }
     });
 
@@ -157,14 +67,116 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 );
                 parent = cx.tcx.parent(did);
             }
-            inline::build_impl(cx, None, impl_def_id, Some(&attr_buf), &mut new_items);
+            inline::build_impl(cx, None, impl_def_id, Some(&attr_buf), &mut new_items_local);
             attr_buf.clear();
+        }
+    });
+
+    cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
+        for def_id in PrimitiveType::all_impls(cx.tcx) {
+            // Try to inline primitive impls from other crates.
+            if !def_id.is_local() {
+                inline::build_impl(cx, None, def_id, None, &mut new_items_external);
+            }
+        }
+        for (prim, did) in PrimitiveType::primitive_locations(cx.tcx) {
+            // Do not calculate blanket impl list for docs that are not going to be rendered.
+            // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
+            // attached is directly included in `libstd` as well.
+            if did.is_local() {
+                for def_id in prim.impls(cx.tcx) {
+                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
+                    new_items_external.extend(impls.filter(|i| cx.inlined.insert(i.item_id)));
+                }
+            }
+        }
+    });
+
+    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
+    let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
+
+    // Follow all `Deref` targets of included items and recursively add them as valid
+    fn add_deref_target(
+        cx: &DocContext<'_>,
+        map: &FxHashMap<DefId, &Type>,
+        cleaner: &mut BadImplStripper<'_>,
+        targets: &mut FxHashSet<DefId>,
+        type_did: DefId,
+    ) {
+        if let Some(target) = map.get(&type_did) {
+            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
+            if let Some(target_prim) = target.primitive_type() {
+                cleaner.prims.insert(target_prim);
+            } else if let Some(target_did) = target.def_id(&cx.cache) {
+                // `impl Deref<Target = S> for S`
+                if !targets.insert(target_did) {
+                    // Avoid infinite cycles
+                    return;
+                }
+                cleaner.items.insert(target_did.into());
+                add_deref_target(cx, map, cleaner, targets, target_did);
+            }
+        }
+    }
+
+    // scan through included items ahead of time to splice in Deref targets to the "valid" sets
+    for it in new_items_external.iter().chain(new_items_local.iter()) {
+        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
+            if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
+                && cleaner.keep_impl(for_, true)
+            {
+                let target = items
+                    .iter()
+                    .find_map(|item| match *item.kind {
+                        AssocTypeItem(ref t, _) => Some(&t.type_),
+                        _ => None,
+                    })
+                    .expect("Deref impl without Target type");
+
+                if let Some(prim) = target.primitive_type() {
+                    cleaner.prims.insert(prim);
+                } else if let Some(did) = target.def_id(&cx.cache) {
+                    cleaner.items.insert(did.into());
+                }
+                if let Some(for_did) = for_.def_id(&cx.cache) {
+                    if type_did_to_deref_target.insert(for_did, target).is_none() {
+                        // Since only the `DefId` portion of the `Type` instances is known to be same for both the
+                        // `Deref` target type and the impl for type positions, this map of types is keyed by
+                        // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
+                        if cleaner.keep_impl_with_def_id(for_did.into()) {
+                            let mut targets = FxHashSet::default();
+                            targets.insert(for_did);
+                            add_deref_target(
+                                cx,
+                                &type_did_to_deref_target,
+                                &mut cleaner,
+                                &mut targets,
+                                for_did,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Filter out external items that are not needed
+    new_items_external.retain(|it| {
+        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
+            cleaner.keep_impl(
+                for_,
+                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
+            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
+                || kind.is_blanket()
+        } else {
+            true
         }
     });
 
     if let ModuleItem(Module { items, .. }) = &mut *krate.module.kind {
         items.extend(synth_impls);
-        items.extend(new_items);
+        items.extend(new_items_external);
+        items.extend(new_items_local);
     } else {
         panic!("collect-trait-impls can't run");
     };

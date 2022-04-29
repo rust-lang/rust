@@ -1,13 +1,17 @@
-var darkThemes = ["dark", "ayu"];
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
+
+const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
-var settingsDataset = (function () {
-    var settingsElement = document.getElementById("default-settings");
+const settingsDataset = (function () {
+    const settingsElement = document.getElementById("default-settings");
     if (settingsElement === null) {
         return null;
     }
-    var dataset = settingsElement.dataset;
+    const dataset = settingsElement.dataset;
     if (dataset === undefined) {
         return null;
     }
@@ -15,14 +19,14 @@ var settingsDataset = (function () {
 })();
 
 function getSettingValue(settingName) {
-    var current = getCurrentValue(settingName);
+    const current = getCurrentValue(settingName);
     if (current !== null) {
         return current;
     }
     if (settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
-        var def = settingsDataset[settingName.replace(/-/g,'_')];
+        const def = settingsDataset[settingName.replace(/-/g,'_')];
         if (def !== undefined) {
             return def;
         }
@@ -30,9 +34,9 @@ function getSettingValue(settingName) {
     return null;
 }
 
-var localStoredTheme = getSettingValue("theme");
+const localStoredTheme = getSettingValue("theme");
 
-var savedHref = [];
+const savedHref = [];
 
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
@@ -63,17 +67,16 @@ function removeClass(elem, className) {
  */
 function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
-        var length = arr.length;
-        var i;
         if (reversed) {
-            for (i = length - 1; i >= 0; --i) {
+            const length = arr.length;
+            for (let i = length - 1; i >= 0; --i) {
                 if (func(arr[i])) {
                     return true;
                 }
             }
         } else {
-            for (i = 0; i < length; ++i) {
-                if (func(arr[i])) {
+            for (const elem of arr) {
+                if (func(elem)) {
                     return true;
                 }
             }
@@ -121,7 +124,7 @@ function getCurrentValue(name) {
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    var newHref = mainStyleElem.href.replace(
+    const newHref = mainStyleElem.href.replace(
         /\/rustdoc([^/]*)\.css/, "/" + newTheme + "$1" + ".css");
 
     // If this new value comes from a system setting or from the previously
@@ -134,7 +137,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
         return;
     }
 
-    var found = false;
+    let found = false;
     if (savedHref.length === 0) {
         onEachLazy(document.getElementsByTagName("link"), function(el) {
             savedHref.push(el.href);
@@ -161,17 +164,17 @@ function useSystemTheme(value) {
     updateLocalStorage("use-system-theme", value);
 
     // update the toggle if we're on the settings page
-    var toggle = document.getElementById("use-system-theme");
+    const toggle = document.getElementById("use-system-theme");
     if (toggle && toggle instanceof HTMLInputElement) {
         toggle.checked = value;
     }
 }
 
-var updateSystemTheme = (function() {
+const updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
         return function() {
-            var cssTheme = getComputedStyle(document.documentElement)
+            const cssTheme = getComputedStyle(document.documentElement)
                 .getPropertyValue('content');
 
             switchTheme(
@@ -184,16 +187,16 @@ var updateSystemTheme = (function() {
     }
 
     // only listen to (prefers-color-scheme: dark) because light is the default
-    var mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
     function handlePreferenceChange(mql) {
-        let use = function(theme) {
+        const use = function(theme) {
             switchTheme(window.currentTheme, window.mainTheme, theme, true);
         };
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
-            var lightTheme = getSettingValue("preferred-light-theme") || "light";
-            var darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            const lightTheme = getSettingValue("preferred-light-theme") || "light";
+            const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
             if (mql.matches) {
                 use(darkTheme);

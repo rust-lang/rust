@@ -1319,7 +1319,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | PathSource::Struct
                 | PathSource::TupleStruct(..) => false,
             };
-            let mut error = false;
+            let mut res = LifetimeRes::Error;
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
                     // In create-parameter mode we error here because we don't want to support
@@ -1329,7 +1329,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter(_) => {
-                        error = true;
                         break;
                     }
                     // `PassThrough` is the normal case.
@@ -1338,18 +1337,20 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // `PathSegment`, for which there is no associated `'_` or `&T` with no explicit
                     // lifetime. Instead, we simply create an implicit lifetime, which will be checked
                     // later, at which point a suitable error will be emitted.
-                    LifetimeRibKind::AnonymousPassThrough(..)
-                    | LifetimeRibKind::AnonymousReportError
-                    | LifetimeRibKind::Item => break,
+                    LifetimeRibKind::AnonymousPassThrough(binder) => {
+                        res = LifetimeRes::Anonymous { binder, elided: true };
+                        break;
+                    }
+                    LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
+                        // FIXME(cjgillot) This resolution is wrong, but this does not matter
+                        // since these cases are erroneous anyway.  Lifetime resolution should
+                        // emit a "missing lifetime specifier" diagnostic.
+                        res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
+                        break;
+                    }
                     _ => {}
                 }
             }
-
-            let res = if error {
-                LifetimeRes::Error
-            } else {
-                LifetimeRes::Anonymous { binder: segment_id, elided: true }
-            };
 
             let node_ids = self.r.next_node_ids(expected_lifetimes);
             self.record_lifetime_res(
@@ -1374,7 +1375,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // originating from macros, since the segment's span might be from a macro arg.
                 segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
             };
-            if error {
+            if let LifetimeRes::Error = res {
                 let sess = self.r.session;
                 let mut err = rustc_errors::struct_span_err!(
                     sess,

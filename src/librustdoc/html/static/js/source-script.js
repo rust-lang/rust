@@ -1,3 +1,7 @@
+/* eslint-env es6 */
+/* eslint no-var: "error" */
+/* eslint prefer-const: "error" */
+
 // From rust:
 /* global search, sourcesIndex */
 
@@ -7,15 +11,15 @@
 (function() {
 
 function getCurrentFilePath() {
-    var parts = window.location.pathname.split("/");
-    var rootPathParts = window.rootPath.split("/");
+    const parts = window.location.pathname.split("/");
+    const rootPathParts = window.rootPath.split("/");
 
-    for (var i = 0, len = rootPathParts.length; i < len; ++i) {
-        if (rootPathParts[i] === "..") {
+    for (const rootPathPart of rootPathParts) {
+        if (rootPathPart === "..") {
             parts.pop();
         }
     }
-    var file = window.location.pathname.substring(parts.join("/").length);
+    let file = window.location.pathname.substring(parts.join("/").length);
     if (file.startsWith("/")) {
         file = file.substring(1);
     }
@@ -23,7 +27,7 @@ function getCurrentFilePath() {
 }
 
 function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
-    var name = document.createElement("div");
+    const name = document.createElement("div");
     name.className = "name";
 
     fullPath += elem["name"] + "/";
@@ -37,16 +41,13 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     };
     name.innerText = elem["name"];
 
-    var i, len;
-
-    var children = document.createElement("div");
+    const children = document.createElement("div");
     children.className = "children";
-    var folders = document.createElement("div");
+    const folders = document.createElement("div");
     folders.className = "folders";
     if (elem.dirs) {
-        for (i = 0, len = elem.dirs.length; i < len; ++i) {
-            if (createDirEntry(elem.dirs[i], folders, fullPath, currentFile,
-                               hasFoundFile)) {
+        for (const dir of elem.dirs) {
+            if (createDirEntry(dir, folders, fullPath, currentFile, hasFoundFile)) {
                 addClass(name, "expand");
                 hasFoundFile = true;
             }
@@ -54,14 +55,14 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     }
     children.appendChild(folders);
 
-    var files = document.createElement("div");
+    const files = document.createElement("div");
     files.className = "files";
     if (elem.files) {
-        for (i = 0, len = elem.files.length; i < len; ++i) {
-            var file = document.createElement("a");
-            file.innerText = elem.files[i];
-            file.href = window.rootPath + "src/" + fullPath + elem.files[i] + ".html";
-            if (!hasFoundFile && currentFile === fullPath + elem.files[i]) {
+        for (const file_text of elem.files) {
+            const file = document.createElement("a");
+            file.innerText = file_text;
+            file.href = window.rootPath + "src/" + fullPath + file_text + ".html";
+            if (!hasFoundFile && currentFile === fullPath + file_text) {
                 file.className = "selected";
                 addClass(name, "expand");
                 hasFoundFile = true;
@@ -77,8 +78,8 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 }
 
 function toggleSidebar() {
-    var sidebar = document.querySelector("nav.sidebar");
-    var child = this.children[0];
+    const sidebar = document.querySelector("nav.sidebar");
+    const child = this.children[0];
     if (child.innerText === ">") {
         sidebar.classList.add("expanded");
         child.innerText = "<";
@@ -91,11 +92,11 @@ function toggleSidebar() {
 }
 
 function createSidebarToggle() {
-    var sidebarToggle = document.createElement("div");
+    const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "sidebar-toggle";
     sidebarToggle.onclick = toggleSidebar;
 
-    var inner = document.createElement("div");
+    const inner = document.createElement("div");
 
     if (getCurrentValue("source-sidebar-show") === "true") {
         inner.innerText = "<";
@@ -113,12 +114,12 @@ function createSourceSidebar() {
     if (!window.rootPath.endsWith("/")) {
         window.rootPath += "/";
     }
-    var container = document.querySelector("nav.sidebar");
+    const container = document.querySelector("nav.sidebar");
 
-    var sidebarToggle = createSidebarToggle();
+    const sidebarToggle = createSidebarToggle();
     container.insertBefore(sidebarToggle, container.firstChild);
 
-    var sidebar = document.createElement("div");
+    const sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
     if (getCurrentValue("source-sidebar-show") !== "true") {
         container.classList.remove("expanded");
@@ -126,10 +127,10 @@ function createSourceSidebar() {
         container.classList.add("expanded");
     }
 
-    var currentFile = getCurrentFilePath();
-    var hasFoundFile = false;
+    const currentFile = getCurrentFilePath();
+    let hasFoundFile = false;
 
-    var title = document.createElement("div");
+    const title = document.createElement("div");
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
@@ -141,13 +142,13 @@ function createSourceSidebar() {
 
     container.appendChild(sidebar);
     // Focus on the current file in the source files sidebar.
-    var selected_elem = sidebar.getElementsByClassName("selected")[0];
+    const selected_elem = sidebar.getElementsByClassName("selected")[0];
     if (typeof selected_elem !== "undefined") {
         selected_elem.focus();
     }
 }
 
-var lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
+const lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
 
 function highlightSourceLines(match) {
     if (typeof match === "undefined") {
@@ -156,21 +157,21 @@ function highlightSourceLines(match) {
     if (!match) {
         return;
     }
-    var from = parseInt(match[1], 10);
-    var to = from;
+    let from = parseInt(match[1], 10);
+    let to = from;
     if (typeof match[2] !== "undefined") {
         to = parseInt(match[2], 10);
     }
     if (to < from) {
-        var tmp = to;
+        const tmp = to;
         to = from;
         from = tmp;
     }
-    var elem = document.getElementById(from);
+    let elem = document.getElementById(from);
     if (!elem) {
         return;
     }
-    var x = document.getElementById(from);
+    const x = document.getElementById(from);
     if (x) {
         x.scrollIntoView();
     }
@@ -179,7 +180,7 @@ function highlightSourceLines(match) {
             removeClass(i_e, "line-highlighted");
         });
     });
-    for (var i = from; i <= to; ++i) {
+    for (let i = from; i <= to; ++i) {
         elem = document.getElementById(i);
         if (!elem) {
             break;
@@ -188,11 +189,11 @@ function highlightSourceLines(match) {
     }
 }
 
-var handleSourceHighlight = (function() {
-    var prev_line_id = 0;
+const handleSourceHighlight = (function() {
+    let prev_line_id = 0;
 
-    var set_fragment = function(name) {
-        var x = window.scrollX,
+    const set_fragment = function(name) {
+        const x = window.scrollX,
             y = window.scrollY;
         if (searchState.browserSupportsHistoryApi()) {
             history.replaceState(null, null, "#" + name);
@@ -205,13 +206,13 @@ var handleSourceHighlight = (function() {
     };
 
     return function(ev) {
-        var cur_line_id = parseInt(ev.target.id, 10);
+        let cur_line_id = parseInt(ev.target.id, 10);
         ev.preventDefault();
 
         if (ev.shiftKey && prev_line_id) {
             // Swap selection if needed
             if (prev_line_id > cur_line_id) {
-                var tmp = prev_line_id;
+                const tmp = prev_line_id;
                 prev_line_id = cur_line_id;
                 cur_line_id = tmp;
             }
@@ -226,7 +227,7 @@ var handleSourceHighlight = (function() {
 }());
 
 window.addEventListener("hashchange", function() {
-    var match = window.location.hash.match(lineNumbersRegex);
+    const match = window.location.hash.match(lineNumbersRegex);
     if (match) {
         return highlightSourceLines(match);
     }

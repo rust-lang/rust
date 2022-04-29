@@ -112,10 +112,6 @@ window.initSearch = function(rawSearchIndex) {
      *  @type {Array<Row>}
      */
     let searchIndex;
-    /**
-     *  @type {Array<string>}
-     */
-    let searchWords = [];
     let currentResults;
     const ALIASES = {};
     const params = searchState.getQueryStringParams();
@@ -2129,7 +2125,10 @@ window.initSearch = function(rawSearchIndex) {
         search(undefined, true);
     }
 
-    searchWords = buildIndex(rawSearchIndex);
+    /**
+     *  @type {Array<string>}
+     */
+    const searchWords = buildIndex(rawSearchIndex);
     registerSearchEvents();
 
     function runSearchIfNeeded() {

@@ -1217,6 +1217,11 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMBFloatTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
+#if LLVM_VERSION_GE(15, 0)
+  case Type::DXILPointerTyID:
+    report_fatal_error("Rust does not support DirectX typed pointers.");
+    break;
+#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
