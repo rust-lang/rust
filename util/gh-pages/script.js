@@ -137,13 +137,13 @@
             $scope.themes = THEMES_DEFAULT;
 
             const DEFAULT_VERSION_FILTERS = {
-                ">=": { enabled: false, version_str: "" },
-                "<=": { enabled: false, version_str: "" },
-                "==": { enabled: false, version_str: "" },
+                "≥": { enabled: false, version_str: "" },
+                "≤": { enabled: false, version_str: "" },
+                "=": { enabled: false, version_str: "" },
             };
             // Weird workaround to get a copy of the object
             $scope.version_filters = JSON.parse(JSON.stringify(DEFAULT_VERSION_FILTERS));
-            $scope.version_regex = new RegExp('\\d\.\\d{2}\.\\d');
+            $scope.version_regex = new RegExp('1\.\\d{2}\.\\d');
 
             $scope.selectTheme = function (theme) {
                 setTheme(theme, true);
@@ -175,16 +175,8 @@
                 $scope.version_filters = JSON.parse(JSON.stringify(DEFAULT_VERSION_FILTERS));
             }
 
-            $scope.versionSymbol = function() {
-                const version_filters = $scope.version_filters;
-                let filter = ">=";
-                for (const key in version_filters) {
-                    if (version_filters[key]) {
-                        filter = key;
-                    }
-                }
-
-                return filter;
+            $scope.versionFilterCount = function(obj) {
+                return Object.values(obj).filter(x => x.enabled).length;
             }
 
             $scope.byVersion = function(lint) {
@@ -214,9 +206,12 @@
                     let version_str = filters[filter].version_str;
 
                     // Skip the work for version strings with invalid lengths or characters
-                    if (!filters[filter].enabled || !validate_version_str(version_str)) {
+                    if (!validate_version_str(version_str)) {
+                        filters[filter].enabled = false;
                         continue;
                     }
+
+                    filters[filter].enabled = true;
 
                     let result = cmp_version(lint_version, version_str, filter);
                     if (result && filter === "==") {
@@ -226,10 +221,10 @@
                     }
 
                     let cmp_filter;
-                    if (filter === ">=") {
-                        cmp_filter = "<=";
+                    if (filter === "≥") {
+                        cmp_filter = "≤";
                     } else {
-                        cmp_filter = ">=";
+                        cmp_filter = "≥";
                     }
 
                     let cmp_version_str = filters[cmp_filter].version_str;

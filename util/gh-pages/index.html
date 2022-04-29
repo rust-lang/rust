@@ -109,6 +109,10 @@ Otherwise, have a great day =^.^=
                 right: 0;
                 left: auto;
             }
+
+            #version-filter-count {
+                display: none;
+            }
         }
 
         .label {
@@ -297,7 +301,7 @@ Otherwise, have a great day =^.^=
 
         #version-filter li label {
             padding-right: 0;
-            width: 80%;
+            width: 40%;
         }
 
         .version-filter-input {
@@ -425,7 +429,7 @@ Otherwise, have a great day =^.^=
                         <div id="version-filter">
                             <div class="btn-group" filter-dropdown>
                                 <button type="button" class="btn btn-default dropdown-toggle">
-                                    Version <span class="caret"></span>
+                                    Version <span id="version-filter-count" class="badge">{{versionFilterCount(version_filters)}}</span> <span class="caret"></span>
                                 </button>
                                 <ul id="version-filter-selector" class="dropdown-menu">
                                     <li class="checkbox">
@@ -436,11 +440,8 @@ Otherwise, have a great day =^.^=
                                     </li>
                                     <li role="separator" class="divider"></li>
                                     <li class="checkbox" ng-repeat="(filter, vars) in version_filters">
-                                        <label>
-                                            <input type="checkbox" ng-model="version_filters[filter].enabled" />
-                                            {{filter}}
-                                        </label>
-                                        <input type="text" class="version-filter-input form-control filter-input" maxlength="6" placeholder="1.62.0" ng-model="version_filters[filter].version_str" ng-model-options="{debounce: 50}"/>
+                                        <label ng-attr-for="filter-{filter}">{{filter}}</label>
+                                        <input type="text" ng-attr-id="filter-{filter}" class="version-filter-input form-control filter-input" maxlength="6" placeholder="1.62.0" ng-model="version_filters[filter].version_str" ng-model-options="{debounce: 50}"/>
                                     </li>
                                 </ul>
                             </div>
