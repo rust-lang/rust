@@ -239,7 +239,7 @@ impl GlobalState {
                 // Workspaces are the same, but we've updated build data.
                 self.workspaces = Arc::new(workspaces);
             } else {
-                tracing::info!("build scrips do not match the version of the active workspace");
+                tracing::info!("build scripts do not match the version of the active workspace");
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
