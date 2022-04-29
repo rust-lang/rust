@@ -137,7 +137,8 @@ pub(crate) fn build_sysroot(
             // libstd.
             for file in fs::read_dir(host_rustlib_lib).unwrap() {
                 let file = file.unwrap().path();
-                if file.file_name().unwrap().to_str().unwrap().contains("std-") {
+                let filename = file.file_name().unwrap().to_str().unwrap();
+                if filename.contains("std-") && !filename.contains(".rlib") {
                     try_hard_link(&file, target_dir.join("lib").join(file.file_name().unwrap()));
                 }
             }
