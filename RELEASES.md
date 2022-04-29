@@ -1,3 +1,123 @@
+Version 1.61.0 (2022-05-19)
+==========================
+
+Language
+--------
+
+- [`const fn` signatures can now include generic trait bounds][93827]
+- [`const fn` signatures can now use `impl Trait` in argument and return position][93827]
+- [Function pointers can now be created, cast, and passed around in a `const fn`][93827]
+- [Recursive calls can now set the value of a function's opaque `impl Trait` return type][94081]
+
+Compiler
+--------
+
+- [Linking modifier syntax in `#[link]` attributes and on the command line, as well as the `whole-archive` modifier specifically, are now supported][93901]
+- [Update to LLVM 14.0.0][95247]
+- [The `char` type is now described as UTF-8 (`DW_ATE_UTF`) in DWARF debuginfo][89887]
+- The [`#[target_feature]`][target_feature] attribute [can now be used with aarch64 features][90621]
+- [`#[target_feature = "adx"]` is now stable][93745]
+- [Catching a second unwind from FFI code while cleaning up from a Rust panic now causes the process to abort][92911]
+
+Libraries
+---------
+
+- [`ManuallyDrop<T>` is now documented to have the same layout as `T`][88375]
+- [Windows paths longer than 260 chars are now supported in `process::Command` without needing explicit canonoicalization][92519]
+- [`#[ignore = "…"]` messages are printed when running tests][92714]
+- [Consistently present absent stdio handles on Windows as NULL handles][93263]
+- [Make `std::io::stdio::lock()` return `'static` handles][93965]
+- [`Vec::from_raw_parts` is now less restrictive about its inputs][95016]
+- [Use cgroup quotas for calculating `available_parallelism` on Linux][92697]
+
+Stabilized APIs
+---------------
+
+- [`From<&[T; N]>` for `Vec<T>`][95098]
+- [`From<&mut [T; N]>` for `Vec<T>`][95098]
+- [`Pin::static_mut`][93580]
+- [`Pin::static_ref`][93580]
+- [`Vec::retain_mut`][95491]
+- [`VecDeque::retain_mut`][95491]
+- [`Write` for `Cursor<[u8; N]>`][92663]
+- [`std::os::unix::net::SocketAddr::from_pathname`][94356]
+- [`std::process::ExitCode`][93840]
+- [`std::process::Termination`][93840]
+- [`std::thread::JoinHandle::is_finished`][95130]
+
+These APIs are now usable in const contexts:
+
+- [`*const T::offset` and `*mut T::offset`][93957]
+- [`*const T::wrapping_offset` and `*mut T::wrapping_offset`][93957]
+- [`*const T::add` and `*mut T::add`][93957]
+- [`*const T::sub` and `*mut T::sub`][93957]
+- [`*const T::wrapping_add` and `*mut T::wrapping_add`][93957]
+- [`*const T::wrapping_sub` and `*mut T::wrapping_sub`][93957]
+- [`[T]::as_mut_ptr`][93957]
+- [`[T]::as_ptr_range`][93957]
+- [`[T]::as_mut_ptr_range`][93957]
+
+Cargo
+-----
+
+No feature changes, but see compatibility notes.
+
+Compatibility Notes
+-------------------
+
+- [Disable `#[thread_local]` support on i686-pc-windows-msvc][95430]
+- [Proc macros no longer see `ident` matchers wrapped in groups][92472]
+- [The number of `#` in `r#` raw string literals is now required to be less than 256][95251]
+- [When checking that a dyn type satisfies a trait bound, supertrait bounds are now enforced][92285]
+- [`cargo vendor` now only accepts one value for each `--sync` flag][cargo/10448]
+- [`cfg` predicates in `all()` and `any()` are always evaluated to detect errors, instead of short-circuiting][94295]
+- [bootstrap: static-libstdcpp is now enabled by default, and can now be disabled when llvm-tools is enabled][94832]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [debuginfo: Refactor debuginfo generation for types][94261]
+- [Remove the everybody loops pass][93913]
+
+[88375]: https://github.com/rust-lang/rust/pull/88375/
+[89887]: https://github.com/rust-lang/rust/pull/89887/
+[90621]: https://github.com/rust-lang/rust/pull/90621/
+[92285]: https://github.com/rust-lang/rust/pull/92285/
+[92472]: https://github.com/rust-lang/rust/pull/92472/
+[92519]: https://github.com/rust-lang/rust/pull/92519/
+[92663]: https://github.com/rust-lang/rust/pull/92663/
+[92697]: https://github.com/rust-lang/rust/pull/92697/
+[92714]: https://github.com/rust-lang/rust/pull/92714/
+[92911]: https://github.com/rust-lang/rust/pull/92911/
+[93263]: https://github.com/rust-lang/rust/pull/93263/
+[93580]: https://github.com/rust-lang/rust/pull/93580/
+[93745]: https://github.com/rust-lang/rust/pull/93745/
+[93827]: https://github.com/rust-lang/rust/pull/93827/
+[93840]: https://github.com/rust-lang/rust/pull/93840/
+[93901]: https://github.com/rust-lang/rust/pull/93901/
+[93913]: https://github.com/rust-lang/rust/pull/93913/
+[93957]: https://github.com/rust-lang/rust/pull/93957/
+[93965]: https://github.com/rust-lang/rust/pull/93965/
+[94081]: https://github.com/rust-lang/rust/pull/94081/
+[94261]: https://github.com/rust-lang/rust/pull/94261/
+[94295]: https://github.com/rust-lang/rust/pull/94295/
+[94356]: https://github.com/rust-lang/rust/pull/94356/
+[94832]: https://github.com/rust-lang/rust/pull/94832/
+[95016]: https://github.com/rust-lang/rust/pull/95016/
+[95098]: https://github.com/rust-lang/rust/pull/95098/
+[95130]: https://github.com/rust-lang/rust/pull/95130/
+[95247]: https://github.com/rust-lang/rust/pull/95247/
+[95251]: https://github.com/rust-lang/rust/pull/95251/
+[95430]: https://github.com/rust-lang/rust/pull/95430/
+[95491]: https://github.com/rust-lang/rust/pull/95491/
+[cargo/10448]: https://github.com/rust-lang/cargo/pull/10448/
+[target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute
+
+
 Version 1.60.0 (2022-04-07)
 ==========================
 
