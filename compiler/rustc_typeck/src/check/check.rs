@@ -102,6 +102,12 @@ pub(super) fn check_fn<'a, 'tcx>(
             DUMMY_SP,
             param_env,
         ));
+    // HACK(oli-obk): we rewrite the declared return type, too, so that we don't end up inferring all
+    // unconstrained RPIT to have `()` as their hidden type. This would happen because further down we
+    // compare the ret_coercion with declared_ret_ty, and anything uninferred would be inferred to the
+    // opaque type itself. That again would cause writeback to assume we have a recursive call site
+    // and do the sadly stabilized fallback to `()`.
+    let declared_ret_ty = ret_ty;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
 

@@ -6,19 +6,6 @@ LL | fn foo<T>(x: T) -> impl Any + 'static {
    |        |
    |        help: consider adding an explicit lifetime bound...: `T: 'static`
 
-error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/type_parameters_captured.rs:7:39
-   |
-LL |   fn foo<T>(x: T) -> impl Any + 'static {
-   |  ________-______________________________^
-   | |        |
-   | |        help: consider adding an explicit lifetime bound...: `T: 'static`
-LL | |
-LL | |
-LL | |     x
-LL | | }
-   | |_^ ...so that the type `T` will meet its required lifetime bounds
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0310`.
