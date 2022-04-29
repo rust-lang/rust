@@ -645,7 +645,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         }
                     }
                 }
-                None => return this.handle_not_found(),
+                None => this.handle_not_found(),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC")? {
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {

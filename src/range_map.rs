@@ -110,7 +110,7 @@ impl<T> RangeMap<T> {
         // Copy the data, and insert second element.
         let second = Elem { range: second_range, data: elem.data.clone() };
         self.v.insert(index + 1, second);
-        return true;
+        true
     }
 
     /// Provides mutable iteration over everything in the given range. As a side-effect,

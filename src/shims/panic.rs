@@ -59,7 +59,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Jump to the unwind block to begin unwinding.
         this.unwind_to_block(unwind)?;
-        return Ok(());
+        Ok(())
     }
 
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
@@ -112,7 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Some(CatchUnwindData { catch_fn, data, dest: *dest, ret });
         }
 
-        return Ok(());
+        Ok(())
     }
 
     fn handle_stack_pop(

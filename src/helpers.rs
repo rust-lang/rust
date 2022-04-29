@@ -731,7 +731,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // message is slightly different here to make automated analysis easier
             let error_msg = format!("unsupported Miri functionality: {}", error_msg.as_ref());
             this.start_panic(error_msg.as_ref(), StackPopUnwind::Skip)?;
-            return Ok(());
+            Ok(())
         } else {
             throw_unsup_format!("{}", error_msg.as_ref());
         }

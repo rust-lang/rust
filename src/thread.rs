@@ -456,7 +456,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 // Delete this static from the map and from memory.
                 // We cannot free directly here as we cannot use `?` in this context.
                 free_tls_statics.push(alloc_id);
-                return false;
+                false
             });
         }
         // Set the thread into a terminated state in the data-race detector
@@ -474,7 +474,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 thread.state = ThreadState::Enabled;
             }
         }
-        return free_tls_statics;
+        free_tls_statics
     }
 
     /// Decide which action to take next and on which thread.
