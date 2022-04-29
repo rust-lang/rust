@@ -6,7 +6,7 @@ use rustc_session::cstore::ForeignModule;
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut modules = Vec::new();
     for id in tcx.hir().items() {
-        if !matches!(tcx.hir().def_kind(id.def_id), DefKind::ForeignMod) {
+        if !matches!(tcx.def_kind(id.def_id), DefKind::ForeignMod) {
             continue;
         }
         let item = tcx.hir().item(id);

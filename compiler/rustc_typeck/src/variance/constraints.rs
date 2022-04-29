@@ -69,19 +69,19 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
     }
 
     for id in crate_items.trait_items() {
-        if let DefKind::AssocFn = tcx.hir().def_kind(id.def_id) {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
             constraint_cx.check_node_helper(id.hir_id());
         }
     }
 
     for id in crate_items.impl_items() {
-        if let DefKind::AssocFn = tcx.hir().def_kind(id.def_id) {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
             constraint_cx.check_node_helper(id.hir_id());
         }
     }
 
     for id in crate_items.foreign_items() {
-        if let DefKind::Fn = tcx.hir().def_kind(id.def_id) {
+        if let DefKind::Fn = tcx.def_kind(id.def_id) {
             constraint_cx.check_node_helper(id.hir_id());
         }
     }
@@ -91,7 +91,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn check_item(&mut self, id: hir::ItemId) {
-        let def_kind = self.tcx().hir().def_kind(id.def_id);
+        let def_kind = self.tcx().def_kind(id.def_id);
         match def_kind {
             DefKind::Struct | DefKind::Union => {
                 let item = self.tcx().hir().item(id);

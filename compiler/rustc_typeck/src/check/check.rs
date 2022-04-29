@@ -719,7 +719,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         tcx.def_path_str(id.def_id.to_def_id())
     );
     let _indenter = indenter();
-    match tcx.hir().def_kind(id.def_id) {
+    match tcx.def_kind(id.def_id) {
         DefKind::Static(..) => {
             tcx.ensure().typeck(id.def_id);
             maybe_check_static_with_link_section(tcx, id.def_id, tcx.def_span(id.def_id));
@@ -1473,7 +1473,6 @@ pub(super) fn check_type_params_are_used<'tcx>(
 pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
-        // let item = tcx.hir().item(id);
         check_item_type(tcx, id);
     }
 }

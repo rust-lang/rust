@@ -10,7 +10,7 @@ pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
             let inferred_outlives_of = tcx.inferred_outlives_of(id.def_id);
             struct_span_err!(
                 tcx.sess,
-                tcx.hir().span(id.hir_id()),
+                tcx.def_span(id.def_id),
                 E0640,
                 "{:?}",
                 inferred_outlives_of

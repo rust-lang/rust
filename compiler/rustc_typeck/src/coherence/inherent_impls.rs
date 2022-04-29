@@ -177,7 +177,7 @@ impl<'tcx> InherentCollect<'tcx> {
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
-        if !matches!(self.tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+        if !matches!(self.tcx.def_kind(id.def_id), DefKind::Impl) {
             return;
         }
 
