@@ -1451,7 +1451,11 @@ pub(super) fn check_type_params_are_used<'tcx>(
 }
 
 pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
+    let module = tcx.hir_module_items(module_def_id);
+    for id in module.items() {
+        let item = tcx.hir().item(id);
+        check_item_type(tcx, item)
+    }
 }
 
 pub(super) use wfcheck::check_item_well_formed;
