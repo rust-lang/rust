@@ -51,7 +51,7 @@ fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
-                for item in mem::replace(&mut items, Default::default()).iter() {
+                for item in mem::take(&mut items).iter() {
                     if item.ident.name.as_str() == *segment {
                         if path_it.peek().is_none() {
                             return Some(item.res.def_id());
