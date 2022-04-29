@@ -94,8 +94,10 @@ pub fn encode_and_write_metadata(
     } else {
         metadata_filename
     };
-    let raw_data = std::fs::read(metadata_filename).unwrap();
-    let metadata = EncodedMetadata::from_raw_data(raw_data);
+    let file = std::fs::File::open(metadata_filename).unwrap();
+    let metadata = EncodedMetadata::from_file(file).unwrap_or_else(|e| {
+        tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
+    });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 

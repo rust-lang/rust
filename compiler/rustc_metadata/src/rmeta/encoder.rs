@@ -4,6 +4,7 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
@@ -27,7 +28,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::{opaque, Encodable, Encoder};
+use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
@@ -2135,25 +2136,43 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-#[derive(Encodable, Decodable)]
 pub struct EncodedMetadata {
-    raw_data: Vec<u8>,
+    mmap: Option<Mmap>,
+    decoded: Vec<u8>,
 }
 
 impl EncodedMetadata {
     #[inline]
-    pub fn new() -> EncodedMetadata {
-        EncodedMetadata { raw_data: Vec::new() }
-    }
-
-    #[inline]
-    pub fn from_raw_data(raw_data: Vec<u8>) -> Self {
-        Self { raw_data }
+    pub fn from_file(file: std::fs::File) -> std::io::Result<Self> {
+        let file_metadata = file.metadata()?;
+        if file_metadata.len() == 0 {
+            return Ok(Self { mmap: None, decoded: Vec::new() });
+        }
+        let mmap = unsafe { Some(Mmap::map(file)?) };
+        Ok(Self { mmap, decoded: Vec::new() })
     }
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
-        &self.raw_data
+        if !self.decoded.is_empty() {
+            return &self.decoded;
+        }
+        self.mmap.as_ref().map(|mmap| mmap.as_ref()).unwrap_or_default()
+    }
+}
+
+impl<S: Encoder> Encodable<S> for EncodedMetadata {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        let slice = self.raw_data();
+        slice.encode(s)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for EncodedMetadata {
+    fn decode(d: &mut D) -> Self {
+        // FIXME: Write decorded data to a file and map to Mmap.
+        let decoded = Decodable::decode(d);
+        EncodedMetadata { mmap: None, decoded }
     }
 }
 
