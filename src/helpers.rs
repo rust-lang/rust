@@ -323,7 +323,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     trace!("unsafe_cell_action on {:?}", place.ptr);
                     // We need a size to go on.
                     let unsafe_cell_size = this
-                        .size_and_align_of_mplace(&place)?
+                        .size_and_align_of_mplace(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);
@@ -362,7 +362,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             #[inline(always)]
             fn ecx(&self) -> &MiriEvalContext<'mir, 'tcx> {
-                &self.ecx
+                self.ecx
             }
 
             // Hook to detect `UnsafeCell`.
@@ -631,10 +631,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// `EINVAL` in this case.
     fn read_timespec(&mut self, tp: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.mplace_field(&tp, 0)?;
+        let seconds_place = this.mplace_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
         let seconds = seconds_scalar.to_machine_isize(this)?;
-        let nanoseconds_place = this.mplace_field(&tp, 1)?;
+        let nanoseconds_place = this.mplace_field(tp, 1)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
         let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
 

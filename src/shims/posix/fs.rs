@@ -51,7 +51,7 @@ trait FileDescriptor: std::fmt::Debug {
 
 impl FileDescriptor for FileHandle {
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        Ok(&self)
+        Ok(self)
     }
 
     fn read<'tcx>(
@@ -651,7 +651,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
                 let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-                let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+                let io_result = maybe_sync_file(file, *writable, File::sync_all);
                 this.try_unwrap_io_result(io_result)
             } else {
                 this.handle_not_found()
@@ -743,7 +743,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             let bytes = this.read_bytes_ptr(buf, Size::from_bytes(count))?;
             let result =
-                file_descriptor.write(communicate, &bytes)?.map(|c| i64::try_from(c).unwrap());
+                file_descriptor.write(communicate, bytes)?.map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -1491,7 +1491,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fsync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+            let io_result = maybe_sync_file(file, *writable, File::sync_all);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
@@ -1513,7 +1513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fdatasync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
@@ -1558,7 +1558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
