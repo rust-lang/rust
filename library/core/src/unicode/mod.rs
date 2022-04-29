@@ -1,9 +1,7 @@
-#![stable(feature = "unicode_version", since = "1.45.0")]
+#![unstable(feature = "unicode_internals", issue = "none")]
 #![allow(missing_docs)]
 
-#[unstable(feature = "unicode_internals", issue = "none")]
 pub(crate) mod printable;
-#[unstable(feature = "unicode_internals", issue = "none")]
 mod unicode_data;
 
 /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
@@ -20,7 +18,6 @@ mod unicode_data;
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 
 // For use in liballoc, not re-exported in libstd.
-#[unstable(feature = "unicode_internals", issue = "none")]
 pub use unicode_data::{
     case_ignorable::lookup as Case_Ignorable, cased::lookup as Cased, conversions,
 };
