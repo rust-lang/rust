@@ -775,7 +775,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.operand_index(index, i)?.into())?
+                        .read_immediate(&this.operand_index(index, i)?)?
                         .to_scalar()?
                         .to_u32()?
                         .into();

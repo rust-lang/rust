@@ -99,7 +99,7 @@ impl<'tcx> TlsData<'tcx> {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
                 trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
-                Ok(value.unwrap_or_else(|| Scalar::null_ptr(cx).into()))
+                Ok(value.unwrap_or_else(|| Scalar::null_ptr(cx)))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }

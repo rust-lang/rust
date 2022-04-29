@@ -64,7 +64,7 @@ impl<'tcx> EnvVars<'tcx> {
                                 unsupported
                             ),
                     };
-                    ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
+                    ecx.machine.env_vars.map.insert(name, var_ptr);
                 }
             }
         }

@@ -1168,7 +1168,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         #[cfg(unix)]
         {
             use std::os::unix::fs::DirBuilderExt;
-            builder.mode(mode.into());
+            builder.mode(mode);
         }
 
         let result = builder.create(path).map(|_| 0i32);
