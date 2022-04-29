@@ -1771,7 +1771,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 token.span,
                 "must have an integer part",
-                pprust::token_to_string(token).into(),
+                pprust::token_to_string(token),
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -2324,7 +2324,7 @@ impl<'a> Parser<'a> {
             .span_suggestion_short(
                 span,
                 msg,
-                sugg.into(),
+                sugg,
                 // Has been misleading, at least in the past (closed Issue #48492).
                 Applicability::MaybeIncorrect,
             )
@@ -2828,7 +2828,7 @@ impl<'a> Parser<'a> {
                             e.span_suggestion(
                                 self.prev_token.span.shrink_to_hi(),
                                 "try adding a comma",
-                                ",".into(),
+                                ",",
                                 Applicability::MachineApplicable,
                             );
                         }

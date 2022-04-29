@@ -1,5 +1,6 @@
 use super::FnCtxt;
 use crate::astconv::AstConv;
+use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
@@ -527,28 +528,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(self.tcx), can_suggest, expected.is_unit()) {
             (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
-                err.span_suggestion(
-                    span,
-                    "try adding a return type",
-                    format!("-> {} ", found),
-                    Applicability::MachineApplicable,
-                );
+                err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found });
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
                 // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
                 // that.
-                err.span_suggestion(
-                    span,
-                    "a return type might be missing here",
-                    "-> _ ".to_string(),
-                    Applicability::HasPlaceholders,
-                );
+                err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
-                err.span_label(span, "expected `()` because of default return type");
+                err.subdiagnostic(ExpectedReturnTypeLabel::Unit { span });
                 true
             }
             // expectation was caused by something else, not the default return
@@ -557,16 +548,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let sp = ty.span;
+                let span = ty.span;
                 let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
                 let ty = Binder::bind_with_vars(ty, bound_vars);
-                let ty = self.normalize_associated_types_in(sp, ty);
+                let ty = self.normalize_associated_types_in(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
                 if self.can_coerce(expected, ty) {
-                    err.span_label(sp, format!("expected `{}` because of return type", expected));
+                    err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
                     self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
                     return true;
                 }

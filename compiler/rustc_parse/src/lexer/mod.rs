@@ -612,14 +612,14 @@ impl<'a> StringReader<'a> {
                 err.span_suggestion_verbose(
                     prefix_span,
                     "use `br` for a raw byte string",
-                    "br".to_string(),
+                    "br",
                     Applicability::MaybeIncorrect,
                 );
             } else if expn_data.is_root() {
                 err.span_suggestion_verbose(
                     prefix_span.shrink_to_hi(),
                     "consider inserting whitespace here",
-                    " ".into(),
+                    " ",
                     Applicability::MaybeIncorrect,
                 );
             }

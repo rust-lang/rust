@@ -606,7 +606,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 mutref_span,
                 "try switching the order",
-                "ref mut".into(),
+                "ref mut",
                 Applicability::MachineApplicable,
             )
             .emit();

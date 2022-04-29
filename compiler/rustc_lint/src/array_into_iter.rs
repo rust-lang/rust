@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 diag.span_suggestion(
                     call.ident.span,
                     "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
-                    "iter".into(),
+                    "iter",
                     Applicability::MachineApplicable,
                 );
                 if self.for_expr_span == expr.span {

@@ -2198,7 +2198,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_suggestion(
                 span.with_hi(before_close).shrink_to_hi(),
                 msg,
-                ",".into(),
+                ",",
                 Applicability::MachineApplicable,
             );
         } else {

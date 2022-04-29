@@ -176,7 +176,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 l.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
                     "add a \"{}\" format string to Display the message",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     fmt_applicability,
                 );
             } else if suggest_debug {
@@ -186,7 +186,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                         "add a \"{{:?}}\" format string to use the Debug implementation of `{}`",
                         ty,
                     ),
-                    "\"{:?}\", ".into(),
+                    "\"{:?}\", ",
                     fmt_applicability,
                 );
             }
@@ -266,13 +266,13 @@ fn check_panic_str<'tcx>(
                 l.span_suggestion(
                     arg.span.shrink_to_hi(),
                     &format!("add the missing argument{}", pluralize!(n_arguments)),
-                    ", ...".into(),
+                    ", ...",
                     Applicability::HasPlaceholders,
                 );
                 l.span_suggestion(
                     arg.span.shrink_to_lo(),
                     "or add a \"{}\" format string to use the message literally",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     Applicability::MachineApplicable,
                 );
             }
@@ -297,7 +297,7 @@ fn check_panic_str<'tcx>(
                 l.span_suggestion(
                     arg.span.shrink_to_lo(),
                     "add a \"{}\" format string to use the message literally",
-                    "\"{}\", ".into(),
+                    "\"{}\", ",
                     Applicability::MachineApplicable,
                 );
             }

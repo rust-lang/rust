@@ -511,7 +511,7 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
             err.span_suggestion(
                 span,
                 "expected syntax is",
-                suggestion.into(),
+                suggestion,
                 Applicability::HasPlaceholders,
             );
         }

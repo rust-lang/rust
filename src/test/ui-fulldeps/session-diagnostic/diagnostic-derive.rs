@@ -15,7 +15,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 extern crate rustc_macros;
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
@@ -44,67 +44,74 @@ enum SessionDiagnosticOnEnum {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 #[error = "E0123"]
-//~^ ERROR `#[error = ...]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error = ...]` is not a valid attribute
 struct WrongStructAttrStyle {}
 
 #[derive(SessionDiagnostic)]
 #[nonsense(code = "E0123", slug = "foo")]
-//~^ ERROR `#[nonsense(...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[nonsense(...)]` is not a valid attribute
 //~^^ ERROR diagnostic kind not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error("E0123")]
-//~^ ERROR `#[error("...")]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error("...")]` is not a valid attribute
 //~^^ ERROR `slug` not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense)]` is not a valid attribute
 struct InvalidNestedStructAttr {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense(...))]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense(...))]` is not a valid attribute
 struct InvalidNestedStructAttr1 {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense = "...", code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
 struct InvalidNestedStructAttr2 {}
 
 #[derive(SessionDiagnostic)]
 #[error(nonsense = 4, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
+//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
 struct InvalidNestedStructAttr3 {}
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct WrongPlaceField {
     #[suggestion = "bar"]
-    //~^ ERROR `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion = ...]` is not a valid attribute
     sp: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
-#[error(code = "E0456", slug = "bar")] //~ ERROR `error` specified multiple times
+#[error(code = "E0456", slug = "bar")]
+//~^ ERROR specified multiple times
+//~^^ ERROR specified multiple times
+//~^^^ ERROR specified multiple times
 struct ErrorSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 #[warning(code = "E0293", slug = "bar")]
-//~^ ERROR `warning` specified when `error` was already specified
+//~^ ERROR specified multiple times
+//~^^ ERROR specified multiple times
+//~^^^ ERROR specified multiple times
 struct WarnSpecifiedAfterError {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", code = "E0457", slug = "bar")] //~ ERROR `code` specified multiple times
+#[error(code = "E0456", code = "E0457", slug = "bar")]
+//~^ ERROR specified multiple times
 struct CodeSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", slug = "foo", slug = "bar")] //~ ERROR `slug` specified multiple times
+#[error(code = "E0456", slug = "foo", slug = "bar")]
+//~^ ERROR specified multiple times
 struct SlugSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
@@ -130,7 +137,7 @@ struct MessageWrongType {
 #[error(code = "E0123", slug = "foo")]
 struct InvalidPathFieldAttr {
     #[nonsense]
-    //~^ ERROR `#[nonsense]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[nonsense]` is not a valid attribute
     //~^^ ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
@@ -215,7 +222,7 @@ struct SuggestWithoutCode {
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
-    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
     suggestion: (Span, Applicability),
 }
 
@@ -223,7 +230,7 @@ struct SuggestWithBadKey {
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
-    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
     suggestion: (Span, Applicability),
 }
 
@@ -276,7 +283,7 @@ struct SuggestWithDuplicateApplicabilityAndSpan {
 #[error(code = "E0123", slug = "foo")]
 struct WrongKindOfAnnotation {
     #[label("bar")]
-    //~^ ERROR `#[label(...)]` is not a valid `SessionDiagnostic` field attribute
+    //~^ ERROR `#[label(...)]` is not a valid attribute
     z: Span,
 }
 
@@ -425,4 +432,45 @@ struct ErrorWithNoteWrongOrder {
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithNoteCustomWrongOrder {
     val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ApplicabilityInBoth {
+    #[suggestion(message = "bar", code = "...", applicability = "maybe-incorrect")]
+    //~^ ERROR applicability cannot be set in both the field and attribute
+    suggestion: (Span, Applicability),
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct InvalidApplicability {
+    #[suggestion(message = "bar", code = "...", applicability = "batman")]
+    //~^ ERROR invalid applicability
+    suggestion: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ValidApplicability {
+    #[suggestion(message = "bar", code = "...", applicability = "maybe-incorrect")]
+    suggestion: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct NoApplicability {
+    #[suggestion(message = "bar", code = "...")]
+    suggestion: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[note(slug = "note")]
+struct Note;
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "subdiagnostic")]
+struct Subdiagnostic {
+    #[subdiagnostic]
+    note: Note,
 }

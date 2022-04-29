@@ -78,6 +78,13 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     }
 }
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionSubdiagnostic)]` -- see [rustc_macros::SessionSubdiagnostic].
+pub trait AddSubdiagnostic {
+    /// Add a subdiagnostic to an existing diagnostic.
+    fn add_to_diagnostic(self, diag: &mut Diagnostic);
+}
+
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
@@ -605,7 +612,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -623,13 +630,13 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
-                parts: vec![SubstitutionPart { snippet: suggestion, span: sp }],
+                parts: vec![SubstitutionPart { snippet: suggestion.to_string(), span: sp }],
             }],
             msg: msg.into(),
             style,
@@ -643,7 +650,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -711,7 +718,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -734,7 +741,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -755,7 +762,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestion_with_style(
@@ -765,6 +772,13 @@ impl Diagnostic {
             applicability,
             SuggestionStyle::CompletelyHidden,
         );
+        self
+    }
+
+    /// Add a subdiagnostic from a type that implements `SessionSubdiagnostic` - see
+    /// [rustc_macros::SessionSubdiagnostic].
+    pub fn subdiagnostic(&mut self, subdiagnostic: impl AddSubdiagnostic) -> &mut Self {
+        subdiagnostic.add_to_diagnostic(self);
         self
     }
 

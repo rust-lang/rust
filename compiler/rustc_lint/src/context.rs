@@ -738,7 +738,7 @@ pub trait LintContext: Sized {
                     db.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-                        " ".into(),
+                        " ",
                         Applicability::MachineApplicable,
                     );
                 }

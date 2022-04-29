@@ -477,7 +477,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestions(
@@ -497,28 +497,28 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
         msg: impl Into<DiagnosticMessage>,
-        suggestion: String,
+        suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
 
@@ -529,6 +529,11 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         &mut self,
         name: impl Into<Cow<'static, str>>,
         arg: DiagnosticArgValue<'static>,
+    ) -> &mut Self);
+
+    forward!(pub fn subdiagnostic(
+        &mut self,
+        subdiagnostic: impl crate::AddSubdiagnostic
     ) -> &mut Self);
 }
 

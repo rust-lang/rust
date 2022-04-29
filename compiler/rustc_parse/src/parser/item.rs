@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
             err.span_suggestion_short(
                 sp,
                 &msg,
-                " struct ".into(),
+                " struct ",
                 Applicability::MaybeIncorrect, // speculative
             );
             Err(err)
@@ -532,13 +532,13 @@ impl<'a> Parser<'a> {
                 .span_suggestion(
                     span,
                     "add a trait here",
-                    " Trait ".into(),
+                    " Trait ",
                     Applicability::HasPlaceholders,
                 )
                 .span_suggestion(
                     span.to(self.token.span),
                     "for an inherent impl, drop this `for`",
-                    "".into(),
+                    "",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
@@ -1459,7 +1459,7 @@ impl<'a> Parser<'a> {
                         err.span_suggestion(
                             sp,
                             "missing comma here",
-                            ",".into(),
+                            ",",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -1498,7 +1498,7 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         sp,
                         "try adding a comma",
-                        ",".into(),
+                        ",",
                         Applicability::MachineApplicable,
                     );
                     err.emit();

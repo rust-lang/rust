@@ -82,3 +82,11 @@ typeck-value-of-associated-struct-already-specified =
 
 typeck-address-of-temporary-taken = cannot take address of a temporary
     .label = temporary value
+
+typeck-add-return-type-add = try adding a return type
+
+typeck-add-return-type-missing-here = a return type might be missing here
+
+typeck-expected-default-return-type = expected `()` because of default return type
+
+typeck-expected-return-type = expected `{$expected}` because of return type

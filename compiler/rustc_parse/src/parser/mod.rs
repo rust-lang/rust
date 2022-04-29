@@ -802,7 +802,7 @@ impl<'a> Parser<'a> {
                                     .span_suggestion_verbose(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
                                         &msg,
-                                        " @ ".to_string(),
+                                        " @ ",
                                         Applicability::MaybeIncorrect,
                                     )
                                     .emit();
@@ -818,7 +818,7 @@ impl<'a> Parser<'a> {
                                         .span_suggestion_short(
                                             sp,
                                             &format!("missing `{}`", token_str),
-                                            token_str.into(),
+                                            token_str,
                                             Applicability::MaybeIncorrect,
                                         )
                                         .emit();
