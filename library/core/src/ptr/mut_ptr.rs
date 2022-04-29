@@ -246,12 +246,20 @@ impl<T: ?Sized> *mut T {
         // In the mean-time, this operation is defined to be "as if" it was
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
-        let self_addr = self.addr() as isize;
-        let dest_addr = addr as isize;
-        let offset = dest_addr.wrapping_sub(self_addr);
-
-        // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        let self_addr = self.addr();
+        // Unfortunately, the CHERI-compatible way of defining this operation
+        // optimizes worse, so we special case it... in a somewhat ad-hoc way
+        // (checking for 128 bit pointers) because at the time of this writing,
+        // we don't actually support CHERI yet. Ideally this would be
+        // `cfg!(target_supports_large_wrapping_offsets)` or something, see
+        // #96152 for details.
+        if cfg!(target_pointer_width = "128") {
+            let offset = (addr as isize).wrapping_sub(self_addr as isize);
+            // This is the canonical desugarring of this operation
+            self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        } else {
+            self.cast::<u8>().wrapping_sub(self_addr).wrapping_add(addr).cast::<T>()
+        }
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
