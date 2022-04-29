@@ -1,22 +1,22 @@
 error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
-  --> $DIR/repeat_empty_ok.rs:8:19
+  --> $DIR/repeat_empty_ok.rs:8:20
    |
 LL |     let headers = [Header{value: &[]}; 128];
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |                    ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
    |
-   = note: the `Copy` trait is required because the repeated element will be copied
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Header<'_>` with `#[derive(Copy)]`
    |
 LL | #[derive(Copy)]
    |
 
 error[E0277]: the trait bound `Header<'_>: Copy` is not satisfied
-  --> $DIR/repeat_empty_ok.rs:13:19
+  --> $DIR/repeat_empty_ok.rs:13:20
    |
 LL |     let headers = [Header{value: &[0]}; 128];
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
+   |                    ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Header<'_>`
    |
-   = note: the `Copy` trait is required because the repeated element will be copied
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Header<'_>` with `#[derive(Copy)]`
    |
 LL | #[derive(Copy)]

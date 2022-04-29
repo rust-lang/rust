@@ -1,20 +1,28 @@
-error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
-  --> $DIR/nll-fail.rs:12:37
+error[E0277]: the trait bound `Bar: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:12:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
-   |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
+   |                                      ^ the trait `Copy` is not implemented for `Bar`
    |
-   = help: the trait `Copy` is implemented for `Option<T>`
-   = note: the `Copy` trait is required because the repeated element will be copied
+   = note: required because of the requirements on the impl of `Copy` for `Option<Bar>`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: consider annotating `Bar` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
 
-error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
-  --> $DIR/nll-fail.rs:18:37
+error[E0277]: the trait bound `Bar: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:18:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
-   |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
+   |                                      ^ the trait `Copy` is not implemented for `Bar`
    |
-   = help: the trait `Copy` is implemented for `Option<T>`
-   = note: the `Copy` trait is required because the repeated element will be copied
+   = note: required because of the requirements on the impl of `Copy` for `Option<Bar>`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: consider annotating `Bar` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
 
 error: aborting due to 2 previous errors
 

@@ -2227,7 +2227,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::RepeatElementCopy { is_const_fn } => {
                 err.note(
-                    "the `Copy` trait is required because the repeated element will be copied",
+                    "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
 
                 if is_const_fn {
