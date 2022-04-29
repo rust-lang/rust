@@ -5,7 +5,7 @@ pub use self::imp::read2;
 use std::io;
 use std::process::{Child, Output};
 
-pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
+pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::Result<Output> {
     use io::Write;
     use std::mem::replace;
 
@@ -13,21 +13,39 @@ pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
     const TAIL_LEN: usize = 256 * 1024;
 
     enum ProcOutput {
-        Full(Vec<u8>),
+        Full { bytes: Vec<u8>, excluded_len: usize },
         Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
     }
 
     impl ProcOutput {
-        fn extend(&mut self, data: &[u8]) {
+        fn extend(&mut self, data: &[u8], exclude_from_len: &[String]) {
             let new_self = match *self {
-                ProcOutput::Full(ref mut bytes) => {
+                ProcOutput::Full { ref mut bytes, ref mut excluded_len } => {
                     bytes.extend_from_slice(data);
+
+                    // We had problems in the past with tests failing only in some environments,
+                    // due to the length of the base path pushing the output size over the limit.
+                    //
+                    // To make those failures deterministic across all environments we ignore known
+                    // paths when calculating the string length, while still including the full
+                    // path in the output. This could result in some output being larger than the
+                    // threshold, but it's better than having nondeterministic failures.
+                    for pattern in exclude_from_len {
+                        let pattern_bytes = pattern.as_bytes();
+                        let matches = data
+                            .windows(pattern_bytes.len())
+                            .filter(|window| window == &pattern_bytes)
+                            .count();
+                        *excluded_len += matches * pattern_bytes.len();
+                    }
+
                     let new_len = bytes.len();
-                    if new_len <= HEAD_LEN + TAIL_LEN {
+                    if new_len.saturating_sub(*excluded_len) <= HEAD_LEN + TAIL_LEN {
                         return;
                     }
-                    let tail = bytes.split_off(new_len - TAIL_LEN).into_boxed_slice();
-                    let head = replace(bytes, Vec::new());
+
+                    let mut head = replace(bytes, Vec::new());
+                    let tail = head.split_off(new_len - TAIL_LEN).into_boxed_slice();
                     let skipped = new_len - HEAD_LEN - TAIL_LEN;
                     ProcOutput::Abbreviated { head, skipped, tail }
                 }
@@ -47,7 +65,7 @@ pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
 
         fn into_bytes(self) -> Vec<u8> {
             match self {
-                ProcOutput::Full(bytes) => bytes,
+                ProcOutput::Full { bytes, .. } => bytes,
                 ProcOutput::Abbreviated { mut head, skipped, tail } => {
                     write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
                     head.extend_from_slice(&tail);
@@ -57,15 +75,15 @@ pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
         }
     }
 
-    let mut stdout = ProcOutput::Full(Vec::new());
-    let mut stderr = ProcOutput::Full(Vec::new());
+    let mut stdout = ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 };
+    let mut stderr = ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 };
 
     drop(child.stdin.take());
     read2(
         child.stdout.take().unwrap(),
         child.stderr.take().unwrap(),
         &mut |is_stdout, data, _| {
-            if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+            if is_stdout { &mut stdout } else { &mut stderr }.extend(data, exclude_from_len);
             data.clear();
         },
     )?;
