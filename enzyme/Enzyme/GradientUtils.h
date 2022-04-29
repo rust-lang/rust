@@ -1418,8 +1418,22 @@ public:
       for (Instruction &I : oBB) {
         Instruction *inst = &I;
 
-        if (inst->getType()->isEmptyTy())
+        if (inst->getType()->isEmptyTy() || inst->getType()->isVoidTy())
           continue;
+
+        if (mode == DerivativeMode::ForwardMode ||
+            mode == DerivativeMode::ForwardModeSplit) {
+          if (!isConstantValue(inst)) {
+            IRBuilder<> BuilderZ(inst);
+            getForwardBuilder(BuilderZ);
+            Type *antiTy = getShadowType(inst->getType());
+            PHINode *anti =
+                BuilderZ.CreatePHI(antiTy, 1, inst->getName() + "'dual_phi");
+            invertedPointers.insert(std::make_pair(
+                (const Value *)inst, InvertedPointerVH(this, anti)));
+          }
+          continue;
+        }
 
         if (inst->getType()->isFPOrFPVectorTy())
           continue; //! op->getType()->isPointerTy() &&
@@ -1883,6 +1897,9 @@ public:
       llvm::errs() << *val << "\n";
       assert(0 && "getting diffe of constant value");
     }
+    if (mode == DerivativeMode::ForwardMode ||
+        mode == DerivativeMode::ForwardModeSplit)
+      return invertPointerM(val, BuilderM);
     if (val->getType()->isPointerTy()) {
       llvm::errs() << *newFunc << "\n";
       llvm::errs() << *val << "\n";
@@ -2143,6 +2160,21 @@ public:
       llvm::errs() << *val << "\n";
     }
     assert(!isConstantValue(val));
+    if (mode == DerivativeMode::ForwardMode ||
+        mode == DerivativeMode::ForwardModeSplit) {
+      assert(getShadowType(val->getType()) == toset->getType());
+      auto found = invertedPointers.find(val);
+      assert(found != invertedPointers.end());
+      auto placeholder0 = &*found->second;
+      auto placeholder = cast<PHINode>(placeholder0);
+      invertedPointers.erase(found);
+      replaceAWithB(placeholder, toset);
+      placeholder->replaceAllUsesWith(toset);
+      erase(placeholder);
+      invertedPointers.insert(
+          std::make_pair((const Value *)val, InvertedPointerVH(this, toset)));
+      return;
+    }
     Value *tostore = getDifferential(val);
     if (toset->getType() != tostore->getType()->getPointerElementType()) {
       llvm::errs() << "toset:" << *toset << "\n";

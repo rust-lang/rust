@@ -52,8 +52,8 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: loop:                                             ; preds = %end, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %end ], [ 0, %entry ]
-; CHECK-NEXT:   %"sum'" = phi {{(fast )?}}double [ %1, %end ], [ 0.000000e+00, %entry ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %end ], [ 0, %entry ]
+; CHECK-DAG:   %[[sum:.+]] = phi {{(fast )?}}double [ %[[i1:.+]], %end ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %g0 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   br label %body
@@ -71,11 +71,11 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: end:                                              ; preds = %body
 ; CHECK-NEXT:   %"gep2'ipg" = getelementptr inbounds double, double* %"x'", i64 %idx
-; CHECK-NEXT:   %0 = load double, double* %"gep2'ipg"
-; CHECK-NEXT:   %1 = fadd fast double %0, %"sum'"
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"gep2'ipg"
+; CHECK-NEXT:   %[[i1]] = fadd fast double %[[i0]], %[[sum]]
 ; CHECK-NEXT:   %cmp2 = icmp ne i64 %iv.next, 10
 ; CHECK-NEXT:   br i1 %cmp2, label %loop, label %exit
 
 ; CHECK: exit:                                             ; preds = %end
-; CHECK-NEXT:   ret double %1
+; CHECK-NEXT:   ret double %[[i1]]
 ; CHECK-NEXT: }

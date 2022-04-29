@@ -76,21 +76,21 @@ attributes #3 = { nounwind }
 ; CHECK: define internal void @fwddiffesubcall(double** %m_data.i.i.i, double** %"m_data.i.i.i'", i64* %tmp7, { i64, double*, double* } %tapeArg) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { i64, double*, double* } %tapeArg, 2
-; CHECK-NEXT:   %"mat'il_phi" = extractvalue { i64, double*, double* } %tapeArg, 1
+; CHECK-NEXT:   %[[matil_phi:.+]] = extractvalue { i64, double*, double* } %tapeArg, 1
 ; CHECK-NEXT:   %cols = extractvalue { i64, double*, double* } %tapeArg, 0
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %"call'ipg" = getelementptr inbounds double, double* %"mat'il_phi", i64 %iv
-; CHECK-NEXT:   %1 = getelementptr inbounds double, double* %0, i64 %iv
-; CHECK-NEXT:   %ld = load double, double* %1, align 8, !invariant.group !15
-; CHECK-NEXT:   %2 = load double, double* %"call'ipg", align 8
-; CHECK-NEXT:   %3 = fmul fast double %2, %ld
-; CHECK-NEXT:   %4 = fmul fast double %2, %ld
-; CHECK-NEXT:   %5 = fadd fast double %3, %4
-; CHECK-NEXT:   store double %5, double* %"call'ipg", align 8
+; CHECK-NEXT:   %"call'ipg" = getelementptr inbounds double, double* %[[matil_phi]], i64 %iv
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"call'ipg", align 8
+; CHECK-NEXT:   %[[i1:.+]] = getelementptr inbounds double, double* %0, i64 %iv
+; CHECK-NEXT:   %ld = load double, double* %[[i1]], align 8, !invariant.group !15
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i2]], %ld
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %[[i2]], %ld
+; CHECK-NEXT:   %[[i5:.+]] = fadd fast double %[[i3]], %[[i4]]
+; CHECK-NEXT:   store double %[[i5:.+]], double* %"call'ipg", align 8
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, %cols
 ; CHECK-NEXT:   br i1 %exitcond, label %exit, label %for.body
 

@@ -37,18 +37,18 @@ declare double @__enzyme_fwdsplit(void (float*, float*)*, ...) #2
 ; CHECK-NEXT:   br label %do.body
 
 ; CHECK: do.body:                                          ; preds = %do.body, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %do.body ], [ 0, %entry ]
-; CHECK-NEXT:   %"intsum'" = phi i32 [ 0, %entry ], [ %3, %do.body ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %do.body ], [ 0, %entry ]
+; CHECK-DAG:   %[[intsum:.+]] = phi i32 [ 0, %entry ], [ %[[i3:.+]], %do.body ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds float, float* %"array'", i64 %iv
-; CHECK-NEXT:   %0 = load float, float* %"arrayidx'ipg"
-; CHECK-NEXT:   %1 = bitcast i32 %"intsum'" to float
-; CHECK-NEXT:   %2 = fadd fast float %1, %0
-; CHECK-NEXT:   %3 = bitcast float %2 to i32
+; CHECK-NEXT:   %[[i0:.+]] = load float, float* %"arrayidx'ipg"
+; CHECK-NEXT:   %[[i1:.+]] = bitcast i32 %[[intsum]] to float
+; CHECK-NEXT:   %[[i2:.+]] = fadd fast float %[[i1]], %[[i0]]
+; CHECK-NEXT:   %[[i3]] = bitcast float %[[i2]] to i32
 ; CHECK-NEXT:   %cmp = icmp eq i64 %iv.next, 5
 ; CHECK-NEXT:   br i1 %cmp, label %do.end, label %do.body
 
 ; CHECK: do.end:                                           ; preds = %do.body
-; CHECK-NEXT:   store float %2, float* %"ret'", align 4
+; CHECK-NEXT:   store float %[[i2]], float* %"ret'", align 4
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

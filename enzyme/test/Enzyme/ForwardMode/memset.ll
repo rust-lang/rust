@@ -26,22 +26,22 @@ entry:
 
 ; CHECK: define internal void @fwddiffef(double* %x, double* %"x'", double* %y, double* %"y'")
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %x1 = load double, double* %x
-; CHECK-NEXT:   %0 = load double, double* %"x'"
 ; CHECK-NEXT:   %"yptr'ipc" = bitcast double* %"y'" to i8*
 ; CHECK-NEXT:   %yptr = bitcast double* %y to i8*
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %yptr, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %"yptr'ipc", i8 0, i64 8, i1 false)
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"y'"
 ; CHECK-NEXT:   %y1 = load double, double* %y
-; CHECK-NEXT:   %1 = load double, double* %"y'"
 ; CHECK-NEXT:   %x2 = fmul double %x1, %y1
-; CHECK-NEXT:   %2 = fmul fast double %0, %y1
-; CHECK-NEXT:   %3 = fmul fast double %1, %x1
-; CHECK-NEXT:   %4 = fadd fast double %2, %3
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i0]], %y1
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i1]], %x1
+; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]
 ; CHECK-NEXT:   store double %x2, double* %x
-; CHECK-NEXT:   store double %4, double* %"x'"
+; CHECK-NEXT:   store double %[[i4]], double* %"x'"
 ; CHECK-NEXT:   store double %x2, double* %y
-; CHECK-NEXT:   store double %4, double* %"y'"
+; CHECK-NEXT:   store double %[[i4]], double* %"y'"
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %yptr, i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %"yptr'ipc", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   ret void

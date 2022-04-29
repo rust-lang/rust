@@ -472,6 +472,12 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       ActiveInstructions.insert(I);
       return false;
     }
+    if (CI->hasFnAttr("enzyme_inactive")) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "forced inactive " << *I << "\n";
+      InsertConstantInstruction(TR, I);
+      return true;
+    }
     Function *called = getFunctionFromCall(CI);
 
     if (called) {
@@ -480,6 +486,12 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
           llvm::errs() << "forced active " << *I << "\n";
         ActiveInstructions.insert(I);
         return false;
+      }
+      if (called->hasFnAttribute("enzyme_inactive")) {
+        if (EnzymePrintActivity)
+          llvm::errs() << "forced inactive " << *I << "\n";
+        InsertConstantInstruction(TR, I);
+        return true;
       }
     }
   }
@@ -1045,6 +1057,37 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       llvm::errs() << " VALUE nonconst unknown expr " << *Val << "\n";
     ActiveValues.insert(Val);
     return false;
+  }
+
+  if (auto CI = dyn_cast<CallInst>(Val)) {
+    if (CI->hasFnAttr("enzyme_active")) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "forced active val " << *Val << "\n";
+      ActiveValues.insert(Val);
+      return false;
+    }
+    if (CI->hasFnAttr("enzyme_inactive")) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "forced inactive val " << *Val << "\n";
+      InsertConstantValue(TR, Val);
+      return true;
+    }
+    Function *called = getFunctionFromCall(CI);
+
+    if (called) {
+      if (called->hasFnAttribute("enzyme_active")) {
+        if (EnzymePrintActivity)
+          llvm::errs() << "forced active val " << *Val << "\n";
+        ActiveValues.insert(Val);
+        return false;
+      }
+      if (called->hasFnAttribute("enzyme_inactive")) {
+        if (EnzymePrintActivity)
+          llvm::errs() << "forced inactive val " << *Val << "\n";
+        InsertConstantValue(TR, Val);
+        return true;
+      }
+    }
   }
 
   std::shared_ptr<ActivityAnalyzer> UpHypothesis;

@@ -29,8 +29,8 @@ attributes #2 = { noinline nounwind uwtable }
 
 ; CHECK: define internal void @fwddiffememcpy_float(double* nocapture %dst, double* nocapture %"dst'", double* nocapture readonly %src, double* nocapture %"src'", i64 %num, i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"'ipc" = bitcast double* %"dst'" to i8*
-; CHECK-NEXT:   %"'ipc2" = bitcast double* %"src'" to i8*
-; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %"'ipc", i8* align 1 %"'ipc2", i64 %num, i1 false)
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast double* %"dst'" to i8*
+; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"src'" to i8*
+; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %[[ipc]], i8* align 1 %[[ipc2]], i64 %num, i1 false)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

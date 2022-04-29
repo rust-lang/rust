@@ -51,8 +51,8 @@ attributes #1 = { nounwind readnone noinline }
 ; CHECK-NEXT:   %0 = call fast double @fwddiffef(double %x, double 1.000000e+00)
 ; CHECK-NEXT:   br label %fwddifferelu.exit
 ; CHECK: fwddifferelu.exit:                                   ; preds = %entry, %cond.true.i
-; CHECK-NEXT:   %"cond'.i" = phi{{( fast)?}} double [ %0, %cond.true.i ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   ret double %"cond'.i"
+; CHECK-NEXT:   %[[condi:.+]] = phi{{( fast)?}} double [ %0, %cond.true.i ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   ret double %[[condi]]
 ; CHECK-NEXT: }
 
 

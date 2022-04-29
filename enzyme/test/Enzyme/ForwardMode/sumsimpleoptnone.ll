@@ -49,16 +49,16 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.end
 
 ; CHECK: for.body:                                         ; preds = %for.cond
-; CHECK-NEXT:   %1 = load double, double* %x
-; CHECK-NEXT:   %2 = load double, double* %"x'"
-; CHECK-NEXT:   %"'ipl" = load double*, double** %"y'"
-; CHECK-NEXT:   %3 = load double*, double** %y
-; CHECK-NEXT:   %4 = load double, double* %3
-; CHECK-NEXT:   %5 = load double, double* %"'ipl"
-; CHECK-NEXT:   %add = fadd fast double %4, %1
-; CHECK-NEXT:   %6 = fadd fast double %5, %2
-; CHECK-NEXT:   store double %add, double* %3
-; CHECK-NEXT:   store double %6, double* %"'ipl"
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %x
+; CHECK-NEXT:   %[[ipl:.+]] = load double*, double** %"y'"
+; CHECK-NEXT:   %[[i3:.+]] = load double*, double** %y
+; CHECK-NEXT:   %[[i5:.+]] = load double, double* %[[ipl]]
+; CHECK-NEXT:   %[[i4:.+]] = load double, double* %[[i3]]
+; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[i4]], %[[i1]]
+; CHECK-NEXT:   %[[i6:.+]] = fadd fast double %[[i5]], %[[i2]]
+; CHECK-NEXT:   store double %[[add]], double* %[[i3]]
+; CHECK-NEXT:   store double %[[i6]], double* %[[ipl]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: for.end:                                          ; preds = %for.cond

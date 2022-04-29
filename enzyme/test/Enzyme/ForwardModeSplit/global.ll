@@ -84,12 +84,12 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffemulglobal(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to double*
-; CHECK-NEXT:   %1 = load double, double* %0
+; CHECK-NEXT:   %[[i0:.+]] = bitcast i8* %tapeArg to double*
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %[[i0]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
-; CHECK-NEXT:   %2 = load double, double* @dglobal
-; CHECK-NEXT:   %3 = fmul fast double %2, %x
-; CHECK-NEXT:   %4 = fmul fast double %"x'", %1
-; CHECK-NEXT:   %5 = fadd fast double %3, %4
-; CHECK-NEXT:   ret double %5
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* @dglobal
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i2]], %x
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %"x'", %[[i1]]
+; CHECK-NEXT:   %[[i5:.+]] = fadd fast double %[[i3]], %[[i4]]
+; CHECK-NEXT:   ret double %[[i5]]
 ; CHECK-NEXT: }

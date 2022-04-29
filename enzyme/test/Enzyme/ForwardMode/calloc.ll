@@ -35,6 +35,6 @@ declare dso_local double @__enzyme_fwddiff(i8*, ...)
 ; CHECK-NEXT:   %1 = bitcast i8* %call to double*
 ; CHECK-NEXT:   store double %x, double* %1, align 8
 ; CHECK-NEXT:   store double %"x'", double* %"'ipc", align 8
-; CHECK-NEXT:   %2 = load double, double* %"'ipc", align 8
-; CHECK-NEXT:   ret double %2
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"'ipc", align 8
+; CHECK-NEXT:   ret double %[[i2]]
 ; CHECK-NEXT: }

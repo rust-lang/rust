@@ -28,6 +28,6 @@ attributes #0 = { noinline }
 ; CHECK-NEXT:   %1 = load float, float* %b, align 4
 ; CHECK-NEXT:   %cmp = fcmp ogt float %0, %1
 ; CHECK-NEXT:   %"a.b'ipse" = select i1 %cmp, float* %"a'", float* %"b'"
-; CHECK-NEXT:   %2 = load float, float* %"a.b'ipse"
-; CHECK-NEXT:   ret float %2
+; CHECK-NEXT:   %[[i2:.+]] = load float, float* %"a.b'ipse"
+; CHECK-NEXT:   ret float %[[i2]]
 ; CHECK-NEXT: }

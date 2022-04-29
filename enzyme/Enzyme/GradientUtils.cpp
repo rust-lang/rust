@@ -3730,8 +3730,12 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   if (isa<ConstantPointerNull>(oval)) {
     return applyChainRule(oval->getType(), BuilderM, [&]() { return oval; });
   } else if (isa<UndefValue>(oval)) {
+    if (nullShadow)
+      return Constant::getNullValue(getShadowType(oval->getType()));
     return applyChainRule(oval->getType(), BuilderM, [&]() { return oval; });
   } else if (isa<ConstantInt>(oval)) {
+    if (nullShadow)
+      return Constant::getNullValue(getShadowType(oval->getType()));
     return applyChainRule(oval->getType(), BuilderM, [&]() { return oval; });
   } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
@@ -3787,6 +3791,16 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   if (isConstantValue(oval)) {
     // NOTE, this is legal and the correct resolution, however, our activity
     // analysis honeypot no longer exists
+
+    // Nulling the shadow for a constant is only necessary if any of the data
+    // could contain a float (e.g. should not be applied to pointers).
+    if (nullShadow) {
+      assert(my_TR);
+      auto CT = my_TR->query(oval)[{-1}];
+      if (!CT.isKnown() || CT.isFloat()) {
+        return Constant::getNullValue(getShadowType(oval->getType()));
+      }
+    }
 
     Value *newval = getNewFromOriginal(oval);
 
@@ -4039,21 +4053,23 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     auto md2 = cast<MDTuple>(md);
     assert(md2->getNumOperands() == 1);
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
-    auto cs = gvemd->getValue();
+    auto cs = cast<Constant>(gvemd->getValue());
 
     if (width > 1) {
-      Value *agg = UndefValue::get(getShadowType(arg->getType()));
+      SmallVector<Constant *, 2> Vals;
       for (unsigned i = 0; i < width; ++i) {
-#if LLVM_VERSION_MAJOR >= 8
-        Value *elem =
-            BuilderM.CreateGEP(cs->getType()->getPointerElementType(), cs,
-                               {BuilderM.getInt32(0), BuilderM.getInt32(i)});
-#else
-        Value *elem = BuilderM.CreateGEP(
-            cs, {BuilderM.getInt32(0), BuilderM.getInt32(i)});
-#endif
-        agg = BuilderM.CreateInsertValue(agg, elem, {i});
+
+        Constant *idxs[] = {
+            ConstantInt::get(Type::getInt32Ty(cs->getContext()), 0),
+            ConstantInt::get(Type::getInt32Ty(cs->getContext()), i)};
+        Constant *elem = ConstantExpr::getInBoundsGetElementPtr(
+            cs->getType()->getPointerElementType(), cs, idxs);
+        Vals.push_back(elem);
       }
+
+      auto agg = ConstantArray::get(
+          cast<ArrayType>(getShadowType(arg->getType())), Vals);
+
       invertedPointers.insert(
           std::make_pair((const Value *)oval, InvertedPointerVH(this, agg)));
       return agg;
@@ -4174,8 +4190,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     return shadow;
   } else if (auto arg = dyn_cast<InsertValueInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
-    auto ip0 = invertPointerM(arg->getOperand(0), bb);
-    auto ip1 = invertPointerM(arg->getOperand(1), bb);
+    auto ip0 = invertPointerM(arg->getOperand(0), bb, nullShadow);
+    auto ip1 = invertPointerM(arg->getOperand(1), bb, nullShadow);
 
     auto rule = [&bb, &arg](Value *ip0, Value *ip1) {
       return bb.CreateInsertValue(ip0, ip1, arg->getIndices(),
@@ -4208,8 +4224,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     Value *op0 = arg->getOperand(0);
     Value *op1 = arg->getOperand(1);
     Value *op2 = arg->getOperand(2);
-    auto ip0 = invertPointerM(op0, bb);
-    auto ip1 = invertPointerM(op1, bb);
+    auto ip0 = invertPointerM(op0, bb, nullShadow);
+    auto ip1 = invertPointerM(op1, bb, nullShadow);
 
     auto rule = [&](Value *ip0, Value *ip1) {
       return bb.CreateInsertElement(ip0, ip1, getNewFromOriginal(op2),
@@ -4245,10 +4261,15 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     return shadow;
   } else if (auto arg = dyn_cast<SelectInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
-    Value *shadow = bb.CreateSelect(getNewFromOriginal(arg->getCondition()),
-                                    invertPointerM(arg->getTrueValue(), bb),
-                                    invertPointerM(arg->getFalseValue(), bb),
-                                    arg->getName() + "'ipse");
+    bb.setFastMathFlags(getFast());
+    Value *shadow = applyChainRule(
+        arg->getType(), bb,
+        [&](Value *tv, Value *fv) {
+          return bb.CreateSelect(getNewFromOriginal(arg->getCondition()), tv,
+                                 fv, arg->getName() + "'ipse");
+        },
+        invertPointerM(arg->getTrueValue(), bb, nullShadow),
+        invertPointerM(arg->getFalseValue(), bb, nullShadow));
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return shadow;
@@ -4428,6 +4449,44 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     applyChainRule(bb, rule2, antialloca);
 
     return antialloca;
+  } else if (auto II = dyn_cast<IntrinsicInst>(oval)) {
+    IRBuilder<> bb(getNewFromOriginal(II));
+    bb.setFastMathFlags(getFast());
+    switch (II->getIntrinsicID()) {
+    default:
+      goto end;
+    case Intrinsic::nvvm_ldu_global_i:
+    case Intrinsic::nvvm_ldu_global_p:
+    case Intrinsic::nvvm_ldu_global_f:
+    case Intrinsic::nvvm_ldg_global_i:
+    case Intrinsic::nvvm_ldg_global_p:
+    case Intrinsic::nvvm_ldg_global_f: {
+      return applyChainRule(
+          II->getType(), bb,
+          [&](Value *ptr) {
+            Value *args[] = {ptr};
+            auto li = bb.CreateCall(II->getCalledFunction(), args);
+            li->copyMetadata(*II, MD_ToCopy);
+            li->setDebugLoc(getNewFromOriginal(II->getDebugLoc()));
+            return li;
+          },
+          invertPointerM(II->getArgOperand(0), bb));
+    case Intrinsic::masked_load:
+      return applyChainRule(
+          II->getType(), bb,
+          [&](Value *ptr, Value *defaultV) {
+            Value *args[] = {ptr, getNewFromOriginal(II->getArgOperand(1)),
+                             getNewFromOriginal(II->getArgOperand(2)),
+                             defaultV};
+            auto li = bb.CreateCall(II->getCalledFunction(), args);
+            li->copyMetadata(*II, MD_ToCopy);
+            li->setDebugLoc(getNewFromOriginal(II->getDebugLoc()));
+            return li;
+          },
+          invertPointerM(II->getArgOperand(0), bb),
+          invertPointerM(II->getArgOperand(3), bb, nullShadow));
+    }
+    }
   } else if (auto phi = dyn_cast<PHINode>(oval)) {
 
     if (phi->getNumIncomingValues() == 0) {
@@ -4466,6 +4525,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     else {
       auto NewV = getNewFromOriginal(phi);
       IRBuilder<> bb(NewV);
+      bb.setFastMathFlags(getFast());
       // Note if the original phi node get's scev'd in NewF, it may
       // no longer be a phi and we need a new place to insert this phi
       // Note that if scev'd this can still be a phi with 0 incoming indicating
@@ -4478,6 +4538,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
       Type *shadowTy = getShadowType(phi->getType());
       PHINode *which = bb.CreatePHI(shadowTy, phi->getNumIncomingValues());
+      which->setDebugLoc(getNewFromOriginal(phi->getDebugLoc()));
 
       invertedPointers.insert(
           std::make_pair((const Value *)oval, InvertedPointerVH(this, which)));
@@ -4486,7 +4547,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         IRBuilder<> pre(
             cast<BasicBlock>(getNewFromOriginal(phi->getIncomingBlock(i)))
                 ->getTerminator());
-        Value *val = invertPointerM(phi->getIncomingValue(i), pre);
+        Value *val = invertPointerM(phi->getIncomingValue(i), pre, nullShadow);
         which->addIncoming(val, cast<BasicBlock>(getNewFromOriginal(
                                     phi->getIncomingBlock(i))));
       }

@@ -36,15 +36,15 @@ declare dso_local double @_Z16__enzyme_fwddiffz(...)
 
 ; CHECK: define internal double @fwddiffe_Z6squared(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double*, double* } @fwddiffe_Z6toHeapd(double %x, double %"x'")
-; CHECK-NEXT:   %1 = extractvalue { double*, double* } %0, 0
-; CHECK-NEXT:   %2 = extractvalue { double*, double* } %0, 1
-; CHECK-NEXT:   %3 = load double, double* %1, align 8
-; CHECK-NEXT:   %4 = load double, double* %2, align 8
-; CHECK-NEXT:   %5 = fmul fast double %4, %x
-; CHECK-NEXT:   %6 = fmul fast double %"x'", %3
-; CHECK-NEXT:   %7 = fadd fast double %5, %6
-; CHECK-NEXT:   ret double %7
+; CHECK-NEXT:   %[[i0:.+]] = call { double*, double* } @fwddiffe_Z6toHeapd(double %x, double %"x'")
+; CHECK-NEXT:   %[[i1:.+]] = extractvalue { double*, double* } %[[i0]], 0
+; CHECK-NEXT:   %[[i2:.+]] = extractvalue { double*, double* } %[[i0]], 1
+; CHECK-NEXT:   %[[i4:.+]] = load double, double* %[[i2]], align 8
+; CHECK-NEXT:   %[[i3:.+]] = load double, double* %[[i1]], align 8
+; CHECK-NEXT:   %[[i5:.+]] = fmul fast double %[[i4]], %x
+; CHECK-NEXT:   %[[i6:.+]] = fmul fast double %"x'", %[[i3]]
+; CHECK-NEXT:   %[[i7:.+]] = fadd fast double %[[i5]], %[[i6]]
+; CHECK-NEXT:   ret double %[[i7]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double*, double* } @fwddiffe_Z6toHeapd(double %x, double %"x'")

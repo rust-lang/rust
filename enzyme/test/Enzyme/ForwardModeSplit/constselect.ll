@@ -43,6 +43,6 @@ attributes #4 = { nounwind }
 ; CHECK: define internal double @fwddiffefun2(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp.inv = fcmp oge double %x, 0.000000e+00
-; CHECK-NEXT:   %0 = select{{( fast)?}} i1 %cmp.inv, double %"x'", double 0.000000e+00
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %[[i0:.+]] = select{{( fast)?}} i1 %cmp.inv, double %"x'", double 0.000000e+00
+; CHECK-NEXT:   ret double %[[i0]]
 ; CHECK-NEXT: }

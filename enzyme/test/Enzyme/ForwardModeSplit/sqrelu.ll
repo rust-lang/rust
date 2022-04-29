@@ -67,6 +67,6 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br label %fwddiffesqrelu.exit
 
 ; CHECK: fwddiffesqrelu.exit: 
-; CHECK-NEXT:   %"cond'.i" = phi  {{(fast )?}}double [ %8, %cond.true.i ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   ret double %"cond'.i"
+; CHECK-NEXT:   %[[condi:.+]] = phi  {{(fast )?}}double [ %8, %cond.true.i ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   ret double %[[condi]]
 ; CHECK-NEXT: }

@@ -75,22 +75,22 @@ attributes #3 = { nounwind }
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   ret double %7
+; CHECK-NEXT:   ret double %[[i7:.+]]
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %"sum.012'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %7, %for.body ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
+; CHECK-DAG:   %[[sum012:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[i7]], %for.body ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %1 = trunc i64 %iv to i32
-; CHECK-NEXT:   %idxprom = zext i32 %1 to i64
+; CHECK-NEXT:   %[[i1:.+]] = trunc i64 %iv to i32
+; CHECK-NEXT:   %idxprom = zext i32 %[[i1]] to i64
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"x'", i64 %idxprom
-; CHECK-NEXT:   %2 = getelementptr inbounds double, double* %truetape, i64 %iv
-; CHECK-NEXT:   %3 = load double, double* %2, align 8, !invariant.group !8
-; CHECK-NEXT:   %4 = load double, double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %5 = fmul fast double %4, %3
-; CHECK-NEXT:   %6 = fadd fast double %5, %5
-; CHECK-NEXT:   %7 = fadd fast double %"sum.012'", %6
-; CHECK-NEXT:   %inc = add i32 %1, 1
+; CHECK-NEXT:   %[[i4:.+]] = load double, double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   %[[i2:.+]] = getelementptr inbounds double, double* %truetape, i64 %iv
+; CHECK-NEXT:   %[[i3:.+]] = load double, double* %[[i2]], align 8, !invariant.group !8
+; CHECK-NEXT:   %[[i5:.+]] = fmul fast double %[[i4]], %[[i3]]
+; CHECK-NEXT:   %[[i6:.+]] = fadd fast double %[[i5]], %[[i5]]
+; CHECK-NEXT:   %[[i7]] = fadd fast double %[[sum012]], %[[i6]]
+; CHECK-NEXT:   %inc = add i32 %[[i1]], 1
 ; CHECK-NEXT:   %cmp = icmp ugt i32 %inc, %N
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }

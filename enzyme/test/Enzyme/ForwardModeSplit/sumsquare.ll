@@ -42,19 +42,19 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br label %for.body.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
-; CHECK-NEXT:   %iv.i = phi i64 [ %iv.next.i, %for.body.i ], [ 0, %entry ]
-; CHECK-NEXT:   %"total.011'.i" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %6, %for.body.i ]
+; CHECK-DAG:   %iv.i = phi i64 [ %iv.next.i, %for.body.i ], [ 0, %entry ]
+; CHECK-DAG:   %[[total011:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[i6:.+]], %for.body.i ]
 ; CHECK-NEXT:   %iv.next.i = add nuw nsw i64 %iv.i, 1
 ; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %iv.i
-; CHECK-NEXT:   %1 = getelementptr inbounds double, double* %truetape.i, i64 %iv.i
-; CHECK-NEXT:   %2 = load double, double* %1, align 8, !invariant.group !1
-; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg.i", align 8
-; CHECK-NEXT:   %4 = fmul fast double %3, %2
-; CHECK-NEXT:   %5 = fadd fast double %4, %4
-; CHECK-NEXT:   %6 = fadd fast double %5, %"total.011'.i"
+; CHECK-NEXT:   %[[i3:.+]] = load double, double* %"arrayidx'ipg.i", align 8
+; CHECK-NEXT:   %[[i1:.+]] = getelementptr inbounds double, double* %truetape.i, i64 %iv.i
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %[[i1]], align 8, !invariant.group !1
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %[[i3]], %[[i2]]
+; CHECK-NEXT:   %[[i5:.+]] = fadd fast double %[[i4]], %[[i4]]
+; CHECK-NEXT:   %[[i6]] = fadd fast double %[[i5]], %[[total011]]
 ; CHECK-NEXT:   %exitcond.i = icmp eq i64 %iv.i, %n
 ; CHECK-NEXT:   br i1 %exitcond.i, label %fwddiffesumsquare.exit, label %for.body.i
 
 ; CHECK: fwddiffesumsquare.exit:                              ; preds = %for.body.i
-; CHECK-NEXT:   ret double %6
+; CHECK-NEXT:   ret double %[[i6]]
 ; CHECK-NEXT: }

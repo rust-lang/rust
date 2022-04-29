@@ -16,6 +16,6 @@ declare double @__enzyme_fwdsplit(double (float)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(float %x, float %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = fpext float %"x'" to double
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %[[i0:.+]] = fpext float %"x'" to double
+; CHECK-NEXT:   ret double %[[i0]]
 ; CHECK-NEXT: }

@@ -28,6 +28,6 @@ attributes #0 = { noinline }
 ; CHECK-NEXT:   %cmp = load i1, i1* %0
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"a.b'ipse" = select i1 %cmp, float* %"a'", float* %"b'"
-; CHECK-NEXT:   %1 = load float, float* %"a.b'ipse"
-; CHECK-NEXT:   ret float %1
+; CHECK-NEXT:   %[[i1:.+]] = load float, float* %"a.b'ipse"
+; CHECK-NEXT:   ret float %[[i1]]
 ; CHECK-NEXT: }

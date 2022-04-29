@@ -65,25 +65,25 @@ declare double @__enzyme_fwddiff2(i8*, double*, double*, i64)
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: loop:                                             ; preds = %loop, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %loop ], [ 0, %entry ]
-; CHECK-NEXT:   %reduce = phi double [ %start, %entry ], [ %div, %loop ]
-; CHECK-NEXT:   %"reduce'" = phi {{(fast )?}}double [ %"start'", %entry ], [ %5, %loop ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %loop ], [ 0, %entry ]
+; CHECK-DAG:   %reduce = phi double [ %start, %entry ], [ %div, %loop ]
+; CHECK-DAG:   %[[dreduce:.+]] = phi {{(fast )?}}double [ %"start'", %entry ], [ %[[i5:.+]], %loop ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %"gep'ipg" = getelementptr inbounds double, double* %"A'", i64 %iv
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %A, i64 %iv
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"gep'ipg"
 ; CHECK-NEXT:   %ld = load double, double* %gep, align 8, !tbaa !2
-; CHECK-NEXT:   %0 = load double, double* %"gep'ipg"
 ; CHECK-NEXT:   %div = fdiv double %reduce, %ld
-; CHECK-NEXT:   %1 = fmul fast double %"reduce'", %ld
-; CHECK-NEXT:   %2 = fmul fast double %reduce, %0
-; CHECK-NEXT:   %3 = fsub fast double %1, %2
-; CHECK-NEXT:   %4 = fmul fast double %ld, %ld
-; CHECK-NEXT:   %5 = fdiv fast double %3, %4
+; CHECK-NEXT:   %[[i1:.+]] = fmul fast double %[[dreduce]], %ld
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %reduce, %[[i0]]
+; CHECK-NEXT:   %[[i3:.+]] = fsub fast double %[[i1]], %[[i2]]
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %ld, %ld
+; CHECK-NEXT:   %[[i5]] = fdiv fast double %[[i3]], %[[i4]]
 ; CHECK-NEXT:   %cmp = icmp eq i64 %iv.next, %N
 ; CHECK-NEXT:   br i1 %cmp, label %end, label %loop
 
 ; CHECK: end:                                              ; preds = %loop
-; CHECK-NEXT:   ret double %5
+; CHECK-NEXT:   ret double %[[i5]]
 ; CHECK-NEXT: }
 
 
@@ -92,23 +92,23 @@ declare double @__enzyme_fwddiff2(i8*, double*, double*, i64)
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: loop:                                             ; preds = %loop, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %loop ], [ 0, %entry ]
-; CHECK-NEXT:   %reduce = phi double [ 2.000000e+00, %entry ], [ %div, %loop ]
-; CHECK-NEXT:   %"reduce'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %5, %loop ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %loop ], [ 0, %entry ]
+; CHECK-DAG:   %reduce = phi double [ 2.000000e+00, %entry ], [ %div, %loop ]
+; CHECK-DAG:   %[[dreduce:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[i5:.+]], %loop ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %"gep'ipg" = getelementptr inbounds double, double* %"A'", i64 %iv
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %A, i64 %iv
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"gep'ipg"
 ; CHECK-NEXT:   %ld = load double, double* %gep, align 8, !tbaa !2
-; CHECK-NEXT:   %0 = load double, double* %"gep'ipg"
 ; CHECK-NEXT:   %div = fdiv double %reduce, %ld
-; CHECK-NEXT:   %1 = fmul fast double %"reduce'", %ld
-; CHECK-NEXT:   %2 = fmul fast double %reduce, %0
-; CHECK-NEXT:   %3 = fsub fast double %1, %2
-; CHECK-NEXT:   %4 = fmul fast double %ld, %ld
-; CHECK-NEXT:   %5 = fdiv fast double %3, %4
+; CHECK-NEXT:   %[[i1:.+]] = fmul fast double %[[dreduce]], %ld
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %reduce, %[[i0]]
+; CHECK-NEXT:   %[[i3:.+]] = fsub fast double %[[i1]], %[[i2]]
+; CHECK-NEXT:   %[[i4:.+]] = fmul fast double %ld, %ld
+; CHECK-NEXT:   %[[i5:.+]] = fdiv fast double %[[i3]], %[[i4]]
 ; CHECK-NEXT:   %cmp = icmp eq i64 %iv.next, %N
 ; CHECK-NEXT:   br i1 %cmp, label %end, label %loop
 
 ; CHECK: end:                                              ; preds = %loop
-; CHECK-NEXT:   ret double %5
+; CHECK-NEXT:   ret double %[[i5]]
 ; CHECK-NEXT: }

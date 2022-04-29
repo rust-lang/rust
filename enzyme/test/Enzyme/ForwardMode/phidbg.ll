@@ -270,6 +270,6 @@ declare void @llvm.dbg.value(metadata, metadata, metadata)
 ; CHECK-NEXT:   br label %log1p_series_shifted.exit
 
 ; CHECK: log1p_series_shifted.exit:                        ; preds = %if.else.i, %if.then.i
-; CHECK-NEXT:   %"x.addr.0.i'" = phi {{(fast )?}}double [ %0, %if.then.i ], [ %"E2work'", %if.else.i ], !dbg 
-; CHECK-NEXT:   ret double %"x.addr.0.i'"
+; CHECK-NEXT:   %[[res:.+]] = phi {{(fast )?}}double [ %0, %if.then.i ], [ %"E2work'", %if.else.i ]
+; CHECK-NEXT:   ret double %[[res]]
 ; CHECK-NEXT: }

@@ -58,9 +58,9 @@ declare dso_local double @__enzyme_fwdsplit(i8*, double*, double*, i8*) local_un
 
 ; CHECK: define internal {{(dso_local )?}}void @fwddiffesubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = load double, double* %"x'"
-; CHECK-NEXT:   %1 = fmul fast double %0, 2.000000e+00
-; CHECK-NEXT:   store double %1, double* %"x'", align 8
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[i1:.+]] = fmul fast double %[[i0]], 2.000000e+00
+; CHECK-NEXT:   store double %[[i1]], double* %"x'", align 8
 ; CHECK-NEXT:   call void @fwddiffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   call void @fwddiffeothermetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   ret void

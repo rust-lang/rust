@@ -41,6 +41,6 @@ declare dso_local double @__enzyme_fwdsplit(i8*, ...)
 ; CHECK:   %"call'mi" = call noalias nonnull i8* @calloc(i64 8, i64 %arg)
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   store double %"x'", double* %"'ipc", align 8
-; CHECK-NEXT:   %0 = load double, double* %"'ipc", align 8
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"'ipc", align 8
+; CHECK-NEXT:   ret double %[[i0]]
 ; CHECK-NEXT: }

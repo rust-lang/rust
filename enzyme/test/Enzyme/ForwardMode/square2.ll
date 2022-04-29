@@ -71,19 +71,19 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store double %x, double* %x.addr, align 8
 ; CHECK-NEXT:   store double %"x'", double* %"x.addr'ipa", align 8
 ; CHECK-NEXT:   call void @fwddiffesquare_(double* %x.addr, double* %"x.addr'ipa", double* %y, double* %"y'ipa")
-; CHECK-NEXT:   %0 = load double, double* %"y'ipa", align 8
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"y'ipa", align 8
+; CHECK-NEXT:   ret double %[[i0:.+]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @fwddiffesquare_(double* nocapture readonly %src, double* nocapture %"src'", double* nocapture %dest, double* nocapture %"dest'")
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"src'", align 8
 ; CHECK-NEXT:   %0 = load double, double* %src, align 8
-; CHECK-NEXT:   %1 = load double, double* %"src'", align 8
 ; CHECK-NEXT:   %mul = fmul double %0, %0
-; CHECK-NEXT:   %2 = fmul fast double %1, %0
-; CHECK-NEXT:   %3 = fmul fast double %1, %0
-; CHECK-NEXT:   %4 = fadd fast double %2, %3
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i1]], %0
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i1]], %0
+; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]
 ; CHECK-NEXT:   store double %mul, double* %dest, align 8
-; CHECK-NEXT:   store double %4, double* %"dest'", align 8
+; CHECK-NEXT:   store double %[[i4]], double* %"dest'", align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -126,41 +126,41 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup3, %entry
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup3 ], [ 0, %entry ]
-; CHECK-NEXT:   %"sum.036'" = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %"sum.1.lcssa'", %for.cond.cleanup3 ]
+; CHECK-DAG:   %iv = phi i64 [ %iv.next, %for.cond.cleanup3 ], [ 0, %entry ]
+; CHECK-DAG:   %[[sum036:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[sumlcssa:.+]], %for.cond.cleanup3 ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   br i1 %cmp233, label %for.body4.lr.ph, label %for.cond.cleanup3
 
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
-; CHECK-NEXT:   %3 = mul nuw nsw i64 %iv, 10
-; CHECK-NEXT:   %4 = getelementptr inbounds i32, i32* %[[i1]], i64 %iv
-; CHECK-NEXT:   %5 = load i32, i32* %4, align 4, !invariant.group !13
-; CHECK-NEXT:   %6 = sext i32 %5 to i64
+; CHECK-NEXT:   %[[i3:.+]] = mul nuw nsw i64 %iv, 10
+; CHECK-NEXT:   %[[i4:.+]] = getelementptr inbounds i32, i32* %[[i1]], i64 %iv
+; CHECK-NEXT:   %[[i5:.+]] = load i32, i32* %[[i4]], align 4, !invariant.group !13
+; CHECK-NEXT:   %[[i6:.+]] = sext i32 %[[i5]] to i64
 ; CHECK-NEXT:   br label %for.body4
 
 ; CHECK: for.body4:                                        ; preds = %for.body4, %for.body4.lr.ph
-; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body4 ], [ 0, %for.body4.lr.ph ]
-; CHECK-NEXT:   %"sum.134'" = phi {{(fast )?}}double [ %"sum.036'", %for.body4.lr.ph ], [ %15, %for.body4 ]
+; CHECK-DAG:   %iv1 = phi i64 [ %iv.next2, %for.body4 ], [ 0, %for.body4.lr.ph ]
+; CHECK-DAG:   %[[sum134:.+]] = phi {{(fast )?}}double [ %[[sum036]], %for.body4.lr.ph ], [ %[[i15:.+]], %for.body4 ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %7 = add nuw nsw i64 %iv1, %3
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"a'", i64 %7
-; CHECK-NEXT:   %8 = getelementptr inbounds double*, double** %[[i2]], i64 %iv
-; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !dereferenceable !10, !invariant.group !14
-; CHECK-NEXT:   %10 = getelementptr inbounds double, double* %9, i64 %iv1
-; CHECK-NEXT:   %11 = load double, double* %10, align 8, !invariant.group !15
-; CHECK-NEXT:   %12 = load double, double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %13 = fmul fast double %12, %11
-; CHECK-NEXT:   %14 = fadd fast double %13, %13
-; CHECK-NEXT:   %15 = fadd fast double %"sum.134'", %14
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %cmp2 = icmp slt i64 %iv.next2, %6
+; CHECK-NEXT:   %[[i7:.+]] = add nuw nsw i64 %iv1, %[[i3]]
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %"a'", i64 %[[i7]]
+; CHECK-NEXT:   %[[i12:.+]] = load double, double* %[[arrayidxipg]], align 8
+; CHECK-NEXT:   %[[i8:.+]] = getelementptr inbounds double*, double** %[[i2]], i64 %iv
+; CHECK-NEXT:   %[[i9:.+]] = load double*, double** %[[i8]], align 8, !dereferenceable !10, !invariant.group !14
+; CHECK-NEXT:   %[[i10:.+]] = getelementptr inbounds double, double* %[[i9]], i64 %iv1
+; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !invariant.group !15
+; CHECK-NEXT:   %[[i13:.+]] = fmul fast double %[[i12]], %[[i11]]
+; CHECK-NEXT:   %[[i14:.+]] = fadd fast double %[[i13]], %[[i13]]
+; CHECK-NEXT:   %[[i15]] = fadd fast double %[[sum134]], %[[i14]]
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipg]], align 8
+; CHECK-NEXT:   %cmp2 = icmp slt i64 %iv.next2, %[[i6]]
 ; CHECK-NEXT:   br i1 %cmp2, label %for.body4, label %for.cond.cleanup3
 
 ; CHECK: for.cond.cleanup3:                                ; preds = %for.body4, %for.cond1.preheader
-; CHECK-NEXT:   %"sum.1.lcssa'" = phi {{(fast )?}}double [ %"sum.036'", %for.cond1.preheader ], [ %15, %for.body4 ]
+; CHECK-NEXT:   %[[sumlcssa]] = phi {{(fast )?}}double [ %[[sum036:.+]], %for.cond1.preheader ], [ %[[i15]], %for.body4 ]
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, 10
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup, label %for.cond1.preheader
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup3
-; CHECK-NEXT:   ret double %"sum.1.lcssa'"
+; CHECK-NEXT:   ret double %[[sumlcssa]]
 ; CHECK-NEXT: }

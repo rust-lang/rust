@@ -51,14 +51,14 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}void @fwddiffesubf(double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = load double, double* %x, align 8
-; CHECK-NEXT:   %1 = load double, double* %"x'"
-; CHECK-NEXT:   %mul = fmul fast double %0, %0
-; CHECK-NEXT:   %2 = fmul fast double %1, %0
-; CHECK-NEXT:   %3 = fmul fast double %1, %0
-; CHECK-NEXT:   %4 = fadd fast double %2, %3
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* %"x'", align 8
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %x, align 8
+; CHECK-NEXT:   %mul = fmul fast double %[[i0]], %[[i0]]
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i1]], %[[i0]]
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %[[i1]], %[[i0]]
+; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
-; CHECK-NEXT:   store double %4, double* %"x'", align 8
+; CHECK-NEXT:   store double %[[i4]], double* %"x'", align 8
 ; CHECK-NEXT:   call void @fwddiffemetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

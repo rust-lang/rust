@@ -84,10 +84,10 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffemulglobal(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = load double, double* @global, align 8, !tbaa !3
-; CHECK-NEXT:   %1 = load double, double* @dglobal
-; CHECK-NEXT:   %2 = fmul fast double %1, %x
-; CHECK-NEXT:   %3 = fmul fast double %"x'", %0
-; CHECK-NEXT:   %4 = fadd fast double %2, %3
-; CHECK-NEXT:   ret double %4
+; CHECK-NEXT:   %[[i1:.+]] = load double, double* @dglobal, align 8, !tbaa !3
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* @global, align 8, !tbaa !3
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i1]], %x
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %"x'", %[[i0]]
+; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]
+; CHECK-NEXT:   ret double %[[i4]]
 ; CHECK-NEXT: }

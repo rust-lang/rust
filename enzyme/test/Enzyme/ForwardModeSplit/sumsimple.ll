@@ -51,12 +51,12 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.end
 
 ; CHECK: for.body:                                         ; preds = %for.cond
-; CHECK-NEXT:   %2 = load double, double* %"x'"
-; CHECK-NEXT:   %3 = getelementptr inbounds double*, double** %truetape, i64 %iv
-; CHECK-NEXT:   %"'il_phi" = load double*, double** %3, align 8, !invariant.group !1
-; CHECK-NEXT:   %4 = load double, double* %"'il_phi"
-; CHECK-NEXT:   %5 = fadd fast double %4, %2
-; CHECK-NEXT:   store double %5, double* %"'il_phi"
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[i3:.+]] = getelementptr inbounds double*, double** %truetape, i64 %iv
+; CHECK-NEXT:   %[[il_phi:.+]] = load double*, double** %[[i3]], align 8, !invariant.group !1
+; CHECK-NEXT:   %[[i4:.+]] = load double, double* %[[il_phi]]
+; CHECK-NEXT:   %[[i5:.+]] = fadd fast double %[[i4]], %[[i2]]
+; CHECK-NEXT:   store double %[[i5]], double* %[[il_phi]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: for.end:                                          ; preds = %for.cond

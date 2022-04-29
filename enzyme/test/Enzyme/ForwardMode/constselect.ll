@@ -10,8 +10,8 @@ target triple = "x86_64-unknown-linux-gnu"
 ; Function Attrs: norecurse nounwind readnone uwtable
 define double @fun2(double %x) {
 entry:
-  %cmp.inv = fcmp oge double %x, 0.000000e+00
-  %.x = select i1 %cmp.inv, double %x, double 0.000000e+00
+  %cmp.inv = fcmp oge double %x, 2.000000e+00
+  %.x = select i1 %cmp.inv, double %x, double 2.000000e+00
   ret double %.x
 }
 
@@ -42,7 +42,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal double @fwddiffefun2(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %cmp.inv = fcmp oge double %x, 0.000000e+00
-; CHECK-NEXT:   %0 = select{{( fast)?}} i1 %cmp.inv, double %"x'", double 0.000000e+00
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %cmp.inv = fcmp oge double %x, 2.000000e+00
+; CHECK-NEXT:   %[[f:.+]] = select{{( fast)?}} i1 %cmp.inv, double %"x'", double 0.000000e+00
+; CHECK-NEXT:   ret double %[[f]]
 ; CHECK-NEXT: }

@@ -273,7 +273,8 @@ static inline bool is_value_needed_in_reverse(
         // doesn't require the shadow pointer for the
         // reverse pass
         if (SI->getValueOperand() == inst &&
-            mode == DerivativeMode::ReverseModeGradient) {
+            (mode == DerivativeMode::ReverseModeGradient ||
+             mode == DerivativeMode::ForwardModeSplit)) {
           // Unless the store is into a backwards store, which would
           // would then be performed in the reverse if the stored value was
           // a possible pointer.

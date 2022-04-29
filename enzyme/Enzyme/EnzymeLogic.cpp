@@ -4068,13 +4068,6 @@ Function *EnzymeLogic::CreateForwardDiff(
     case DIFFE_TYPE::DUP_ARG:
     case DIFFE_TYPE::DUP_NONEED: {
       newArgs += 1;
-      auto pri = gutils->oldFunc->arg_begin() + i;
-      auto dif = newArgs;
-
-      BasicBlock &BB = gutils->newFunc->getEntryBlock();
-      IRBuilder<> Builder(&BB.front());
-
-      gutils->setDiffe(pri, dif, Builder);
       break;
     }
     case DIFFE_TYPE::CONSTANT:

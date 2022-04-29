@@ -85,14 +85,14 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %"call'ipg" = getelementptr inbounds double, double* %"mat'ipl", i64 %iv
 ; CHECK-NEXT:   %call = getelementptr inbounds double, double* %mat, i64 %iv
+; CHECK-NEXT:   %[[i0:.+]] = load double, double* %"call'ipg"
 ; CHECK-NEXT:   %ld = load double, double* %call, align 8
-; CHECK-NEXT:   %0 = load double, double* %"call'ipg"
 ; CHECK-NEXT:   %fmul = fmul double %ld, %ld
-; CHECK-NEXT:   %1 = fmul fast double %0, %ld
-; CHECK-NEXT:   %2 = fmul fast double %0, %ld
-; CHECK-NEXT:   %3 = fadd fast double %1, %2
+; CHECK-NEXT:   %[[i1:.+]] = fmul fast double %[[i0]], %ld
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i0]], %ld
+; CHECK-NEXT:   %[[i3:.+]] = fadd fast double %[[i1]], %[[i2]]
 ; CHECK-NEXT:   store double %fmul, double* %call, align 8, !tbaa !11
-; CHECK-NEXT:   store double %3, double* %"call'ipg", align 8
+; CHECK-NEXT:   store double %[[i3]], double* %"call'ipg", align 8
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, %cols
 ; CHECK-NEXT:   br i1 %exitcond, label %exit, label %for.body
 

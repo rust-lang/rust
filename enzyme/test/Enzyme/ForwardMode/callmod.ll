@@ -101,15 +101,15 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffefoo(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @fwddiffesub(double %x, double %"x'")
+; CHECK-NEXT:   %[[i0:.+]] = call fast double @fwddiffesub(double %x, double %"x'")
 ; CHECK-NEXT:   %call1 = tail call fast double @read2()
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   ret double %[[i0]]
 ; CHECK-NEXT: }
 
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffesub(double %x, double %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @readDouble()
-; CHECK-NEXT:   %0 = fmul fast double %"x'", %call
-; CHECK-NEXT:   ret double %0
+; CHECK-NEXT:   %[[i0:.+]] = fmul fast double %"x'", %call
+; CHECK-NEXT:   ret double %[[i0]]
 ; CHECK-NEXT: }

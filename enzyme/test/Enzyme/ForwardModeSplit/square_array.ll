@@ -22,12 +22,12 @@ declare { double, double } @__enzyme_fwdsplit(i8*, ...)
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @fwddiffesquared(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul = fmul double %x, %x
-; CHECK-NEXT:   %0 = fmul fast double %"x'", %x
-; CHECK-NEXT:   %1 = fadd fast double %0, %0
-; CHECK-NEXT:   %2 = fmul fast double %1, %x
-; CHECK-NEXT:   %3 = fmul fast double %"x'", %mul
-; CHECK-NEXT:   %4 = fadd fast double %2, %3
-; CHECK-NEXT:   %5 = insertvalue { double, double } zeroinitializer, double %1, 0
-; CHECK-NEXT:   %6 = insertvalue { double, double } %5, double %4, 1
-; CHECK-NEXT:   ret { double, double } %6
+; CHECK-NEXT:   %[[i0:.+]] = fmul fast double %"x'", %x
+; CHECK-NEXT:   %[[i1:.+]] = fadd fast double %[[i0]], %[[i0]]
+; CHECK-NEXT:   %[[i2:.+]] = fmul fast double %[[i1]], %x
+; CHECK-NEXT:   %[[i3:.+]] = fmul fast double %"x'", %mul
+; CHECK-NEXT:   %[[i4:.+]] = fadd fast double %[[i2]], %[[i3]]
+; CHECK-NEXT:   %[[i5:.+]] = insertvalue { double, double } zeroinitializer, double %[[i1]], 0
+; CHECK-NEXT:   %[[i6:.+]] = insertvalue { double, double } %[[i5]], double %[[i4]], 1
+; CHECK-NEXT:   ret { double, double } %[[i6]]
 ; CHECK-NEXT: }

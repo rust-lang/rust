@@ -87,6 +87,6 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 ; CHECK-NEXT:   %0 = bitcast void (double*)* %"fp'ipl" to void (double*, double*)**
 ; CHECK-NEXT:   %1 = load void (double*, double*)*, void (double*, double*)** %0
 ; CHECK-NEXT:   call void %1(double* %alloc, double* %"alloc'ipa")
-; CHECK-NEXT:   %2 = load double, double* %"alloc'ipa"
-; CHECK-NEXT:   ret double %2
+; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"alloc'ipa"
+; CHECK-NEXT:   ret double %[[i2]]
 ; CHECK-NEXT: }
