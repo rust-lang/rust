@@ -243,19 +243,24 @@ impl<T: ?Sized> *const T {
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
         let self_addr = self.addr();
-        // Unfortunately, the CHERI-compatible way of defining this operation
-        // optimizes worse, so we special case it... in a somewhat ad-hoc way
-        // (checking for 128 bit pointers) because at the time of this writing,
-        // we don't actually support CHERI yet. Ideally this would be
-        // `cfg!(target_supports_large_wrapping_offsets)` or something, see
-        // #96152 for details.
-        if cfg!(target_pointer_width = "128") {
-            let offset = (addr as isize).wrapping_sub(self_addr as isize);
-            // This is the canonical desugarring of this operation
-            self.cast::<u8>().wrapping_offset(offset).cast::<T>()
-        } else {
-            self.cast::<u8>().wrapping_sub(self_addr).wrapping_add(addr).cast::<T>()
-        }
+        // In an ideal world (err, an ideal world we'd have an intrinsic, but
+        // short of that), we'd implement this as follows:
+        // ```
+        // let offset = (addr as isize).wrapping_sub(self_addr as isize);
+        // self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        // ```
+        // This is the canonical desugaring of this operation, and is compatible
+        // with targets which don't allow large wrapping add/sub/offset
+        // operations, including CHERI.
+        //
+        // Unfortunately, this causes worse codegen than the following
+        // implementation, which should be correct on all targets we currently
+        // support (at the moment AFAICT, we don't yet support CHERI, or we'd
+        // special-case it to use the desugaring listed above).
+        //
+        // As a result, we use the following implementation, which would be
+        // wrong on CHERI, but right everywhere else.
+        self.cast::<u8>().wrapping_sub(self_addr).wrapping_add(addr).cast::<T>()
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
