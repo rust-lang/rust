@@ -8,6 +8,36 @@
 #![feature(io_error_more)]
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
+// TODO: Uncategorized. Some of these we'll want to fix, some keep ignored.
+#![allow(
+    clippy::assign_op_pattern,
+    clippy::clone_on_copy,
+    clippy::collapsible_else_if,
+    clippy::collapsible_if,
+    clippy::comparison_chain,
+    clippy::enum_variant_names,
+    clippy::extra_unused_lifetimes,
+    clippy::field_reassign_with_default,
+    clippy::from_over_into,
+    clippy::if_same_then_else,
+    clippy::len_zero,
+    clippy::manual_map,
+    clippy::mem_replace_with_default,
+    clippy::needless_borrow,
+    clippy::needless_lifetimes,
+    clippy::needless_question_mark,
+    clippy::needless_return,
+    clippy::new_without_default,
+    clippy::op_ref,
+    clippy::redundant_closure,
+    clippy::redundant_field_names,
+    clippy::single_char_add_str,
+    clippy::single_char_pattern,
+    clippy::single_match,
+    clippy::unnecessary_mut_passed,
+    clippy::useless_conversion,
+    clippy::useless_format
+)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;

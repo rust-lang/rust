@@ -1,4 +1,5 @@
 #![feature(rustc_private, bool_to_option, stmt_expr_attributes)]
+#![allow(clippy::manual_range_contains)]
 
 extern crate rustc_data_structures;
 extern crate rustc_driver;
