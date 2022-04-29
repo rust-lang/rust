@@ -111,7 +111,6 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -931,19 +930,6 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
             ),
         }
     }
-}
-
-struct CheckItemTypesVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
-        check_item_type(self.tcx, i);
-    }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
-    fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
