@@ -37,6 +37,7 @@ use crate::{
 
 // Conventions for configuration keys to preserve maximal extendability without breakage:
 //  - Toggles (be it binary true/false or with more options in-between) should almost always suffix as `_enable`
+//    This has the benefit of namespaces being extensible, and if the suffix doesn't fit later it can be changed without breakage.
 //  - In general be wary of using the namespace of something verbatim, it prevents us from adding subkeys in the future
 //  - Don't use abbreviations unless really necessary
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
@@ -58,7 +59,7 @@ config_data! {
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
-        cargo_buildScripts_enable: bool = "true",
+        cargo_buildScripts_enable: bool  = "true",
         /// Advanced option, fully override the command rust-analyzer uses to
         /// run build scripts and build procedural macros. The command should
         /// include `--message-format=json` or a similar option.
@@ -87,7 +88,7 @@ config_data! {
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`. Set to `"all"` to pass `--all-features` to cargo.
-        checkOnSave_features: Option<CargoFeatures>        = "null",
+        checkOnSave_features: Option<CargoFeatures>      = "null",
         /// Do not activate the `default` feature.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Advanced option, fully override the command rust-analyzer uses for
@@ -215,13 +216,13 @@ config_data! {
         hover_links_enable: bool = "true",
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
-        imports_enforceGranularity: bool              = "false",
+        imports_granularity_enforce: bool              = "false",
         /// How imports should be grouped into use statements.
-        imports_granularity: ImportGranularityDef  = "\"crate\"",
+        imports_granularity_group: ImportGranularityDef  = "\"crate\"",
         /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
-        imports_group: bool                           = "true",
+        imports_group_enable: bool                           = "true",
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
-        imports_mergeIntoGlob: bool           = "true",
+        imports_merge_glob: bool           = "true",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -976,20 +977,20 @@ impl Config {
 
     fn insert_use_config(&self) -> InsertUseConfig {
         InsertUseConfig {
-            granularity: match self.data.imports_granularity {
+            granularity: match self.data.imports_granularity_group {
                 ImportGranularityDef::Preserve => ImportGranularity::Preserve,
                 ImportGranularityDef::Item => ImportGranularity::Item,
                 ImportGranularityDef::Crate => ImportGranularity::Crate,
                 ImportGranularityDef::Module => ImportGranularity::Module,
             },
-            enforce_granularity: self.data.imports_enforceGranularity,
+            enforce_granularity: self.data.imports_granularity_enforce,
             prefix_kind: match self.data.imports_prefix {
                 ImportPrefixDef::Plain => PrefixKind::Plain,
                 ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
                 ImportPrefixDef::BySelf => PrefixKind::BySelf,
             },
-            group: self.data.imports_group,
-            skip_glob_imports: !self.data.imports_mergeIntoGlob,
+            group: self.data.imports_group_enable,
+            skip_glob_imports: !self.data.imports_merge_glob,
         }
     }
 

@@ -714,12 +714,12 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.imports.enforceGranularity": {
+                "rust-analyzer.imports.granularity.enforce": {
                     "markdownDescription": "Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.",
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.imports.granularity": {
+                "rust-analyzer.imports.granularity.group": {
                     "markdownDescription": "How imports should be grouped into use statements.",
                     "default": "crate",
                     "type": "string",
@@ -736,12 +736,12 @@
                         "Flatten imports so that each has its own use statement."
                     ]
                 },
-                "rust-analyzer.imports.group": {
+                "rust-analyzer.imports.group.enable": {
                     "markdownDescription": "Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.",
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.imports.mergeIntoGlob": {
+                "rust-analyzer.imports.merge.glob": {
                     "markdownDescription": "Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.",
                     "default": true,
                     "type": "boolean"

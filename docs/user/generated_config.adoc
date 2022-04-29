@@ -288,22 +288,22 @@ Whether to show documentation on hover.
 --
 Use markdown syntax for links in hover.
 --
-[[rust-analyzer.imports.enforceGranularity]]rust-analyzer.imports.enforceGranularity (default: `false`)::
+[[rust-analyzer.imports.granularity.enforce]]rust-analyzer.imports.granularity.enforce (default: `false`)::
 +
 --
 Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
 --
-[[rust-analyzer.imports.granularity]]rust-analyzer.imports.granularity (default: `"crate"`)::
+[[rust-analyzer.imports.granularity.group]]rust-analyzer.imports.granularity.group (default: `"crate"`)::
 +
 --
 How imports should be grouped into use statements.
 --
-[[rust-analyzer.imports.group]]rust-analyzer.imports.group (default: `true`)::
+[[rust-analyzer.imports.group.enable]]rust-analyzer.imports.group.enable (default: `true`)::
 +
 --
 Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
 --
-[[rust-analyzer.imports.mergeIntoGlob]]rust-analyzer.imports.mergeIntoGlob (default: `true`)::
+[[rust-analyzer.imports.merge.glob]]rust-analyzer.imports.merge.glob (default: `true`)::
 +
 --
 Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
