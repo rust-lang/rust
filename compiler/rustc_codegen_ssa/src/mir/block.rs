@@ -489,11 +489,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        // Obtain the panic entry point.
-        let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
-        let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-        let llfn = bx.get_fn_addr(instance);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
@@ -509,10 +505,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let def_id = common::langcall(bx.tcx(), Some(span), "", LangItem::PanicNoUnwind);
-        let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-        let llfn = bx.get_fn_addr(instance);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None);
@@ -573,12 +566,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let location = self.get_caller_location(bx, source_info).immediate();
 
                 // Obtain the panic entry point.
-                // FIXME: dedup this with `codegen_assert_terminator` above.
-                let def_id =
-                    common::langcall(bx.tcx(), Some(source_info.span), "", LangItem::Panic);
-                let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-                let llfn = bx.get_fn_addr(instance);
+                let (fn_abi, llfn) =
+                    common::build_langcall(bx, Some(source_info.span), LangItem::Panic);
 
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
@@ -1440,10 +1429,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let llretty = self.landing_pad_type();
             bx.cleanup_landing_pad(llretty, llpersonality);
 
-            let def_id = common::langcall(bx.tcx(), None, "", LangItem::PanicNoUnwind);
-            let instance = ty::Instance::mono(bx.tcx(), def_id);
-            let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-            let fn_ptr = bx.get_fn_addr(instance);
+            let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
             let llret = bx.call(fn_ty, fn_ptr, &[], None);
