@@ -314,7 +314,7 @@ impl<'tcx> Stack {
         if let SbTag::Tagged(id) = item.tag {
             if global.tracked_pointer_tags.contains(&id) {
                 register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
-                    item.clone(),
+                    *item,
                     provoking_access,
                 ));
             }

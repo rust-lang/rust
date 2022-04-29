@@ -304,7 +304,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         assert!(this.has_terminated(active_thread), "running TLS dtors for non-terminated thread");
         // Fetch next dtor after `key`.
-        let last_key = this.machine.tls.dtors_running[&active_thread].last_dtor_key.clone();
+        let last_key = this.machine.tls.dtors_running[&active_thread].last_dtor_key;
         let dtor = match this.machine.tls.fetch_tls_dtor(last_key, active_thread) {
             dtor @ Some(_) => dtor,
             // We ran each dtor once, start over from the beginning.
