@@ -100,6 +100,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         cx: &DocContext<'_>,
         map: &FxHashMap<DefId, &Type>,
         cleaner: &mut BadImplStripper<'_>,
+        targets: &mut FxHashSet<DefId>,
         type_did: DefId,
     ) {
         if let Some(target) = map.get(&type_did) {
@@ -108,12 +109,12 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 cleaner.prims.insert(target_prim);
             } else if let Some(target_did) = target.def_id(&cx.cache) {
                 // `impl Deref<Target = S> for S`
-                if target_did == type_did {
+                if !targets.insert(target_did) {
                     // Avoid infinite cycles
                     return;
                 }
                 cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, target_did);
+                add_deref_target(cx, map, cleaner, targets, target_did);
             }
         }
     }
@@ -143,7 +144,15 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
                         if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did);
+                            let mut targets = FxHashSet::default();
+                            targets.insert(for_did);
+                            add_deref_target(
+                                cx,
+                                &type_did_to_deref_target,
+                                &mut cleaner,
+                                &mut targets,
+                                for_did,
+                            );
                         }
                     }
                 }
