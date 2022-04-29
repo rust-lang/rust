@@ -671,6 +671,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Architecture-specific shims
+            "llvm.x86.addcarry.64" if this.tcx.sess.target.arch == "x86_64" => {
+                // Computes u8+u64+u64, returning tuple (u8,u64) comprising the output carry and truncated sum.
+                let &[ref c_in, ref a, ref b] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let c_in = this.read_scalar(c_in)?.to_u8()?;
+                let a = this.read_scalar(a)?.to_u64()?;
+                let b = this.read_scalar(b)?.to_u64()?;
+
+                let wide_sum = c_in as u128 + a as u128 + b as u128;
+                let (c_out, sum) = ((wide_sum >> 64) as u8, wide_sum as u64);
+
+                let c_out_field = this.place_field(dest, 0)?;
+                this.write_scalar(Scalar::from_u8(c_out), &c_out_field)?;
+                let sum_field = this.place_field(dest, 1)?;
+                this.write_scalar(Scalar::from_u64(sum), &sum_field)?;
+            }
             "llvm.x86.sse2.pause" if this.tcx.sess.target.arch == "x86" || this.tcx.sess.target.arch == "x86_64" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.yield_active_thread();
