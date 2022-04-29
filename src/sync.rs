@@ -474,7 +474,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         condvar.waiters.pop_front().map(|waiter| {
             if let Some(data_race) = data_race {
-                data_race.validate_lock_acquire(&mut condvar.data_race, waiter.thread);
+                data_race.validate_lock_acquire(&condvar.data_race, waiter.thread);
             }
             (waiter.thread, waiter.mutex)
         })

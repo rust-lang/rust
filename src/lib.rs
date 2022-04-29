@@ -21,7 +21,6 @@
     clippy::needless_lifetimes,
     clippy::new_without_default,
     clippy::single_match,
-    clippy::unnecessary_mut_passed,
     clippy::useless_conversion,
     clippy::useless_format
 )]
