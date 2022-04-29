@@ -2987,48 +2987,6 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "1.61.0")]
-impl<T: Clone, const N: usize> From<&[T; N]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(Vec::from(b"raw"), vec![b'r', b'a', b'w']);
-    /// ```
-    #[cfg(not(test))]
-    fn from(s: &[T; N]) -> Vec<T> {
-        s.to_vec()
-    }
-
-    #[cfg(test)]
-    fn from(s: &[T; N]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "vec_from_array_ref", since = "1.61.0")]
-impl<T: Clone, const N: usize> From<&mut [T; N]> for Vec<T> {
-    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(Vec::from(&mut [1, 2, 3]), vec![1, 2, 3]);
-    /// ```
-    #[cfg(not(test))]
-    fn from(s: &mut [T; N]) -> Vec<T> {
-        s.to_vec()
-    }
-
-    #[cfg(test)]
-    fn from(s: &mut [T; N]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
-    }
-}
-
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
 impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
 where
