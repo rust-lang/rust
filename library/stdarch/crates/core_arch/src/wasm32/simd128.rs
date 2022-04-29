@@ -1527,8 +1527,8 @@ pub fn f64x2_splat(a: f64) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.eq))]
 #[target_feature(enable = "simd128")]
@@ -1541,8 +1541,8 @@ pub fn i8x16_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ne))]
 #[target_feature(enable = "simd128")]
@@ -1560,8 +1560,8 @@ pub use i8x16_ne as u8x16_ne;
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.lt_s))]
 #[target_feature(enable = "simd128")]
@@ -1574,8 +1574,8 @@ pub fn i8x16_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.lt_u))]
 #[target_feature(enable = "simd128")]
@@ -1588,8 +1588,8 @@ pub fn u8x16_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.gt_s))]
 #[target_feature(enable = "simd128")]
@@ -1602,8 +1602,8 @@ pub fn i8x16_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.gt_u))]
 #[target_feature(enable = "simd128")]
@@ -1616,8 +1616,8 @@ pub fn u8x16_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.le_s))]
 #[target_feature(enable = "simd128")]
@@ -1630,8 +1630,8 @@ pub fn i8x16_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.le_u))]
 #[target_feature(enable = "simd128")]
@@ -1644,8 +1644,8 @@ pub fn u8x16_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ge_s))]
 #[target_feature(enable = "simd128")]
@@ -1658,8 +1658,8 @@ pub fn i8x16_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 16 eight-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.ge_u))]
 #[target_feature(enable = "simd128")]
@@ -1672,8 +1672,8 @@ pub fn u8x16_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.eq))]
 #[target_feature(enable = "simd128")]
@@ -1686,8 +1686,8 @@ pub fn i16x8_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ne))]
 #[target_feature(enable = "simd128")]
@@ -1705,8 +1705,8 @@ pub use i16x8_ne as u16x8_ne;
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.lt_s))]
 #[target_feature(enable = "simd128")]
@@ -1719,8 +1719,8 @@ pub fn i16x8_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.lt_u))]
 #[target_feature(enable = "simd128")]
@@ -1733,8 +1733,8 @@ pub fn u16x8_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.gt_s))]
 #[target_feature(enable = "simd128")]
@@ -1747,8 +1747,8 @@ pub fn i16x8_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.gt_u))]
 #[target_feature(enable = "simd128")]
@@ -1761,8 +1761,8 @@ pub fn u16x8_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.le_s))]
 #[target_feature(enable = "simd128")]
@@ -1775,8 +1775,8 @@ pub fn i16x8_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.le_u))]
 #[target_feature(enable = "simd128")]
@@ -1789,8 +1789,8 @@ pub fn u16x8_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ge_s))]
 #[target_feature(enable = "simd128")]
@@ -1803,8 +1803,8 @@ pub fn i16x8_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 8 sixteen-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.ge_u))]
 #[target_feature(enable = "simd128")]
@@ -1817,8 +1817,8 @@ pub fn u16x8_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.eq))]
 #[target_feature(enable = "simd128")]
@@ -1831,8 +1831,8 @@ pub fn i32x4_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ne))]
 #[target_feature(enable = "simd128")]
@@ -1850,8 +1850,8 @@ pub use i32x4_ne as u32x4_ne;
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.lt_s))]
 #[target_feature(enable = "simd128")]
@@ -1864,8 +1864,8 @@ pub fn i32x4_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.lt_u))]
 #[target_feature(enable = "simd128")]
@@ -1878,8 +1878,8 @@ pub fn u32x4_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.gt_s))]
 #[target_feature(enable = "simd128")]
@@ -1892,8 +1892,8 @@ pub fn i32x4_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.gt_u))]
 #[target_feature(enable = "simd128")]
@@ -1906,8 +1906,8 @@ pub fn u32x4_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.le_s))]
 #[target_feature(enable = "simd128")]
@@ -1920,8 +1920,8 @@ pub fn i32x4_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.le_u))]
 #[target_feature(enable = "simd128")]
@@ -1934,8 +1934,8 @@ pub fn u32x4_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ge_s))]
 #[target_feature(enable = "simd128")]
@@ -1948,8 +1948,8 @@ pub fn i32x4_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// unsigned integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.ge_u))]
 #[target_feature(enable = "simd128")]
@@ -1962,8 +1962,8 @@ pub fn u32x4_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.eq))]
 #[target_feature(enable = "simd128")]
@@ -1976,8 +1976,8 @@ pub fn i64x2_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.ne))]
 #[target_feature(enable = "simd128")]
@@ -1995,8 +1995,8 @@ pub use i64x2_ne as u64x2_ne;
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.lt_s))]
 #[target_feature(enable = "simd128")]
@@ -2009,8 +2009,8 @@ pub fn i64x2_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.gt_s))]
 #[target_feature(enable = "simd128")]
@@ -2023,8 +2023,8 @@ pub fn i64x2_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.le_s))]
 #[target_feature(enable = "simd128")]
@@ -2037,8 +2037,8 @@ pub fn i64x2_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// signed integers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.ge_s))]
 #[target_feature(enable = "simd128")]
@@ -2051,8 +2051,8 @@ pub fn i64x2_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.eq))]
 #[target_feature(enable = "simd128")]
@@ -2065,8 +2065,8 @@ pub fn f32x4_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.ne))]
 #[target_feature(enable = "simd128")]
@@ -2079,8 +2079,8 @@ pub fn f32x4_ne(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.lt))]
 #[target_feature(enable = "simd128")]
@@ -2093,8 +2093,8 @@ pub fn f32x4_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.gt))]
 #[target_feature(enable = "simd128")]
@@ -2107,8 +2107,8 @@ pub fn f32x4_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.le))]
 #[target_feature(enable = "simd128")]
@@ -2121,8 +2121,8 @@ pub fn f32x4_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 4 thirty-two-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.ge))]
 #[target_feature(enable = "simd128")]
@@ -2135,8 +2135,8 @@ pub fn f32x4_ge(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were equal, or all zeros if the elements were not equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.eq))]
 #[target_feature(enable = "simd128")]
@@ -2149,8 +2149,8 @@ pub fn f64x2_eq(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise elements
-/// were not equal, or all zeros if the elements were equal.
+/// Returns a new vector where each lane is all ones if the corresponding input elements
+/// were not equal, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.ne))]
 #[target_feature(enable = "simd128")]
@@ -2163,8 +2163,8 @@ pub fn f64x2_ne(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.lt))]
 #[target_feature(enable = "simd128")]
@@ -2177,8 +2177,8 @@ pub fn f64x2_lt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.gt))]
 #[target_feature(enable = "simd128")]
@@ -2191,8 +2191,8 @@ pub fn f64x2_gt(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is less than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is less than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.le))]
 #[target_feature(enable = "simd128")]
@@ -2205,8 +2205,8 @@ pub fn f64x2_le(a: v128, b: v128) -> v128 {
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
 /// floating point numbers.
 ///
-/// Returns a new vector where each lane is all ones if the pairwise left
-/// element is greater than the pairwise right element, or all zeros otherwise.
+/// Returns a new vector where each lane is all ones if the lane-wise left
+/// element is greater than the right element, or all zeros otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.ge))]
 #[target_feature(enable = "simd128")]
@@ -2563,7 +2563,7 @@ pub fn u8x16_avgr(a: v128, b: v128) -> v128 {
     unsafe { llvm_avgr_u_i8x16(a.as_i8x16(), b.as_i8x16()).v128() }
 }
 
-/// Lane-wise integer extended pairwise addition producing extended results
+/// Integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_s))]
@@ -2574,7 +2574,7 @@ pub fn i16x8_extadd_pairwise_i8x16(a: v128) -> v128 {
     unsafe { llvm_i16x8_extadd_pairwise_i8x16_s(a.as_i8x16()).v128() }
 }
 
-/// Lane-wise integer extended pairwise addition producing extended results
+/// Integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_u))]
@@ -3051,7 +3051,7 @@ pub fn i16x8_extmul_high_u8x16(a: v128, b: v128) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub use i16x8_extmul_high_u8x16 as u16x8_extmul_high_u8x16;
 
-/// Lane-wise integer extended pairwise addition producing extended results
+/// Integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_s))]
@@ -3062,7 +3062,7 @@ pub fn i32x4_extadd_pairwise_i16x8(a: v128) -> v128 {
     unsafe { llvm_i32x4_extadd_pairwise_i16x8_s(a.as_i16x8()).v128() }
 }
 
-/// Lane-wise integer extended pairwise addition producing extended results
+/// Integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_u))]
@@ -3835,7 +3835,7 @@ pub fn f32x4_sqrt(a: v128) -> v128 {
     unsafe { llvm_f32x4_sqrt(a.as_f32x4()).v128() }
 }
 
-/// Adds pairwise lanes of two 128-bit vectors interpreted as four 32-bit
+/// Lane-wise addition of two 128-bit vectors interpreted as four 32-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.add))]
@@ -3846,7 +3846,7 @@ pub fn f32x4_add(a: v128, b: v128) -> v128 {
     unsafe { simd_add(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// Subtracts pairwise lanes of two 128-bit vectors interpreted as four 32-bit
+/// Lane-wise subtraction of two 128-bit vectors interpreted as four 32-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.sub))]
@@ -3857,7 +3857,7 @@ pub fn f32x4_sub(a: v128, b: v128) -> v128 {
     unsafe { simd_sub(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// Multiplies pairwise lanes of two 128-bit vectors interpreted as four 32-bit
+/// Lane-wise multiplication of two 128-bit vectors interpreted as four 32-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.mul))]
@@ -3868,7 +3868,7 @@ pub fn f32x4_mul(a: v128, b: v128) -> v128 {
     unsafe { simd_mul(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// Divides pairwise lanes of two 128-bit vectors interpreted as four 32-bit
+/// Lane-wise division of two 128-bit vectors interpreted as four 32-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.div))]
@@ -3879,7 +3879,7 @@ pub fn f32x4_div(a: v128, b: v128) -> v128 {
     unsafe { simd_div(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// Calculates the minimum of pairwise lanes of two 128-bit vectors interpreted
+/// Calculates the lane-wise minimum of two 128-bit vectors interpreted
 /// as four 32-bit floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.min))]
@@ -3890,7 +3890,7 @@ pub fn f32x4_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f32x4_min(a.as_f32x4(), b.as_f32x4()).v128() }
 }
 
-/// Calculates the maximum of pairwise lanes of two 128-bit vectors interpreted
+/// Calculates the lane-wise minimum of two 128-bit vectors interpreted
 /// as four 32-bit floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f32x4.max))]
@@ -4010,7 +4010,7 @@ pub fn f64x2_sqrt(a: v128) -> v128 {
     unsafe { llvm_f64x2_sqrt(a.as_f64x2()).v128() }
 }
 
-/// Adds pairwise lanes of two 128-bit vectors interpreted as two 64-bit
+/// Lane-wise add of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.add))]
@@ -4021,7 +4021,7 @@ pub fn f64x2_add(a: v128, b: v128) -> v128 {
     unsafe { simd_add(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// Subtracts pairwise lanes of two 128-bit vectors interpreted as two 64-bit
+/// Lane-wise subtract of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.sub))]
@@ -4032,7 +4032,7 @@ pub fn f64x2_sub(a: v128, b: v128) -> v128 {
     unsafe { simd_sub(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// Multiplies pairwise lanes of two 128-bit vectors interpreted as two 64-bit
+/// Lane-wise multiply of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.mul))]
@@ -4043,7 +4043,7 @@ pub fn f64x2_mul(a: v128, b: v128) -> v128 {
     unsafe { simd_mul(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// Divides pairwise lanes of two 128-bit vectors interpreted as two 64-bit
+/// Lane-wise divide of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.div))]
@@ -4054,7 +4054,7 @@ pub fn f64x2_div(a: v128, b: v128) -> v128 {
     unsafe { simd_div(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// Calculates the minimum of pairwise lanes of two 128-bit vectors interpreted
+/// Calculates the lane-wise minimum of two 128-bit vectors interpreted
 /// as two 64-bit floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.min))]
@@ -4065,7 +4065,7 @@ pub fn f64x2_min(a: v128, b: v128) -> v128 {
     unsafe { llvm_f64x2_min(a.as_f64x2(), b.as_f64x2()).v128() }
 }
 
-/// Calculates the maximum of pairwise lanes of two 128-bit vectors interpreted
+/// Calculates the lane-wise maximum of two 128-bit vectors interpreted
 /// as two 64-bit floating point numbers.
 #[inline]
 #[cfg_attr(test, assert_instr(f64x2.max))]
