@@ -14,6 +14,7 @@ use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
@@ -63,8 +64,19 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
 
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let min_specialization = tcx.features().min_specialization;
-    tcx.hir()
-        .visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx, min_specialization });
+    let module = tcx.hir_module_items(module_def_id);
+    for id in module.items() {
+        if matches!(tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+            let item = tcx.hir().item(id);
+            if let hir::ItemKind::Impl(ref impl_) = item.kind {
+                enforce_impl_params_are_constrained(tcx, item.def_id, impl_.items);
+                enforce_impl_items_are_distinct(tcx, impl_.items);
+                if min_specialization {
+                    check_min_specialization(tcx, item.def_id.to_def_id(), item.span);
+                }
+            }
+        }
+    }
 }
 
 pub fn provide(providers: &mut Providers) {
