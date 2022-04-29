@@ -11,9 +11,10 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
 
     const HEAD_LEN: usize = 160 * 1024;
     const TAIL_LEN: usize = 256 * 1024;
+    const EXCLUDED_PLACEHOLDER_LEN: isize = 32;
 
     enum ProcOutput {
-        Full { bytes: Vec<u8>, excluded_len: usize },
+        Full { bytes: Vec<u8>, excluded_len: isize },
         Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
     }
 
@@ -30,17 +31,22 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
                     // paths when calculating the string length, while still including the full
                     // path in the output. This could result in some output being larger than the
                     // threshold, but it's better than having nondeterministic failures.
+                    //
+                    // The compiler emitting only excluded strings is addressed by adding a
+                    // placeholder size for each excluded segment, which will eventually reach
+                    // the configured threshold.
                     for pattern in exclude_from_len {
                         let pattern_bytes = pattern.as_bytes();
                         let matches = data
                             .windows(pattern_bytes.len())
                             .filter(|window| window == &pattern_bytes)
                             .count();
-                        *excluded_len += matches * pattern_bytes.len();
+                        *excluded_len += matches as isize
+                            * (EXCLUDED_PLACEHOLDER_LEN - pattern_bytes.len() as isize);
                     }
 
                     let new_len = bytes.len();
-                    if new_len.saturating_sub(*excluded_len) <= HEAD_LEN + TAIL_LEN {
+                    if (new_len as isize + *excluded_len) as usize <= HEAD_LEN + TAIL_LEN {
                         return;
                     }
 
