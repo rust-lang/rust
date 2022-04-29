@@ -1,0 +1,31 @@
+[package]
+name = "proc-macro-api"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+object = { version = "0.28.3", default-features = false, features = [
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+] }
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = { version = "1.0.79", features = ["unbounded_depth"] }
+tracing = "0.1.32"
+memmap2 = "0.5.3"
+snap = "1.0.5"
+
+paths = { path = "../paths", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
+stdx = { path = "../stdx", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
+# Intentionally *not* depend on anything salsa-related
+# base-db = { path = "../base-db", version = "0.0.0" }

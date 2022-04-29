@@ -21,7 +21,7 @@ indexmap = "1.8.0"
 smol_str = "0.1.21"
 
 stdx = { path = "../stdx", version = "0.0.0" }
-text_edit = { path = "../text_edit", version = "0.0.0" }
+text-edit = { path = "../text-edit", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 
@@ -32,5 +32,5 @@ proc-macro2 = "1.0.36"
 quote = "1.0.16"
 ungrammar = "1.16.1"
 
-test_utils = { path = "../test_utils" }
+test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }

@@ -23,22 +23,22 @@ dot = "0.1.4"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
-text_edit = { path = "../text_edit", version = "0.0.0" }
-ide_db = { path = "../ide_db", version = "0.0.0" }
+text-edit = { path = "../text-edit", version = "0.0.0" }
+ide-db = { path = "../ide-db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
-ide_assists = { path = "../ide_assists", version = "0.0.0" }
-ide_diagnostics = { path = "../ide_diagnostics", version = "0.0.0" }
-ide_ssr = { path = "../ide_ssr", version = "0.0.0" }
-ide_completion = { path = "../ide_completion", version = "0.0.0" }
+ide-assists = { path = "../ide-assists", version = "0.0.0" }
+ide-diagnostics = { path = "../ide-diagnostics", version = "0.0.0" }
+ide-ssr = { path = "../ide-ssr", version = "0.0.0" }
+ide-completion = { path = "../ide-completion", version = "0.0.0" }
 
 # ide should depend only on the top-level `hir` package. if you need
-# something from some `hir_xxx` subpackage, reexport the API via `hir`.
+# something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../hir", version = "0.0.0" }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "emscripten")))'.dependencies]
 toolchain = { path = "../toolchain", version = "0.0.0" }
 
 [dev-dependencies]
-test_utils = { path = "../test_utils" }
+test-utils = { path = "../test-utils" }
 expect-test = "1.2.2"
