@@ -1319,7 +1319,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | PathSource::Struct
                 | PathSource::TupleStruct(..) => false,
             };
-            let mut error = true;
             let mut res = LifetimeRes::Error;
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
@@ -1339,15 +1338,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // lifetime. Instead, we simply create an implicit lifetime, which will be checked
                     // later, at which point a suitable error will be emitted.
                     LifetimeRibKind::AnonymousPassThrough(binder) => {
-                        error = false;
                         res = LifetimeRes::Anonymous { binder, elided: true };
                         break;
                     }
                     LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
                         // FIXME(cjgillot) This resolution is wrong, but this does not matter
-                        // since these cases are erroneous anyway.
+                        // since these cases are erroneous anyway.  Lifetime resolution should
+                        // emit a "missing lifetime specifier" diagnostic.
                         res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
-                        error = false;
                         break;
                     }
                     _ => {}
@@ -1377,7 +1375,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // originating from macros, since the segment's span might be from a macro arg.
                 segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
             };
-            if error {
+            if let LifetimeRes::Error = res {
                 let sess = self.r.session;
                 let mut err = rustc_errors::struct_span_err!(
                     sess,
