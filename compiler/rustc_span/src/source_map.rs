@@ -1102,7 +1102,19 @@ impl FilePathMapping {
         //       take precedence.
         for &(ref from, ref to) in self.mapping.iter().rev() {
             if let Ok(rest) = path.strip_prefix(from) {
-                return (to.join(rest), true);
+                let remapped = if rest.as_os_str().is_empty() {
+                    // This is subtle, joining an empty path onto e.g. `foo/bar` will
+                    // result in `foo/bar/`, that is, there'll be an additional directory
+                    // separator at the end. This can lead to duplicated directory separators
+                    // in remapped paths down the line.
+                    // So, if we have an exact match, we just return that without a call
+                    // to `Path::join()`.
+                    to.clone()
+                } else {
+                    to.join(rest)
+                };
+
+                return (remapped, true);
             }
         }
 
