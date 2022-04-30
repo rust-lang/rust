@@ -745,7 +745,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
                     }
                     CodeBlockKind::Indented => Default::default(),
                 };
-                if !block_info.rust {
+                if !block_info.rust || block_info.no_compile {
                     continue;
                 }
 
@@ -843,6 +843,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
+    pub(crate) no_compile: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
 }
@@ -864,6 +865,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
+            no_compile: false,
             error_codes: Vec::new(),
             edition: None,
         }
@@ -930,6 +932,10 @@ impl LangString {
                 }
                 "ignore" => {
                     data.ignore = Ignore::All;
+                    seen_rust_tags = !seen_other_tags;
+                }
+                "no_compile" => {
+                    data.no_compile = true;
                     seen_rust_tags = !seen_other_tags;
                 }
                 x if x.starts_with("ignore-") => {
