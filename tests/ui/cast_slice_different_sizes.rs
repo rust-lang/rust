@@ -39,3 +39,44 @@ fn main() {
     let long_chain_restore =
         r_x as *const [i32] as *const [u32] as *const [u16] as *const [i8] as *const [u8] as *const [u32];
 }
+
+// foo and foo2 should not fire, they're the same size
+fn foo(x: *mut [u8]) -> *mut [u8] {
+    x as *mut [u8]
+}
+
+fn foo2(x: *mut [u8]) -> *mut [u8] {
+    x as *mut _
+}
+
+// Test that casts as part of function returns work
+fn bar(x: *mut [u16]) -> *mut [u8] {
+    x as *mut [u8]
+}
+
+fn uwu(x: *mut [u16]) -> *mut [u8] {
+    x as *mut _
+}
+
+fn bar2(x: *mut [u16]) -> *mut [u8] {
+    x as _
+}
+
+// constify
+fn bar3(x: *mut [u16]) -> *const [u8] {
+    x as _
+}
+
+// unconstify
+fn bar4(x: *const [u16]) -> *mut [u8] {
+    x as _
+}
+
+// function returns plus blocks
+fn blocks(x: *mut [u16]) -> *mut [u8] {
+    ({ x }) as _
+}
+
+fn more_blocks(x: *mut [u16]) -> *mut [u8] {
+    { ({ x }) as _ }
+}
