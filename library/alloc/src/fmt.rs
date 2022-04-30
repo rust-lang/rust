@@ -369,9 +369,9 @@
 //! ```
 //!
 //! Your type will be passed as `self` by-reference, and then the function
-//! should emit output into the `f.buf` stream. It is up to each format trait
-//! implementation to correctly adhere to the requested formatting parameters.
-//! The values of these parameters will be listed in the fields of the
+//! should emit output into the Formatter `f` which implements `fmt::Write`. It is up to each
+//! format trait implementation to correctly adhere to the requested formatting parameters.
+//! The values of these parameters can be accessed with methods of the
 //! [`Formatter`] struct. In order to help with this, the [`Formatter`] struct also
 //! provides some helper methods.
 //!
