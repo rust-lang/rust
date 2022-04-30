@@ -327,20 +327,21 @@ impl<'tcx> Stack {
     /// `None` during a deallocation.
     fn check_protector(
         item: &Item,
-        provoking_access: Option<(SbTag, AllocId, AllocRange, Size)>, // just for debug printing and error messages
+        provoking_access: Option<(SbTag, AllocId, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         if let SbTag::Tagged(id) = item.tag {
             if global.tracked_pointer_tags.contains(&id) {
                 register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
                     *item,
-                    None,
+                    provoking_access
+                        .map(|(tag, _alloc_id, _alloc_range, _size, access)| (tag, access)),
                 ));
             }
         }
         if let Some(call) = item.protector {
             if global.is_active(call) {
-                if let Some((tag, alloc_id, alloc_range, offset)) = provoking_access {
+                if let Some((tag, alloc_id, alloc_range, offset, _access)) = provoking_access {
                     Err(err_sb_ub(
                         format!(
                             "not granting access to tag {:?} because incompatible item is protected: {:?}",
@@ -393,7 +394,11 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                Stack::check_protector(&item, Some((tag, alloc_id, alloc_range, offset)), global)?;
+                Stack::check_protector(
+                    &item,
+                    Some((tag, alloc_id, alloc_range, offset, access)),
+                    global,
+                )?;
                 global.add_invalidation(item.tag, alloc_id, alloc_range);
             }
         } else {
@@ -411,7 +416,7 @@ impl<'tcx> Stack {
                     trace!("access: disabling item {:?}", item);
                     Stack::check_protector(
                         item,
-                        Some((tag, alloc_id, alloc_range, offset)),
+                        Some((tag, alloc_id, alloc_range, offset, access)),
                         global,
                     )?;
                     item.perm = Permission::Disabled;
