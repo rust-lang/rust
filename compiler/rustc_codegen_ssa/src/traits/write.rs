@@ -48,7 +48,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<(), FatalError>;
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
-        thin: &mut ThinModule<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,

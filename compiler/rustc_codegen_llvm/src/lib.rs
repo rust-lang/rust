@@ -220,7 +220,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
-        thin: &mut ThinModule<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }

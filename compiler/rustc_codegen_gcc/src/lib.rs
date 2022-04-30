@@ -213,7 +213,7 @@ impl WriteBackendMethods for GccCodegenBackend {
                     unimplemented!();
                 }
             };
-        Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: vec![] })
+        Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: vec![] })
     }
 
     fn run_thin_lto(_cgcx: &CodegenContext<Self>, _modules: Vec<(String, Self::ThinBuffer)>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
@@ -234,7 +234,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
-    unsafe fn optimize_thin(_cgcx: &CodegenContext<Self>, _thin: &mut ThinModule<Self>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+    unsafe fn optimize_thin(_cgcx: &CodegenContext<Self>, _thin: ThinModule<Self>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         unimplemented!();
     }
 

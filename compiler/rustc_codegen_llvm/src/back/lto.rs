@@ -353,7 +353,7 @@ fn fat_lto(
         }
     }
 
-    Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: serialized_bitcode })
+    Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: serialized_bitcode })
 }
 
 crate struct Linker<'a>(&'a mut llvm::Linker<'a>);
@@ -726,7 +726,7 @@ impl Drop for ThinBuffer {
 }
 
 pub unsafe fn optimize_thin_module(
-    thin_module: &mut ThinModule<LlvmCodegenBackend>,
+    thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
