@@ -717,7 +717,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     ident,
                     ns,
                     &import.parent_scope,
-                    Some(import.span),
+                    finalize,
                     true,
                     target_bindings[ns].get(),
                 );
@@ -778,7 +778,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ident,
                         ns,
                         &import.parent_scope,
-                        Some(import.span),
+                        finalize,
                         false,
                         None,
                     );
