@@ -1,0 +1,37 @@
+error[E0282]: type annotations needed
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
+   |
+LL |     thing.method(42);
+   |     ------^^^^^^----
+   |     |     |
+   |     |     cannot infer type for type parameter `T` declared on the trait `Method`
+   |     this method call resolves to `T`
+
+error[E0283]: type annotations needed
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
+   |
+LL |     thing.method(42);
+   |     ------^^^^^^----
+   |     |     |
+   |     |     cannot infer type for type parameter `T` declared on the trait `Method`
+   |     this method call resolves to `T`
+   |
+note: multiple `impl`s satisfying `Thing<bool>: Method<_>` found
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:7:1
+   |
+LL | impl<X> Method<i32> for Thing<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<X> Method<u32> for Thing<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the fully qualified path for the potential candidates
+   |
+LL |     <Thing<_> as Method<i32>>::method(thing, 42);
+   |     ++++++++++++++++++++++++++++++++++     ~
+LL |     <Thing<_> as Method<u32>>::method(thing, 42);
+   |     ++++++++++++++++++++++++++++++++++     ~
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.
