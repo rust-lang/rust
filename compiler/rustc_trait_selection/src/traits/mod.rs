@@ -448,6 +448,9 @@ pub fn impossible_predicates<'tcx>(
 
         let errors = fulfill_cx.select_all_or_error(&infcx);
 
+        // Clean up after ourselves
+        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
         !errors.is_empty()
     });
     debug!("impossible_predicates = {:?}", result);
