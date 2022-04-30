@@ -310,7 +310,7 @@
 //! ```text
 //! format_string := text [ maybe_format text ] *
 //! maybe_format := '{' '{' | '}' '}' | format
-//! format := '{' [ argument ] [ ':' format_spec ] '}'
+//! format := '{' [ argument ] [ ':' format_spec ] [ ws ] * '}'
 //! argument := integer | identifier
 //!
 //! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision]type
@@ -323,7 +323,12 @@
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
-//! In the above grammar, `text` must not contain any `'{'` or `'}'` characters.
+//! In the above grammar,
+//! - `text` must not contain any `'{'` or `'}'` characters,
+//! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
+//!   meaning and is completely optional,
+//! - `integer` is a decimal integer that may contain leading zeroes and
+//! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
 //!
 //! # Formatting traits
 //!
