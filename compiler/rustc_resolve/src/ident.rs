@@ -343,7 +343,6 @@ impl<'a> Resolver<'a> {
                 ns,
                 parent_scope,
                 finalize,
-                false,
                 unusable_binding,
             );
             if let Ok(binding) = item {
@@ -357,7 +356,6 @@ impl<'a> Resolver<'a> {
             parent_scope,
             finalize,
             finalize.is_some(),
-            false,
             unusable_binding,
         )
         .ok()
@@ -377,7 +375,6 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         force: bool,
-        last_import_segment: bool,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
@@ -498,7 +495,6 @@ impl<'a> Resolver<'a> {
                             ns,
                             parent_scope,
                             finalize,
-                            last_import_segment,
                             unusable_binding,
                         );
                         match binding {
@@ -521,7 +517,6 @@ impl<'a> Resolver<'a> {
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
                             finalize,
-                            last_import_segment,
                             unusable_binding,
                         );
                         match binding {
@@ -607,7 +602,6 @@ impl<'a> Resolver<'a> {
                                 ns,
                                 parent_scope,
                                 None,
-                                last_import_segment,
                                 unusable_binding,
                             ) {
                                 if use_prelude || this.is_builtin_macro(binding.res()) {
@@ -730,7 +724,7 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, false, None)
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, None)
             .map_err(|(determinacy, _)| determinacy)
     }
 
@@ -742,8 +736,6 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        // We are resolving a last import segment during import validation.
-        last_import_segment: bool,
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation.
         unusable_binding: Option<&'a NameBinding<'a>>,
@@ -754,7 +746,6 @@ impl<'a> Resolver<'a> {
             ns,
             parent_scope,
             finalize,
-            last_import_segment,
             unusable_binding,
         )
         .map_err(|(determinacy, _)| determinacy)
@@ -768,7 +759,6 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        last_import_segment: bool,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
@@ -795,7 +785,6 @@ impl<'a> Resolver<'a> {
             adjusted_parent_scope,
             false,
             finalize,
-            last_import_segment,
             unusable_binding,
         )
     }
@@ -808,7 +797,6 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        last_import_segment: bool,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
@@ -818,7 +806,6 @@ impl<'a> Resolver<'a> {
             parent_scope,
             false,
             finalize,
-            last_import_segment,
             unusable_binding,
         )
         .map_err(|(determinacy, _)| determinacy)
@@ -835,7 +822,6 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         restricted_shadowing: bool,
         finalize: Option<Finalize>,
-        last_import_segment: bool,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
@@ -848,7 +834,6 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
-                    last_import_segment,
                     unusable_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
@@ -889,7 +874,6 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
-                    last_import_segment,
                     unusable_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
@@ -900,7 +884,7 @@ impl<'a> Resolver<'a> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        if let Some(Finalize { path_span, .. }) = finalize {
+        if let Some(Finalize { path_span, report_private, .. }) = finalize {
             // If the primary binding is unusable, search further and return the shadowed glob
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
@@ -921,14 +905,14 @@ impl<'a> Resolver<'a> {
             };
 
             if !self.is_accessible_from(binding.vis, parent_scope.module) {
-                if last_import_segment {
-                    return Err((Determined, Weak::No));
-                } else {
+                if report_private {
                     self.privacy_errors.push(PrivacyError {
                         ident,
                         binding,
                         dedup_span: path_span,
                     });
+                } else {
+                    return Err((Determined, Weak::No));
                 }
             }
 
@@ -995,7 +979,6 @@ impl<'a> Resolver<'a> {
                 ns,
                 &single_import.parent_scope,
                 None,
-                last_import_segment,
                 unusable_binding,
             ) {
                 Err(Determined) => continue,
@@ -1072,7 +1055,6 @@ impl<'a> Resolver<'a> {
                 ns,
                 adjusted_parent_scope,
                 None,
-                last_import_segment,
                 unusable_binding,
             );
 
@@ -1495,7 +1477,6 @@ impl<'a> Resolver<'a> {
                         ns,
                         parent_scope,
                         finalize,
-                        false,
                         unusable_binding,
                     )
                 } else if let Some(ribs) = ribs
@@ -1523,7 +1504,6 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         finalize,
                         finalize.is_some(),
-                        false,
                         unusable_binding,
                     )
                 };

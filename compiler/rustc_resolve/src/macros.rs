@@ -604,7 +604,6 @@ impl<'a> Resolver<'a> {
                 parent_scope,
                 None,
                 force,
-                false,
                 None,
             );
             if let Err(Determinacy::Undetermined) = binding {
@@ -710,7 +709,6 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
-                false,
                 None,
             ) {
                 Ok(binding) => {
@@ -753,7 +751,6 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
-                false,
                 None,
             );
         }

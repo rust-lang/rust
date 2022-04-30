@@ -1500,7 +1500,6 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 None,
                 false,
-                false,
                 None,
             ) {
                 let desc = match binding.res() {
@@ -1860,7 +1859,6 @@ impl<'a> Resolver<'a> {
                         ns_to_try,
                         parent_scope,
                         None,
-                        false,
                         unusable_binding,
                     ).ok()
                 } else if let Some(ribs) = ribs
@@ -1885,7 +1883,6 @@ impl<'a> Resolver<'a> {
                         scopes,
                         parent_scope,
                         None,
-                        false,
                         false,
                         unusable_binding,
                     ).ok()

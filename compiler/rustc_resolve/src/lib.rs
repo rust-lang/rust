@@ -2053,15 +2053,18 @@ struct Finalize {
     /// Span of the path start, suitable for prepending something to to it.
     /// E.g. span of `foo` in `foo::{a, b, c}`, or full span for regular paths.
     root_span: Span,
+    /// Whether to report privacy errors or silently return "no resolution" for them,
+    /// similarly to speculative resolution.
+    report_private: bool,
 }
 
 impl Finalize {
     fn new(node_id: NodeId, path_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span: path_span }
+        Finalize::with_root_span(node_id, path_span, path_span)
     }
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span }
+        Finalize { node_id, path_span, root_span, report_private: true }
     }
 }
 
