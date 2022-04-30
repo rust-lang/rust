@@ -105,8 +105,6 @@ rm src/test/ui/type-alias-impl-trait/assoc-projection-ice.rs # produces ICE
 
 rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
-rm src/test/ui/rfc-2091-track-caller/intrinsic-wrapper.rs # wrong result from `Location::caller()`
-
 # bugs in the test suite
 # ======================
 rm src/test/ui/backtrace.rs # TODO warning
