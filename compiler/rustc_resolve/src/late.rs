@@ -199,6 +199,16 @@ enum LifetimeRibKind {
     /// This rib declares generic parameters.
     Generics { parent: NodeId, span: Span, kind: LifetimeBinderKind },
 
+    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
+    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
+    /// lifetimes in const generics. See issue #74052 for discussion.
+    ConstGeneric,
+
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
+    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    AnonConst,
+
     /// For **Modern** cases, create a new anonymous region parameter
     /// and reference that.
     ///
@@ -527,7 +537,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         // We deal with repeat expressions explicitly in `resolve_expr`.
-        self.resolve_anon_const(constant, IsRepeatExpr::No);
+        self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
+            this.resolve_anon_const(constant, IsRepeatExpr::No);
+        })
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -1102,14 +1114,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
                         this.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
                         this.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
-                        this.visit_ty(ty);
+                        this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
+                            this.visit_ty(ty)
+                        });
                         this.ribs[TypeNS].pop().unwrap();
                         this.ribs[ValueNS].pop().unwrap();
 
                         if let Some(ref expr) = default {
                             this.ribs[TypeNS].push(forward_ty_ban_rib);
                             this.ribs[ValueNS].push(forward_const_ban_rib);
-                            this.visit_anon_const(expr);
+                            this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
+                                this.resolve_anon_const(expr, IsRepeatExpr::No)
+                            });
                             forward_const_ban_rib = this.ribs[ValueNS].pop().unwrap();
                             forward_ty_ban_rib = this.ribs[TypeNS].pop().unwrap();
                         }
@@ -1158,8 +1174,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 return;
             }
 
-            if let LifetimeRibKind::Item = rib.kind {
-                break;
+            match rib.kind {
+                LifetimeRibKind::Item => break,
+                LifetimeRibKind::ConstGeneric => {
+                    self.emit_non_static_lt_in_const_generic_error(lifetime);
+                    self.r.lifetimes_res_map.insert(lifetime.id, LifetimeRes::Error);
+                    return;
+                }
+                LifetimeRibKind::AnonConst => {
+                    self.maybe_emit_forbidden_non_static_lifetime_error(lifetime);
+                    self.r.lifetimes_res_map.insert(lifetime.id, LifetimeRes::Error);
+                    return;
+                }
+                _ => {}
             }
         }
 
@@ -3065,9 +3092,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             is_repeat,
             constant.value.is_potential_trivial_const_param(),
             None,
-            |this| {
-                visit::walk_anon_const(this, constant);
-            },
+            |this| visit::walk_anon_const(this, constant),
         );
     }
 
@@ -3218,7 +3243,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
-                self.resolve_anon_const(ct, IsRepeatExpr::Yes);
+                self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
+                    this.resolve_anon_const(ct, IsRepeatExpr::Yes)
+                });
+            }
+            ExprKind::ConstBlock(ref ct) => {
+                self.resolve_anon_const(ct, IsRepeatExpr::No);
             }
             ExprKind::Index(ref elem, ref idx) => {
                 self.resolve_expr(elem, Some(expr));

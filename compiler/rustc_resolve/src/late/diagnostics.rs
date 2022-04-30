@@ -1886,6 +1886,37 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         err.emit();
     }
+
+    crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
+        struct_span_err!(
+            self.r.session,
+            lifetime_ref.ident.span,
+            E0771,
+            "use of non-static lifetime `{}` in const generic",
+            lifetime_ref.ident
+        )
+        .note(
+            "for more information, see issue #74052 \
+            <https://github.com/rust-lang/rust/issues/74052>",
+        )
+        .emit();
+    }
+
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
+    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    crate fn maybe_emit_forbidden_non_static_lifetime_error(&self, lifetime_ref: &ast::Lifetime) {
+        let feature_active = self.r.session.features_untracked().generic_const_exprs;
+        if !feature_active {
+            feature_err(
+                &self.r.session.parse_sess,
+                sym::generic_const_exprs,
+                lifetime_ref.ident.span,
+                "a non-static lifetime is not allowed in a `const`",
+            )
+            .emit();
+        }
+    }
 }
 
 impl<'tcx> LifetimeContext<'_, 'tcx> {
@@ -1980,24 +2011,6 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             ));
             false
         }
-    }
-
-    // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
-    // generics. We are disallowing this until we can decide on how we want to handle non-'static
-    // lifetimes in const generics. See issue #74052 for discussion.
-    crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &hir::Lifetime) {
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            lifetime_ref.span,
-            E0771,
-            "use of non-static lifetime `{}` in const generic",
-            lifetime_ref
-        );
-        err.note(
-            "for more information, see issue #74052 \
-            <https://github.com/rust-lang/rust/issues/74052>",
-        );
-        err.emit();
     }
 
     crate fn is_trait_ref_fn_scope(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) -> bool {
@@ -2399,34 +2412,6 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
             }
             _ => unreachable!(),
-        }
-    }
-
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
-    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    crate fn maybe_emit_forbidden_non_static_lifetime_error(
-        &self,
-        body_id: hir::BodyId,
-        lifetime_ref: &'tcx hir::Lifetime,
-    ) {
-        let is_anon_const = matches!(
-            self.tcx.def_kind(self.tcx.hir().body_owner_def_id(body_id)),
-            hir::def::DefKind::AnonConst
-        );
-        let is_allowed_lifetime = matches!(
-            lifetime_ref.name,
-            hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
-        );
-
-        if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::generic_const_exprs,
-                lifetime_ref.span,
-                "a non-static lifetime is not allowed in a `const`",
-            )
-            .emit();
         }
     }
 }
