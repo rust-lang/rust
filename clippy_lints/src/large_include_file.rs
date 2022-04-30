@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// let included_str = include_str!("very_large_file.txt");
-    /// let included_bytes = include_bytes!("very_large_file.txt);
+    /// let included_bytes = include_bytes!("very_large_file.txt");
     /// ```
     ///
     /// Instead, you can load the file at runtime:
