@@ -1807,7 +1807,7 @@ impl<'a> Resolver<'a> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         i: usize,
         ident: Ident,
@@ -1859,7 +1859,7 @@ impl<'a> Resolver<'a> {
                         ns_to_try,
                         parent_scope,
                         None,
-                        unusable_binding,
+                        ignore_binding,
                     ).ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
@@ -1870,7 +1870,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         None,
                         &ribs[ns_to_try],
-                        unusable_binding,
+                        ignore_binding,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Some(binding),
@@ -1884,7 +1884,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         None,
                         false,
-                        unusable_binding,
+                        ignore_binding,
                     ).ok()
                 };
                 if let Some(binding) = binding {
@@ -1917,7 +1917,7 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     None,
                     &ribs[ValueNS],
-                    unusable_binding,
+                    ignore_binding,
                 )
             } else {
                 None

@@ -969,7 +969,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         ns: Namespace,
         finalize: Option<Finalize>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -977,7 +977,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             &self.parent_scope,
             finalize,
             &self.ribs[ns],
-            unusable_binding,
+            ignore_binding,
         )
     }
 

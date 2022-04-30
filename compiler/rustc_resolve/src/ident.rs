@@ -281,7 +281,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ribs: &[Rib<'a>],
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
@@ -343,7 +343,7 @@ impl<'a> Resolver<'a> {
                 ns,
                 parent_scope,
                 finalize,
-                unusable_binding,
+                ignore_binding,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -356,7 +356,7 @@ impl<'a> Resolver<'a> {
             parent_scope,
             finalize,
             finalize.is_some(),
-            unusable_binding,
+            ignore_binding,
         )
         .ok()
         .map(LexicalScopeBinding::Item)
@@ -375,7 +375,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         force: bool,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
             struct Flags: u8 {
@@ -495,7 +495,7 @@ impl<'a> Resolver<'a> {
                             ns,
                             parent_scope,
                             finalize,
-                            unusable_binding,
+                            ignore_binding,
                         );
                         match binding {
                             Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
@@ -517,7 +517,7 @@ impl<'a> Resolver<'a> {
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
                             finalize,
-                            unusable_binding,
+                            ignore_binding,
                         );
                         match binding {
                             Ok(binding) => {
@@ -602,7 +602,7 @@ impl<'a> Resolver<'a> {
                                 ns,
                                 parent_scope,
                                 None,
-                                unusable_binding,
+                                ignore_binding,
                             ) {
                                 if use_prelude || this.is_builtin_macro(binding.res()) {
                                     result = Ok((binding, Flags::MISC_FROM_PRELUDE));
@@ -736,19 +736,10 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        // This binding should be ignored during in-module resolution, so that we don't get
-        // "self-confirming" import resolutions during import validation.
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(
-            module,
-            ident,
-            ns,
-            parent_scope,
-            finalize,
-            unusable_binding,
-        )
-        .map_err(|(determinacy, _)| determinacy)
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, finalize, ignore_binding)
+            .map_err(|(determinacy, _)| determinacy)
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
@@ -759,7 +750,7 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
@@ -785,7 +776,7 @@ impl<'a> Resolver<'a> {
             adjusted_parent_scope,
             false,
             finalize,
-            unusable_binding,
+            ignore_binding,
         )
     }
 
@@ -797,7 +788,7 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
             module,
@@ -806,7 +797,7 @@ impl<'a> Resolver<'a> {
             parent_scope,
             false,
             finalize,
-            unusable_binding,
+            ignore_binding,
         )
         .map_err(|(determinacy, _)| determinacy)
     }
@@ -822,7 +813,9 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         restricted_shadowing: bool,
         finalize: Option<Finalize>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        // This binding should be ignored during in-module resolution, so that we don't get
+        // "self-confirming" import resolutions during import validation and checking.
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
@@ -834,7 +827,7 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
-                    unusable_binding,
+                    ignore_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -874,7 +867,7 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
-                    unusable_binding,
+                    ignore_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -891,12 +884,8 @@ impl<'a> Resolver<'a> {
             // hack to avoid inconsistent resolution ICEs during import validation.
             let binding = [resolution.binding, resolution.shadowed_glob]
                 .into_iter()
-                .filter_map(|binding| match (binding, unusable_binding) {
-                    (Some(binding), Some(unusable_binding))
-                        if ptr::eq(binding, unusable_binding) =>
-                    {
-                        None
-                    }
+                .filter_map(|binding| match (binding, ignore_binding) {
+                    (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
                     _ => binding,
                 })
                 .next();
@@ -943,10 +932,8 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(unusable_binding) = unusable_binding {
-                if ptr::eq(binding, unusable_binding) {
-                    return Err((Determined, Weak::No));
-                }
+            if let Some(ignored) = ignore_binding && ptr::eq(binding, ignored) {
+                return Err((Determined, Weak::No));
             }
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
@@ -979,7 +966,7 @@ impl<'a> Resolver<'a> {
                 ns,
                 &single_import.parent_scope,
                 None,
-                unusable_binding,
+                ignore_binding,
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
@@ -1055,7 +1042,7 @@ impl<'a> Resolver<'a> {
                 ns,
                 adjusted_parent_scope,
                 None,
-                unusable_binding,
+                ignore_binding,
             );
 
             match result {
@@ -1362,9 +1349,9 @@ impl<'a> Resolver<'a> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, unusable_binding)
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, ignore_binding)
     }
 
     crate fn resolve_path_with_ribs(
@@ -1374,7 +1361,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
         debug!("resolve_path(path={:?}, opt_ns={:?}, finalize={:?})", path, opt_ns, finalize);
 
@@ -1477,7 +1464,7 @@ impl<'a> Resolver<'a> {
                         ns,
                         parent_scope,
                         finalize,
-                        unusable_binding,
+                        ignore_binding,
                     )
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
@@ -1488,7 +1475,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         finalize,
                         &ribs[ns],
-                        unusable_binding,
+                        ignore_binding,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -1504,7 +1491,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         finalize,
                         finalize.is_some(),
-                        unusable_binding,
+                        ignore_binding,
                     )
                 };
                 FindBindingResult::Binding(binding)
@@ -1577,7 +1564,7 @@ impl<'a> Resolver<'a> {
                             opt_ns,
                             parent_scope,
                             ribs,
-                            unusable_binding,
+                            ignore_binding,
                             module,
                             i,
                             ident,

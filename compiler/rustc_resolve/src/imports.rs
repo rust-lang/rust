@@ -588,7 +588,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-        let unusable_binding = match &import.kind {
+        let ignore_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
@@ -599,7 +599,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             None,
             &import.parent_scope,
             Some(finalize),
-            unusable_binding,
+            ignore_binding,
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
