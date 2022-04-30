@@ -3307,6 +3307,15 @@ impl Type {
         let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), to.ty.clone()));
         hir_ty::could_coerce(db, self.env.clone(), &tys)
     }
+
+    pub fn as_type_param(&self, db: &dyn HirDatabase) -> Option<TypeParam> {
+        match self.ty.kind(Interner) {
+            TyKind::Placeholder(p) => Some(TypeParam {
+                id: TypeParamId::from_unchecked(hir_ty::from_placeholder_idx(db, *p)),
+            }),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]
