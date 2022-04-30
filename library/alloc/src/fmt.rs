@@ -460,7 +460,7 @@
 //!
 //! ```ignore (only-for-syntax-highlight)
 //! format!      // described above
-//! write!       // first argument is a &mut io::Write, the destination
+//! write!       // first argument is either a &mut io::Write or a &mut fmt::Write, the destination
 //! writeln!     // same as write but appends a newline
 //! print!       // the format string is printed to the standard output
 //! println!     // same as print but appends a newline
@@ -471,11 +471,11 @@
 //!
 //! ### `write!`
 //!
-//! This and [`writeln!`] are two macros which are used to emit the format string
+//! [`write!`] and [`writeln!`] are two macros which are used to emit the format string
 //! to a specified stream. This is used to prevent intermediate allocations of
 //! format strings and instead directly write the output. Under the hood, this
 //! function is actually invoking the [`write_fmt`] function defined on the
-//! [`std::io::Write`] trait. Example usage is:
+//! [`std::io::Write`] and the [`std::fmt::Write`] trait. Example usage is:
 //!
 //! ```
 //! # #![allow(unused_must_use)]
@@ -502,7 +502,7 @@
 //!
 //! ### `format_args!`
 //!
-//! This is a curious macro used to safely pass around
+//! [`format_args!`] is a curious macro used to safely pass around
 //! an opaque object describing the format string. This object
 //! does not require any heap allocations to create, and it only
 //! references information on the stack. Under the hood, all of
@@ -540,10 +540,12 @@
 //! [`to_string`]: crate::string::ToString::to_string "ToString::to_string"
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html
+//! [`std::fmt::Write`]: ../../std/fmt/trait.Write.html
 //! [`print!`]: ../../std/macro.print.html "print!"
 //! [`println!`]: ../../std/macro.println.html "println!"
 //! [`eprint!`]: ../../std/macro.eprint.html "eprint!"
 //! [`eprintln!`]: ../../std/macro.eprintln.html "eprintln!"
+//! [`format_args!`]: ../../std/macro.format_args.html "format_args!"
 //! [`fmt::Arguments`]: Arguments "fmt::Arguments"
 //! [`format`]: format() "fmt::format"
 
