@@ -372,8 +372,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .hir()
                         .get_generics(impl_item_def_id)
                         .unwrap()
-                        .where_clause
-                        .tail_span_for_suggestion();
+                        .where_clause_span
+                        .shrink_to_hi();
 
                     let suggestion = format!(
                         "{} {}",

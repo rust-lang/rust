@@ -95,6 +95,7 @@ fn dummy_annotatable() -> Annotatable {
         bounds: Default::default(),
         is_placeholder: false,
         kind: GenericParamKind::Lifetime,
+        colon_span: None,
     })
 }
 

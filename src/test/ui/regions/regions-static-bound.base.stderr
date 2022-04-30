@@ -1,18 +1,34 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound.rs:6:11
+   |
+LL |     where 'a: 'static { t }
+   |           ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'b`
+  --> $DIR/regions-static-bound.rs:10:19
+   |
+LL |     where 'a: 'b, 'b: 'static { t }
+   |                   ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'b`
+
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/regions-static-bound.rs:10:5
+  --> $DIR/regions-static-bound.rs:14:5
    |
 LL |     t
    |     ^
    |
    = note: ...the reference is valid for the static lifetime...
 note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
-  --> $DIR/regions-static-bound.rs:9:24
+  --> $DIR/regions-static-bound.rs:13:24
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
    |                        ^^
 
 error[E0759]: `u` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/regions-static-bound.rs:16:5
+  --> $DIR/regions-static-bound.rs:20:5
    |
 LL | fn error(u: &(), v: &()) {
    |             --- this data with an anonymous lifetime `'_`...
@@ -20,13 +36,13 @@ LL |     static_id(&u);
    |     ^^^^^^^^^ -- ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/regions-static-bound.rs:16:5
+  --> $DIR/regions-static-bound.rs:20:5
    |
 LL |     static_id(&u);
    |     ^^^^^^^^^
 
 error[E0759]: `v` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/regions-static-bound.rs:19:5
+  --> $DIR/regions-static-bound.rs:23:5
    |
 LL | fn error(u: &(), v: &()) {
    |                     --- this data with an anonymous lifetime `'_`...
@@ -35,12 +51,12 @@ LL |     static_id_indirect(&v);
    |     ^^^^^^^^^^^^^^^^^^ -- ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/regions-static-bound.rs:19:5
+  --> $DIR/regions-static-bound.rs:23:5
    |
 LL |     static_id_indirect(&v);
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0312, E0759.
 For more information about an error, try `rustc --explain E0312`.

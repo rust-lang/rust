@@ -8,8 +8,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, Node, ParamName, Path, PathSegment, QPath, TraitItem, Ty, TyKind,
-    WherePredicate,
+    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, QPath, TraitItem, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -90,10 +89,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
-        let Generics { where_clause, .. } = &item.generics;
         let mut self_bounds_map = FxHashMap::default();
 
-        for predicate in where_clause.predicates {
+        for predicate in item.generics.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
                 if !bound_predicate.span.from_expansion();
@@ -166,7 +164,7 @@ impl TraitBounds {
         }
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
-        for bound in gen.where_clause.predicates {
+        for bound in gen.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref p) = bound;
                 if p.bounds.len() as u64 <= self.max_trait_bounds;
@@ -216,34 +214,23 @@ impl TraitBounds {
 }
 
 fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() || gen.params.is_empty() || gen.where_clause.predicates.is_empty() {
+    if gen.span.from_expansion() || gen.params.is_empty() || gen.predicates.is_empty() {
         return;
     }
 
-    let mut map = FxHashMap::default();
-    for param in gen.params {
-        if let ParamName::Plain(ref ident) = param.name {
-            let res = param
-                .bounds
-                .iter()
-                .filter_map(get_trait_info_from_bound)
-                .collect::<Vec<_>>();
-            map.insert(*ident, res);
-        }
-    }
-
-    for predicate in gen.where_clause.predicates {
+    let mut map = FxHashMap::<_, Vec<_>>::default();
+    for predicate in gen.predicates {
         if_chain! {
             if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
             if !bound_predicate.span.from_expansion();
             if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
             if let Some(segment) = segments.first();
-            if let Some(trait_resolutions_direct) = map.get(&segment.ident);
             then {
-                for (res_where, _,  _) in bound_predicate.bounds.iter().filter_map(get_trait_info_from_bound) {
-                    if let Some((_, _, span_direct)) = trait_resolutions_direct
+                for (res_where, _, span_where) in bound_predicate.bounds.iter().filter_map(get_trait_info_from_bound) {
+                    let trait_resolutions_direct = map.entry(segment.ident).or_default();
+                    if let Some((_, span_direct)) = trait_resolutions_direct
                                                 .iter()
-                                                .find(|(res_direct, _, _)| *res_direct == res_where) {
+                                                .find(|(res_direct, _)| *res_direct == res_where) {
                         span_lint_and_help(
                             cx,
                             TRAIT_DUPLICATION_IN_BOUNDS,
@@ -252,6 +239,9 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                             None,
                             "consider removing this trait bound",
                         );
+                    }
+                    else {
+                        trait_resolutions_direct.push((res_where, span_where))
                     }
                 }
             }

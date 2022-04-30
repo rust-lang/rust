@@ -8,7 +8,7 @@ LL |     t.clone();
 help: the following trait defines an item `clone`, perhaps you need to restrict type parameter `T` with it:
    |
 LL | fn foo<T: Clone>(t: T) {
-   |        ~~~~~~~~
+   |           +++++
 
 error: aborting due to previous error
 

@@ -267,9 +267,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
                     let (generics, decl) =
-                        this.add_implicit_generics(generics, id, |this, idty| {
+                        this.add_implicit_generics(generics, id, |this, idty, idpb| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(&decl, Some((id, idty)), FnDeclKind::Fn, ret_id)
+                            this.lower_fn_decl(
+                                &decl,
+                                Some((id, idty, idpb)),
+                                FnDeclKind::Fn,
+                                ret_id,
+                            )
                         });
                     let sig = hir::FnSig {
                         decl,
@@ -384,7 +389,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.add_implicit_generics(ast_generics, id, |this, _| {
+                    self.add_implicit_generics(ast_generics, id, |this, _, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -410,7 +415,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Positive => ImplPolarity::Positive,
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(s)),
                 };
-                hir::ItemKind::Impl(hir::Impl {
+                hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
                     unsafety: self.lower_unsafety(unsafety),
                     polarity,
                     defaultness,
@@ -420,7 +425,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
                     items: new_impl_items,
-                })
+                }))
             }
             ItemKind::Trait(box Trait {
                 is_auto,
@@ -649,7 +654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) =
-                        self.add_implicit_generics(generics, i.id, |this, _| {
+                        self.add_implicit_generics(generics, i.id, |this, _, _| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
@@ -1226,10 +1231,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         is_async: Option<NodeId>,
-    ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
+    ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty| {
-            this.lower_fn_decl(&sig.decl, Some((id, idty)), kind, is_async)
+        let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty, idpb| {
+            this.lower_fn_decl(&sig.decl, Some((id, idty, idpb)), kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1289,7 +1294,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_generics_mut(
         &mut self,
         generics: &Generics,
-        itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
@@ -1338,9 +1343,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
+        let mut predicates = SmallVec::new();
+        predicates.extend(generics.params.iter().filter_map(|param| {
+            let bounds = self.lower_param_bounds(&param.bounds, itctx.reborrow());
+            self.lower_generic_bound_predicate(param.ident, param.id, &param.kind, bounds)
+        }));
+        predicates.extend(
+            generics
+                .where_clause
+                .predicates
+                .iter()
+                .map(|predicate| self.lower_where_predicate(predicate)),
+        );
+
         GenericsCtor {
-            params: self.lower_generic_params_mut(&generics.params, itctx).collect(),
-            where_clause: self.lower_where_clause(&generics.where_clause),
+            params: self.lower_generic_params_mut(&generics.params).collect(),
+            predicates,
+            has_where_clause: !generics.where_clause.predicates.is_empty(),
+            where_clause_span: self.lower_span(generics.where_clause.span),
             span: self.lower_span(generics.span),
         }
     }
@@ -1349,17 +1369,74 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
-    ) -> hir::Generics<'hir> {
+    ) -> &'hir hir::Generics<'hir> {
         let generics_ctor = self.lower_generics_mut(generics, itctx);
         generics_ctor.into_generics(self.arena)
     }
 
-    fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause<'hir> {
-        hir::WhereClause {
-            predicates: self.arena.alloc_from_iter(
-                wc.predicates.iter().map(|predicate| self.lower_where_predicate(predicate)),
-            ),
-            span: self.lower_span(wc.span),
+    pub(super) fn lower_generic_bound_predicate(
+        &mut self,
+        ident: Ident,
+        id: NodeId,
+        kind: &GenericParamKind,
+        bounds: &'hir [hir::GenericBound<'hir>],
+    ) -> Option<hir::WherePredicate<'hir>> {
+        // Do not create a clause if we do not have anything inside it.
+        if bounds.is_empty() {
+            return None;
+        }
+        let ident = self.lower_ident(ident);
+        let param_span = ident.span;
+        let span = bounds
+            .iter()
+            .fold(Some(param_span.shrink_to_hi()), |span: Option<Span>, bound| {
+                let bound_span = bound.span();
+                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
+                // as we use this method to get a span appropriate for suggestions.
+                if !bound_span.can_be_used_for_suggestions() {
+                    None
+                } else if let Some(span) = span {
+                    Some(span.to(bound_span))
+                } else {
+                    Some(bound_span)
+                }
+            })
+            .unwrap_or(param_span.shrink_to_hi());
+        match kind {
+            GenericParamKind::Const { .. } => None,
+            GenericParamKind::Type { .. } => {
+                let def_id = self.resolver.local_def_id(id).to_def_id();
+                let ty_path = self.arena.alloc(hir::Path {
+                    span: param_span,
+                    res: Res::Def(DefKind::TyParam, def_id),
+                    segments: self.arena.alloc_from_iter([hir::PathSegment::from_ident(ident)]),
+                });
+                let ty_id = self.next_id();
+                let bounded_ty =
+                    self.ty_path(ty_id, param_span, hir::QPath::Resolved(None, ty_path));
+                Some(hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bounded_ty: self.arena.alloc(bounded_ty),
+                    bounds,
+                    span,
+                    bound_generic_params: &[],
+                    in_where_clause: false,
+                }))
+            }
+            GenericParamKind::Lifetime => {
+                let ident_span = self.lower_span(ident.span);
+                let ident = self.lower_ident(ident);
+                let res = self.resolver.get_lifetime_res(id).unwrap_or_else(|| {
+                    panic!("Missing resolution for lifetime {:?} at {:?}", id, ident.span)
+                });
+                let lt_id = self.resolver.next_node_id();
+                let lifetime = self.new_named_lifetime_with_res(lt_id, ident_span, ident, res);
+                Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                    lifetime,
+                    span,
+                    bounds,
+                    in_where_clause: false,
+                }))
+            }
         }
     }
 
@@ -1371,10 +1448,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounds,
                 span,
             }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                bound_generic_params: self.lower_generic_params(
-                    bound_generic_params,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                ),
+                bound_generic_params: self.lower_generic_params(bound_generic_params),
                 bounded_ty: self
                     .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
                 bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
@@ -1384,6 +1458,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 })),
                 span: self.lower_span(span),
+                in_where_clause: true,
             }),
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,
@@ -1396,6 +1471,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     bounds,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                 ),
+                in_where_clause: true,
             }),
             WherePredicate::EqPredicate(WhereEqPredicate { id, ref lhs_ty, ref rhs_ty, span }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
@@ -1414,16 +1490,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
 /// Helper struct for delayed construction of Generics.
 pub(super) struct GenericsCtor<'hir> {
     pub(super) params: SmallVec<[hir::GenericParam<'hir>; 4]>,
-    where_clause: hir::WhereClause<'hir>,
+    pub(super) predicates: SmallVec<[hir::WherePredicate<'hir>; 4]>,
+    has_where_clause: bool,
+    where_clause_span: Span,
     span: Span,
 }
 
 impl<'hir> GenericsCtor<'hir> {
-    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> hir::Generics<'hir> {
-        hir::Generics {
+    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> &'hir hir::Generics<'hir> {
+        arena.alloc(hir::Generics {
             params: arena.alloc_from_iter(self.params),
-            where_clause: self.where_clause,
+            predicates: arena.alloc_from_iter(self.predicates),
+            has_where_clause: self.has_where_clause,
+            where_clause_span: self.where_clause_span,
             span: self.span,
-        }
+        })
     }
 }

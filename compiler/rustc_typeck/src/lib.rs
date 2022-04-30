@@ -213,7 +213,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
-                generics.where_clause.span()
+                generics.where_clause_span()
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");
@@ -408,7 +408,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         .emit();
                         error = true;
                     }
-                    if let Some(sp) = generics.where_clause.span() {
+                    if let Some(sp) = generics.where_clause_span() {
                         struct_span_err!(
                             tcx.sess,
                             sp,

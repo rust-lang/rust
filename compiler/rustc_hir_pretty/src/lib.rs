@@ -445,7 +445,7 @@ impl<'a> State<'a> {
         if let Some(bounds) = bounds {
             self.print_bounds(":", bounds);
         }
-        self.print_where_clause(&generics.where_clause);
+        self.print_where_clause(generics);
         if let Some(ty) = ty {
             self.space();
             self.word_space("=");
@@ -465,7 +465,7 @@ impl<'a> State<'a> {
         self.print_generic_params(&generics.params);
         self.end(); // end the inner ibox
 
-        self.print_where_clause(&generics.where_clause);
+        self.print_where_clause(generics);
         self.space();
         inner(self);
         self.word(";");
@@ -626,8 +626,8 @@ impl<'a> State<'a> {
                 items,
             }) => {
                 self.head("");
-                self.print_defaultness(defaultness);
-                self.print_unsafety(unsafety);
+                self.print_defaultness(*defaultness);
+                self.print_unsafety(*unsafety);
                 self.word_nbsp("impl");
 
                 if !generics.params.is_empty() {
@@ -635,7 +635,7 @@ impl<'a> State<'a> {
                     self.space();
                 }
 
-                if constness == hir::Constness::Const {
+                if *constness == hir::Constness::Const {
                     self.word_nbsp("const");
                 }
 
@@ -650,12 +650,12 @@ impl<'a> State<'a> {
                 }
 
                 self.print_type(&self_ty);
-                self.print_where_clause(&generics.where_clause);
+                self.print_where_clause(generics);
 
                 self.space();
                 self.bopen();
                 self.print_inner_attributes(attrs);
-                for impl_item in items {
+                for impl_item in *items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
                 self.bclose(item.span);
@@ -678,7 +678,7 @@ impl<'a> State<'a> {
                     }
                 }
                 self.print_bounds(":", real_bounds);
-                self.print_where_clause(&generics.where_clause);
+                self.print_where_clause(generics);
                 self.word(" ");
                 self.bopen();
                 for trait_item in trait_items {
@@ -703,7 +703,7 @@ impl<'a> State<'a> {
                 }
                 self.nbsp();
                 self.print_bounds("=", real_bounds);
-                self.print_where_clause(&generics.where_clause);
+                self.print_where_clause(generics);
                 self.word(";");
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
@@ -739,7 +739,7 @@ impl<'a> State<'a> {
         self.head("enum");
         self.print_name(name);
         self.print_generic_params(&generics.params);
-        self.print_where_clause(&generics.where_clause);
+        self.print_where_clause(generics);
         self.space();
         self.print_variants(&enum_definition.variants, span)
     }
@@ -787,7 +787,7 @@ impl<'a> State<'a> {
                     });
                     self.pclose();
                 }
-                self.print_where_clause(&generics.where_clause);
+                self.print_where_clause(generics);
                 if print_finalizer {
                     self.word(";");
                 }
@@ -795,7 +795,7 @@ impl<'a> State<'a> {
                 self.end() // close the outer-box
             }
             hir::VariantData::Struct(..) => {
-                self.print_where_clause(&generics.where_clause);
+                self.print_where_clause(generics);
                 self.nbsp();
                 self.bopen();
                 self.hardbreak_if_not_bol();
@@ -1995,7 +1995,7 @@ impl<'a> State<'a> {
         self.pclose();
 
         self.print_fn_output(decl);
-        self.print_where_clause(&generics.where_clause)
+        self.print_where_clause(generics)
     }
 
     fn print_closure_params(&mut self, decl: &hir::FnDecl<'_>, body_id: hir::BodyId) {
@@ -2096,21 +2096,8 @@ impl<'a> State<'a> {
         self.print_ident(param.name.ident());
 
         match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                let mut sep = ":";
-                for bound in param.bounds {
-                    match bound {
-                        GenericBound::Outlives(ref lt) => {
-                            self.word(sep);
-                            self.print_lifetime(lt);
-                            sep = "+";
-                        }
-                        _ => panic!(),
-                    }
-                }
-            }
+            GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { ref default, .. } => {
-                self.print_bounds(":", param.bounds);
                 if let Some(default) = default {
                     self.space();
                     self.word_space("=");
@@ -2133,15 +2120,15 @@ impl<'a> State<'a> {
         self.print_ident(lifetime.name.ident())
     }
 
-    pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause<'_>) {
-        if where_clause.predicates.is_empty() {
+    pub fn print_where_clause(&mut self, generics: &hir::Generics<'_>) {
+        if generics.predicates.is_empty() {
             return;
         }
 
         self.space();
         self.word_space("where");
 
-        for (i, predicate) in where_clause.predicates.iter().enumerate() {
+        for (i, predicate) in generics.predicates.iter().enumerate() {
             if i != 0 {
                 self.word_space(",");
             }
@@ -2236,11 +2223,7 @@ impl<'a> State<'a> {
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
-        let generics = hir::Generics {
-            params: &[],
-            where_clause: hir::WhereClause { predicates: &[], span: rustc_span::DUMMY_SP },
-            span: rustc_span::DUMMY_SP,
-        };
+        let generics = hir::Generics::empty();
         self.print_fn(
             decl,
             hir::FnHeader {

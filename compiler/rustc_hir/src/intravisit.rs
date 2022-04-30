@@ -619,7 +619,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
-            walk_list!(visitor, visit_impl_item_ref, items);
+            walk_list!(visitor, visit_impl_item_ref, *items);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
@@ -899,7 +899,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
             }
         }
     }
-    walk_list!(visitor, visit_param_bound, param.bounds);
 }
 
 pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v AnonConst) {
@@ -908,7 +907,7 @@ pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v Ano
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {
     walk_list!(visitor, visit_generic_param, generics.params);
-    walk_list!(visitor, visit_where_predicate, generics.where_clause.predicates);
+    walk_list!(visitor, visit_where_predicate, generics.predicates);
 }
 
 pub fn walk_where_predicate<'v, V: Visitor<'v>>(

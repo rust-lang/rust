@@ -512,7 +512,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
                 if of_trait.is_some() {
                     self.worklist.push(item.def_id);
                 }
-                for impl_item_ref in items {
+                for impl_item_ref in *items {
                     let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                     if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(self.tcx, impl_item.hir_id())

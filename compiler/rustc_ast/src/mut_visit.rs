@@ -867,9 +867,12 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     mut param: GenericParam,
     vis: &mut T,
 ) -> SmallVec<[GenericParam; 1]> {
-    let GenericParam { id, ident, attrs, bounds, kind, is_placeholder: _ } = &mut param;
+    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
     vis.visit_id(id);
     vis.visit_ident(ident);
+    if let Some(ref mut colon_span) = colon_span {
+        vis.visit_span(colon_span);
+    }
     visit_thin_attrs(attrs, vis);
     visit_vec(bounds, |bound| noop_visit_param_bound(bound, vis));
     match kind {

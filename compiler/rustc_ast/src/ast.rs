@@ -397,6 +397,7 @@ pub struct GenericParam {
     pub bounds: GenericBounds,
     pub is_placeholder: bool,
     pub kind: GenericParamKind,
+    pub colon_span: Option<Span>,
 }
 
 impl GenericParam {

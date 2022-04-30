@@ -804,7 +804,8 @@ fn compare_synthetic_generics<'tcx>(
         iter::zip(impl_m_type_params, trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
-            let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_def_id.expect_local());
+            let impl_def_id = impl_def_id.expect_local();
+            let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_def_id);
             let impl_span = tcx.hir().span(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(
@@ -868,14 +869,14 @@ fn compare_synthetic_generics<'tcx>(
                             hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),
                         };
-                        struct Visitor(Option<Span>, hir::def_id::DefId);
+                        struct Visitor(Option<Span>, hir::def_id::LocalDefId);
                         impl<'v> intravisit::Visitor<'v> for Visitor {
                             fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
                                 intravisit::walk_ty(self, ty);
                                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
                                     ty.kind
                                     && let Res::Def(DefKind::TyParam, def_id) = path.res
-                                    && def_id == self.1
+                                    && def_id == self.1.to_def_id()
                                 {
                                     self.0 = Some(ty.span);
                                 }
@@ -887,17 +888,7 @@ fn compare_synthetic_generics<'tcx>(
                         }
                         let span = visitor.0?;
 
-                        let bounds =
-                            impl_m.generics.params.iter().find_map(|param| match param.kind {
-                                GenericParamKind::Lifetime { .. } => None,
-                                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                                    if param.hir_id == impl_hir_id {
-                                        Some(&param.bounds)
-                                    } else {
-                                        None
-                                    }
-                                }
-                            })?;
+                        let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                         let bounds = bounds.first()?.span().to(bounds.last()?.span());
                         let bounds = tcx.sess.source_map().span_to_snippet(bounds).ok()?;
 

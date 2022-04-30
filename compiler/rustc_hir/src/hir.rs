@@ -17,7 +17,7 @@ use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -496,61 +496,25 @@ pub enum GenericParamKind<'hir> {
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
     pub name: ParamName,
-    pub bounds: GenericBounds<'hir>,
     pub span: Span,
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
+    pub colon_span: Option<Span>,
 }
 
 impl<'hir> GenericParam<'hir> {
-    pub fn bounds_span_for_suggestions(&self) -> Option<Span> {
-        self.bounds
-            .iter()
-            .fold(None, |span: Option<Span>, bound| {
-                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                // as we use this method to get a span appropriate for suggestions.
-                if !bound.span().can_be_used_for_suggestions() {
-                    None
-                } else {
-                    let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
-                    Some(span)
-                }
-            })
-            .map(|sp| sp.shrink_to_hi())
+    /// Synthetic type-parameters are inserted after normal ones.
+    /// In order for normal parameters to be able to refer to synthetic ones,
+    /// scans them first.
+    pub fn is_impl_trait(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Type { synthetic: true, .. })
     }
 
-    /// Returns the span of `:` after a generic parameter.
+    /// This can happen for `async fn`, e.g. `async fn f<'_>(&'_ self)`.
     ///
-    /// For example:
-    ///
-    /// ```text
-    /// fn a<T:>()
-    ///       ^
-    ///       |      here
-    ///       here   |
-    ///              v
-    /// fn b<T       :>()
-    ///
-    /// fn c<T
-    ///
-    /// :>()
-    /// ^
-    /// |
-    /// here
-    /// ```
-    pub fn colon_span_for_suggestions(&self, source_map: &SourceMap) -> Option<Span> {
-        let sp = source_map
-            .span_extend_while(self.span.shrink_to_hi(), |c| c.is_whitespace() || c == ':')
-            .ok()?;
-
-        let snippet = source_map.span_to_snippet(sp).ok()?;
-        let offset = snippet.find(':')?;
-
-        let colon_sp = sp
-            .with_lo(BytePos(sp.lo().0 + offset as u32))
-            .with_hi(BytePos(sp.lo().0 + (offset + ':'.len_utf8()) as u32));
-
-        Some(colon_sp)
+    /// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
+    pub fn is_elided_lifetime(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
     }
 }
 
@@ -567,17 +531,22 @@ pub struct GenericParamCount {
 #[derive(Debug, HashStable_Generic)]
 pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
-    pub where_clause: WhereClause<'hir>,
+    pub predicates: &'hir [WherePredicate<'hir>],
+    pub has_where_clause: bool,
+    pub where_clause_span: Span,
     pub span: Span,
 }
 
 impl<'hir> Generics<'hir> {
-    pub const fn empty() -> Generics<'hir> {
-        Generics {
+    pub const fn empty() -> &'hir Generics<'hir> {
+        const NOPE: Generics<'_> = Generics {
             params: &[],
-            where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
+            predicates: &[],
+            has_where_clause: false,
+            where_clause_span: DUMMY_SP,
             span: DUMMY_SP,
-        }
+        };
+        &NOPE
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
@@ -596,32 +565,122 @@ impl<'hir> Generics<'hir> {
             self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
         }
     }
-}
 
-/// A where-clause in a definition.
-#[derive(Debug, HashStable_Generic)]
-pub struct WhereClause<'hir> {
-    pub predicates: &'hir [WherePredicate<'hir>],
-    // Only valid if predicates aren't empty.
-    pub span: Span,
-}
-
-impl WhereClause<'_> {
-    pub fn span(&self) -> Option<Span> {
-        if self.predicates.is_empty() { None } else { Some(self.span) }
+    /// If there are generic parameters, return where to introduce a new one.
+    pub fn span_for_param_suggestion(&self) -> Option<Span> {
+        if self.params.iter().any(|p| self.span.contains(p.span)) {
+            // `fn foo<A>(t: impl Trait)`
+            //          ^ suggest `, T: Trait` here
+            let span = self.span.with_lo(self.span.hi() - BytePos(1)).shrink_to_lo();
+            Some(span)
+        } else {
+            None
+        }
     }
 
-    /// The `WhereClause` under normal circumstances points at either the predicates or the empty
+    pub fn where_clause_span(&self) -> Option<Span> {
+        if self.predicates.is_empty() { None } else { Some(self.where_clause_span) }
+    }
+
+    /// The `where_span` under normal circumstances points at either the predicates or the empty
     /// space where the `where` clause should be. Only of use for diagnostic suggestions.
     pub fn span_for_predicates_or_empty_place(&self) -> Span {
-        self.span
+        self.where_clause_span
     }
 
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
     ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
-    pub fn tail_span_for_suggestion(&self) -> Span {
+    pub fn tail_span_for_predicate_suggestion(&self) -> Span {
         let end = self.span_for_predicates_or_empty_place().shrink_to_hi();
-        self.predicates.last().map_or(end, |p| p.span()).shrink_to_hi().to(end)
+        if self.has_where_clause {
+            self.predicates
+                .iter()
+                .filter(|p| p.in_where_clause())
+                .last()
+                .map_or(end, |p| p.span())
+                .shrink_to_hi()
+                .to(end)
+        } else {
+            end
+        }
+    }
+
+    pub fn bounds_for_param(
+        &self,
+        param_def_id: LocalDefId,
+    ) -> impl Iterator<Item = &WhereBoundPredicate<'_>> {
+        self.predicates.iter().filter_map(move |pred| match pred {
+            WherePredicate::BoundPredicate(bp) if bp.is_param_bound(param_def_id.to_def_id()) => {
+                Some(bp)
+            }
+            _ => None,
+        })
+    }
+
+    pub fn bounds_span_for_suggestions(&self, param_def_id: LocalDefId) -> Option<Span> {
+        self.bounds_for_param(param_def_id).flat_map(|bp| bp.bounds.iter().rev()).find_map(
+            |bound| {
+                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
+                // as we use this method to get a span appropriate for suggestions.
+                let bs = bound.span();
+                if bs.can_be_used_for_suggestions() { Some(bs.shrink_to_hi()) } else { None }
+            },
+        )
+    }
+
+    pub fn span_for_predicate_removal(&self, pos: usize) -> Span {
+        let predicate = &self.predicates[pos];
+        let span = predicate.span();
+
+        if !predicate.in_where_clause() {
+            // <T: ?Sized, U>
+            //   ^^^^^^^^
+            return span;
+        }
+
+        // We need to find out which comma to remove.
+        if pos < self.predicates.len() - 1 {
+            let next_pred = &self.predicates[pos + 1];
+            if next_pred.in_where_clause() {
+                // where T: ?Sized, Foo: Bar,
+                //       ^^^^^^^^^^^
+                return span.until(next_pred.span());
+            }
+        }
+
+        if pos > 0 {
+            let prev_pred = &self.predicates[pos - 1];
+            if prev_pred.in_where_clause() {
+                // where Foo: Bar, T: ?Sized,
+                //               ^^^^^^^^^^^
+                return prev_pred.span().shrink_to_hi().to(span);
+            }
+        }
+
+        // This is the only predicate in the where clause.
+        // where T: ?Sized
+        // ^^^^^^^^^^^^^^^
+        self.where_clause_span
+    }
+
+    pub fn span_for_bound_removal(&self, predicate_pos: usize, bound_pos: usize) -> Span {
+        let predicate = &self.predicates[predicate_pos];
+        let bounds = predicate.bounds();
+
+        if bounds.len() == 1 {
+            return self.span_for_predicate_removal(predicate_pos);
+        }
+
+        let span = bounds[bound_pos].span();
+        if bound_pos == 0 {
+            // where T: ?Sized + Bar, Foo: Bar,
+            //          ^^^^^^^^^
+            span.to(bounds[1].span().shrink_to_lo())
+        } else {
+            // where T: Bar + ?Sized, Foo: Bar,
+            //             ^^^^^^^^^
+            bounds[bound_pos - 1].span().shrink_to_hi().to(span)
+        }
     }
 }
 
@@ -644,12 +703,29 @@ impl<'hir> WherePredicate<'hir> {
             WherePredicate::EqPredicate(p) => p.span,
         }
     }
+
+    pub fn in_where_clause(&self) -> bool {
+        match self {
+            WherePredicate::BoundPredicate(p) => p.in_where_clause,
+            WherePredicate::RegionPredicate(p) => p.in_where_clause,
+            WherePredicate::EqPredicate(_) => false,
+        }
+    }
+
+    pub fn bounds(&self) -> GenericBounds<'hir> {
+        match self {
+            WherePredicate::BoundPredicate(p) => p.bounds,
+            WherePredicate::RegionPredicate(p) => p.bounds,
+            WherePredicate::EqPredicate(_) => &[],
+        }
+    }
 }
 
 /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereBoundPredicate<'hir> {
     pub span: Span,
+    pub in_where_clause: bool,
     /// Any generics from a `for` binding.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
     /// The type being bounded.
@@ -661,14 +737,7 @@ pub struct WhereBoundPredicate<'hir> {
 impl<'hir> WhereBoundPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
-        let TyKind::Path(QPath::Resolved(None, path)) = self.bounded_ty.kind else {
-            return false;
-        };
-        match path.res {
-            Res::Def(DefKind::TyParam, def_id)
-            | Res::SelfTy { trait_: Some(def_id), alias_to: None } => def_id == param_def_id,
-            _ => false,
-        }
+        self.bounded_ty.as_generic_param().map_or(false, |(def_id, _)| def_id == param_def_id)
     }
 }
 
@@ -676,6 +745,7 @@ impl<'hir> WhereBoundPredicate<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereRegionPredicate<'hir> {
     pub span: Span,
+    pub in_where_clause: bool,
     pub lifetime: Lifetime,
     pub bounds: GenericBounds<'hir>,
 }
@@ -2075,7 +2145,7 @@ impl TraitItemId {
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
 }
@@ -2135,7 +2205,7 @@ impl ImplItemId {
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
@@ -2241,6 +2311,23 @@ pub struct Ty<'hir> {
     pub span: Span,
 }
 
+impl<'hir> Ty<'hir> {
+    /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
+    pub fn as_generic_param(&self) -> Option<(DefId, Ident)> {
+        let TyKind::Path(QPath::Resolved(None, path)) = self.kind else {
+            return None;
+        };
+        let [segment] = &path.segments else {
+            return None;
+        };
+        match path.res {
+            Res::Def(DefKind::TyParam, def_id)
+            | Res::SelfTy { trait_: Some(def_id), alias_to: None } => Some((def_id, segment.ident)),
+            _ => None,
+        }
+    }
+}
+
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
@@ -2340,7 +2427,7 @@ pub struct BareFnTy<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
 }
@@ -2814,7 +2901,7 @@ pub enum ItemKind<'hir> {
     /// A `const` item.
     Const(&'hir Ty<'hir>, BodyId),
     /// A function declaration.
-    Fn(FnSig<'hir>, Generics<'hir>, BodyId),
+    Fn(FnSig<'hir>, &'hir Generics<'hir>, BodyId),
     /// A MBE macro definition (`macro_rules!` or `macro`).
     Macro(ast::MacroDef, MacroKind),
     /// A module.
@@ -2824,22 +2911,22 @@ pub enum ItemKind<'hir> {
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
-    TyAlias(&'hir Ty<'hir>, Generics<'hir>),
+    TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
-    Enum(EnumDef<'hir>, Generics<'hir>),
+    Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(VariantData<'hir>, Generics<'hir>),
+    Struct(VariantData<'hir>, &'hir Generics<'hir>),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(VariantData<'hir>, Generics<'hir>),
+    Union(VariantData<'hir>, &'hir Generics<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
     /// A trait alias.
-    TraitAlias(Generics<'hir>, GenericBounds<'hir>),
+    TraitAlias(&'hir Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(Impl<'hir>),
+    Impl(&'hir Impl<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -2851,7 +2938,7 @@ pub struct Impl<'hir> {
     // decoding as `Span`s cannot be decoded when a `Session` is not available.
     pub defaultness_span: Option<Span>,
     pub constness: Constness,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
 
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef<'hir>>,
@@ -2993,7 +3080,7 @@ impl ForeignItem<'_> {
 #[derive(Debug, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(&'hir FnDecl<'hir>, &'hir [Ident], Generics<'hir>),
+    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability),
     /// A foreign type.
@@ -3326,9 +3413,11 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
     rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
+    rustc_data_structures::static_assert_size!(super::Generics<'static>, 56);
+    rustc_data_structures::static_assert_size!(super::Impl<'static>, 80);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 160);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 120);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 72);
 }

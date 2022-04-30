@@ -259,7 +259,7 @@ enum ImplTraitContext<'b, 'a> {
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
     ///
     /// Newly generated parameters should be inserted into the given `Vec`.
-    Universal(&'b mut Vec<hir::GenericParam<'a>>, LocalDefId),
+    Universal(&'b mut Vec<hir::GenericParam<'a>>, &'b mut Vec<hir::WherePredicate<'a>>, LocalDefId),
 
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -303,7 +303,7 @@ impl<'a> ImplTraitContext<'_, 'a> {
     fn reborrow<'this>(&'this mut self) -> ImplTraitContext<'this, 'a> {
         use self::ImplTraitContext::*;
         match self {
-            Universal(params, parent) => Universal(params, *parent),
+            Universal(params, bounds, parent) => Universal(params, bounds, *parent),
             ReturnPositionOpaqueTy { origin } => ReturnPositionOpaqueTy { origin: *origin },
             TypeAliasesOpaqueTy => TypeAliasesOpaqueTy,
             Disallowed(pos) => Disallowed(*pos),
@@ -704,10 +704,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Some(hir::GenericParam {
             hir_id,
             name,
-            bounds: &[],
             span: self.lower_span(ident.span),
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind },
+            colon_span: None,
         })
     }
 
@@ -718,14 +718,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         generics: &Generics,
         parent_node_id: NodeId,
-        f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
-    ) -> (hir::Generics<'hir>, T) {
+        f: impl FnOnce(
+            &mut Self,
+            &mut Vec<hir::GenericParam<'hir>>,
+            &mut Vec<hir::WherePredicate<'hir>>,
+        ) -> T,
+    ) -> (&'hir hir::Generics<'hir>, T) {
         let mut impl_trait_defs = Vec::new();
+        let mut impl_trait_bounds = Vec::new();
         let mut lowered_generics = self.lower_generics_mut(
             generics,
-            ImplTraitContext::Universal(&mut impl_trait_defs, self.current_hir_id_owner),
+            ImplTraitContext::Universal(
+                &mut impl_trait_defs,
+                &mut impl_trait_bounds,
+                self.current_hir_id_owner,
+            ),
         );
-        let res = f(self, &mut impl_trait_defs);
+        let res = f(self, &mut impl_trait_defs, &mut impl_trait_bounds);
 
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
         lowered_generics.params.extend(
@@ -736,6 +745,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 })
                 .chain(impl_trait_defs),
         );
+        lowered_generics.predicates.extend(impl_trait_bounds);
 
         let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
@@ -999,7 +1009,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal(_, parent) if self.is_in_dyn_type => {
+                    ImplTraitContext::Universal(_, _, parent) if self.is_in_dyn_type => {
                         parent_def_id = parent;
                         (true, itctx)
                     }
@@ -1188,10 +1198,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::BareFn(ref f) => self.with_lifetime_binder(t.id, |this| {
                 hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                    generic_params: this.lower_generic_params(
-                        &f.generic_params,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    ),
+                    generic_params: this.lower_generic_params(&f.generic_params),
                     unsafety: this.lower_unsafety(f.unsafety),
                     abi: this.lower_extern(f.ext),
                     decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
@@ -1274,13 +1281,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             |this| this.lower_param_bounds(bounds, nested_itctx),
                         )
                     }
-                    ImplTraitContext::Universal(in_band_ty_params, parent_def_id) => {
+                    ImplTraitContext::Universal(
+                        in_band_ty_params,
+                        in_band_ty_bounds,
+                        parent_def_id,
+                    ) => {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
-                            ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
+                            ImplTraitContext::Universal(
+                                in_band_ty_params,
+                                in_band_ty_bounds,
+                                parent_def_id,
+                            ),
                         );
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
@@ -1288,10 +1303,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(self.lower_ident(ident)),
                             pure_wrt_drop: false,
-                            bounds: hir_bounds,
                             span: self.lower_span(span),
                             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
+                            colon_span: None,
                         });
+                        if let Some(preds) = self.lower_generic_bound_predicate(
+                            ident,
+                            def_node_id,
+                            &GenericParamKind::Type { default: None },
+                            hir_bounds,
+                        ) {
+                            in_band_ty_bounds.push(preds)
+                        }
 
                         hir::TyKind::Path(hir::QPath::Resolved(
                             None,
@@ -1374,8 +1397,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         name: p_name,
                         span,
                         pure_wrt_drop: false,
-                        bounds: &[],
                         kind: hir::GenericParamKind::Lifetime { kind },
+                        colon_span: None,
                     }
                 },
             ));
@@ -1383,11 +1406,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs);
 
             let opaque_ty_item = hir::OpaqueTy {
-                generics: hir::Generics {
+                generics: self.arena.alloc(hir::Generics {
                     params: lifetime_defs,
-                    where_clause: hir::WhereClause { predicates: &[], span: lctx.lower_span(span) },
+                    predicates: &[],
+                    has_where_clause: false,
+                    where_clause_span: lctx.lower_span(span),
                     span: lctx.lower_span(span),
-                },
+                }),
                 bounds: hir_bounds,
                 origin,
             };
@@ -1462,7 +1487,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
-        mut in_band_ty_params: Option<(NodeId, &mut Vec<hir::GenericParam<'hir>>)>,
+        mut in_band_ty_params: Option<(
+            NodeId,
+            &mut Vec<hir::GenericParam<'hir>>,
+            &mut Vec<hir::WherePredicate<'hir>>,
+        )>,
         kind: FnDeclKind,
         make_ret_async: Option<NodeId>,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -1485,10 +1514,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
-            if let Some((_, ibty)) = &mut in_band_ty_params {
+            if let Some((_, ibty, ibpb)) = &mut in_band_ty_params {
                 self.lower_ty_direct(
                     &param.ty,
-                    ImplTraitContext::Universal(ibty, self.current_hir_id_owner),
+                    ImplTraitContext::Universal(ibty, ibpb, self.current_hir_id_owner),
                 )
             } else {
                 self.lower_ty_direct(
@@ -1517,7 +1546,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             match decl.output {
                 FnRetTy::Ty(ref ty) => {
                     let context = match in_band_ty_params {
-                        Some((node_id, _)) if kind.impl_trait_return_allowed() => {
+                        Some((node_id, _, _)) if kind.impl_trait_return_allowed() => {
                             let fn_def_id = self.resolver.local_def_id(node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
@@ -1708,18 +1737,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         name: p_name,
                         span,
                         pure_wrt_drop: false,
-                        bounds: &[],
                         kind: hir::GenericParamKind::Lifetime { kind },
+                        colon_span: None,
                     }
                 }));
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
             let opaque_ty_item = hir::OpaqueTy {
-                generics: hir::Generics {
+                generics: this.arena.alloc(hir::Generics {
                     params: generic_params,
-                    where_clause: hir::WhereClause { predicates: &[], span: this.lower_span(span) },
+                    predicates: &[],
+                    has_where_clause: false,
+                    where_clause_span: this.lower_span(span),
                     span: this.lower_span(span),
-                },
+                }),
                 bounds: arena_vec![this; future_bound],
                 origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
             };
@@ -1923,26 +1954,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_params_mut<'s>(
         &'s mut self,
         params: &'s [GenericParam],
-        mut itctx: ImplTraitContext<'s, 'hir>,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> + Captures<'a> + Captures<'s> {
-        params.iter().map(move |param| self.lower_generic_param(param, itctx.reborrow()))
+        params.iter().map(move |param| self.lower_generic_param(param))
     }
 
-    fn lower_generic_params(
-        &mut self,
-        params: &[GenericParam],
-        itctx: ImplTraitContext<'_, 'hir>,
-    ) -> &'hir [hir::GenericParam<'hir>] {
-        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, itctx))
+    fn lower_generic_params(&mut self, params: &[GenericParam]) -> &'hir [hir::GenericParam<'hir>] {
+        self.arena.alloc_from_iter(self.lower_generic_params_mut(params))
     }
 
-    fn lower_generic_param(
-        &mut self,
-        param: &GenericParam,
-        mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> hir::GenericParam<'hir> {
-        let bounds: Vec<_> = self.lower_param_bounds_mut(&param.bounds, itctx.reborrow()).collect();
-
+    fn lower_generic_param(&mut self, param: &GenericParam) -> hir::GenericParam<'hir> {
         let (name, kind) = match param.kind {
             GenericParamKind::Lifetime => {
                 let param_name = if param.ident.name == kw::StaticLifetime
@@ -1989,8 +2009,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             name,
             span: self.lower_span(param.span()),
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
-            bounds: self.arena.alloc_from_iter(bounds),
             kind,
+            colon_span: param.colon_span.map(|s| self.lower_span(s)),
         }
     }
 
@@ -2012,8 +2032,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::PolyTraitRef<'hir> {
-        let bound_generic_params =
-            self.lower_generic_params(&p.bound_generic_params, itctx.reborrow());
+        let bound_generic_params = self.lower_generic_params(&p.bound_generic_params);
 
         let trait_ref = self.with_lifetime_binder(p.trait_ref.ref_id, |this| {
             this.lower_trait_ref(&p.trait_ref, itctx.reborrow())

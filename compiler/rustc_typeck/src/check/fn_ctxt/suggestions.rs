@@ -599,17 +599,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             kind:
                 hir::ItemKind::Fn(
                     hir::FnSig { decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. }, .. },
-                    hir::Generics { params, where_clause, .. },
+                    hir::Generics { params, predicates, .. },
                     _body_id,
                 ),
             ..
         })) = fn_node else { return };
 
-        let Some(expected_generic_param) = params.get(expected_ty_as_param.index as usize) else { return };
+        if params.get(expected_ty_as_param.index as usize).is_none() {
+            return;
+        };
 
         // get all where BoundPredicates here, because they are used in to cases below
-        let where_predicates = where_clause
-            .predicates
+        let where_predicates = predicates
             .iter()
             .filter_map(|p| match p {
                 WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
@@ -640,10 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             where_predicates.iter().flatten().flat_map(|bounds| bounds.iter());
 
         // extract all bounds from the source code using their spans
-        let all_matching_bounds_strs = expected_generic_param
-            .bounds
-            .iter()
-            .chain(predicates_from_where)
+        let all_matching_bounds_strs = predicates_from_where
             .filter_map(|bound| match bound {
                 GenericBound::Trait(_, _) => {
                     self.tcx.sess.source_map().span_to_snippet(bound.span()).ok()
