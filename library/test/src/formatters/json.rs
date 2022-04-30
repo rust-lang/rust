@@ -93,7 +93,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         } else {
             None
         };
-        match *result {
+        match result {
             TestResult::TrOk => {
                 self.write_event("test", desc.name.as_slice(), "ok", exec_time, stdout, None)
             }
@@ -111,7 +111,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 Some(r#""reason": "time limit exceeded""#),
             ),
 
-            TestResult::TrFailedMsg(ref m) => self.write_event(
+            TestResult::TrFailedMsg(m) => self.write_event(
                 "test",
                 desc.name.as_slice(),
                 "failed",
@@ -131,7 +131,16 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                     .as_deref(),
             ),
 
-            TestResult::TrBench(ref bs) => {
+            TestResult::TrIgnoredMsg(msg) => self.write_event(
+                "test",
+                desc.name.as_slice(),
+                "ignored",
+                exec_time,
+                stdout,
+                Some(&*msg),
+            ),
+
+            TestResult::TrBench(bs) => {
                 let median = bs.ns_iter_summ.median as usize;
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 

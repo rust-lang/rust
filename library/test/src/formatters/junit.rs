@@ -76,7 +76,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         for (desc, result, duration) in std::mem::replace(&mut self.results, Vec::new()) {
             let (class_name, test_name) = parse_class_name(&desc);
             match result {
-                TestResult::TrIgnored => { /* no-op */ }
+                TestResult::TrIgnored | TestResult::TrIgnoredMsg(_) => { /* no-op */ }
                 TestResult::TrFailed => {
                     self.write_message(&*format!(
                         "<testcase classname=\"{}\" \

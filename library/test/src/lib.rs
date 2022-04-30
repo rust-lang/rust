@@ -86,6 +86,31 @@ use options::{Concurrent, RunStrategy};
 use test_result::*;
 use time::TestExecTime;
 
+/// Panic payload to indicate that a test should be marked as ignored, rather
+/// than failed.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(test)]
+/// extern crate test;
+/// # use std::panic::panic_any;
+/// # fn compute_should_ignore() -> bool { true }
+/// # fn do_real_test() { unreachable!() }
+///
+/// if compute_should_ignore() {
+///     panic_any(test::IgnoreTest {
+///         reason: Some("".into())
+///     });
+/// } else {
+///     do_real_test();
+/// }
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct IgnoreTest {
+    pub reason: Option<String>,
+}
+
 // Process exit code to be used to indicate test failures.
 const ERROR_EXIT_CODE: i32 = 101;
 
@@ -683,10 +708,10 @@ fn run_test_in_spawned_subprocess(desc: TestDesc, testfn: Box<dyn FnOnce() + Sen
             builtin_panic_hook(info);
         }
 
-        if let TrOk = test_result {
-            process::exit(test_result::TR_OK);
-        } else {
-            process::exit(test_result::TR_FAILED);
+        match test_result {
+            TrOk => process::exit(test_result::TR_OK),
+            TrIgnored | TrIgnoredMsg(_) => process::exit(test_result::TR_IGNORED),
+            _ => process::exit(test_result::TR_FAILED),
         }
     });
     let record_result2 = record_result.clone();

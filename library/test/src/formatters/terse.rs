@@ -203,7 +203,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
             TestResult::TrFailed | TestResult::TrFailedMsg(_) | TestResult::TrTimedFail => {
                 self.write_failed()
             }
-            TestResult::TrIgnored => self.write_ignored(),
+            TestResult::TrIgnored | TestResult::TrIgnoredMsg(_) => self.write_ignored(),
             TestResult::TrBench(ref bs) => {
                 if self.is_multithreaded {
                     self.write_test_name(desc)?;

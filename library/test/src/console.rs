@@ -106,10 +106,10 @@ impl ConsoleTestState {
             let TestDesc { name, ignore_message, .. } = test;
             format!(
                 "{} {}",
-                match *result {
+                match result {
                     TestResult::TrOk => "ok".to_owned(),
                     TestResult::TrFailed => "failed".to_owned(),
-                    TestResult::TrFailedMsg(ref msg) => format!("failed: {msg}"),
+                    TestResult::TrFailedMsg(msg) => format!("failed: {msg}"),
                     TestResult::TrIgnored => {
                         if let Some(msg) = ignore_message {
                             format!("ignored: {msg}")
@@ -117,7 +117,8 @@ impl ConsoleTestState {
                             "ignored".to_owned()
                         }
                     }
-                    TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
+                    TestResult::TrIgnoredMsg(msg) => format!("ignored: {msg}"),
+                    TestResult::TrBench(bs) => fmt_bench_samples(bs),
                     TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
                 },
                 name,
@@ -194,7 +195,7 @@ fn handle_test_result(st: &mut ConsoleTestState, completed_test: CompletedTest) 
             st.passed += 1;
             st.not_failures.push((test, stdout));
         }
-        TestResult::TrIgnored => st.ignored += 1,
+        TestResult::TrIgnored | TestResult::TrIgnoredMsg(_) => st.ignored += 1,
         TestResult::TrBench(bs) => {
             st.metrics.insert_metric(
                 test.name.as_slice(),

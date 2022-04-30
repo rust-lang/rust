@@ -264,6 +264,14 @@ enum TestFailure {
     UnexpectedRunPass,
 }
 
+/// Documentation test success modes.
+enum TestSuccess {
+    /// The test passed normally.
+    Pass,
+    /// The test panicked with `IgnoreTest`
+    Ignore,
+}
+
 enum DirState {
     Temp(tempfile::TempDir),
     Perm(PathBuf),
@@ -290,6 +298,10 @@ struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
+/// Exit code to specify that the test should be ignored. Happens to match the
+/// one used by the test crate, but this is not strictly required.
+const TR_IGNORED: i32 = 52;
+
 fn run_test(
     test: &str,
     crate_name: &str,
@@ -306,7 +318,7 @@ fn run_test(
     path: PathBuf,
     test_id: &str,
     report_unused_externs: impl Fn(UnusedExterns),
-) -> Result<(), TestFailure> {
+) -> Result<TestSuccess, TestFailure> {
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
@@ -446,7 +458,7 @@ fn run_test(
     }
 
     if no_run {
-        return Ok(());
+        return Ok(TestSuccess::Pass);
     }
 
     // Run the code!
@@ -478,12 +490,16 @@ fn run_test(
             if lang_string.should_panic && out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
             } else if !lang_string.should_panic && !out.status.success() {
-                return Err(TestFailure::ExecutionFailure(out));
+                if out.status.code() == Some(TR_IGNORED) {
+                    return Ok(TestSuccess::Ignore);
+                } else {
+                    return Err(TestFailure::ExecutionFailure(out));
+                }
             }
         }
     }
 
-    Ok(())
+    Ok(TestSuccess::Pass)
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
@@ -675,6 +691,28 @@ crate fn make_test(
     if dont_insert_main || already_has_main || prog.contains("![no_std]") {
         prog.push_str(everything_else);
     } else {
+        // HACK(cad97): only try to catch IgnoreTest panic if feature(test)
+        // is enabled by the test and it includes the test crate.
+        let found_feature_test =
+            crate_attrs.contains("feature(test)") && prog.contains("extern crate test;");
+        let (catch_ignore_pre, catch_ignore_post) = if found_feature_test {
+            (
+                "match ::std::panic::catch_unwind(|| ",
+                format!(
+                    " ) {{ \
+                        Ok(ok) => ok, \
+                        Err(err) => if let Some(_) = err.downcast_ref::<::test::IgnoreTest>() {{\
+                            ::std::process::exit({TR_IGNORED}) \
+                        }} else {{\
+                            ::std::panic::resume_unwind(err) \
+                        }} \
+                    }}"
+                ),
+            )
+        } else {
+            ("", "".into())
+        };
+
         let returns_result = everything_else.trim_end().ends_with("(())");
         // Give each doctest main function a unique name.
         // This is for example needed for the tooling around `-C instrument-coverage`.
@@ -684,6 +722,7 @@ crate fn make_test(
             "_inner".into()
         };
         let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
+
         let (main_pre, main_post) = if returns_result {
             (
                 format!(
@@ -694,7 +733,7 @@ crate fn make_test(
         } else if test_id.is_some() {
             (
                 format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
-                format!("\n}} {inner_fn_name}() }}"),
+                format!("\n}} {catch_ignore_pre}{inner_fn_name}(){catch_ignore_post} }}"),
             )
         } else {
             ("fn main() {\n".into(), "\n}".into())
@@ -1048,56 +1087,69 @@ impl Tester for Collector {
                     report_unused_externs,
                 );
 
-                if let Err(err) = res {
-                    match err {
-                        TestFailure::CompileError => {
-                            eprint!("Couldn't compile the test.");
-                        }
-                        TestFailure::UnexpectedCompilePass => {
-                            eprint!("Test compiled successfully, but it's marked `compile_fail`.");
-                        }
-                        TestFailure::UnexpectedRunPass => {
-                            eprint!("Test executable succeeded, but it's marked `should_panic`.");
-                        }
-                        TestFailure::MissingErrorCodes(codes) => {
-                            eprint!("Some expected error codes were not found: {:?}", codes);
-                        }
-                        TestFailure::ExecutionError(err) => {
-                            eprint!("Couldn't run the test: {err}");
-                            if err.kind() == io::ErrorKind::PermissionDenied {
-                                eprint!(" - maybe your tempdir is mounted with noexec?");
-                            }
-                        }
-                        TestFailure::ExecutionFailure(out) => {
-                            eprintln!("Test executable failed ({reason}).", reason = out.status);
-
-                            // FIXME(#12309): An unfortunate side-effect of capturing the test
-                            // executable's output is that the relative ordering between the test's
-                            // stdout and stderr is lost. However, this is better than the
-                            // alternative: if the test executable inherited the parent's I/O
-                            // handles the output wouldn't be captured at all, even on success.
-                            //
-                            // The ordering could be preserved if the test process' stderr was
-                            // redirected to stdout, but that functionality does not exist in the
-                            // standard library, so it may not be portable enough.
-                            let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
-                            let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
-
-                            if !stdout.is_empty() || !stderr.is_empty() {
-                                eprintln!();
-
-                                if !stdout.is_empty() {
-                                    eprintln!("stdout:\n{stdout}");
-                                }
-
-                                if !stderr.is_empty() {
-                                    eprintln!("stderr:\n{stderr}");
-                                }
-                            }
-                        }
+                match res {
+                    Ok(TestSuccess::Pass) => (),
+                    Ok(TestSuccess::Ignore) => {
+                        panic::resume_unwind(box test::IgnoreTest::default())
                     }
+                    Err(err) => {
+                        match err {
+                            TestFailure::CompileError => {
+                                eprint!("Couldn't compile the test.");
+                            }
+                            TestFailure::UnexpectedCompilePass => {
+                                eprint!(
+                                    "Test compiled successfully, but it's marked `compile_fail`."
+                                );
+                            }
+                            TestFailure::UnexpectedRunPass => {
+                                eprint!(
+                                    "Test executable succeeded, but it's marked `should_panic`."
+                                );
+                            }
+                            TestFailure::MissingErrorCodes(codes) => {
+                                eprint!("Some expected error codes were not found: {:?}", codes);
+                            }
+                            TestFailure::ExecutionError(err) => {
+                                eprint!("Couldn't run the test: {err}");
+                                if err.kind() == io::ErrorKind::PermissionDenied {
+                                    eprint!(" - maybe your tempdir is mounted with noexec?");
+                                }
+                            }
+                            TestFailure::ExecutionFailure(out) => {
+                                eprintln!(
+                                    "Test executable failed ({reason}).",
+                                    reason = out.status
+                                );
 
-                    panic::resume_unwind(box ());
+                                // FIXME(#12309): An unfortunate side-effect of capturing the test
+                                // executable's output is that the relative ordering between the test's
+                                // stdout and stderr is lost. However, this is better than the
+                                // alternative: if the test executable inherited the parent's I/O
+                                // handles the output wouldn't be captured at all, even on success.
+                                //
+                                // The ordering could be preserved if the test process' stderr was
+                                // redirected to stdout, but that functionality does not exist in the
+                                // standard library, so it may not be portable enough.
+                                let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
+                                let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
+
+                                if !stdout.is_empty() || !stderr.is_empty() {
+                                    eprintln!();
+
+                                    if !stdout.is_empty() {
+                                        eprintln!("stdout:\n{stdout}");
+                                    }
+
+                                    if !stderr.is_empty() {
+                                        eprintln!("stderr:\n{stderr}");
+                                    }
+                                }
+                            }
+                        }
+
+                        panic::resume_unwind(box ());
+                    }
                 }
             }),
         });

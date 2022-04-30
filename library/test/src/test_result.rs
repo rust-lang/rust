@@ -4,6 +4,7 @@ use super::bench::BenchSamples;
 use super::options::ShouldPanic;
 use super::time;
 use super::types::TestDesc;
+use super::IgnoreTest;
 
 pub use self::TestResult::*;
 
@@ -12,6 +13,7 @@ pub use self::TestResult::*;
 // it means.
 pub const TR_OK: i32 = 50;
 pub const TR_FAILED: i32 = 51;
+pub const TR_IGNORED: i32 = 52;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TestResult {
@@ -19,6 +21,7 @@ pub enum TestResult {
     TrFailed,
     TrFailedMsg(String),
     TrIgnored,
+    TrIgnoredMsg(String),
     TrBench(BenchSamples),
     TrTimedFail,
 }
@@ -32,8 +35,8 @@ pub fn calc_result<'a>(
     exec_time: &Option<time::TestExecTime>,
 ) -> TestResult {
     let result = match (&desc.should_panic, task_result) {
-        (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
-        (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
+        (ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
+        (ShouldPanic::YesWithMessage(msg), Err(err)) => {
             let maybe_panic_str = err
                 .downcast_ref::<String>()
                 .map(|e| &**e)
@@ -53,15 +56,24 @@ pub fn calc_result<'a>(
                     r#"expected panic with string value,
  found non-string value: `{:?}`
      expected substring: `{:?}`"#,
-                    (**err).type_id(),
+                    (*err).type_id(),
                     msg
                 ))
             }
         }
-        (&ShouldPanic::Yes, Ok(())) | (&ShouldPanic::YesWithMessage(_), Ok(())) => {
+        (ShouldPanic::Yes, Ok(())) | (ShouldPanic::YesWithMessage(_), Ok(())) => {
             TestResult::TrFailedMsg("test did not panic as expected".to_string())
         }
-        _ => TestResult::TrFailed,
+        (ShouldPanic::No, Err(err)) => {
+            if let Some(ignore) = err.downcast_ref::<IgnoreTest>() {
+                match &ignore.reason {
+                    Some(reason) => TestResult::TrIgnoredMsg(reason.clone()),
+                    None => TestResult::TrIgnored,
+                }
+            } else {
+                TestResult::TrFailed
+            }
+        }
     };
 
     // If test is already failed (or allowed to fail), do not change the result.
@@ -89,6 +101,7 @@ pub fn get_result_from_exit_code(
     let result = match code {
         TR_OK => TestResult::TrOk,
         TR_FAILED => TestResult::TrFailed,
+        TR_IGNORED => TestResult::TrIgnored,
         _ => TestResult::TrFailedMsg(format!("got unexpected return code {code}")),
     };
 
