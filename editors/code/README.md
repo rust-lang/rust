@@ -1,6 +1,6 @@
 # rust-analyzer
 
-This extension proves support for the [Rust programming language](https://www.rust-lang.org/).
+This extension provides support for the [Rust programming language](https://www.rust-lang.org/).
 
 ## Features
 
