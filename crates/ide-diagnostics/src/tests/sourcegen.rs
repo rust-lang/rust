@@ -23,7 +23,7 @@ struct Diagnostic {
 
 impl Diagnostic {
     fn collect() -> io::Result<Vec<Diagnostic>> {
-        let handlers_dir = project_root().join("crates/ide_diagnostics/src/handlers");
+        let handlers_dir = project_root().join("crates/ide-diagnostics/src/handlers");
 
         let mut res = Vec::new();
         for path in sourcegen::list_rust_files(&handlers_dir) {
