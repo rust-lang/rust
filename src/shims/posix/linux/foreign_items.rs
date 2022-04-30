@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match &*link_name.as_str() {
             // errno
             "__errno_location" => {
-                let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
             }
@@ -33,31 +33,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These symbols have different names on Linux and macOS, which is the only reason they are not
             // in the `posix` module.
             "close" => {
-                let &[ref fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.close(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir" => {
-                let &[ref name] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir64" => {
-                let &[ref dirp] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_readdir64(dirp)?;
                 this.write_scalar(result, dest)?;
             }
             "ftruncate64" => {
-                let &[ref fd, ref length] =
+                let [fd, length] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             // Linux-only
             "posix_fadvise" => {
-                let &[ref fd, ref offset, ref len, ref advice] =
+                let [fd, offset, len, advice] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(fd)?.to_i32()?;
                 this.read_scalar(offset)?.to_machine_isize(this)?;
@@ -67,7 +65,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "sync_file_range" => {
-                let &[ref fd, ref offset, ref nbytes, ref flags] =
+                let [fd, offset, nbytes, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -76,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Time related shims
             "clock_gettime" => {
                 // This is a POSIX function but it has only been tested on linux.
-                let &[ref clk_id, ref tp] =
+                let [clk_id, tp] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.clock_gettime(clk_id, tp)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -85,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Querying system information
             "pthread_attr_getstack" => {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
-                let &[ref attr_place, ref addr_place, ref size_place] =
+                let [attr_place, addr_place, size_place] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.deref_operand(attr_place)?;
                 let addr_place = this.deref_operand(addr_place)?;
@@ -112,13 +110,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_setclock" => {
-                let &[ref attr, ref clock_id] =
+                let [attr, clock_id] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_getclock" => {
-                let &[ref attr, ref clock_id] =
+                let [attr, clock_id] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -185,12 +183,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscelanneous
             "getrandom" => {
-                let &[ref ptr, ref len, ref flags] =
+                let [ptr, len, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 getrandom(this, ptr, len, flags, dest)?;
             }
             "sched_getaffinity" => {
-                let &[ref pid, ref cpusetsize, ref mask] =
+                let [pid, cpusetsize, mask] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(pid)?.to_i32()?;
                 this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
@@ -204,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame_in_std() => {
-                let &[ref _thread, ref _attr] =
+                let [_thread, _attr] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_null(dest)?;
             }

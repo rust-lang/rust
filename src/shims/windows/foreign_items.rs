@@ -30,36 +30,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match &*link_name.as_str() {
             // Environment related shims
             "GetEnvironmentVariableW" => {
-                let &[ref name, ref buf, ref size] =
+                let [name, buf, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetEnvironmentVariableW(name, buf, size)?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
             "SetEnvironmentVariableW" => {
-                let &[ref name, ref value] =
+                let [name, value] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.SetEnvironmentVariableW(name, value)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "GetEnvironmentStringsW" => {
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetEnvironmentStringsW()?;
                 this.write_pointer(result, dest)?;
             }
             "FreeEnvironmentStringsW" => {
-                let &[ref env_block] =
+                let [env_block] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.FreeEnvironmentStringsW(env_block)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "GetCurrentDirectoryW" => {
-                let &[ref size, ref buf] =
+                let [size, buf] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetCurrentDirectoryW(size, buf)?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
             "SetCurrentDirectoryW" => {
-                let &[ref path] =
+                let [path] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Allocation
             "HeapAlloc" => {
-                let &[ref handle, ref flags, ref size] =
+                let [handle, flags, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
@@ -77,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_pointer(res, dest)?;
             }
             "HeapFree" => {
-                let &[ref handle, ref flags, ref ptr] =
+                let [handle, flags, ptr] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                let &[ref handle, ref flags, ref ptr, ref size] =
+                let [handle, flags, ptr, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -98,20 +98,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // errno
             "SetLastError" => {
-                let &[ref error] =
+                let [error] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let error = this.read_scalar(error)?.check_init()?;
                 this.set_last_error(error)?;
             }
             "GetLastError" => {
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let last_error = this.get_last_error()?;
                 this.write_scalar(last_error, dest)?;
             }
 
             // Querying system information
             "GetSystemInfo" => {
-                let &[ref system_info] =
+                let [system_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info = this.deref_operand(system_info)?;
                 // Initialize with `0`.
@@ -130,20 +130,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = this.machine.tls.create_tls_key(None, dest.layout.size)?;
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                let &[ref key] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [key] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                let &[ref key, ref new_ptr] =
+                let [key, new_ptr] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
@@ -156,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Access to command-line arguments
             "GetCommandLineW" => {
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.write_pointer(
                     this.machine.cmd_line.expect("machine must be initialized").ptr,
                     dest,
@@ -166,20 +165,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Time related shims
             "GetSystemTimeAsFileTime" => {
                 #[allow(non_snake_case)]
-                let &[ref LPFILETIME] =
+                let [LPFILETIME] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.GetSystemTimeAsFileTime(LPFILETIME)?;
             }
             "QueryPerformanceCounter" => {
                 #[allow(non_snake_case)]
-                let &[ref lpPerformanceCount] =
+                let [lpPerformanceCount] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.QueryPerformanceCounter(lpPerformanceCount)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "QueryPerformanceFrequency" => {
                 #[allow(non_snake_case)]
-                let &[ref lpFrequency] =
+                let [lpFrequency] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.QueryPerformanceFrequency(lpFrequency)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -187,34 +186,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Synchronization primitives
             "AcquireSRWLockExclusive" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.AcquireSRWLockExclusive(ptr)?;
             }
             "ReleaseSRWLockExclusive" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.ReleaseSRWLockExclusive(ptr)?;
             }
             "TryAcquireSRWLockExclusive" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ret = this.TryAcquireSRWLockExclusive(ptr)?;
                 this.write_scalar(Scalar::from_u8(ret), dest)?;
             }
             "AcquireSRWLockShared" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.AcquireSRWLockShared(ptr)?;
             }
             "ReleaseSRWLockShared" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.ReleaseSRWLockShared(ptr)?;
             }
             "TryAcquireSRWLockShared" => {
-                let &[ref ptr] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ret = this.TryAcquireSRWLockShared(ptr)?;
                 this.write_scalar(Scalar::from_u8(ret), dest)?;
             }
@@ -222,7 +215,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Dynamic symbol loading
             "GetProcAddress" => {
                 #[allow(non_snake_case)]
-                let &[ref hModule, ref lpProcName] =
+                let [hModule, lpProcName] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
@@ -237,7 +230,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Miscellaneous
             "SystemFunction036" => {
                 // This is really 'RtlGenRandom'.
-                let &[ref ptr, ref len] =
+                let [ptr, len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_scalar(len)?.to_u32()?;
@@ -245,7 +238,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "BCryptGenRandom" => {
-                let &[ref algorithm, ref ptr, ref len, ref flags] =
+                let [algorithm, ptr, len, flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let algorithm = this.read_scalar(algorithm)?;
                 let ptr = this.read_pointer(ptr)?;
@@ -267,7 +260,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetConsoleScreenBufferInfo" => {
                 // `term` needs this, so we fake it.
-                let &[ref console, ref buffer_info] =
+                let [console, buffer_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(console)?.to_machine_isize(this)?;
                 this.deref_operand(buffer_info)?;
@@ -277,7 +270,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetConsoleMode" => {
                 // Windows "isatty" (in libtest) needs this, so we fake it.
-                let &[ref console, ref mode] =
+                let [console, mode] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(console)?.to_machine_isize(this)?;
                 this.deref_operand(mode)?;
@@ -286,13 +279,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "SwitchToThread" => {
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Note that once Miri supports concurrency, this will need to return a nonzero
                 // value if this call does result in switching to another thread.
                 this.write_null(dest)?;
             }
             "GetStdHandle" => {
-                let &[ref which] =
+                let [which] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let which = this.read_scalar(which)?.to_i32()?;
                 // We just make this the identity function, so we know later in `NtWriteFile` which
@@ -303,7 +296,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Better error for attempts to create a thread
             "CreateThread" => {
-                let &[_, _, _, _, _, _] =
+                let [_, _, _, _, _, _] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
                 this.handle_unsupported("can't create threads on Windows")?;
@@ -313,34 +306,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "GetProcessHeap" if this.frame_in_std() => {
-                let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             "GetModuleHandleA" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
-                let &[_lpModuleName] =
+                let [_lpModuleName] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // We need to return something non-null here to make `compat_fn!` work.
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             "SetConsoleTextAttribute" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
-                let &[ref _hConsoleOutput, ref _wAttribute] =
+                let [_hConsoleOutput, _wAttribute] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Pretend these does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
             }
             "AddVectoredExceptionHandler" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
-                let &[ref _First, ref _Handler] =
+                let [_First, _Handler] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_machine_usize(1, this), dest)?;
             }
             "SetThreadStackGuarantee" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
-                let &[_StackSizeInBytes] =
+                let [_StackSizeInBytes] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_u32(1), dest)?;
@@ -352,7 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if this.frame_in_std() =>
             {
                 #[allow(non_snake_case)]
-                let &[ref _lpCriticalSection] =
+                let [_lpCriticalSection] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 assert_eq!(
                     this.get_total_thread_count(),
@@ -365,7 +358,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "TryEnterCriticalSection" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
-                let &[ref _lpCriticalSection] =
+                let [_lpCriticalSection] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 assert_eq!(
                     this.get_total_thread_count(),
