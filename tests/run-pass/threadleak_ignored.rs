@@ -22,7 +22,7 @@ fn main() {
     // Set up a channel so that we can learn when the other thread initialized `X`
     // (so that we are sure there is something to drop).
     let (send, recv) = std::sync::mpsc::channel::<()>();
-    
+
     let _detached = std::thread::spawn(move || {
         X.with(|x| *x.borrow_mut() = Some(LoudDrop(1)));
         send.send(()).unwrap();

@@ -8,9 +8,9 @@ set -e
 # USAGE:
 #
 # ./rustup-toolchain: Update "miri" toolchain to match `rust-version` (the known-good version for this commit).
-# 
+#
 # ./rustup-toolchain HEAD: Update "miri" toolchain and `rust-version` file to latest rustc HEAD.
-# 
+#
 # ./rustup-toolchain $COMMIT: Update "miri" toolchain and `rust-version` file to match that commit.
 
 # Make sure rustup-toolchain-install-master is installed.

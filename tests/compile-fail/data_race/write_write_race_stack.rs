@@ -37,11 +37,11 @@ pub fn main() {
             let mut stack_var = 0usize;
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
-            
+
             sleep(Duration::from_millis(200));
 
             stack_var = 1usize; //~ ERROR Data race detected between Write on Thread(id = 1) and Write on Thread(id = 2)
-            
+
             // read to silence errors
             stack_var
         });

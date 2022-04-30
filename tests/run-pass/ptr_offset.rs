@@ -18,7 +18,7 @@ fn test_offset_from() { unsafe {
     assert_eq!(x.offset_from(y), -12);
     assert_eq!((y as *const u32).offset_from(x as *const u32), 12/4);
     assert_eq!((x as *const u32).offset_from(y as *const u32), -12/4);
-    
+
     let x = (((x as usize) * 2) / 2) as *const u8;
     assert_eq!(y.offset_from(x), 12);
     assert_eq!(x.offset_from(y), -12);
