@@ -68,10 +68,9 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         cgcx: &CodegenContext<B>,
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
         match self {
-            LtoModuleCodegen::Fat { module, .. } => {
+            LtoModuleCodegen::Fat { mut module, .. } => {
                 {
-                    let config = cgcx.config(module.kind);
-                    B::optimize_fat(cgcx, &module, config)?;
+                    B::optimize_fat(cgcx, &mut module)?;
                 }
                 Ok(module)
             }

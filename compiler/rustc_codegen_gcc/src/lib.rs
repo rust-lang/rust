@@ -229,7 +229,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
-    fn optimize_fat(_cgcx: &CodegenContext<Self>, _module: &ModuleCodegen<Self::Module>, _config: &ModuleConfig) -> Result<(), FatalError> {
+    fn optimize_fat(_cgcx: &CodegenContext<Self>, _module: &mut ModuleCodegen<Self::Module>) -> Result<(), FatalError> {
         // TODO(antoyo)
         Ok(())
     }

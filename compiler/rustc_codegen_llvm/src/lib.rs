@@ -212,11 +212,10 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
-        module: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
+        module: &mut ModuleCodegen<Self::Module>,
     ) -> Result<(), FatalError> {
         let diag_handler = cgcx.create_diag_handler();
-        back::lto::run_pass_manager(cgcx, &diag_handler, module, config, false)
+        back::lto::run_pass_manager(cgcx, &diag_handler, module, false)
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,

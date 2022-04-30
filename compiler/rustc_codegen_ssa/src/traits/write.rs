@@ -43,8 +43,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<(), FatalError>;
     fn optimize_fat(
         cgcx: &CodegenContext<Self>,
-        llmod: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
+        llmod: &mut ModuleCodegen<Self::Module>,
     ) -> Result<(), FatalError>;
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
