@@ -938,7 +938,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Destructure the LHS of complex assignments.
-    /// For instance, lower `(a, b) = t` to `{ let (lhs1, lhs2) = t; a = lhs1; b = lhs2; }`.
+    /// For instance, lower `(a, b) = t` to `match t { (lhs1, lhs2) => { a = lhs1; b = lhs2; } }`.
     fn lower_expr_assign(
         &mut self,
         lhs: &Expr,
@@ -979,22 +979,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
         let rhs = self.lower_expr(rhs);
 
-        // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
-        let destructure_let = self.stmt_let_pat(
-            None,
-            whole_span,
-            Some(rhs),
-            pat,
-            hir::LocalSource::AssignDesugar(self.lower_span(eq_sign_span)),
-        );
+        // Block of statements for the assignments: `{ a = lhs1; b = lhs2; }`.
+        let stmts = self.arena.alloc_from_iter(assignments);
+        let block = self.block_all(whole_span, stmts, None);
+        let assignments_block = self.arena.alloc(self.expr_block(block, ThinVec::new()));
 
-        // `a = lhs1; b = lhs2;`.
-        let stmts = self
-            .arena
-            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
-
-        // Wrap everything in a block.
-        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+        // Produce the `match` for destructuring: `match t { (lhs1, lhs2) => ... }
+        hir::ExprKind::Match(
+            rhs,
+            arena_vec![self; self.arm(pat, assignments_block)],
+            hir::MatchSource::Normal, // FIXME: is `Normal` fine here?
+        )
     }
 
     /// If the given expression is a path to a tuple struct, returns that path.
