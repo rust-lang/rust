@@ -332,6 +332,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 match expr.kind {
                     thir::ExprKind::NamedConst { substs, .. } => substs.has_param_types_or_consts(),
                     thir::ExprKind::ConstParam { .. } => true,
+                    thir::ExprKind::ConstBlock { .. } => true,
                     thir::ExprKind::Repeat { value, count } => {
                         self.visit_expr(&self.thir()[value]);
                         count.has_param_types_or_consts()

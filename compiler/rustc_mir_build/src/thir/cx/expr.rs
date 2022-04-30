@@ -524,8 +524,7 @@ impl<'tcx> Cx<'tcx> {
                 let anon_const_def_id = local_def_id.to_def_id();
 
                 // Need to include the parent substs
-                let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-                let ty = tcx.typeck(local_def_id).node_type(hir_id);
+                let ty = self.typeck_results().expr_ty(expr);
                 let typeck_root_def_id = tcx.typeck_root_def_id(anon_const_def_id);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));

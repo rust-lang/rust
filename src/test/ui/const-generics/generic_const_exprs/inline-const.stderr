@@ -1,0 +1,13 @@
+error: overly complex generic constant
+  --> $DIR/inline-const.rs:9:20
+   |
+LL |     let _ = test::<{const {1}}>();
+   |                    ^---------^
+   |                     |
+   |                     const blocks are not supported in generic constant
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to previous error
+
