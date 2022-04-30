@@ -244,7 +244,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx.debug_introduce_locals(&mut bx);
 
     // Codegen the body of each block using reverse postorder
-    // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
     for (bb, _) in traversal::reverse_postorder(&mir) {
         fx.codegen_block(bb);
     }

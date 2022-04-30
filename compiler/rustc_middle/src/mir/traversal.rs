@@ -1,4 +1,7 @@
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::OnceCell;
 use rustc_index::bit_set::BitSet;
+use rustc_serialize as serialize;
 
 use super::*;
 
@@ -268,10 +271,6 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
     }
 }
 
-pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {
-    ReversePostorder::new(body, START_BLOCK)
-}
-
 impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
@@ -306,4 +305,87 @@ pub fn reachable_as_bitset<'tcx>(body: &Body<'tcx>) -> BitSet<BasicBlock> {
     let mut iter = preorder(body);
     (&mut iter).for_each(drop);
     iter.visited
+}
+
+#[derive(Clone)]
+pub struct ReversePostorderIter<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    blocks: &'a Vec<BasicBlock>,
+    idx: usize,
+}
+
+impl<'a, 'tcx> Iterator for ReversePostorderIter<'a, 'tcx> {
+    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+
+    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+        if self.idx == 0 {
+            return None;
+        }
+        self.idx -= 1;
+
+        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.idx, Some(self.idx))
+    }
+}
+
+impl<'a, 'tcx> ExactSizeIterator for ReversePostorderIter<'a, 'tcx> {}
+
+pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorderIter<'a, 'tcx> {
+    let blocks = body.postorder_cache.compute(body);
+
+    let len = blocks.len();
+
+    ReversePostorderIter { body, blocks, idx: len }
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct PostorderCache {
+    cache: OnceCell<Vec<BasicBlock>>,
+}
+
+impl PostorderCache {
+    #[inline]
+    pub(super) fn new() -> Self {
+        PostorderCache { cache: OnceCell::new() }
+    }
+
+    /// Invalidates the postorder cache.
+    #[inline]
+    pub(super) fn invalidate(&mut self) {
+        self.cache = OnceCell::new();
+    }
+
+    /// Returns the &Vec<BasicBlocks> represents the postorder graph for this MIR.
+    #[inline]
+    pub(super) fn compute(&self, body: &Body<'_>) -> &Vec<BasicBlock> {
+        self.cache.get_or_init(|| Postorder::new(body, START_BLOCK).map(|(bb, _)| bb).collect())
+    }
+}
+
+impl<S: serialize::Encoder> serialize::Encodable<S> for PostorderCache {
+    #[inline]
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_unit()
+    }
+}
+
+impl<D: serialize::Decoder> serialize::Decodable<D> for PostorderCache {
+    #[inline]
+    fn decode(_: &mut D) -> Self {
+        Self::new()
+    }
+}
+
+impl<CTX> HashStable<CTX> for PostorderCache {
+    #[inline]
+    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+        // do nothing
+    }
+}
+
+TrivialTypeFoldableAndLiftImpls! {
+    PostorderCache,
 }
