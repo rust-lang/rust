@@ -643,6 +643,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
             let pre = if in_match { "in the same arm, " } else { "" };
             err.note(&format!("{}a binding must have the same type in all alternatives", pre));
+            // FIXME: check if `var_ty` and `ty` can be made the same type by adding or removing
+            // `ref` or `&` to the pattern.
             err.emit();
         }
     }
