@@ -43,7 +43,7 @@ const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
 };
 
 /// Gets an instance for a path.
-fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
+fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
     tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
         |krate| {
             let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
@@ -51,7 +51,7 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
-                for item in mem::replace(&mut items, Default::default()).iter() {
+                for item in mem::take(&mut items).iter() {
                     if item.ident.name.as_str() == *segment {
                         if path_it.peek().is_none() {
                             return Some(item.res.def_id());
@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let cid = GlobalId { instance, promoted: None };
         let const_val = this.eval_to_allocation(cid)?;
         let const_val = this.read_scalar(&const_val.into())?;
-        return Ok(const_val.check_init()?);
+        const_val.check_init()
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
@@ -196,7 +196,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Get the `Place` for a local
     fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
-        let place = mir::Place { local: local, projection: List::empty() };
+        let place = mir::Place { local, projection: List::empty() };
         this.eval_place(place)
     }
 
@@ -323,7 +323,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     trace!("unsafe_cell_action on {:?}", place.ptr);
                     // We need a size to go on.
                     let unsafe_cell_size = this
-                        .size_and_align_of_mplace(&place)?
+                        .size_and_align_of_mplace(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);
@@ -362,7 +362,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             #[inline(always)]
             fn ecx(&self) -> &MiriEvalContext<'mir, 'tcx> {
-                &self.ecx
+                self.ecx
             }
 
             // Hook to detect `UnsafeCell`.
@@ -631,10 +631,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// `EINVAL` in this case.
     fn read_timespec(&mut self, tp: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.mplace_field(&tp, 0)?;
+        let seconds_place = this.mplace_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
         let seconds = seconds_scalar.to_machine_isize(this)?;
-        let nanoseconds_place = this.mplace_field(&tp, 1)?;
+        let nanoseconds_place = this.mplace_field(tp, 1)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
         let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
 
@@ -664,18 +664,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc =
-                this.get_ptr_alloc(ptr.offset(len, this)?.into(), size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_scalar(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
             } else {
-                len = len + size1;
+                len += size1;
             }
         }
 
         // Step 2: get the bytes.
-        this.read_bytes_ptr(ptr.into(), len)
+        this.read_bytes_ptr(ptr, len)
     }
 
     fn read_wide_str(&self, mut ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, Vec<u16>> {
@@ -687,7 +686,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr.into(), size2, align2)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr, size2, align2)?.unwrap(); // not a ZST, so we will get a result
             let wchar = alloc.read_scalar(alloc_range(Size::ZERO, size2))?.to_u16()?;
             if wchar == 0 {
                 break;
@@ -731,7 +730,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // message is slightly different here to make automated analysis easier
             let error_msg = format!("unsupported Miri functionality: {}", error_msg.as_ref());
             this.start_panic(error_msg.as_ref(), StackPopUnwind::Skip)?;
-            return Ok(());
+            Ok(())
         } else {
             throw_unsup_format!("{}", error_msg.as_ref());
         }
@@ -802,7 +801,7 @@ pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
     // Convert the local crate names from the passed-in config into CrateNums so that they can
     // be looked up quickly during execution
     let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
-        .map(|crates| crates.split(",").map(|krate| krate.to_string()).collect::<Vec<_>>())
+        .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
         .unwrap_or_default();
     let mut local_crates = Vec::new();
     for &crate_num in tcx.crates(()) {

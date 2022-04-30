@@ -775,7 +775,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.operand_index(&index, i)?.into())?
+                        .read_immediate(&this.operand_index(index, i)?)?
                         .to_scalar()?
                         .to_u32()?
                         .into();
@@ -1192,12 +1192,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match atomic_op {
             AtomicOp::Min => {
                 let old = this.atomic_min_max_scalar(&place, rhs, true, atomic)?;
-                this.write_immediate(*old, &dest)?; // old value is returned
+                this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }
             AtomicOp::Max => {
                 let old = this.atomic_min_max_scalar(&place, rhs, false, atomic)?;
-                this.write_immediate(*old, &dest)?; // old value is returned
+                this.write_immediate(*old, dest)?; // old value is returned
                 Ok(())
             }
             AtomicOp::MirOp(op, neg) => {

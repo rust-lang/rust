@@ -99,7 +99,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("linux", "prctl");
 
-        if args.len() < 1 {
+        if args.is_empty() {
             throw_ub_format!(
                 "incorrect number of arguments for `prctl`: got {}, expected at least 1",
                 args.len()

@@ -296,7 +296,7 @@ fn report_msg<'mir, 'tcx>(
     // Show help messages.
     if !helps.is_empty() {
         // Add visual separator before backtrace.
-        helps.last_mut().unwrap().1.push_str("\n");
+        helps.last_mut().unwrap().1.push('\n');
         for (span_data, help) in helps {
             if let Some(span_data) = span_data {
                 err.span_help(span_data.span(), &help);

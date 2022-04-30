@@ -562,7 +562,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
 
-        this.validate_atomic_rmw(&place, atomic)?;
+        this.validate_atomic_rmw(place, atomic)?;
 
         // Return the old value.
         Ok(old)
@@ -784,7 +784,7 @@ impl VClockAlloc {
                     None
                 }
             })
-            .map(|idx| VectorIdx::new(idx))
+            .map(VectorIdx::new)
     }
 
     /// Report a data-race found in the program.
@@ -1410,7 +1410,7 @@ impl GlobalState {
     /// incremented.
     pub fn validate_lock_acquire(&self, lock: &VClock, thread: ThreadId) {
         let (_, mut clocks) = self.load_thread_state_mut(thread);
-        clocks.clock.join(&lock);
+        clocks.clock.join(lock);
     }
 
     /// Release a lock handle, express that this happens-before

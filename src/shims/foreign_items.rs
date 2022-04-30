@@ -238,7 +238,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let link_name = this
             .tcx
             .sess
-            .first_attr_value_str_by_name(&attrs, sym::link_name)
+            .first_attr_value_str_by_name(attrs, sym::link_name)
             .unwrap_or_else(|| this.tcx.item_name(def_id));
         let tcx = this.tcx.tcx;
 

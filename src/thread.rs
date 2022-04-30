@@ -58,7 +58,7 @@ impl Idx for ThreadId {
 impl TryFrom<u64> for ThreadId {
     type Error = TryFromIntError;
     fn try_from(id: u64) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(|id_u32| Self(id_u32))
+        u32::try_from(id).map(Self)
     }
 }
 
@@ -69,8 +69,8 @@ impl From<u32> for ThreadId {
 }
 
 impl ThreadId {
-    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
-        Scalar::from_u32(u32::try_from(self.0).unwrap())
+    pub fn to_u32_scalar(&self) -> Scalar<Tag> {
+        Scalar::from_u32(self.0)
     }
 }
 
@@ -235,7 +235,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         threads.push(main_thread);
         Self {
             active_thread: ThreadId::new(0),
-            threads: threads,
+            threads,
             sync: SynchronizationState::default(),
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
@@ -456,7 +456,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 // Delete this static from the map and from memory.
                 // We cannot free directly here as we cannot use `?` in this context.
                 free_tls_statics.push(alloc_id);
-                return false;
+                false
             });
         }
         // Set the thread into a terminated state in the data-race detector
@@ -474,7 +474,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 thread.state = ThreadState::Enabled;
             }
         }
-        return free_tls_statics;
+        free_tls_statics
     }
 
     /// Decide which action to take next and on which thread.

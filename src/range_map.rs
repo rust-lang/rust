@@ -63,7 +63,7 @@ impl<T> RangeMap<T> {
     /// through interior mutability.
     ///
     /// The iterator also provides the offset of the given element.
-    pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &'a T)> + 'a {
+    pub fn iter(&self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &T)> {
         let offset = offset.bytes();
         let len = len.bytes();
         // Compute a slice starting with the elements we care about.
@@ -83,7 +83,7 @@ impl<T> RangeMap<T> {
             .map(|elem| (Size::from_bytes(elem.range.start), &elem.data))
     }
 
-    pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
+    pub fn iter_mut_all(&mut self) -> impl Iterator<Item = &mut T> {
         self.v.iter_mut().map(|elem| &mut elem.data)
     }
 
@@ -110,7 +110,7 @@ impl<T> RangeMap<T> {
         // Copy the data, and insert second element.
         let second = Elem { range: second_range, data: elem.data.clone() };
         self.v.insert(index + 1, second);
-        return true;
+        true
     }
 
     /// Provides mutable iteration over everything in the given range. As a side-effect,
@@ -119,11 +119,7 @@ impl<T> RangeMap<T> {
     /// Moreover, this will opportunistically merge neighbouring equal blocks.
     ///
     /// The iterator also provides the offset of the given element.
-    pub fn iter_mut<'a>(
-        &'a mut self,
-        offset: Size,
-        len: Size,
-    ) -> impl Iterator<Item = (Size, &'a mut T)> + 'a
+    pub fn iter_mut(&mut self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &mut T)>
     where
         T: Clone + PartialEq,
     {

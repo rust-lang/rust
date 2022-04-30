@@ -46,12 +46,12 @@ trait FileDescriptor: std::fmt::Debug {
         _communicate_allowed: bool,
     ) -> InterpResult<'tcx, io::Result<i32>>;
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 }
 
 impl FileDescriptor for FileHandle {
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        Ok(&self)
+        Ok(self)
     }
 
     fn read<'tcx>(
@@ -107,7 +107,7 @@ impl FileDescriptor for FileHandle {
         }
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         let duplicated = self.file.try_clone()?;
         Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
@@ -153,7 +153,7 @@ impl FileDescriptor for io::Stdin {
         throw_unsup_format!("stdin cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
     }
 }
@@ -203,7 +203,7 @@ impl FileDescriptor for io::Stdout {
         throw_unsup_format!("stdout cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdout()))
     }
 }
@@ -246,7 +246,7 @@ impl FileDescriptor for io::Stderr {
         throw_unsup_format!("stderr cannot be closed");
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stderr()))
     }
 }
@@ -645,13 +645,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         }
                     }
                 }
-                None => return this.handle_not_found(),
+                None => this.handle_not_found(),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC")? {
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
                 let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-                let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+                let io_result = maybe_sync_file(file, *writable, File::sync_all);
                 this.try_unwrap_io_result(io_result)
             } else {
                 this.handle_not_found()
@@ -743,7 +743,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             let bytes = this.read_bytes_ptr(buf, Size::from_bytes(count))?;
             let result =
-                file_descriptor.write(communicate, &bytes)?.map(|c| i64::try_from(c).unwrap());
+                file_descriptor.write(communicate, bytes)?.map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -1168,7 +1168,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         #[cfg(unix)]
         {
             use std::os::unix::fs::DirBuilderExt;
-            builder.mode(mode.into());
+            builder.mode(mode);
         }
 
         let result = builder.create(path).map(|_| 0i32);
@@ -1491,7 +1491,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fsync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_all);
+            let io_result = maybe_sync_file(file, *writable, File::sync_all);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
@@ -1513,7 +1513,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fdatasync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()
@@ -1558,7 +1558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            let io_result = maybe_sync_file(&file, *writable, File::sync_data);
+            let io_result = maybe_sync_file(file, *writable, File::sync_data);
             this.try_unwrap_io_result(io_result)
         } else {
             this.handle_not_found()

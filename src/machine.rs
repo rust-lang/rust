@@ -544,7 +544,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
         let attrs = ecx.tcx.get_attrs(def_id);
-        let link_name = match ecx.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name) {
+        let link_name = match ecx.tcx.sess.first_attr_value_str_by_name(attrs, sym::link_name) {
             Some(name) => name,
             None => ecx.tcx.item_name(def_id),
         };
@@ -573,7 +573,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             None
         };
         let race_alloc = if let Some(data_race) = &ecx.machine.data_race {
-            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size(), kind))
+            Some(data_race::AllocExtra::new_allocation(data_race, alloc.size(), kind))
         } else {
             None
         };

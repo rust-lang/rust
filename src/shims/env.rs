@@ -50,8 +50,8 @@ impl<'tcx> EnvVars<'tcx> {
         if ecx.machine.communicate() || !config.forwarded_env_vars.is_empty() {
             for (name, value) in env::vars_os() {
                 let forward = match ecx.machine.communicate() {
-                    true => !excluded_env_vars.iter().any(|v| v.as_str() == &name),
-                    false => config.forwarded_env_vars.iter().any(|v| v.as_str() == &name),
+                    true => !excluded_env_vars.iter().any(|v| **v == name),
+                    false => config.forwarded_env_vars.iter().any(|v| **v == name),
                 };
                 if forward {
                     let var_ptr = match target_os {
@@ -64,7 +64,7 @@ impl<'tcx> EnvVars<'tcx> {
                                 unsupported
                             ),
                     };
-                    ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
+                    ecx.machine.env_vars.map.insert(name, var_ptr);
                 }
             }
         }
@@ -210,7 +210,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         name_op: &OpTy<'tcx, Tag>,
         value_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
-        let mut this = self.eval_context_mut();
+        let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(
             target_os == "linux" || target_os == "macos",
@@ -229,7 +229,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
         if let Some((name, value)) = new {
-            let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this)?;
+            let var_ptr = alloc_env_var_as_c_str(&name, &value, this)?;
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
@@ -249,7 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         name_op: &OpTy<'tcx, Tag>,  // LPCWSTR
         value_op: &OpTy<'tcx, Tag>, // LPCWSTR
     ) -> InterpResult<'tcx, i32> {
-        let mut this = self.eval_context_mut();
+        let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetEnvironmentVariableW");
 
         let name_ptr = this.read_pointer(name_op)?;
@@ -274,7 +274,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(1) // return non-zero on success
         } else {
             let value = this.read_os_str_from_wide_str(value_ptr)?;
-            let var_ptr = alloc_env_var_as_wide_str(&name, &value, &mut this)?;
+            let var_ptr = alloc_env_var_as_wide_str(&name, &value, this)?;
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
@@ -325,8 +325,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getcwd` is only available for the UNIX target family"
         );
 
-        let buf = this.read_pointer(&buf_op)?;
-        let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
+        let buf = this.read_pointer(buf_op)?;
+        let size = this.read_scalar(size_op)?.to_machine_usize(&*this.tcx)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;
