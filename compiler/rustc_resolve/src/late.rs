@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+// FIXME(cjgillot) Separate name and lifetime resolution since they use separate namespaces.
 //! "Late resolution" is the pass that resolves most of names in a crate beside imports and macros.
 //! It runs when the crate is fully expanded and its module structure is fully built.
 //! So it just walks through the crate and resolves all the expressions, types, etc.
