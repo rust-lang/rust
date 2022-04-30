@@ -17,8 +17,8 @@ use super::{ForeignItem, ImplItem, Item, TraitItem};
 ///    an item, but don't care about how item-like things are nested
 ///    within one another.
 ///    - Example: Examine each expression to look for its type and do some check or other.
-///    - How: Implement `intravisit::Visitor` and override the `nested_visit_map()` method
-///      to return `NestedVisitorMap::OnlyBodies` and use
+///    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
+///      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
 ///      `tcx.hir().visit_all_item_likes(&mut visitor.as_deep_visitor())`. Within your
 ///      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
 ///      `intravisit::walk_expr()` to keep walking the subparts).
@@ -29,9 +29,9 @@ use super::{ForeignItem, ImplItem, Item, TraitItem};
 ///    item-like things.
 ///    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
 ///      impl into scope while visiting the impl-items, and then back out again.
-///    - How: Implement `intravisit::Visitor` and override the `nested_visit_map()` method
-///      to return `NestedVisitorMap::All`. Walk your crate with `intravisit::walk_crate()`
-///      invoked on `tcx.hir().krate()`.
+///    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
+///      `nested_filter::All` (and implement `nested_visit_map`). Walk your crate with
+///      `tcx.hir().walk_toplevel_module(visitor)` invoked on `tcx.hir().krate()`.
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 ///    - Pro: Preserves nesting information
 ///    - Con: Does not integrate well into dependency tracking.
