@@ -1,6 +1,7 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
+use rustc_const_eval::transform::validate::equal_up_to_regions;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -165,6 +166,45 @@ impl<'tcx> Inliner<'tcx> {
         ) else {
             return Err("failed to normalize callee body");
         };
+
+        // Check call signature compatibility.
+        // Normally, this shouldn't be required, but trait normalization failure can create a
+        // validation ICE.
+        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
+        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        let output_type = callee_body.return_ty();
+        if !equal_up_to_regions(self.tcx, self.param_env, output_type, destination_ty) {
+            trace!(?output_type, ?destination_ty);
+            return Err("failed to normalize return type");
+        }
+        if callsite.fn_sig.abi() == Abi::RustCall {
+            let mut args = args.into_iter();
+            let _ = args.next(); // Skip `self` argument.
+            let arg_tuple_ty = args.next().unwrap().ty(&caller_body.local_decls, self.tcx);
+            assert!(args.next().is_none());
+
+            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+
+            for (arg_ty, input) in arg_tuple_tys.iter().zip(callee_body.args_iter().skip(1)) {
+                let input_type = callee_body.local_decls[input].ty;
+                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize tuple argument type");
+                }
+            }
+        } else {
+            for (arg, input) in args.iter().zip(callee_body.args_iter()) {
+                let input_type = callee_body.local_decls[input].ty;
+                let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
+                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize argument type");
+                }
+            }
+        }
 
         let old_blocks = caller_body.basic_blocks().next_index();
         self.inline_call(caller_body, &callsite, callee_body);

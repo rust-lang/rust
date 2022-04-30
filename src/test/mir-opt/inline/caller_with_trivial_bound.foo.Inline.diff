@@ -1,0 +1,33 @@
+- // MIR for `foo` before Inline
++ // MIR for `foo` after Inline
+  
+  fn foo() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/caller-with-trivial-bound.rs:15:1: 15:1
+      let mut _1: <IntFactory as Factory<T>>::Item; // in scope 0 at $DIR/caller-with-trivial-bound.rs:18:9: 18:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/caller-with-trivial-bound.rs:18:9: 18:14
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/caller-with-trivial-bound.rs:18:9: 18:14
+          _1 = bar::<T>() -> bb1;          // scope 0 at $DIR/caller-with-trivial-bound.rs:18:51: 18:61
+                                           // mir::Constant
+                                           // + span: $DIR/caller-with-trivial-bound.rs:18:51: 18:59
+                                           // + literal: Const { ty: fn() -> <IntFactory as Factory<T>>::Item {bar::<T>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          _0 = const ();                   // scope 0 at $DIR/caller-with-trivial-bound.rs:17:1: 19:2
+          drop(_1) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/caller-with-trivial-bound.rs:19:1: 19:2
+      }
+  
+      bb2: {
+          StorageDead(_1);                 // scope 0 at $DIR/caller-with-trivial-bound.rs:19:1: 19:2
+          return;                          // scope 0 at $DIR/caller-with-trivial-bound.rs:19:2: 19:2
+      }
+  
+      bb3 (cleanup): {
+          resume;                          // scope 0 at $DIR/caller-with-trivial-bound.rs:14:1: 19:2
+      }
+  }
+  
