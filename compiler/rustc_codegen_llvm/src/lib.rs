@@ -210,6 +210,14 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, diag_handler, module, config)
     }
+    fn optimize_fat(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        let diag_handler = cgcx.create_diag_handler();
+        back::lto::run_pass_manager(cgcx, &diag_handler, module, config, false)
+    }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: &mut ThinModule<Self>,
@@ -229,15 +237,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
-    }
-    fn run_lto_pass_manager(
-        cgcx: &CodegenContext<Self>,
-        module: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
-        thin: bool,
-    ) -> Result<(), FatalError> {
-        let diag_handler = cgcx.create_diag_handler();
-        back::lto::run_pass_manager(cgcx, &diag_handler, module, config, thin)
     }
 }
 

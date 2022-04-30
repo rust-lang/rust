@@ -229,6 +229,11 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
+    fn optimize_fat(_cgcx: &CodegenContext<Self>, _module: &ModuleCodegen<Self::Module>, _config: &ModuleConfig) -> Result<(), FatalError> {
+        // TODO(antoyo)
+        Ok(())
+    }
+
     unsafe fn optimize_thin(_cgcx: &CodegenContext<Self>, _thin: &mut ThinModule<Self>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         unimplemented!();
     }
@@ -243,11 +248,6 @@ impl WriteBackendMethods for GccCodegenBackend {
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         unimplemented!();
-    }
-
-    fn run_lto_pass_manager(_cgcx: &CodegenContext<Self>, _module: &ModuleCodegen<Self::Module>, _config: &ModuleConfig, _thin: bool) -> Result<(), FatalError> {
-        // TODO(antoyo)
-        Ok(())
     }
 
     fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &Handler, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
