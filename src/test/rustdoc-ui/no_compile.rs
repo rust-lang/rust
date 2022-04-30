@@ -19,7 +19,7 @@
 ///
 /// For comparison, ignore does get run:
 ///
-/// ```ignore
+/// ```ignore (but-actually-we-include-ignored)
 /// println!("Hello, world");
 /// ```
 struct S;
