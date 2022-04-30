@@ -1407,18 +1407,12 @@ window.initSearch = rawSearchIndex => {
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         row = searchIndex[i];
                         in_returned = checkReturned(row, elem, parsedQuery.typeFilter);
-                        addIntoResults(results_returned, row.id, i, -1, in_returned);
+                        addIntoResults(results_others, row.id, i, -1, in_returned);
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
-                let container = results_others;
-                // In the special case where only a "returned" information is available, we want to
-                // put the information into the "results_returned" dict.
-                if (parsedQuery.returned.length !== 0 && parsedQuery.elems.length === 0) {
-                    container = results_returned;
-                }
                 for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
-                    handleArgs(searchIndex[i], i, container);
+                    handleArgs(searchIndex[i], i, results_others);
                 }
             }
         }
@@ -1723,12 +1717,17 @@ window.initSearch = rawSearchIndex => {
             `${typeFilter}</h1> in ${crates} </div>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
+        } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
+            output += `<div id="titles">` +
+                makeTabHeader(0, "In Names", ret_others[1]) +
+                makeTabHeader(1, "In Parameters", ret_in_args[1]) +
+                makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                "</div>";
+        } else {
+            output += '<div id="titles">' +
+                makeTabHeader(0, "In Function Signature", ret_others[1]) +
+                "</div>";
         }
-        output += `<div id="titles">` +
-            makeTabHeader(0, "In Names", ret_others[1]) +
-            makeTabHeader(1, "In Parameters", ret_in_args[1]) +
-            makeTabHeader(2, "In Return Types", ret_returned[1]) +
-            "</div>";
 
         const resultsElem = document.createElement("div");
         resultsElem.id = "results";
