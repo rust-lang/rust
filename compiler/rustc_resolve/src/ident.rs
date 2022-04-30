@@ -279,7 +279,7 @@ impl<'a> Resolver<'a> {
         mut ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        finalize_full: Finalize,
+        finalize_full: Option<Finalize>,
         ribs: &[Rib<'a>],
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
@@ -302,7 +302,7 @@ impl<'a> Resolver<'a> {
         let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
-        let finalize = finalize_full.path_span();
+        let finalize = finalize_full.map(|finalize| finalize.path_span);
         let mut module = self.graph_root;
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
@@ -354,7 +354,7 @@ impl<'a> Resolver<'a> {
         }
         self.early_resolve_ident_in_lexical_scope(
             orig_ident,
-            ScopeSet::Late(ns, module, finalize_full.node_id()),
+            ScopeSet::Late(ns, module, finalize_full.map(|finalize| finalize.node_id)),
             parent_scope,
             finalize,
             finalize.is_some(),
@@ -1371,7 +1371,7 @@ impl<'a> Resolver<'a> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, Finalize::No, None, None)
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None)
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
@@ -1380,7 +1380,7 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        finalize: Finalize,
+        finalize: Option<Finalize>,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
         self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, unusable_binding)
@@ -1391,13 +1391,13 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        finalize_full: Finalize,
+        finalize_full: Option<Finalize>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
         debug!("resolve_path(path={:?}, opt_ns={:?}, finalize={:?})", path, opt_ns, finalize_full);
 
-        let finalize = finalize_full.path_span();
+        let finalize = finalize_full.map(|finalize| finalize.path_span);
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;

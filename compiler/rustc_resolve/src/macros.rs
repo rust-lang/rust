@@ -673,7 +673,7 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 &parent_scope,
-                Finalize::SimplePath(ast::CRATE_NODE_ID, path_span),
+                Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {

@@ -594,11 +594,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
-        let finalize = Finalize::UsePath {
-            root_id: import.root_id,
-            root_span: import.root_span,
-            path_span: import.span,
-        };
+        let finalize =
+            Some(Finalize::with_root_span(import.root_id, import.span, import.root_span));
         let path_res = self.r.resolve_path(
             &import.module_path,
             None,
