@@ -123,7 +123,7 @@ impl<'a> Resolver<'a> {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
                 UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id])
             } else {
-                (None, false)
+                (None, FoundUse::No)
             };
             if !candidates.is_empty() {
                 show_candidates(
@@ -132,9 +132,9 @@ impl<'a> Resolver<'a> {
                     &mut err,
                     span,
                     &candidates,
-                    instead,
+                    if instead { Instead::Yes } else { Instead::No },
                     found_use,
-                    false,
+                    IsPattern::No,
                 );
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
@@ -702,9 +702,9 @@ impl<'a> Resolver<'a> {
                         &mut err,
                         Some(span),
                         &import_suggestions,
-                        false,
-                        true,
-                        true,
+                        Instead::No,
+                        FoundUse::Yes,
+                        IsPattern::Yes,
                     );
                 }
                 err
@@ -1482,9 +1482,9 @@ impl<'a> Resolver<'a> {
             err,
             None,
             &import_suggestions,
-            false,
-            true,
-            false,
+            Instead::No,
+            FoundUse::Yes,
+            IsPattern::No,
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
@@ -2420,6 +2420,27 @@ fn find_span_immediately_after_crate_name(
     (next_left_bracket == after_second_colon, from_second_colon)
 }
 
+/// A suggestion has already been emitted, change the wording slightly to clarify that both are
+/// independent options.
+enum Instead {
+    Yes,
+    No,
+}
+
+/// Whether an existing place with an `use` item was found.
+enum FoundUse {
+    Yes,
+    No,
+}
+
+/// Whether a binding is part of a pattern or an expression. Used for diagnostics.
+enum IsPattern {
+    /// The binding is part of a pattern
+    Yes,
+    /// The binding is part of an expression
+    No,
+}
+
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
@@ -2430,9 +2451,9 @@ fn show_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
-    instead: bool,
-    found_use: bool,
-    is_pattern: bool,
+    instead: Instead,
+    found_use: FoundUse,
+    is_pattern: IsPattern,
 ) {
     if candidates.is_empty() {
         return;
@@ -2465,8 +2486,8 @@ fn show_candidates(
             ("one of these", "items", String::new())
         };
 
-        let instead = if instead { " instead" } else { "" };
-        let mut msg = if is_pattern {
+        let instead = if let Instead::Yes = instead { " instead" } else { "" };
+        let mut msg = if let IsPattern::Yes = is_pattern {
             format!(
                 "if you meant to match on {}{}{}, use the full path in the pattern",
                 kind, instead, name
@@ -2479,7 +2500,7 @@ fn show_candidates(
             err.note(note);
         }
 
-        if let (true, Some(span)) = (is_pattern, use_placement_span) {
+        if let (IsPattern::Yes, Some(span)) = (is_pattern, use_placement_span) {
             err.span_suggestions(
                 span,
                 &msg,
@@ -2490,7 +2511,7 @@ fn show_candidates(
             for candidate in &mut accessible_path_strings {
                 // produce an additional newline to separate the new use statement
                 // from the directly following item.
-                let additional_newline = if found_use { "" } else { "\n" };
+                let additional_newline = if let FoundUse::Yes = found_use { "" } else { "\n" };
                 candidate.0 = format!("use {};\n{}", &candidate.0, additional_newline);
             }
 
@@ -2513,7 +2534,8 @@ fn show_candidates(
     } else {
         assert!(!inaccessible_path_strings.is_empty());
 
-        let prefix = if is_pattern { "you might have meant to match on " } else { "" };
+        let prefix =
+            if let IsPattern::Yes = is_pattern { "you might have meant to match on " } else { "" };
         if inaccessible_path_strings.len() == 1 {
             let (name, descr, def_id, note) = &inaccessible_path_strings[0];
             let msg = format!(
@@ -2521,7 +2543,7 @@ fn show_candidates(
                 prefix,
                 descr,
                 name,
-                if is_pattern { ", which" } else { "" }
+                if let IsPattern::Yes = is_pattern { ", which" } else { "" }
             );
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
@@ -2589,14 +2611,14 @@ struct UsePlacementFinder {
 }
 
 impl UsePlacementFinder {
-    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
+    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, FoundUse) {
         let mut finder =
             UsePlacementFinder { target_module, first_legal_span: None, first_use_span: None };
         finder.visit_crate(krate);
         if let Some(use_span) = finder.first_use_span {
-            (Some(use_span), true)
+            (Some(use_span), FoundUse::Yes)
         } else {
-            (finder.first_legal_span, false)
+            (finder.first_legal_span, FoundUse::No)
         }
     }
 }
