@@ -31,6 +31,8 @@ macro_rules! panic {
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [flush]: crate::io::Write::flush
+/// [`println!`]: crate::println
+/// [`eprint!`]: crate::eprint
 ///
 /// # Panics
 ///
@@ -77,6 +79,7 @@ macro_rules! print {
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`std::fmt`]: crate::fmt
+/// [`eprintln!`]: crate::eprintln
 ///
 /// # Panics
 ///
@@ -146,6 +149,7 @@ macro_rules! eprint {
 ///
 /// [`io::stderr`]: crate::io::stderr
 /// [`io::stdout`]: crate::io::stdout
+/// [`println!`]: crate::println
 ///
 /// # Panics
 ///

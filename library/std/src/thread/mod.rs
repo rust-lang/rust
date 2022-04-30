@@ -146,6 +146,7 @@
 //! [`Cell`]: crate::cell::Cell
 //! [`RefCell`]: crate::cell::RefCell
 //! [`with`]: LocalKey::with
+//! [`thread_local!`]: crate::thread_local
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
