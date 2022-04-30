@@ -12,7 +12,7 @@ impl<T> PrintName<T> {
 
 fn no_codegen<T>() {
     if false {
-        let _ = PrintName::<T>::VOID; //~ERROR error occurred: encountered constant
+        let _ = PrintName::<T>::VOID; //~ERROR post-monomorphization error
     }
 }
 fn main() {

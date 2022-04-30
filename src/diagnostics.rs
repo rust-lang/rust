@@ -182,10 +182,8 @@ pub fn report_error<'tcx, 'mir>(
                     "Undefined Behavior",
                 ResourceExhaustion(_) =>
                     "resource exhaustion",
-                InvalidProgram(InvalidProgramInfo::ReferencedConstant) =>
+                InvalidProgram(InvalidProgramInfo::AlreadyReported(_) | InvalidProgramInfo::Layout(..)) =>
                     "post-monomorphization error",
-                InvalidProgram(InvalidProgramInfo::AlreadyReported(_)) =>
-                    "error occurred",
                 kind =>
                     bug!("This error should be impossible in Miri: {:?}", kind),
             };
