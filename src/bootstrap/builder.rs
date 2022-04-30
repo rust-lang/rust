@@ -20,6 +20,7 @@ use crate::flags::{Color, Subcommand};
 use crate::install;
 use crate::native;
 use crate::run;
+use crate::setup;
 use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
@@ -436,8 +437,12 @@ impl<'a> ShouldRun<'a> {
 
     // single alias, which does not correspond to any on-disk path
     pub fn alias(mut self, alias: &str) -> Self {
+        // exceptional case for `Kind::Setup` because its `library` 
+        // and `compiler` options would otherwise naively match with
+        // `compiler` and `library` folders respectively.
         assert!(
-            !self.builder.src.join(alias).exists(),
+            self.kind == Kind::Setup 
+            || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {}",
             alias
         );
@@ -754,8 +759,9 @@ impl<'a> Builder<'a> {
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,
             ),
+            Kind::Setup => describe!(setup::Profile),
             // These commands either don't use paths, or they're special-cased in Build::build()
-            Kind::Clean | Kind::Format | Kind::Setup => vec![],
+            Kind::Clean | Kind::Format => vec![],
         }
     }
 
@@ -818,7 +824,8 @@ impl<'a> Builder<'a> {
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Setup { ref paths } => (Kind::Setup, &paths[..]),
+            Subcommand::Clean { .. } => {
                 panic!()
             }
         };

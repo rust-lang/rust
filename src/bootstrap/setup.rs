@@ -1,3 +1,4 @@
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::{t, VERSION};
 use crate::{Config, TargetSelection};
 use std::env::consts::EXE_SUFFIX;
@@ -11,7 +12,7 @@ use std::{
     io::{self, Write},
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
     Codegen,
@@ -50,6 +51,16 @@ impl Profile {
         }
         out
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Compiler => "compiler",
+            Profile::Codegen => "codegen",
+            Profile::Library => "library",
+            Profile::Tools => "tools",
+            Profile::User => "user",
+        }
+    }
 }
 
 impl FromStr for Profile {
@@ -81,6 +92,37 @@ impl fmt::Display for Profile {
     }
 }
 
+impl Step for Profile {
+    type Output = ();
+
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
+        for choice in Profile::all() {
+            run = run.alias(&choice.to_string());
+        }
+        run
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let profile: Profile = run
+            .paths
+            .first()
+            .unwrap()
+            .assert_single_path()
+            .path
+            .to_owned()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            .parse()
+            .unwrap();
+        run.builder.ensure(profile);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        setup(&builder.build.config, self)
+    }
+}
+
 pub fn setup(config: &Config, profile: Profile) {
     let path = &config.config;
 
@@ -103,7 +145,10 @@ pub fn setup(config: &Config, profile: Profile) {
     changelog-seen = {}\n",
         profile, VERSION
     );
-    t!(fs::write(path, settings));
+
+    if !config.dry_run {
+        t!(fs::write(path, settings));
+    }
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
@@ -116,7 +161,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     if !rustup_installed() && profile != Profile::User {
         eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-    } else if stage_dir_exists(&stage_path[..]) {
+    } else if stage_dir_exists(&stage_path[..]) && !config.dry_run {
         attempt_toolchain_link(&stage_path[..]);
     }
 
@@ -136,7 +181,9 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!();
 
-    t!(install_git_hook_maybe(&config));
+    if !config.dry_run {
+        t!(install_git_hook_maybe(&config));
+    }
 
     println!();
 
