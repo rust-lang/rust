@@ -221,10 +221,12 @@
 //!
 //! 3. An asterisk `.*`:
 //!
-//!    `.*` means that this `{...}` is associated with *two* format inputs rather than one: the
-//!    first input holds the `usize` precision, and the second holds the value to print. Note that
-//!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
-//!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
+//!    `.*` means that this `{...}` is associated with *two* format inputs rather than one:
+//!    - If a format string in the fashion of `{:<spec>.*}` is used, then the first input holds
+//!      the `usize` precision, and the second holds the value to print.
+//!    - If a format string in the fashion of `{<arg>:<spec>.*}` is used, then the `<arg>` part
+//!      refers to the value to print, and the `precision` is taken like it was specified with an
+//!      omitted positional parameter (`{}` instead of `{<arg>:}`).
 //!
 //! For example, the following calls all print the same thing `Hello x is 0.01000`:
 //!
@@ -242,8 +244,12 @@
 //! //                          specified in first of next two args (5)}
 //! println!("Hello {} is {:.*}",    "x", 5, 0.01);
 //!
+//! // Hello {arg 1 ("x")} is {arg 2 (0.01) with precision
+//! //                          specified in next arg (5)}
+//! println!("Hello {1} is {2:.*}",  5, "x", 0.01);
+//!
 //! // Hello {next arg ("x")} is {arg 2 (0.01) with precision
-//! //                          specified in its predecessor (5)}
+//! //                          specified in next arg (5)}
 //! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
 //!
 //! // Hello {next arg ("x")} is {arg "number" (0.01) with precision specified
