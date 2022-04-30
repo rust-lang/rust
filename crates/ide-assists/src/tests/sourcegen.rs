@@ -41,7 +41,7 @@ r#####"
         }
         let buf = sourcegen::add_preamble("sourcegen_assists_docs", sourcegen::reformat(buf));
         sourcegen::ensure_file_contents(
-            &project_root().join("crates/ide_assists/src/tests/generated.rs"),
+            &project_root().join("crates/ide-assists/src/tests/generated.rs"),
             &buf,
         );
     }
@@ -75,7 +75,7 @@ struct Assist {
 
 impl Assist {
     fn collect() -> Vec<Assist> {
-        let handlers_dir = project_root().join("crates/ide_assists/src/handlers");
+        let handlers_dir = project_root().join("crates/ide-assists/src/handlers");
 
         let mut res = Vec::new();
         for path in sourcegen::list_rust_files(&handlers_dir) {
