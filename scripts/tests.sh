@@ -2,10 +2,34 @@
 
 set -e
 
-source scripts/config.sh
-source scripts/ext_config.sh
-export RUSTC=false # ensure that cg_llvm isn't accidentally used
-MY_RUSTC="$(pwd)/build/bin/cg_clif $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
+export CG_CLIF_DISPLAY_CG_TIME=1
+export CG_CLIF_DISABLE_INCR_CACHE=1
+
+export HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+export TARGET_TRIPLE=${TARGET_TRIPLE:-$HOST_TRIPLE}
+
+export RUN_WRAPPER=''
+export JIT_SUPPORTED=1
+if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+   export JIT_SUPPORTED=0
+   if [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
+      # We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
+      export RUSTFLAGS='-Clinker=aarch64-linux-gnu-gcc '$RUSTFLAGS
+      export RUN_WRAPPER='qemu-aarch64 -L /usr/aarch64-linux-gnu'
+   elif [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
+      # We are cross-compiling for Windows. Run tests in wine.
+      export RUN_WRAPPER='wine'
+   else
+      echo "Unknown non-native platform"
+   fi
+fi
+
+# FIXME fix `#[linkage = "extern_weak"]` without this
+if [[ "$(uname)" == 'Darwin' ]]; then
+   export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
+fi
+
+MY_RUSTC="$(pwd)/build/rustc-clif $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {
     echo "[BUILD] mini_core"
@@ -97,7 +121,7 @@ function extended_sysroot_tests() {
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[BENCH COMPILE] ebobby/simple-raytracer"
         hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "../build/cargo-clif clean" \
-        "RUSTC=rustc RUSTFLAGS='' cargo build" \
+        "RUSTFLAGS='' cargo build" \
         "../build/cargo-clif build"
 
         echo "[BENCH RUN] ebobby/simple-raytracer"

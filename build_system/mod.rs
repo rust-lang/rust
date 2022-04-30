@@ -86,6 +86,7 @@ pub fn main() {
             arg => arg_error!("Unexpected argument {}", arg),
         }
     }
+    target_dir = std::env::current_dir().unwrap().join(target_dir);
 
     let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
         host_triple
