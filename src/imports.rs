@@ -181,6 +181,14 @@ impl UseSegment {
             }
         })
     }
+
+    fn contains_comment(&self) -> bool {
+        if let UseSegment::List(list) = self {
+            list.iter().any(|subtree| subtree.contains_comment())
+        } else {
+            false
+        }
+    }
 }
 
 pub(crate) fn normalize_use_trees_with_granularity(
@@ -197,7 +205,7 @@ pub(crate) fn normalize_use_trees_with_granularity(
 
     let mut result = Vec::with_capacity(use_trees.len());
     for use_tree in use_trees {
-        if use_tree.has_comment() || use_tree.attrs.is_some() {
+        if use_tree.contains_comment() || use_tree.attrs.is_some() {
             result.push(use_tree);
             continue;
         }
@@ -556,6 +564,10 @@ impl UseTree {
         self.list_item.as_ref().map_or(false, ListItem::has_comment)
     }
 
+    fn contains_comment(&self) -> bool {
+        self.has_comment() || self.path.iter().any(|path| path.contains_comment())
+    }
+
     fn same_visibility(&self, other: &UseTree) -> bool {
         match (&self.visibility, &other.visibility) {
             (
@@ -582,6 +594,7 @@ impl UseTree {
         if self.path.is_empty()
             || other.path.is_empty()
             || self.attrs.is_some()
+            || self.contains_comment()
             || !self.same_visibility(other)
         {
             false
@@ -597,7 +610,7 @@ impl UseTree {
     }
 
     fn flatten(self, import_granularity: ImportGranularity) -> Vec<UseTree> {
-        if self.path.is_empty() {
+        if self.path.is_empty() || self.contains_comment() {
             return vec![self];
         }
         match self.path.clone().last().unwrap() {
