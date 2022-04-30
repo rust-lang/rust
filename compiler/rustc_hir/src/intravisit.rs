@@ -163,10 +163,15 @@ impl<'hir> Map<'hir> for ! {
 pub mod nested_filter {
     use super::Map;
 
-    /// Specifies what nested things a visitor wants to visit. The most
-    /// common choice is `OnlyBodies`, which will cause the visitor to
-    /// visit fn bodies for fns that it encounters, but skip over nested
-    /// item-like things.
+    /// Specifies what nested things a visitor wants to visit. By "nested
+    /// things", we are referring to bits of HIR that are not directly embedded
+    /// within one another but rather indirectly, through a table in the crate.
+    /// This is done to control dependencies during incremental compilation: the
+    /// non-inline bits of HIR can be tracked and hashed separately.
+    ///
+    /// The most common choice is `OnlyBodies`, which will cause the visitor to
+    /// visit fn bodies for fns that it encounters, and closure bodies, but
+    /// skip over nested item-like things.
     ///
     /// See the comments on `ItemLikeVisitor` for more details on the overall
     /// visit strategy.
@@ -217,27 +222,23 @@ use nested_filter::NestedFilter;
 pub trait Visitor<'v>: Sized {
     // this type should not be overridden, it exists for convenient usage as `Self::Map`
     type Map: Map<'v> = <Self::NestedFilter as NestedFilter<'v>>::Map;
-    type NestedFilter: NestedFilter<'v> = nested_filter::None;
 
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// The default versions of the `visit_nested_XXX` routines invoke
-    /// this method to get a map to use. By selecting an enum variant,
-    /// you control which kinds of nested HIR are visited; see
-    /// `NestedVisitorMap` for details. By "nested HIR", we are
-    /// referring to bits of HIR that are not directly embedded within
-    /// one another but rather indirectly, through a table in the
-    /// crate. This is done to control dependencies during incremental
-    /// compilation: the non-inline bits of HIR can be tracked and
-    /// hashed separately.
+    /// Override this type to control which nested HIR are visited; see
+    /// [`NestedFilter`] for details. If you override this type, you
+    /// must also override [`nested_visit_map`](Self::nested_visit_map).
     ///
     /// **If for some reason you want the nested behavior, but don't
-    /// have a `Map` at your disposal:** then you should override the
-    /// `visit_nested_XXX` methods, and override this method to
-    /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
-    /// added in the future, we will see the panic in your code and
-    /// fix it appropriately.
+    /// have a `Map` at your disposal:** then override the
+    /// `visit_nested_XXX` methods. If a new `visit_nested_XXX` variant is
+    /// added in the future, it will cause a panic which can be detected
+    /// and fixed appropriately.
+    type NestedFilter: NestedFilter<'v> = nested_filter::None;
+
+    /// If `type NestedFilter` is set to visit nested items, this method
+    /// must also be overridden to provide a map to retrieve nested items.
     fn nested_visit_map(&mut self) -> Self::Map {
         panic!(
             "nested_visit_map must be implemented or consider using \
@@ -245,14 +246,14 @@ pub trait Visitor<'v>: Sized {
         );
     }
 
-    /// Invoked when a nested item is encountered. By default does
-    /// nothing unless you override `nested_visit_map` to return other than
-    /// `None`, in which case it will walk the item. **You probably
-    /// don't want to override this method** -- instead, override
-    /// `nested_visit_map` or use the "shallow" or "deep" visit
-    /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
-    /// reason to override this method is if you want a nested pattern
-    /// but cannot supply a `Map`; see `nested_visit_map` for advice.
+    /// Invoked when a nested item is encountered. By default, when
+    /// `Self::NestedFilter` is `nested_filter::None`, this method does
+    /// nothing. **You probably don't want to override this method** --
+    /// instead, override [`Self::NestedFilter`] or use the "shallow" or
+    /// "deep" visit patterns described on
+    /// `itemlikevisit::ItemLikeVisitor`. The only reason to override
+    /// this method is if you want a nested pattern but cannot supply a
+    /// [`Map`]; see `nested_visit_map` for advice.
     fn visit_nested_item(&mut self, id: ItemId) {
         if Self::NestedFilter::INTER {
             let item = self.nested_visit_map().item(id);
@@ -291,9 +292,8 @@ pub trait Visitor<'v>: Sized {
     }
 
     /// Invoked to visit the body of a function, method or closure. Like
-    /// visit_nested_item, does nothing by default unless you override
-    /// `nested_visit_map` to return other than `None`, in which case it will walk
-    /// the body.
+    /// `visit_nested_item`, does nothing by default unless you override
+    /// `Self::NestedFilter`.
     fn visit_nested_body(&mut self, id: BodyId) {
         if Self::NestedFilter::INTRA {
             let body = self.nested_visit_map().body(id);
