@@ -182,7 +182,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
@@ -393,6 +393,7 @@ fn collect_items_rec<'tcx>(
     // error count. If it has changed, a PME occurred, and we trigger some diagnostics about the
     // current step of mono items collection.
     //
+    // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
     let error_count = tcx.sess.diagnostic().err_count();
 
     match starting_point.node {
@@ -473,12 +474,9 @@ fn collect_items_rec<'tcx>(
     }
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
-    // mono item graph where the PME diagnostics are currently the most problematic (e.g. ones
-    // involving a dependency, and the lack of context is confusing) in this MVP, we focus on
-    // diagnostics on edges crossing a crate boundary: the collected mono items which are not
-    // defined in the local crate.
+    // mono item graph.
     if tcx.sess.diagnostic().err_count() > error_count
-        && starting_point.node.krate() != LOCAL_CRATE
+        && starting_point.node.is_generic_fn()
         && starting_point.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
