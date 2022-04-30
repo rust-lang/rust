@@ -104,19 +104,18 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
-        ModuleLlvm::new_metadata(tcx, mod_name)
-    }
-
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        module_llvm: &mut ModuleLlvm,
         module_name: &str,
         kind: AllocatorKind,
         has_alloc_error_handler: bool,
-    ) {
-        unsafe { allocator::codegen(tcx, module_llvm, module_name, kind, has_alloc_error_handler) }
+    ) -> ModuleLlvm {
+        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        unsafe {
+            allocator::codegen(tcx, &mut module_llvm, module_name, kind, has_alloc_error_handler);
+        }
+        module_llvm
     }
     fn compile_codegen_unit(
         &self,

@@ -69,9 +69,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
         match self {
             LtoModuleCodegen::Fat { mut module, .. } => {
-                {
-                    B::optimize_fat(cgcx, &mut module)?;
-                }
+                B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
             LtoModuleCodegen::Thin(thin) => B::optimize_thin(cgcx, thin),

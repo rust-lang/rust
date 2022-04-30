@@ -139,14 +139,12 @@ impl CodegenBackend for GccCodegenBackend {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn new_metadata<'tcx>(&self, _tcx: TyCtxt<'tcx>, _mod_name: &str) -> Self::Module {
-        GccContext {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) -> Self::Module {
+        let mut mods = GccContext {
             context: Context::default(),
-        }
-    }
-
-    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, mods: &mut Self::Module, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
-        unsafe { allocator::codegen(tcx, mods, module_name, kind, has_alloc_error_handler) }
+        };
+        unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, has_alloc_error_handler); }
+        mods
     }
 
     fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (ModuleCodegen<Self::Module>, u64) {
