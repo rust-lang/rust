@@ -4,7 +4,7 @@ static PCM: &[i16] = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 fn main() {
     #[cfg(increase_thread_usage)]
     let thread = std::thread::spawn(|| 4);
-    
+
     for _ in 0..2 {
         mse(PCM.len(), PCM, EXPECTED);
     }

@@ -24,14 +24,14 @@ fn stdlib_pointers() {
         sync::Arc,
         pin::Pin,
     };
-    
+
     trait Trait {
         fn by_rc(self: Rc<Self>) -> i64;
         fn by_arc(self: Arc<Self>) -> i64;
         fn by_pin_mut(self: Pin<&mut Self>) -> i64;
         fn by_pin_box(self: Pin<Box<Self>>) -> i64;
     }
-    
+
     impl Trait for i64 {
         fn by_rc(self: Rc<Self>) -> i64 {
             *self
@@ -46,7 +46,7 @@ fn stdlib_pointers() {
             *self
         }
     }
-    
+
     let rc = Rc::new(1i64) as Rc<dyn Trait>;
     assert_eq!(1, rc.by_rc());
 
@@ -66,34 +66,34 @@ fn pointers_and_wrappers() {
         ops::{Deref, CoerceUnsized, DispatchFromDyn},
         marker::Unsize,
     };
-    
+
     struct Ptr<T: ?Sized>(Box<T>);
-    
+
     impl<T: ?Sized> Deref for Ptr<T> {
         type Target = T;
-    
+
         fn deref(&self) -> &T {
             &*self.0
         }
     }
-    
+
     impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
     impl<T: Unsize<U> + ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T> {}
-    
+
     struct Wrapper<T: ?Sized>(T);
-    
+
     impl<T: ?Sized> Deref for Wrapper<T> {
         type Target = T;
-    
+
         fn deref(&self) -> &T {
             &self.0
         }
     }
-    
+
     impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
     impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
-    
-    
+
+
     trait Trait {
         // This method isn't object-safe yet. Unsized by-value `self` is object-safe (but not callable
         // without unsized_locals), but wrappers arond `Self` currently are not.
@@ -103,7 +103,7 @@ fn pointers_and_wrappers() {
         fn wrapper_ptr(self: Wrapper<Ptr<Self>>) -> i32;
         fn wrapper_ptr_wrapper(self: Wrapper<Ptr<Wrapper<Self>>>) -> i32;
     }
-    
+
     impl Trait for i32 {
         fn ptr_wrapper(self: Ptr<Wrapper<Self>>) -> i32 {
             **self
@@ -115,7 +115,7 @@ fn pointers_and_wrappers() {
             ***self
         }
     }
-    
+
     let pw = Ptr(Box::new(Wrapper(5))) as Ptr<Wrapper<dyn Trait>>;
     assert_eq!(pw.ptr_wrapper(), 5);
 

@@ -16,12 +16,12 @@ fn test_fence_sync() {
     let mut var = 0u32;
     let ptr = &mut var as *mut u32;
     let evil_ptr = EvilSend(ptr);
-    
-    
+
+
     let j1 = spawn(move || {
         unsafe { *evil_ptr.0 = 1; }
         fence(Ordering::Release);
-        SYNC.store(1, Ordering::Relaxed)   
+        SYNC.store(1, Ordering::Relaxed)
     });
 
     let j2 = spawn(move || {

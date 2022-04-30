@@ -12,7 +12,7 @@ fn main() {
     assert!(ptr::eq(&*strong, Weak::as_ptr(&weak)));
     // The strong here keeps it alive, so we can still access the object.
     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) });
-    
+
     drop(strong);
     // But not any more. We can do Weak::as_raw(&weak), but accessing the pointer would lead to
     // undefined behaviour.

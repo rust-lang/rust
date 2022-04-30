@@ -24,7 +24,7 @@ fn main() {
         unsafe {
             miri_resolve_frame_names(*frame, 0, name.as_mut_ptr(), filename.as_mut_ptr());
         }
-        
+
         let name = String::from_utf8(name).unwrap();
         let filename = String::from_utf8(filename).unwrap();
 

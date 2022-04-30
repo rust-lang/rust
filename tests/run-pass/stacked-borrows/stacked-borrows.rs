@@ -1,6 +1,6 @@
 // compile-flags: -Zmiri-tag-raw-pointers
 use std::ptr;
-    
+
 // Test various stacked-borrows-related things.
 fn main() {
     read_does_not_invalidate1();

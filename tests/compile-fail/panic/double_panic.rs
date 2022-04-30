@@ -8,5 +8,5 @@ impl Drop for Foo {
 }
 fn main() {
     let _foo = Foo;
-    panic!("first"); 
+    panic!("first");
 }
