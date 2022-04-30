@@ -1343,7 +1343,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 }
                 // TODO(antoyo): switch to using new_vector_access.
                 let array = self.context.new_bitcast(None, v2, array_type);
-                for i in 0..vec_num_units {
+                for i in 0..(mask_num_units - vec_num_units) {
                     elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
                 }
                 let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);

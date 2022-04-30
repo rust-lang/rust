@@ -202,14 +202,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             };
         let builtin = bx.context.get_target_builtin_function(func_name);
         let param1_type = builtin.get_param(0).to_rvalue().get_type();
-        let vector =
-            if vector.get_type() != param1_type {
-                // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                bx.context.new_bitcast(None, vector, param1_type)
-            }
-            else {
-                vector
-            };
+        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+        let vector = bx.cx.bitcast_if_needed(vector, param1_type);
         let result = bx.context.new_call(None, builtin, &[vector, value, bx.context.new_cast(None, index, bx.int_type)]);
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
@@ -539,18 +533,79 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let func = bx.context.get_target_builtin_function(builtin_name);
-        let param1_type = func.get_parameter(0).get_type();
-        let lhs =
-            if lhs.get_type() != param1_type {
-                bx.context.new_bitcast(None, lhs, param1_type)
-            }
-            else {
-                lhs
-            };
+        let param1_type = func.get_param(0).to_rvalue().get_type();
+        let param2_type = func.get_param(1).to_rvalue().get_type();
+        let lhs = bx.cx.bitcast_if_needed(lhs, param1_type);
+        let rhs = bx.cx.bitcast_if_needed(rhs, param2_type);
         let result = bx.context.new_call(None, func, &[lhs, rhs]);
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vec_ty));
     }
+
+    macro_rules! arith_red {
+        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $op:ident,
+         $identity:expr) => {
+            if name == sym::$name {
+                require!(
+                    ret_ty == in_elem,
+                    "expected return type `{}` (element of input `{}`), found `{}`",
+                    in_elem,
+                    in_ty,
+                    ret_ty
+                );
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) => {
+                        let r = bx.$integer_reduce(args[0].immediate());
+                        if $ordered {
+                            // if overflow occurs, the result is the
+                            // mathematical result modulo 2^n:
+                            Ok(bx.$op(args[1].immediate(), r))
+                        } else {
+                            Ok(bx.$integer_reduce(args[0].immediate()))
+                        }
+                    }
+                    ty::Float(f) => {
+                        let acc = if $ordered {
+                            // ordered arithmetic reductions take an accumulator
+                            args[1].immediate()
+                        } else {
+                            // unordered arithmetic reductions use the identity accumulator
+                            match f.bit_width() {
+                                32 => bx.const_real(bx.type_f32(), $identity),
+                                64 => bx.const_real(bx.type_f64(), $identity),
+                                v => return_error!(
+                                    r#"
+unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
+                                    sym::$name,
+                                    in_ty,
+                                    in_elem,
+                                    v,
+                                    ret_ty
+                                ),
+                            }
+                        };
+                        Ok(bx.$float_reduce(acc, args[0].immediate()))
+                    }
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    // TODO: use a recursive algorithm a-la Hacker's Delight.
+    arith_red!(
+        simd_reduce_add_unordered: vector_reduce_add,
+        vector_reduce_fadd_fast,
+        false,
+        add,
+        0.0
+    );
 
     unimplemented!("simd {}", name);
 }

@@ -279,6 +279,15 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn sess(&self) -> &Session {
         &self.tcx.sess
     }
+
+    pub fn bitcast_if_needed(&self, value: RValue<'gcc>, expected_type: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() != expected_type {
+            self.context.new_bitcast(None, value, expected_type)
+        }
+        else {
+            value
+        }
+    }
 }
 
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
