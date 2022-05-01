@@ -4,10 +4,9 @@ use crate::proc_macro_server;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
-use rustc_parse::nt_to_tokenstream;
 use rustc_parse::parser::ForceCollect;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{Span, DUMMY_SP};
@@ -87,25 +86,17 @@ impl MultiItemModifier for ProcMacroDerive {
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
-        let mut is_stmt = false;
-        let item = match item {
-            Annotatable::Item(item) => token::NtItem(item),
-            Annotatable::Stmt(stmt) => {
-                is_stmt = true;
-                assert!(stmt.is_item());
-
-                // A proc macro can't observe the fact that we're passing
-                // them an `NtStmt` - it can only see the underlying tokens
-                // of the wrapped item
-                token::NtStmt(stmt)
-            }
-            _ => unreachable!(),
-        };
-        let input = if crate::base::pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess)
-        {
-            TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
+        let is_stmt = matches!(item, Annotatable::Stmt(..));
+        let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess);
+        let input = if hack {
+            let nt = match item {
+                Annotatable::Item(item) => token::NtItem(item),
+                Annotatable::Stmt(stmt) => token::NtStmt(stmt),
+                _ => unreachable!(),
+            };
+            TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
         } else {
-            nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::No)
+            item.to_tokens(&ecx.sess.parse_sess)
         };
 
         let stream = {

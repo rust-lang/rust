@@ -3,7 +3,7 @@ use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttributesData, CreateTokenStream};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenTree, DelimSpan, LazyTokenStream, Spacing};
 use rustc_ast::{self as ast};
-use rustc_ast::{AstLike, AttrVec, Attribute};
+use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
 use rustc_span::{sym, Span};
 
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
     /// This restriction shouldn't be an issue in practice,
     /// since this function is used to record the tokens for
     /// a parsed AST item, which always has matching delimiters.
-    pub fn collect_tokens_trailing_token<R: AstLike>(
+    pub fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,

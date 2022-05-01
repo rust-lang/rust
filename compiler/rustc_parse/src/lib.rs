@@ -17,17 +17,17 @@ use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
-use rustc_ast::AstLike;
 use rustc_ast::Attribute;
 use rustc_ast::{AttrItem, MetaItem};
-use rustc_ast_pretty::pprust;
+use rustc_ast::{HasAttrs, HasSpan, HasTokens};
+use rustc_ast_pretty::pprust::{self, AstPrettyPrint};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
+use std::fmt;
 use std::path::Path;
-use std::str;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
@@ -244,6 +244,20 @@ pub fn parse_in<'a, T>(
 // NOTE(Centril): The following probably shouldn't be here but it acknowledges the
 // fact that architecturally, we are using parsing (read on below to understand why).
 
+pub fn to_token_stream(
+    node: &(impl HasAttrs + HasSpan + HasTokens + AstPrettyPrint + fmt::Debug),
+    sess: &ParseSess,
+    synthesize_tokens: CanSynthesizeMissingTokens,
+) -> TokenStream {
+    if let Some(tokens) = prepend_attrs(&node.attrs(), node.tokens()) {
+        return tokens;
+    } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
+        return fake_token_stream(sess, node);
+    } else {
+        panic!("Missing tokens for nt {:?} at {:?}: {:?}", node, node.span(), node.pretty_print());
+    }
+}
+
 pub fn nt_to_tokenstream(
     nt: &Nonterminal,
     sess: &ParseSess,
@@ -298,7 +312,7 @@ pub fn nt_to_tokenstream(
     if let Some(tokens) = tokens {
         return tokens;
     } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
-        return fake_token_stream(sess, nt);
+        return nt_fake_token_stream(sess, nt);
     } else {
         panic!(
             "Missing tokens for nt {:?} at {:?}: {:?}",
@@ -322,7 +336,13 @@ fn prepend_attrs(attrs: &[Attribute], tokens: Option<&LazyTokenStream>) -> Optio
     Some(wrapped.to_tokenstream())
 }
 
-pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
+pub fn fake_token_stream(sess: &ParseSess, node: &(impl AstPrettyPrint + HasSpan)) -> TokenStream {
+    let source = node.pretty_print();
+    let filename = FileName::macro_expansion_source_code(&source);
+    parse_stream_from_source_str(filename, source, sess, Some(node.span()))
+}
+
+fn nt_fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
     parse_stream_from_source_str(filename, source, sess, Some(nt.span()))

@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
-use rustc_ast::AstLike;
+use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};

@@ -6,7 +6,7 @@ use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
 use rustc_ast::NodeId;
-use rustc_ast::{self as ast, AstLike, AttrStyle, Attribute, MetaItem};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -246,7 +246,7 @@ macro_rules! configure {
 }
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: AstLike>(&self, mut node: T) -> Option<T> {
+    pub fn configure<T: HasAttrs + HasTokens>(&self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         if self.in_cfg(node.attrs()) {
             self.try_configure_tokens(&mut node);
@@ -256,7 +256,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn try_configure_tokens<T: AstLike>(&self, node: &mut T) {
+    fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
                 let attr_annotated_tokens = tokens.create_token_stream();
@@ -330,7 +330,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives compiler warnings if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
-    fn process_cfg_attrs<T: AstLike>(&self, node: &mut T) {
+    fn process_cfg_attrs<T: HasAttrs>(&self, node: &mut T) {
         node.visit_attrs(|attrs| {
             attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
         });
