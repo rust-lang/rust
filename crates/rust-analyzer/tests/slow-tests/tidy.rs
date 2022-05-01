@@ -195,11 +195,11 @@ https://github.blog/2015-06-08-how-to-undo-almost-anything-with-git/#redo-after-
 fn deny_clippy(path: &Path, text: &str) {
     let ignore = &[
         // The documentation in string literals may contain anything for its own purposes
-        "ide_db/src/generated/lints.rs",
+        "ide-db/src/generated/lints.rs",
         // The tests test clippy lint hovers
         "ide/src/hover/tests.rs",
         // The tests test clippy lint completions
-        "ide_completion/src/tests/attribute.rs",
+        "ide-completion/src/tests/attribute.rs",
     ];
     if ignore.iter().any(|p| path.ends_with(p)) {
         return;
@@ -289,11 +289,11 @@ fn check_todo(path: &Path, text: &str) {
         // `ast::make`.
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "ide_db/src/generated/lints.rs",
-        "ide_assists/src/utils/gen_trait_fn_body.rs",
-        "ide_assists/src/tests/generated.rs",
+        "ide-db/src/generated/lints.rs",
+        "ide-assists/src/utils/gen_trait_fn_body.rs",
+        "ide-assists/src/tests/generated.rs",
         // The tests for missing fields
-        "ide_diagnostics/src/handlers/missing_fields.rs",
+        "ide-diagnostics/src/handlers/missing_fields.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;
@@ -320,12 +320,12 @@ fn check_dbg(path: &Path, text: &str) {
         // Assists to remove `dbg!()`
         "handlers/remove_dbg.rs",
         // We have .dbg postfix
-        "ide_completion/src/completions/postfix.rs",
-        "ide_completion/src/completions/keyword.rs",
-        "ide_completion/src/tests/proc_macros.rs",
+        "ide-completion/src/completions/postfix.rs",
+        "ide-completion/src/completions/keyword.rs",
+        "ide-completion/src/tests/proc_macros.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "ide_completion/src/lib.rs",
-        "ide_db/src/generated/lints.rs",
+        "ide-completion/src/lib.rs",
+        "ide-db/src/generated/lints.rs",
         // test for doc test for remove_dbg
         "src/tests/generated.rs",
     ];
@@ -351,13 +351,13 @@ fn check_test_attrs(path: &Path, text: &str) {
         "ide/src/runnables.rs",
         // A legit test which needs to be ignored, as it takes too long to run
         // :(
-        "hir_def/src/nameres/collector.rs",
+        "hir-def/src/nameres/collector.rs",
         // Long sourcegen test to generate lint completions.
-        "ide_db/src/tests/sourcegen_lints.rs",
+        "ide-db/src/tests/sourcegen_lints.rs",
         // Obviously needs ignore.
-        "ide_assists/src/handlers/toggle_ignore.rs",
+        "ide-assists/src/handlers/toggle_ignore.rs",
         // See above.
-        "ide_assists/src/tests/generated.rs",
+        "ide-assists/src/tests/generated.rs",
     ];
     if text.contains("#[ignore") && !need_ignore.iter().any(|p| path.ends_with(p)) {
         panic!("\ndon't `#[ignore]` tests, see:\n\n    {}\n\n   {}\n", ignore_rule, path.display(),)
@@ -368,7 +368,7 @@ fn check_test_attrs(path: &Path, text: &str) {
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",
-        "test_utils/src/fixture.rs",
+        "test-utils/src/fixture.rs",
     ];
     if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
         panic!(

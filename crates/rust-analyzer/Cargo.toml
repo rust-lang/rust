@@ -48,23 +48,23 @@ always-assert = "0.1.2"
 stdx = { path = "../stdx", version = "0.0.0" }
 flycheck = { path = "../flycheck", version = "0.0.0" }
 ide = { path = "../ide", version = "0.0.0" }
-ide_db = { path = "../ide_db", version = "0.0.0" }
+ide-db = { path = "../ide-db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
-project_model = { path = "../project_model", version = "0.0.0" }
+project-model = { path = "../project-model", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 vfs = { path = "../vfs", version = "0.0.0" }
 vfs-notify = { path = "../vfs-notify", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
-proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
+proc-macro-api = { path = "../proc-macro-api", version = "0.0.0" }
 
 # This should only be used in CLI
-ide_ssr = { path = "../ide_ssr", version = "0.0.0" }
+ide-ssr = { path = "../ide-ssr", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
-hir_def = { path = "../hir_def", version = "0.0.0" }
-hir_ty = { path = "../hir_ty", version = "0.0.0" }
-proc_macro_srv = { path = "../proc_macro_srv", version = "0.0.0" }
+hir-def = { path = "../hir-def", version = "0.0.0" }
+hir-ty = { path = "../hir-ty", version = "0.0.0" }
+proc-macro-srv = { path = "../proc-macro-srv", version = "0.0.0" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.9"
@@ -77,7 +77,7 @@ expect-test = "1.2.2"
 jod-thread = "0.1.2"
 xshell = "0.2.1"
 
-test_utils = { path = "../test_utils" }
+test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }
 mbe = { path = "../mbe" }
 

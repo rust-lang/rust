@@ -1,0 +1,22 @@
+[package]
+name = "base-db"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+salsa = "0.17.0-pre.2"
+rustc-hash = "1.1.0"
+
+syntax = { path = "../syntax", version = "0.0.0" }
+stdx = { path = "../stdx", version = "0.0.0" }
+cfg = { path = "../cfg", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
+test-utils = { path = "../test-utils", version = "0.0.0" }
+vfs = { path = "../vfs", version = "0.0.0" }

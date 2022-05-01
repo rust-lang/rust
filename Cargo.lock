@@ -92,7 +92,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "base_db"
+name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
@@ -101,7 +101,7 @@ dependencies = [
  "salsa",
  "stdx",
  "syntax",
- "test_utils",
+ "test-utils",
  "tt",
  "vfs",
 ]
@@ -474,12 +474,12 @@ name = "hir"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "base_db",
+ "base-db",
  "cfg",
  "either",
- "hir_def",
- "hir_expand",
- "hir_ty",
+ "hir-def",
+ "hir-expand",
+ "hir-ty",
  "itertools",
  "once_cell",
  "profile",
@@ -491,12 +491,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "hir_def"
+name = "hir-def"
 version = "0.0.0"
 dependencies = [
  "anymap",
  "arrayvec",
- "base_db",
+ "base-db",
  "bitflags",
  "cfg",
  "cov-mark",
@@ -505,7 +505,7 @@ dependencies = [
  "either",
  "expect-test",
  "fst",
- "hir_expand",
+ "hir-expand",
  "indexmap",
  "itertools",
  "la-arena",
@@ -519,16 +519,16 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
- "test_utils",
+ "test-utils",
  "tracing",
  "tt",
 ]
 
 [[package]]
-name = "hir_expand"
+name = "hir-expand"
 version = "0.0.0"
 dependencies = [
- "base_db",
+ "base-db",
  "cfg",
  "cov-mark",
  "either",
@@ -546,19 +546,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "hir_ty"
+name = "hir-ty"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "base_db",
+ "base-db",
  "chalk-ir",
  "chalk-recursive",
  "chalk-solve",
  "cov-mark",
  "ena",
  "expect-test",
- "hir_def",
- "hir_expand",
+ "hir-def",
+ "hir-expand",
  "itertools",
  "la-arena",
  "limit",
@@ -569,7 +569,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
- "test_utils",
+ "test-utils",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -596,11 +596,11 @@ dependencies = [
  "either",
  "expect-test",
  "hir",
- "ide_assists",
- "ide_completion",
- "ide_db",
- "ide_diagnostics",
- "ide_ssr",
+ "ide-assists",
+ "ide-completion",
+ "ide-db",
+ "ide-diagnostics",
+ "ide-ssr",
  "itertools",
  "oorandom",
  "profile",
@@ -608,56 +608,56 @@ dependencies = [
  "pulldown-cmark-to-cmark",
  "stdx",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
  "toolchain",
  "tracing",
  "url",
 ]
 
 [[package]]
-name = "ide_assists"
+name = "ide-assists"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
  "either",
  "expect-test",
  "hir",
- "ide_db",
+ "ide-db",
  "itertools",
  "profile",
  "sourcegen",
  "stdx",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
 ]
 
 [[package]]
-name = "ide_completion"
+name = "ide-completion"
 version = "0.0.0"
 dependencies = [
- "base_db",
+ "base-db",
  "cov-mark",
  "expect-test",
  "hir",
- "ide_db",
+ "ide-db",
  "itertools",
  "once_cell",
  "profile",
  "smallvec",
  "stdx",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
 ]
 
 [[package]]
-name = "ide_db"
+name = "ide-db"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "base_db",
+ "base-db",
  "cov-mark",
  "either",
  "expect-test",
@@ -674,14 +674,14 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
  "tracing",
  "xshell",
 ]
 
 [[package]]
-name = "ide_diagnostics"
+name = "ide-diagnostics"
 version = "0.0.0"
 dependencies = [
  "cfg",
@@ -689,29 +689,29 @@ dependencies = [
  "either",
  "expect-test",
  "hir",
- "ide_db",
+ "ide-db",
  "itertools",
  "profile",
  "sourcegen",
  "stdx",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
 ]
 
 [[package]]
-name = "ide_ssr"
+name = "ide-ssr"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
  "expect-test",
  "hir",
- "ide_db",
+ "ide-db",
  "itertools",
  "parser",
  "syntax",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
 ]
 
 [[package]]
@@ -913,7 +913,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
- "test_utils",
+ "test-utils",
  "tracing",
  "tt",
 ]
@@ -1180,16 +1180,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e280fbe77cc62c91527259e9442153f4688736748d24660126286329742b4c6c"
 
 [[package]]
-name = "proc-macro2"
-version = "1.0.37"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec757218438d5fda206afc041538b2f6d889286160d649a86a24d37e1235afd1"
-dependencies = [
- "unicode-xid",
-]
-
-[[package]]
-name = "proc_macro_api"
+name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
  "memmap2",
@@ -1205,7 +1196,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc_macro_srv"
+name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
  "expect-test",
@@ -1214,23 +1205,32 @@ dependencies = [
  "memmap2",
  "object 0.28.3",
  "paths",
- "proc_macro_api",
- "proc_macro_test",
+ "proc-macro-api",
+ "proc-macro-test",
  "tt",
 ]
 
 [[package]]
-name = "proc_macro_test"
+name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
- "proc_macro_test_impl",
+ "proc-macro-test-impl",
  "toolchain",
 ]
 
 [[package]]
-name = "proc_macro_test_impl"
+name = "proc-macro-test-impl"
 version = "0.0.0"
+
+[[package]]
+name = "proc-macro2"
+version = "1.0.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec757218438d5fda206afc041538b2f6d889286160d649a86a24d37e1235afd1"
+dependencies = [
+ "unicode-xid",
+]
 
 [[package]]
 name = "profile"
@@ -1247,11 +1247,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "project_model"
+name = "project-model"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "base_db",
+ "base-db",
  "cargo_metadata",
  "cfg",
  "expect-test",
@@ -1378,11 +1378,11 @@ dependencies = [
  "expect-test",
  "flycheck",
  "hir",
- "hir_def",
- "hir_ty",
+ "hir-def",
+ "hir-ty",
  "ide",
- "ide_db",
- "ide_ssr",
+ "ide-db",
+ "ide-ssr",
  "itertools",
  "jod-thread",
  "lsp-server",
@@ -1392,10 +1392,10 @@ dependencies = [
  "num_cpus",
  "oorandom",
  "parking_lot 0.12.0",
- "proc_macro_api",
- "proc_macro_srv",
+ "proc-macro-api",
+ "proc-macro-srv",
  "profile",
- "project_model",
+ "project-model",
  "rayon",
  "rustc-hash",
  "serde",
@@ -1403,7 +1403,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
- "test_utils",
+ "test-utils",
  "threadpool",
  "tikv-jemallocator",
  "toolchain",
@@ -1639,13 +1639,13 @@ dependencies = [
  "smol_str",
  "sourcegen",
  "stdx",
- "test_utils",
- "text_edit",
+ "test-utils",
+ "text-edit",
  "ungrammar",
 ]
 
 [[package]]
-name = "test_utils"
+name = "test-utils"
 version = "0.0.0"
 dependencies = [
  "dissimilar",
@@ -1656,18 +1656,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "text-size"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "288cb548dbe72b652243ea797201f3d481a0609a967980fcc5b2315ea811560a"
-
-[[package]]
-name = "text_edit"
+name = "text-edit"
 version = "0.0.0"
 dependencies = [
  "itertools",
  "text-size",
 ]
+
+[[package]]
+name = "text-size"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "288cb548dbe72b652243ea797201f3d481a0609a967980fcc5b2315ea811560a"
 
 [[package]]
 name = "thread_local"
