@@ -247,6 +247,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         self.context.new_array_type(None, ty, len)
     }
+
+    pub fn type_bool(&self) -> Type<'gcc> {
+        self.context.new_type::<bool>()
+    }
 }
 
 pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {

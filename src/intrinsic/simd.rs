@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use gccjit::{RValue, Type, ToRValue};
+use gccjit::{BinaryOp, RValue, Type, ToRValue};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -220,6 +220,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         );
         let vector = args[0].immediate();
         return Ok(bx.context.new_vector_access(None, vector, args[1].immediate()).to_rvalue());
+    }
+
+    if name == sym::simd_select {
+        let m_elem_ty = in_elem;
+        let m_len = in_len;
+        require_simd!(arg_tys[1], "argument");
+        let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+        require!(
+            m_len == v_len,
+            "mismatched lengths: mask length `{}` != other vector length `{}`",
+            m_len,
+            v_len
+        );
+        match m_elem_ty.kind() {
+            ty::Int(_) => {}
+            _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty),
+        }
+        return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
     if name == sym::simd_cast {
@@ -543,7 +561,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     }
 
     macro_rules! arith_red {
-        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $op:ident,
+        ($name:ident : $vec_op:expr, $float_reduce:ident, $ordered:expr, $op:ident,
          $identity:expr) => {
             if name == sym::$name {
                 require!(
@@ -555,36 +573,25 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
-                        let r = bx.$integer_reduce(args[0].immediate());
+                        let r = bx.vector_reduce_op(args[0].immediate(), $vec_op);
                         if $ordered {
                             // if overflow occurs, the result is the
                             // mathematical result modulo 2^n:
                             Ok(bx.$op(args[1].immediate(), r))
-                        } else {
-                            Ok(bx.$integer_reduce(args[0].immediate()))
+                        }
+                        else {
+                            Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
                         }
                     }
-                    ty::Float(f) => {
-                        let acc = if $ordered {
+                    ty::Float(_) => {
+                        if $ordered {
                             // ordered arithmetic reductions take an accumulator
-                            args[1].immediate()
-                        } else {
-                            // unordered arithmetic reductions use the identity accumulator
-                            match f.bit_width() {
-                                32 => bx.const_real(bx.type_f32(), $identity),
-                                64 => bx.const_real(bx.type_f64(), $identity),
-                                v => return_error!(
-                                    r#"
-unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
-                                    sym::$name,
-                                    in_ty,
-                                    in_elem,
-                                    v,
-                                    ret_ty
-                                ),
-                            }
-                        };
-                        Ok(bx.$float_reduce(acc, args[0].immediate()))
+                            let acc = args[1].immediate();
+                            Ok(bx.$float_reduce(acc, args[0].immediate()))
+                        }
+                        else {
+                            Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
+                        }
                     }
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
@@ -598,14 +605,96 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         };
     }
 
-    // TODO: use a recursive algorithm a-la Hacker's Delight.
     arith_red!(
-        simd_reduce_add_unordered: vector_reduce_add,
+        simd_reduce_add_unordered: BinaryOp::Plus,
         vector_reduce_fadd_fast,
         false,
         add,
-        0.0
+        0.0 // TODO: Use this argument.
     );
+    arith_red!(
+        simd_reduce_mul_unordered: BinaryOp::Mult,
+        vector_reduce_fmul_fast,
+        false,
+        mul,
+        1.0
+    );
+
+    macro_rules! minmax_red {
+        ($name:ident: $reduction:ident) => {
+            if name == sym::$name {
+                require!(
+                    ret_ty == in_elem,
+                    "expected return type `{}` (element of input `{}`), found `{}`",
+                    in_elem,
+                    in_ty,
+                    ret_ty
+                );
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) | ty::Float(_) => Ok(bx.$reduction(args[0].immediate())),
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    minmax_red!(simd_reduce_min: vector_reduce_min);
+    minmax_red!(simd_reduce_max: vector_reduce_max);
+
+    macro_rules! bitwise_red {
+        ($name:ident : $op:expr, $boolean:expr) => {
+            if name == sym::$name {
+                let input = if !$boolean {
+                    require!(
+                        ret_ty == in_elem,
+                        "expected return type `{}` (element of input `{}`), found `{}`",
+                        in_elem,
+                        in_ty,
+                        ret_ty
+                    );
+                    args[0].immediate()
+                } else {
+                    match in_elem.kind() {
+                        ty::Int(_) | ty::Uint(_) => {}
+                        _ => return_error!(
+                            "unsupported {} from `{}` with element `{}` to `{}`",
+                            sym::$name,
+                            in_ty,
+                            in_elem,
+                            ret_ty
+                        ),
+                    }
+
+                    // boolean reductions operate on vectors of i1s:
+                    let i1 = bx.type_i1();
+                    let i1xn = bx.type_vector(i1, in_len as u64);
+                    bx.trunc(args[0].immediate(), i1xn)
+                };
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) => {
+                        let r = bx.vector_reduce_op(input, $op);
+                        Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
+                    }
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    bitwise_red!(simd_reduce_and: BinaryOp::BitwiseAnd, false);
+    bitwise_red!(simd_reduce_or: BinaryOp::BitwiseOr, false);
 
     unimplemented!("simd {}", name);
 }
