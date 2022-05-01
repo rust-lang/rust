@@ -1080,7 +1080,7 @@ pub enum LocalInfo<'tcx> {
     /// (e.g. a temporary for `foo` in `MyStruct { my_field: foo }`)
     AggregateTemp,
     /// A temporary created during the pass `Derefer` to avoid it's retagging
-    Temp,
+    DerefTemp,
 }
 
 impl<'tcx> LocalDecl<'tcx> {

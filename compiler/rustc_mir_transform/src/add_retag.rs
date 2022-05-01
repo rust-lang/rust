@@ -61,7 +61,7 @@ fn may_be_reference(ty: Ty<'_>) -> bool {
 fn is_not_temp<'tcx>(local_decl: &LocalDecl<'tcx>) -> bool {
     if let Some(local_info) = &local_decl.local_info {
         match local_info.as_ref() {
-            LocalInfo::Temp => return false,
+            LocalInfo::DerefTemp => return false,
             _ => (),
         };
     }
