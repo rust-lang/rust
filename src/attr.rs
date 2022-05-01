@@ -1,7 +1,7 @@
 //! Format attributes and meta items.
 
 use rustc_ast::ast;
-use rustc_ast::AstLike;
+use rustc_ast::HasAttrs;
 use rustc_span::{symbol::sym, Span, Symbol};
 
 use self::doc_comment::DocCommentFormatter;

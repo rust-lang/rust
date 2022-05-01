@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
-use rustc_ast::AstLike;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
 use thiserror::Error;
@@ -50,18 +49,9 @@ impl<'a> Module<'a> {
             ast_mod_kind,
         }
     }
-}
 
-impl<'a> AstLike for Module<'a> {
-    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
-    fn attrs(&self) -> &[ast::Attribute] {
+    pub(crate) fn attrs(&self) -> &[ast::Attribute] {
         &self.inner_attr
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<ast::Attribute>)) {
-        f(&mut self.inner_attr)
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyTokenStream>> {
-        unimplemented!()
     }
 }
 
