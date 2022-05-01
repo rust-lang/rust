@@ -99,9 +99,9 @@ macro_rules! println {
     () => {
         $crate::print!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_print($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error.
@@ -164,9 +164,9 @@ macro_rules! eprintln {
     () => {
         $crate::eprint!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_eprint($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints and returns the value of a given expression for quick and dirty
