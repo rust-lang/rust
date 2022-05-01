@@ -38,7 +38,7 @@ fn main() {
                 .chain(env::args().skip(2))
                 .chain([
                     "--".to_string(),
-                    "-Zunstable-features".to_string(),
+                    "-Zunstable-options".to_string(),
                     "-Cllvm-args=mode=jit".to_string(),
                 ])
                 .collect()
@@ -52,7 +52,7 @@ fn main() {
                 .chain(env::args().skip(2))
                 .chain([
                     "--".to_string(),
-                    "-Zunstable-features".to_string(),
+                    "-Zunstable-options".to_string(),
                     "-Cllvm-args=mode=jit-lazy".to_string(),
                 ])
                 .collect()
