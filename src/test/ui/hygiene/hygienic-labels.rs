@@ -42,23 +42,17 @@ pub fn main() {
     }
 
     'x: loop {
-        //~^ WARNING shadows a label name that is already in scope
-
         // ditto
         loop_x!(break 'x);
         panic!("break doesn't act hygienically inside infinite loop");
     }
 
     'x: while 1 + 1 == 2 {
-        //~^ WARNING shadows a label name that is already in scope
-
         while_x!(break 'x);
         panic!("break doesn't act hygienically inside infinite while loop");
     }
 
     'x: for _ in 0..1 {
-        //~^ WARNING shadows a label name that is already in scope
-
         // ditto
         run_once!(continue 'x);
         panic!("continue doesn't act hygienically inside for loop");

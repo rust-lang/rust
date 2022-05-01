@@ -14,41 +14,23 @@ error[E0425]: cannot find value `b` in this scope
   --> $DIR/label_misspelled_2.rs:8:15
    |
 LL |     'b: for _ in 0..1 {
-   |     --
-   |     |
-   |     a label with a similar name exists
-   |     a label with a similar name exists
+   |     -- a label with a similar name exists
 LL |         break b;
-   |               ^ not found in this scope
-   |
-help: use the similarly named label
-   |
-LL |         break 'b;
-   |               ~~
-help: use the similarly named label
-   |
-LL |         break 'b;
-   |               ~~
+   |               ^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'b`
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/label_misspelled_2.rs:14:15
    |
 LL |     d: for _ in 0..1 {
-   |     -
-   |     |
-   |     a label with a similar name exists
-   |     a label with a similar name exists
+   |     - a label with a similar name exists
 LL |         break d;
-   |               ^ not found in this scope
-   |
-help: use the similarly named label
-   |
-LL |         break 'd;
-   |               ~~
-help: use the similarly named label
-   |
-LL |         break 'd;
-   |               ~~
+   |               ^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'d`
 
 error: aborting due to 4 previous errors
 

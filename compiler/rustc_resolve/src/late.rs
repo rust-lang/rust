@@ -3151,7 +3151,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     diagnostics::signal_label_shadowing(self.r.session, orig_ident, label.ident)
                 }
                 if rib.kind.is_label_barrier() {
-                    rib.bindings.insert(ident, id);
                     break;
                 }
             }

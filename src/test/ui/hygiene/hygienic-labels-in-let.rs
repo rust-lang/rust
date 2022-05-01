@@ -52,7 +52,6 @@ pub fn main() {
 
     let k: isize = {
         'x: for _ in 0..1 {
-            //~^ WARNING shadows a label name that is already in scope
             // ditto
             loop_x!(break 'x);
             i += 1;
@@ -63,7 +62,6 @@ pub fn main() {
 
     let l: isize = {
         'x: for _ in 0..1 {
-            //~^ WARNING shadows a label name that is already in scope
             // ditto
             while_true!(break 'x);
             i += 1;
@@ -74,7 +72,6 @@ pub fn main() {
 
     let n: isize = {
         'x: for _ in 0..1 {
-            //~^ WARNING shadows a label name that is already in scope
             // ditto
             run_once!(continue 'x);
             i += 1;
