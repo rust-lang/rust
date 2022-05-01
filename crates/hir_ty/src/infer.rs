@@ -735,7 +735,8 @@ impl<'a> InferenceContext<'a> {
         unresolved: Option<usize>,
         path: &Path,
     ) -> (Ty, Option<VariantId>) {
-        match unresolved {
+        let remaining = unresolved.map(|x| path.segments().skip(x).len()).filter(|x| x > &0);
+        match remaining {
             None => {
                 let variant = ty.as_adt().and_then(|(adt_id, _)| match adt_id {
                     AdtId::StructId(s) => Some(VariantId::StructId(s)),
