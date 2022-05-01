@@ -18,6 +18,7 @@ use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
+use crate::ops::Range;
 use crate::slice::{self, SliceIndex};
 
 pub mod pattern;
@@ -2554,6 +2555,39 @@ impl str {
     #[stable(feature = "str_escape", since = "1.34.0")]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
+    }
+
+    /// Gives the `Range` where `substr` is located within `self`, or `None`
+    /// if it is not a sub-string.
+    ///
+    /// This method can be thought of as the opposite of [`get`](#method.get),
+    /// and they mutually guarantee slice-to-slice roundtrips and
+    /// range-to-range roundtrips.
+    ///
+    /// This means that the resulting [`Range`] can be passed to
+    /// [`get`](#method.get) and will always return a sub-string that is
+    /// [`ptr::eq`](std::ptr::eq) to the one passed to this function.
+    ///
+    /// This is different from using [`find`](#method.find) as it does not do
+    /// a search, but rather a pointer comparison. The given `substr` must
+    /// point to the same memory location as `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_range_of)]
+    ///
+    /// let containing_str = "abcdefg";
+    /// let other_str = "abcdef.h";
+    /// let substr = &containing_str[1..3];
+    ///
+    /// assert_eq!(containing_str.range_of(substr), Some(1..3));
+    /// assert_eq!(other_str.range_of(substr), None);
+    /// ```
+    #[unstable(feature = "slice_range_of", issue = "none")]
+    #[inline]
+    pub fn range_of(&self, substr: &Self) -> Option<Range<usize>> {
+        self.as_bytes().range_of(substr.as_bytes())
     }
 }
 

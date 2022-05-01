@@ -4018,6 +4018,55 @@ impl<T> [T] {
         *self = rem;
         Some(last)
     }
+
+    /// Gives the `Range` where the `other` slice is located within `self`,
+    /// or `None` if it is not a sub-slice.
+    ///
+    /// This method can be thought of as the opposite of [`get`](#method.get),
+    /// and they mutually guarantee slice-to-slice roundtrips, as well as
+    /// range-to-range roundtrips if `T` is not a Zero-Sized Type.
+    ///
+    /// This means that the resulting [`Range`] can be passed to
+    /// [`get`](#method.get) and will always return a slice that is [`ptr::eq`]
+    /// to the one passed to this function.
+    ///
+    /// If `T` is a Zero-Sized Type ("ZST"), the resulting [`Range`] will always
+    /// start at `0`, and thus range-to-range roundtrips are not guaranteed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_range_of)]
+    ///
+    /// let slice: &[u8] = &[1, 2, 3, 4, 5];
+    /// let subslice = &slice[1..3];
+    /// let foreign_slice: &[u8] = &[2, 3];
+    ///
+    /// assert_eq!(slice.range_of(subslice), Some(1..3));
+    /// assert_eq!(slice.range_of(foreign_slice), None);
+    /// ```
+    #[unstable(feature = "slice_range_of", issue = "none")]
+    #[inline]
+    pub fn range_of(&self, other: &Self) -> Option<Range<usize>> {
+        if mem::size_of::<T>() == 0 {
+            return if self.as_ptr() == other.as_ptr() && self.len() <= other.len() {
+                Some(0..self.len())
+            } else {
+                None
+            };
+        }
+
+        let self_ptr = self.as_ptr_range();
+        let other_ptr = other.as_ptr_range();
+        if self_ptr.start <= other_ptr.start && other_ptr.end <= self_ptr.end {
+            // SAFETY: the bounds checks above uphold the safety contract for `sub_ptr`.
+            Some(unsafe {
+                other_ptr.start.sub_ptr(self_ptr.start)..other_ptr.end.sub_ptr(self_ptr.start)
+            })
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, const N: usize> [[T; N]] {
