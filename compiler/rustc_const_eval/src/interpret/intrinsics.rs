@@ -451,6 +451,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
+            sym::optimized_to_const => {
+                self.write_scalar(Scalar::from_bool(true), dest)?;
+            }
             _ => return Ok(false),
         }
 

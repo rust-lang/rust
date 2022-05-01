@@ -1972,6 +1972,11 @@ extern "rust-intrinsic" {
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     pub fn black_box<T>(dummy: T) -> T;
+
+    /// Determines if the supplied value is a constant or has been folded to a constant during
+    /// optimization.
+    #[cfg(not(bootstrap))]
+    pub fn optimized_to_const<T>(value: &T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

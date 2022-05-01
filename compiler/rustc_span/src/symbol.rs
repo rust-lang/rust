@@ -986,6 +986,7 @@ symbols! {
         opt_out_copy,
         optimize,
         optimize_attribute,
+        optimized_to_const,
         optin_builtin_traits,
         option,
         option_env,

@@ -103,6 +103,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
+    pub is_constant_intrinsics: RefCell<FxHashMap<Ty<'tcx>, (&'ll Type, &'ll Value)>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -442,6 +443,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             eh_catch_typeinfo: Cell::new(None),
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
+            is_constant_intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             renamed_statics: Default::default(),
         }

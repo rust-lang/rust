@@ -363,6 +363,15 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return;
             }
 
+            sym::optimized_to_const => {
+                let ty = substs.type_at(0);
+                let ptr = args[0].immediate();
+                let llty = self.layout_of(ty).llvm_type(self);
+                let align = self.align_of(ty);
+                let load = self.load(llty, ptr, align);
+                is_constant_intrinsic(self, ty, llty, load)
+            }
+
             _ if name.as_str().starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,
@@ -413,6 +422,30 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[va_list])
     }
+}
+
+fn is_constant_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    ty: Ty<'tcx>,
+    llty: &'ll Type,
+    value: &'ll Value,
+) -> &'ll Value {
+    let cached = bx.is_constant_intrinsics.borrow().get(&ty).copied();
+    let (fn_ty, f) = match cached {
+        Some(v) => v,
+        None => {
+            let fn_ty = bx.type_func(&[llty], bx.type_i1());
+            let type_id = bx.tcx.type_id_hash(ty);
+            let f = bx.declare_cfn(
+                &format!("llvm.is.constant.{}", type_id),
+                llvm::UnnamedAddr::No,
+                fn_ty,
+            );
+            bx.is_constant_intrinsics.borrow_mut().insert(ty, (fn_ty, f));
+            (fn_ty, f)
+        }
+    };
+    bx.call(fn_ty, f, &[value], None)
 }
 
 fn try_intrinsic<'ll>(
