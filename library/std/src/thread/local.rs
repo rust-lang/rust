@@ -21,6 +21,8 @@ use crate::fmt;
 /// The [`with`] method yields a reference to the contained value which cannot be
 /// sent across threads or escape the given closure.
 ///
+/// [`thread_local!`]: crate::thread_local
+///
 /// # Initialization and Destruction
 ///
 /// Initialization is dynamically performed on the first call to [`with`]

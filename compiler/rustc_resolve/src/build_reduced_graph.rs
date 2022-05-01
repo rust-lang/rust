@@ -1267,13 +1267,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.visibilities.insert(def_id, vis);
-            self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
+            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
                 self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
                     parent_macro_rules_scope: parent_scope.macro_rules,
                     binding,
                     ident,
                 }),
-            ))
+            ));
+            self.r.macro_rules_scopes.insert(def_id, scope);
+            scope
         } else {
             let module = parent_scope.module;
             let vis = match item.kind {

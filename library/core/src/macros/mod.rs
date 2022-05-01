@@ -640,6 +640,8 @@ macro_rules! unreachable {
 ///
 /// Like `panic!`, this macro has a second form for displaying custom values.
 ///
+/// [`todo!`]: crate::todo
+///
 /// # Examples
 ///
 /// Say we have a trait `Foo`:

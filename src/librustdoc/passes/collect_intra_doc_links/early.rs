@@ -1,7 +1,7 @@
 use crate::clean::Attributes;
 use crate::core::ResolverCaches;
 use crate::passes::collect_intra_doc_links::preprocessed_markdown_links;
-use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
+use crate::passes::collect_intra_doc_links::{Disambiguator, PreprocessedMarkdownLink};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
@@ -9,12 +9,13 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, CRATE_DEF_ID};
 use rustc_hir::TraitCandidate;
 use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_resolve::{ParentScope, Resolver};
 use rustc_session::config::Externs;
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_span::{Symbol, SyntaxContext};
 
 use std::collections::hash_map::Entry;
@@ -27,10 +28,12 @@ crate fn early_resolve_intra_doc_links(
     externs: Externs,
     document_private_items: bool,
 ) -> ResolverCaches {
+    let parent_scope =
+        ParentScope::module(resolver.expect_module(CRATE_DEF_ID.to_def_id()), resolver);
     let mut link_resolver = EarlyDocLinkResolver {
         resolver,
         sess,
-        current_mod: CRATE_DEF_ID,
+        parent_scope,
         visited_mods: Default::default(),
         markdown_links: Default::default(),
         doc_link_resolutions: Default::default(),
@@ -52,7 +55,7 @@ crate fn early_resolve_intra_doc_links(
     // DO NOT REMOVE THIS without first testing on the reproducer in
     // https://github.com/jyn514/objr/commit/edcee7b8124abf0e4c63873e8422ff81beb11ebb
     for (extern_name, _) in externs.iter().filter(|(_, entry)| entry.add_prelude) {
-        link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, CRATE_DEF_ID.to_def_id());
+        link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, parent_scope);
     }
 
     ResolverCaches {
@@ -72,7 +75,7 @@ fn doc_attrs<'a>(attrs: impl Iterator<Item = &'a ast::Attribute>) -> Attributes 
 struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
     sess: &'r Session,
-    current_mod: LocalDefId,
+    parent_scope: ParentScope<'ra>,
     visited_mods: DefIdSet,
     markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
     doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<ast::NodeId>>>,
@@ -82,7 +85,7 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     document_private_items: bool,
 }
 
-impl EarlyDocLinkResolver<'_, '_> {
+impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
     fn add_traits_in_scope(&mut self, def_id: DefId) {
         // Calls to `traits_in_scope` are expensive, so try to avoid them if only possible.
         // Keys in the `traits_in_scope` cache are always module IDs.
@@ -205,34 +208,64 @@ impl EarlyDocLinkResolver<'_, '_> {
         if !attrs.iter().any(|attr| attr.may_have_doc_links()) {
             return;
         }
-        let module_id = self.current_mod.to_def_id();
-        self.resolve_doc_links(doc_attrs(attrs.iter()), module_id);
+        self.resolve_doc_links(doc_attrs(attrs.iter()), self.parent_scope);
     }
 
-    fn resolve_doc_links(&mut self, attrs: Attributes, module_id: DefId) {
+    fn resolve_and_cache(
+        &mut self,
+        path_str: &str,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+    ) -> bool {
+        // FIXME: This caching may be incorrect in case of multiple `macro_rules`
+        // items with the same name in the same module.
+        self.doc_link_resolutions
+            .entry((Symbol::intern(path_str), ns, parent_scope.module.def_id()))
+            .or_insert_with_key(|(path, ns, _)| {
+                self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *parent_scope)
+            })
+            .is_some()
+    }
+
+    fn resolve_doc_links(&mut self, attrs: Attributes, parent_scope: ParentScope<'ra>) {
         let mut need_traits_in_scope = false;
         for (doc_module, doc) in attrs.prepare_to_doc_link_resolution() {
             assert_eq!(doc_module, None);
-            let links = self
-                .markdown_links
-                .entry(doc)
-                .or_insert_with_key(|doc| preprocessed_markdown_links(doc));
+            let mut tmp_links = mem::take(&mut self.markdown_links);
+            let links =
+                tmp_links.entry(doc).or_insert_with_key(|doc| preprocessed_markdown_links(doc));
             for PreprocessedMarkdownLink(pp_link, _) in links {
                 if let Ok(pinfo) = pp_link {
-                    // FIXME: Resolve the path in all namespaces and resolve its prefixes too.
-                    let ns = TypeNS;
-                    self.doc_link_resolutions
-                        .entry((Symbol::intern(&pinfo.path_str), ns, module_id))
-                        .or_insert_with_key(|(path, ns, module_id)| {
-                            self.resolver.resolve_rustdoc_path(path.as_str(), *ns, *module_id)
-                        });
-                    need_traits_in_scope = true;
+                    // The logic here is a conservative approximation for path resolution in
+                    // `resolve_with_disambiguator`.
+                    if let Some(ns) = pinfo.disambiguator.map(Disambiguator::ns) {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, &parent_scope) {
+                            continue;
+                        }
+                    }
+
+                    // Resolve all namespaces due to no disambiguator or for diagnostics.
+                    let mut any_resolved = false;
+                    let mut need_assoc = false;
+                    for ns in [TypeNS, ValueNS, MacroNS] {
+                        if self.resolve_and_cache(&pinfo.path_str, ns, &parent_scope) {
+                            any_resolved = true;
+                        } else if ns != MacroNS {
+                            need_assoc = true;
+                        }
+                    }
+
+                    // FIXME: Resolve all prefixes for type-relative resolution or for diagnostics.
+                    if (need_assoc || !any_resolved) && pinfo.path_str.contains("::") {
+                        need_traits_in_scope = true;
+                    }
                 }
             }
+            self.markdown_links = tmp_links;
         }
 
         if need_traits_in_scope {
-            self.add_traits_in_scope(module_id);
+            self.add_traits_in_scope(parent_scope.module.def_id());
         }
     }
 
@@ -274,18 +307,32 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
     fn visit_item(&mut self, item: &ast::Item) {
         self.resolve_doc_links_local(&item.attrs); // Outer attribute scope
         if let ItemKind::Mod(..) = item.kind {
-            let old_mod = mem::replace(&mut self.current_mod, self.resolver.local_def_id(item.id));
+            let module_def_id = self.resolver.local_def_id(item.id).to_def_id();
+            let module = self.resolver.expect_module(module_def_id);
+            let old_module = mem::replace(&mut self.parent_scope.module, module);
+            let old_macro_rules = self.parent_scope.macro_rules;
             self.resolve_doc_links_local(&item.attrs); // Inner attribute scope
-            self.process_module_children_or_reexports(self.current_mod.to_def_id());
+            self.process_module_children_or_reexports(module_def_id);
             visit::walk_item(self, item);
-            self.current_mod = old_mod;
+            if item
+                .attrs
+                .iter()
+                .all(|attr| !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape))
+            {
+                self.parent_scope.macro_rules = old_macro_rules;
+            }
+            self.parent_scope.module = old_module;
         } else {
-            match item.kind {
+            match &item.kind {
                 ItemKind::Trait(..) => {
                     self.all_traits.push(self.resolver.local_def_id(item.id).to_def_id());
                 }
                 ItemKind::Impl(box ast::Impl { of_trait: Some(..), .. }) => {
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
+                }
+                ItemKind::MacroDef(macro_def) if macro_def.macro_rules => {
+                    self.parent_scope.macro_rules =
+                        self.resolver.macro_rules_scope(self.resolver.local_def_id(item.id));
                 }
                 _ => {}
             }
@@ -311,6 +358,12 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
     fn visit_field_def(&mut self, field: &ast::FieldDef) {
         self.resolve_doc_links_local(&field.attrs);
         visit::walk_field_def(self, field)
+    }
+
+    fn visit_block(&mut self, block: &ast::Block) {
+        let old_macro_rules = self.parent_scope.macro_rules;
+        visit::walk_block(self, block);
+        self.parent_scope.macro_rules = old_macro_rules;
     }
 
     // NOTE: if doc-comments are ever allowed on other nodes (e.g. function parameters),
