@@ -22,6 +22,7 @@ use rustc_target::{
 };
 
 use super::backtrace::EvalContextExt as _;
+use crate::helpers::convert::Truncate;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
@@ -677,8 +678,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let a = this.read_scalar(a)?.to_u64()?;
                 let b = this.read_scalar(b)?.to_u64()?;
 
-                let wide_sum = c_in as u128 + a as u128 + b as u128;
-                let (c_out, sum) = ((wide_sum >> 64) as u8, wide_sum as u64);
+                let wide_sum = u128::from(c_in) + u128::from(a) + u128::from(b);
+                let (c_out, sum) = ((wide_sum >> 64).truncate::<u8>(), wide_sum.truncate::<u64>());
 
                 let c_out_field = this.place_field(dest, 0)?;
                 this.write_scalar(Scalar::from_u8(c_out), &c_out_field)?;
