@@ -33,14 +33,11 @@ entry:
 ; CHECK-NEXT:    [[VAL:%.*]] = load double, double* [[X]]
 ; CHECK-NEXT:    store double [[VAL]], double* [[Y]]
 ; CHECK-NEXT:    [[TMP6:%.*]] = extractvalue [3 x double*] %"y'", 0
-; CHECK-NEXT:    [[TMP7:%.*]] = extractvalue [3 x double] [[TMP5]], 0
-; CHECK-NEXT:    store double [[TMP7]], double* [[TMP6]]
+; CHECK-NEXT:    store double %"val'ipl", double* [[TMP6]]
 ; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x double*] %"y'", 1
-; CHECK-NEXT:    [[TMP9:%.*]] = extractvalue [3 x double] [[TMP5]], 1
-; CHECK-NEXT:    store double [[TMP9]], double* [[TMP8]]
+; CHECK-NEXT:    store double %"val'ipl1", double* [[TMP8]]
 ; CHECK-NEXT:    [[TMP10:%.*]] = extractvalue [3 x double*] %"y'", 2
-; CHECK-NEXT:    [[TMP11:%.*]] = extractvalue [3 x double] [[TMP5]], 2
-; CHECK-NEXT:    store double [[TMP11]], double* [[TMP10]]
+; CHECK-NEXT:    store double %"val'ipl2", double* [[TMP10]]
 ; CHECK-NEXT:    [[TMP12:%.*]] = extractvalue [3 x double*] %"x'", 0
 ; CHECK-NEXT:    %"ptr'ipc" = bitcast double* [[TMP12]] to i8*
 ; CHECK-NEXT:    [[TMP13:%.*]] = insertvalue [3 x i8*] undef, i8* %"ptr'ipc", 0
@@ -52,20 +49,17 @@ entry:
 ; CHECK-NEXT:    [[TMP17:%.*]] = insertvalue [3 x i8*] [[TMP15]], i8* %"ptr'ipc4", 2
 ; CHECK-NEXT:    [[PTR:%.*]] = bitcast double* [[X]] to i8*
 ; CHECK-NEXT:    call void @free(i8* [[PTR]]) 
-; CHECK-NEXT:    [[TMP18:%.*]] = extractvalue [3 x i8*] [[TMP17]], 0
-; CHECK-NEXT:    [[TMP19:%.*]] = extractvalue [3 x i8*] [[TMP17]], 1
-; CHECK-NEXT:    [[TMP20:%.*]] = extractvalue [3 x i8*] [[TMP17]], 2
-; CHECK-NEXT:    [[TMPZ4:%.*]] = icmp ne i8* [[PTR]], [[TMP18]]
+; CHECK-NEXT:    [[TMPZ4:%.*]] = icmp ne i8* [[PTR]], %"ptr'ipc"
 ; CHECK-NEXT:    br i1 [[TMPZ4]], label [[FREE0:%.*]], label [[END:%.*]]
 ; CHECK:       free0.i:
-; CHECK-NEXT:    call void @free(i8* [[TMP18]]) 
-; CHECK-NEXT:    [[TMPZ5:%.*]] = icmp ne i8* [[TMP18]], [[TMP19]]
-; CHECK-NEXT:    [[TMPZ6:%.*]] = icmp ne i8* [[TMP19]], [[TMP20]]
+; CHECK-NEXT:    call void @free(i8* %"ptr'ipc") 
+; CHECK-NEXT:    [[TMPZ5:%.*]] = icmp ne i8* %"ptr'ipc", %"ptr'ipc3"
+; CHECK-NEXT:    [[TMPZ6:%.*]] = icmp ne i8* %"ptr'ipc3", %"ptr'ipc4"
 ; CHECK-NEXT:    [[TMPZ7:%.*]] = and i1 [[TMPZ6]], [[TMPZ5]]
 ; CHECK-NEXT:    br i1 [[TMPZ7]], label [[FREE1:%.*]], label [[END]]
 ; CHECK:       free1.i:
-; CHECK-NEXT:    call void @free(i8* [[TMP19]]) 
-; CHECK-NEXT:    call void @free(i8* [[TMP20]]) 
+; CHECK-NEXT:    call void @free(i8* %"ptr'ipc3")
+; CHECK-NEXT:    call void @free(i8* %"ptr'ipc4")
 ; CHECK-NEXT:    br label [[END]]
 ; CHECK:       __enzyme_checked_free_3.exit:
 ; CHECK-NEXT:    ret void

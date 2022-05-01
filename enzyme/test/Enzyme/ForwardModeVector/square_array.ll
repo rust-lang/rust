@@ -34,7 +34,6 @@ declare %struct.Gradients @__enzyme_fwddiff(i8*, ...)
 ; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x double] %"x'", 2
 ; CHECK-NEXT:    [[TMP9:%.*]] = fmul fast double [[TMP8]], [[X]]
 ; CHECK-NEXT:    [[TMP10:%.*]] = fadd fast double [[TMP9]], [[TMP9]]
-; CHECK-NEXT:    [[TMP11:%.*]] = insertvalue [3 x double] [[TMP7]], double [[TMP10]], 2
 ; CHECK-NEXT:    [[TMP12:%.*]] = fmul fast double [[TMP2]], [[X]]
 ; CHECK-NEXT:    [[TMP13:%.*]] = fmul fast double [[TMP0]], [[MUL]]
 ; CHECK-NEXT:    [[TMP14:%.*]] = fadd fast double [[TMP12]], [[TMP13]]
@@ -46,13 +45,11 @@ declare %struct.Gradients @__enzyme_fwddiff(i8*, ...)
 ; CHECK-NEXT:    [[TMP20:%.*]] = fmul fast double [[TMP10]], [[X]]
 ; CHECK-NEXT:    [[TMP21:%.*]] = fmul fast double [[TMP8]], [[MUL]]
 ; CHECK-NEXT:    [[TMP22:%.*]] = fadd fast double [[TMP20]], [[TMP21]]
-; CHECK-NEXT:    [[TMP23:%.*]] = insertvalue [3 x double] [[TMP19]], double [[TMP22]], 2
 ; CHECK-NEXT:    %".fca.0.insert'ipiv" = insertvalue { double, double } zeroinitializer, double [[TMP2]], 0
 ; CHECK-NEXT:    [[TMP24:%.*]] = insertvalue [3 x { double, double }] undef, { double, double } %".fca.0.insert'ipiv", 0
 ; CHECK-NEXT:    %".fca.0.insert'ipiv1" = insertvalue { double, double } zeroinitializer, double [[TMP6]], 0
 ; CHECK-NEXT:    [[TMP25:%.*]] = insertvalue [3 x { double, double }] [[TMP24]], { double, double } %".fca.0.insert'ipiv1", 1
 ; CHECK-NEXT:    %".fca.0.insert'ipiv2" = insertvalue { double, double } zeroinitializer, double [[TMP10]], 0
-; CHECK-NEXT:    [[TMP26:%.*]] = insertvalue [3 x { double, double }] [[TMP25]], { double, double } %".fca.0.insert'ipiv2", 2
 ; CHECK-NEXT:    %".fca.1.insert'ipiv" = insertvalue { double, double } %".fca.0.insert'ipiv", double [[TMP14]], 1
 ; CHECK-NEXT:    [[TMP27:%.*]] = insertvalue [3 x { double, double }] undef, { double, double } %".fca.1.insert'ipiv", 0
 ; CHECK-NEXT:    %".fca.1.insert'ipiv3" = insertvalue { double, double } %".fca.0.insert'ipiv1", double [[TMP18]], 1

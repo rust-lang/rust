@@ -850,8 +850,15 @@ public:
       IRBuilder<> Builder2(&I);
       getForwardBuilder(Builder2);
 
-      Value *diff =
-          gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
+      Value *diff;
+      // TODO type analyze
+      if (!constantval)
+        diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
+      else if (orig_val->getType()->isPointerTy())
+        diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ false);
+      else
+        diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
+
       gutils->setPtrDiffe(orig_ptr, diff, Builder2, align, isVolatile, ordering,
                           syncScope, mask);
       return;
@@ -3977,7 +3984,6 @@ public:
 
         Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
-        Type *op0Ty = gutils->getShadowType(orig_ops[0]->getType());
 
         Value *res =
             Constant::getNullValue(gutils->getShadowType(CI.getType()));
@@ -4951,12 +4957,6 @@ public:
         if (Mode != DerivativeMode::ForwardMode) {
           return false;
         } else {
-          Type *castval;
-          if (auto PT = dyn_cast<PointerType>(call.getArgOperand(1)->getType()))
-            castval = PT;
-          else
-            castval = PointerType::getUnqual(innerType);
-
           auto in_arg = call.getCalledFunction()->arg_begin();
           Argument *n = in_arg;
           in_arg++;

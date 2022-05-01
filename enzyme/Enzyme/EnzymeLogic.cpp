@@ -739,9 +739,9 @@ void calculateUnusedValuesInFunction(
           if (called && isDeallocationFunction(*called, TLI)) {
             if (mode == DerivativeMode::ForwardMode ||
                 mode == DerivativeMode::ForwardModeSplit ||
-                (mode == DerivativeMode::ReverseModePrimal ||
-                 mode == DerivativeMode::ReverseModeCombined) &&
-                    gutils->forwardDeallocations.count(obj_op))
+                ((mode == DerivativeMode::ReverseModePrimal ||
+                  mode == DerivativeMode::ReverseModeCombined) &&
+                 gutils->forwardDeallocations.count(obj_op)))
               return UseReq::Need;
             return UseReq::Recur;
           }

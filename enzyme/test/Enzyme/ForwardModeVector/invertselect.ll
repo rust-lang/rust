@@ -40,7 +40,6 @@ attributes #0 = { noinline }
 ; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x float*] %"a'", 2
 ; CHECK-NEXT:    [[TMP9:%.*]] = extractvalue [3 x float*] %"b'", 2
 ; CHECK-NEXT:    %"a.b'ipse2" = select i1 [[CMP]], float* [[TMP8]], float* [[TMP9]]
-; CHECK-NEXT:    [[TMP10:%.*]] = insertvalue [3 x float*] [[TMP7]], float* %"a.b'ipse2", 2
 ; CHECK-NEXT:    %"retval.0'ipl" = load float, float* %"a.b'ipse", align 4
 ; CHECK-NEXT:    [[TMP11:%.*]] = insertvalue [3 x float] undef, float %"retval.0'ipl", 0
 ; CHECK-NEXT:    %"retval.0'ipl3" = load float, float* %"a.b'ipse1", align 4

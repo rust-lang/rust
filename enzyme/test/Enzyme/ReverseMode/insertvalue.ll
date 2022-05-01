@@ -33,29 +33,28 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 ; CHECK-NEXT:   store double %2, double* %0
 ; CHECK-NEXT:   %3 = load [3 x double], [3 x double]* %"agg2'de"
 ; CHECK-NEXT:   %4 = extractvalue [3 x double] %3, 1
-; CHECK-NEXT:   %5 = load [3 x double], [3 x double]* %"agg2'de"
-; CHECK-NEXT:   %6 = insertvalue [3 x double] %5, double 0.000000e+00, 1
-; CHECK-NEXT:   %7 = extractvalue [3 x double] %6, 0
-; CHECK-NEXT:   %8 = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 0
-; CHECK-NEXT:   %9 = load double, double* %8
-; CHECK-NEXT:   %10 = fadd fast double %9, %7
-; CHECK-NEXT:   store double %10, double* %8
-; CHECK-NEXT:   %11 = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 1
-; CHECK-NEXT:   %12 = load double, double* %11
-; CHECK-NEXT:   store double %12, double* %11
-; CHECK-NEXT:   %13 = extractvalue [3 x double] %6, 2
-; CHECK-NEXT:   %14 = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 2
-; CHECK-NEXT:   %15 = load double, double* %14
-; CHECK-NEXT:   %16 = fadd fast double %15, %13
-; CHECK-NEXT:   store double %16, double* %14
+; CHECK-NEXT:   %[[i5:.+]] = load [3 x double], [3 x double]* %"agg2'de"
+; CHECK-NEXT:   %[[i7:.+]] = extractvalue [3 x double] %[[i5]], 0
+; CHECK-NEXT:   %[[i8:.+]] = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 0
+; CHECK-NEXT:   %[[i9:.+]] = load double, double* %[[i8]]
+; CHECK-NEXT:   %[[i10:.+]] = fadd fast double %[[i9]], %[[i7]]
+; CHECK-NEXT:   store double %[[i10]], double* %[[i8]]
+; CHECK-NEXT:   %[[i11:.+]] = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 1
+; CHECK-NEXT:   %[[i12:.+]] = load double, double* %[[i11]]
+; CHECK-NEXT:   store double %[[i12]], double* %[[i11]]
+; CHECK-NEXT:   %[[i13:.+]] = extractvalue [3 x double] %[[i5]], 2
+; CHECK-NEXT:   %[[i14:.+]] = getelementptr inbounds [3 x double], [3 x double]* %"agg1'de", i32 0, i32 2
+; CHECK-NEXT:   %[[i15:.+]] = load double, double* %[[i14]]
+; CHECK-NEXT:   %[[i16:.+]] = fadd fast double %[[i15]], %[[i13]]
+; CHECK-NEXT:   store double %[[i16]], double* %[[i14]]
 ; CHECK-NEXT:   store [3 x double] zeroinitializer, [3 x double]* %"agg2'de"
 ; CHECK-NEXT:   %m0diffex = fmul fast double %4, %x
 ; CHECK-NEXT:   %m1diffex = fmul fast double %4, %x
-; CHECK-NEXT:   %17 = fadd fast double %m0diffex, %m1diffex
-; CHECK-NEXT:   %18 = load [3 x double], [3 x double]* %"agg1'de"
-; CHECK-NEXT:   %19 = extractvalue [3 x double] %18, 0
-; CHECK-NEXT:   %20 = fadd fast double %17, %19
+; CHECK-NEXT:   %[[i17:.+]] = fadd fast double %m0diffex, %m1diffex
+; CHECK-NEXT:   %[[i18:.+]] = load [3 x double], [3 x double]* %"agg1'de"
+; CHECK-NEXT:   %[[i19:.+]] = extractvalue [3 x double] %[[i18]], 0
+; CHECK-NEXT:   %[[i20:.+]] = fadd fast double %[[i17]], %[[i19]]
 ; CHECK-NEXT:   store [3 x double] zeroinitializer, [3 x double]* %"agg1'de"
-; CHECK-NEXT:   %21 = insertvalue { double } undef, double %20, 0
-; CHECK-NEXT:   ret { double } %21
+; CHECK-NEXT:   %[[i21:.+]] = insertvalue { double } undef, double %[[i20]], 0
+; CHECK-NEXT:   ret { double } %[[i21]]
 ; CHECK-NEXT: }

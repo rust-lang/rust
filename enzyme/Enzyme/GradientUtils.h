@@ -1739,6 +1739,19 @@ public:
 
   Type *getShadowType(Type *ty) { return getShadowType(ty, width); }
 
+  static inline Value *extractMeta(IRBuilder<> &Builder, Value *Agg,
+                                   unsigned off) {
+    while (auto Ins = dyn_cast<InsertValueInst>(Agg)) {
+      if (Ins->getNumIndices() != 1)
+        break;
+      if (Ins->getIndices()[0] == off)
+        return Ins->getInsertedValueOperand();
+      else
+        Agg = Ins->getAggregateOperand();
+    }
+    return Builder.CreateExtractValue(Agg, {off});
+  }
+
   /// Unwraps a vector derivative from its internal representation and applies a
   /// function f to each element. Return values of f are collected and wrapped.
   template <typename Func, typename... Args>
@@ -1757,7 +1770,7 @@ public:
       Value *res = UndefValue::get(wrappedType);
       for (unsigned int i = 0; i < getWidth(); ++i) {
         auto tup = std::tuple<Args...>{
-            (args ? Builder.CreateExtractValue(args, {i}) : nullptr)...};
+            (args ? extractMeta(Builder, args, i) : nullptr)...};
         auto diff = std::apply(rule, std::move(tup));
         res = Builder.CreateInsertValue(res, diff, {i});
       }
@@ -1782,7 +1795,7 @@ public:
 
       for (unsigned int i = 0; i < getWidth(); ++i) {
         auto tup = std::tuple<Args...>{
-            (args ? Builder.CreateExtractValue(args, {i}) : nullptr)...};
+            (args ? extractMeta(Builder, args, i) : nullptr)...};
         std::apply(rule, std::move(tup));
       }
     } else {
@@ -1806,7 +1819,7 @@ public:
         SmallVector<Constant *, 3> extracted_diffs;
         for (auto diff : diffs) {
           extracted_diffs.push_back(
-              cast<Constant>(Builder.CreateExtractValue(diff, {i})));
+              cast<Constant>(extractMeta(Builder, diff, i)));
         }
         auto diff = rule(extracted_diffs);
         res = Builder.CreateInsertValue(res, diff, {i});
@@ -2117,9 +2130,8 @@ public:
         SmallVector<Value *, 2> idx2(idxs.begin(), idxs.end());
         idx2.push_back(v);
         // FIXME: reconsider if passing a nullptr is correct here.
-        auto selects = addToDiffe(
-            val, BuilderM.CreateExtractValue(dif, ArrayRef<unsigned>(i)),
-            BuilderM, nullptr, idx2);
+        auto selects = addToDiffe(val, extractMeta(BuilderM, dif, i), BuilderM,
+                                  nullptr, idx2);
         for (auto select : selects) {
           addedSelects.push_back(select);
         }
@@ -2136,9 +2148,8 @@ public:
         Value *v = ConstantInt::get(Type::getInt32Ty(at->getContext()), i);
         SmallVector<Value *, 2> idx2(idxs.begin(), idxs.end());
         idx2.push_back(v);
-        auto selects = addToDiffe(
-            val, BuilderM.CreateExtractValue(dif, ArrayRef<unsigned>(i)),
-            BuilderM, addingType, idx2);
+        auto selects = addToDiffe(val, extractMeta(BuilderM, dif, i), BuilderM,
+                                  addingType, idx2);
         for (auto select : selects) {
           addedSelects.push_back(select);
         }

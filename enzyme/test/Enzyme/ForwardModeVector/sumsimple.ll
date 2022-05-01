@@ -50,10 +50,10 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_BODY]], label [[FOR_END:%.*]]
 ; CHECK:       for.body:
 ; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue [3 x double*] %"x'", 0
-; CHECK-NEXT:    %"'ipl" = load double, double* [[TMP1]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = extractvalue [3 x double*] %"x'", 1
-; CHECK-NEXT:    %"'ipl5" = load double, double* [[TMP2]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [3 x double*] %"x'", 2
+; CHECK-NEXT:    %"'ipl" = load double, double* [[TMP1]]
+; CHECK-NEXT:    %"'ipl5" = load double, double* [[TMP2]]
 ; CHECK-NEXT:    %"'ipl6" = load double, double* [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = load double, double* [[X]]
 ; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [3 x double**] %"y'", 0

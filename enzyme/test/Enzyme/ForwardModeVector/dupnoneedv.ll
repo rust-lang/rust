@@ -38,33 +38,24 @@
 ; CHECK-NEXT:    [[TMP5:%.*]] = insertvalue [3 x double] [[TMP3]], double %"'ipl2", 2
 ; CHECK-NEXT:    [[TMP6:%.*]] = load double, double* [[X]], align 8
 ; CHECK-NEXT:    [[MUL:%.*]] = fmul double [[TMP6]], [[TMP6]]
-; CHECK-NEXT:    [[TMP7:%.*]] = extractvalue [3 x double] [[TMP5]], 0
-; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x double] [[TMP5]], 0
-; CHECK-NEXT:    [[TMP9:%.*]] = fmul fast double [[TMP7]], [[TMP6]]
-; CHECK-NEXT:    [[TMP10:%.*]] = fmul fast double [[TMP8]], [[TMP6]]
+; CHECK-NEXT:    [[TMP9:%.*]] = fmul fast double %"'ipl", [[TMP6]]
+; CHECK-NEXT:    [[TMP10:%.*]] = fmul fast double %"'ipl", [[TMP6]]
 ; CHECK-NEXT:    [[TMP11:%.*]] = fadd fast double [[TMP9]], [[TMP10]]
 ; CHECK-NEXT:    [[TMP12:%.*]] = insertvalue [3 x double] undef, double [[TMP11]], 0
-; CHECK-NEXT:    [[TMP13:%.*]] = extractvalue [3 x double] [[TMP5]], 1
-; CHECK-NEXT:    [[TMP14:%.*]] = extractvalue [3 x double] [[TMP5]], 1
-; CHECK-NEXT:    [[TMP15:%.*]] = fmul fast double [[TMP13]], [[TMP6]]
-; CHECK-NEXT:    [[TMP16:%.*]] = fmul fast double [[TMP14]], [[TMP6]]
+; CHECK-NEXT:    [[TMP15:%.*]] = fmul fast double %"'ipl1", [[TMP6]]
+; CHECK-NEXT:    [[TMP16:%.*]] = fmul fast double %"'ipl1", [[TMP6]]
 ; CHECK-NEXT:    [[TMP17:%.*]] = fadd fast double [[TMP15]], [[TMP16]]
 ; CHECK-NEXT:    [[TMP18:%.*]] = insertvalue [3 x double] [[TMP12]], double [[TMP17]], 1
-; CHECK-NEXT:    [[TMP19:%.*]] = extractvalue [3 x double] [[TMP5]], 2
-; CHECK-NEXT:    [[TMP20:%.*]] = extractvalue [3 x double] [[TMP5]], 2
-; CHECK-NEXT:    [[TMP21:%.*]] = fmul fast double [[TMP19]], [[TMP6]]
-; CHECK-NEXT:    [[TMP22:%.*]] = fmul fast double [[TMP20]], [[TMP6]]
+; CHECK-NEXT:    [[TMP21:%.*]] = fmul fast double %"'ipl2", [[TMP6]]
+; CHECK-NEXT:    [[TMP22:%.*]] = fmul fast double %"'ipl2", [[TMP6]]
 ; CHECK-NEXT:    [[TMP23:%.*]] = fadd fast double [[TMP21]], [[TMP22]]
 ; CHECK-NEXT:    [[TMP24:%.*]] = insertvalue [3 x double] [[TMP18]], double [[TMP23]], 2
 ; CHECK-NEXT:    store double [[MUL]], double* [[OUT]], align 8
 ; CHECK-NEXT:    [[TMP25:%.*]] = extractvalue [3 x double*] %"out'", 0
-; CHECK-NEXT:    [[TMP26:%.*]] = extractvalue [3 x double] [[TMP24]], 0
-; CHECK-NEXT:    store double [[TMP26]], double* [[TMP25]], align 8
+; CHECK-NEXT:    store double [[TMP11]], double* [[TMP25]], align 8
 ; CHECK-NEXT:    [[TMP27:%.*]] = extractvalue [3 x double*] %"out'", 1
-; CHECK-NEXT:    [[TMP28:%.*]] = extractvalue [3 x double] [[TMP24]], 1
-; CHECK-NEXT:    store double [[TMP28]], double* [[TMP27]], align 8
+; CHECK-NEXT:    store double [[TMP17]], double* [[TMP27]], align 8
 ; CHECK-NEXT:    [[TMP29:%.*]] = extractvalue [3 x double*] %"out'", 2
-; CHECK-NEXT:    [[TMP30:%.*]] = extractvalue [3 x double] [[TMP24]], 2
-; CHECK-NEXT:    store double [[TMP30]], double* [[TMP29]], align 8
+; CHECK-NEXT:    store double [[TMP23]], double* [[TMP29]], align 8
 ; CHECK-NEXT:    ret void
 ;
