@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
@@ -152,7 +152,7 @@ jobs:
         run: apk add --no-cache git clang lld musl-dev nodejs npm
 
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
@@ -197,7 +197,7 @@ jobs:
       - run: 'echo "TAG: $TAG"'
 
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
