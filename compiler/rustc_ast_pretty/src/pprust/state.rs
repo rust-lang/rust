@@ -713,8 +713,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtBlock(ref e) => self.block_to_string(e),
             token::NtStmt(ref e) => self.stmt_to_string(e),
             token::NtPat(ref e) => self.pat_to_string(e),
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
-            token::NtLifetime(e) => e.to_string(),
             token::NtLiteral(ref e) => self.expr_to_string(e),
             token::NtVis(ref e) => self.vis_to_string(e),
         }

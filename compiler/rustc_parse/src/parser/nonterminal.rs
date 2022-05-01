@@ -19,9 +19,7 @@ impl<'a> Parser<'a> {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
             match *nt {
-                token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) | token::NtLifetime(_) => {
-                    false
-                }
+                token::NtBlock(_) | token::NtVis(_) => false,
                 _ => true,
             }
         }
@@ -49,7 +47,6 @@ impl<'a> Parser<'a> {
                     token::NtItem(_)
                         | token::NtPat(_)
                         | token::NtTy(_)
-                        | token::NtIdent(..)
                         | token::NtMeta(_)
                         | token::NtPath(_)
                         | token::NtVis(_)
@@ -86,10 +83,7 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Lifetime => match token.kind {
                 token::Lifetime(_) => true,
-                token::Interpolated(ref nt) => {
-                    matches!(**nt, token::NtLifetime(_))
-                }
-                _ => false,
+                _ => false, // njn: is this reachable?
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
                 !matches!(token.kind, token::CloseDelim(_))
@@ -108,8 +102,29 @@ impl<'a> Parser<'a> {
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
         let mut nt = match kind {
-            // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(NtOrTt::Tt(self.parse_token_tree())),
+            NonterminalKind::Ident => {
+                return if let Some((ident, is_raw)) = get_macro_ident(&self.token) {
+                    self.bump();
+                    let token = Token::new(token::Ident(ident.name, is_raw), ident.span);
+                    Ok(NtOrTt::Token(token))
+                } else {
+                    let token_str = pprust::token_to_string(&self.token);
+                    let msg = &format!("expected ident, found {}", &token_str);
+                    Err(self.struct_span_err(self.token.span, msg))
+                };
+            }
+            NonterminalKind::Lifetime => {
+                return if self.check_lifetime() {
+                    let ident = self.expect_lifetime().ident;
+                    let token = Token::new(token::Lifetime(ident.name), ident.span);
+                    Ok(NtOrTt::Token(token))
+                } else {
+                    let token_str = pprust::token_to_string(&self.token);
+                    let msg = &format!("expected a lifetime, found `{}`", &token_str);
+                    Err(self.struct_span_err(self.token.span, msg))
+                };
+            }
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
@@ -152,33 +167,13 @@ impl<'a> Parser<'a> {
                 self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?,
             ),
 
-            // this could be handled like a token, since it is one
-            NonterminalKind::Ident
-                if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
-            {
-                self.bump();
-                token::NtIdent(ident, is_raw)
-            }
-            NonterminalKind::Ident => {
-                let token_str = pprust::token_to_string(&self.token);
-                let msg = &format!("expected ident, found {}", &token_str);
-                return Err(self.struct_span_err(self.token.span, msg));
-            }
-            NonterminalKind::Path => token::NtPath(
-                P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
-            ),
+            NonterminalKind::Path => token::NtPath(P(
+                self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?
+            )),
             NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
-            NonterminalKind::Vis => token::NtVis(
-                P(self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?),
-            ),
-            NonterminalKind::Lifetime => {
-                if self.check_lifetime() {
-                    token::NtLifetime(self.expect_lifetime().ident)
-                } else {
-                    let token_str = pprust::token_to_string(&self.token);
-                    let msg = &format!("expected a lifetime, found `{}`", &token_str);
-                    return Err(self.struct_span_err(self.token.span, msg));
-                }
+            NonterminalKind::Vis => {
+                token::NtVis(P(self
+                    .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
             }
         };
 

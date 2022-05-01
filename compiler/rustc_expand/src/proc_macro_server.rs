@@ -175,9 +175,6 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
                 tt!(Punct::new('#', false))
             }
 
-            Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
-                TokenTree::Ident(Ident::new(rustc.sess(), ident.name, is_raw, ident.span))
-            }
             Interpolated(nt) => {
                 let stream = nt_to_tokenstream(&nt, rustc.sess(), CanSynthesizeMissingTokens::No);
                 TokenTree::Group(Group {

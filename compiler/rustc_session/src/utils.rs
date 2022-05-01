@@ -130,9 +130,6 @@ impl<'a> FlattenNonterminals<'a> {
 
     pub fn process_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
-            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = *nt => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span)).into()
-            }
             token::Interpolated(nt) => {
                 let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
                 TokenTree::Delimited(

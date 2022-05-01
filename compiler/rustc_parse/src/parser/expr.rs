@@ -558,7 +558,7 @@ impl<'a> Parser<'a> {
         let this = self;
 
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        match this.token.uninterpolate().kind {
+        match this.token.kind {
             token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)), // `!expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)), // `~expr`
             token::BinOp(token::Minus) => {
@@ -647,7 +647,7 @@ impl<'a> Parser<'a> {
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
-        let token_cannot_continue_expr = |t: &Token| match t.uninterpolate().kind {
+        let token_cannot_continue_expr = |t: &Token| match t.kind {
             // These tokens can start an expression after `!`, but
             // can't continue an expression after an ident
             token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
@@ -1005,7 +1005,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
-        match self.token.uninterpolate().kind {
+        match self.token.kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix, None))

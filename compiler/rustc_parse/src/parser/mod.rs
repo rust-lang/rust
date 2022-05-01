@@ -1482,8 +1482,10 @@ pub enum FlatToken {
     Empty,
 }
 
+// njn: rename? simplify? remove? just a subset of NamedMatch...
 #[derive(Debug)]
 pub enum NtOrTt {
     Nt(Nonterminal),
     Tt(TokenTree),
+    Token(Token),
 }

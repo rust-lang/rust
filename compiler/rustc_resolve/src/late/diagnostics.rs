@@ -138,6 +138,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         source: PathSource<'_>,
         res: Option<Res>,
     ) -> (DiagnosticBuilder<'a, ErrorGuaranteed>, Vec<ImportSuggestion>) {
+        //eprintln!("smart:\n- {:?}\n- {:?}", path, span);
+        for _seg in path {
+            //eprintln!("* {} {:?}", seg.ident, seg.ident.span);
+        }
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);

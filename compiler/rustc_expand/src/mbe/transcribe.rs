@@ -1,5 +1,5 @@
 use crate::base::ExtCtxt;
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
+use crate::mbe::macro_parser::{NamedMatch, NamedMatch::*};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -226,16 +226,22 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(ref tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            let token = tt.clone();
-                            result.push(token.into());
+                            let tt = tt.clone();
+                            result.push(tt.into());
+                        }
+                        MatchedToken(ref token) => {
+                            // njn: this doesn't quite work, but adding
+                            // visit_token makes things worse
+                            let tt = TokenTree::Token(token.clone());
+                            result.push(tt.into());
                         }
                         MatchedNonterminal(ref nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
-                            result.push(token.into());
+                            let tt = TokenTree::token(token::Interpolated(nt.clone()), sp);
+                            result.push(tt.into());
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -306,8 +312,8 @@ fn lookup_cur_matched<'a>(
         let mut matched = matched;
         for &(idx, _) in repeats {
             match matched {
-                MatchedTokenTree(_) | MatchedNonterminal(_) => break,
                 MatchedSeq(ref ads) => matched = ads.get(idx).unwrap(),
+                _ => break,
             }
         }
 
@@ -396,8 +402,8 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedTokenTree(_) | MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads) => LockstepIterSize::Constraint(ads.len(), name),
+                    _ => LockstepIterSize::Unconstrained,
                 },
                 _ => LockstepIterSize::Unconstrained,
             }
@@ -443,18 +449,6 @@ fn count_repetitions<'a>(
         sp: &DelimSpan,
     ) -> PResult<'a, usize> {
         match matched {
-            MatchedTokenTree(_) | MatchedNonterminal(_) => {
-                if declared_lhs_depth == 0 {
-                    return Err(cx.struct_span_err(
-                        sp.entire(),
-                        "`count` can not be placed inside the inner-most repetition",
-                    ));
-                }
-                match depth_opt {
-                    None => Ok(1),
-                    Some(_) => Err(out_of_bounds_err(cx, declared_lhs_depth, sp.entire(), "count")),
-                }
-            }
             MatchedSeq(ref named_matches) => {
                 let new_declared_lhs_depth = declared_lhs_depth + 1;
                 match depth_opt {
@@ -467,6 +461,18 @@ fn count_repetitions<'a>(
                         .iter()
                         .map(|elem| count(cx, new_declared_lhs_depth, Some(depth - 1), elem, sp))
                         .sum(),
+                }
+            }
+            _ => {
+                if declared_lhs_depth == 0 {
+                    return Err(cx.struct_span_err(
+                        sp.entire(),
+                        "`count` can not be placed inside the inner-most repetition",
+                    ));
+                }
+                match depth_opt {
+                    None => Ok(1),
+                    Some(_) => Err(out_of_bounds_err(cx, declared_lhs_depth, sp.entire(), "count")),
                 }
             }
         }

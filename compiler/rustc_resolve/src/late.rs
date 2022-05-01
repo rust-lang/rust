@@ -558,7 +558,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             }
             TyKind::Path(ref qself, ref path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+                self.smart_resolve_path(2, ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
                 let self_ty = Ident::with_dummy_span(kw::SelfUpper);
@@ -622,6 +622,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             |this| {
                 this.visit_generic_param_vec(&tref.bound_generic_params, false);
                 this.smart_resolve_path(
+                    3,
                     tref.trait_ref.ref_id,
                     None,
                     &tref.trait_ref.path,
@@ -816,6 +817,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // non-trivial constants this is doesn't matter.
                             self.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
                                 this.smart_resolve_path(
+                                    4,
                                     ty.id,
                                     qself.as_ref(),
                                     path,
@@ -901,6 +903,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             this.with_rib(TypeNS, InlineAsmSymRibKind, |this| {
                 this.with_label_rib(InlineAsmSymRibKind, |this| {
                     this.smart_resolve_path(
+                        5,
                         sym.id,
                         sym.qself.as_ref(),
                         &sym.path,
@@ -1946,6 +1949,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = Segment::from_path(&trait_ref.path);
+            //eprintln!("sr2");
             let res = self.smart_resolve_path_fragment(
                 None,
                 &path,
@@ -2408,6 +2412,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
                 PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
+                        6,
                         pat.id,
                         qself.as_ref(),
                         path,
@@ -2418,10 +2423,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     );
                 }
                 PatKind::Path(ref qself, ref path) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
+                    self.smart_resolve_path(7, pat.id, qself.as_ref(), path, PathSource::Pat);
                 }
                 PatKind::Struct(ref qself, ref path, ..) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Struct);
+                    self.smart_resolve_path(8, pat.id, qself.as_ref(), path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -2613,11 +2618,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     // errors in user friendly way.
     fn smart_resolve_path(
         &mut self,
+        _x: u32,
         id: NodeId,
         qself: Option<&QSelf>,
         path: &Path,
         source: PathSource<'ast>,
     ) {
+        //eprintln!("sr3 {}", x);
         self.smart_resolve_path_fragment(
             qself,
             &Segment::from_path(path),
@@ -2645,6 +2652,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             finalize.node_id_and_path_span().expect("unexpected speculative resolution");
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
+                //eprintln!("smart1");
                 let (err, candidates) =
                     this.smart_resolve_report_errors(path, path_span, source, res);
 
@@ -2683,6 +2691,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 _ => return Some(parent_err),
             };
 
+            //eprintln!("smart2");
             let (mut err, candidates) =
                 this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
 
@@ -2909,6 +2918,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // name from a fully qualified path, and this also
             // contains the full span (the `Finalize::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
+            //eprintln!("sr1");
             let partial_res = self.smart_resolve_path_fragment(
                 None,
                 &path[..=qself.position],
@@ -3076,12 +3086,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Next, resolve the node.
         match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
-                self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
+                self.smart_resolve_path(0, expr.id, qself.as_ref(), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, se.qself.as_ref(), &se.path, PathSource::Struct);
+                self.smart_resolve_path(
+                    1,
+                    expr.id,
+                    se.qself.as_ref(),
+                    &se.path,
+                    PathSource::Struct,
+                );
                 visit::walk_expr(self, expr);
             }
 

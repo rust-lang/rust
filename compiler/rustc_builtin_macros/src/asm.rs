@@ -502,7 +502,7 @@ fn parse_reg<'a>(
     explicit_reg: &mut bool,
 ) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
-    let result = match p.token.uninterpolate().kind {
+    let result = match p.token.kind {
         token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
             *explicit_reg = true;

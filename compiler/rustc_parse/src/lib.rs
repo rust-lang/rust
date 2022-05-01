@@ -281,12 +281,6 @@ pub fn nt_to_tokenstream(
         Nonterminal::NtStmt(ref stmt) => prepend_attrs(&stmt.attrs(), stmt.tokens()),
         Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
         Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
-        Nonterminal::NtIdent(ident, is_raw) => {
-            Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
-        }
-        Nonterminal::NtLifetime(ident) => {
-            Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
-        }
         Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.as_ref()),
         Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
         Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),

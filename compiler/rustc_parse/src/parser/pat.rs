@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
     fn recover_trailing_vert(&mut self, lo: Option<Span>) -> bool {
         let is_end_ahead = self.look_ahead(1, |token| {
             matches!(
-                &token.uninterpolate().kind,
+                &token.kind,
                 token::FatArrow // e.g. `a | => 0,`.
                 | token::Ident(kw::If, false) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.

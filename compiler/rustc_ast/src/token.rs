@@ -12,7 +12,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
-use std::borrow::Cow;
 use std::{fmt, mem};
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -227,14 +226,8 @@ pub enum TokenKind {
     Literal(Lit),
 
     /// Identifier token.
-    /// Do not forget about `NtIdent` when you want to match on identifiers.
-    /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, /* is_raw */ bool),
     /// Lifetime identifier token.
-    /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
-    /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
 
     Interpolated(Lrc<Nonterminal>),
@@ -364,7 +357,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
-        match self.uninterpolate().kind {
+        match self.kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             OpenDelim(..)                     | // tuple, array or block
@@ -391,7 +384,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a type.
     pub fn can_begin_type(&self) -> bool {
-        match self.uninterpolate().kind {
+        match self.kind {
             Ident(name, is_raw)        =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
             OpenDelim(Delimiter::Parenthesis) | // tuple
@@ -439,7 +432,7 @@ impl Token {
     ///
     /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
-        match self.uninterpolate().kind {
+        match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
@@ -457,37 +450,18 @@ impl Token {
         }
     }
 
-    // A convenience function for matching on identifiers during parsing.
-    // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
-    // into the regular identifier or lifetime token it refers to,
-    // otherwise returns the original token.
-    pub fn uninterpolate(&self) -> Cow<'_, Token> {
-        match &self.kind {
-            Interpolated(nt) => match **nt {
-                NtIdent(ident, is_raw) => {
-                    Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span))
-                }
-                NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
-                _ => Cow::Borrowed(self),
-            },
-            _ => Cow::Borrowed(self),
-        }
-    }
-
     /// Returns an identifier if this token is an identifier.
     pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Ident(name, is_raw) => Some((Ident::new(name, token.span), is_raw)),
+        match self.kind {
+            Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
             _ => None,
         }
     }
 
     /// Returns a lifetime identifier if this token is a lifetime.
     pub fn lifetime(&self) -> Option<Ident> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Lifetime(name) => Some(Ident::new(name, token.span)),
+        match self.kind {
+            Lifetime(name) => Some(Ident::new(name, self.span)),
             _ => None,
         }
     }
@@ -521,7 +495,7 @@ impl Token {
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(ref nt) = self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
         {
             return true;
         }
@@ -679,8 +653,6 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Ident, /* is_raw */ bool),
-    NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
@@ -779,7 +751,6 @@ impl Nonterminal {
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
             NtTy(ty) => ty.span,
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
@@ -790,11 +761,7 @@ impl Nonterminal {
 impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
-            }
-            (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
-            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
+            // FIXME: Assume that all nonterminals are not equal, because we can't compare them
             // correctly based on data from AST. This will prevent them from matching each other
             // in macros. The comparison will become possible only when each nonterminal has an
             // attached token stream from which it was parsed.
@@ -812,12 +779,10 @@ impl fmt::Debug for Nonterminal {
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
-            NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
-            NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
 }

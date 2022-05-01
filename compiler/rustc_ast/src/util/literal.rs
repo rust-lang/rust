@@ -216,7 +216,7 @@ impl Lit {
     ///
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Result<Lit, LitError> {
-        let lit = match token.uninterpolate().kind {
+        let lit = match token.kind {
             token::Ident(name, false) if name.is_bool_lit() => {
                 token::Lit::new(token::Bool, name, None)
             }

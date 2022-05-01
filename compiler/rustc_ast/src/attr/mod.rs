@@ -408,7 +408,7 @@ impl MetaItem {
         I: Iterator<Item = TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next().map(TokenTree::uninterpolate) {
+        let path = match tokens.next() {
             Some(TokenTree::Token(Token {
                 kind: kind @ (token::Ident(..) | token::ModSep),
                 span,
@@ -426,7 +426,7 @@ impl MetaItem {
                 };
                 loop {
                     if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span })) =
-                        tokens.next().map(TokenTree::uninterpolate)
+                        tokens.next()
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -449,6 +449,7 @@ impl MetaItem {
             },
             _ => return None,
         };
+        //eprintln!("A1 {:?}", path);
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
         let kind = MetaItemKind::from_tokens(tokens)?;
         let hi = match kind {

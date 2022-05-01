@@ -93,13 +93,6 @@ impl TokenTree {
     pub fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
-
-    pub fn uninterpolate(self) -> TokenTree {
-        match self {
-            TokenTree::Token(token) => TokenTree::Token(token.uninterpolate().into_owned()),
-            tt => tt,
-        }
-    }
 }
 
 impl<CTX> HashStable<CTX> for TokenStream

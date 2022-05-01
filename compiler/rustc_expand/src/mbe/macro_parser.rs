@@ -344,6 +344,9 @@ crate enum NamedMatch {
     // A metavar match of type `tt`.
     MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
 
+    // njn: comment
+    MatchedToken(token::Token),
+
     // A metavar match of any type other than `tt`.
     MatchedNonterminal(Lrc<Nonterminal>),
 }
@@ -624,6 +627,7 @@ impl TtParser {
                         let m = match nt {
                             NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
                             NtOrTt::Tt(tt) => MatchedTokenTree(tt),
+                            NtOrTt::Token(token) => MatchedToken(token),
                         };
                         mp.push_match(next_metavar, seq_depth, m);
                         mp.idx += 1;

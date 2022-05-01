@@ -51,9 +51,7 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtMeta(_)
             | Nonterminal::NtPath(_)
             | Nonterminal::NtVis(_)
-            | Nonterminal::NtBlock(_)
-            | Nonterminal::NtIdent(..)
-            | Nonterminal::NtLifetime(_) => &[],
+            | Nonterminal::NtBlock(_) => &[],
         }
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
@@ -66,9 +64,7 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtMeta(_)
             | Nonterminal::NtPath(_)
             | Nonterminal::NtVis(_)
-            | Nonterminal::NtBlock(_)
-            | Nonterminal::NtIdent(..)
-            | Nonterminal::NtLifetime(_) => {}
+            | Nonterminal::NtBlock(_) => {}
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
@@ -82,7 +78,6 @@ impl AstLike for crate::token::Nonterminal {
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
 }

@@ -2303,7 +2303,7 @@ impl<'a> Parser<'a> {
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
+        let (eself, eself_ident, eself_hi) = match self.token.kind {
             token::BinOp(token::And) => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
