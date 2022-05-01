@@ -2556,7 +2556,7 @@ where
     }
 }
 
-#[stable(feature = "shared_from_str", since = "1.61.0")]
+#[stable(feature = "shared_from_str", since = "1.62.0")]
 impl From<Arc<str>> for Arc<[u8]> {
     /// Converts an atomically reference-counted string slice into a byte slice.
     ///
