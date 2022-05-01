@@ -50,7 +50,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DepNode<K> {
     pub kind: K,
     pub hash: PackedFingerprint,

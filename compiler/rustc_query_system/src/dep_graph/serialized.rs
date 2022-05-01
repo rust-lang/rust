@@ -258,7 +258,7 @@ impl<K: DepKind> EncoderState<K> {
     }
 }
 
-#[derive(Debug, Encodable, Decodable)]
+#[derive(Debug)]
 pub struct NodeInfo<K: DepKind> {
     node: DepNode<K>,
     fingerprint: Fingerprint,
