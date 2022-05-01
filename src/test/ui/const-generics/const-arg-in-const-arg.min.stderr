@@ -16,6 +16,51 @@ LL |     let _: [u8; bar::<N>()];
    = help: const parameters may only be used as standalone arguments, i.e. `N`
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
+error: generic parameters may not be used in const operations
+  --> $DIR/const-arg-in-const-arg.rs:27:23
+   |
+LL |     let _ = [0; bar::<N>()];
+   |                       ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const-arg-in-const-arg.rs:36:24
+   |
+LL |     let _: Foo<{ foo::<T>() }>;
+   |                        ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const-arg-in-const-arg.rs:38:24
+   |
+LL |     let _: Foo<{ bar::<N>() }>;
+   |                        ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const-arg-in-const-arg.rs:47:27
+   |
+LL |     let _ = Foo::<{ foo::<T>() }>;
+   |                           ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const-arg-in-const-arg.rs:49:27
+   |
+LL |     let _ = Foo::<{ bar::<N>() }>;
+   |                           ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:18:23
    |
@@ -51,15 +96,6 @@ LL |     let _: [u8; baz::<'b>(&())];
    |
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
-
-error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:27:23
-   |
-LL |     let _ = [0; bar::<N>()];
-   |                       ^ cannot perform const operation using `N`
-   |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:30:23
@@ -97,24 +133,6 @@ LL |     let _ = [0; baz::<'b>(&())];
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
 
-error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:36:24
-   |
-LL |     let _: Foo<{ foo::<T>() }>;
-   |                        ^ cannot perform const operation using `T`
-   |
-   = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
-
-error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:38:24
-   |
-LL |     let _: Foo<{ bar::<N>() }>;
-   |                        ^ cannot perform const operation using `N`
-   |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
-
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:41:24
    |
@@ -150,24 +168,6 @@ LL |     let _: Foo<{ baz::<'b>(&()) }>;
    |
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
    = help: add `#![feature(generic_const_exprs)]` to the crate attributes to enable
-
-error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:47:27
-   |
-LL |     let _ = Foo::<{ foo::<T>() }>;
-   |                           ^ cannot perform const operation using `T`
-   |
-   = note: type parameters may not be used in const expressions
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
-
-error: generic parameters may not be used in const operations
-  --> $DIR/const-arg-in-const-arg.rs:49:27
-   |
-LL |     let _ = Foo::<{ bar::<N>() }>;
-   |                           ^ cannot perform const operation using `N`
-   |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
-   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:52:27
