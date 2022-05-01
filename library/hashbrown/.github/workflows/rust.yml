@@ -11,7 +11,7 @@ jobs:
   miri:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - env:
         TARGET: x86_64-unknown-linux-gnu
       run: sh ci/miri.sh
@@ -19,7 +19,7 @@ jobs:
   rustfmt_clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - env:
         TARGET: i586-unknown-linux-gnu
       run: sh ci/tools.sh
@@ -27,7 +27,7 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ matrix.channel }}
