@@ -1,6 +1,6 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
-use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
+use crate::late::{AliasPossibility, LateResolutionVisitor, LifetimeResolutionVisitor, RibKind};
 use crate::late::{LifetimeBinderKind, LifetimeRibKind};
 use crate::path_names_to_string;
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
@@ -1790,7 +1790,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             (*ident, within_scope)
         })
     }
+}
 
+impl<'a> LifetimeResolutionVisitor<'a, '_> {
     crate fn emit_undeclared_lifetime_error(
         &self,
         lifetime_ref: &ast::Lifetime,
