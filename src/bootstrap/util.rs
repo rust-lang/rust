@@ -346,6 +346,24 @@ pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     status.success()
 }
 
+pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.status() {
+        Ok(status) => status,
+        Err(e) => {
+            println!("failed to execute command: {:?}\nerror: {}", cmd, e);
+            return false;
+        }
+    };
+    if !status.success() && print_cmd_on_fail {
+        println!(
+            "\n\ncommand did not execute successfully: {:?}\n\
+             expected success, got: {}\n\n",
+            cmd, status
+        );
+    }
+    status.success()
+}
+
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
         std::process::exit(1);

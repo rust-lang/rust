@@ -110,29 +110,42 @@ def download(path, url, probably_big, verbose, help_on_error=None):
 
 
 def _download(path, url, probably_big, verbose, exception, help_on_error=None):
+    # Try to use curl (potentially available on win32
+    #    https://devblogs.microsoft.com/commandline/tar-and-curl-come-to-windows/)
+    # If an error occurs:
+    #  - If we are on win32 fallback to powershell
+    #  - Otherwise raise the error if appropriate
     if probably_big or verbose:
         print("downloading {}".format(url))
-    # see https://serverfault.com/questions/301128/how-to-download
-    if sys.platform == 'win32':
-        run(["PowerShell.exe", "/nologo", "-Command",
-             "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
-             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')".format(url, path)],
-            verbose=verbose,
-            exception=exception)
-    else:
+
+    platform_is_win32 = sys.platform == 'win32'
+    try:
         if probably_big or verbose:
             option = "-#"
         else:
             option = "-s"
-        require(["curl", "--version"])
+        # If curl is not present on Win32, we shoud not sys.exit
+        #   but raise `CalledProcessError` or `OSError` instead
+        require(["curl", "--version"], exception=platform_is_win32)
         run(["curl", option,
              "-L", # Follow redirect.
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
-            exception=exception,
+            exception=True, # Will raise RuntimeError on failure
             help_on_error=help_on_error)
+    except (subprocess.CalledProcessError, OSError, RuntimeError):
+        # see http://serverfault.com/questions/301128/how-to-download
+        if platform_is_win32:
+            run(["PowerShell.exe", "/nologo", "-Command",
+                 "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                 "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')".format(url, path)],
+                verbose=verbose,
+                exception=exception)
+        # Check if the RuntimeError raised by run(curl) should be silenced
+        elif verbose or exception:
+            raise
 
 
 def verify(path, expected, verbose):
@@ -198,19 +211,23 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, help_on_error=
             sys.exit(err)
 
 
-def require(cmd, exit=True):
+def require(cmd, exit=True, exception=False):
     '''Run a command, returning its output.
     On error,
-        If `exit` is `True`, exit the process.
-        Otherwise, return None.'''
+        If `exception` is `True`, raise the error
+        Otherwise If `exit` is `True`, exit the process
+        Else return None.'''
     try:
         return subprocess.check_output(cmd).strip()
     except (subprocess.CalledProcessError, OSError) as exc:
-        if not exit:
-            return None
-        print("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
-        print("Please make sure it's installed and in the path.")
-        sys.exit(1)
+        if exception:
+            raise
+        elif exit:
+            print("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
+            print("Please make sure it's installed and in the path.")
+            sys.exit(1)
+        return None
+
 
 
 def format_build_time(duration):

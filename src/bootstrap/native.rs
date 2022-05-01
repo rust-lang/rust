@@ -306,39 +306,40 @@ fn download_component(builder: &Builder<'_>, base: &str, url: &str, dest_path: &
 
 fn download_with_retries(builder: &Builder<'_>, tempfile: &str, url: &str) {
     println!("downloading {}", url);
-
-    // FIXME: check if curl is installed instead of skipping straight to powershell
-    if builder.build.build.contains("windows-msvc") {
-        for _ in 0..3 {
-            if builder.try_run(Command::new("PowerShell.exe").args(&[
-                "/nologo",
-                "-Command",
-                "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
-                &format!(
-                    "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                    url, tempfile
-                ),
-            ])) {
-                return;
+    // Try curl. If that fails and we are on windows, fallback to PowerShell.
+    if !builder.check_run(Command::new("curl").args(&[
+        "-#",
+        "-y",
+        "30",
+        "-Y",
+        "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+        "--connect-timeout",
+        "30", // timeout if cannot connect within 30 seconds
+        "--retry",
+        "3",
+        "-Sf",
+        "-o",
+        tempfile,
+        url,
+    ])) {
+        if builder.build.build.contains("windows-msvc") {
+            println!("Fallback to PowerShell");
+            for _ in 0..3 {
+                if builder.try_run(Command::new("PowerShell.exe").args(&[
+                    "/nologo",
+                    "-Command",
+                    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                    &format!(
+                        "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
+                        url, tempfile
+                    ),
+                ])) {
+                    return;
+                }
+                println!("\nspurious failure, trying again");
             }
-            println!("\nspurious failure, trying again");
         }
-    } else {
-        builder.run(Command::new("curl").args(&[
-            "-#",
-            "-y",
-            "30",
-            "-Y",
-            "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
-            "--connect-timeout",
-            "30", // timeout if cannot connect within 30 seconds
-            "--retry",
-            "3",
-            "-Sf",
-            "-o",
-            tempfile,
-            url,
-        ]));
+        std::process::exit(1);
     }
 }
 
