@@ -1394,6 +1394,9 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Ret(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
+        ExprKind::Yeet(expr) => {
+            visit_opt(expr, |expr| vis.visit_expr(expr));
+        }
         ExprKind::InlineAsm(asm) => vis.visit_inline_asm(asm),
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
