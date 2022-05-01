@@ -18,7 +18,7 @@ note: required because of the requirements on the impl of `Delegates<()>` for `&
 LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
    |            ^^^^^^^^^^^^     ^
 note: required by a bound in `writes_to_specific_path`
-  --> $DIR/issue-85848.rs:29:31
+  --> $DIR/issue-85848.rs:30:31
    |
 LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
    |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
@@ -43,11 +43,21 @@ note: required because of the requirements on the impl of `Delegates<()>` for `&
 LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
    |            ^^^^^^^^^^^^     ^
 note: required by a bound in `writes_to_specific_path`
-  --> $DIR/issue-85848.rs:29:31
+  --> $DIR/issue-85848.rs:30:31
    |
 LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
    |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-85848.rs:24:5
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `true`, found `{ contains::<T, U>() }`
+   |
+   = note: expected type `true`
+              found type `{ contains::<T, U>() }`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
