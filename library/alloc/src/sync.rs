@@ -1691,8 +1691,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
 }
 
 impl Arc<dyn Any + Send + Sync> {
-    #[inline]
-    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Arc<dyn Any + Send + Sync>` to a concrete type.
     ///
     /// # Examples
@@ -1711,9 +1709,11 @@ impl Arc<dyn Any + Send + Sync> {
     /// print_if_string(Arc::new(my_string));
     /// print_if_string(Arc::new(0i8));
     /// ```
+    #[inline]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
-        T: Any + Send + Sync + 'static,
+        T: Any + Send + Sync,
     {
         if (*self).is::<T>() {
             unsafe {
@@ -1723,6 +1723,45 @@ impl Arc<dyn Any + Send + Sync> {
             }
         } else {
             Err(self)
+        }
+    }
+
+    /// Downcasts the `Arc<dyn Any + Send + Sync>` to a concrete type.
+    ///
+    /// For a safe alternative see [`downcast`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(downcast_unchecked)]
+    ///
+    /// use std::any::Any;
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<dyn Any + Send + Sync> = Arc::new(1_usize);
+    ///
+    /// unsafe {
+    ///     assert_eq!(*x.downcast_unchecked::<usize>(), 1);
+    /// }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
+    ///
+    ///
+    /// [`downcast`]: Self::downcast
+    #[inline]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    pub unsafe fn downcast_unchecked<T>(self) -> Arc<T>
+    where
+        T: Any + Send + Sync,
+    {
+        unsafe {
+            let ptr = self.ptr.cast::<ArcInner<T>>();
+            mem::forget(self);
+            Arc::from_inner(ptr)
         }
     }
 }
