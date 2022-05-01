@@ -82,13 +82,7 @@ impl FromStr for Profile {
 
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Profile::Compiler => write!(f, "compiler"),
-            Profile::Codegen => write!(f, "codegen"),
-            Profile::Library => write!(f, "library"),
-            Profile::User => write!(f, "user"),
-            Profile::Tools => write!(f, "tools"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
