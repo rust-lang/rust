@@ -1,9 +1,9 @@
 #![feature(rustc_private)]
 
 // NOTE: For the example to compile, you will need to first run the following:
-//   rustup component add rustc-dev
+//   rustup component add rustc-dev llvm-tools-preview
 
-// version: 1.61.0-nightly (68369a041 2022-02-22)
+// version: 1.62.0-nightly (7c4b47696 2022-04-30)
 
 extern crate rustc_error_codes;
 extern crate rustc_errors;
@@ -72,7 +72,8 @@ fn main() {
             println!("{:#?}", parse);
             // Analyze the program and inspect the types of definitions.
             queries.global_ctxt().unwrap().take().enter(|tcx| {
-                for item in tcx.hir().items() {
+                for id in tcx.hir().items() {
+                    let item = tcx.hir().item(id);
                     match item.kind {
                         rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
                             let name = item.ident;

@@ -1,9 +1,9 @@
 #![feature(rustc_private)]
 
 // NOTE: For the example to compile, you will need to first run the following:
-//     rustup component add rustc-dev llvm-tools-preview
+//   rustup component add rustc-dev llvm-tools-preview
 
-// version: 1.61.0-nightly (68369a041 2022-02-22)
+// version: 1.62.0-nightly (7c4b47696 2022-04-30)
 
 extern crate rustc_ast_pretty;
 extern crate rustc_error_codes;
@@ -66,7 +66,8 @@ fn main() {
                 // Every compilation contains a single crate.
                 let hir_krate = tcx.hir();
                 // Iterate over the top-level items in the crate, looking for the main function.
-                for item in hir_krate.items() {
+                for id in hir_krate.items() {
+                    let item = hir_krate.item(id);
                     // Use pattern-matching to find a specific node inside the main function.
                     if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
                         let expr = &tcx.hir().body(body_id).value;
@@ -76,7 +77,7 @@ fn main() {
                                     let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
                                     let def_id = tcx.hir().local_def_id(item.hir_id()); // def_id identifies the main function
                                     let ty = tcx.typeck(def_id).node_type(hir_id);
-                                    println!("{:?}: {:?}", expr, ty); // prints expr(HirId { owner: DefIndex(3), local_id: 4 }: "Hello, world!"): &'static str
+                                    println!("{:?}: {:?}", expr, ty);
                                 }
                             }
                         }

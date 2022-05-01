@@ -7,7 +7,7 @@
 To get diagnostics from the compiler,
 configure `rustc_interface::Config` to output diagnostic to a buffer,
 and run `TyCtxt.analysis`. The following should be compiled
-with <!-- date: 2021-03 --> `nightly-2021-03-28` (See [here][example]
+with <!-- date: 2022-05 --> `nightly-2021-04-30` (See [here][example]
 for the complete example):
 
 [example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-getting-diagnostics.rs
@@ -35,7 +35,7 @@ rustc_interface::run_compiler(config, |compiler| {
     compiler.enter(|queries| {
         queries.global_ctxt().unwrap().take().enter(|tcx| {
             // Run the analysis phase on the local crate to trigger the type error.
-            tcx.analysis(rustc_hir::def_id::LOCAL_CRATE);
+            let _ = tcx.analysis(());
         });
     });
 });
