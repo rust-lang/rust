@@ -1976,6 +1976,7 @@ extern "rust-intrinsic" {
     /// Determines if the supplied value is a constant or has been folded to a constant during
     /// optimization.
     #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
     pub fn optimized_to_const<T>(value: &T) -> bool;
 }
 
