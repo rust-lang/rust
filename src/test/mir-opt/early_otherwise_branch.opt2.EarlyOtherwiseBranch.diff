@@ -82,10 +82,8 @@
 +     bb4: {
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:17:1: 17:2
           return;                          // scope 0 at $DIR/early_otherwise_branch.rs:17:2: 17:2
-      }
-  
--     bb7 (cleanup): {
--         resume;                          // scope 0 at $DIR/early_otherwise_branch.rs:11:1: 17:2
++     }
++ 
 +     bb5: {
 +         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         switchInt(_8) -> [0_isize: bb3, 1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17

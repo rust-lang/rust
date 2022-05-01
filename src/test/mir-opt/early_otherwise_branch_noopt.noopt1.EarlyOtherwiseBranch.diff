@@ -91,9 +91,5 @@
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:14:1: 14:2
           return;                          // scope 0 at $DIR/early_otherwise_branch_noopt.rs:14:2: 14:2
       }
-  
-      bb9 (cleanup): {
-          resume;                          // scope 0 at $DIR/early_otherwise_branch_noopt.rs:7:1: 14:2
-      }
   }
   

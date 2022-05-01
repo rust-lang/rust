@@ -64,9 +64,5 @@
           StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:11:5: 11:6
           return;                          // scope 0 at $DIR/lower_array_len.rs:12:2: 12:2
       }
-  
-      bb6 (cleanup): {
-          resume;                          // scope 0 at $DIR/lower_array_len.rs:6:1: 12:2
-      }
   }
   

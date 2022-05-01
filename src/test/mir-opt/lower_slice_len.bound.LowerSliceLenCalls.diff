@@ -59,9 +59,5 @@
           StorageDead(_3);                 // scope 0 at $DIR/lower_slice_len.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/lower_slice_len.rs:10:2: 10:2
       }
-  
-      bb6 (cleanup): {
-          resume;                          // scope 0 at $DIR/lower_slice_len.rs:4:1: 10:2
-      }
   }
   

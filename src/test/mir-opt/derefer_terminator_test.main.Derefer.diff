@@ -94,10 +94,10 @@
           StorageDead(_2);                 // scope 1 at $DIR/derefer_terminator_test.rs:10:1: 10:2
           StorageDead(_1);                 // scope 0 at $DIR/derefer_terminator_test.rs:10:1: 10:2
           return;                          // scope 0 at $DIR/derefer_terminator_test.rs:10:2: 10:2
-+     }
-+ 
-+     bb6 (cleanup): {
-+         resume;                          // scope 0 at $DIR/derefer_terminator_test.rs:2:1: 10:2
+      }
+  
+      bb6 (cleanup): {
+          resume;                          // scope 0 at $DIR/derefer_terminator_test.rs:2:1: 10:2
       }
   }
   

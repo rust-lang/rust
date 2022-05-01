@@ -30,9 +30,5 @@
       bb4: {
           return;                          // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:18:2: 18:2
       }
-  
-      bb5 (cleanup): {
-          resume;                          // scope 0 at $DIR/uninhabited_fallthrough_elimination.rs:12:1: 18:2
-      }
   }
   

@@ -57,6 +57,17 @@ fn may_be_reference(ty: Ty<'_>) -> bool {
     }
 }
 
+/// Determines whether or not this LocalDecl is temp, if not it needs retagging.
+fn is_not_temp<'tcx>(local_decl: &LocalDecl<'tcx>) -> bool {
+    if let Some(local_info) = &local_decl.local_info {
+        match local_info.as_ref() {
+            LocalInfo::DerefTemp => return false,
+            _ => (),
+        };
+    }
+    return true;
+}
+
 impl<'tcx> MirPass<'tcx> for AddRetag {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.opts.debugging_opts.mir_emit_retag
@@ -71,7 +82,9 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place.as_ref()) && may_be_reference(place.ty(&*local_decls, tcx).ty)
+            is_stable(place.as_ref())
+                && may_be_reference(place.ty(&*local_decls, tcx).ty)
+                && is_not_temp(&local_decls[place.local])
         };
         let place_base_raw = |place: &Place<'tcx>| {
             // If this is a `Deref`, get the type of what we are deref'ing.

@@ -39,9 +39,5 @@
 -         StorageDead(_2);                 // scope 0 at $DIR/nrvo-simple.rs:8:1: 8:2
           return;                          // scope 0 at $DIR/nrvo-simple.rs:8:2: 8:2
       }
-  
-      bb2 (cleanup): {
-          resume;                          // scope 0 at $DIR/nrvo-simple.rs:4:1: 8:2
-      }
   }
   

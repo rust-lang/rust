@@ -69,10 +69,6 @@
           StorageDead(_1);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
           StorageDead(_2);                 // scope 0 at $DIR/unreachable_diverging.rs:20:1: 20:2
           return;                          // scope 0 at $DIR/unreachable_diverging.rs:20:2: 20:2
--     }
-- 
--     bb7 (cleanup): {
--         resume;                          // scope 0 at $DIR/unreachable_diverging.rs:12:1: 20:2
       }
   }
   

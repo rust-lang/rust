@@ -90,10 +90,8 @@
 +     bb4: {
           StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:9:2: 9:2
-      }
-  
--     bb6 (cleanup): {
--         resume;                          // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:4:1: 9:2
++     }
++ 
 +     bb5: {
 +         StorageDead(_15);                // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:5: 5:20
 +         switchInt(_10) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:5: 5:20
