@@ -1438,17 +1438,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
         // cond is a vector of integers, not of bools.
-        let vector_type = cond.get_type().dyncast_vector().expect("vector type");
+        let cond_type = cond.get_type();
+        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
         let num_units = vector_type.get_num_units();
-        let vector_type = self.context.new_vector_type(self.int_type, num_units as u64);
-        let zeros = vec![self.context.new_rvalue_zero(self.int_type); num_units];
-        let zeros = self.context.new_rvalue_from_vector(None, vector_type, &zeros);
+        let element_type = vector_type.get_element_type();
+        let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
+        let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
 
         let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
         let then_vals = masks & then_val;
 
-        let ones = vec![self.context.new_rvalue_one(self.int_type); num_units];
-        let ones = self.context.new_rvalue_from_vector(None, vector_type, &ones);
+        let ones = vec![self.context.new_rvalue_one(element_type); num_units];
+        let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
         let inverted_masks = masks + ones;
         let else_vals = inverted_masks & else_val;
 

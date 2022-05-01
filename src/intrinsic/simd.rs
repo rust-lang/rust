@@ -4,12 +4,14 @@ use gccjit::{BinaryOp, RValue, Type, ToRValue};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
+use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
 use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, Symbol, sym};
+use rustc_target::abi::Align;
 
 use crate::builder::Builder;
 use crate::intrinsic;
@@ -55,7 +57,53 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     let sig =
         tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
-    let name_str = name.as_str();
+
+    if name == sym::simd_select_bitmask {
+        require_simd!(arg_tys[1], "argument");
+        let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+
+        let expected_int_bits = (len.max(8) - 1).next_power_of_two();
+        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+
+        let mask_ty = arg_tys[0];
+        let mut mask = match mask_ty.kind() {
+            ty::Int(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Array(elem, len)
+                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                        == Some(expected_bytes) =>
+            {
+                let place = PlaceRef::alloca(bx, args[0].layout);
+                args[0].val.store(bx, place);
+                let int_ty = bx.type_ix(expected_bytes * 8);
+                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                bx.load(int_ty, ptr, Align::ONE)
+            }
+            _ => return_error!(
+                "invalid bitmask `{}`, expected `u{}` or `[u8; {}]`",
+                mask_ty,
+                expected_int_bits,
+                expected_bytes
+            ),
+        };
+
+        let arg1 = args[1].immediate();
+        let arg1_type = arg1.get_type();
+        let arg1_vector_type = arg1_type.unqualified().dyncast_vector().expect("vector type");
+        let arg1_element_type = arg1_vector_type.get_element_type();
+
+        let mut elements = vec![];
+        let one = bx.context.new_rvalue_one(mask.get_type());
+        for _ in 0..len {
+            let element = bx.context.new_cast(None, mask & one, arg1_element_type);
+            elements.push(element);
+            mask = mask >> one;
+        }
+        let vector_mask = bx.context.new_rvalue_from_vector(None, arg1_type, &elements);
+
+        return Ok(bx.vector_select(vector_mask, arg1, args[2].immediate()));
+    }
 
     // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");
@@ -102,7 +150,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         ));
     }
 
-    if let Some(stripped) = name_str.strip_prefix("simd_shuffle") {
+    if let Some(stripped) = name.as_str().strip_prefix("simd_shuffle") {
         let n: u64 =
             if stripped.is_empty() {
                 // Make sure this is actually an array, since typeck only checks the length-suffixed
