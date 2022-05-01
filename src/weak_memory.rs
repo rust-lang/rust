@@ -53,76 +53,20 @@ impl StoreBufferAlloc {
     }
 
     /// Gets a store buffer associated with an atomic object in this allocation
-    fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
+    pub fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
         Ref::map(self.store_buffer.borrow(), |range_map| {
             let (.., store_buffer) = range_map.iter(range.start, range.size).next().unwrap();
             store_buffer
         })
     }
 
-    fn get_store_buffer_mut(&self, range: AllocRange) -> RefMut<'_, StoreBuffer> {
+    pub fn get_store_buffer_mut(&self, range: AllocRange) -> RefMut<'_, StoreBuffer> {
         RefMut::map(self.store_buffer.borrow_mut(), |range_map| {
             let (.., store_buffer) = range_map.iter_mut(range.start, range.size).next().unwrap();
             store_buffer
         })
     }
 
-    /// Reads from the last store in modification order
-    pub fn read_from_last_store<'tcx>(&self, range: AllocRange, global: &GlobalState) {
-        let store_buffer = self.get_store_buffer(range);
-        let store_elem = store_buffer.buffer.back();
-        if let Some(store_elem) = store_elem {
-            let (index, clocks) = global.current_thread_state();
-            store_elem.load_impl(index, &clocks);
-        }
-    }
-
-    pub fn buffered_read<'tcx>(
-        &self,
-        range: AllocRange,
-        global: &GlobalState,
-        is_seqcst: bool,
-        rng: &mut (impl rand::Rng + ?Sized),
-        validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, Option<ScalarMaybeUninit<Tag>>> {
-        // Having a live borrow to store_buffer while calling validate_atomic_load is fine
-        // because the race detector doesn't touch store_buffer
-        let store_buffer = self.get_store_buffer(range);
-
-        let store_elem = {
-            // The `clocks` we got here must be dropped before calling validate_atomic_load
-            // as the race detector will update it
-            let (.., clocks) = global.current_thread_state();
-            // Load from a valid entry in the store buffer
-            store_buffer.fetch_store(is_seqcst, &clocks, &mut *rng)
-        };
-
-        // Unlike in write_scalar_atomic, thread clock updates have to be done
-        // after we've picked a store element from the store buffer, as presented
-        // in ATOMIC LOAD rule of the paper. This is because fetch_store
-        // requires access to ThreadClockSet.clock, which is updated by the race detector
-        validate()?;
-
-        let loaded = store_elem.map(|store_elem| {
-            let (index, clocks) = global.current_thread_state();
-            store_elem.load_impl(index, &clocks)
-        });
-        Ok(loaded)
-    }
-
-    pub fn buffered_write<'tcx>(
-        &mut self,
-        val: ScalarMaybeUninit<Tag>,
-        range: AllocRange,
-        global: &GlobalState,
-        is_seqcst: bool,
-    ) -> InterpResult<'tcx> {
-        let (index, clocks) = global.current_thread_state();
-
-        let mut store_buffer = self.get_store_buffer_mut(range);
-        store_buffer.store_impl(val, index, &clocks.clock, is_seqcst);
-        Ok(())
-    }
 }
 
 const STORE_BUFFER_LIMIT: usize = 128;
@@ -141,6 +85,58 @@ impl Default for StoreBuffer {
 }
 
 impl<'mir, 'tcx: 'mir> StoreBuffer {
+    /// Reads from the last store in modification order
+    pub fn read_from_last_store(&self, global: &GlobalState) {
+        let store_elem = self.buffer.back();
+        if let Some(store_elem) = store_elem {
+            let (index, clocks) = global.current_thread_state();
+            store_elem.load_impl(index, &clocks);
+        }
+    }
+
+    pub fn buffered_read(
+        &self,
+        global: &GlobalState,
+        is_seqcst: bool,
+        rng: &mut (impl rand::Rng + ?Sized),
+        validate: impl FnOnce() -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx, Option<ScalarMaybeUninit<Tag>>> {
+        // Having a live borrow to store_buffer while calling validate_atomic_load is fine
+        // because the race detector doesn't touch store_buffer
+
+        let store_elem = {
+            // The `clocks` we got here must be dropped before calling validate_atomic_load
+            // as the race detector will update it
+            let (.., clocks) = global.current_thread_state();
+            // Load from a valid entry in the store buffer
+            self.fetch_store(is_seqcst, &clocks, &mut *rng)
+        };
+
+        // Unlike in write_scalar_atomic, thread clock updates have to be done
+        // after we've picked a store element from the store buffer, as presented
+        // in ATOMIC LOAD rule of the paper. This is because fetch_store
+        // requires access to ThreadClockSet.clock, which is updated by the race detector
+        validate()?;
+
+        let loaded = store_elem.map(|store_elem| {
+            let (index, clocks) = global.current_thread_state();
+            store_elem.load_impl(index, &clocks)
+        });
+        Ok(loaded)
+    }
+
+    pub fn buffered_write(
+        &mut self,
+        val: ScalarMaybeUninit<Tag>,
+        global: &GlobalState,
+        is_seqcst: bool,
+    ) -> InterpResult<'tcx> {
+        let (index, clocks) = global.current_thread_state();
+
+        self.store_impl(val, index, &clocks.clock, is_seqcst);
+        Ok(())
+    }
+
     /// Selects a valid store element in the buffer.
     /// The buffer does not contain the value used to initialise the atomic object
     /// so a fresh atomic object has an empty store buffer until an explicit store.

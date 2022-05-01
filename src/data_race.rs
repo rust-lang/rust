@@ -519,8 +519,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                     global.sc_read();
                 }
                 let mut rng = this.machine.rng.borrow_mut();
-                let loaded = alloc_buffers.buffered_read(
-                    alloc_range(base_offset, place.layout.size),
+                let buffer = alloc_buffers.get_store_buffer(alloc_range(base_offset, place.layout.size));
+                let loaded = buffer.buffered_read(
                     global,
                     atomic == AtomicReadOp::SeqCst,
                     &mut *rng,
@@ -555,10 +555,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             if atomic == AtomicWriteOp::SeqCst {
                 global.sc_write();
             }
-            let size = dest.layout.size;
-            alloc_buffers.buffered_write(
+            let mut buffer = alloc_buffers.get_store_buffer_mut(alloc_range(base_offset, dest.layout.size));
+            buffer.buffered_write(
                 val,
-                alloc_range(base_offset, size),
                 global,
                 atomic == AtomicWriteOp::SeqCst,
             )?;
@@ -708,7 +707,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
                 if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                     if global.multi_threaded.get() {
-                        alloc_buffers.read_from_last_store(alloc_range(base_offset, size), global);
+                        let buffer = alloc_buffers.get_store_buffer(alloc_range(base_offset, size));
+                        buffer.read_from_last_store(global);
                     }
                 }
             }
@@ -735,10 +735,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 global.sc_read();
                 global.sc_write();
             }
-            let size = place.layout.size;
-            let range = alloc_range(base_offset, size);
-            alloc_buffers.read_from_last_store(range, global);
-            alloc_buffers.buffered_write(new_val, range, global, atomic == AtomicRwOp::SeqCst)?;
+            let range = alloc_range(base_offset, place.layout.size);
+            let mut buffer = alloc_buffers.get_store_buffer_mut(range);
+            buffer.read_from_last_store(global);
+            buffer.buffered_write(new_val, global, atomic == AtomicRwOp::SeqCst)?;
         }
         Ok(())
     }
