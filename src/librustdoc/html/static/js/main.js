@@ -206,8 +206,8 @@ window.hideSettings = function() {
  * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
  * doesn't have a parent node.
  *
- * @param {DOM} newNode
- * @param {DOM} referenceNode
+ * @param {HTMLElement} newNode
+ * @param {HTMLElement} referenceNode
  */
 function insertAfter(newNode, referenceNode) {
     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
@@ -237,7 +237,7 @@ function getOrCreateSection(id, classes) {
 /**
  * Returns the `<section>` element which contains the displayed element.
  *
- * @return {DOM}
+ * @return {HTMLElement}
  */
 function getAlternativeDisplayElem() {
     return getOrCreateSection(ALTERNATIVE_DISPLAY_ID, "content hidden");
@@ -246,7 +246,7 @@ function getAlternativeDisplayElem() {
 /**
  * Returns the `<section>` element which contains the not-displayed elements.
  *
- * @return {DOM}
+ * @return {HTMLElement}
  */
 function getNotDisplayedElem() {
     return getOrCreateSection(NOT_DISPLAYED_ID, "hidden");
@@ -255,11 +255,11 @@ function getNotDisplayedElem() {
 /**
  * To nicely switch between displayed "extra" elements (such as search results or settings menu)
  * and to alternate between the displayed and not displayed elements, we hold them in two different
- * `<section>` elements. They work in pair: one hold the not displayed elements while the other
+ * `<section>` elements. They work in pair: one holds the hidden elements while the other
  * contains the displayed element (there can be only one at the same time!). So basically, we switch
  * elements between the two `<section>` elements.
  *
- * @param {DOM} elemToDisplay
+ * @param {HTMLElement} elemToDisplay
  */
 function switchDisplayedElement(elemToDisplay) {
     const el = getAlternativeDisplayElem();

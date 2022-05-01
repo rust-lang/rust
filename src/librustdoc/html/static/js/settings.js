@@ -96,10 +96,19 @@
         });
     }
 
-    function buildSettings(settings) {
+    /**
+     * This function builds the sections inside the "settings page". It takes a `settings` list
+     * as argument which describes each setting and how to render it. It returns a string
+     * representing the raw HTML.
+     *
+     * @param {Array<Object>} settings
+     *
+     * @return {string}
+     */
+    function buildSettingsPageSections(settings) {
         let output = "";
 
-        onEach(settings, function(setting) {
+        for (const setting of settings) {
             output += `<div class="setting-line">`;
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
@@ -130,47 +139,16 @@
                     <div>${setting_name}</div>`;
             }
             output += "</div>";
-        });
+        }
         return output;
     }
 
-    function buildSettingsPage(settings) {
-        // First, we add the settings.css file.
-        loadCss("settings");
-
-        // Then we build the DOM.
-        const el = document.createElement("section");
-        el.id = "settings";
-        let innerHTML = `
-            <div class="main-heading">
-                <h1 class="fqn">
-                    <span class="in-band">Rustdoc settings</span>
-                </h1>
-                <span class="out-of-band">`;
-
-        if (isSettingsPage) {
-            innerHTML +=
-                `<a id="back" href="javascript:void(0)" onclick="history.back();">Back</a>`;
-        } else {
-            innerHTML +=
-                `<a id="back" href="javascript:void(0)" onclick="switchDisplayedElement(null);">\
-                    Back</a>`;
-        }
-        innerHTML += `</span>
-            </div>
-            <div class="settings">${buildSettings(settings)}</div>`;
-
-        el.innerHTML = innerHTML;
-
-        if (isSettingsPage) {
-            document.getElementById(MAIN_ID).appendChild(el);
-        } else {
-            getNotDisplayedElem().appendChild(el);
-        }
-        return el;
-    }
-
-    function createSettingsPage() {
+    /**
+     * This function builds the "settings page" and returns the generated HTML element.
+     *
+     * @return {HTMLElement}
+     */
+    function buildSettingsPage() {
         const themes = getVar("themes").split(",");
         const settings = [
             {
@@ -185,15 +163,15 @@
                 "options": themes,
             },
             {
-                "name": "Preferred dark theme",
-                "js_name": "preferred-dark-theme",
-                "default": "dark",
-                "options": themes,
-            },
-            {
                 "name": "Preferred light theme",
                 "js_name": "preferred-light-theme",
                 "default": "light",
+                "options": themes,
+            },
+            {
+                "name": "Preferred dark theme",
+                "js_name": "preferred-dark-theme",
+                "default": "dark",
                 "options": themes,
             },
             {
@@ -228,10 +206,42 @@
             },
         ];
 
-        return buildSettingsPage(settings);
+        // First, we add the settings.css file.
+        loadCss("settings");
+
+        // Then we build the DOM.
+        const el = document.createElement("section");
+        el.id = "settings";
+        let innerHTML = `
+            <div class="main-heading">
+                <h1 class="fqn">
+                    <span class="in-band">Rustdoc settings</span>
+                </h1>
+                <span class="out-of-band">`;
+
+        if (isSettingsPage) {
+            innerHTML +=
+                `<a id="back" href="javascript:void(0)" onclick="history.back();">Back</a>`;
+        } else {
+            innerHTML +=
+                `<a id="back" href="javascript:void(0)" onclick="switchDisplayedElement(null);">\
+                    Back</a>`;
+        }
+        innerHTML += `</span>
+            </div>
+            <div class="settings">${buildSettingsPageSections(settings)}</div>`;
+
+        el.innerHTML = innerHTML;
+
+        if (isSettingsPage) {
+            document.getElementById(MAIN_ID).appendChild(el);
+        } else {
+            getNotDisplayedElem().appendChild(el);
+        }
+        return el;
     }
 
-    const settingsMenu = createSettingsPage();
+    const settingsMenu = buildSettingsPage();
 
     if (isSettingsPage) {
         // We replace the existing "onclick" callback to do nothing if clicked.
@@ -261,5 +271,5 @@
         if (!isSettingsPage) {
             switchDisplayedElement(settingsMenu);
         }
-    }, 10);
+    }, 0);
 })();
