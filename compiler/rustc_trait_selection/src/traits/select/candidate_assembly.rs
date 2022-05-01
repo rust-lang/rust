@@ -175,9 +175,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
 
-        let sized_predicate = self.tcx().lang_items().sized_trait()
-            == Some(stack.obligation.predicate.skip_binder().def_id());
-
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
@@ -186,7 +183,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             while i < candidates.len() {
                 let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
                     self.candidate_should_be_dropped_in_favor_of(
-                        sized_predicate,
                         &candidates[i],
                         &candidates[j],
                         needs_infer,

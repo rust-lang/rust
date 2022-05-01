@@ -1,4 +1,16 @@
-// check-pass
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
+//[base] check-fail
+//[nll] check-pass
+// known-bug
+
+// This should pass, but we end up with `A::Iter<'ai>: Sized` for some specific
+// `'ai`. We also know that `for<'at> A::Iter<'at>: Sized` from the definition,
+// but we prefer param env candidates. We changed this to preference in #92191,
+// but this led to unintended consequences (#93262). Suprisingly, this passes
+// under NLL. So only a bug in migrate mode.
 
 #![feature(generic_associated_types)]
 
