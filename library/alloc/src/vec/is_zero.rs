@@ -52,7 +52,14 @@ unsafe impl<T> IsZero for *mut T {
 unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
     #[inline]
     fn is_zero(&self) -> bool {
-        self.iter().all(IsZero::is_zero)
+        // Because this is generated as a runtime check, it's not obvious that
+        // it's worth doing if the array is really long.  The threshold here
+        // is largely arbitrary, but was picked because as of 2022-05-01 LLVM
+        // can const-fold the check in `vec![[0; 32]; n]` but not in
+        // `vec![[0; 64]; n]`: https://godbolt.org/z/WTzjzfs5b
+        // Feel free to tweak if you have better evidence.
+
+        N <= 32 && self.iter().all(IsZero::is_zero)
     }
 }
 
