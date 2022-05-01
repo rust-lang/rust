@@ -36,7 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let &[ref ptr, ref align] = check_arg_count(args)?;
+            let [ptr, align] = check_arg_count(args)?;
             if this.align_offset(ptr, align, ret, unwind)? {
                 return Ok(None);
             }

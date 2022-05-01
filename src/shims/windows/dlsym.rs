@@ -47,16 +47,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     );
                 }
 
-                let &[
-                    ref handle,
-                    ref _event,
-                    ref _apc_routine,
-                    ref _apc_context,
-                    ref io_status_block,
-                    ref buf,
-                    ref n,
-                    ref byte_offset,
-                    ref _key,
+                let [
+                    handle,
+                    _event,
+                    _apc_routine,
+                    _apc_context,
+                    io_status_block,
+                    buf,
+                    n,
+                    byte_offset,
+                    _key,
                 ] = check_arg_count(args)?;
                 let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
                 let buf = this.read_pointer(buf)?;

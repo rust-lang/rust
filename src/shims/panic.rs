@@ -51,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         trace!("miri_start_panic: {:?}", this.frame().instance);
 
         // Get the raw pointer stored in arg[0] (the panic payload).
-        let &[ref payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+        let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
         let payload = this.read_scalar(payload)?.check_init()?;
         let thread = this.active_thread_mut();
         assert!(thread.panic_payload.is_none(), "the panic runtime should avoid double-panics");
@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // a pointer to `Box<dyn Any + Send + 'static>`.
 
         // Get all the arguments.
-        let &[ref try_fn, ref data, ref catch_fn] = check_arg_count(args)?;
+        let [try_fn, data, catch_fn] = check_arg_count(args)?;
         let try_fn = this.read_pointer(try_fn)?;
         let data = this.read_scalar(data)?.check_init()?;
         let catch_fn = this.read_scalar(catch_fn)?.check_init()?;

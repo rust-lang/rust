@@ -15,7 +15,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let &[ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+        let [flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {
@@ -77,7 +77,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // storage for pointers is allocated by miri
             // deallocating the slice is undefined behavior with a custom global allocator
             0 => {
-                let &[_flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let [_flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
                 let alloc = this.allocate(array_layout, MiriMemoryKind::Rust.into())?;
 
@@ -95,7 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // storage for pointers is allocated by the caller
             1 => {
-                let &[_flags, ref buf] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let [_flags, buf] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
                 let buf_place = this.deref_operand(buf)?;
 
@@ -150,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let &[ref ptr, ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+        let [ptr, flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
 
@@ -233,7 +233,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let &[ref ptr, ref flags, ref name_ptr, ref filename_ptr] =
+        let [ptr, flags, name_ptr, filename_ptr] =
             this.check_shim(abi, Abi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
