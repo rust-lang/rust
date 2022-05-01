@@ -540,6 +540,12 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [Various standard library aliasing issues involving raw pointers](https://github.com/rust-lang/rust/pull/78602)
 * [`<[T]>::copy_within` using a loan after invalidating it](https://github.com/rust-lang/rust/pull/85610)
 
+## Scientific papers employing Miri
+
+* [Stacked Borrows: An Aliasing Model for Rust](https://plv.mpi-sws.org/rustbelt/stacked-borrows/)
+* [Using Lightweight Formal Methods to Validate a Key-Value Storage Node in Amazon S3](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)
+* [SyRust: Automatic Testing of Rust Libraries with Semantic-Aware Program Synthesis](https://dl.acm.org/doi/10.1145/3453483.3454084)
+
 ## License
 
 Licensed under either of
