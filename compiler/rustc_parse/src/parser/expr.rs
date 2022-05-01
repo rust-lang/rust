@@ -977,12 +977,26 @@ impl<'a> Parser<'a> {
 
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         loop {
-            if self.eat(&token::Question) {
+            let has_question = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
+                // we are using noexpect here because we don't expect a `?` directly after a `return`
+                // which could be suggested otherwise
+                self.eat_noexpect(&token::Question)
+            } else {
+                self.eat(&token::Question)
+            };
+            if has_question {
                 // `expr?`
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e), AttrVec::new());
                 continue;
             }
-            if self.eat(&token::Dot) {
+            let has_dot = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
+                // we are using noexpect here because we don't expect a `.` directly after a `return`
+                // which could be suggested otherwise
+                self.eat_noexpect(&token::Dot)
+            } else {
+                self.eat(&token::Dot)
+            };
+            if has_dot {
                 // expr.f
                 e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
@@ -1536,9 +1550,13 @@ impl<'a> Parser<'a> {
             self.parse_for_expr(label, lo, attrs)
         } else if self.eat_keyword(kw::Loop) {
             self.parse_loop_expr(label, lo, attrs)
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
+        } else if self.check_noexpect(&token::OpenDelim(Delimiter::Brace))
+            || self.token.is_whole_block()
+        {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
-        } else if !ate_colon && (self.check(&TokenKind::Comma) || self.check(&TokenKind::Gt)) {
+        } else if !ate_colon
+            && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
+        {
             // We're probably inside of a `Path<'a>` that needs a turbofish
             let msg = "expected `while`, `for`, `loop` or `{` after a label";
             self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
