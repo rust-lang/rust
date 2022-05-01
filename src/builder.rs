@@ -1317,7 +1317,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 element_type
             }
             else {
-                self.int_type
+                self.cx.type_ix(element_type.get_size() as u64 * 8)
             };
         for i in 0..mask_num_units {
             let field = struct_type.get_field(i as i32);
