@@ -417,15 +417,12 @@ impl<'a> Resolver<'a> {
 
     crate fn lint_if_path_starts_with_module(
         &mut self,
-        finalize: Finalize,
+        finalize: Option<Finalize>,
         path: &[Segment],
         second_binding: Option<&NameBinding<'_>>,
     ) {
-        let (diag_id, diag_span) = match finalize {
-            Finalize::No => return,
-            Finalize::SimplePath(id, path_span) => (id, path_span),
-            Finalize::UsePath { root_id, root_span, .. } => (root_id, root_span),
-            Finalize::QPathTrait { qpath_id, qpath_span, .. } => (qpath_id, qpath_span),
+        let Some(Finalize { node_id, root_span, .. }) = finalize else {
+            return;
         };
 
         let first_name = match path.get(0) {
@@ -463,11 +460,11 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let diag = BuiltinLintDiagnostics::AbsPathWithModule(diag_span);
+        let diag = BuiltinLintDiagnostics::AbsPathWithModule(root_span);
         self.lint_buffer.buffer_lint_with_diagnostic(
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-            diag_id,
-            diag_span,
+            node_id,
+            root_span,
             "absolute paths must start with `self`, `super`, \
              `crate`, or an external crate name in the 2018 edition",
             diag,
@@ -1503,7 +1500,6 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 None,
                 false,
-                false,
                 None,
             ) {
                 let desc = match binding.res() {
@@ -1811,7 +1807,7 @@ impl<'a> Resolver<'a> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         i: usize,
         ident: Ident,
@@ -1863,8 +1859,7 @@ impl<'a> Resolver<'a> {
                         ns_to_try,
                         parent_scope,
                         None,
-                        false,
-                        unusable_binding,
+                        ignore_binding,
                     ).ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
@@ -1873,9 +1868,9 @@ impl<'a> Resolver<'a> {
                         ident,
                         ns_to_try,
                         parent_scope,
-                        Finalize::No,
+                        None,
                         &ribs[ns_to_try],
-                        unusable_binding,
+                        ignore_binding,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Some(binding),
@@ -1889,8 +1884,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         None,
                         false,
-                        false,
-                        unusable_binding,
+                        ignore_binding,
                     ).ok()
                 };
                 if let Some(binding) = binding {
@@ -1921,9 +1915,9 @@ impl<'a> Resolver<'a> {
                     ident,
                     ValueNS,
                     parent_scope,
-                    Finalize::No,
+                    None,
                     &ribs[ValueNS],
-                    unusable_binding,
+                    ignore_binding,
                 )
             } else {
                 None

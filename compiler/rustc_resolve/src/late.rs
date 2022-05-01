@@ -578,7 +578,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     .resolve_ident_in_lexical_scope(
                         self_ty,
                         TypeNS,
-                        Finalize::SimplePath(ty.id, ty.span),
+                        Some(Finalize::new(ty.id, ty.span)),
                         None,
                     )
                     .map_or(Res::Err, |d| d.res());
@@ -958,7 +958,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ident,
             ns,
             &self.parent_scope,
-            Finalize::No,
+            None,
             &self.ribs[ns],
             None,
         )
@@ -968,8 +968,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         ident: Ident,
         ns: Namespace,
-        finalize: Finalize,
-        unusable_binding: Option<&'a NameBinding<'a>>,
+        finalize: Option<Finalize>,
+        ignore_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -977,7 +977,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             &self.parent_scope,
             finalize,
             &self.ribs[ns],
-            unusable_binding,
+            ignore_binding,
         )
     }
 
@@ -985,7 +985,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        finalize: Finalize,
+        finalize: Option<Finalize>,
     ) -> PathResult<'a> {
         self.r.resolve_path_with_ribs(
             path,
@@ -1299,11 +1299,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         partial_res: PartialRes,
         path: &[Segment],
         source: PathSource<'_>,
-        finalize: Finalize,
+        path_span: Span,
     ) {
-        let Some(path_span) = finalize.path_span() else {
-            return;
-        };
         let proj_start = path.len() - partial_res.unresolved_segments();
         for (i, segment) in path.iter().enumerate() {
             if segment.has_lifetime_args {
@@ -1576,8 +1573,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        if let Some(LexicalScopeBinding::Res(..)) = self
-                            .resolve_ident_in_lexical_scope(ident, ns, Finalize::No, Some(binding))
+                        if let Some(LexicalScopeBinding::Res(..)) =
+                            self.resolve_ident_in_lexical_scope(ident, ns, None, Some(binding))
                         {
                             report_error(self, ns);
                         }
@@ -1979,7 +1976,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
-                Finalize::SimplePath(trait_ref.ref_id, trait_ref.path.span),
+                Finalize::new(trait_ref.ref_id, trait_ref.path.span),
             );
             if let Some(def_id) = res.base_res().opt_def_id() {
                 new_id = Some(def_id);
@@ -2653,7 +2650,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             qself,
             &Segment::from_path(path),
             source,
-            Finalize::SimplePath(id, path.span),
+            Finalize::new(id, path.span),
         );
     }
 
@@ -2672,8 +2669,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
         let ns = source.namespace();
 
-        let (id, path_span) =
-            finalize.node_id_and_path_span().expect("unexpected speculative resolution");
+        let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
                 let (err, candidates) =
@@ -2787,7 +2783,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 if ns == ValueNS {
                     let item_name = path.last().unwrap().ident;
                     let traits = self.traits_in_scope(item_name, ns);
-                    self.r.trait_map.insert(id, traits);
+                    self.r.trait_map.insert(node_id, traits);
                 }
 
                 if PrimTy::from_name(path[0].ident.name).is_some() {
@@ -2796,7 +2792,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
                     std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path(&std_path, Some(ns), Finalize::No)
+                        self.resolve_path(&std_path, Some(ns), None)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
@@ -2823,8 +2819,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         if !matches!(source, PathSource::TraitItem(..)) {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
-            self.r.record_partial_res(id, partial_res);
-            self.resolve_elided_lifetimes_in_path(id, partial_res, path, source, finalize);
+            self.r.record_partial_res(node_id, partial_res);
+            self.resolve_elided_lifetimes_in_path(node_id, partial_res, path, source, path_span);
         }
 
         partial_res
@@ -2932,21 +2928,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // the trait (the slice upto and including
             // `qself.position`). And then we recursively resolve that,
             // but with `qself` set to `None`.
-            //
-            // However, setting `qself` to none (but not changing the
-            // span) loses the information about where this path
-            // *actually* appears, so for the purposes of the crate
-            // lint we pass along information that this is the trait
-            // name from a fully qualified path, and this also
-            // contains the full span (the `Finalize::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let partial_res = self.smart_resolve_path_fragment(
                 None,
                 &path[..=qself.position],
                 PathSource::TraitItem(ns),
-                finalize.node_id_and_path_span().map_or(Finalize::No, |(qpath_id, path_span)| {
-                    Finalize::QPathTrait { qpath_id, qpath_span: qself.path_span, path_span }
-                }),
+                Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
             );
 
             // The remaining segments (the `C` in our example) will
@@ -2958,7 +2945,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             )));
         }
 
-        let result = match self.resolve_path(&path, Some(ns), finalize) {
+        let result = match self.resolve_path(&path, Some(ns), Some(finalize)) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
@@ -2996,10 +2983,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             && result.base_res() != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
-            && let Some((id, path_span)) = finalize.node_id_and_path_span()
         {
             let unqualified_result = {
-                match self.resolve_path(&[*path.last().unwrap()], Some(ns), Finalize::No) {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
                     PathResult::NonModule(path_res) => path_res.base_res(),
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()
@@ -3009,7 +2995,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             if result.base_res() == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.r.lint_buffer.buffer_lint(lint, id, path_span, "unnecessary qualification")
+                self.r.lint_buffer.buffer_lint(
+                    lint,
+                    finalize.node_id,
+                    finalize.path_span,
+                    "unnecessary qualification",
+                )
             }
         }
 

@@ -2044,42 +2044,27 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum Finalize {
-    /// Do not issue the lint.
-    No,
-
-    /// This lint applies to some arbitrary path; e.g., `impl ::foo::Bar`.
-    /// In this case, we can take the span of that path.
-    SimplePath(NodeId, Span),
-
-    /// This lint comes from a `use` statement. In this case, what we
-    /// care about really is the *root* `use` statement; e.g., if we
-    /// have nested things like `use a::{b, c}`, we care about the
-    /// `use a` part.
-    UsePath { root_id: NodeId, root_span: Span, path_span: Span },
-
-    /// This is the "trait item" from a fully qualified path. For example,
-    /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
-    /// The `path_span` is the span of the to the trait itself (`X::Y`).
-    QPathTrait { qpath_id: NodeId, qpath_span: Span, path_span: Span },
+struct Finalize {
+    /// Node ID for linting.
+    node_id: NodeId,
+    /// Span of the whole path or some its characteristic fragment.
+    /// E.g. span of `b` in `foo::{a, b, c}`, or full span for regular paths.
+    path_span: Span,
+    /// Span of the path start, suitable for prepending something to to it.
+    /// E.g. span of `foo` in `foo::{a, b, c}`, or full span for regular paths.
+    root_span: Span,
+    /// Whether to report privacy errors or silently return "no resolution" for them,
+    /// similarly to speculative resolution.
+    report_private: bool,
 }
 
 impl Finalize {
-    fn node_id_and_path_span(&self) -> Option<(NodeId, Span)> {
-        match *self {
-            Finalize::No => None,
-            Finalize::SimplePath(id, path_span)
-            | Finalize::UsePath { root_id: id, path_span, .. }
-            | Finalize::QPathTrait { qpath_id: id, path_span, .. } => Some((id, path_span)),
-        }
+    fn new(node_id: NodeId, path_span: Span) -> Finalize {
+        Finalize::with_root_span(node_id, path_span, path_span)
     }
 
-    fn node_id(&self) -> Option<NodeId> {
-        self.node_id_and_path_span().map(|(id, _)| id)
-    }
-
-    fn path_span(&self) -> Option<Span> {
-        self.node_id_and_path_span().map(|(_, path_span)| path_span)
+    fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
+        Finalize { node_id, path_span, root_span, report_private: true }
     }
 }
 

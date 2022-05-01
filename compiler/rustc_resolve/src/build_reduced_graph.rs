@@ -298,7 +298,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    if finalize { Finalize::SimplePath(id, path.span) } else { Finalize::No },
+                    finalize.then(|| Finalize::new(id, path.span)),
                     None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {

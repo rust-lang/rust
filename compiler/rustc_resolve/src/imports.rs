@@ -545,7 +545,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ns,
                         &import.parent_scope,
                         None,
-                        false,
                         None,
                     );
                     import.vis.set(orig_vis);
@@ -589,22 +588,18 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-        let unusable_binding = match &import.kind {
+        let ignore_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
-        let finalize = Finalize::UsePath {
-            root_id: import.root_id,
-            root_span: import.root_span,
-            path_span: import.span,
-        };
+        let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
         let path_res = self.r.resolve_path(
             &import.module_path,
             None,
             &import.parent_scope,
-            finalize,
-            unusable_binding,
+            Some(finalize),
+            ignore_binding,
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
@@ -685,7 +680,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = import.module_path.clone();
                     full_path.push(Segment::from_ident(Ident::empty()));
-                    self.r.lint_if_path_starts_with_module(finalize, &full_path, None);
+                    self.r.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                 }
 
                 if let ModuleOrUniformRoot::Module(module) = module {
@@ -720,8 +715,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     ident,
                     ns,
                     &import.parent_scope,
-                    Some(import.span),
-                    true,
+                    Some(Finalize { report_private: false, ..finalize }),
                     target_bindings[ns].get(),
                 );
                 import.vis.set(orig_vis);
@@ -781,8 +775,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ident,
                         ns,
                         &import.parent_scope,
-                        Some(import.span),
-                        false,
+                        Some(finalize),
                         None,
                     );
                     if binding.is_ok() {
@@ -948,7 +941,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             full_path.push(Segment::from_ident(ident));
             self.r.per_ns(|this, ns| {
                 if let Ok(binding) = source_bindings[ns].get() {
-                    this.lint_if_path_starts_with_module(finalize, &full_path, Some(binding));
+                    this.lint_if_path_starts_with_module(Some(finalize), &full_path, Some(binding));
                 }
             });
         }
@@ -1002,7 +995,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     ScopeSet::All(ns, false),
                     &import.parent_scope,
                     None,
-                    false,
                     false,
                     target_bindings[ns].get(),
                 ) {

@@ -604,7 +604,6 @@ impl<'a> Resolver<'a> {
                 parent_scope,
                 None,
                 force,
-                false,
                 None,
             );
             if let Err(Determinacy::Undetermined) = binding {
@@ -673,7 +672,7 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 &parent_scope,
-                Finalize::SimplePath(ast::CRATE_NODE_ID, path_span),
+                Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
@@ -708,9 +707,8 @@ impl<'a> Resolver<'a> {
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
-                Some(ident.span),
+                Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
-                false,
                 None,
             ) {
                 Ok(binding) => {
@@ -751,9 +749,8 @@ impl<'a> Resolver<'a> {
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
-                Some(ident.span),
+                Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
-                false,
                 None,
             );
         }
