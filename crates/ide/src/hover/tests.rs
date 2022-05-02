@@ -4676,3 +4676,25 @@ pub struct Type;
         "#]],
     );
 }
+
+#[test]
+fn hover_record_variant() {
+    check(
+        r#"
+enum Enum {
+    RecordV$0 { field: u32 }
+}
+"#,
+        expect![[r#"
+            *RecordV*
+
+            ```rust
+            test::Enum
+            ```
+
+            ```rust
+            RecordV { field: u32 }
+            ```
+        "#]],
+    );
+}
