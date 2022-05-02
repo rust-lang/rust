@@ -6,6 +6,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
+use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
@@ -257,7 +258,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         RlibFlavor::Normal => {
             let (metadata, metadata_position) =
                 create_rmeta_file(sess, codegen_results.metadata.raw_data());
-            let metadata = rustc_metadata::fs::emit_metadata(sess, &metadata, tmpdir);
+            let metadata = emit_metadata(sess, &metadata, tmpdir);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -483,7 +484,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
 
         ab.add_archive(path, move |fname: &str| {
             // Ignore metadata files, no matter the name.
-            if fname == rustc_metadata::fs::METADATA_FILENAME {
+            if fname == METADATA_FILENAME {
                 return true;
             }
 
@@ -2455,7 +2456,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
             if let Err(e) = archive.add_archive(cratepath, move |f| {
-                if f == rustc_metadata::fs::METADATA_FILENAME {
+                if f == METADATA_FILENAME {
                     return true;
                 }
 
