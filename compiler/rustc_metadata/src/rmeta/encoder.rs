@@ -2221,6 +2221,11 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
+    // Though we had holded the root position historically in this place, we moved it to the end
+    // of all emitted bytes by #96544. Therefore, now these 4 bytes are just a dummy to avoid the
+    // breaking change.
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
+
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
     let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));

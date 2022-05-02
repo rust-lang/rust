@@ -682,7 +682,7 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len()).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
     }
 
