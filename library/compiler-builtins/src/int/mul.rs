@@ -100,6 +100,7 @@ impl_signed_mulo!(i128_overflowing_mul, i128, u128);
 intrinsics! {
     #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_lmul]
+    #[cfg(not(target_arch = "riscv64"))]
     pub extern "C" fn __muldi3(a: u64, b: u64) -> u64 {
         a.mul(b)
     }
