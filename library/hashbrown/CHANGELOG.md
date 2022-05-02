@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.12.0] - 2022-05-02
+
+## Fixed
+
+- Fixed underflow in `RawIterRange::size_hint`. (#325)
+- Fixed the implementation of `Debug` for `ValuesMut` and `IntoValues`. (#325)
+
 ## [v0.12.0] - 2022-01-17
 
 ## Added
@@ -337,7 +344,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.12.1...HEAD
+[v0.12.1]: https://github.com/rust-lang/hashbrown/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/rust-lang/hashbrown/compare/v0.11.2...v0.12.0
 [v0.11.2]: https://github.com/rust-lang/hashbrown/compare/v0.11.1...v0.11.2
 [v0.11.1]: https://github.com/rust-lang/hashbrown/compare/v0.11.0...v0.11.1
