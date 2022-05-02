@@ -93,7 +93,7 @@ fn should_lint(
             } else {
                 64
             };
-            from_nbits < to_nbits
+            !is_isize_or_usize(cast_from) && from_nbits < to_nbits
         },
         (false, true) if matches!(cast_from.kind(), ty::Bool) && meets_msrv(msrv.as_ref(), &msrvs::FROM_BOOL) => true,
         (_, _) => {
