@@ -17,94 +17,122 @@ So first, let's look at what the compiler does to your code. For now, we will
 avoid mentioning how the compiler implements these steps except as needed;
 we'll talk about that later.
 
-- The compile process begins when a user writes a Rust source program in text
-  and invokes the `rustc` compiler on it. The work that the compiler needs to
-  perform is defined by command-line options. For example, it is possible to
-  enable nightly features (`-Z` flags), perform `check`-only builds, or emit
-  LLVM-IR rather than executable machine code. The `rustc` executable call may
-  be indirect through the use of `cargo`.
-- Command line argument parsing occurs in the [`rustc_driver`]. This crate
-  defines the compile configuration that is requested by the user and passes it
-  to the rest of the compilation process as a [`rustc_interface::Config`].
-- The raw Rust source text is analyzed by a low-level lexer located in
-  [`rustc_lexer`]. At this stage, the source text is turned into a stream of
-  atomic source code units known as _tokens_.  The lexer supports the
-  Unicode character encoding.
-- The token stream passes through a higher-level lexer located in
-  [`rustc_parse`] to prepare for the next stage of the compile process. The
-  [`StringReader`] struct is used at this stage to perform a set of validations
-  and turn strings into interned symbols (_interning_ is discussed later).
-  [String interning] is a way of storing only one immutable
-  copy of each distinct string value.
+### Invocation
 
-- The lexer has a small interface and doesn't depend directly on the
-  diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
-  data which are emitted in `rustc_parse::lexer::mod` as real diagnostics.
-- The lexer preserves full fidelity information for both IDEs and proc macros.
-- The parser [translates the token stream from the lexer into an Abstract Syntax
-  Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
-  analysis. The crate entry points for the parser are the
-  [`Parser::parse_crate_mod()`][parse_crate_mod] and [`Parser::parse_mod()`][parse_mod]
-  methods found in [`rustc_parse::parser::Parser`]. The external module parsing
-  entry point is [`rustc_expand::module::parse_external_mod`][parse_external_mod].
-  And the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
-- Parsing is performed with a set of `Parser` utility methods including `fn bump`,
-  `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
-- Parsing is organized by the semantic construct that is being parsed. Separate
-  `parse_*` methods can be found in [`rustc_parse` `parser`][rustc_parse_parser_dir]
-  directory. The source file name follows the construct name. For example, the
-  following files are found in the parser:
-    - `expr.rs`
-    - `pat.rs`
-    - `ty.rs`
-    - `stmt.rs`
-- This naming scheme is used across many compiler stages. You will find
-  either a file or directory with the same name across the parsing, lowering,
-  type checking, THIR lowering, and MIR building sources.
-- Macro expansion, AST validation, name resolution, and early linting takes place
-  during this stage of the compile process.
-- The parser uses the standard `DiagnosticBuilder` API for error handling, but we
-  try to recover, parsing a superset of Rust's grammar, while also emitting an error.
-- `rustc_ast::ast::{Crate, Mod, Expr, Pat, ...}` AST nodes are returned from the parser.
-- We then take the AST and [convert it to High-Level Intermediate
-  Representation (HIR)][hir]. This is a compiler-friendly representation of the
-  AST.  This involves a lot of desugaring of things like loops and `async fn`.
-- We use the HIR to do [type inference] (the process of automatic
-  detection of the type of an expression), [trait solving] (the process
-  of pairing up an impl with each reference to a trait), and [type
-  checking] (the process of converting the types found in the HIR
-  (`hir::Ty`), which represent the syntactic things that the user wrote,
-  into the internal representation used by the compiler (`Ty<'tcx>`),
-  and using that information to verify the type safety, correctness and
-  coherence of the types used in the program).
-- The HIR is then [lowered to Mid-Level Intermediate Representation (MIR)][mir].
-  - Along the way, we construct the THIR, which is an even more desugared HIR.
-    THIR is used for pattern and exhaustiveness checking. It is also more
-    convenient to convert into MIR than HIR is.
-- The MIR is used for [borrow checking].
-- We (want to) do [many optimizations on the MIR][mir-opt] because it is still
-  generic and that improves the code we generate later, improving compilation
-  speed too.
-  - MIR is a higher level (and generic) representation, so it is easier to do
-    some optimizations at MIR level than at LLVM-IR level. For example LLVM
-    doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
-    opt looks for.
-- Rust code is _monomorphized_, which means making copies of all the generic
-  code with the type parameters replaced by concrete types. To do
-  this, we need to collect a list of what concrete types to generate code for.
-  This is called _monomorphization collection_.
-- We then begin what is vaguely called _code generation_ or _codegen_.
-  - The [code generation stage (codegen)][codegen] is when higher level
-    representations of source are turned into an executable binary. `rustc`
-    uses LLVM for code generation. The first step is to convert the MIR
-    to LLVM Intermediate Representation (LLVM IR). This is where the MIR
-    is actually monomorphized, according to the list we created in the
-    previous step.
-  - The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
-    It then emits machine code. It is basically assembly code with additional
-    low-level types and annotations added. (e.g. an ELF object or wasm).
-  - The different libraries/binaries are linked together to produce the final
-    binary.
+Compilation begins when a user writes a Rust source program in text
+and invokes the `rustc` compiler on it. The work that the compiler needs to
+perform is defined by command-line options. For example, it is possible to
+enable nightly features (`-Z` flags), perform `check`-only builds, or emit
+LLVM-IR rather than executable machine code. The `rustc` executable call may
+be indirect through the use of `cargo`.
+
+Command line argument parsing occurs in the [`rustc_driver`]. This crate
+defines the compile configuration that is requested by the user and passes it
+to the rest of the compilation process as a [`rustc_interface::Config`].
+
+### Lexing and parsing
+
+The raw Rust source text is analyzed by a low-level *lexer* located in
+[`rustc_lexer`]. At this stage, the source text is turned into a stream of
+atomic source code units known as _tokens_.  The lexer supports the
+Unicode character encoding.
+
+The token stream passes through a higher-level lexer located in
+[`rustc_parse`] to prepare for the next stage of the compile process. The
+[`StringReader`] struct is used at this stage to perform a set of validations
+and turn strings into interned symbols (_interning_ is discussed later).
+[String interning] is a way of storing only one immutable
+copy of each distinct string value.
+
+The lexer has a small interface and doesn't depend directly on the
+diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
+data which are emitted in `rustc_parse::lexer` as real diagnostics.
+The lexer preserves full fidelity information for both IDEs and proc macros.
+
+The *parser* [translates the token stream from the lexer into an Abstract Syntax
+Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
+analysis. The crate entry points for the parser are the
+[`Parser::parse_crate_mod()`][parse_crate_mod] and [`Parser::parse_mod()`][parse_mod]
+methods found in [`rustc_parse::parser::Parser`]. The external module parsing
+entry point is [`rustc_expand::module::parse_external_mod`][parse_external_mod].
+And the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
+
+Parsing is performed with a set of `Parser` utility methods including `bump`,
+`check`, `eat`, `expect`, `look_ahead`.
+
+Parsing is organized by semantic construct. Separate
+`parse_*` methods can be found in the [`rustc_parse`][rustc_parse_parser_dir]
+directory. The source file name follows the construct name. For example, the
+following files are found in the parser:
+
+- `expr.rs`
+- `pat.rs`
+- `ty.rs`
+- `stmt.rs`
+
+This naming scheme is used across many compiler stages. You will find
+either a file or directory with the same name across the parsing, lowering,
+type checking, THIR lowering, and MIR building sources.
+
+Macro expansion, AST validation, name resolution, and early linting also take place
+during this stage.
+
+The parser uses the standard `DiagnosticBuilder` API for error handling, but we
+try to recover, parsing a superset of Rust's grammar, while also emitting an error.
+`rustc_ast::ast::{Crate, Mod, Expr, Pat, ...}` AST nodes are returned from the parser.
+
+### HIR lowering
+
+We next take the AST and convert it to [High-Level Intermediate
+Representation (HIR)][hir], a more compiler-friendly representation of the
+AST. This process called "lowering". It involves a lot of desugaring of things
+like loops and `async fn`.
+
+We then use the HIR to do [*type inference*] (the process of automatic
+detection of the type of an expression), [*trait solving*] (the process
+of pairing up an impl with each reference to a trait), and [*type
+checking*]. Type checking is the process of converting the types found in the HIR
+([`hir::Ty`]), which represent what the user wrote,
+into the internal representation used by the compiler ([`Ty<'tcx>`]).
+That information is usedto verify the type safety, correctness and
+coherence of the types used in the program.
+
+### MIR lowering
+
+The HIR is then [lowered to Mid-level Intermediate Representation (MIR)][mir],
+which is used for [borrow checking].
+
+Along the way, we also construct the THIR, which is an even more desugared HIR.
+THIR is used for pattern and exhaustiveness checking. It is also more
+convenient to convert into MIR than HIR is.
+
+We do [many optimizations on the MIR][mir-opt] because it is still
+generic and that improves the code we generate later, improving compilation
+speed too.
+MIR is a higher level (and generic) representation, so it is easier to do
+some optimizations at MIR level than at LLVM-IR level. For example LLVM
+doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
+opt looks for.
+
+Rust code is _monomorphized_, which means making copies of all the generic
+code with the type parameters replaced by concrete types. To do
+this, we need to collect a list of what concrete types to generate code for.
+This is called _monomorphization collection_ and it happens at the MIR level.
+
+### Code generation
+
+We then begin what is vaguely called _code generation_ or _codegen_.
+The [code generation stage][codegen] is when higher level
+representations of source are turned into an executable binary. `rustc`
+uses LLVM for code generation. The first step is to convert the MIR
+to LLVM Intermediate Representation (LLVM IR). This is where the MIR
+is actually monomorphized, according to the list we created in the
+previous step.
+The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
+It then emits machine code. It is basically assembly code with additional
+low-level types and annotations added (e.g. an ELF object or WASM).
+The different libraries/binaries are then linked together to produce the final
+binary.
 
 [String interning]: https://en.wikipedia.org/wiki/String_interning
 [`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
@@ -115,9 +143,9 @@ we'll talk about that later.
 [`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
-[type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
-[trait solving]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
-[type checking]: https://rustc-dev-guide.rust-lang.org/type-checking.html
+[*type inference*]: https://rustc-dev-guide.rust-lang.org/type-inference.html
+[*trait solving*]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
+[*type checking*]: https://rustc-dev-guide.rust-lang.org/type-checking.html
 [mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 [borrow checking]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 [mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
@@ -129,6 +157,8 @@ we'll talk about that later.
 [`rustc_parse::parser::Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
 [parse_external_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html
 [rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_parse/src/parser
+[`hir::Ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Ty.html
+[`Ty<'tcx>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 
 ## How it does it
 
@@ -323,6 +353,7 @@ For more details on bootstrapping, see
 [_bootstrapping_]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
 [rustc-bootstrap]: building/bootstrapping.md
 
+<!--
 # Unresolved Questions
 
 - Does LLVM ever do optimizations in debug builds?
@@ -332,7 +363,8 @@ For more details on bootstrapping, see
 - What is the main source entry point for `X`?
 - Where do phases diverge for cross-compilation to machine code across
   different platforms?
-
+-->
+  
 # References
 
 - Command line parsing
