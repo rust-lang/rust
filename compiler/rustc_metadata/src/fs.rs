@@ -68,36 +68,42 @@ pub fn encode_and_write_metadata(
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
-    match metadata_kind {
+    let metadata = match metadata_kind {
         MetadataKind::None => {
-            let _ = emit_metadata(tcx.sess, &[], &metadata_tmpdir);
+            if tcx.sess.opts.json_artifact_notifications {
+                tcx.sess
+                    .parse_sess
+                    .span_diagnostic
+                    .emit_artifact_notification(&out_filename, "metadata");
+            }
+            EncodedMetadata::empty()
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
-            encode_metadata(tcx, &metadata_filename)
+            encode_metadata(tcx, &metadata_filename);
+
+            let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
+
+            let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
+            let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
+                if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
+                    tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+                }
+                if tcx.sess.opts.json_artifact_notifications {
+                    tcx.sess
+                        .parse_sess
+                        .span_diagnostic
+                        .emit_artifact_notification(&out_filename, "metadata");
+                }
+                (out_filename, None)
+            } else {
+                (metadata_filename, Some(metadata_tmpdir))
+            };
+
+            EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
+                tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
+            })
         }
     };
-
-    let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
-
-    let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
-    let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
-        if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
-            tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-        }
-        if tcx.sess.opts.json_artifact_notifications {
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_artifact_notification(&out_filename, "metadata");
-        }
-        (out_filename, None)
-    } else {
-        (metadata_filename, Some(metadata_tmpdir))
-    };
-    let metadata =
-        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
-            tcx.sess.fatal(&format!("failed to create encoded metadata from file: {}", e))
-        });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
