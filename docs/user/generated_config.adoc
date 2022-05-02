@@ -42,7 +42,7 @@ Show function name and docs in parameter hints.
 +
 --
 Automatically refresh project info via `cargo metadata` on
-`Cargo.toml` changes.
+`Cargo.toml` or `.cargo/config.toml` changes.
 --
 [[rust-analyzer.cargo.allFeatures]]rust-analyzer.cargo.allFeatures (default: `false`)::
 +
