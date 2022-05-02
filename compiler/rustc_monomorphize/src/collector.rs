@@ -445,12 +445,9 @@ fn collect_items_rec<'tcx>(
                             // depend on any other items.
                         }
                         hir::InlineAsmOperand::SymFn { anon_const } => {
-                            let def_id = tcx.hir().body_owner_def_id(anon_const.body).to_def_id();
-                            if let Ok(val) = tcx.const_eval_poly(def_id) {
-                                rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                                    collect_const_value(tcx, val, &mut neighbors);
-                                });
-                            }
+                            let fn_ty =
+                                tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            visit_fn_use(tcx, fn_ty, false, *op_sp, &mut neighbors);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
