@@ -40,7 +40,7 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -735,6 +735,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         if tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
+            self.opaque.file().seek(std::io::SeekFrom::Start(0)).unwrap();
             let file = std::io::BufReader::new(self.opaque.file());
             for e in file.bytes() {
                 if e.unwrap() == 0 {
