@@ -24,6 +24,8 @@ impl SameMutexCheck {
     }
     pub fn verify(&self, mutex: &MovableMutex) {
         let addr = mutex.raw() as *const imp::Mutex as *const () as *mut _;
+        // Relaxed is okay here because we never read through `self.addr`, and only use it to
+        // compare addresses.
         match self.addr.compare_exchange(
             ptr::null_mut(),
             addr,
