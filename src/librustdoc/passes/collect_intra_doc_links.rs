@@ -263,7 +263,7 @@ impl FragmentKind {
             DefKind::AssocTy => FragmentKind::AssociatedType,
             DefKind::Variant => FragmentKind::Variant,
             DefKind::Field => {
-                if tcx.def_kind(tcx.parent(def_id).unwrap()) == DefKind::Variant {
+                if tcx.def_kind(tcx.parent(def_id)) == DefKind::Variant {
                     FragmentKind::VariantField
                 } else {
                     FragmentKind::StructField
@@ -509,10 +509,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 Res::Def(
                     DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
                     def_id,
-                ) => {
-                    let parent_def_id = self.cx.tcx.parent(def_id).unwrap();
-                    (Res::from_def_id(self.cx.tcx, parent_def_id), Some(def_id))
-                }
+                ) => (Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id)),
                 _ => ((res, None)),
             });
         } else if ns == MacroNS {
