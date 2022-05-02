@@ -491,6 +491,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
     }
 
+    /// Freshen the `LoweringContext` and ready it to lower a nested item.
+    /// The lowered item is registered into `self.children`.
+    ///
+    /// This function sets up `HirId` lowering infrastructure,
+    /// and stashes the shared mutable state to avoid pollution by the closure.
     #[instrument(level = "debug", skip(self, f))]
     fn with_hir_id_owner(
         &mut self,
@@ -509,8 +514,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
         let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
         let current_impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
-        // Do not reset `next_node_id` and `node_id_to_def_id` as we want to refer to the
-        // subdefinitions' nodes.
+
+        // Do not reset `next_node_id` and `node_id_to_def_id`:
+        // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
+        // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
         // Always allocate the first `HirId` for the owner itself.
         let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::new(0));
