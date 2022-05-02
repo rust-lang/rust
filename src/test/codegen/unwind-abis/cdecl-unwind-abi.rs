@@ -1,3 +1,4 @@
+// needs-unwind
 // compile-flags: -C opt-level=0
 
 // Test that `nounwind` atributes are correctly applied to exported `cdecl` and

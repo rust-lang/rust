@@ -1122,6 +1122,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn drop_panic_leak() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1142,6 +1143,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn pred_panic_leak() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1168,6 +1170,7 @@ mod test_drain_filter {
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn pred_panic_reuse() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1416,6 +1419,7 @@ fn test_clear() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_clear_drop_panic_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -1507,11 +1511,13 @@ fn test_clone_panic_leak(size: usize) {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_clone_panic_leak_height_0() {
     test_clone_panic_leak(3)
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_clone_panic_leak_height_1() {
     test_clone_panic_leak(MIN_INSERTS_HEIGHT_1)
 }
@@ -2066,6 +2072,7 @@ create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_append_drop_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -2207,6 +2214,7 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_into_iter_drop_leak_height_0() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -2230,6 +2238,7 @@ fn test_into_iter_drop_leak_height_0() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_into_iter_drop_leak_height_1() {
     let size = MIN_INSERTS_HEIGHT_1;
     for panic_point in vec![0, 1, size - 2, size - 1] {

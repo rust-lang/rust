@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 // Ensure that there are no drop terminators in `unwrap<T>` (except the one along the cleanup
 // path).

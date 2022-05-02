@@ -1,6 +1,6 @@
 // Test that the fake borrows for matches are removed after borrow checking.
 
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 // EMIT_MIR remove_fake_borrows.match_guard.CleanupNonCodegenStatements.diff
 fn match_guard(x: Option<&&i32>, c: bool) -> i32 {

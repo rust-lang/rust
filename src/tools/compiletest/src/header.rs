@@ -823,6 +823,7 @@ pub fn make_test_description<R: Read>(
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
     let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
     let has_asm_support = util::has_asm_support(&config.target);
+    let has_unwind_support = util::has_unwind_support(&config.target);
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
@@ -866,7 +867,7 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
         ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
-        ignore |= config.target_panic == PanicStrategy::Abort
+        ignore |= (config.target_panic == PanicStrategy::Abort || !has_unwind_support)
             && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"
             && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS);

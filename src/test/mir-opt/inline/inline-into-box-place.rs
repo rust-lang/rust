@@ -1,5 +1,5 @@
 // ignore-endian-big
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 // compile-flags: -Z mir-opt-level=4
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 #![feature(box_syntax)]

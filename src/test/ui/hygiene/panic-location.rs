@@ -1,5 +1,6 @@
 // run-fail
 // check-run-results
+// ignore-emscripten has extra panic output
 // exec-env:RUST_BACKTRACE=0
 //
 // Regression test for issue #70963

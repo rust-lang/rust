@@ -1,6 +1,5 @@
 // run-pass
 // needs-unwind
-// ignore-wasm32-bare compiled with panic=abort by default
 
 #![allow(dead_code, unreachable_code)]
 

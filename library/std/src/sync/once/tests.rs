@@ -50,6 +50,7 @@ fn stampede_once() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn poison_bad() {
     static O: Once = Once::new();
 
@@ -78,6 +79,7 @@ fn poison_bad() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn wait_for_force_to_finish() {
     static O: Once = Once::new();
 

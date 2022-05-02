@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;

@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 // check that we clear the "ADT master drop flag" even when there are
 // no fields to be dropped.
 

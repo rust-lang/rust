@@ -1,6 +1,7 @@
 // Verify that debuginfo column numbers are 1-based byte offsets.
 //
 // ignore-windows
+// needs-unwind
 // compile-flags: -C debuginfo=2
 
 fn main() {
@@ -13,8 +14,8 @@ fn main() {
         // CHECK: call void @turtle(), !dbg [[B:!.*]]
 /* ż */ turtle();
 
-        // CHECK: [[A]] = !DILocation(line: 10, column: 9,
-        // CHECK: [[B]] = !DILocation(line: 14, column: 10,
+        // CHECK: [[A]] = !DILocation(line: 11, column: 9,
+        // CHECK: [[B]] = !DILocation(line: 15, column: 10,
     }
 }
 

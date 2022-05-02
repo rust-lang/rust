@@ -1539,8 +1539,8 @@ fn test_box_slice_clone() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
-#[cfg_attr(target_os = "emscripten", ignore)]
 fn test_box_slice_clone_panics() {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
@@ -1782,6 +1782,7 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn panic_safe() {
     panic::update_hook(move |prev, info| {
         if !SILENCE_PANIC.with(|s| s.get()) {

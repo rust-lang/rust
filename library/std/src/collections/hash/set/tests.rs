@@ -429,6 +429,7 @@ fn test_drain_filter() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_drain_filter_drop_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);
@@ -458,6 +459,7 @@ fn test_drain_filter_drop_panic_leak() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_drain_filter_pred_panic_leak() {
     static PREDS: AtomicU32 = AtomicU32::new(0);
     static DROPS: AtomicU32 = AtomicU32::new(0);

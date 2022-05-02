@@ -5,6 +5,7 @@
 // revisions: foo bar
 // should-fail
 // needs-run-enabled
+// ignore-emscripten has extra panic output
 //[foo] error-pattern:bar
 //[bar] error-pattern:foo
 

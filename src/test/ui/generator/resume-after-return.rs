@@ -1,8 +1,6 @@
 // run-pass
 // needs-unwind
 
-// ignore-wasm32-bare compiled with panic=abort by default
-
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};

@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 #![crate_type = "lib"]
 
 // EMIT_MIR inline_shims.clone.Inline.diff

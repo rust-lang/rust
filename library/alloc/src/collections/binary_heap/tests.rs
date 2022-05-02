@@ -290,6 +290,7 @@ fn test_drain_sorted() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_drain_sorted_leak() {
     static DROPS: AtomicU32 = AtomicU32::new(0);
 
@@ -411,9 +412,8 @@ fn test_retain() {
 // even if the order might not be correct.
 //
 // Destructors must be called exactly once per element.
-// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn panic_safe() {
     use rand::{seq::SliceRandom, thread_rng};
     use std::cmp;

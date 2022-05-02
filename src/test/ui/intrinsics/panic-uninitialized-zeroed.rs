@@ -1,7 +1,6 @@
 // run-pass
 // needs-unwind
-// ignore-wasm32-bare compiled with panic=abort by default
-// revisions: mir thir strict
+// revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
 // [strict]compile-flags: -Zstrict-init-checks
 // ignore-tidy-linelength

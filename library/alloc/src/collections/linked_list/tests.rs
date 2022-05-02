@@ -983,6 +983,7 @@ fn drain_filter_complex() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn drain_filter_drop_panic_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1017,6 +1018,7 @@ fn drain_filter_drop_panic_leak() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn drain_filter_pred_panic_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1123,6 +1125,7 @@ fn test_drop_clear() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_drop_panic() {
     static mut DROPS: i32 = 0;
 

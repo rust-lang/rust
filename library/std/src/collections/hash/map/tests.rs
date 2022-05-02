@@ -1013,6 +1013,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn drop_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1041,6 +1042,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn pred_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1069,6 +1071,7 @@ mod test_drain_filter {
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
+    #[cfg_attr(not(panic = "unwind"), should_panic)]
     fn pred_panic_reuse() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);

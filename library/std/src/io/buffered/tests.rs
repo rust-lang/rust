@@ -163,6 +163,7 @@ fn test_buffered_reader_stream_position() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
 fn test_buffered_reader_stream_position_panic() {
     let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
     let mut reader = BufReader::with_capacity(4, io::Cursor::new(inner));

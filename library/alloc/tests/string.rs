@@ -411,7 +411,11 @@ fn test_retain() {
 
     s.retain(|_| false);
     assert_eq!(s, "");
+}
 
+#[test]
+#[cfg_attr(not(panic = "unwind"), should_panic)]
+fn test_retain_panic() {
     let mut s = String::from("0è0");
     let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         let mut count = 0;

@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 // Test that we generate StorageDead on unwind paths for generators.
 //

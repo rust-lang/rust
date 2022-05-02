@@ -146,6 +146,12 @@ pub fn has_asm_support(triple: &str) -> bool {
     ASM_SUPPORTED_ARCHS.contains(&get_arch(triple))
 }
 
+static NO_UNWIND_ARCHS: &[&str] = &["asmjs", "avr", "nvptx64", "wasm32", "wasm64"];
+
+pub fn has_unwind_support(triple: &str) -> bool {
+    !NO_UNWIND_ARCHS.contains(&get_arch(triple))
+}
+
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target

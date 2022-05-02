@@ -1,5 +1,5 @@
 // compile-flags: -Z mir-opt-level=3 -Z inline-mir
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 #![crate_type = "lib"]
 
 // EMIT_MIR issue_78442.bar.RevealAll.diff

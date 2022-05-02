@@ -1,6 +1,7 @@
 // Checks that range metadata gets emitted on calls to functions returning a
 // scalar value.
 
+// needs-unwind
 // compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]

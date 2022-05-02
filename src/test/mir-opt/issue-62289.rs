@@ -1,6 +1,6 @@
 // check that we don't forget to drop the Box if we early return before
 // initializing it
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 #![feature(box_syntax)]
 
