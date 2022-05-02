@@ -164,6 +164,12 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
+fn bathroom_stall() {
+    let mut i = 1;
+    matches!(2, _|_|_|_|_|_ if (i+=1) != (i+=1));
+    assert_eq!(i, 13);
+}
+
 pub fn main() {
     strange();
     funny();
@@ -183,4 +189,5 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
+    bathroom_stall();
 }

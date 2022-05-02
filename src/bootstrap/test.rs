@@ -2359,6 +2359,7 @@ impl Step for Bootstrap {
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
+            .env("RUSTDOC", builder.rustdoc(builder.compiler(0, builder.build.build)))
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {
             // Use the same rustc flags for testing as for "normal" compilation,
@@ -2369,6 +2370,16 @@ impl Step for Bootstrap {
         if !builder.fail_fast {
             cmd.arg("--no-fail-fast");
         }
+        match builder.doc_tests {
+            DocTests::Only => {
+                cmd.arg("--doc");
+            }
+            DocTests::No => {
+                cmd.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
+            }
+            DocTests::Yes => {}
+        }
+
         cmd.arg("--").args(&builder.config.cmd.test_args());
         // rustbuild tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
