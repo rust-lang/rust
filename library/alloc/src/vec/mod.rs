@@ -2491,6 +2491,7 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 impl<T, A: Allocator> ops::Deref for Vec<T, A> {
     type Target = [T];
 
+    #[inline(always)]
     fn deref(&self) -> &[T] {
         unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
     }
@@ -2498,6 +2499,7 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
