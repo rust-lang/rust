@@ -682,13 +682,13 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len()).unwrap())
             .decode(self)
     }
 
     pub(crate) fn get_root(&self) -> CrateRoot {
         let slice = &self.blob()[..];
-        let offset = METADATA_HEADER.len();
+        let offset = slice.len() - 4;
         let pos = (((slice[offset + 0] as u32) << 24)
             | ((slice[offset + 1] as u32) << 16)
             | ((slice[offset + 2] as u32) << 8)

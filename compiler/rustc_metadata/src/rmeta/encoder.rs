@@ -40,7 +40,7 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
-use std::io::{Read, Seek, Write};
+use std::io::{Read, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -2215,9 +2215,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
-    // Will be filled with the root position after encoding everything.
-    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
-
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
     let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
@@ -2247,25 +2244,20 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: impl AsRef<Path>) {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    ecx.opaque.flush();
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .open(path.as_ref())
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to open the file: {}", err)));
-
     // Encode the root position.
-    let header = METADATA_HEADER.len();
-    file.seek(std::io::SeekFrom::Start(header as u64))
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to seek the file: {}", err)));
     let pos = root.position.get();
-    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
+    ecx.opaque.emit_raw_bytes(&[
+        (pos >> 24) as u8,
+        (pos >> 16) as u8,
+        (pos >> 8) as u8,
+        (pos >> 0) as u8,
+    ]);
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size(
         "crate_metadata",
         "crate_metadata",
-        file.metadata().unwrap().len() as u64,
+        ecx.opaque.file().metadata().unwrap().len() as u64,
     );
 }
 
