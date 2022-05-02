@@ -43,26 +43,33 @@ const TY_KEYWORD = itemTypes.indexOf("keyword");
 
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
-    if (nb === 0 || nb === 1 || nb === 2) {
-        searchState.currentTab = nb;
-    }
-    let nb_copy = nb;
+    let iter = 0;
+    let foundCurrentTab = false;
+    let foundCurrentResultSet = false;
     onEachLazy(document.getElementById("titles").childNodes, elem => {
-        if (nb_copy === 0) {
+        if (nb === iter) {
             addClass(elem, "selected");
+            foundCurrentTab = true;
         } else {
             removeClass(elem, "selected");
         }
-        nb_copy -= 1;
+        iter += 1;
     });
+    iter = 0;
     onEachLazy(document.getElementById("results").childNodes, elem => {
-        if (nb === 0) {
+        if (nb === iter) {
             addClass(elem, "active");
+            foundCurrentResultSet = true;
         } else {
             removeClass(elem, "active");
         }
-        nb -= 1;
+        iter += 1;
     });
+    if (foundCurrentTab && foundCurrentResultSet) {
+        searchState.currentTab = nb;
+    } else if (nb != 0) {
+        printTab(0);
+    }
 }
 
 /**
@@ -1731,6 +1738,7 @@ window.initSearch = rawSearchIndex => {
             output += '<div id="titles">' +
                 makeTabHeader(0, signatureTabTitle, ret_others[1]) +
                 "</div>";
+            currentTab = 0;
         }
 
         const resultsElem = document.createElement("div");
@@ -1746,12 +1754,16 @@ window.initSearch = rawSearchIndex => {
         }
         search.appendChild(resultsElem);
         // Reset focused elements.
-        searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
         const elems = document.getElementById("titles").childNodes;
-        elems[0].onclick = () => { printTab(0); };
-        elems[1].onclick = () => { printTab(1); };
-        elems[2].onclick = () => { printTab(2); };
+        searchState.focusedByTab = [];
+        let i = 0;
+        for (const elem of elems) {
+            const j = i;
+            elem.onclick = () => { printTab(j); };
+            searchState.focusedByTab.push(null);
+            i += 1;
+        }
         printTab(currentTab);
     }
 
