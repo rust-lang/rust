@@ -187,9 +187,6 @@ pub trait Linker {
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
-    fn exported_symbol_means_used_symbol(&self) -> bool {
-        true
-    }
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
@@ -726,10 +723,6 @@ impl<'a> Linker for GccLinker<'a> {
                 self.linker_arg(arg);
             }
         }
-    }
-
-    fn exported_symbol_means_used_symbol(&self) -> bool {
-        self.sess.target.is_like_windows || self.sess.target.is_like_osx
     }
 
     fn subsystem(&mut self, subsystem: &str) {
@@ -1479,10 +1472,6 @@ impl<'a> Linker for L4Bender<'a> {
         return;
     }
 
-    fn exported_symbol_means_used_symbol(&self) -> bool {
-        false
-    }
-
     fn subsystem(&mut self, subsystem: &str) {
         self.cmd.arg(&format!("--subsystem {}", subsystem));
     }
@@ -1564,8 +1553,8 @@ pub(crate) fn linked_symbols(
     crate_type: CrateType,
 ) -> Vec<(String, SymbolExportKind)> {
     match crate_type {
-        CrateType::Executable | CrateType::Cdylib => (),
-        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib | CrateType::Dylib => {
+        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
+        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
             return Vec::new();
         }
     }

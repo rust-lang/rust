@@ -80,8 +80,8 @@ to `/WHOLEARCHIVE` for `link.exe`, and to `-force_load` for `ld64`.
 The modifier does nothing for linkers that don't support it.
 
 The default for this modifier is `-whole-archive`. \
-NOTE: The default may currently be different when building dylibs for some targets,
-but it is not guaranteed.
+NOTE: The default may currently be different in some cases for backward compatibility,
+but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
 
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit

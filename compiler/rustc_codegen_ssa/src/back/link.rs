@@ -1947,7 +1947,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // This change is somewhat breaking in practice due to local static libraries being linked
     // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
     if sess.opts.debugging_opts.link_native_libraries {
-        add_local_native_libraries(cmd, sess, codegen_results, crate_type);
+        add_local_native_libraries(cmd, sess, codegen_results);
     }
 
     // Upstream rust libraries and their nobundle static libraries
@@ -2119,16 +2119,6 @@ fn add_order_independent_options(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 }
 
-// A dylib may reexport symbols from the linked rlib or native static library.
-// Even if some symbol is reexported it's still not necessarily counted as used and may be
-// dropped, at least with `ld`-like ELF linkers. So we have to link some rlibs and static
-// libraries as whole-archive to avoid losing reexported symbols.
-// FIXME: Find a way to mark reexported symbols as used and avoid this use of whole-archive.
-fn default_to_whole_archive(sess: &Session, crate_type: CrateType, cmd: &dyn Linker) -> bool {
-    crate_type == CrateType::Dylib
-        && !(sess.target.limit_rdylib_exports && cmd.exported_symbol_means_used_symbol())
-}
-
 /// # Native library linking
 ///
 /// User-supplied library search paths (-L on the command line). These are the same paths used to
@@ -2142,7 +2132,6 @@ fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     codegen_results: &CodegenResults,
-    crate_type: CrateType,
 ) {
     let filesearch = sess.target_filesearch(PathKind::All);
     for search_path in filesearch.search_paths() {
@@ -2184,7 +2173,6 @@ fn add_local_native_libraries(
             }
             NativeLibKind::Static { whole_archive, bundle, .. } => {
                 if whole_archive == Some(true)
-                    || (whole_archive == None && default_to_whole_archive(sess, crate_type, cmd))
                     // Backward compatibility case: this can be a rlib (so `+whole-archive` cannot
                     // be added explicitly if necessary, see the error in `fn link_rlib`) compiled
                     // as an executable due to `--test`. Use whole-archive implicitly, like before
@@ -2303,7 +2291,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -2313,7 +2301,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             }
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
 
                 // Link static native libs with "-bundle" modifier only if the crate they originate from
                 // is being linked statically to the current crate.  If it's linked dynamically
@@ -2344,10 +2332,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             lib.kind
                         {
                             let verbatim = lib.verbatim.unwrap_or(false);
-                            if whole_archive == Some(true)
-                                || (whole_archive == None
-                                    && default_to_whole_archive(sess, crate_type, cmd))
-                            {
+                            if whole_archive == Some(true) {
                                 cmd.link_whole_staticlib(
                                     name,
                                     verbatim,
@@ -2374,7 +2359,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -2405,23 +2390,13 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         sess: &'a Session,
         codegen_results: &CodegenResults,
         tmpdir: &Path,
-        crate_type: CrateType,
         cnum: CrateNum,
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         let cratepath = &src.rlib.as_ref().unwrap().0;
 
         let mut link_upstream = |path: &Path| {
-            // We don't want to include the whole compiler-builtins crate (e.g., compiler-rt)
-            // regardless of the default because it'll get repeatedly linked anyway.
-            let path = fix_windows_verbatim_for_gcc(path);
-            if default_to_whole_archive(sess, crate_type, cmd)
-                && codegen_results.crate_info.compiler_builtins != Some(cnum)
-            {
-                cmd.link_whole_rlib(&path);
-            } else {
-                cmd.link_rlib(&path);
-            }
+            cmd.link_rlib(&fix_windows_verbatim_for_gcc(path));
         };
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
