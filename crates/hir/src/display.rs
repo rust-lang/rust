@@ -203,7 +203,7 @@ impl HirDisplay for Variant {
                 f.write_char(')')?;
             }
             VariantData::Record(fields) => {
-                f.write_str(" {{")?;
+                f.write_str(" {")?;
                 let mut first = true;
                 for (_, field) in fields.iter() {
                     if first {
@@ -216,7 +216,7 @@ impl HirDisplay for Variant {
                     write!(f, "{}: ", field.name)?;
                     field.type_ref.hir_fmt(f)?;
                 }
-                f.write_str(" }}")?;
+                f.write_str(" }")?;
             }
         }
         Ok(())
@@ -370,7 +370,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
         WherePredicateTypeTarget::TypeOrConstParam(id) => {
             match &params.type_or_consts[*id].name() {
                 Some(name) => write!(f, "{}", name),
-                None => f.write_str("{{unnamed}}"),
+                None => f.write_str("{unnamed}"),
             }
         }
     };
@@ -507,9 +507,9 @@ impl HirDisplay for Module {
             Some(name) => write!(f, "mod {}", name),
             None if self.is_crate_root(f.db) => match self.krate().display_name(f.db) {
                 Some(name) => write!(f, "extern crate {}", name),
-                None => f.write_str("extern crate {{unknown}}"),
+                None => f.write_str("extern crate {unknown}"),
             },
-            None => f.write_str("mod {{unnamed}}"),
+            None => f.write_str("mod {unnamed}"),
         }
     }
 }
