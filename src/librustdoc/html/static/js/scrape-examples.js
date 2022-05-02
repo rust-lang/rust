@@ -4,6 +4,8 @@
 /* eslint prefer-arrow-callback: "error" */
 /* global addClass, hasClass, removeClass, onEachLazy */
 
+"use strict";
+
 (function () {
     // Number of lines shown when code viewer is not expanded
     const MAX_LINES = 10;

@@ -5,7 +5,9 @@
 /* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
-(function () {
+"use strict";
+
+(function() {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
 const itemTypes = [

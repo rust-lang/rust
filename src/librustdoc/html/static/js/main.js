@@ -7,6 +7,8 @@
 /* global onEach, onEachLazy, removeClass */
 /* global switchTheme, useSystemTheme */
 
+"use strict";
+
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
         position = position || 0;
@@ -292,14 +294,11 @@ function loadCss(cssFileName) {
 }
 
 (function() {
-    "use strict";
-
     function loadScript(url) {
         const script = document.createElement('script');
         script.src = url;
         document.head.append(script);
     }
-
 
     getSettingsButton().onclick = event => {
         event.preventDefault();

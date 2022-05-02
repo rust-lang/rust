@@ -3,6 +3,8 @@
 /* eslint prefer-const: "error" */
 /* eslint prefer-arrow-callback: "error" */
 
+"use strict";
+
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
