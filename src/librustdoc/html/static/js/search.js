@@ -2,7 +2,7 @@
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
 /* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
-/* global onEachLazy, removeClass, searchState, hasClass */
+/* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
 (function() {
 // This mapping table should match the discriminants of
@@ -1786,8 +1786,9 @@ window.initSearch = function(rawSearchIndex) {
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
-        if (searchState.browserSupportsHistoryApi()) {
+        if (browserSupportsHistoryApi()) {
             const newURL = buildUrl(query.original, filterCrates);
+
             if (!history.state && !params.search) {
                 history.pushState(null, "", newURL);
             } else {
@@ -1965,10 +1966,9 @@ window.initSearch = function(rawSearchIndex) {
         if (!searchState.input) {
             return;
         }
-        const search = searchState.outputElement();
-        if (search_input.value !== "" && hasClass(search, "hidden")) {
-            searchState.showResults(search);
-            if (searchState.browserSupportsHistoryApi()) {
+        if (search_input.value !== "" && !searchState.isDisplayed()) {
+            searchState.showResults();
+            if (browserSupportsHistoryApi()) {
                 history.replaceState(null, "",
                     buildUrl(search_input.value, getFilterCrates()));
             }
@@ -1980,7 +1980,7 @@ window.initSearch = function(rawSearchIndex) {
         const searchAfter500ms = function() {
             searchState.clearInputTimeout();
             if (searchState.input.value.length === 0) {
-                if (searchState.browserSupportsHistoryApi()) {
+                if (browserSupportsHistoryApi()) {
                     history.replaceState(null, window.currentCrate + " - Rust",
                         getNakedUrl() + window.location.hash);
                 }
@@ -2058,7 +2058,7 @@ window.initSearch = function(rawSearchIndex) {
 
         // Push and pop states are used to add search results to the browser
         // history.
-        if (searchState.browserSupportsHistoryApi()) {
+        if (browserSupportsHistoryApi()) {
             // Store the previous <title> so we can revert back to it later.
             const previousTitle = document.title;
 

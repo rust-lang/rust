@@ -6,7 +6,7 @@
 /* global search, sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, searchState */
+/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
 (function() {
 
@@ -195,7 +195,7 @@ const handleSourceHighlight = (function() {
     const set_fragment = function(name) {
         const x = window.scrollX,
             y = window.scrollY;
-        if (searchState.browserSupportsHistoryApi()) {
+        if (browserSupportsHistoryApi()) {
             history.replaceState(null, null, "#" + name);
             highlightSourceLines();
         } else {
