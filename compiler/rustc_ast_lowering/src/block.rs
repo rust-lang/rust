@@ -159,9 +159,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
         });
-        if !self.sess.features_untracked().let_else {
+        if !self.tcx.features().let_else {
             feature_err(
-                &self.sess.parse_sess,
+                &self.tcx.sess.parse_sess,
                 sym::let_else,
                 local.span,
                 "`let...else` statements are unstable",

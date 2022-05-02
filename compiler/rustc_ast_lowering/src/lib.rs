@@ -49,7 +49,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -58,7 +58,6 @@ use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -83,7 +82,6 @@ mod path;
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    sess: &'hir Session,
     resolver: &'a mut ResolverAstLowering,
 
     /// Used to allocate HIR nodes.
@@ -681,8 +679,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_import_res(id).present_items()
     }
 
-    fn diagnostic(&self) -> &rustc_errors::Handler {
-        self.sess.diagnostic()
+    fn diagnostic(&self) -> &Handler {
+        self.tcx.sess.diagnostic()
     }
 
     /// Reuses the span but adds information like the kind of the desugaring and features that are
@@ -694,14 +692,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(allow_internal_unstable, reason, self.sess.edition(), hcx)
+            span.mark_with_reason(allow_internal_unstable, reason, self.tcx.sess.edition(), hcx)
         })
     }
 
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.sess.opts.debugging_opts.incremental_relative_spans {
+        if self.tcx.sess.opts.debugging_opts.incremental_relative_spans {
             span.with_parent(Some(self.current_hir_id_owner))
         } else {
             // Do not make spans relative when not using incremental compilation.
@@ -1048,7 +1046,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn emit_bad_parenthesized_trait_in_assoc_ty(&self, data: &ParenthesizedArgs) {
-        let mut err = self.sess.struct_span_err(
+        let mut err = self.tcx.sess.struct_span_err(
             data.span,
             "parenthesized generic arguments cannot be used in associated type constraints",
         );
@@ -1093,7 +1091,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => {
                 match ty.kind {
-                    TyKind::Infer if self.sess.features_untracked().generic_arg_infer => {
+                    TyKind::Infer if self.tcx.features().generic_arg_infer => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
@@ -1190,7 +1188,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     } else {
                         self.next_node_id()
                     };
-                    let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
+                    let span = self.tcx.sess.source_map().next_point(t.span.shrink_to_lo());
                     Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
@@ -1294,7 +1292,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::Disallowed(position) => {
                         let mut err = struct_span_err!(
-                            self.sess,
+                            self.tcx.sess,
                             t.span,
                             E0562,
                             "`impl Trait` only allowed in function and inherent method return types, not in {}",
@@ -1307,7 +1305,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
-                self.sess.delay_span_bug(
+                self.tcx.sess.delay_span_bug(
                     t.span,
                     "`TyKind::CVarArgs` should have been handled elsewhere",
                 );
@@ -1912,7 +1910,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id,
             name,
             span: self.lower_span(param.span()),
-            pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
+            pure_wrt_drop: self.tcx.sess.contains_name(&param.attrs, sym::may_dangle),
             kind,
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
         }
@@ -2054,11 +2052,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.sess.features_untracked().generic_arg_infer {
+                if self.tcx.features().generic_arg_infer {
                     hir::ArrayLen::Infer(self.lower_node_id(c.id), c.value.span)
                 } else {
                     feature_err(
-                        &self.sess.parse_sess,
+                        &self.tcx.sess.parse_sess,
                         sym::generic_arg_infer,
                         c.value.span,
                         "using `_` for array lengths is unstable",

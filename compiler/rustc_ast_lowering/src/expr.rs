@@ -46,7 +46,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
-                            self.sess
+                            self.tcx.sess
                                 .struct_span_err(
                                     e.span,
                                     "#[rustc_box] requires precisely one argument \
@@ -207,8 +207,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
                 ExprKind::Underscore => {
-                    self.sess
-                        .struct_span_err(
+                    self.tcx
+                        .sess.struct_span_err(
                             e.span,
                             "in expressions, `_` can only be used on the left-hand side of an assignment",
                         )
@@ -245,7 +245,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            self.sess
+                            self.tcx
+                                .sess
                                 .struct_span_err(*sp, "base expression required after `..`")
                                 .span_label(*sp, "add a base expression here")
                                 .emit();
@@ -474,7 +475,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
-                    this.sess.source_map().end_point(body.span),
+                    this.tcx.sess.source_map().end_point(body.span),
                     this.allow_try_trait.clone(),
                 );
 
@@ -653,7 +654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
                 let mut err = struct_span_err!(
-                    self.sess,
+                    self.tcx.sess,
                     dot_await_span,
                     E0728,
                     "`await` is only allowed inside `async` functions and blocks"
@@ -878,7 +879,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
                     struct_span_err!(
-                        self.sess,
+                        self.tcx.sess,
                         fn_decl_span,
                         E0628,
                         "too many parameters for a generator (expected 0 or 1 parameters)"
@@ -892,8 +893,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        fn_decl_span,
+                        E0697,
+                        "closures cannot be static"
+                    )
+                    .emit();
                 }
                 None
             }
@@ -916,7 +922,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
                 struct_span_err!(
-                    this.sess,
+                    this.tcx.sess,
                     fn_decl_span,
                     E0708,
                     "`async` non-`move` closures with parameters are not currently supported",
@@ -1163,7 +1169,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.sess
+                        self.tcx
+                            .sess
                             .struct_span_err(
                                 e.span,
                                 "functional record updates are not allowed in destructuring \
@@ -1371,7 +1378,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
                 struct_span_err!(
-                    self.sess,
+                    self.tcx.sess,
                     span,
                     E0727,
                     "`async` generators are not yet supported"
@@ -1516,7 +1523,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             self.allow_try_trait.clone(),
         );
-        let try_span = self.sess.source_map().end_point(span);
+        let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,

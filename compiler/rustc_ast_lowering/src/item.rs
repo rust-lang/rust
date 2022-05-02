@@ -58,7 +58,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         let mut lctx = LoweringContext {
             // Pseudo-globals.
             tcx: self.tcx,
-            sess: &self.tcx.sess,
             resolver: self.resolver,
             arena: self.tcx.hir_arena,
 
@@ -1268,7 +1267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn error_on_invalid_abi(&self, abi: StrLit) {
-        struct_span_err!(self.sess, abi.span, E0703, "invalid ABI: found `{}`", abi.symbol)
+        struct_span_err!(self.tcx.sess, abi.span, E0703, "invalid ABI: found `{}`", abi.symbol)
             .span_label(abi.span, "invalid ABI")
             .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
             .emit();
