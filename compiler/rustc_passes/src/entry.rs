@@ -27,7 +27,7 @@ struct EntryContext<'tcx> {
 
 impl<'tcx> ItemLikeVisitor<'tcx> for EntryContext<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        let at_root = self.tcx.local_parent(item.def_id) == Some(CRATE_DEF_ID);
+        let at_root = self.tcx.opt_local_parent(item.def_id) == Some(CRATE_DEF_ID);
         find_item(item, self, at_root);
     }
 

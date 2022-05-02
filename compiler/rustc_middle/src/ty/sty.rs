@@ -1798,7 +1798,7 @@ impl<'tcx> Region<'tcx> {
     /// function might return the `DefId` of a closure.
     pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
         match *self {
-            ty::ReEarlyBound(br) => tcx.parent(br.def_id).unwrap(),
+            ty::ReEarlyBound(br) => tcx.parent(br.def_id),
             ty::ReFree(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }

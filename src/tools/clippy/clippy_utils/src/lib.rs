@@ -235,7 +235,7 @@ pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem
     if let QPath::Resolved(_, path) = qpath {
         if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res {
             if let Ok(item_id) = cx.tcx.lang_items().require(lang_item) {
-                return cx.tcx.parent(ctor_id) == Some(item_id);
+                return cx.tcx.parent(ctor_id) == item_id;
             }
         }
     }

@@ -1491,7 +1491,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 (free_region.scope.expect_local(), free_region.bound_region)
             }
             ty::ReEarlyBound(ref ebr) => (
-                self.parent(ebr.def_id).unwrap().expect_local(),
+                self.local_parent(ebr.def_id.expect_local()),
                 ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region

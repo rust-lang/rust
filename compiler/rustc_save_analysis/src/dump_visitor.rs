@@ -1138,8 +1138,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     let access = access_from!(self.save_ctxt, item.def_id);
                     let ref_id = self.lookup_def_id(item.hir_id()).map(id_from_def_id);
                     let span = self.span_from_span(sub_span);
-                    let parent =
-                        self.save_ctxt.tcx.parent(item.def_id.to_def_id()).map(id_from_def_id);
+                    let parent = self.save_ctxt.tcx.local_parent(item.def_id);
                     self.dumper.import(
                         &access,
                         Import {
@@ -1149,7 +1148,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                             alias_span: None,
                             name: item.ident.to_string(),
                             value: String::new(),
-                            parent,
+                            parent: Some(id_from_def_id(parent.to_def_id())),
                         },
                     );
                     self.write_sub_paths_truncated(&path);
@@ -1166,8 +1165,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     if !self.span.filter_generated(item.span) {
                         let access = access_from!(self.save_ctxt, item.def_id);
                         let span = self.span_from_span(sub_span);
-                        let parent =
-                            self.save_ctxt.tcx.parent(item.def_id.to_def_id()).map(id_from_def_id);
+                        let parent = self.save_ctxt.tcx.local_parent(item.def_id);
                         self.dumper.import(
                             &access,
                             Import {
@@ -1177,7 +1175,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                                 alias_span: None,
                                 name: "*".to_owned(),
                                 value: names.join(", "),
-                                parent,
+                                parent: Some(id_from_def_id(parent.to_def_id())),
                             },
                         );
                         self.write_sub_paths(&path);
@@ -1188,8 +1186,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
-                    let parent =
-                        self.save_ctxt.tcx.parent(item.def_id.to_def_id()).map(id_from_def_id);
+                    let parent = self.save_ctxt.tcx.local_parent(item.def_id);
                     self.dumper.import(
                         &Access { public: false, reachable: false },
                         Import {
@@ -1199,7 +1196,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                             alias_span: None,
                             name: item.ident.to_string(),
                             value: String::new(),
-                            parent,
+                            parent: Some(id_from_def_id(parent.to_def_id())),
                         },
                     );
                 }

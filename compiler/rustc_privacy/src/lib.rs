@@ -24,7 +24,8 @@ use rustc_middle::thir::abstract_const::Node as ACNode;
 use rustc_middle::ty::fold::TypeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
+use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
@@ -456,9 +457,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             return;
         }
 
-        let item_def_id = local_def_id.to_def_id();
-        let macro_module_def_id =
-            ty::DefIdTree::parent(self.tcx, item_def_id).unwrap().expect_local();
+        let macro_module_def_id = self.tcx.local_parent(local_def_id);
         if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
             // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
             return;
@@ -477,8 +476,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             if changed_reachability || module_def_id == CRATE_DEF_ID {
                 break;
             }
-            module_def_id =
-                ty::DefIdTree::parent(self.tcx, module_def_id.to_def_id()).unwrap().expect_local();
+            module_def_id = self.tcx.local_parent(module_def_id);
         }
     }
 

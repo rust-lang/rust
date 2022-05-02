@@ -142,10 +142,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {
         match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => {
-                Some(self.parent(def_id).and_then(|def_id| self.parent(def_id)).unwrap())
+                Some(self.parent(self.parent(def_id)))
             }
             Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Struct, _), def_id) => {
-                Some(self.parent(def_id).unwrap())
+                Some(self.parent(def_id))
             }
             // Other `DefKind`s don't have generics and would ICE when calling
             // `generics_of`.
@@ -500,9 +500,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_root_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
         while self.is_typeck_child(def_id) {
-            def_id = self.parent(def_id).unwrap_or_else(|| {
-                bug!("closure {:?} has no parent", def_id);
-            });
+            def_id = self.parent(def_id);
         }
         def_id
     }

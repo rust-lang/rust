@@ -88,15 +88,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ if self.in_pat => {}
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
-                let variant_id = self.tcx.parent(ctor_def_id).unwrap();
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let variant_id = self.tcx.parent(ctor_def_id);
+                let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&ctor_def_id) {
                     self.check_def_id(variant_id);
                 }
             }
             Res::Def(DefKind::Variant, variant_id) => {
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);

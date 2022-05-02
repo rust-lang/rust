@@ -563,7 +563,7 @@ crate fn href_with_root_path(
     let did = match def_kind {
         DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
             // documented on their parent's page
-            tcx.parent(did).unwrap()
+            tcx.parent(did)
         }
         _ => did,
     };

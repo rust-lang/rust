@@ -683,7 +683,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         Some(hidden) => hidden.ty,
         None => {
             let span = tcx.def_span(def_id);
-            let name = tcx.item_name(tcx.parent(def_id.to_def_id()).unwrap());
+            let name = tcx.item_name(tcx.local_parent(def_id).to_def_id());
             let label = format!(
                 "`{}` must be used in combination with a concrete type within the same module",
                 name

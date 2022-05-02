@@ -1111,7 +1111,8 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
 }
 
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
-    fn parent(self, id: DefId) -> Option<DefId> {
+    #[inline]
+    fn opt_parent(self, id: DefId) -> Option<DefId> {
         match id.as_local() {
             Some(id) => self.definitions.def_key(id).parent,
             None => self.cstore().def_key(id).parent,

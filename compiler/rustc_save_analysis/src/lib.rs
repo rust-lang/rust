@@ -690,7 +690,7 @@ impl<'tcx> SaveContext<'tcx> {
                 // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct or enum variant itself.
-                let parent_def_id = self.tcx.parent(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id);
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
             Res::Def(HirDefKind::Static(_) | HirDefKind::Const | HirDefKind::AssocConst, _) => {

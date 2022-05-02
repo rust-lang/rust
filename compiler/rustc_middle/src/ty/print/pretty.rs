@@ -408,7 +408,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         };
 
-        let actual_parent = self.tcx().parent(def_id);
+        let actual_parent = self.tcx().opt_parent(def_id);
         debug!(
             "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
             visible_parent, actual_parent,
@@ -643,7 +643,7 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                let parent = self.tcx().parent(def_id).expect("opaque types always have a parent");
+                let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
                         if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {

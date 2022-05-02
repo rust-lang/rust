@@ -1471,7 +1471,7 @@ impl InvalidAtomicOrdering {
             && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
-            && let Some(parent) = cx.tcx.parent(adt.did())
+            && let parent = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
             && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
         {
@@ -1486,9 +1486,9 @@ impl InvalidAtomicOrdering {
         orderings.iter().any(|ordering| {
             tcx.item_name(did) == *ordering && {
                 let parent = tcx.parent(did);
-                parent == atomic_ordering
+                Some(parent) == atomic_ordering
                     // needed in case this is a ctor, not a variant
-                    || parent.map_or(false, |parent| tcx.parent(parent) == atomic_ordering)
+                    || tcx.opt_parent(parent) == atomic_ordering
             }
         })
     }

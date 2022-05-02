@@ -352,7 +352,7 @@ fn compute_codegen_unit_name(
             cgu_def_id = None;
         }
 
-        current_def_id = tcx.parent(current_def_id).unwrap();
+        current_def_id = tcx.parent(current_def_id);
     }
 
     let cgu_def_id = cgu_def_id.unwrap();

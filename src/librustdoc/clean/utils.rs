@@ -455,7 +455,7 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
         let mut current = def_id;
         // The immediate parent might not always be a module.
         // Find the first parent which is.
-        while let Some(parent) = tcx.parent(current) {
+        while let Some(parent) = tcx.opt_parent(current) {
             if tcx.def_kind(parent) == DefKind::Mod {
                 return Some(parent);
             }

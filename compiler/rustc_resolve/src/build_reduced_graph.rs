@@ -1390,7 +1390,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             && self
                 .r
                 .trait_impl_items
-                .contains(&ty::DefIdTree::parent(&*self.r, def_id).unwrap().expect_local()))
+                .contains(&ty::DefIdTree::local_parent(&*self.r, local_def_id)))
         {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,

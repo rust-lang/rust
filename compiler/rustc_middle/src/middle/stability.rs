@@ -289,7 +289,7 @@ fn suggestion_for_allocator_api(
     feature: Symbol,
 ) -> Option<(Span, String, String, Applicability)> {
     if feature == sym::allocator_api {
-        if let Some(trait_) = tcx.parent(def_id) {
+        if let Some(trait_) = tcx.opt_parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
                 let sm = tcx.sess.parse_sess.source_map();
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
