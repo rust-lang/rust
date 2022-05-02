@@ -114,15 +114,13 @@ pub trait CodegenBackend {
 }
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send + Sync {
-    fn new_metadata(&self, sess: TyCtxt<'_>, mod_name: &str) -> Self::Module;
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        module_llvm: &mut Self::Module,
         module_name: &str,
         kind: AllocatorKind,
         has_alloc_error_handler: bool,
-    );
+    ) -> Self::Module;
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.
     fn compile_codegen_unit(
