@@ -94,7 +94,18 @@ pub fn check(build: &mut Build) {
             .any(|build_llvm_ourselves| build_llvm_ourselves);
     let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
     if need_cmake {
-        cmd_finder.must_have("cmake");
+        if cmd_finder.maybe_have("cmake").is_none() {
+            eprintln!(
+                "
+Couldn't find required command: cmake
+
+You should install cmake, or set `download-ci-llvm = true` in the
+`[llvm]` section section of `config.toml` to download LLVM rather
+than building it.
+"
+            );
+            std::process::exit(1);
+        }
     }
 
     build.config.python = build
