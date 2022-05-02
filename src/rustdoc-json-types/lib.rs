@@ -408,7 +408,13 @@ pub enum GenericBound {
     TraitBound {
         #[serde(rename = "trait")]
         trait_: Type,
-        /// Used for HRTBs
+        /// Used for Higher-Rank Trait Bounds (HRTBs)
+        /// ```plain
+        /// where F: for<'a, 'b> Fn(&'a u8, &'b u8)
+        ///          ^^^^^^^^^^^
+        ///          |
+        ///          this part
+        /// ```
         generic_params: Vec<GenericParamDef>,
         modifier: TraitBoundModifier,
     },
@@ -487,6 +493,13 @@ pub enum Type {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FunctionPointer {
     pub decl: FnDecl,
+    /// Used for Higher-Rank Trait Bounds (HRTBs)
+    /// ```plain
+    /// for<'c> fn(val: &'c i32) -> i32
+    /// ^^^^^^^
+    ///       |
+    ///       this part
+    /// ```
     pub generic_params: Vec<GenericParamDef>,
     pub header: Header,
 }
