@@ -29,29 +29,19 @@ struct LexError {
 
 impl<'a> LexedStr<'a> {
     pub fn new(text: &'a str) -> LexedStr<'a> {
-        let mut res = LexedStr { text, kind: Vec::new(), start: Vec::new(), error: Vec::new() };
-
-        let mut offset = 0;
+        let mut conv = Converter::new(text);
         if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            res.push(SHEBANG, offset);
-            offset = shebang_len
+            conv.res.push(SHEBANG, conv.offset);
+            conv.offset = shebang_len;
         };
-        for token in rustc_lexer::tokenize(&text[offset..]) {
-            let token_text = &text[offset..][..token.len];
 
-            let (kind, err) = from_rustc(&token.kind, token_text);
-            res.push(kind, offset);
-            offset += token.len;
+        for token in rustc_lexer::tokenize(&text[conv.offset..]) {
+            let token_text = &text[conv.offset..][..token.len];
 
-            if let Some(err) = err {
-                let token = res.len() as u32;
-                let msg = err.to_string();
-                res.error.push(LexError { msg, token });
-            }
+            conv.extend_token(&token.kind, token_text);
         }
-        res.push(EOF, offset);
 
-        res
+        conv.finalize_with_eof()
     }
 
     pub fn single_token(text: &'a str) -> Option<(SyntaxKind, Option<String>)> {
@@ -64,8 +54,12 @@ impl<'a> LexedStr<'a> {
             return None;
         }
 
-        let (kind, err) = from_rustc(&token.kind, text);
-        Some((kind, err.map(|it| it.to_owned())))
+        let mut conv = Converter::new(text);
+        conv.extend_token(&token.kind, text);
+        match &*conv.res.kind {
+            [kind] => Some((*kind, conv.res.error.pop().map(|it| it.msg.clone()))),
+            _ => None,
+        }
     }
 
     pub fn as_str(&self) -> &str {
@@ -128,148 +122,179 @@ impl<'a> LexedStr<'a> {
     }
 }
 
-/// Returns `SyntaxKind` and an optional tokenize error message.
-fn from_rustc(
-    kind: &rustc_lexer::TokenKind,
-    token_text: &str,
-) -> (SyntaxKind, Option<&'static str>) {
-    // A note on an intended tradeoff:
-    // We drop some useful information here (see patterns with double dots `..`)
-    // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
-    // being `u16` that come from `rowan::SyntaxKind`.
-    let mut err = "";
-
-    let syntax_kind = {
-        match kind {
-            rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
-            rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
-                if !terminated {
-                    err = "Missing trailing `*/` symbols to terminate the block comment";
-                }
-                COMMENT
-            }
-
-            rustc_lexer::TokenKind::Whitespace => WHITESPACE,
-
-            rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
-            rustc_lexer::TokenKind::Ident => SyntaxKind::from_keyword(token_text).unwrap_or(IDENT),
-
-            rustc_lexer::TokenKind::RawIdent => IDENT,
-            rustc_lexer::TokenKind::Literal { kind, .. } => return from_rustc_literal(kind),
-
-            rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
-                if *starts_with_number {
-                    err = "Lifetime name cannot start with a number";
-                }
-                LIFETIME_IDENT
-            }
-
-            rustc_lexer::TokenKind::Semi => T![;],
-            rustc_lexer::TokenKind::Comma => T![,],
-            rustc_lexer::TokenKind::Dot => T![.],
-            rustc_lexer::TokenKind::OpenParen => T!['('],
-            rustc_lexer::TokenKind::CloseParen => T![')'],
-            rustc_lexer::TokenKind::OpenBrace => T!['{'],
-            rustc_lexer::TokenKind::CloseBrace => T!['}'],
-            rustc_lexer::TokenKind::OpenBracket => T!['['],
-            rustc_lexer::TokenKind::CloseBracket => T![']'],
-            rustc_lexer::TokenKind::At => T![@],
-            rustc_lexer::TokenKind::Pound => T![#],
-            rustc_lexer::TokenKind::Tilde => T![~],
-            rustc_lexer::TokenKind::Question => T![?],
-            rustc_lexer::TokenKind::Colon => T![:],
-            rustc_lexer::TokenKind::Dollar => T![$],
-            rustc_lexer::TokenKind::Eq => T![=],
-            rustc_lexer::TokenKind::Bang => T![!],
-            rustc_lexer::TokenKind::Lt => T![<],
-            rustc_lexer::TokenKind::Gt => T![>],
-            rustc_lexer::TokenKind::Minus => T![-],
-            rustc_lexer::TokenKind::And => T![&],
-            rustc_lexer::TokenKind::Or => T![|],
-            rustc_lexer::TokenKind::Plus => T![+],
-            rustc_lexer::TokenKind::Star => T![*],
-            rustc_lexer::TokenKind::Slash => T![/],
-            rustc_lexer::TokenKind::Caret => T![^],
-            rustc_lexer::TokenKind::Percent => T![%],
-            rustc_lexer::TokenKind::Unknown => ERROR,
-        }
-    };
-
-    let err = if err.is_empty() { None } else { Some(err) };
-    (syntax_kind, err)
+struct Converter<'a> {
+    res: LexedStr<'a>,
+    offset: usize,
 }
 
-fn from_rustc_literal(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<&'static str>) {
-    let mut err = "";
+impl<'a> Converter<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            res: LexedStr { text, kind: Vec::new(), start: Vec::new(), error: Vec::new() },
+            offset: 0,
+        }
+    }
 
-    let syntax_kind = match *kind {
-        rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
-            if empty_int {
-                err = "Missing digits after the integer base prefix";
-            }
-            INT_NUMBER
+    fn finalize_with_eof(mut self) -> LexedStr<'a> {
+        self.res.push(EOF, self.offset);
+        self.res
+    }
+
+    fn push(&mut self, kind: SyntaxKind, len: usize, err: Option<&str>) {
+        self.res.push(kind, self.offset);
+        self.offset += len;
+
+        if let Some(err) = err {
+            let token = self.res.len() as u32;
+            let msg = err.to_string();
+            self.res.error.push(LexError { msg, token });
         }
-        rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
-            if empty_exponent {
-                err = "Missing digits after the exponent symbol";
+    }
+
+    fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, token_text: &str) {
+        // A note on an intended tradeoff:
+        // We drop some useful information here (see patterns with double dots `..`)
+        // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
+        // being `u16` that come from `rowan::SyntaxKind`.
+        let mut err = "";
+
+        let syntax_kind = {
+            match kind {
+                rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
+                rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
+                    if !terminated {
+                        err = "Missing trailing `*/` symbols to terminate the block comment";
+                    }
+                    COMMENT
+                }
+
+                rustc_lexer::TokenKind::Whitespace => WHITESPACE,
+
+                rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
+                rustc_lexer::TokenKind::Ident => {
+                    SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
+                }
+
+                rustc_lexer::TokenKind::RawIdent => IDENT,
+                rustc_lexer::TokenKind::Literal { kind, .. } => {
+                    self.extend_literal(token_text.len(), kind);
+                    return;
+                }
+
+                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                    if *starts_with_number {
+                        err = "Lifetime name cannot start with a number";
+                    }
+                    LIFETIME_IDENT
+                }
+
+                rustc_lexer::TokenKind::Semi => T![;],
+                rustc_lexer::TokenKind::Comma => T![,],
+                rustc_lexer::TokenKind::Dot => T![.],
+                rustc_lexer::TokenKind::OpenParen => T!['('],
+                rustc_lexer::TokenKind::CloseParen => T![')'],
+                rustc_lexer::TokenKind::OpenBrace => T!['{'],
+                rustc_lexer::TokenKind::CloseBrace => T!['}'],
+                rustc_lexer::TokenKind::OpenBracket => T!['['],
+                rustc_lexer::TokenKind::CloseBracket => T![']'],
+                rustc_lexer::TokenKind::At => T![@],
+                rustc_lexer::TokenKind::Pound => T![#],
+                rustc_lexer::TokenKind::Tilde => T![~],
+                rustc_lexer::TokenKind::Question => T![?],
+                rustc_lexer::TokenKind::Colon => T![:],
+                rustc_lexer::TokenKind::Dollar => T![$],
+                rustc_lexer::TokenKind::Eq => T![=],
+                rustc_lexer::TokenKind::Bang => T![!],
+                rustc_lexer::TokenKind::Lt => T![<],
+                rustc_lexer::TokenKind::Gt => T![>],
+                rustc_lexer::TokenKind::Minus => T![-],
+                rustc_lexer::TokenKind::And => T![&],
+                rustc_lexer::TokenKind::Or => T![|],
+                rustc_lexer::TokenKind::Plus => T![+],
+                rustc_lexer::TokenKind::Star => T![*],
+                rustc_lexer::TokenKind::Slash => T![/],
+                rustc_lexer::TokenKind::Caret => T![^],
+                rustc_lexer::TokenKind::Percent => T![%],
+                rustc_lexer::TokenKind::Unknown => ERROR,
             }
-            FLOAT_NUMBER
-        }
-        rustc_lexer::LiteralKind::Char { terminated } => {
-            if !terminated {
-                err = "Missing trailing `'` symbol to terminate the character literal";
+        };
+
+        let err = if err.is_empty() { None } else { Some(err) };
+        self.push(syntax_kind, token_text.len(), err);
+    }
+
+    fn extend_literal(&mut self, len: usize, kind: &rustc_lexer::LiteralKind) {
+        let mut err = "";
+
+        let syntax_kind = match *kind {
+            rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
+                if empty_int {
+                    err = "Missing digits after the integer base prefix";
+                }
+                INT_NUMBER
             }
-            CHAR
-        }
-        rustc_lexer::LiteralKind::Byte { terminated } => {
-            if !terminated {
-                err = "Missing trailing `'` symbol to terminate the byte literal";
+            rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
+                if empty_exponent {
+                    err = "Missing digits after the exponent symbol";
+                }
+                FLOAT_NUMBER
             }
-            BYTE
-        }
-        rustc_lexer::LiteralKind::Str { terminated } => {
-            if !terminated {
-                err = "Missing trailing `\"` symbol to terminate the string literal";
+            rustc_lexer::LiteralKind::Char { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `'` symbol to terminate the character literal";
+                }
+                CHAR
             }
-            STRING
-        }
-        rustc_lexer::LiteralKind::ByteStr { terminated } => {
-            if !terminated {
-                err = "Missing trailing `\"` symbol to terminate the byte string literal";
+            rustc_lexer::LiteralKind::Byte { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `'` symbol to terminate the byte literal";
+                }
+                BYTE
             }
-            BYTE_STRING
-        }
-        rustc_lexer::LiteralKind::RawStr { err: raw_str_err, .. } => {
-            if let Some(raw_str_err) = raw_str_err {
-                err = match raw_str_err {
-                    rustc_lexer::RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw string literal",
-                    rustc_lexer::RawStrError::NoTerminator { expected, found, .. } => if expected == found {
-                        "Missing trailing `\"` to terminate the raw string literal"
-                    } else {
-                        "Missing trailing `\"` with `#` symbols to terminate the raw string literal"
-                    },
-                    rustc_lexer::RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
+            rustc_lexer::LiteralKind::Str { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                }
+                STRING
+            }
+            rustc_lexer::LiteralKind::ByteStr { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                }
+                BYTE_STRING
+            }
+            rustc_lexer::LiteralKind::RawStr { err: raw_str_err, .. } => {
+                if let Some(raw_str_err) = raw_str_err {
+                    err = match raw_str_err {
+                        rustc_lexer::RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw string literal",
+                        rustc_lexer::RawStrError::NoTerminator { expected, found, .. } => if expected == found {
+                            "Missing trailing `\"` to terminate the raw string literal"
+                        } else {
+                            "Missing trailing `\"` with `#` symbols to terminate the raw string literal"
+                        },
+                        rustc_lexer::RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
+                    };
                 };
-            };
-            STRING
-        }
-        rustc_lexer::LiteralKind::RawByteStr { err: raw_str_err, .. } => {
-            if let Some(raw_str_err) = raw_str_err {
-                err = match raw_str_err {
-                    rustc_lexer::RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw byte string literal",
-                    rustc_lexer::RawStrError::NoTerminator { expected, found, .. } => if expected == found {
-                        "Missing trailing `\"` to terminate the raw byte string literal"
-                    } else {
-                        "Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"
-                    },
-                    rustc_lexer::RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols",
+                STRING
+            }
+            rustc_lexer::LiteralKind::RawByteStr { err: raw_str_err, .. } => {
+                if let Some(raw_str_err) = raw_str_err {
+                    err = match raw_str_err {
+                        rustc_lexer::RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw byte string literal",
+                        rustc_lexer::RawStrError::NoTerminator { expected, found, .. } => if expected == found {
+                            "Missing trailing `\"` to terminate the raw byte string literal"
+                        } else {
+                            "Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"
+                        },
+                        rustc_lexer::RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols",
+                    };
                 };
-            };
 
-            BYTE_STRING
-        }
-    };
+                BYTE_STRING
+            }
+        };
 
-    let err = if err.is_empty() { None } else { Some(err) };
-    (syntax_kind, err)
+        let err = if err.is_empty() { None } else { Some(err) };
+        self.push(syntax_kind, len, err);
+    }
 }
