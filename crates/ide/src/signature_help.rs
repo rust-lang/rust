@@ -8,7 +8,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList},
-    AstNode, Direction, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -66,12 +66,26 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros_single(token);
 
-    if let Some(help) = signature_help_for_call(&sema, &token) {
-        return Some(help);
-    }
-
-    if let Some(help) = signature_help_for_generics(&sema, &token) {
-        return Some(help);
+    for node in token.ancestors() {
+        match_ast! {
+            match node {
+                ast::ArgList(arg_list) => {
+                    let cursor_outside = arg_list.r_paren_token().as_ref() == Some(&token);
+                    if cursor_outside {
+                        return None;
+                    }
+                    return signature_help_for_call(&sema, token);
+                },
+                ast::GenericArgList(garg_list) => {
+                    let cursor_outside = garg_list.r_angle_token().as_ref() == Some(&token);
+                    if cursor_outside {
+                        return None;
+                    }
+                    return signature_help_for_generics(&sema, token);
+                },
+                _ => (),
+            }
+        }
     }
 
     None
@@ -79,7 +93,7 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
 
 fn signature_help_for_call(
     sema: &Semantics<RootDatabase>,
-    token: &SyntaxToken,
+    token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     // Find the calling expression and its NameRef
     let mut node = token.parent()?;
@@ -104,7 +118,7 @@ fn signature_help_for_call(
         node = node.parent()?;
     };
 
-    let (callable, active_parameter) = callable_for_node(sema, &calling_node, token)?;
+    let (callable, active_parameter) = callable_for_node(sema, &calling_node, &token)?;
 
     let mut res =
         SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };
@@ -183,7 +197,7 @@ fn signature_help_for_call(
 
 fn signature_help_for_generics(
     sema: &Semantics<RootDatabase>,
-    token: &SyntaxToken,
+    token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     let parent = token.parent()?;
     let arg_list = parent
@@ -688,6 +702,28 @@ fn foo(x: u32, y: u32) -> u32 {x + y}
 fn bar() { foo $0 (3, ); }
 "#,
             expect![[""]],
+        );
+    }
+
+    #[test]
+    fn outside_of_arg_list() {
+        check(
+            r#"
+fn foo(a: u8) {}
+fn f() {
+    foo(123)$0
+}
+"#,
+            expect![[]],
+        );
+        check(
+            r#"
+fn foo<T>(a: u8) {}
+fn f() {
+    foo::<u32>$0()
+}
+"#,
+            expect![[]],
         );
     }
 
