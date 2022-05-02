@@ -2002,12 +2002,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         let parent_def_id = self.tcx.parent(def_id);
                         if let Some(def_id) = parent_def_id.as_local() {
                             // lifetimes in `derive` expansions don't count (Issue #53738)
-                            if self
-                                .tcx
-                                .get_attrs(def_id.to_def_id())
-                                .iter()
-                                .any(|attr| attr.has_name(sym::automatically_derived))
-                            {
+                            if self.tcx.has_attr(def_id.to_def_id(), sym::automatically_derived) {
                                 continue;
                             }
 

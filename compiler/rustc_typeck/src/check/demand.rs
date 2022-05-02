@@ -407,8 +407,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.has_only_self_parameter(m)
                 && self
                     .tcx
-                    .get_attrs(m.def_id)
-                    .iter()
                     // This special internal attribute is used to permit
                     // "identity-like" conversion methods to be suggested here.
                     //
@@ -419,7 +417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     //
                     // FIXME? Other potential candidate methods: `as_ref` and
                     // `as_mut`?
-                    .any(|a| a.has_name(sym::rustc_conversion_suggestion))
+                    .has_attr(m.def_id, sym::rustc_conversion_suggestion)
         });
 
         methods

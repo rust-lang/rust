@@ -230,8 +230,7 @@ impl AdtDefData {
             flags |= AdtFlags::HAS_CTOR;
         }
 
-        let attrs = tcx.get_attrs(did);
-        if tcx.sess.contains_name(&attrs, sym::fundamental) {
+        if tcx.has_attr(did, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if Some(did) == tcx.lang_items().phantom_data() {

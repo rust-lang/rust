@@ -568,11 +568,8 @@ impl<T> Trait<T> for X {
                 }
             }
             TargetFeatureCast(def_id) => {
-                let attrs = self.get_attrs(*def_id);
-                let target_spans = attrs
-                    .iter()
-                    .filter(|attr| attr.has_name(sym::target_feature))
-                    .map(|attr| attr.span);
+                let target_spans =
+                    self.get_attrs(*def_id, sym::target_feature).map(|attr| attr.span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );

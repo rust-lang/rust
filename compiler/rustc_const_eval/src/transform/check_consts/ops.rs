@@ -1,5 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
+use hir::def_id::LocalDefId;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -95,7 +96,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug, Clone, Copy)]
 pub struct FnCallNonConst<'tcx> {
-    pub caller: DefId,
+    pub caller: LocalDefId,
     pub callee: DefId,
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
@@ -117,13 +118,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             match self_ty.kind() {
                 Param(param_ty) => {
                     debug!(?param_ty);
-                    if let Some(generics) = caller
-                        .as_local()
-                        .map(|id| tcx.hir().local_def_id_to_hir_id(id))
-                        .map(|id| tcx.hir().get(id))
-                        .as_ref()
-                        .and_then(|node| node.generics())
-                    {
+                    let caller_hir_id = tcx.hir().local_def_id_to_hir_id(caller);
+                    if let Some(generics) = tcx.hir().get(caller_hir_id).generics() {
                         let constraint = with_no_trimmed_paths!(format!(
                             "~const {}",
                             trait_ref.print_only_trait_path()

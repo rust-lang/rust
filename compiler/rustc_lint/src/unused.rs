@@ -303,26 +303,25 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_pre_path: &str,
             descr_post_path: &str,
         ) -> bool {
-            for attr in cx.tcx.get_attrs(def_id).iter() {
-                if attr.has_name(sym::must_use) {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let msg = format!(
-                            "unused {}`{}`{} that must be used",
-                            descr_pre_path,
-                            cx.tcx.def_path_str(def_id),
-                            descr_post_path
-                        );
-                        let mut err = lint.build(&msg);
-                        // check for #[must_use = "..."]
-                        if let Some(note) = attr.value_str() {
-                            err.note(note.as_str());
-                        }
-                        err.emit();
-                    });
-                    return true;
-                }
+            if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
+                cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                    let msg = format!(
+                        "unused {}`{}`{} that must be used",
+                        descr_pre_path,
+                        cx.tcx.def_path_str(def_id),
+                        descr_post_path
+                    );
+                    let mut err = lint.build(&msg);
+                    // check for #[must_use = "..."]
+                    if let Some(note) = attr.value_str() {
+                        err.note(note.as_str());
+                    }
+                    err.emit();
+                });
+                true
+            } else {
+                false
             }
-            false
         }
     }
 }

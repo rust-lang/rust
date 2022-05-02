@@ -6,6 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
@@ -329,9 +330,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     ) {
         let span = cx
             .tcx
-            .get_attrs(instance.def_id())
-            .iter()
-            .find(|a| a.has_name(rustc_span::sym::target_feature))
+            .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         let msg = format!(
             "the target features {} must all be either enabled or disabled together",

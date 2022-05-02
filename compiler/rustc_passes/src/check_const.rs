@@ -170,7 +170,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If `def_id` is `None`, we don't need to consider stability attributes.
             let def_id = match def_id {
-                Some(x) => x.to_def_id(),
+                Some(x) => x,
                 None => return true,
             };
 
@@ -182,14 +182,16 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If this crate is not using stability attributes, or this function is not claiming to be a
             // stable `const fn`, that is all that is required.
-            if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
+            if !tcx.features().staged_api
+                || tcx.has_attr(def_id.to_def_id(), sym::rustc_const_unstable)
+            {
                 return true;
             }
 
             // However, we cannot allow stable `const fn`s to use unstable features without an explicit
             // opt-in via `rustc_allow_const_fn_unstable`.
-            attr::rustc_allow_const_fn_unstable(&tcx.sess, &tcx.get_attrs(def_id))
-                .any(|name| name == feature_gate)
+            let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
+            attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
         };
 
         match required_gates {
