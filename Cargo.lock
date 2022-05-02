@@ -2509,9 +2509,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.28.1"
+version = "0.28.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ce8b38d41f9f3618fc23f908faae61510f8d8ce2d99cbe910641e8f1971f084"
+checksum = "e42c982f2d955fac81dd7e1d0e1426a7d702acd9c98d19ab01083a6a0328c424"
 dependencies = [
  "crc32fast",
  "flate2",
@@ -3617,7 +3617,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.28.1",
+ "object 0.28.4",
  "pathdiff",
  "regex",
  "rustc_apfloat",
@@ -5207,7 +5207,7 @@ checksum = "dd95b4559c196987c8451b4e14d08a4c796c2844f9adf4d2a2dbc9b3142843be"
 dependencies = [
  "gimli 0.26.1",
  "hashbrown 0.11.2",
- "object 0.28.1",
+ "object 0.28.4",
  "tracing",
 ]
 

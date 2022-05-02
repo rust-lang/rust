@@ -20,7 +20,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
-use rustc_target::spec::Target;
+use rustc_target::spec::{RelocModel, Target};
 
 use crate::METADATA_FILENAME;
 
@@ -132,15 +132,23 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     let mut file = write::Object::new(binary_format, architecture, endianness);
     match architecture {
         Architecture::Mips => {
-            // copied from `mipsel-linux-gnu-gcc foo.c -c` and
-            // inspecting the resulting `e_flags` field.
-            let e_flags = elf::EF_MIPS_CPIC
-                | elf::EF_MIPS_PIC
-                | if sess.target.options.cpu.contains("r6") {
-                    elf::EF_MIPS_ARCH_32R6 | elf::EF_MIPS_NAN2008
-                } else {
-                    elf::EF_MIPS_ARCH_32R2
-                };
+            let arch = match sess.target.options.cpu.as_ref() {
+                "mips1" => elf::EF_MIPS_ARCH_1,
+                "mips2" => elf::EF_MIPS_ARCH_2,
+                "mips3" => elf::EF_MIPS_ARCH_3,
+                "mips4" => elf::EF_MIPS_ARCH_4,
+                "mips5" => elf::EF_MIPS_ARCH_5,
+                s if s.contains("r6") => elf::EF_MIPS_ARCH_32R6,
+                _ => elf::EF_MIPS_ARCH_32R2,
+            };
+            // The only ABI LLVM supports for 32-bit MIPS CPUs is o32.
+            let mut e_flags = elf::EF_MIPS_CPIC | elf::EF_MIPS_ABI_O32 | arch;
+            if sess.target.options.relocation_model != RelocModel::Static {
+                e_flags |= elf::EF_MIPS_PIC;
+            }
+            if sess.target.options.cpu.contains("r6") {
+                e_flags |= elf::EF_MIPS_NAN2008;
+            }
             file.flags = FileFlags::Elf { e_flags };
         }
         Architecture::Mips64 => {
