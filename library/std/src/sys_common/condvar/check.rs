@@ -24,8 +24,12 @@ impl SameMutexCheck {
     }
     pub fn verify(&self, mutex: &MovableMutex) {
         let addr = mutex.raw() as *const imp::Mutex as *const () as *mut _;
-        match self.addr.compare_exchange(ptr::null_mut(), addr, Ordering::Relaxed, Ordering::Relaxed)
-        {
+        match self.addr.compare_exchange(
+            ptr::null_mut(),
+            addr,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
             Ok(_) => {}               // Stored the address
             Err(n) if n == addr => {} // Lost a race to store the same address
             _ => panic!("attempted to use a condition variable with two mutexes"),
