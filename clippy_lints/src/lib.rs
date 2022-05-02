@@ -52,6 +52,7 @@ extern crate clippy_utils;
 use clippy_utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
+use rustc_semver::RustcVersion;
 use rustc_session::Session;
 
 /// Macro used to declare a Clippy lint.
@@ -450,6 +451,39 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
     store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes { msrv }));
 }
 
+fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
+    let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
+        .ok()
+        .and_then(|v| parse_msrv(&v, None, None));
+    let clippy_msrv = conf.msrv.as_ref().and_then(|s| {
+        parse_msrv(s, None, None).or_else(|| {
+            sess.err(&format!(
+                "error reading Clippy's configuration file. `{}` is not a valid Rust version",
+                s
+            ));
+            None
+        })
+    });
+
+    if let Some(cargo_msrv) = cargo_msrv {
+        if let Some(clippy_msrv) = clippy_msrv {
+            // if both files have an msrv, let's compare them and emit a warning if they differ
+            if clippy_msrv != cargo_msrv {
+                sess.warn(&format!(
+                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{}` from `clippy.toml`",
+                    clippy_msrv
+                ));
+            }
+
+            Some(clippy_msrv)
+        } else {
+            Some(cargo_msrv)
+        }
+    } else {
+        clippy_msrv
+    }
+}
+
 #[doc(hidden)]
 pub fn read_conf(sess: &Session) -> Conf {
     let file_name = match utils::conf::lookup_conf_file() {
@@ -465,12 +499,11 @@ pub fn read_conf(sess: &Session) -> Conf {
     let TryConf { conf, errors } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
-        sess.struct_err(&format!(
+        sess.err(&format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
             format_error(error)
-        ))
-        .emit();
+        ));
     }
 
     conf
@@ -577,16 +610,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
 
-    let msrv = conf.msrv.as_ref().and_then(|s| {
-        parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!(
-                "error reading Clippy's configuration file. `{}` is not a valid Rust version",
-                s
-            ));
-            None
-        })
-    });
-
+    let msrv = read_msrv(conf, sess);
     let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
     let allow_expect_in_tests = conf.allow_expect_in_tests;
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
