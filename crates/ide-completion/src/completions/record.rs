@@ -89,6 +89,12 @@ pub(crate) fn complete_record_literal(
                 .filter(|it| it.len() > 1);
 
             acc.add_struct_literal(ctx, strukt, path, None);
+
+            let impl_ = ctx.impl_def.as_ref()?;
+            let impl_adt = ctx.sema.to_def(impl_)?.self_ty(ctx.db).as_adt()?;
+            if hir::Adt::Struct(strukt) == impl_adt {
+                acc.add_struct_literal(ctx, strukt, None, Some(hir::known::SELF_TYPE));
+            }
         }
         hir::Adt::Union(un) if ctx.path_qual().is_none() => {
             let path = ctx
@@ -128,6 +134,61 @@ fn create_foo(foo_desc: &FooDesc) -> () { () }
 
 fn baz() {
     let foo = create_foo(&FooDesc { bar: ${1:()} }$0);
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn literal_struct_impl_self_completion() {
+        check_edit(
+            "Self {…}",
+            r#"
+struct Foo {
+    bar: u64,
+}
+
+impl Foo {
+    fn new() -> Foo {
+        Self$0
+    }
+}
+            "#,
+            r#"
+struct Foo {
+    bar: u64,
+}
+
+impl Foo {
+    fn new() -> Foo {
+        Self { bar: ${1:()} }$0
+    }
+}
+            "#,
+        );
+
+        check_edit(
+            "Self(…)",
+            r#"
+mod submod {
+    pub struct Foo(pub u64);
+}
+
+impl submod::Foo {
+    fn new() -> submod::Foo {
+        Self$0
+    }
+}
+            "#,
+            r#"
+mod submod {
+    pub struct Foo(pub u64);
+}
+
+impl submod::Foo {
+    fn new() -> submod::Foo {
+        Self(${1:()})$0
+    }
 }
             "#,
         )
