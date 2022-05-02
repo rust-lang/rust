@@ -74,7 +74,8 @@ impl ProcOutput {
                 }
 
                 let mut head = replace(bytes, Vec::new());
-                let tail = head.split_off(new_len - TAIL_LEN).into_boxed_slice();
+                let mut middle = head.split_off(HEAD_LEN);
+                let tail = middle.split_off(middle.len() - TAIL_LEN).into_boxed_slice();
                 let skipped = new_len - HEAD_LEN - TAIL_LEN;
                 ProcOutput::Abbreviated { head, skipped, tail }
             }
