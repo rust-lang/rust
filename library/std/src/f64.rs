@@ -302,7 +302,7 @@ impl f64 {
     /// Raises a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`.
-    /// It might have different sequence of rounding operations than `powf`,
+    /// It might have a different sequence of rounding operations than `powf`,
     /// so the results are not guaranteed to agree.
     ///
     /// # Examples

@@ -747,8 +747,8 @@ impl f32 {
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't mean that the bitpattern of a NaN operand
-    /// is necessarily conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -782,8 +782,8 @@ impl f32 {
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't mean that the bitpattern of a NaN operand
-    /// is necessarily conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
