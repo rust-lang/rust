@@ -10,7 +10,6 @@ use getopts::Options;
 use crate::builder::{Builder, Kind};
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
-use crate::util::t;
 use crate::{Build, DocTests};
 
 #[derive(Copy, Clone)]
@@ -544,7 +543,7 @@ Arguments:
             Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install => {}
         };
         // Get any optional paths which occur after the subcommand
-        let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let verbose = matches.opt_present("verbose");
 
@@ -616,7 +615,7 @@ Arguments:
                 Subcommand::Run { paths }
             }
             Kind::Setup => {
-                let profile = if paths.len() > 1 {
+                if paths.len() > 1 {
                     println!("\nat most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {

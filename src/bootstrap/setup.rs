@@ -88,6 +88,7 @@ impl fmt::Display for Profile {
 
 impl Step for Profile {
     type Output = ();
+    const DEFAULT: bool = true;
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         for choice in Profile::all() {
@@ -140,9 +141,7 @@ pub fn setup(config: &Config, profile: Profile) {
         profile, VERSION
     );
 
-    if !config.dry_run {
-        t!(fs::write(path, settings));
-    }
+    t!(fs::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
