@@ -370,7 +370,7 @@ fn doctest_convert_let_else_to_match() {
         "convert_let_else_to_match",
         r#####"
 fn main() {
-    let Ok(mut x) = f() else {$0 return };
+    let Ok(mut x) = f() else$0 { return };
 }
 "#####,
         r#####"

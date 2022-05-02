@@ -1,4 +1,5 @@
 use syntax::ast::{edit::AstNodeEdit, AstNode, HasName, LetStmt, Pat};
+use syntax::T;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -95,7 +96,7 @@ fn binders_to_str(binders: &[(String, bool)], addmut: bool) -> String {
 //
 // ```
 // fn main() {
-//     let Ok(mut x) = f() else {$0 return };
+//     let Ok(mut x) = f() else$0 { return };
 // }
 // ```
 // ->
@@ -108,7 +109,9 @@ fn binders_to_str(binders: &[(String, bool)], addmut: bool) -> String {
 // }
 // ```
 pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let let_stmt: LetStmt = ctx.find_node_at_offset()?;
+    // should focus on else token to trigger
+    let else_token = ctx.find_token_syntax_at_offset(T![else])?;
+    let let_stmt = LetStmt::cast(else_token.parent()?.parent()?)?;
     let let_else_block = let_stmt.let_else()?.block_expr()?;
     let let_init = let_stmt.initializer()?;
     if let_stmt.ty().is_some() {
@@ -177,8 +180,20 @@ mod tests {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let 1: u32 = v.iter().sum() else {$0 return };
+    let 1: u32 = v.iter().sum() else$0 { return };
 }"#,
+        );
+    }
+
+    #[test]
+    fn convert_let_else_to_match_on_else() {
+        check_assist_not_applicable(
+            convert_let_else_to_match,
+            r#"
+fn main() {
+    let Ok(x) = f() else {$0 return };
+}
+            "#,
         );
     }
 
@@ -188,7 +203,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let m!() = g() else {$0 return };
+    let m!() = g() else$0 { return };
 }
             "#,
         );
@@ -200,7 +215,7 @@ fn main() {
             convert_let_else_to_match,
             r"
 fn main() {
-    let Ok(x) = f() else {$0 continue };
+    let Ok(x) = f() else$0 { continue };
 }",
             "let Ok(x) = f() else { continue };",
         );
@@ -212,7 +227,7 @@ fn main() {
             convert_let_else_to_match,
             r"
 fn main() {
-    let Ok(x) = f() else {$0 continue };
+    let Ok(x) = f() else$0 { continue };
 }",
             r"
 fn main() {
@@ -230,7 +245,7 @@ fn main() {
             convert_let_else_to_match,
             r"
 fn main() {
-    let Ok(mut x) = f() else {$0 continue };
+    let Ok(mut x) = f() el$0se { continue };
 }",
             r"
 fn main() {
@@ -248,7 +263,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let ControlFlow::Break((x, "tag", y, ..)) = f() else {$0 g(); return };
+    let ControlFlow::Break((x, "tag", y, ..)) = f() else$0 { g(); return };
 }"#,
             r#"
 fn main() {
@@ -266,7 +281,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let [one, 1001, other] = f() else {$0 break };
+    let [one, 1001, other] = f() else$0 { break };
 }"#,
             r#"
 fn main() {
@@ -284,7 +299,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let [Struct { inner: Some(it) }, 1001, other] = f() else {$0 break };
+    let [Struct { inner: Some(it) }, 1001, other] = f() else$0 { break };
 }"#,
             r#"
 fn main() {
@@ -302,7 +317,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let [Struct { inner }, 1001, other] = f() else {$0 break };
+    let [Struct { inner }, 1001, other] = f() else$0 { break };
 }"#,
             r#"
 fn main() {
@@ -320,7 +335,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let (8 | 9) = f() else {$0 panic!() };
+    let (8 | 9) = f() else$0 { panic!() };
 }"#,
             r#"
 fn main() {
@@ -338,7 +353,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let 1.. = f() else {$0 return };
+    let 1.. = f() e$0lse { return };
 }"#,
             r#"
 fn main() {
@@ -356,7 +371,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let Ok(&mut x) = f(&mut 0) else {$0 return };
+    let Ok(&mut x) = f(&mut 0) else$0 { return };
 }"#,
             r#"
 fn main() {
@@ -374,7 +389,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let Ok(ref mut x) = f() else {$0 return };
+    let Ok(ref mut x) = f() else$0 { return };
 }"#,
             r#"
 fn main() {
@@ -392,7 +407,7 @@ fn main() {
             convert_let_else_to_match,
             r#"
 fn main() {
-    let out @ Ok(ins) = f() else {$0 return };
+    let out @ Ok(ins) = f() else$0 { return };
 }"#,
             r#"
 fn main() {
@@ -411,7 +426,7 @@ fn main() {
             r#"
 fn main() {
     let v = vec![1, 2, 3];
-    let &[mut x, y, ..] = &v.iter().collect::<Vec<_>>()[..]$0 else { return };
+    let &[mut x, y, ..] = &v.iter().collect::<Vec<_>>()[..] else$0 { return };
 }"#,
             r#"
 fn main() {
