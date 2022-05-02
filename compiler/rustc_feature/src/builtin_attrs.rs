@@ -343,8 +343,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
-    ungated!(no_mangle, Normal, template!(Word), WarnFollowing),
-    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing),
+    ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
+    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -377,8 +377,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(panic_handler, Normal, template!(Word), WarnFollowing), // RFC 2070
 
     // Code generation:
-    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing),
-    ungated!(cold, Normal, template!(Word), WarnFollowing),
+    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, @only_local: true),
+    ungated!(cold, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
     ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
@@ -404,7 +404,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Linking:
-    gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
+    gated!(naked, Normal, template!(Word), WarnFollowing, @only_local: true, naked_functions, experimental!(naked)),
     gated!(
         link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, raw_dylib,
         experimental!(link_ordinal)
@@ -566,11 +566,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(
-        linkage, Normal, template!(NameValueStr: "external|internal|..."), ErrorPreceding,
+        linkage, Normal, template!(NameValueStr: "external|internal|..."), ErrorPreceding, @only_local: true,
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
     rustc_attr!(
-        rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+        rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing, @only_local: true, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================
