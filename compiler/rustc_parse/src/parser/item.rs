@@ -1020,7 +1020,7 @@ impl<'a> Parser<'a> {
                                 &format!("`{}` must come before `{}`", invalid_qual, current_qual),
                                 format!("{} {}", invalid_qual, current_qual),
                                 Applicability::MachineApplicable,
-                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                            ).note("keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`");
                     }
                 }
                 Err(err)
@@ -2086,7 +2086,7 @@ impl<'a> Parser<'a> {
                                     &format!("`{misplaced_qual}` must come before `{current_qual}`"),
                                     format!("{misplaced_qual} {current_qual}"),
                                     Applicability::MachineApplicable,
-                                ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                                ).note("keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`");
                         }
                     }
                     // Recover incorrect visibility order such as `async pub`

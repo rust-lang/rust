@@ -12,7 +12,7 @@ LL |
 LL | }
    | - the item list ends here
    |
-   = note: keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error: aborting due to previous error
 
