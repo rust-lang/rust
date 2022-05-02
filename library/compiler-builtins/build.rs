@@ -193,7 +193,6 @@ mod c {
             ("__absvsi2", "absvsi2.c"),
             ("__addvdi3", "addvdi3.c"),
             ("__addvsi3", "addvsi3.c"),
-            ("apple_versioning", "apple_versioning.c"),
             ("__clzdi2", "clzdi2.c"),
             ("__clzsi2", "clzsi2.c"),
             ("__cmpdi2", "cmpdi2.c"),
