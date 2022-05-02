@@ -2914,6 +2914,7 @@ impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
+    #[inline(always)]
     fn as_ref(&self) -> &[T] {
         self
     }
@@ -2921,6 +2922,7 @@ impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
+    #[inline(always)]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
