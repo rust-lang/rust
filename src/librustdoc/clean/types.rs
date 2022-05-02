@@ -1410,6 +1410,12 @@ pub(crate) struct Generics {
     pub(crate) where_predicates: Vec<WherePredicate>,
 }
 
+impl Generics {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.params.is_empty() && self.where_predicates.is_empty()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
     pub(crate) decl: FnDecl,

@@ -95,7 +95,9 @@ pub(crate) struct Cache {
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<Symbol>,
     parent_stack: Vec<DefId>,
+    impl_generics_stack: Vec<(clean::Type, clean::Generics)>,
     parent_is_trait_impl: bool,
+    parent_is_blanket_or_auto_impl: bool,
     stripped_mod: bool,
 
     pub(crate) search_index: Vec<IndexItem>,
@@ -105,7 +107,8 @@ pub(crate) struct Cache {
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    pub(crate) orphan_impl_items: Vec<(DefId, clean::Item)>,
+    pub(crate) orphan_impl_items:
+        Vec<(DefId, clean::Item, Option<(clean::Type, clean::Generics)>, bool)>,
 
     // Similarly to `orphan_impl_items`, sometimes trait impls are picked up
     // even though the trait itself is not exported. This can happen if a trait
@@ -315,7 +318,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
-                            search_type: get_function_type_for_search(&item, self.tcx, self.cache),
+                            search_type: get_function_type_for_search(
+                                &item,
+                                self.tcx,
+                                self.cache.impl_generics_stack.last(),
+                                self.cache.parent_is_blanket_or_auto_impl,
+                                self.cache,
+                            ),
                             aliases: item.attrs.get_doc_aliases(),
                         });
                     }
@@ -323,7 +332,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 (Some(parent), None) if is_inherent_impl_item => {
                     // We have a parent, but we don't know where they're
                     // defined yet. Wait for later to index this item.
-                    self.cache.orphan_impl_items.push((parent, item.clone()));
+                    self.cache.orphan_impl_items.push((
+                        parent,
+                        item.clone(),
+                        self.cache.impl_generics_stack.last().cloned(),
+                        self.cache.parent_is_blanket_or_auto_impl,
+                    ));
                 }
                 _ => {}
             }
@@ -440,9 +454,34 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             _ => false,
         };
 
+        // When recursing into an impl item, make the generics context visible
+        // to the child items.
+        let item = {
+            let mut item = item;
+            let mut old_parent_is_blanket_or_auto_impl = false;
+            if let clean::Item { kind: box clean::ImplItem(ref mut i), .. } = item {
+                old_parent_is_blanket_or_auto_impl = mem::replace(
+                    &mut self.cache.parent_is_blanket_or_auto_impl,
+                    !matches!(i.kind, clean::ImplKind::Normal),
+                );
+                self.cache.impl_generics_stack.push((
+                    mem::replace(&mut i.for_, clean::Type::Infer),
+                    mem::replace(
+                        &mut i.generics,
+                        clean::Generics { params: Vec::new(), where_predicates: Vec::new() },
+                    ),
+                ));
+            }
+            let mut item = self.fold_item_recur(item);
+            if let clean::Item { kind: box clean::ImplItem(ref mut i), .. } = item {
+                self.cache.parent_is_blanket_or_auto_impl = old_parent_is_blanket_or_auto_impl;
+                (i.for_, i.generics) = self.cache.impl_generics_stack.pop().expect("pushed above");
+            }
+            item
+        };
+
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
-        let item = self.fold_item_recur(item);
         let ret = if let clean::Item { kind: box clean::ImplItem(ref i), .. } = item {
             // Figure out the id of this impl. This may map to a
             // primitive rather than always to a struct/enum.
