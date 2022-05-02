@@ -456,16 +456,7 @@ impl Step for DebuggerScripts {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/lldb_batchmode.py")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(DebuggerScripts {
-            sysroot: run
-                .builder
-                .sysroot(run.builder.compiler(run.builder.top_stage, run.build_triple())),
-            host: run.target,
-        });
+        run.never()
     }
 
     /// Copies debugger scripts for `target` into the `sysroot` specified.

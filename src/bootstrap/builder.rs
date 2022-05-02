@@ -614,7 +614,6 @@ impl<'a> Builder<'a> {
                 dist::RustcDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::DebuggerScripts,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
