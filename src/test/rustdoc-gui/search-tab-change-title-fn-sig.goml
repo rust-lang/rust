@@ -13,7 +13,7 @@ write: (".search-input", "-> String")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Signature", STARTS_WITH)
+assert-text: ("#titles > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 
 // Try with a search-by-return with no results
 goto: file://|DOC_PATH|/test_docs/index.html
@@ -21,12 +21,20 @@ write: (".search-input", "-> Something")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Signature", STARTS_WITH)
+assert-text: ("#titles > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 
-// Try with a search-by-return with no results
+// Try with a search-by-parameter
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "usize pattern")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Signature", STARTS_WITH)
+assert-text: ("#titles > button:nth-of-type(1)", "In Function Parameters", STARTS_WITH)
+
+// Try with a search-by-parameter-and-return
+goto: file://|DOC_PATH|/test_docs/index.html
+write: (".search-input", "pattern -> str")
+// Waiting for the search results to appear...
+wait-for: "#titles"
+assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#titles > button:nth-of-type(1)", "In Function Signatures", STARTS_WITH)

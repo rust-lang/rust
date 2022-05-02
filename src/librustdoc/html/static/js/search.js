@@ -1724,8 +1724,12 @@ window.initSearch = rawSearchIndex => {
                 makeTabHeader(2, "In Return Types", ret_returned[1]) +
                 "</div>";
         } else {
+            const signatureTabTitle =
+                results.query.elems.length === 0 ? "In Function Return Types" :
+                results.query.returned.length === 0 ? "In Function Parameters" :
+                "In Function Signatures";
             output += '<div id="titles">' +
-                makeTabHeader(0, "In Function Signature", ret_others[1]) +
+                makeTabHeader(0, signatureTabTitle, ret_others[1]) +
                 "</div>";
         }
 
