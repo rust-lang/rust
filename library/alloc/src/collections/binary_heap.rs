@@ -155,6 +155,9 @@ use crate::vec::{self, AsVecIntoIter, Vec};
 
 use super::SpecExtend;
 
+#[cfg(test)]
+mod tests;
+
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
