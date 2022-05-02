@@ -94,6 +94,12 @@ crate enum HasGenericParams {
     No,
 }
 
+impl HasGenericParams {
+    fn force_yes_if(self, b: bool) -> Self {
+        if b { Self::Yes } else { self }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 crate enum ConstantItemKind {
     Const,
@@ -125,9 +131,9 @@ crate enum RibKind<'a> {
 
     /// We're in a constant item. Can't refer to dynamic stuff.
     ///
-    /// The `bool` indicates if this constant may reference generic parameters
-    /// and is used to only allow generic parameters to be used in trivial constant expressions.
-    ConstantItemRibKind(bool, Option<(Ident, ConstantItemKind)>),
+    /// The item may reference generic parameters in trivial constant expressions.
+    /// All other constants aren't allowed to use generic params at all.
+    ConstantItemRibKind(HasGenericParams, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -826,19 +832,24 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // Note that we might not be inside of an repeat expression here,
                             // but considering that `IsRepeatExpr` is only relevant for
                             // non-trivial constants this is doesn't matter.
-                            self.with_constant_rib(IsRepeatExpr::No, true, None, |this| {
-                                this.smart_resolve_path(
-                                    ty.id,
-                                    qself.as_ref(),
-                                    path,
-                                    PathSource::Expr(None),
-                                );
+                            self.with_constant_rib(
+                                IsRepeatExpr::No,
+                                HasGenericParams::Yes,
+                                None,
+                                |this| {
+                                    this.smart_resolve_path(
+                                        ty.id,
+                                        qself.as_ref(),
+                                        path,
+                                        PathSource::Expr(None),
+                                    );
 
-                                if let Some(ref qself) = *qself {
-                                    this.visit_ty(&qself.ty);
-                                }
-                                this.visit_path(path, ty.id);
-                            });
+                                    if let Some(ref qself) = *qself {
+                                        this.visit_ty(&qself.ty);
+                                    }
+                                    this.visit_path(path, ty.id);
+                                },
+                            );
 
                             self.diagnostic_metadata.currently_processing_generics = prev;
                             return;
@@ -1684,7 +1695,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     // not used as part of the type system, this is far less surprising.
                                                     this.with_constant_rib(
                                                         IsRepeatExpr::No,
-                                                        true,
+                                                        HasGenericParams::Yes,
                                                         None,
                                                         |this| this.visit_expr(expr),
                                                     );
@@ -1763,7 +1774,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         // so it doesn't matter whether this is a trivial constant.
                         this.with_constant_rib(
                             IsRepeatExpr::No,
-                            true,
+                            HasGenericParams::Yes,
                             Some((item.ident, constant_item_kind)),
                             |this| this.visit_expr(expr),
                         );
@@ -1909,20 +1920,23 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     // Note that we intentionally still forbid `[0; N + 1]` during
     // name resolution so that we don't extend the future
     // compat lint to new cases.
+    #[instrument(level = "debug", skip(self, f))]
     fn with_constant_rib(
         &mut self,
         is_repeat: IsRepeatExpr,
-        is_trivial: bool,
+        may_use_generics: HasGenericParams,
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
-        debug!("with_constant_rib: is_repeat={:?} is_trivial={}", is_repeat, is_trivial);
-        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial, item), |this| {
+        self.with_rib(ValueNS, ConstantItemRibKind(may_use_generics, item), |this| {
             this.with_rib(
                 TypeNS,
-                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial, item),
+                ConstantItemRibKind(
+                    may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                    item,
+                ),
                 |this| {
-                    this.with_label_rib(ConstantItemRibKind(is_trivial, item), f);
+                    this.with_label_rib(ConstantItemRibKind(may_use_generics, item), f);
                 },
             )
         });
@@ -2064,7 +2078,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                         // not used as part of the type system, this is far less surprising.
                                                         this.with_constant_rib(
                                                             IsRepeatExpr::No,
-                                                            true,
+                                                            HasGenericParams::Yes,
                                                             None,
                                                             |this| {
                                                                 visit::walk_assoc_item(
@@ -3077,7 +3091,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("resolve_anon_const {:?} is_repeat: {:?}", constant, is_repeat);
         self.with_constant_rib(
             is_repeat,
-            constant.value.is_potential_trivial_const_param(),
+            if constant.value.is_potential_trivial_const_param() {
+                HasGenericParams::Yes
+            } else {
+                HasGenericParams::No
+            },
             None,
             |this| visit::walk_anon_const(this, constant),
         );
@@ -3180,7 +3198,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     if const_args.contains(&idx) {
                         self.with_constant_rib(
                             IsRepeatExpr::No,
-                            argument.is_potential_trivial_const_param(),
+                            if argument.is_potential_trivial_const_param() {
+                                HasGenericParams::Yes
+                            } else {
+                                HasGenericParams::No
+                            },
                             None,
                             |this| {
                                 this.resolve_expr(argument, None);
