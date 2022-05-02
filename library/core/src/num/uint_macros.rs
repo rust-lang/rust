@@ -689,7 +689,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative, zero, or if the base is not at least 2;
+        /// When the number is zero, or if the base is not at least 2;
         /// it panics in debug mode and the return value is 0 in release mode.
         ///
         /// # Examples
@@ -722,7 +722,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and
+        /// When the number is zero it panics in debug mode and
         /// the return value is 0 in release mode.
         ///
         /// # Examples
@@ -755,7 +755,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the
+        /// When the number is zero it panics in debug mode and the
         /// return value is 0 in release mode.
         ///
         /// # Example
