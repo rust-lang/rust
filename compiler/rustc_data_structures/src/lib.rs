@@ -10,7 +10,6 @@
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
-#![feature(bool_to_option)]
 #![feature(control_flow_enum)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]

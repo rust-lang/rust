@@ -3,7 +3,6 @@
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(bench_black_box)]
-#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(const_assume)]

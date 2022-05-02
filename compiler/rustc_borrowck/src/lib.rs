@@ -1,7 +1,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 #![allow(rustc::potential_query_instability)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(let_chains)]
