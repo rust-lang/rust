@@ -22,6 +22,7 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
         fn extend(&mut self, data: &[u8], exclude_from_len: &[String]) {
             let new_self = match *self {
                 ProcOutput::Full { ref mut bytes, ref mut excluded_len } => {
+                    let old_len = bytes.len();
                     bytes.extend_from_slice(data);
 
                     // We had problems in the past with tests failing only in some environments,
@@ -37,7 +38,10 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
                     // the configured threshold.
                     for pattern in exclude_from_len {
                         let pattern_bytes = pattern.as_bytes();
-                        let matches = data
+                        // We start matching `pattern_bytes - 1` into the previously loaded data,
+                        // to account for the fact a pattern might be included across multiple
+                        // `extend` calls. Starting from `- 1` avoids double-counting patterns.
+                        let matches = (&bytes[(old_len.saturating_sub(pattern_bytes.len() - 1))..])
                             .windows(pattern_bytes.len())
                             .filter(|window| window == &pattern_bytes)
                             .count();
