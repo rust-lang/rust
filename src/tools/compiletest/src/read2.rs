@@ -2,91 +2,13 @@
 // Consider unify the read2() in libstd, cargo and this to prevent further code duplication.
 
 pub use self::imp::read2;
-use std::io;
+use std::io::{self, Write};
+use std::mem::replace;
 use std::process::{Child, Output};
 
 pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::Result<Output> {
-    use io::Write;
-    use std::mem::replace;
-
-    const HEAD_LEN: usize = 160 * 1024;
-    const TAIL_LEN: usize = 256 * 1024;
-    const EXCLUDED_PLACEHOLDER_LEN: isize = 32;
-
-    enum ProcOutput {
-        Full { bytes: Vec<u8>, excluded_len: isize },
-        Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
-    }
-
-    impl ProcOutput {
-        fn extend(&mut self, data: &[u8], exclude_from_len: &[String]) {
-            let new_self = match *self {
-                ProcOutput::Full { ref mut bytes, ref mut excluded_len } => {
-                    let old_len = bytes.len();
-                    bytes.extend_from_slice(data);
-
-                    // We had problems in the past with tests failing only in some environments,
-                    // due to the length of the base path pushing the output size over the limit.
-                    //
-                    // To make those failures deterministic across all environments we ignore known
-                    // paths when calculating the string length, while still including the full
-                    // path in the output. This could result in some output being larger than the
-                    // threshold, but it's better than having nondeterministic failures.
-                    //
-                    // The compiler emitting only excluded strings is addressed by adding a
-                    // placeholder size for each excluded segment, which will eventually reach
-                    // the configured threshold.
-                    for pattern in exclude_from_len {
-                        let pattern_bytes = pattern.as_bytes();
-                        // We start matching `pattern_bytes - 1` into the previously loaded data,
-                        // to account for the fact a pattern might be included across multiple
-                        // `extend` calls. Starting from `- 1` avoids double-counting patterns.
-                        let matches = (&bytes[(old_len.saturating_sub(pattern_bytes.len() - 1))..])
-                            .windows(pattern_bytes.len())
-                            .filter(|window| window == &pattern_bytes)
-                            .count();
-                        *excluded_len += matches as isize
-                            * (EXCLUDED_PLACEHOLDER_LEN - pattern_bytes.len() as isize);
-                    }
-
-                    let new_len = bytes.len();
-                    if (new_len as isize + *excluded_len) as usize <= HEAD_LEN + TAIL_LEN {
-                        return;
-                    }
-
-                    let mut head = replace(bytes, Vec::new());
-                    let tail = head.split_off(new_len - TAIL_LEN).into_boxed_slice();
-                    let skipped = new_len - HEAD_LEN - TAIL_LEN;
-                    ProcOutput::Abbreviated { head, skipped, tail }
-                }
-                ProcOutput::Abbreviated { ref mut skipped, ref mut tail, .. } => {
-                    *skipped += data.len();
-                    if data.len() <= TAIL_LEN {
-                        tail[..data.len()].copy_from_slice(data);
-                        tail.rotate_left(data.len());
-                    } else {
-                        tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
-                    }
-                    return;
-                }
-            };
-            *self = new_self;
-        }
-
-        fn into_bytes(self) -> Vec<u8> {
-            match self {
-                ProcOutput::Full { bytes, .. } => bytes,
-                ProcOutput::Abbreviated { mut head, skipped, tail } => {
-                    write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
-                    head.extend_from_slice(&tail);
-                    head
-                }
-            }
-        }
-    }
-
-    let mut stdout = ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 };
-    let mut stderr = ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 };
+    let mut stdout = ProcOutput::new();
+    let mut stderr = ProcOutput::new();
 
     drop(child.stdin.take());
     read2(
@@ -100,6 +22,86 @@ pub fn read2_abbreviated(mut child: Child, exclude_from_len: &[String]) -> io::R
     let status = child.wait()?;
 
     Ok(Output { status, stdout: stdout.into_bytes(), stderr: stderr.into_bytes() })
+}
+
+const HEAD_LEN: usize = 160 * 1024;
+const TAIL_LEN: usize = 256 * 1024;
+const EXCLUDED_PLACEHOLDER_LEN: isize = 32;
+
+enum ProcOutput {
+    Full { bytes: Vec<u8>, excluded_len: isize },
+    Abbreviated { head: Vec<u8>, skipped: usize, tail: Box<[u8]> },
+}
+
+impl ProcOutput {
+    fn new() -> Self {
+        ProcOutput::Full { bytes: Vec::new(), excluded_len: 0 }
+    }
+
+    fn extend(&mut self, data: &[u8], exclude_from_len: &[String]) {
+        let new_self = match *self {
+            ProcOutput::Full { ref mut bytes, ref mut excluded_len } => {
+                let old_len = bytes.len();
+                bytes.extend_from_slice(data);
+
+                // We had problems in the past with tests failing only in some environments,
+                // due to the length of the base path pushing the output size over the limit.
+                //
+                // To make those failures deterministic across all environments we ignore known
+                // paths when calculating the string length, while still including the full
+                // path in the output. This could result in some output being larger than the
+                // threshold, but it's better than having nondeterministic failures.
+                //
+                // The compiler emitting only excluded strings is addressed by adding a
+                // placeholder size for each excluded segment, which will eventually reach
+                // the configured threshold.
+                for pattern in exclude_from_len {
+                    let pattern_bytes = pattern.as_bytes();
+                    // We start matching `pattern_bytes - 1` into the previously loaded data,
+                    // to account for the fact a pattern might be included across multiple
+                    // `extend` calls. Starting from `- 1` avoids double-counting patterns.
+                    let matches = (&bytes[(old_len.saturating_sub(pattern_bytes.len() - 1))..])
+                        .windows(pattern_bytes.len())
+                        .filter(|window| window == &pattern_bytes)
+                        .count();
+                    *excluded_len += matches as isize
+                        * (EXCLUDED_PLACEHOLDER_LEN - pattern_bytes.len() as isize);
+                }
+
+                let new_len = bytes.len();
+                if (new_len as isize + *excluded_len) as usize <= HEAD_LEN + TAIL_LEN {
+                    return;
+                }
+
+                let mut head = replace(bytes, Vec::new());
+                let tail = head.split_off(new_len - TAIL_LEN).into_boxed_slice();
+                let skipped = new_len - HEAD_LEN - TAIL_LEN;
+                ProcOutput::Abbreviated { head, skipped, tail }
+            }
+            ProcOutput::Abbreviated { ref mut skipped, ref mut tail, .. } => {
+                *skipped += data.len();
+                if data.len() <= TAIL_LEN {
+                    tail[..data.len()].copy_from_slice(data);
+                    tail.rotate_left(data.len());
+                } else {
+                    tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
+                }
+                return;
+            }
+        };
+        *self = new_self;
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        match self {
+            ProcOutput::Full { bytes, .. } => bytes,
+            ProcOutput::Abbreviated { mut head, skipped, tail } => {
+                write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
+                head.extend_from_slice(&tail);
+                head
+            }
+        }
+    }
 }
 
 #[cfg(not(any(unix, windows)))]
