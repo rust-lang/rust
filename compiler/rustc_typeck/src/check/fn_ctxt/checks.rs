@@ -980,7 +980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 for (idx, arg) in matched_inputs.iter().enumerate() {
                     let suggestion_text = if let Some(arg) = arg {
-                        let arg_span = provided_args[*arg].span;
+                        let arg_span = provided_args[*arg].span.source_callsite();
                         let arg_text = source_map.span_to_snippet(arg_span).unwrap();
                         arg_text
                     } else {
