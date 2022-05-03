@@ -217,10 +217,10 @@ pub(super) fn transcribe<'a>(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            mbe::TokenTree::MetaVar(mut sp, mut orignal_ident) => {
+            mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
-                let ident = MacroRulesNormalizedIdent::new(orignal_ident);
+                let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     match cur_matched {
                         MatchedTokenTree(ref tt) => {
@@ -249,9 +249,9 @@ pub(super) fn transcribe<'a>(
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut orignal_ident);
+                    marker.visit_ident(&mut original_ident);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::Token(Token::from_ast_ident(orignal_ident)).into());
+                    result.push(TokenTree::Token(Token::from_ast_ident(original_ident)).into());
                 }
             }
 
