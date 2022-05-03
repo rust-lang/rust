@@ -3,7 +3,7 @@ use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{expr_visitor, expr_visitor_no_bodies, is_local_used};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     BindingAnnotation, Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
@@ -267,11 +267,14 @@ fn check<'tcx>(
     match usage.expr.kind {
         ExprKind::Assign(..) => {
             let assign = LocalAssign::new(cx, usage.expr, binding_id)?;
+            let mut msg_span = MultiSpan::from_spans(vec![local_stmt.span, assign.span]);
+            msg_span.push_span_label(local_stmt.span, "created here");
+            msg_span.push_span_label(assign.span, "initialised here");
 
             span_lint_and_then(
                 cx,
                 NEEDLESS_LATE_INIT,
-                local_stmt.span,
+                msg_span,
                 "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(
@@ -365,7 +368,6 @@ fn check<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
-
         if_chain! {
             if let Local {
                 init: None,
