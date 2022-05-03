@@ -1,6 +1,5 @@
-// Test case for #96223.
-// An ICE was triggered because of a failed assertion.
-// Thanks to @Manishearth for the minimal test case.
+// Previously ICEd because we didn't properly track binders in suggestions
+// check-fail
 
 pub trait Foo<'de>: Sized {}
 
@@ -47,7 +46,7 @@ fn icey_bounds<D: Dummy<EmptyMarker>>(p: &D) {}
 
 fn trigger_ice() {
     let p = Empty;
-    icey_bounds(&p); //~ERROR
+    icey_bounds(&p); //~ERROR the trait bound
 }
 
 fn main() {}

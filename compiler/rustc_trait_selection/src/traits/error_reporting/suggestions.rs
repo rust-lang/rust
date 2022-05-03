@@ -713,7 +713,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return false;
             }
 
-            // This is a quick fix to resolve an ICE ([issue#96223](https://github.com/rust-lang/rust/issues/96223)).
+            // This is a quick fix to resolve an ICE (#96223).
             // This change should probably be deeper.
             // As suggested by @jackh726, `mk_trait_obligation_with_new_self_ty` could take a `Binder<(TraitRef, Ty)>
             // instead of `Binder<Ty>` leading to some changes to its call places.
