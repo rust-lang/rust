@@ -29,7 +29,13 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
         return None;
     }
     let m = p.start();
-    p.bump_any();
+    if p.at(FLOAT_NUMBER) {
+        let f = p.start();
+        p.bump(FLOAT_NUMBER);
+        f.complete(p, FLOAT_LITERAL);
+    } else {
+        p.bump_any();
+    }
     Some(m.complete(p, LITERAL))
 }
 

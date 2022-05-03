@@ -57,7 +57,8 @@ SOURCE_FILE
           EQ "="
           WHITESPACE " "
           LITERAL
-            FLOAT_NUMBER "2.0"
+            FLOAT_LITERAL
+              FLOAT_NUMBER "2.0"
           SEMICOLON ";"
         WHITESPACE "\n    "
         LET_STMT

@@ -462,6 +462,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
+            [float_number] => { $crate::SyntaxKind::FLOAT_NUMBER };
         }
         pub use T;
     };

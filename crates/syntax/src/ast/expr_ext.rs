@@ -282,7 +282,7 @@ pub enum LiteralKind {
     String(ast::String),
     ByteString(ast::ByteString),
     IntNumber(ast::IntNumber),
-    FloatNumber(ast::FloatNumber),
+    FloatNumber(ast::FloatLiteral),
     Char(ast::Char),
     Byte(ast::Byte),
     Bool(bool),
@@ -297,15 +297,16 @@ impl ast::Literal {
     }
     pub fn kind(&self) -> LiteralKind {
         let token = match self.value() {
-            rowan::NodeOrToken::Node(_node) => unreachable!(),
+            rowan::NodeOrToken::Node(node) => {
+                return LiteralKind::FloatNumber(
+                    ast::FloatLiteral::cast(node).expect("unreachable"),
+                );
+            }
             rowan::NodeOrToken::Token(token) => token,
         };
 
         if let Some(t) = ast::IntNumber::cast(token.clone()) {
             return LiteralKind::IntNumber(t);
-        }
-        if let Some(t) = ast::FloatNumber::cast(token.clone()) {
-            return LiteralKind::FloatNumber(t);
         }
         if let Some(t) = ast::String::cast(token.clone()) {
             return LiteralKind::String(t);
@@ -325,6 +326,26 @@ impl ast::Literal {
             T![false] => LiteralKind::Bool(false),
             _ => unreachable!(),
         }
+    }
+
+    pub fn as_string(&self) -> Option<ast::String> {
+        match self.kind() {
+            LiteralKind::String(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn as_byte_string(&self) -> Option<ast::ByteString> {
+        match self.kind() {
+            LiteralKind::ByteString(it) => Some(it),
+            _ => None,
+        }
+    }
+}
+
+impl ast::FloatLiteral {
+    pub fn suffix(&self) -> Option<String> {
+        ast::FloatNumber::cast(self.syntax().last_token()?)?.suffix().map(|s| s.to_string())
     }
 }
 

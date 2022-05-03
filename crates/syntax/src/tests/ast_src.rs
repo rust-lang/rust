@@ -183,6 +183,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "PATH",
         "PATH_SEGMENT",
         "LITERAL",
+        "FLOAT_LITERAL",
         "RENAME",
         "VISIBILITY",
         "WHERE_CLAUSE",

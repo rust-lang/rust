@@ -799,6 +799,11 @@ pub fn struct_(
     ))
 }
 
+pub fn literal(text: &str) -> ast::Literal {
+    assert_eq!(text.trim(), text);
+    ast_from_text(&format!("fn f() {{ let _ = {}; }}", text))
+}
+
 #[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
@@ -827,7 +832,7 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 pub mod tokens {
     use once_cell::sync::Lazy;
 
-    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
+    use crate::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
 
     pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
         SourceFile::parse(
@@ -856,12 +861,6 @@ pub mod tokens {
         assert!(!text.trim().is_empty());
         let sf = SourceFile::parse(text).ok().unwrap();
         sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
-    }
-
-    pub fn literal(text: &str) -> SyntaxToken {
-        assert_eq!(text.trim(), text);
-        let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {}; }}", text));
-        lit.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 
     pub fn single_newline() -> SyntaxToken {
