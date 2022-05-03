@@ -2,7 +2,9 @@ error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:6:5
    |
 LL |     let a;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     a = "zero";
+   |     ^^^^^^^^^^ initialised here
    |
    = note: `-D clippy::needless-late-init` implied by `-D warnings`
 help: declare `a` here
@@ -14,7 +16,10 @@ error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:9:5
    |
 LL |     let b;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     let c;
+LL |     b = 1;
+   |     ^^^^^ initialised here
    |
 help: declare `b` here
    |
@@ -25,7 +30,10 @@ error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:10:5
    |
 LL |     let c;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     b = 1;
+LL |     c = 2;
+   |     ^^^^^ initialised here
    |
 help: declare `c` here
    |
@@ -36,7 +44,9 @@ error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:14:5
    |
 LL |     let d: usize;
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^ created here
+LL |     d = 1;
+   |     ^^^^^ initialised here
    |
 help: declare `d` here
    |
@@ -47,7 +57,9 @@ error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:17:5
    |
 LL |     let e;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     e = format!("{}", d);
+   |     ^^^^^^^^^^^^^^^^^^^^ initialised here
    |
 help: declare `e` here
    |
