@@ -626,7 +626,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
 
         if !parser.errors.is_empty() {
             let err = parser.errors.remove(0);
-            let err_sp = template_span.from_inner(err.span);
+            let err_sp = template_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
             let msg = &format!("invalid asm template string: {}", err.description);
             let mut e = ecx.struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
@@ -634,7 +634,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                 e.note(&note);
             }
             if let Some((label, span)) = err.secondary_label {
-                let err_sp = template_span.from_inner(span);
+                let err_sp = template_span.from_inner(InnerSpan::new(span.start, span.end));
                 e.span_label(err_sp, label);
             }
             e.emit();
@@ -643,7 +643,10 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
 
         curarg = parser.curarg;
 
-        let mut arg_spans = parser.arg_places.iter().map(|span| template_span.from_inner(*span));
+        let mut arg_spans = parser
+            .arg_places
+            .iter()
+            .map(|span| template_span.from_inner(InnerSpan::new(span.start, span.end)));
         for piece in unverified_pieces {
             match piece {
                 parse::Piece::String(s) => {
@@ -699,14 +702,21 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 Some(idx)
                             }
                         }
-                        parse::ArgumentNamed(name, span) => match args.named_args.get(&name) {
-                            Some(&idx) => Some(idx),
-                            None => {
-                                let msg = format!("there is no argument named `{}`", name);
-                                ecx.struct_span_err(template_span.from_inner(span), &msg).emit();
-                                None
+                        parse::ArgumentNamed(name, span) => {
+                            match args.named_args.get(&Symbol::intern(name)) {
+                                Some(&idx) => Some(idx),
+                                None => {
+                                    let msg = format!("there is no argument named `{}`", name);
+                                    ecx.struct_span_err(
+                                        template_span
+                                            .from_inner(InnerSpan::new(span.start, span.end)),
+                                        &msg,
+                                    )
+                                    .emit();
+                                    None
+                                }
                             }
-                        },
+                        }
                     };
 
                     let mut chars = arg.format.ty.chars();
@@ -715,7 +725,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                         let span = arg
                             .format
                             .ty_span
-                            .map(|sp| template_sp.from_inner(sp))
+                            .map(|sp| template_sp.from_inner(InnerSpan::new(sp.start, sp.end)))
                             .unwrap_or(template_sp);
                         ecx.struct_span_err(
                             span,
@@ -741,7 +751,12 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             let template_num_lines = 1 + template_str.matches('\n').count();
             line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
         } else {
-            line_spans.extend(parser.line_spans.iter().map(|span| template_span.from_inner(*span)));
+            line_spans.extend(
+                parser
+                    .line_spans
+                    .iter()
+                    .map(|span| template_span.from_inner(InnerSpan::new(span.start, span.end))),
+            );
         };
     }
 
