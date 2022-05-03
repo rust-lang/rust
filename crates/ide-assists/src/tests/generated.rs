@@ -1772,6 +1772,41 @@ impl Foo for Bar {
 }
 
 #[test]
+fn doctest_reorder_impl_items() {
+    check_doc_test(
+        "reorder_impl_items",
+        r#####"
+trait Foo {
+    type A;
+    const B: u8;
+    fn c();
+}
+
+struct Bar;
+$0impl Foo for Bar {
+    const B: u8 = 17;
+    fn c() {}
+    type A = String;
+}
+"#####,
+        r#####"
+trait Foo {
+    type A;
+    const B: u8;
+    fn c();
+}
+
+struct Bar;
+impl Foo for Bar {
+    type A = String;
+    const B: u8 = 17;
+    fn c() {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_char_with_string() {
     check_doc_test(
         "replace_char_with_string",

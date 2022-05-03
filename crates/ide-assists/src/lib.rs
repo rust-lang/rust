@@ -170,6 +170,7 @@ mod handlers {
     mod remove_unused_param;
     mod reorder_fields;
     mod reorder_impl;
+    mod reorder_impl_items;
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
@@ -257,6 +258,7 @@ mod handlers {
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
             reorder_impl::reorder_impl,
+            reorder_impl_items::reorder_impl_items,
             replace_try_expr_with_match::replace_try_expr_with_match,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
