@@ -20,3 +20,4 @@ res
 test-backend
 gcc_path
 benchmarks
+tools/llvm-project
