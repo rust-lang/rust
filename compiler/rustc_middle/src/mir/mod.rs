@@ -2017,9 +2017,7 @@ pub enum ProjectionElem<V, T> {
         from_end: bool,
     },
 
-    /// "Downcast" to a variant of an ADT. Currently, we only introduce
-    /// this for ADTs with more than one variant. It may be better to
-    /// just introduce it always, or always for enums.
+    /// "Downcast" to a variant of an enum or a generator.
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
