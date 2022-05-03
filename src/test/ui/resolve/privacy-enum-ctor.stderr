@@ -99,13 +99,13 @@ help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
    |                   ~
-help: consider importing one of these items instead...
+help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
    |
 LL | use std::f64::consts::E;
    |
-help: ...and refer to it directly
+help: if you import `E`, refer to it directly
    |
 LL -     let _: E = m::E;
 LL +     let _: E = E;

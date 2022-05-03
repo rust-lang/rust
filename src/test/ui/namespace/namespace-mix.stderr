@@ -12,13 +12,13 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
    |               ~~
-help: consider importing one of these items instead...
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
 LL | use xm2::S;
    |
-help: ...and refer to it directly
+help: if you import `S`, refer to it directly
    |
 LL -     check(m1::S);
 LL +     check(S);
@@ -40,13 +40,13 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
    |                ~~
-help: consider importing one of these items instead...
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
 LL | use xm2::S;
    |
-help: ...and refer to it directly
+help: if you import `S`, refer to it directly
    |
 LL -     check(xm1::S);
 LL +     check(S);
@@ -71,13 +71,13 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
    |               ~~
-help: consider importing one of these items instead...
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |
 LL | use xm8::V;
    |
-help: ...and refer to it directly
+help: if you import `V`, refer to it directly
    |
 LL -     check(m7::V);
 LL +     check(V);
@@ -104,13 +104,13 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
    |                ~~
-help: consider importing one of these items instead...
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |
 LL | use xm8::V;
    |
-help: ...and refer to it directly
+help: if you import `V`, refer to it directly
    |
 LL -     check(xm7::V);
 LL +     check(V);

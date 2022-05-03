@@ -2484,15 +2484,14 @@ fn show_candidates(
             ("one of these", "items", String::new())
         };
 
-        let tail = if path.len() > 1 { "..." } else { "" };
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
         let mut msg = if let IsPattern::Yes = is_pattern {
             format!(
-                "if you meant to match on {}{}{}, use the full path in the pattern{}",
-                kind, instead, name, tail
+                "if you meant to match on {}{}{}, use the full path in the pattern",
+                kind, instead, name
             )
         } else {
-            format!("consider importing {} {}{}{}", determiner, kind, instead, tail)
+            format!("consider importing {} {}{}", determiner, kind, instead)
         };
 
         for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
@@ -2523,7 +2522,7 @@ fn show_candidates(
             if let [first, .., last] = &path[..] {
                 err.span_suggestion_verbose(
                     first.ident.span.until(last.ident.span),
-                    "...and refer to it directly",
+                    &format!("if you import `{}`, refer to it directly", last.ident),
                     String::new(),
                     Applicability::Unspecified,
                 );

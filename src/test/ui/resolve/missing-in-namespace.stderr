@@ -4,11 +4,11 @@ error[E0433]: failed to resolve: could not find `hahmap` in `std`
 LL |     let _map = std::hahmap::HashMap::new();
    |                             ^^^^^^^ not found in `std::hahmap`
    |
-help: consider importing this struct...
+help: consider importing this struct
    |
 LL | use std::collections::HashMap;
    |
-help: ...and refer to it directly
+help: if you import `HashMap`, refer to it directly
    |
 LL -     let _map = std::hahmap::HashMap::new();
 LL +     let _map = HashMap::new();
