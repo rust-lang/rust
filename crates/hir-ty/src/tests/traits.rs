@@ -1256,6 +1256,32 @@ fn test() {
 }
 
 #[test]
+fn infer_from_return_pos_impl_trait() {
+    check_infer_with_mismatches(
+        r#"
+//- minicore: fn, sized
+trait Trait<T> {}
+struct Bar<T>(T);
+impl<T> Trait<T> for Bar<T> {}
+fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
+    (|input, t| {}, Bar(C))
+}
+"#,
+        expect![[r#"
+            134..165 '{     ...(C)) }': (|&str, T| -> (), Bar<u8>)
+            140..163 '(|inpu...ar(C))': (|&str, T| -> (), Bar<u8>)
+            141..154 '|input, t| {}': |&str, T| -> ()
+            142..147 'input': &str
+            149..150 't': T
+            152..154 '{}': ()
+            156..159 'Bar': Bar<u8>(u8) -> Bar<u8>
+            156..162 'Bar(C)': Bar<u8>
+            160..161 'C': u8
+        "#]],
+    );
+}
+
+#[test]
 fn dyn_trait() {
     check_infer(
         r#"
@@ -2392,7 +2418,7 @@ fn test() -> impl Trait<i32> {
             171..182 '{ loop {} }': T
             173..180 'loop {}': !
             178..180 '{}': ()
-            213..309 '{     ...t()) }': S<{unknown}>
+            213..309 '{     ...t()) }': S<i32>
             223..225 's1': S<u32>
             228..229 'S': S<u32>(u32) -> S<u32>
             228..240 'S(default())': S<u32>
@@ -2408,10 +2434,10 @@ fn test() -> impl Trait<i32> {
             276..288 'S(default())': S<i32>
             278..285 'default': fn default<i32>() -> i32
             278..287 'default()': i32
-            295..296 'S': S<{unknown}>({unknown}) -> S<{unknown}>
-            295..307 'S(default())': S<{unknown}>
-            297..304 'default': fn default<{unknown}>() -> {unknown}
-            297..306 'default()': {unknown}
+            295..296 'S': S<i32>(i32) -> S<i32>
+            295..307 'S(default())': S<i32>
+            297..304 'default': fn default<i32>() -> i32
+            297..306 'default()': i32
         "#]],
     );
 }
