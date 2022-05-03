@@ -60,13 +60,13 @@ def extract_instrinsics(intrinsics, file):
             current_arch = None
         elif line.startswith("def "):
             content = ""
-            while not content.endswith(";") and pos < len(lines):
+            while not content.endswith(";") and not content.endswith("}") and pos < len(lines):
                 line = lines[pos].split(" // ")[0].strip()
                 content += line
                 pos += 1
             entries = re.findall('GCCBuiltin<"(\\w+)">', content)
             if len(entries) > 0:
-                intrinsic = content.split(":")[0].split(" ")[1].strip()
+                intrinsic = content.split("def ")[1].strip().split(":")[0].strip()
                 intrinsic = intrinsic.split("_")
                 if len(intrinsic) < 2 or intrinsic[0] != "int":
                     continue
