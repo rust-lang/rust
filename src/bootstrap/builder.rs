@@ -915,14 +915,11 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub(crate) fn unpack(&self, tarball: &Path, dst: &Path) {
+    pub(crate) fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
         println!("extracting {} to {}", tarball.display(), dst.display());
         if !dst.exists() {
             t!(fs::create_dir_all(dst));
         }
-
-        // FIXME: will need to be a parameter once `download-rustc` is moved to rustbuild
-        const MATCH: &str = "rust-dev";
 
         // `tarball` ends with `.tar.xz`; strip that suffix
         // example: `rust-dev-nightly-x86_64-unknown-linux-gnu`
@@ -943,10 +940,10 @@ impl<'a> Builder<'a> {
                 continue;
             }
             let mut short_path = t!(original_path.strip_prefix(directory_prefix));
-            if !short_path.starts_with(MATCH) {
+            if !short_path.starts_with(pattern) {
                 continue;
             }
-            short_path = t!(short_path.strip_prefix(MATCH));
+            short_path = t!(short_path.strip_prefix(pattern));
             let dst_path = dst.join(short_path);
             self.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
             if !t!(member.unpack_in(dst)) {
@@ -1022,7 +1019,7 @@ impl<'a> Builder<'a> {
                     .join("lib");
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
-                if !builder.config.download_rustc {
+                if !builder.download_rustc() {
                     let _ = fs::remove_dir_all(&sysroot);
                     t!(fs::create_dir_all(&sysroot));
                 }
@@ -1177,6 +1174,10 @@ impl<'a> Builder<'a> {
     /// Convenience wrapper to allow `builder.llvm_link_shared()` instead of `builder.config.llvm_link_shared(&builder)`.
     pub(crate) fn llvm_link_shared(&self) -> bool {
         Config::llvm_link_shared(self)
+    }
+
+    pub(crate) fn download_rustc(&self) -> bool {
+        Config::download_rustc(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.

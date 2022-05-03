@@ -182,7 +182,7 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
         builder.download_component(base, &format!("{}/{}", url, filename), &tarball);
     }
     let llvm_root = builder.config.ci_llvm_root();
-    builder.unpack(&tarball, &llvm_root);
+    builder.unpack(&tarball, &llvm_root, "rust-dev");
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
