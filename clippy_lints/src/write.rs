@@ -13,7 +13,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, BytePos, Span, DUMMY_SP};
+use rustc_span::{sym, BytePos, InnerSpan, Span, DUMMY_SP};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -454,6 +454,7 @@ impl SimpleFormatArgs {
                 }
             },
             ArgumentNamed(n, _) => {
+                let n = Symbol::intern(n);
                 if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
                     match x.1.as_slice() {
                         // A non-empty format string has been seen already.
@@ -495,7 +496,7 @@ impl Write {
             let span = parser
                 .arg_places
                 .last()
-                .map_or(DUMMY_SP, |&x| str_lit.span.from_inner(x));
+                .map_or(DUMMY_SP, |&x| str_lit.span.from_inner(InnerSpan::new(x.start, x.end)));
 
             if !self.in_debug_impl && arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
