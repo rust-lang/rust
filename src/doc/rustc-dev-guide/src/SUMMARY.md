@@ -142,6 +142,7 @@
     - [`LintStore`](./diagnostics/lintstore.md)
     - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
     - [Diagnostic Items](./diagnostics/diagnostic-items.md)
+    - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
 
 # MIR to Binaries
 
