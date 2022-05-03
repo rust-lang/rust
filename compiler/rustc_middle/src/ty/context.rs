@@ -1561,21 +1561,6 @@ impl<'tcx> TyCtxt<'tcx> {
         f(hcx)
     }
 
-    #[inline(always)]
-    pub fn with_no_span_stable_hashing_context<R>(
-        self,
-        f: impl FnOnce(StableHashingContext<'_>) -> R,
-    ) -> R {
-        let definitions = self.definitions_untracked();
-        let hcx = StableHashingContext::ignore_spans(
-            self.sess,
-            &*definitions,
-            &*self.cstore,
-            &self.untracked_resolutions.source_span,
-        );
-        f(hcx)
-    }
-
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
         self.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
