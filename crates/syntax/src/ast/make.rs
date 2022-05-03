@@ -81,6 +81,9 @@ pub mod ext {
     pub fn default_bool() -> ast::Expr {
         expr_from_text("false")
     }
+    pub fn option_none() -> ast::Expr {
+        expr_from_text("None")
+    }
     pub fn empty_block_expr() -> ast::BlockExpr {
         block_expr(None, None)
     }

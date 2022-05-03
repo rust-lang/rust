@@ -172,6 +172,9 @@ fn get_default_constructor(
         if builtin_ty.is_str() {
             return Some(make::ext::empty_str());
         }
+        if builtin_ty.is_bool() {
+            return Some(make::ext::default_bool());
+        }
     }
 
     let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
@@ -192,10 +195,13 @@ fn get_default_constructor(
         })
         .is_some();
 
+    let famous_defs = FamousDefs(&ctx.sema, krate);
     if has_new_func {
         Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module)))
+    } else if ty.as_adt() == famous_defs.core_option_Option()?.ty(ctx.sema.db).as_adt() {
+        Some(make::ext::option_none())
     } else if !ty.is_array()
-        && ty.impls_trait(ctx.sema.db, FamousDefs(&ctx.sema, krate).core_default_Default()?, &[])
+        && ty.impls_trait(ctx.sema.db, famous_defs.core_default_Default()?, &[])
     {
         Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module)))
     } else {
@@ -295,17 +301,18 @@ pub struct Foo { pub a: i32, pub b: i32 }
     fn test_fill_struct_fields_empty() {
         check_fix(
             r#"
-struct TestStruct { one: i32, two: i64 }
+//- minicore: option
+struct TestStruct { one: i32, two: i64, three: Option<i32>, four: bool }
 
 fn test_fn() {
     let s = TestStruct {$0};
 }
 "#,
             r#"
-struct TestStruct { one: i32, two: i64 }
+struct TestStruct { one: i32, two: i64, three: Option<i32>, four: bool }
 
 fn test_fn() {
-    let s = TestStruct { one: 0, two: 0 };
+    let s = TestStruct { one: 0, two: 0, three: None, four: false };
 }
 "#,
         );
@@ -415,7 +422,7 @@ fn test_fn() {
     fn test_fill_struct_fields_default() {
         check_fix(
             r#"
-//- minicore: default
+//- minicore: default, option
 struct TestWithDefault(usize);
 impl Default for TestWithDefault {
     pub fn default() -> Self {
