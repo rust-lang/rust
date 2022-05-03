@@ -123,7 +123,10 @@ error: unneeded late initialization
   --> $DIR/needless_late_init.rs:60:5
    |
 LL |     let x;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     let y = SignificantDrop;
+LL |     x = 1;
+   |     ^^^^^ initialised here
    |
 help: declare `x` here
    |
@@ -134,7 +137,10 @@ error: unneeded late initialization
   --> $DIR/needless_late_init.rs:64:5
    |
 LL |     let x;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+LL |     let y = 1;
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
    |
 help: declare `x` here
    |
@@ -145,7 +151,10 @@ error: unneeded late initialization
   --> $DIR/needless_late_init.rs:68:5
    |
 LL |     let x;
-   |     ^^^^^^
+   |     ^^^^^^ created here
+...
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
    |
 help: declare `x` here
    |
