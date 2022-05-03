@@ -1,48 +1,48 @@
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:14:9
+  --> $DIR/mixed_read_write_in_expression.rs:14:9
    |
 LL |     } + x;
    |         ^
    |
-   = note: `-D clippy::eval-order-dependence` implied by `-D warnings`
+   = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:12:9
+  --> $DIR/mixed_read_write_in_expression.rs:12:9
    |
 LL |         x = 1;
    |         ^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:17:5
+  --> $DIR/mixed_read_write_in_expression.rs:17:5
    |
 LL |     x += {
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:18:9
+  --> $DIR/mixed_read_write_in_expression.rs:18:9
    |
 LL |         x = 20;
    |         ^^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:30:12
+  --> $DIR/mixed_read_write_in_expression.rs:30:12
    |
 LL |         a: x,
    |            ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:32:13
+  --> $DIR/mixed_read_write_in_expression.rs:32:13
    |
 LL |             x = 6;
    |             ^^^^^
 
 error: unsequenced read of `x`
-  --> $DIR/eval_order_dependence.rs:39:9
+  --> $DIR/mixed_read_write_in_expression.rs:39:9
    |
 LL |         x += {
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:40:13
+  --> $DIR/mixed_read_write_in_expression.rs:40:13
    |
 LL |             x = 20;
    |             ^^^^^^
