@@ -8,7 +8,7 @@ use crate::{
         operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
         support, AstChildren, AstNode,
     },
-    AstToken,
+    AstToken, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, T,
 };
@@ -289,16 +289,17 @@ pub enum LiteralKind {
 }
 
 impl ast::Literal {
-    pub fn token(&self) -> SyntaxToken {
+    pub fn value(&self) -> SyntaxElement {
         self.syntax()
             .children_with_tokens()
             .find(|e| e.kind() != ATTR && !e.kind().is_trivia())
-            .and_then(|e| e.into_token())
             .unwrap()
     }
-
     pub fn kind(&self) -> LiteralKind {
-        let token = self.token();
+        let token = match self.value() {
+            rowan::NodeOrToken::Node(_node) => unreachable!(),
+            rowan::NodeOrToken::Token(token) => token,
+        };
 
         if let Some(t) = ast::IntNumber::cast(token.clone()) {
             return LiteralKind::IntNumber(t);
@@ -364,7 +365,7 @@ impl ast::BlockExpr {
 fn test_literal_with_attr() {
     let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
     let lit = parse.tree().syntax().descendants().find_map(ast::Literal::cast).unwrap();
-    assert_eq!(lit.token().text(), r#""Hello""#);
+    assert_eq!(lit.value().to_string(), r#""Hello""#);
 }
 
 impl ast::RecordExprField {
