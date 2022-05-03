@@ -190,7 +190,7 @@ macro_rules! impl_fn_for_zst {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// cfg_if! {
 ///     if #[cfg(unix)] {
 ///         fn foo() { /* unix specific functionality */ }
