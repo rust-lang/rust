@@ -47,13 +47,6 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let items = impl_ast.assoc_item_list()?;
     let assoc_items = items.assoc_items().collect::<Vec<_>>();
 
-    // If all items are either function or macro calls, then reorder_impl assist can be used
-    if assoc_items.iter().all(|i| matches!(i, ast::AssocItem::Fn(_) | ast::AssocItem::MacroCall(_)))
-    {
-        cov_mark::hit!(not_applicable_if_all_functions);
-        return None;
-    }
-
     let path = impl_ast
         .trait_()
         .and_then(|t| match t {
@@ -152,23 +145,41 @@ $0impl Bar for Foo {
     }
 
     #[test]
-    fn not_applicable_if_all_functions() {
-        cov_mark::check!(not_applicable_if_all_functions);
-        check_assist_not_applicable(
+    fn reorder_impl_trait_functions() {
+        check_assist(
             reorder_impl_items,
             r#"
 trait Bar {
     fn a() {}
-    fn z() {}
+    fn c() {}
     fn b() {}
+    fn d() {}
 }
+
 struct Foo;
 $0impl Bar for Foo {
-    fn a() {}
-    fn z() {}
+    fn d() {}
     fn b() {}
+    fn c() {}
+    fn a() {}
 }
-        "#,
+"#,
+            r#"
+trait Bar {
+    fn a() {}
+    fn c() {}
+    fn b() {}
+    fn d() {}
+}
+
+struct Foo;
+impl Bar for Foo {
+    fn a() {}
+    fn c() {}
+    fn b() {}
+    fn d() {}
+}
+"#,
         )
     }
 

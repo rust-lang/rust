@@ -1737,41 +1737,6 @@ const test: Foo = Foo {foo: 1, bar: 0}
 }
 
 #[test]
-fn doctest_reorder_impl() {
-    check_doc_test(
-        "reorder_impl",
-        r#####"
-trait Foo {
-    fn a() {}
-    fn b() {}
-    fn c() {}
-}
-
-struct Bar;
-$0impl Foo for Bar {
-    fn b() {}
-    fn c() {}
-    fn a() {}
-}
-"#####,
-        r#####"
-trait Foo {
-    fn a() {}
-    fn b() {}
-    fn c() {}
-}
-
-struct Bar;
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    fn c() {}
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_reorder_impl_items() {
     check_doc_test(
         "reorder_impl_items",
