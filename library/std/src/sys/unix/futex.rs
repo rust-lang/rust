@@ -185,16 +185,15 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 #[cfg(target_os = "dragonfly")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     use crate::convert::TryFrom;
+
+    // A timeout of 0 means infinite.
+    // We round smaller timeouts up to 1 millisecond.
+    // Overflows are rounded up to an infinite timeout.
+    let timeout_ms =
+        timeout.and_then(|d| Some(i32::try_from(d.as_millis()).ok()?.max(1))).unwrap_or(0);
+
     let r = unsafe {
-        libc::umtx_sleep(
-            futex as *const AtomicU32 as *const i32,
-            expected as i32,
-            // A timeout of 0 means infinite, so we round smaller timeouts up to 1 millisecond.
-            // Timeouts larger than i32::MAX milliseconds saturate.
-            timeout.map_or(0, |d| {
-                i32::try_from(d.as_millis()).map_or(i32::MAX, |millis| millis.max(1))
-            }),
-        )
+        libc::umtx_sleep(futex as *const AtomicU32 as *const i32, expected as i32, timeout_ms)
     };
 
     r == 0 || super::os::errno() != libc::ETIMEDOUT
