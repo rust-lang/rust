@@ -23,6 +23,7 @@ pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
+    const RED: Self = DepKind::Red;
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}(", node.kind)?;

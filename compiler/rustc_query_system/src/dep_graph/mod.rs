@@ -85,7 +85,11 @@ impl FingerprintStyle {
 
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
+    /// DepKind to use when incr. comp. is turned off.
     const NULL: Self;
+
+    /// DepKind to use to create the initial forever-red node.
+    const RED: Self;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;

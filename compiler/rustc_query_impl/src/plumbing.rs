@@ -377,6 +377,17 @@ macro_rules! define_queries {
                 }
             }
 
+            // We use this for the forever-red node.
+            pub fn Red() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    try_load_from_on_disk_cache: None,
+                }
+            }
+
             pub fn TraitSelect() -> DepKindStruct {
                 DepKindStruct {
                     is_anon: true,

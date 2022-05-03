@@ -134,19 +134,19 @@ impl<K: DepKind> DepGraph<K> {
             smallvec![],
             Fingerprint::ZERO,
         );
-        debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
 
         // Instantiate a dependy-less red node only once for anonymous queries.
         let (_red_node_index, _prev_and_index) = current.intern_node(
             profiler,
             &prev_graph,
-            DepNode { kind: DepKind::NULL, hash: Fingerprint::ZERO.into() },
+            DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
             smallvec![],
             None,
             false,
         );
-        debug_assert_eq!(_red_node_index, DepNodeIndex::FOREVER_RED_NODE);
-        debug_assert!(matches!(_prev_and_index, None | Some((_, DepNodeColor::Red))));
+        assert_eq!(_red_node_index, DepNodeIndex::FOREVER_RED_NODE);
+        assert!(matches!(_prev_and_index, None | Some((_, DepNodeColor::Red))));
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -981,8 +981,6 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();
-        // We rely on the fact that `anon_id_seed` is not zero when creating static nodes.
-        debug_assert_ne!(anon_id_seed, Fingerprint::ZERO);
 
         #[cfg(debug_assertions)]
         let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
