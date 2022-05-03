@@ -1724,6 +1724,10 @@ window.initSearch = rawSearchIndex => {
             `${typeFilter}</h1> in ${crates} </div>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
+            output += '<div id="titles">' +
+                makeTabHeader(0, "In Names", ret_others[1]) +
+                "</div>";
+            currentTab = 0;
         } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
             output += `<div id="titles">` +
                 makeTabHeader(0, "In Names", ret_others[1]) +
