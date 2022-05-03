@@ -4275,5 +4275,8 @@ match name {
     "llvm.xcore.getid" => "__builtin_getid",
     "llvm.xcore.getps" => "__builtin_getps",
     "llvm.xcore.setps" => "__builtin_setps",
-    _ => unimplemented!("***** unsupported LLVM intrinsic {}", name),
+    _ => {
+        println!("***** unsupported LLVM intrinsic {}", name);
+        ""
+    },
 }

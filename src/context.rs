@@ -35,6 +35,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
+    pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
 
@@ -184,6 +185,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
+            intrinsics: RefCell::new(FxHashMap::default()),
 
             tls_model,
 
@@ -315,8 +317,16 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance);
-        let func = self.rvalue_as_function(func);
+        let func_name = self.tcx.symbol_name(instance).name;
+
+        let func =
+            if self.intrinsics.borrow().contains_key(func_name) {
+                self.intrinsics.borrow()[func_name].clone()
+            }
+            else {
+                let func = get_fn(self, instance);
+                self.rvalue_as_function(func)
+            };
         let ptr = func.get_address(None);
 
         // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
