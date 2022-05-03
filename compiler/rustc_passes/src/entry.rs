@@ -1,8 +1,7 @@
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, ImplItem, Item, ItemKind, Node, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{Item, ItemKind, Node, CRATE_HIR_ID};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::config::{CrateType, EntryFnType};
@@ -25,25 +24,6 @@ struct EntryContext<'tcx> {
     non_main_fns: Vec<Span>,
 }
 
-impl<'tcx> ItemLikeVisitor<'tcx> for EntryContext<'tcx> {
-    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        let at_root = self.tcx.opt_local_parent(item.def_id) == Some(CRATE_DEF_ID);
-        find_item(item, self, at_root);
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem<'tcx>) {
-        // Entry fn is never a trait item.
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem<'tcx>) {
-        // Entry fn is never a trait item.
-    }
-
-    fn visit_foreign_item(&mut self, _: &'tcx ForeignItem<'tcx>) {
-        // Entry fn is never a foreign item.
-    }
-}
-
 fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let any_exe = tcx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
     if !any_exe {
@@ -59,7 +39,10 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let mut ctxt =
         EntryContext { tcx, attr_main_fn: None, start_fn: None, non_main_fns: Vec::new() };
 
-    tcx.hir().visit_all_item_likes(&mut ctxt);
+    for id in tcx.hir().items() {
+        let item = tcx.hir().item(id);
+        find_item(item, &mut ctxt);
+    }
 
     configure_main(tcx, &ctxt)
 }
@@ -89,7 +72,9 @@ fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
         .emit();
 }
 
-fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_>, at_root: bool) {
+fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_>) {
+    let at_root = ctxt.tcx.opt_local_parent(item.def_id) == Some(CRATE_DEF_ID);
+
     match entry_point_type(ctxt, item, at_root) {
         EntryPointType::None => (),
         _ if !matches!(item.kind, ItemKind::Fn(..)) => {
