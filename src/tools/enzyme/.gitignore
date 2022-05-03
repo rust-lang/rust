@@ -1,0 +1,5 @@
+*.swp
+*.swo
+*.out
+build
+.vscode
