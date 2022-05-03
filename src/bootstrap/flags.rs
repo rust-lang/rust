@@ -141,7 +141,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Setup {
-        paths: Vec<PathBuf>,
+        path: Option<PathBuf>,
     },
 }
 
@@ -543,7 +543,7 @@ Arguments:
             Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install => {}
         };
         // Get any optional paths which occur after the subcommand
-        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let verbose = matches.opt_present("verbose");
 
