@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lint_allowed;
 use itertools::{izip, Itertools};
 use rustc_ast::{walk_list, Label, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -33,6 +34,9 @@ declare_clippy_lint! {
     /// and the assigned variables are also only in recursion, it is useless.
     ///
     /// ### Known problems
+    /// Too many code paths in the linting code are currently untested and prone to produce false
+    /// positives or are prone to have performance implications.
+    ///
     /// In some cases, this would not catch all useless arguments.
     ///
     /// ```rust
@@ -85,7 +89,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub ONLY_USED_IN_RECURSION,
-    complexity,
+    nursery,
     "arguments that is only used in recursion can be removed"
 }
 declare_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION]);
@@ -100,6 +104,9 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         _: Span,
         id: HirId,
     ) {
+        if is_lint_allowed(cx, ONLY_USED_IN_RECURSION, id) {
+            return;
+        }
         if let FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) = kind {
             let def_id = id.owner.to_def_id();
             let data = cx.tcx.def_path(def_id).data;
