@@ -257,6 +257,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::TraitRef(..)
                 | hir::Node::Pat(..)
                 | hir::Node::PatField(..)
+                | hir::Node::ExprField(..)
                 | hir::Node::Arm(..)
                 | hir::Node::Local(..)
                 | hir::Node::Ctor(..)

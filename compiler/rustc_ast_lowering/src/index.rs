@@ -224,6 +224,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
+        if let ExprKind::Struct(_, fields, _) = expr.kind {
+            for field in fields {
+                self.insert(field.span, field.hir_id, Node::ExprField(field));
+            }
+        }
 
         self.with_parent(expr.hir_id, |this| {
             intravisit::walk_expr(this, expr);

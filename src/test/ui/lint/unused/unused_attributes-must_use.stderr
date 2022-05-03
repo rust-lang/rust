@@ -106,6 +106,12 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a pattern field
+  --> $DIR/unused_attributes-must_use.rs:129:28
+   |
+LL |     let s = PatternField { #[must_use]  foo: 123 };
+   |                            ^^^^^^^^^^^
+
+error: `#[must_use]` has no effect when applied to a pattern field
   --> $DIR/unused_attributes-must_use.rs:130:24
    |
 LL |     let PatternField { #[must_use] foo } = s;
@@ -177,5 +183,5 @@ error: unused return value of `Use::get_four` that must be used
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^^
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 

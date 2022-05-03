@@ -3332,6 +3332,7 @@ pub enum Node<'hir> {
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr<'hir>),
+    ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment<'hir>),
     Ty(&'hir Ty<'hir>),
@@ -3390,6 +3391,7 @@ impl<'hir> Node<'hir> {
             | Node::Ctor(..)
             | Node::Pat(..)
             | Node::PatField(..)
+            | Node::ExprField(..)
             | Node::Arm(..)
             | Node::Local(..)
             | Node::Crate(..)
