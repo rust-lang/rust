@@ -613,7 +613,6 @@ public:
 #endif
     {
       Value *res = CI->getArgOperand(i);
-
       if (truei >= FT->getNumParams()) {
         if (!isa<MetadataAsValue>(res) &&
             (mode == DerivativeMode::ReverseModeGradient ||
