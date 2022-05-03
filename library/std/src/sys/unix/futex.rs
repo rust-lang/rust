@@ -33,8 +33,6 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
             return true;
         }
 
-        // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
-        // absolute time rather than a relative time.
         let r = unsafe {
             cfg_if::cfg_if! {
                 if #[cfg(target_os = "freebsd")] {
@@ -56,7 +54,9 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                         crate::ptr::invalid_mut(umtx_timeout_size),
                         umtx_timeout_ptr as *mut _,
                     )
-                } else {
+                } else if #[cfg(any(target_os = "linux", target_os = "android"))] {
+                    // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
+                    // absolute time rather than a relative time.
                     libc::syscall(
                         libc::SYS_futex,
                         futex as *const AtomicU32,
@@ -66,6 +66,8 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                         null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
                         !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
                     )
+                } else {
+                    compile_error!("unknown target_os");
                 }
             }
         };
