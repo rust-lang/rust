@@ -58,10 +58,28 @@ impl NonConstExpr {
 
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
-    for id in tcx.hir_module_items(module_def_id).items() {
+    let module = tcx.hir_module_items(module_def_id);
+
+    for id in module.items() {
+        vis.visit_item(tcx.hir().item(id));
         check_item(tcx, id);
     }
+
+    for id in module.trait_items() {
+        vis.visit_trait_item(tcx.hir().trait_item(id));
+    }
+
+    for id in module.impl_items() {
+        vis.visit_impl_item(tcx.hir().impl_item(id));
+    }
+
+    for id in module.foreign_items() {
+        vis.visit_foreign_item(tcx.hir().foreign_item(id));
+    }
+
+    // for id in tcx.hir_module_items(module_def_id).items() {
+    //     check_item(tcx, id);
+    // }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
