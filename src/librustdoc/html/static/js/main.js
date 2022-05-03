@@ -57,11 +57,20 @@ function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
 
+function hideMain() {
+    addClass(document.getElementById(MAIN_ID), "hidden");
+}
+
+function showMain() {
+    removeClass(document.getElementById(MAIN_ID), "hidden");
+}
+
 (function () {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
     window.searchIndexJS = resourcePath("search-index", ".js");
+    window.settingsJS = resourcePath("settings", ".js");
     const sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {
@@ -104,6 +113,9 @@ function getVirtualKey(ev) {
 const THEME_PICKER_ELEMENT_ID = "theme-picker";
 const THEMES_ELEMENT_ID = "theme-choices";
 const MAIN_ID = "main-content";
+const SETTINGS_BUTTON_ID = "settings-menu";
+const ALTERNATIVE_DISPLAY_ID = "alternative-display";
+const NOT_DISPLAYED_ID = "not-displayed";
 
 function getThemesElement() {
     return document.getElementById(THEMES_ELEMENT_ID);
@@ -111,6 +123,10 @@ function getThemesElement() {
 
 function getThemePickerElement() {
     return document.getElementById(THEME_PICKER_ELEMENT_ID);
+}
+
+function getSettingsButton() {
+    return document.getElementById(SETTINGS_BUTTON_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -135,6 +151,10 @@ function hideThemeButtonState() {
     themePicker.style.borderBottomRightRadius = "3px";
     themePicker.style.borderBottomLeftRadius = "3px";
 }
+
+window.hideSettings = function() {
+    // Does nothing by default.
+};
 
 // Set up the theme picker list.
 (function () {
@@ -182,14 +202,120 @@ function hideThemeButtonState() {
     });
 }());
 
+/**
+ * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
+ * doesn't have a parent node.
+ *
+ * @param {HTMLElement} newNode
+ * @param {HTMLElement} referenceNode
+ */
+function insertAfter(newNode, referenceNode) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
+
+/**
+ * This function creates a new `<section>` with the given `id` and `classes` if it doesn't already
+ * exist.
+ *
+ * More information about this in `switchDisplayedElement` documentation.
+ *
+ * @param {string} id
+ * @param {string} classes
+ */
+function getOrCreateSection(id, classes) {
+    let el = document.getElementById(id);
+
+    if (!el) {
+        el = document.createElement("section");
+        el.id = id;
+        el.className = classes;
+        insertAfter(el, document.getElementById(MAIN_ID));
+    }
+    return el;
+}
+
+/**
+ * Returns the `<section>` element which contains the displayed element.
+ *
+ * @return {HTMLElement}
+ */
+function getAlternativeDisplayElem() {
+    return getOrCreateSection(ALTERNATIVE_DISPLAY_ID, "content hidden");
+}
+
+/**
+ * Returns the `<section>` element which contains the not-displayed elements.
+ *
+ * @return {HTMLElement}
+ */
+function getNotDisplayedElem() {
+    return getOrCreateSection(NOT_DISPLAYED_ID, "hidden");
+}
+
+/**
+ * To nicely switch between displayed "extra" elements (such as search results or settings menu)
+ * and to alternate between the displayed and not displayed elements, we hold them in two different
+ * `<section>` elements. They work in pair: one holds the hidden elements while the other
+ * contains the displayed element (there can be only one at the same time!). So basically, we switch
+ * elements between the two `<section>` elements.
+ *
+ * @param {HTMLElement} elemToDisplay
+ */
+function switchDisplayedElement(elemToDisplay) {
+    const el = getAlternativeDisplayElem();
+
+    if (el.children.length > 0) {
+        getNotDisplayedElem().appendChild(el.firstElementChild);
+    }
+    if (elemToDisplay === null) {
+        addClass(el, "hidden");
+        showMain();
+        return;
+    }
+    el.appendChild(elemToDisplay);
+    hideMain();
+    removeClass(el, "hidden");
+}
+
+function browserSupportsHistoryApi() {
+    return window.history && typeof window.history.pushState === "function";
+}
+
+// eslint-disable-next-line no-unused-vars
+function loadCss(cssFileName) {
+    const link = document.createElement("link");
+    link.href = resourcePath(cssFileName, ".css");
+    link.type = "text/css";
+    link.rel = "stylesheet";
+    document.getElementsByTagName("head")[0].appendChild(link);
+}
+
 (function() {
     "use strict";
+
+    function loadScript(url) {
+        const script = document.createElement('script');
+        script.src = url;
+        document.head.append(script);
+    }
+
+
+    getSettingsButton().onclick = function(event) {
+        event.preventDefault();
+        loadScript(window.settingsJS);
+    };
 
     window.searchState = {
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
         outputElement: function() {
-            return document.getElementById("search");
+            let el = document.getElementById("search");
+            if (!el) {
+                el = document.createElement("section");
+                el.id = "search";
+                getNotDisplayedElem().appendChild(el);
+            }
+            return el;
         },
         title: document.title,
         titleBeforeSearch: document.title,
@@ -208,6 +334,9 @@ function hideThemeButtonState() {
                 searchState.timeout = null;
             }
         },
+        isDisplayed: function() {
+            return searchState.outputElement().parentElement.id === ALTERNATIVE_DISPLAY_ID;
+        },
         // Sets the focus on the search bar at the top of the page
         focus: function() {
             searchState.input.focus();
@@ -220,20 +349,15 @@ function hideThemeButtonState() {
             if (search === null || typeof search === 'undefined') {
                 search = searchState.outputElement();
             }
-            addClass(main, "hidden");
-            removeClass(search, "hidden");
+            switchDisplayedElement(search);
             searchState.mouseMovedAfterSearch = false;
             document.title = searchState.title;
         },
-        hideResults: function(search) {
-            if (search === null || typeof search === 'undefined') {
-                search = searchState.outputElement();
-            }
-            addClass(search, "hidden");
-            removeClass(main, "hidden");
+        hideResults: function() {
+            switchDisplayedElement(null);
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
-            if (searchState.browserSupportsHistoryApi()) {
+            if (browserSupportsHistoryApi()) {
                 history.replaceState(null, window.currentCrate + " - Rust",
                     getNakedUrl() + window.location.hash);
             }
@@ -248,20 +372,11 @@ function hideThemeButtonState() {
                 });
             return params;
         },
-        browserSupportsHistoryApi: function() {
-            return window.history && typeof window.history.pushState === "function";
-        },
         setup: function() {
             const search_input = searchState.input;
             if (!searchState.input) {
                 return;
             }
-            function loadScript(url) {
-                const script = document.createElement('script');
-                script.src = url;
-                document.head.append(script);
-            }
-
             let searchLoaded = false;
             function loadSearch() {
                 if (!searchLoaded) {
@@ -303,23 +418,20 @@ function hideThemeButtonState() {
     }
 
     const toggleAllDocsId = "toggle-all-docs";
-    const main = document.getElementById(MAIN_ID);
     let savedHash = "";
 
     function handleHashes(ev) {
-        let elem;
-        const search = searchState.outputElement();
-        if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+        if (ev !== null && searchState.isDisplayed() && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
-            searchState.hideResults(search);
+            switchDisplayedElement(null);
             const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
-            if (searchState.browserSupportsHistoryApi()) {
+            if (browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
                 history.replaceState(null, "",
                     getNakedUrl() + window.location.search + "#" + hash);
             }
-            elem = document.getElementById(hash);
+            const elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
@@ -389,14 +501,17 @@ function hideThemeButtonState() {
     }
 
     function handleEscape(ev) {
+        searchState.clearInputTimeout();
         const help = getHelpElement(false);
-        const search = searchState.outputElement();
         if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (search && !hasClass(search, "hidden")) {
-            searchState.clearInputTimeout();
+        } else {
+            switchDisplayedElement(null);
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(null, window.currentCrate + " - Rust",
+                    getNakedUrl() + window.location.hash);
+            }
             ev.preventDefault();
-            searchState.hideResults(search);
         }
         searchState.defocus();
         hideThemeButtonState();
@@ -731,10 +846,6 @@ function hideThemeButtonState() {
             innerToggle.title = "expand all docs";
         }
         innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
-    }
-
-    function insertAfter(newNode, referenceNode) {
-        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
 
     (function() {

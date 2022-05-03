@@ -1,0 +1,67 @@
+// This test ensures that the settings menu display is working as expected.
+goto: file://|DOC_PATH|/test_docs/index.html
+// First, we check that the settings page doesn't exist.
+assert-false: "#settings"
+// We now click on the settings button.
+click: "#settings-menu"
+wait-for: "#settings"
+assert: "#main-content.hidden"
+assert-css: ("#settings", {"display": "block"})
+// Let's close it by clicking on the same button.
+click: "#settings-menu"
+assert-false: "#alternative-display #settings"
+assert: "#not-displayed #settings"
+assert: "#main-content:not(.hidden)"
+
+// Let's open and then close it again with the "close settings" button.
+click: "#settings-menu"
+wait-for: "#alternative-display #settings"
+assert: "#main-content.hidden"
+click: "#back"
+wait-for: "#not-displayed #settings"
+assert: "#main-content:not(.hidden)"
+
+// Let's check that pressing "ESCAPE" is closing it.
+click: "#settings-menu"
+wait-for: "#alternative-display #settings"
+press-key: "Escape"
+wait-for: "#not-displayed #settings"
+assert: "#main-content:not(.hidden)"
+
+// Let's click on it when the search results are displayed.
+focus: ".search-input"
+write: "test"
+wait-for: "#alternative-display #search"
+click: "#settings-menu"
+wait-for: "#alternative-display #settings"
+assert: "#not-displayed #search"
+assert: "#main-content.hidden"
+
+// Now let's check the content of the settings menu.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+click: "#settings-menu"
+wait-for: "#settings"
+
+// We check that the "Use system theme" is disabled.
+assert-property: ("#use-system-theme", {"checked": "false"})
+assert: "//*[@class='setting-line']/*[text()='Use system theme']"
+// Meaning that only the "theme" menu is showing up.
+assert: ".setting-line:not(.hidden) #theme"
+assert: ".setting-line.hidden #preferred-dark-theme"
+assert: ".setting-line.hidden #preferred-light-theme"
+
+// We check that the correct theme is selected.
+assert-property: ("#theme .choices #theme-dark", {"checked": "true"})
+
+// We now switch the display.
+click: "#use-system-theme"
+// Wait for the hidden element to show up.
+wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
+assert: ".setting-line:not(.hidden) #preferred-light-theme"
+// Check that the theme picking is hidden.
+assert: ".setting-line.hidden #theme"
+
+// We check their text as well.
+assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
+assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
