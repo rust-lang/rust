@@ -652,18 +652,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn load(&mut self, _ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        // TODO(antoyo): use ty.
+    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
         // TODO(antoyo): handle align of the load instruction.
+        let ptr = self.context.new_cast(None, ptr, pointee_ty.make_pointer());
         let deref = ptr.dereference(None).to_rvalue();
-        let value_type = deref.get_type();
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let loaded_value = function.new_local(None, value_type, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
+        let loaded_value = function.new_local(None, pointee_ty, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
         block.add_assignment(None, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -715,7 +714,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Ref(place.llval, Some(llextra), place.align)
             }
             else if place.layout.is_gcc_immediate() {
-                let load = self.load(place.llval.get_type(), place.llval, place.align);
+                let load = self.load(
+                    place.layout.gcc_type(self, false),
+                    place.llval,
+                    place.align,
+                );
                 if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
@@ -727,7 +730,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
-                    let load = self.load(llptr.get_type(), llptr, align);
+                    let llty = place.layout.scalar_pair_element_gcc_type(self, i, false);
+                    let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
                 };
@@ -980,7 +984,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn memmove(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src.get_type(), src, src_align);
+            let val = self.load(src.get_type().get_pointee().expect("get_pointee"), src, src_align);
             let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
             self.store_with_flags(val, ptr, dst_align, flags);
             return;
