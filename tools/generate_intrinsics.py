@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sys
@@ -35,6 +36,10 @@ def clone_repository(repo_name, path, repo_url, sub_path=None):
         run_command(["git", "checkout"], cwd=path)
 
 
+def append_intrinsic(array, intrinsic_name, translation):
+    array.append((intrinsic_name, translation))
+
+
 def extract_instrinsics(intrinsics, file):
     print("Extracting intrinsics from `{}`...".format(file))
     with open(file, "r", encoding="utf8") as f:
@@ -70,25 +75,85 @@ def extract_instrinsics(intrinsics, file):
                 if current_arch not in intrinsics:
                     intrinsics[current_arch] = []
                 for entry in entries:
-                    intrinsics[current_arch].append('"{}" => "{}",'.format(intrinsic, entry))
+                    append_intrinsic(intrinsics[current_arch], intrinsic, entry)
             continue
         pos += 1
         continue
     print("Done!")
 
 
-def update_intrinsics(llvm_path):
+def extract_instrinsics_from_llvm(llvm_path, intrinsics):
     files = []
     intrinsics_path = os.path.join(llvm_path, "llvm/include/llvm/IR")
     for (dirpath, dirnames, filenames) in walk(intrinsics_path):
         files.extend([os.path.join(intrinsics_path, f) for f in filenames if f.endswith(".td")])
 
-    intrinsics = {}
     for file in files:
         extract_instrinsics(intrinsics, file)
 
+
+def append_translation(json_data, p, array):
+    it = json_data["index"][p]
+    content = it["docs"].split('`')
+    if len(content) != 5:
+        return
+    append_intrinsic(array, content[1], content[3])
+
+
+def extract_instrinsics_from_llvmint(llvmint, intrinsics):
+    archs = [
+        "AMDGPU",
+        "aarch64",
+        "arm",
+        "cuda",
+        "hexagon",
+        "mips",
+        "nvvm",
+        "ppc",
+        "ptx",
+        "x86",
+        "xcore",
+    ]
+
+    json_file = os.path.join(llvmint, "target/doc/llvmint.json")
+    if not os.path.exists(json_file):
+        # We need to regenerate the documentation!
+        run_command(
+            ["cargo", "rustdoc", "--", "-Zunstable-options", "--output-format", "json"],
+            cwd=llvmint,
+        )
+    with open(json_file, "r", encoding="utf8") as f:
+        json_data = json.loads(f.read())
+    for p in json_data["paths"]:
+        it = json_data["paths"][p]
+        if it["crate_id"] != 0:
+            # This is from an external crate.
+            continue
+        if it["kind"] != "function":
+            # We're only looking for functions.
+            continue
+        # if len(it["path"]) == 2:
+        #   # This is a "general" intrinsic, not bound to a specific arch.
+        #   append_translation(json_data, p, general)
+        #   continue
+        if len(it["path"]) != 3 or it["path"][1] not in archs:
+            continue
+        arch = it["path"][1]
+        if arch not in intrinsics:
+            intrinsics[arch] = []
+        append_translation(json_data, p, intrinsics[arch])
+
+
+def update_intrinsics(llvm_path, llvmint):
+    intrinsics = {}
+    all_intrinsics = {}
+
+    extract_instrinsics_from_llvm(llvm_path, intrinsics)
+    extract_instrinsics_from_llvmint(llvmint, intrinsics)
+
     archs = [arch for arch in intrinsics]
     archs.sort()
+
     output_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "../src/intrinsic/archs.rs",
@@ -103,8 +168,16 @@ def update_intrinsics(llvm_path):
                 continue
             intrinsics[arch].sort()
             out.write('    // {}\n'.format(arch))
-            out.write('\n'.join(['    {}'.format(x) for x in intrinsics[arch]]))
-            out.write('\n')
+            for entry in intrinsics[arch]:
+                if entry[0] in all_intrinsics:
+                    if all_intrinsics[entry[0]] == entry[1]:
+                        # This is a "full" duplicate, both the LLVM instruction and the GCC
+                        # translation are the same.
+                        continue
+                    out.write('    // [DUPLICATE]: "{}" => "{}",\n'.format(entry[0], entry[1]))
+                else:
+                    out.write('    "{}" => "{}",\n'.format(entry[0], entry[1]))
+                    all_intrinsics[entry[0]] = entry[1]
         out.write('    _ => unimplemented!("***** unsupported LLVM intrinsic {}", name),\n')
         out.write("}\n")
     print("Done!")
@@ -115,14 +188,24 @@ def main():
         os.path.dirname(os.path.abspath(__file__)),
         "llvm-project",
     )
+    llvmint_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "llvmint",
+    )
 
     # First, we clone the LLVM repository if it's not already here.
     clone_repository(
         "llvm-project",
         llvm_path,
         "https://github.com/llvm/llvm-project",
-        sub_path="llvm/include/llvm/IR")
-    update_intrinsics(llvm_path)
+        sub_path="llvm/include/llvm/IR",
+    )
+    clone_repository(
+        "llvmint",
+        llvmint_path,
+        "https://github.com/GuillaumeGomez/llvmint",
+    )
+    update_intrinsics(llvm_path, llvmint_path)
 
 
 if __name__ == "__main__":
