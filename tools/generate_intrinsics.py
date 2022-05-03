@@ -5,11 +5,6 @@ import subprocess
 from os import walk
 
 
-LLVM_PATH = llvm_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "llvm-project",
-)
-
 def run_command(command, cwd=None):
     p = subprocess.Popen(command, cwd=cwd)
     if p.wait() != 0:
@@ -17,21 +12,27 @@ def run_command(command, cwd=None):
         sys.exit(1)
 
 
-def clone_llvm_repository():
-    if os.path.exists(LLVM_PATH):
+def clone_repository(repo_name, path, repo_url, sub_path=None):
+    if os.path.exists(path):
         while True:
-            choice = input("There is already a llvm-project folder, do you want to update it? [y/N]")
+            choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(repo_name))
             if choice == "" or choice.lower() == "n":
                 print("Skipping repository update.")
                 return
             elif choice.lower() == "y":
                 print("Updating repository...")
-                run_command(["git", "pull", "origin"], cwd="llvm-project")
+                run_command(["git", "pull", "origin"], cwd=path)
                 return
             else:
                 print("Didn't understand answer...")
-    print("Cloning LLVM repository...")
-    run_command(["git", "clone", "https://github.com/llvm/llvm-project", "--depth", "1", LLVM_PATH])
+    print("Cloning {} repository...".format(repo_name))
+    if sub_path is None:
+        run_command(["git", "clone", repo_url, "--depth", "1", path])
+    else:
+        run_command(["git", "clone", repo_url, "--filter=tree:0", "--no-checkout", path])
+        run_command(["git", "sparse-checkout", "init"], cwd=path)
+        run_command(["git", "sparse-checkout", "set", "add", sub_path], cwd=path)
+        run_command(["git", "checkout"], cwd=path)
 
 
 def extract_instrinsics(intrinsics, file):
@@ -76,9 +77,9 @@ def extract_instrinsics(intrinsics, file):
     print("Done!")
 
 
-def update_intrinsics():
+def update_intrinsics(llvm_path):
     files = []
-    intrinsics_path = os.path.join(LLVM_PATH, "llvm/include/llvm/IR")
+    intrinsics_path = os.path.join(llvm_path, "llvm/include/llvm/IR")
     for (dirpath, dirnames, filenames) in walk(intrinsics_path):
         files.extend([os.path.join(intrinsics_path, f) for f in filenames if f.endswith(".td")])
 
@@ -110,9 +111,18 @@ def update_intrinsics():
 
 
 def main():
+    llvm_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "llvm-project",
+    )
+
     # First, we clone the LLVM repository if it's not already here.
-    clone_llvm_repository()
-    update_intrinsics()
+    clone_repository(
+        "llvm-project",
+        llvm_path,
+        "https://github.com/llvm/llvm-project",
+        sub_path="llvm/include/llvm/IR")
+    update_intrinsics(llvm_path)
 
 
 if __name__ == "__main__":
