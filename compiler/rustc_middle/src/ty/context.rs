@@ -1470,21 +1470,28 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Create a new definition within the incr. comp. engine.
     pub fn create_def(self, parent: LocalDefId, data: hir::definitions::DefPathData) -> LocalDefId {
-        // The following call has the side effect of modifying the tables inside `definitions`.
-        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
-        // decode the on-disk cache.
-        let def_id = self.definitions.write().create_def(parent, data);
-
+        // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
+        // Depending on the forever-red node will tell the graph that the calling query
+        // needs to be re-evaluated.
         use rustc_query_system::dep_graph::DepNodeIndex;
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
+        // The following call has the side effect of modifying the tables inside `definitions`.
+        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
+        // decode the on-disk cache.
+        //
         // Any LocalDefId which is used within queries, either as key or result, either:
         // - has been created before the construction of the TyCtxt;
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        def_id
+        //
+        // This call also writes to the value of `source_span` and `expn_that_defined` queries.
+        // This is fine because:
+        // - those queries are `eval_always` so we won't miss their result changing;
+        // - this write will have happened before these queries are called.
+        self.definitions.write().create_def(parent, data)
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
