@@ -1,6 +1,7 @@
 /* eslint-env es6 */
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
+/* eslint prefer-arrow-callback: "error" */
 
 // From rust:
 /* global search, sourcesIndex */
@@ -8,7 +9,7 @@
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
-(function() {
+(function () {
 
 function getCurrentFilePath() {
     const parts = window.location.pathname.split("/");
@@ -32,7 +33,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 
     fullPath += elem["name"] + "/";
 
-    name.onclick = function() {
+    name.onclick = () => {
         if (hasClass(this, "expand")) {
             removeClass(this, "expand");
         } else {
@@ -134,7 +135,7 @@ function createSourceSidebar() {
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
-    Object.keys(sourcesIndex).forEach(function(key) {
+    Object.keys(sourcesIndex).forEach(key => {
         sourcesIndex[key].name = key;
         hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "",
                                       currentFile, hasFoundFile);
@@ -175,8 +176,8 @@ function highlightSourceLines(match) {
     if (x) {
         x.scrollIntoView();
     }
-    onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
-        onEachLazy(e.getElementsByTagName("span"), function(i_e) {
+    onEachLazy(document.getElementsByClassName("line-numbers"), e => {
+        onEachLazy(e.getElementsByTagName("span"), i_e => {
             removeClass(i_e, "line-highlighted");
         });
     });
@@ -189,10 +190,10 @@ function highlightSourceLines(match) {
     }
 }
 
-const handleSourceHighlight = (function() {
+const handleSourceHighlight = (function () {
     let prev_line_id = 0;
 
-    const set_fragment = function(name) {
+    const set_fragment = name => {
         const x = window.scrollX,
             y = window.scrollY;
         if (browserSupportsHistoryApi()) {
@@ -205,7 +206,7 @@ const handleSourceHighlight = (function() {
         window.scrollTo(x, y);
     };
 
-    return function(ev) {
+    return ev => {
         let cur_line_id = parseInt(ev.target.id, 10);
         ev.preventDefault();
 
@@ -226,14 +227,14 @@ const handleSourceHighlight = (function() {
     };
 }());
 
-window.addEventListener("hashchange", function() {
+window.addEventListener("hashchange", () => {
     const match = window.location.hash.match(lineNumbersRegex);
     if (match) {
         return highlightSourceLines(match);
     }
 });
 
-onEachLazy(document.getElementsByClassName("line-numbers"), function(el) {
+onEachLazy(document.getElementsByClassName("line-numbers"), el => {
     el.addEventListener("click", handleSourceHighlight);
 });
 
