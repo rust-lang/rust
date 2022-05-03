@@ -696,6 +696,9 @@ struct UseError<'a> {
     instead: bool,
     /// Extra free-form suggestion.
     suggestion: Option<(Span, &'static str, String, Applicability)>,
+    /// Path `Segment`s at the place of use that failed. Used for accurate suggestion after telling
+    /// the user to import the item directly.
+    path: Vec<Segment>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
