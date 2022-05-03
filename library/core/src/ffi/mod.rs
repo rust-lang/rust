@@ -179,7 +179,7 @@ mod c_long_definition {
             pub type c_ulong = u64;
             pub type NonZero_c_ulong = crate::num::NonZeroU64;
         } else {
-            // The minimal size of `long` in c standard are 32 bits
+            // The minimal size of `long` in the C standard is 32 bits
             pub type c_long = i32;
             pub type NonZero_c_long = crate::num::NonZeroI32;
             pub type c_ulong = u32;
