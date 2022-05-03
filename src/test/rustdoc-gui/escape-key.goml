@@ -4,17 +4,20 @@ goto: file://|DOC_PATH|/test_docs/index.html
 // First, we check that the search results are hidden when the Escape key is pressed.
 write: (".search-input", "test")
 wait-for: "#search h1" // The search element is empty before the first search 
-assert-attribute: ("#search", {"class": "content"})
+// Check that the currently displayed element is search.
+wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})
 assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)
 press-key: "Escape"
-assert-attribute: ("#search", {"class": "content hidden"})
+// Checks that search is no longer in the displayed content.
+wait-for: "#not-displayed #search"
+assert-false: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content"})
 assert-document-property: ({"URL": "index.html"}, [ENDS_WITH])
 
 // Check that focusing the search input brings back the search results
 focus: ".search-input"
-assert-attribute: ("#search", {"class": "content"})
+wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})
 assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)
 
@@ -24,8 +27,8 @@ click: "#help-button"
 assert-document-property: ({"URL": "index.html?search=test"}, [ENDS_WITH])
 assert-attribute: ("#help", {"class": ""})
 press-key: "Escape"
+wait-for: "#alternative-display #search"
 assert-attribute: ("#help", {"class": "hidden"})
-assert-attribute: ("#search", {"class": "content"})
 assert-attribute: ("#main-content", {"class": "content hidden"})
 assert-document-property: ({"URL": "index.html?search=test"}, [ENDS_WITH])
 
@@ -37,5 +40,6 @@ assert-false: ".search-input:focus"
 assert: "#results a:focus"
 press-key: "Escape"
 assert-attribute: ("#help", {"class": "hidden"})
-assert-attribute: ("#search", {"class": "content hidden"})
+wait-for: "#not-displayed #search"
+assert-false: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content"})

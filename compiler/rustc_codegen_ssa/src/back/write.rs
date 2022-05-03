@@ -889,7 +889,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
 fn execute_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    mut module: lto::LtoModuleCodegen<B>,
+    module: lto::LtoModuleCodegen<B>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let module = unsafe { module.optimize(cgcx)? };

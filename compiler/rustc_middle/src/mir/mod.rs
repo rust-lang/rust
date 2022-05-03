@@ -2561,15 +2561,11 @@ pub enum Rvalue<'tcx> {
     UnaryOp(UnOp, Operand<'tcx>),
 
     /// Computes the discriminant of the place, returning it as an integer of type
-    /// [`discriminant_ty`].
+    /// [`discriminant_ty`]. Returns zero for types without discriminant.
     ///
     /// The validity requirements for the underlying value are undecided for this rvalue, see
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
     /// variant index; use [`discriminant_for_variant`] to convert.
-    ///
-    /// For types defined in the source code as enums, this is well behaved. This is also well
-    /// formed for other types, but yields no particular value - there is no reason it couldn't be
-    /// defined to yield eg zero though.
     ///
     /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095

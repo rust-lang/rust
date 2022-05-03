@@ -2,10 +2,13 @@
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
 // Local js definitions:
-/* global getSettingValue, getVirtualKey, onEachLazy, updateLocalStorage, updateSystemTheme */
-/* global addClass, removeClass */
+/* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme, loadCss */
+/* global addClass, removeClass, onEach, onEachLazy, NOT_DISPLAYED_ID */
+/* global MAIN_ID, getVar, getSettingsButton, switchDisplayedElement, getNotDisplayedElem */
 
 (function () {
+    const isSettingsPage = window.location.pathname.endsWith("/settings.html");
+
     function changeSetting(settingName, value) {
         updateLocalStorage(settingName, value);
 
@@ -55,9 +58,9 @@
         }
     }
 
-    function setEvents() {
+    function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(document.getElementsByClassName("slider"), function(elem) {
+        onEachLazy(settingsElement.getElementsByClassName("slider"), function(elem) {
             const toggle = elem.previousElementSibling;
             const settingId = toggle.id;
             const settingValue = getSettingValue(settingId);
@@ -70,7 +73,7 @@
             toggle.onkeyup = handleKey;
             toggle.onkeyrelease = handleKey;
         });
-        onEachLazy(document.getElementsByClassName("select-wrapper"), function(elem) {
+        onEachLazy(settingsElement.getElementsByClassName("select-wrapper"), function(elem) {
             const select = elem.getElementsByTagName("select")[0];
             const settingId = select.id;
             const settingValue = getSettingValue(settingId);
@@ -81,7 +84,7 @@
                 changeSetting(this.id, this.value);
             };
         });
-        onEachLazy(document.querySelectorAll("input[type=\"radio\"]"), function(elem) {
+        onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), function(elem) {
             const settingId = elem.name;
             const settingValue = getSettingValue(settingId);
             if (settingValue !== null && settingValue !== "null") {
@@ -91,10 +94,182 @@
                 changeSetting(ev.target.name, ev.target.value);
             });
         });
-        document.getElementById("back").addEventListener("click", function() {
-            history.back();
-        });
     }
 
-    window.addEventListener("DOMContentLoaded", setEvents);
+    /**
+     * This function builds the sections inside the "settings page". It takes a `settings` list
+     * as argument which describes each setting and how to render it. It returns a string
+     * representing the raw HTML.
+     *
+     * @param {Array<Object>} settings
+     *
+     * @return {string}
+     */
+    function buildSettingsPageSections(settings) {
+        let output = "";
+
+        for (const setting of settings) {
+            output += `<div class="setting-line">`;
+            const js_data_name = setting["js_name"];
+            const setting_name = setting["name"];
+
+            if (setting["options"] !== undefined) {
+                // This is a select setting.
+                output += `<div class="radio-line" id="${js_data_name}">\
+                        <span class="setting-name">${setting_name}</span>\
+                        <div class="choices">`;
+                onEach(setting["options"], function(option) {
+                    const checked = option === setting["default"] ? " checked" : "";
+
+                    output += `<label for="${js_data_name}-${option}" class="choice">\
+                           <input type="radio" name="${js_data_name}" \
+                                id="${js_data_name}-${option}" value="${option}"${checked}>\
+                           ${option}\
+                         </label>`;
+                });
+                output += "</div></div>";
+            } else {
+                // This is a toggle.
+                const checked = setting["default"] === true ? " checked" : "";
+                output += `
+                    <label class="toggle">
+                        <input type="checkbox" id="${js_data_name}"${checked}>
+                        <span class="slider"></span>
+                    </label>
+                    <div>${setting_name}</div>`;
+            }
+            output += "</div>";
+        }
+        return output;
+    }
+
+    /**
+     * This function builds the "settings page" and returns the generated HTML element.
+     *
+     * @return {HTMLElement}
+     */
+    function buildSettingsPage() {
+        const themes = getVar("themes").split(",");
+        const settings = [
+            {
+                "name": "Use system theme",
+                "js_name": "use-system-theme",
+                "default": true,
+            },
+            {
+                "name": "Theme",
+                "js_name": "theme",
+                "default": "light",
+                "options": themes,
+            },
+            {
+                "name": "Preferred light theme",
+                "js_name": "preferred-light-theme",
+                "default": "light",
+                "options": themes,
+            },
+            {
+                "name": "Preferred dark theme",
+                "js_name": "preferred-dark-theme",
+                "default": "dark",
+                "options": themes,
+            },
+            {
+                "name": "Auto-hide item contents for large items",
+                "js_name": "auto-hide-large-items",
+                "default": true,
+            },
+            {
+                "name": "Auto-hide item methods' documentation",
+                "js_name": "auto-hide-method-docs",
+                "default": false,
+            },
+            {
+                "name": "Auto-hide trait implementation documentation",
+                "js_name": "auto-hide-trait-implementations",
+                "default": false,
+            },
+            {
+                "name": "Directly go to item in search if there is only one result",
+                "js_name": "go-to-only-result",
+                "default": false,
+            },
+            {
+                "name": "Show line numbers on code examples",
+                "js_name": "line-numbers",
+                "default": false,
+            },
+            {
+                "name": "Disable keyboard shortcuts",
+                "js_name": "disable-shortcuts",
+                "default": false,
+            },
+        ];
+
+        // First, we add the settings.css file.
+        loadCss("settings");
+
+        // Then we build the DOM.
+        const el = document.createElement("section");
+        el.id = "settings";
+        let innerHTML = `
+            <div class="main-heading">
+                <h1 class="fqn">
+                    <span class="in-band">Rustdoc settings</span>
+                </h1>
+                <span class="out-of-band">`;
+
+        if (isSettingsPage) {
+            innerHTML +=
+                `<a id="back" href="javascript:void(0)" onclick="history.back();">Back</a>`;
+        } else {
+            innerHTML +=
+                `<a id="back" href="javascript:void(0)" onclick="switchDisplayedElement(null);">\
+                    Back</a>`;
+        }
+        innerHTML += `</span>
+            </div>
+            <div class="settings">${buildSettingsPageSections(settings)}</div>`;
+
+        el.innerHTML = innerHTML;
+
+        if (isSettingsPage) {
+            document.getElementById(MAIN_ID).appendChild(el);
+        } else {
+            getNotDisplayedElem().appendChild(el);
+        }
+        return el;
+    }
+
+    const settingsMenu = buildSettingsPage();
+
+    if (isSettingsPage) {
+        // We replace the existing "onclick" callback to do nothing if clicked.
+        getSettingsButton().onclick = function(event) {
+            event.preventDefault();
+        };
+    } else {
+        // We replace the existing "onclick" callback.
+        const settingsButton = getSettingsButton();
+        settingsButton.onclick = function(event) {
+            event.preventDefault();
+            if (settingsMenu.parentElement.id === NOT_DISPLAYED_ID) {
+                switchDisplayedElement(settingsMenu);
+            } else {
+                window.hideSettings();
+            }
+        };
+        window.hideSettings = function() {
+            switchDisplayedElement(null);
+        };
+    }
+
+    // We now wait a bit for the web browser to end re-computing the DOM...
+    setTimeout(function() {
+        setEvents(settingsMenu);
+        // The setting menu is already displayed if we're on the settings page.
+        if (!isSettingsPage) {
+            switchDisplayedElement(settingsMenu);
+        }
+    }, 0);
 })();

@@ -6,9 +6,7 @@ use crate::llvm::{self, build_string, False, True};
 use crate::{llvm_util, LlvmCodegenBackend, ModuleLlvm};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
-use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig,
-};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, TargetMachineFactoryConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
@@ -353,7 +351,7 @@ fn fat_lto(
         }
     }
 
-    Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: serialized_bitcode })
+    Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: serialized_bitcode })
 }
 
 crate struct Linker<'a>(&'a mut llvm::Linker<'a>);
@@ -578,11 +576,11 @@ fn thin_lto(
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
-    module: &ModuleCodegen<ModuleLlvm>,
-    config: &ModuleConfig,
+    module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
     let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &*module.name);
+    let config = cgcx.config(module.kind);
 
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
@@ -726,7 +724,7 @@ impl Drop for ThinBuffer {
 }
 
 pub unsafe fn optimize_thin_module(
-    thin_module: &mut ThinModule<LlvmCodegenBackend>,
+    thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
@@ -743,7 +741,7 @@ pub unsafe fn optimize_thin_module(
     // that LLVM Context and Module.
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
     let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &diag_handler)? as *const _;
-    let module = ModuleCodegen {
+    let mut module = ModuleCodegen {
         module_llvm: ModuleLlvm { llmod_raw, llcx, tm },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
@@ -859,8 +857,7 @@ pub unsafe fn optimize_thin_module(
         // little differently.
         {
             info!("running thin lto passes over {}", module.name);
-            let config = cgcx.config(module.kind);
-            run_pass_manager(cgcx, &diag_handler, &module, config, true)?;
+            run_pass_manager(cgcx, &diag_handler, &mut module, true)?;
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }

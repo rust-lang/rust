@@ -17,8 +17,8 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, scrape_examples_help, settings, AllTypes,
-    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, AllTypes, LinkFromSrc, NameDoc,
+    StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -589,21 +589,18 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         page.root_path = "./";
 
         let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
-        let theme_names: Vec<String> = self
-            .shared
-            .style_files
-            .iter()
-            .map(StylePath::basename)
-            .collect::<Result<_, Error>>()?;
         let v = layout::render(
             &self.shared.layout,
             &page,
             sidebar,
-            settings(
-                self.shared.static_root_path.as_deref().unwrap_or("./"),
-                &self.shared.resource_suffix,
-                theme_names,
-            )?,
+            |buf: &mut Buffer| {
+                write!(
+                    buf,
+                    "<script defer src=\"{}settings{}.js\"></script>",
+                    page.static_root_path.unwrap_or(""),
+                    page.resource_suffix
+                )
+            },
             &self.shared.style_files,
         );
         self.shared.fs.write(settings_file, v)?;
