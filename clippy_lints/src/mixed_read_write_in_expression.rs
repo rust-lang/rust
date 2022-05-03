@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_READ_WRITE_IN_EXPRESSION,
-    suspicious,
+    restriction,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
