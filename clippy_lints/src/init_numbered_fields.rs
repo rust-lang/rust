@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -49,6 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                 && fields
                     .iter()
                     .all(|f| f.ident.as_str().as_bytes().iter().all(u8::is_ascii_digit))
+                && !matches!(cx.qpath_res(path, e.hir_id), Res::Def(DefKind::TyAlias, ..))
             {
                 let expr_spans = fields
                     .iter()
