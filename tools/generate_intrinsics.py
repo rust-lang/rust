@@ -144,12 +144,34 @@ def extract_instrinsics_from_llvmint(llvmint, intrinsics):
         append_translation(json_data, p, intrinsics[arch])
 
 
+def fill_intrinsics(intrinsics, from_intrinsics, all_intrinsics):
+    for arch in from_intrinsics:
+        if arch not in intrinsics:
+            intrinsics[arch] = []
+        for entry in from_intrinsics[arch]:
+            if entry[0] in all_intrinsics:
+                if all_intrinsics[entry[0]] == entry[1]:
+                    # This is a "full" duplicate, both the LLVM instruction and the GCC
+                    # translation are the same.
+                    continue
+                intrinsics[arch].append((entry[0], entry[1], True))
+            else:
+                intrinsics[arch].append((entry[0], entry[1], False))
+                all_intrinsics[entry[0]] = entry[1]
+
+
 def update_intrinsics(llvm_path, llvmint):
-    intrinsics = {}
+    intrinsics_llvm = {}
+    intrinsics_llvmint = {}
     all_intrinsics = {}
 
-    extract_instrinsics_from_llvm(llvm_path, intrinsics)
-    extract_instrinsics_from_llvmint(llvmint, intrinsics)
+    extract_instrinsics_from_llvm(llvm_path, intrinsics_llvm)
+    extract_instrinsics_from_llvmint(llvmint, intrinsics_llvmint)
+
+    intrinsics = {}
+    # We give priority to translations from LLVM over the ones from llvmint.
+    fill_intrinsics(intrinsics, intrinsics_llvm, all_intrinsics)
+    fill_intrinsics(intrinsics, intrinsics_llvmint, all_intrinsics)
 
     archs = [arch for arch in intrinsics]
     archs.sort()
@@ -166,18 +188,13 @@ def update_intrinsics(llvm_path, llvmint):
         for arch in archs:
             if len(intrinsics[arch]) == 0:
                 continue
-            intrinsics[arch].sort()
+            intrinsics[arch].sort(key=lambda x: (x[0], x[2]))
             out.write('    // {}\n'.format(arch))
             for entry in intrinsics[arch]:
-                if entry[0] in all_intrinsics:
-                    if all_intrinsics[entry[0]] == entry[1]:
-                        # This is a "full" duplicate, both the LLVM instruction and the GCC
-                        # translation are the same.
-                        continue
+                if entry[2] == True: # if it is a duplicate
                     out.write('    // [DUPLICATE]: "{}" => "{}",\n'.format(entry[0], entry[1]))
                 else:
                     out.write('    "{}" => "{}",\n'.format(entry[0], entry[1]))
-                    all_intrinsics[entry[0]] = entry[1]
         out.write('    _ => unimplemented!("***** unsupported LLVM intrinsic {}", name),\n')
         out.write("}\n")
     print("Done!")
