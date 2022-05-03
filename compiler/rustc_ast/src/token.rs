@@ -475,19 +475,29 @@ impl Token {
     }
 
     /// Returns an identifier if this token is an identifier.
+    #[inline]
     pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Ident(name, is_raw) => Some((Ident::new(name, token.span), is_raw)),
+        // We avoid using `Token::uninterpolate` here because it's slow.
+        match &self.kind {
+            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            Interpolated(nt) => match **nt {
+                NtIdent(ident, is_raw) => Some((ident, is_raw)),
+                _ => None,
+            },
             _ => None,
         }
     }
 
     /// Returns a lifetime identifier if this token is a lifetime.
+    #[inline]
     pub fn lifetime(&self) -> Option<Ident> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Lifetime(name) => Some(Ident::new(name, token.span)),
+        // We avoid using `Token::uninterpolate` here because it's slow.
+        match &self.kind {
+            &Lifetime(name) => Some(Ident::new(name, self.span)),
+            Interpolated(nt) => match **nt {
+                NtLifetime(ident) => Some(ident),
+                _ => None,
+            },
             _ => None,
         }
     }
