@@ -652,7 +652,8 @@ impl CheckAttrVisitor<'_> {
             | Target::ForeignStatic
             | Target::ForeignTy
             | Target::GenericParam(..)
-            | Target::MacroDef => None,
+            | Target::MacroDef
+            | Target::PatField => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;
@@ -2075,6 +2076,15 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         self.check_attributes(param.hir_id, param.span, Target::Param, None);
 
         intravisit::walk_param(self, param);
+    }
+
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+        if let hir::PatKind::Struct(_, fields, _) = p.kind {
+            for field in fields {
+                self.check_attributes(field.hir_id, field.span, Target::PatField, None);
+            }
+        }
+        intravisit::walk_pat(self, p);
     }
 }
 

@@ -64,12 +64,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         );
 
-                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::PatField {
-                            hir_id: self.next_id(),
-                            ident: self.lower_ident(f.ident),
-                            pat: self.lower_pat(&f.pat),
-                            is_shorthand: f.is_shorthand,
-                            span: self.lower_span(f.span),
+                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
+                            let hir_id = self.lower_node_id(f.id);
+                            self.lower_attrs(hir_id, &f.attrs);
+
+                            hir::PatField {
+                                hir_id,
+                                ident: self.lower_ident(f.ident),
+                                pat: self.lower_pat(&f.pat),
+                                is_shorthand: f.is_shorthand,
+                                span: self.lower_span(f.span),
+                            }
                         }));
                         break hir::PatKind::Struct(qpath, fs, etc);
                     }

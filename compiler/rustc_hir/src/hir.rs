@@ -3338,6 +3338,7 @@ pub enum Node<'hir> {
     TypeBinding(&'hir TypeBinding<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
     Pat(&'hir Pat<'hir>),
+    PatField(&'hir PatField<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
     Local(&'hir Local<'hir>),
@@ -3388,6 +3389,7 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
+            | Node::PatField(..)
             | Node::Arm(..)
             | Node::Local(..)
             | Node::Crate(..)

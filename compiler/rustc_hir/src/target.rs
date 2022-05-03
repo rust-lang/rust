@@ -56,6 +56,7 @@ pub enum Target {
     GenericParam(GenericParamKind),
     MacroDef,
     Param,
+    PatField,
 }
 
 impl Display for Target {
@@ -183,6 +184,7 @@ impl Target {
             },
             Target::MacroDef => "macro def",
             Target::Param => "function param",
+            Target::PatField => "pattern field",
         }
     }
 }
