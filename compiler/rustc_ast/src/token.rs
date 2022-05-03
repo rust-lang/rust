@@ -531,7 +531,7 @@ impl Token {
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(ref nt) = self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
         {
             return true;
         }
