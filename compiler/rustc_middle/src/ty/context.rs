@@ -1077,6 +1077,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverOutputs,
     untracked_resolver_for_lowering: Steal<ty::ResolverAstLowering>,
+    /// The entire crate as AST. This field serves as the input for the hir_crate query,
+    /// which lowers it from AST to HIR. It must not be read or used by anything else.
     pub untracked_crate: Steal<Lrc<ast::Crate>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
