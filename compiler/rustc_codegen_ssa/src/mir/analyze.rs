@@ -40,9 +40,9 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     // If there exists a local definition that dominates all uses of that local,
-    // the definition should be visited first. Traverse blocks in preorder which
+    // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::preorder(&mir) {
+    for (bb, data) in traversal::reverse_postorder(&mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
