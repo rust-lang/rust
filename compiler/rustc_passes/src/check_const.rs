@@ -88,7 +88,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 fn check_item<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let _: Option<_> = try {
-        if !matches!(tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+        if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
             None?
         }
 

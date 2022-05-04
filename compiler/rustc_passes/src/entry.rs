@@ -82,7 +82,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
 
     match entry_point_type(ctxt, id, at_root) {
         EntryPointType::None => (),
-        _ if !matches!(ctxt.tcx.hir().def_kind(id.def_id), DefKind::Fn) => {
+        _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
             let attrs = ctxt.tcx.hir().attrs(id.hir_id());
             if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.tcx.sess, attr.span, "start");

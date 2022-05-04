@@ -491,7 +491,7 @@ fn check_item<'tcx>(
         worklist.push(id.def_id);
     }
 
-    match tcx.hir().def_kind(id.def_id) {
+    match tcx.def_kind(id.def_id) {
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
@@ -544,7 +544,7 @@ fn check_item<'tcx>(
 
 fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id: hir::TraitItemId) {
     use hir::TraitItemKind::{Const, Fn};
-    if matches!(tcx.hir().def_kind(id.def_id), DefKind::AssocConst | DefKind::AssocFn) {
+    if matches!(tcx.def_kind(id.def_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
             && has_allow_dead_code_or_lang_attr(tcx, trait_item.hir_id())
@@ -559,7 +559,7 @@ fn check_foreign_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     id: hir::ForeignItemId,
 ) {
-    if matches!(tcx.hir().def_kind(id.def_id), DefKind::Static(_) | DefKind::Fn)
+    if matches!(tcx.def_kind(id.def_id), DefKind::Static(_) | DefKind::Fn)
         && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
     {
         worklist.push(id.def_id);
