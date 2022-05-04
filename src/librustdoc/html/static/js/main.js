@@ -300,8 +300,8 @@ function loadCss(cssFileName) {
         document.head.append(script);
     }
 
-
     getSettingsButton().onclick = event => {
+        addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         loadScript(window.settingsJS);
     };
