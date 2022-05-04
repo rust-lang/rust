@@ -117,7 +117,7 @@ pub struct ConstStability {
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    Stable { since: Symbol, edition: Option<Symbol> },
 }
 
 impl StabilityLevel {
@@ -348,6 +348,7 @@ where
 
                     let mut feature = None;
                     let mut since = None;
+                    let mut edition = None;
                     for meta in metas {
                         match meta {
                             NestedMetaItem::MetaItem(mi) => match mi.name_or_empty() {
@@ -358,6 +359,11 @@ where
                                 }
                                 sym::since => {
                                     if !get(mi, &mut since) {
+                                        continue 'outer;
+                                    }
+                                }
+                                sym::edition => {
+                                    if !get(mi, &mut edition) {
                                         continue 'outer;
                                     }
                                 }
@@ -386,7 +392,7 @@ where
 
                     match (feature, since) {
                         (Some(feature), Some(since)) => {
-                            let level = Stable { since };
+                            let level = Stable { since, edition };
                             if sym::stable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
                             } else {

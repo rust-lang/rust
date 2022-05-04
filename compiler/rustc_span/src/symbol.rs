@@ -613,6 +613,7 @@ symbols! {
         dyn_metadata,
         dyn_trait,
         e,
+        edition,
         edition_macro_pats,
         edition_panic,
         eh_catch_typeinfo,
