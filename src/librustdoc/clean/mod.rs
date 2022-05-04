@@ -1733,6 +1733,11 @@ pub(crate) fn clean_middle_ty<'tcx>(
             clean_middle_opaque_bounds(cx, bounds)
         }
 
+        ty::TyAlias(def_id, substs) => {
+            let path = external_path(cx, def_id, false, ThinVec::new(), substs);
+            Type::Path { path }
+        }
+
         ty::Closure(..) => panic!("Closure"),
         ty::Generator(..) => panic!("Generator"),
         ty::Bound(..) => panic!("Bound"),
