@@ -785,7 +785,9 @@ impl<'a> Builder<'a> {
 
         // If the user has asked binaries to be patched for Nix, then
         // don't check for NixOS or `/lib`, just continue to the patching.
-        // FIXME: shouldn't this take precedence over the `uname` check above?
+        // NOTE: this intentionally comes after the Linux check:
+        // - patchelf only works with ELF files, so no need to run it on Mac or Windows
+        // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
         if !self.config.patch_binaries_for_nix {
             // Use `/etc/os-release` instead of `/etc/NIXOS`.
             // The latter one does not exist on NixOS when using tmpfs as root.
