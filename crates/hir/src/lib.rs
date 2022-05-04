@@ -75,7 +75,6 @@ use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, T,
 };
-use tt::{Ident, Leaf, Literal, TokenTree};
 
 use crate::db::{DefDatabase, HirDatabase};
 
@@ -230,23 +229,7 @@ impl Crate {
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDefId::ModuleId(self.root_module(db).into()));
-        let doc_attr_q = attrs.by_key("doc");
-
-        if !doc_attr_q.exists() {
-            return None;
-        }
-
-        let doc_url = doc_attr_q.tt_values().filter_map(|tt| {
-            let name = tt.token_trees.iter()
-                .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident { text, ..} )) if text == "html_root_url"))
-                .nth(2);
-
-            match name {
-                Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
-                _ => None
-            }
-        }).next();
-
+        let doc_url = attrs.by_key("doc").find_string_value_in_tt("html_root_url");
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
