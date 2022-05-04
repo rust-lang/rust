@@ -345,7 +345,7 @@ impl ast::Literal {
 
 impl ast::FloatLiteral {
     pub fn suffix(&self) -> Option<String> {
-        ast::FloatNumber::cast(self.syntax().last_token()?)?.suffix().map(|s| s.to_string())
+        ast::FloatNumberPart::cast(self.syntax().last_token()?)?.suffix().map(|s| s.to_string())
     }
 }
 

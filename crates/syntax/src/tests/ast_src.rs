@@ -71,7 +71,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "super", "trait", "true", "try", "type", "unsafe", "use", "where", "while", "yield",
     ],
     contextual_keywords: &["auto", "default", "existential", "union", "raw", "macro_rules"],
-    literals: &["INT_NUMBER", "FLOAT_NUMBER", "CHAR", "BYTE", "STRING", "BYTE_STRING"],
+    literals: &["INT_NUMBER", "FLOAT_NUMBER_PART", "CHAR", "BYTE", "STRING", "BYTE_STRING"],
     tokens: &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],
     nodes: &[
         "SOURCE_FILE",

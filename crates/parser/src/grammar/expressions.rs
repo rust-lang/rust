@@ -475,11 +475,8 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);
     p.bump(T![.]);
-    if p.at(IDENT) || p.at(INT_NUMBER) {
+    if p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) {
         name_ref_or_index(p);
-    } else if p.at(FLOAT_NUMBER) {
-        // FIXME: How to recover and instead parse INT + T![.]?
-        p.bump_any();
     } else {
         p.error("expected field name or number");
     }

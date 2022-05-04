@@ -260,6 +260,35 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                 IDENT => make_leaf!(Ident),
                 UNDERSCORE => make_leaf!(Ident),
                 k if k.is_keyword() => make_leaf!(Ident),
+                FLOAT_NUMBER_PART => {
+                    // Reassemble a split-up float token.
+                    let mut range = range;
+                    let mut text = token.to_text(conv).to_string();
+                    if let Some(dot) = conv.peek() {
+                        if dot.kind(conv) == DOT {
+                            let (_, dot_range) = conv.bump().unwrap();
+                            text += &*dot.to_text(conv);
+                            range = TextRange::new(range.start(), dot_range.end());
+
+                            if let Some(tail) = conv.peek() {
+                                if tail.kind(conv) == FLOAT_NUMBER_PART {
+                                    let (_, tail_range) = conv.bump().unwrap();
+                                    text += &*tail.to_text(conv);
+                                    range = TextRange::new(range.start(), tail_range.end());
+                                }
+                            }
+                        }
+                    }
+
+                    result.push(
+                        tt::Leaf::from(tt::Literal {
+                            id: conv.id_alloc().alloc(range, synth_id),
+                            text: text.into(),
+                        })
+                        .into(),
+                    );
+                    continue;
+                }
                 k if k.is_literal() => make_leaf!(Literal),
                 LIFETIME_IDENT => {
                     let char_unit = TextSize::of('\'');

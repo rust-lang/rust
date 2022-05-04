@@ -58,7 +58,9 @@ SOURCE_FILE
           WHITESPACE " "
           LITERAL
             FLOAT_LITERAL
-              FLOAT_NUMBER "2.0"
+              FLOAT_NUMBER_PART "2"
+              DOT "."
+              FLOAT_NUMBER_PART "0"
           SEMICOLON ";"
         WHITESPACE "\n    "
         LET_STMT

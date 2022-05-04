@@ -462,7 +462,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
-            [float_number] => { $crate::SyntaxKind::FLOAT_NUMBER };
+            [float_number_part] => { $crate::SyntaxKind::FLOAT_NUMBER_PART };
         }
         pub use T;
     };
@@ -586,7 +586,7 @@ impl Field {
 
 fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc {
-        tokens: "Whitespace Comment String ByteString IntNumber FloatNumber Char Byte Ident"
+        tokens: "Whitespace Comment String ByteString IntNumber FloatNumberPart Char Byte Ident"
             .split_ascii_whitespace()
             .map(|it| it.to_string())
             .collect::<Vec<_>>(),

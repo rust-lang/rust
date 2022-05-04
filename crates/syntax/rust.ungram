@@ -373,7 +373,9 @@ Literal =
   )
 
 FloatLiteral =
-  'float_number'
+  'float_number_part'
+  '.'?
+  'float_number_part'?
 
 PathExpr =
   Attr* Path

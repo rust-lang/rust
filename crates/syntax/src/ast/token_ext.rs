@@ -321,7 +321,7 @@ impl ast::IntNumber {
     }
 }
 
-impl ast::FloatNumber {
+impl ast::FloatNumberPart {
     pub fn suffix(&self) -> Option<&str> {
         let text = self.text();
         let mut indices = text.char_indices();

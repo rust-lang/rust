@@ -555,7 +555,9 @@ impl ast::FieldExpr {
         self.syntax
             .children_with_tokens()
             // FIXME: Accepting floats here to reject them in validation later
-            .find(|c| c.kind() == SyntaxKind::INT_NUMBER || c.kind() == SyntaxKind::FLOAT_NUMBER)
+            .find(|c| {
+                c.kind() == SyntaxKind::INT_NUMBER || c.kind() == SyntaxKind::FLOAT_NUMBER_PART
+            })
             .as_ref()
             .and_then(SyntaxElement::as_token)
             .cloned()

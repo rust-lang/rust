@@ -318,7 +318,7 @@ fn name_ref(p: &mut Parser) {
 }
 
 fn name_ref_or_index(p: &mut Parser) {
-    assert!(p.at(IDENT) || p.at(INT_NUMBER));
+    assert!(p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART));
     let m = p.start();
     p.bump_any();
     m.complete(p, NAME_REF);

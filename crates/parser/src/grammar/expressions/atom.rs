@@ -17,7 +17,7 @@ pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     T![true],
     T![false],
     INT_NUMBER,
-    FLOAT_NUMBER,
+    FLOAT_NUMBER_PART,
     BYTE,
     CHAR,
     STRING,
@@ -29,11 +29,19 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
         return None;
     }
     let m = p.start();
-    if p.at(FLOAT_NUMBER) {
+    if p.at(FLOAT_NUMBER_PART) {
+        // Floats can be up to 3 tokens: 2 `FLOAT_NUMBER_PART`s separated by 1 `DOT`
         let f = p.start();
-        p.bump(FLOAT_NUMBER);
+        p.bump(FLOAT_NUMBER_PART);
+        if p.at(DOT) {
+            p.bump(DOT);
+            if p.at(FLOAT_NUMBER_PART) {
+                p.bump(FLOAT_NUMBER_PART);
+            }
+        }
         f.complete(p, FLOAT_LITERAL);
     } else {
+        // Everything else is just one token.
         p.bump_any();
     }
     Some(m.complete(p, LITERAL))

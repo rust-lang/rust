@@ -112,16 +112,16 @@ impl AstToken for IntNumber {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FloatNumber {
+pub struct FloatNumberPart {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for FloatNumber {
+impl std::fmt::Display for FloatNumberPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for FloatNumber {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == FLOAT_NUMBER }
+impl AstToken for FloatNumberPart {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FLOAT_NUMBER_PART }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
