@@ -228,6 +228,10 @@ impl Waker {
     ///
     /// Note that the above implies that multiple wake-ups may be coalesced into a
     /// single `poll` invocation by the runtime.
+    ///
+    /// Also note that yielding to competing tasks is not guaranteed: it is the
+    /// executor’s choice which task to run and the executor may choose to run the
+    /// current task again.
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake(self) {
