@@ -117,7 +117,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
-        for UseError { mut err, candidates, def_id, instead, suggestion } in
+        for UseError { mut err, candidates, def_id, instead, suggestion, path } in
             self.use_injections.drain(..)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
@@ -135,6 +135,7 @@ impl<'a> Resolver<'a> {
                     if instead { Instead::Yes } else { Instead::No },
                     found_use,
                     IsPattern::No,
+                    path,
                 );
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
@@ -702,6 +703,7 @@ impl<'a> Resolver<'a> {
                         Instead::No,
                         FoundUse::Yes,
                         IsPattern::Yes,
+                        vec![],
                     );
                 }
                 err
@@ -1482,6 +1484,7 @@ impl<'a> Resolver<'a> {
             Instead::No,
             FoundUse::Yes,
             IsPattern::No,
+            vec![],
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
@@ -2448,6 +2451,7 @@ fn show_candidates(
     instead: Instead,
     found_use: FoundUse,
     is_pattern: IsPattern,
+    path: Vec<Segment>,
 ) {
     if candidates.is_empty() {
         return;
@@ -2515,6 +2519,14 @@ fn show_candidates(
                 accessible_path_strings.into_iter().map(|a| a.0),
                 Applicability::MaybeIncorrect,
             );
+            if let [first, .., last] = &path[..] {
+                err.span_suggestion_verbose(
+                    first.ident.span.until(last.ident.span),
+                    &format!("if you import `{}`, refer to it directly", last.ident),
+                    String::new(),
+                    Applicability::Unspecified,
+                );
+            }
         } else {
             msg.push(':');
 

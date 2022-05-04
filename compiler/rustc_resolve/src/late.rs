@@ -2693,6 +2693,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     def_id,
                     instead,
                     suggestion,
+                    path: path.into(),
                 });
             }
 
@@ -2756,6 +2757,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     def_id,
                     instead: false,
                     suggestion: None,
+                    path: path.into(),
                 });
             } else {
                 err.cancel();
