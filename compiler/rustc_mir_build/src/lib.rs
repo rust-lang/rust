@@ -6,6 +6,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
