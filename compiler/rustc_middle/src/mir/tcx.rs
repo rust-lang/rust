@@ -12,7 +12,7 @@ use rustc_target::abi::VariantIdx;
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
-    /// Downcast to a particular variant of an enum, if included.
+    /// Downcast to a particular variant of an enum or a generator, if included.
     pub variant_index: Option<VariantIdx>,
 }
 
