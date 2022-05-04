@@ -90,3 +90,6 @@ typeck-add-return-type-missing-here = a return type might be missing here
 typeck-expected-default-return-type = expected `()` because of default return type
 
 typeck-expected-return-type = expected `{$expected}` because of return type
+
+typeck-unconstrained-opaque-type = unconstrained opaque type
+    .note = `{$name}` must be used in combination with a concrete type within the same module

@@ -228,3 +228,12 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
         expected: Ty<'tcx>,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "typeck-unconstrained-opaque-type")]
+#[note]
+pub struct UnconstrainedOpaqueType {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
