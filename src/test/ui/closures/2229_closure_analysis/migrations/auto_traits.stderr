@@ -29,8 +29,8 @@ error: changes to closure capture in Rust 2021 will affect which traits the clos
 LL |     thread::spawn(move || unsafe {
    |                   ^^^^^^^^^^^^^^
    |                   |
-   |                   in Rust 2018, this closure implements `Sync` as `fptr` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` because `fptr` is not fully captured and `fptr.0.0` does not implement `Sync`
    |                   in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr` is not fully captured and `fptr.0.0` does not implement `Send`
+   |                   in Rust 2018, this closure implements `Sync` as `fptr` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` because `fptr` is not fully captured and `fptr.0.0` does not implement `Sync`
 ...
 LL |         *fptr.0.0 = 20;
    |         --------- in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0.0`
