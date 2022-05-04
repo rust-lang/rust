@@ -31,6 +31,9 @@ pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Optio
             SymbolKind::Field.into()
         }
         INT_NUMBER | FLOAT_NUMBER_PART => HlTag::NumericLiteral.into(),
+        DOT if token.parent().map(|n| n.kind()) == Some(FLOAT_LITERAL) => {
+            HlTag::NumericLiteral.into()
+        }
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
         IDENT if token.parent().and_then(ast::TokenTree::cast).is_some() => {

@@ -3,7 +3,7 @@ mod atom;
 use super::*;
 
 pub(crate) use self::atom::{block_expr, match_arm_list};
-pub(super) use self::atom::{literal, LITERAL_FIRST};
+pub(super) use self::atom::{float_literal, literal, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub(super) enum Semicolon {

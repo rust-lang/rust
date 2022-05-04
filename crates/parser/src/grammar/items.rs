@@ -9,7 +9,7 @@ pub(crate) use self::{
     traits::assoc_item_list,
     use_item::use_tree_list,
 };
-use super::*;
+use super::{expressions::float_literal, *};
 
 // test mod_contents
 // fn foo() {}
@@ -457,6 +457,9 @@ pub(crate) fn token_tree(p: &mut Parser) {
                 return;
             }
             T![')'] | T![']'] => p.err_and_bump("unmatched brace"),
+            FLOAT_NUMBER_PART => {
+                float_literal(p);
+            }
             _ => p.bump_any(),
         }
     }
