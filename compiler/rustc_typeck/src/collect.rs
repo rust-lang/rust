@@ -2720,6 +2720,14 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
 }
 
 fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
+    if cfg!(debug_assertions) {
+        let def_kind = tcx.def_kind(did);
+        assert!(
+            tcx.has_codegen_attrs(def_kind),
+            "unexpected `def_kind` in `codegen_fn_attrs`: {def_kind:?}",
+        );
+    }
+
     let did = did.expect_local();
     let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
@@ -3223,19 +3231,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, id: DefId) -> &'tcx FxHashSet<Symbol> {
+fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
     let mut target_features = tcx.sess.target_features.clone();
-    let attrs = tcx.codegen_fn_attrs(id);
-    target_features.extend(&attrs.target_features);
-    match attrs.instruction_set {
-        None => {}
-        Some(InstructionSetAttr::ArmA32) => {
-            target_features.remove(&sym::thumb_mode);
-        }
-        Some(InstructionSetAttr::ArmT32) => {
-            target_features.insert(sym::thumb_mode);
+    if tcx.has_codegen_attrs(tcx.def_kind(did)) {
+        let attrs = tcx.codegen_fn_attrs(did);
+        target_features.extend(&attrs.target_features);
+        match attrs.instruction_set {
+            None => {}
+            Some(InstructionSetAttr::ArmA32) => {
+                target_features.remove(&sym::thumb_mode);
+            }
+            Some(InstructionSetAttr::ArmT32) => {
+                target_features.insert(sym::thumb_mode);
+            }
         }
     }
+
     tcx.arena.alloc(target_features)
 }
 

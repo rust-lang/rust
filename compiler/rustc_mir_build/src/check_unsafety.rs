@@ -27,7 +27,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     body_unsafety: BodyUnsafety,
     /// The `#[target_feature]` attributes of the body. Used for checking
     /// calls to functions with `#[target_feature]` (RFC 2396).
-    body_target_features: &'tcx Vec<Symbol>,
+    body_target_features: &'tcx [Symbol],
     /// When inside the LHS of an assignment to a field, this is the type
     /// of the LHS and the span of the assignment expression.
     assignment_info: Option<(Ty<'tcx>, Span)>,
@@ -661,7 +661,11 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
             BodyUnsafety::Safe
         }
     });
-    let body_target_features = &tcx.codegen_fn_attrs(def.did).target_features;
+    let body_target_features: &[_] = if tcx.has_codegen_attrs(tcx.def_kind(def.did)) {
+        &tcx.codegen_fn_attrs(def.did).target_features
+    } else {
+        &[]
+    };
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
     let mut visitor = UnsafetyVisitor {

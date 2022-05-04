@@ -139,6 +139,42 @@ impl<'tcx> TyCtxt<'tcx> {
         hasher.finish()
     }
 
+    pub fn has_codegen_attrs(self, def_kind: DefKind) -> bool {
+        match def_kind {
+            DefKind::Fn
+            | DefKind::AssocFn
+            | DefKind::Ctor(..)
+            | DefKind::Closure
+            | DefKind::Generator
+            | DefKind::Static(_) => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::Const
+            | DefKind::AssocConst
+            | DefKind::Macro(..)
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::OpaqueTy
+            | DefKind::Impl
+            | DefKind::Field
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::LifetimeParam
+            | DefKind::AnonConst
+            | DefKind::InlineConst
+            | DefKind::GlobalAsm
+            | DefKind::ExternCrate => false,
+        }
+    }
+
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {
         match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => {
