@@ -24,7 +24,6 @@ type Sendable = impl Send;
 // type does not implement `Duh`, even if its hidden type does. So we error out.
 fn foo() -> impl Trait<Assoc = Sendable> {
     //~^ ERROR `Sendable: Duh` is not satisfied
-    //~| ERROR `Sendable: Duh` is not satisfied
     || 42
 }
 

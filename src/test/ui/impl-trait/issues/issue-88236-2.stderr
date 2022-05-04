@@ -8,15 +8,12 @@ LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Sen
    = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
 
 error: implementation of `Hrtb` is not general enough
-  --> $DIR/issue-88236-2.rs:19:82
+  --> $DIR/issue-88236-2.rs:19:36
    |
-LL |   fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
-   |  __________________________________________________________________________________^
-LL | |     x
-LL | | }
-   | |_^ implementation of `Hrtb` is not general enough
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Hrtb` is not general enough
    |
-   = note: `&()` must implement `Hrtb<'0>`, for any lifetime `'0`...
+   = note: `Hrtb<'1>` would have to be implemented for the type `&()`, for any lifetime `'1`...
    = note: ...but `Hrtb<'_>` is actually implemented for the type `&()`
 
 error: aborting due to 2 previous errors

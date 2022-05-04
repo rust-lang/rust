@@ -4,7 +4,6 @@ use std::ops::Generator;
 
 fn foo() -> impl Generator<Return = i32> {
     //~^ ERROR type mismatch
-    //~| ERROR type mismatch
     || {
         if false {
             return Ok(6);

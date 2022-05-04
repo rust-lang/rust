@@ -10,15 +10,13 @@ error[E0433]: failed to resolve: use of undeclared crate or module `foo`
 LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
    |                                         ^^^ use of undeclared crate or module `foo`
 
-error[E0277]: `()` is not an iterator
+error[E0282]: type annotations needed
   --> $DIR/issue-72911.rs:7:24
    |
 LL | pub fn gather_all() -> impl Iterator<Item = Lint> {
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
-   |
-   = help: the trait `Iterator` is not implemented for `()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0433.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0282, E0433.
+For more information about an error, try `rustc --explain E0282`.

@@ -37,7 +37,6 @@ fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
 
 fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
     //~^ ERROR the parameter type `T` may not live long enough
-    //~| ERROR the parameter type `T` may not live long enough
     x
 }
 

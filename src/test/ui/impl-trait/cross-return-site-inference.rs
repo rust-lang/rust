@@ -29,17 +29,17 @@ fn baa(b: bool) -> impl std::fmt::Debug {
 }
 
 fn muh() -> Result<(), impl std::fmt::Debug> {
-    Err("whoops")?; //~ ERROR `?` couldn't convert the error to `impl Debug`
+    Err("whoops")?; //~^ ERROR type annotations needed
     Ok(())
 }
 
 fn muh2() -> Result<(), impl std::fmt::Debug> {
-    return Err(From::from("foo")); //~ ERROR the trait bound `impl Debug: From<&str>` is not satisfied
+    return Err(From::from("foo")); //~^ ERROR type annotations needed
     Ok(())
 }
 
 fn muh3() -> Result<(), impl std::fmt::Debug> {
-    Err(From::from("foo")) //~ ERROR the trait bound `impl Debug: From<&str>` is not satisfied
+    Err(From::from("foo")) //~^ ERROR type annotations needed
 }
 
 fn main() {}
