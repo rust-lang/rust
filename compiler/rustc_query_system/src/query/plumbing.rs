@@ -675,6 +675,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub enum QueryMode {
     Get,
     Ensure,
@@ -697,7 +698,6 @@ where
         None
     };
 
-    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
     let (result, dep_node_index) = try_execute_query(
         tcx,
         Q::query_state(tcx),
