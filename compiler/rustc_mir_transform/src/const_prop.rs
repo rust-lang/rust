@@ -415,7 +415,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.try_read_immediate(&op) {
+        Some(match self.ecx.try_read_immediate(&op, /*force*/ false) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -710,7 +710,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME> figure out what to do when try_read_immediate fails
-        let imm = self.use_ecx(|this| this.ecx.try_read_immediate(value));
+        let imm = self.use_ecx(|this| this.ecx.try_read_immediate(value, /*force*/ false));
 
         if let Some(Ok(imm)) = imm {
             match *imm {
