@@ -679,13 +679,12 @@ impl<'tcx> ItemCtxt<'tcx> {
                 };
                 let bvars = self.tcx.late_bound_vars(bp.bounded_ty.hir_id);
 
-                bp.bounds
-                    .iter()
-                    .filter(|b| match assoc_name {
+                bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b, bvars))).filter(
+                    |(_, b, _)| match assoc_name {
                         Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                         None => true,
-                    })
-                    .filter_map(move |b| bt.map(|bt| (bt, b, bvars)))
+                    },
+                )
             })
             .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars))
             .collect()
