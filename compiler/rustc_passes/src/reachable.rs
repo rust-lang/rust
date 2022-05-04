@@ -315,15 +315,22 @@ impl<'tcx> ReachableContext<'tcx> {
 
 fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'_>,
+    id: hir::ItemId,
     worklist: &mut Vec<LocalDefId>,
-    access_levels: &privacy::AccessLevels
+    access_levels: &privacy::AccessLevels,
 ) {
-    push_to_worklist_if_has_custom_linkage(tcx, worklist, item.def_id);
+    if has_custom_linkage(tcx, id.def_id) {
+        worklist.push(id.def_id);
+    }
+
+    if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+        return;
+    }
 
     // We need only trait impls here, not inherent impls, and only non-exported ones
+    let item = tcx.hir().item(id);
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
-    item.kind
+        item.kind
     {
         if !access_levels.is_reachable(item.def_id) {
             // FIXME(#53488) remove `let`
@@ -339,30 +346,27 @@ fn check_item<'tcx>(
             }
 
             worklist.extend(
-                tcx.provided_trait_methods(trait_def_id)
-                    .map(|assoc| assoc.def_id.expect_local()),
+                tcx.provided_trait_methods(trait_def_id).map(|assoc| assoc.def_id.expect_local()),
             );
         }
     }
 }
 
-fn push_to_worklist_if_has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, def_id: LocalDefId) {
+fn has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     // Anything which has custom linkage gets thrown on the worklist no
     // matter where it is in the crate, along with "special std symbols"
     // which are currently akin to allocator symbols.
-    if tcx.def_kind(def_id).has_codegen_attrs() {
-        let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-        if codegen_attrs.contains_extern_indicator()
-            || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-            // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
-            // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
-            // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
-            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
-            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-        {
-            worklist.push(def_id);
-        }
+    if !tcx.def_kind(def_id).has_codegen_attrs() {
+        return false;
     }
+    let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+    codegen_attrs.contains_extern_indicator()
+        || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+        // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
+        // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
+        // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
+        || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+        || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
 }
 
 fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
@@ -405,11 +409,13 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            check_item(tcx, tcx.hir().item(id), &mut reachable_context.worklist, access_levels);
+            check_item(tcx, id, &mut reachable_context.worklist, access_levels);
         }
 
         for id in crate_items.impl_items() {
-            push_to_worklist_if_has_custom_linkage(tcx, &mut reachable_context.worklist, id.def_id)
+            if has_custom_linkage(tcx, id.def_id) {
+                reachable_context.worklist.push(id.def_id);
+            }
         }
     }
 
