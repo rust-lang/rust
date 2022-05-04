@@ -889,6 +889,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(bytes_count_to_len::BytesCountToLen));
     let max_include_file_size = conf.max_include_file_size;
     store.register_late_pass(move || Box::new(large_include_file::LargeIncludeFile::new(max_include_file_size)));
+    store.register_late_pass(|| Box::new(strings::TrimSplitWhitespace));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

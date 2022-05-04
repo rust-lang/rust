@@ -280,6 +280,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
     LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
+    LintId::of(strings::TRIM_SPLIT_WHITESPACE),
     LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),

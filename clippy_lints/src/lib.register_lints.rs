@@ -482,6 +482,7 @@ store.register_lints(&[
     strings::STRING_SLICE,
     strings::STRING_TO_STRING,
     strings::STR_TO_STRING,
+    strings::TRIM_SPLIT_WHITESPACE,
     strlen_on_c_strings::STRLEN_ON_C_STRINGS,
     suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS,
     suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
