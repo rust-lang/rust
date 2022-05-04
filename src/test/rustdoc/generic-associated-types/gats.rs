@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(generic_associated_types)]
 
 // @has foo/trait.LendingIterator.html
 pub trait LendingIterator {

@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `SuperTrait::SubType`
-  --> $DIR/issue-76535.rs:40:33
+  --> $DIR/issue-76535.rs:39:33
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |                                 ^^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-76535.rs:10:10
+  --> $DIR/issue-76535.rs:9:10
    |
 LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ --
@@ -15,13 +15,13 @@ LL |     let sub: Box<dyn SuperTrait<SubType<'a> = SubStruct>> = Box::new(SuperS
    |                                 ~~~~~~~~~~~
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
-  --> $DIR/issue-76535.rs:40:14
+  --> $DIR/issue-76535.rs:39:14
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-76535.rs:10:10
+  --> $DIR/issue-76535.rs:9:10
    |
 LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...
@@ -30,13 +30,13 @@ LL |     type SubType<'a>: SubTrait where Self: 'a;
    = help: consider moving `SubType` to another trait
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
-  --> $DIR/issue-76535.rs:40:57
+  --> $DIR/issue-76535.rs:39:57
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-76535.rs:10:10
+  --> $DIR/issue-76535.rs:9:10
    |
 LL | pub trait SuperTrait {
    |           ---------- this trait cannot be made into an object...

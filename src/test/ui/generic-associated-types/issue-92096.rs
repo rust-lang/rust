@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(generic_associated_types)]
-
 use std::future::Future;
 
 trait Client {

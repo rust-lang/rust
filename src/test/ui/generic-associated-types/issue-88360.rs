@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait GatTrait {
     type Gat<'a> where Self: 'a;
 

@@ -3,8 +3,6 @@
 
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait MyTrait {
     type Assoc<'a, 'b> where 'b: 'a;
     fn do_sth(arg: Self::Assoc<'_, '_>);

@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 
 #![no_core]
-#![feature(generic_associated_types, lang_items, no_core)]
+#![feature(lang_items, no_core)]
 
 #[lang = "sized"]
 pub trait Sized {}

@@ -1,5 +1,5 @@
 error[E0631]: type mismatch in function arguments
-  --> $DIR/issue-88382.rs:28:40
+  --> $DIR/issue-88382.rs:26:40
    |
 LL |     do_something(SomeImplementation(), test);
    |     ------------                       ^^^^ expected due to this
@@ -12,7 +12,7 @@ LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
    = note: expected function signature `for<'r> fn(&'r mut std::iter::Empty<usize>) -> _`
               found function signature `for<'a, 'r> fn(&'r mut <_ as Iterable>::Iterator<'a>) -> _`
 note: required by a bound in `do_something`
-  --> $DIR/issue-88382.rs:22:48
+  --> $DIR/issue-88382.rs:20:48
    |
 LL | fn do_something<I: Iterable>(i: I, mut f: impl for<'a> Fn(&mut I::Iterator<'a>)) {
    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `do_something`

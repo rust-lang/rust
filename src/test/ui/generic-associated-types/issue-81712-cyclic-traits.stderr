@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `C::DType`
-  --> $DIR/issue-81712-cyclic-traits.rs:16:19
+  --> $DIR/issue-81712-cyclic-traits.rs:14:19
    |
 LL |     type CType: C<DType = Self>;
    |                   ^^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-81712-cyclic-traits.rs:13:10
+  --> $DIR/issue-81712-cyclic-traits.rs:11:10
    |
 LL |     type DType<T>: D<T, CType = Self>;
    |          ^^^^^ -

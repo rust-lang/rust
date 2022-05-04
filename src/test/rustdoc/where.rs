@@ -1,4 +1,3 @@
-#![feature(generic_associated_types)]
 #![crate_name = "foo"]
 
 pub trait MyTrait { fn dummy(&self) { } }

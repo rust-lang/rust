@@ -2064,8 +2064,6 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 
 // Get obligations corresponding to the predicates from the where-clause of the
 // associated type itself.
-// Note: `feature(generic_associated_types)` is required to write such
-// predicates, even for non-generic associated types.
 fn assoc_ty_own_obligations<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,

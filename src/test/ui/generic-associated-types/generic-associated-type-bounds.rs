@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(generic_associated_types)]
-
 pub trait X {
     type Y<'a> where Self: 'a;
     fn m(&self) -> Self::Y<'_>;

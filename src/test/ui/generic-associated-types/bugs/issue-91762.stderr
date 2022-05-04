@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-91762.rs:25:15
+  --> $DIR/issue-91762.rs:24:15
    |
 LL |         ret = <Self::Base as Functor>::fmap(arg);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `fmap`

@@ -1,13 +1,8 @@
-error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/issue-91139.rs:27:12
+error: expected identifier, found `<<`
+  --> $DIR/issue-91139.rs:1:1
    |
-LL |     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
-   |
-help: consider adding an explicit lifetime bound...
-   |
-LL | fn foo<T: 'a>() {
-   |         ++++
+LL | <<<<<<< HEAD
+   | ^^ expected identifier
 
 error: aborting due to previous error
 

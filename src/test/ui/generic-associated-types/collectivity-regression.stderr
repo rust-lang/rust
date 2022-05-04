@@ -1,5 +1,5 @@
 error: `T` does not live long enough
-  --> $DIR/collectivity-regression.rs:15:5
+  --> $DIR/collectivity-regression.rs:13:5
    |
 LL | /     || {
 LL | |

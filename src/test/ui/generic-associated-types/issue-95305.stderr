@@ -1,5 +1,5 @@
 error[E0637]: `'_` cannot be used here
-  --> $DIR/issue-95305.rs:11:26
+  --> $DIR/issue-95305.rs:10:26
    |
 LL | fn foo(x: &impl Foo<Item<'_> = u32>) { }
    |                          ^^ `'_` is a reserved lifetime name

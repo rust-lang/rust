@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/impl_bounds.rs:15:39
+  --> $DIR/impl_bounds.rs:14:39
    |
 LL |     type A<'a> where Self: 'a;
    |     ---------- definition of `A` from trait
@@ -8,7 +8,7 @@ LL |     type A<'a> = (&'a ()) where Self: 'static;
    |                                       ^^^^^^^ impl has extra requirement `T: 'static`
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/impl_bounds.rs:17:48
+  --> $DIR/impl_bounds.rs:16:48
    |
 LL |     type B<'a, 'b> where 'a: 'b;
    |     -------------- definition of `B` from trait
@@ -17,7 +17,7 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                                                ^^ impl has extra requirement `'b: 'a`
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/impl_bounds.rs:17:22
+  --> $DIR/impl_bounds.rs:16:22
    |
 LL |     type B<'a, 'b> where 'a: 'b;
    |     -------------- definition of `B` from trait
@@ -26,29 +26,29 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                      ^^^^^^^^^^^^^^^             - help: try copying this clause from the trait: `, 'a: 'b`
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/impl_bounds.rs:17:12
+  --> $DIR/impl_bounds.rs:16:12
    |
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |            ^^
 note: but lifetime parameter must outlive the lifetime `'b` as defined here
-  --> $DIR/impl_bounds.rs:17:16
+  --> $DIR/impl_bounds.rs:16:16
    |
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:20:33
+  --> $DIR/impl_bounds.rs:19:33
    |
 LL |     type C = String where Self: Copy;
    |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
-  --> $DIR/impl_bounds.rs:11:10
+  --> $DIR/impl_bounds.rs:10:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
 note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated type `C` but not on the corresponding trait's associated type
-  --> $DIR/impl_bounds.rs:7:10
+  --> $DIR/impl_bounds.rs:6:10
    |
 LL | trait Foo {
    |       --- in this trait
@@ -62,18 +62,18 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:22:24
+  --> $DIR/impl_bounds.rs:21:24
    |
 LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
-  --> $DIR/impl_bounds.rs:11:10
+  --> $DIR/impl_bounds.rs:10:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
 note: the requirement `Fooy<T>: Copy` appears on the `impl`'s method `d` but not on the corresponding trait's method
-  --> $DIR/impl_bounds.rs:8:8
+  --> $DIR/impl_bounds.rs:7:8
    |
 LL | trait Foo {
    |       --- in this trait

@@ -1,12 +1,12 @@
 error[E0277]: expected a `Fn<()>` closure, found `T`
-  --> $DIR/issue-68644-codegen-selection.rs:14:18
+  --> $DIR/issue-68644-codegen-selection.rs:12:18
    |
 LL |     type F<'a> = Self;
    |                  ^^^^ expected an `Fn<()>` closure, found `T`
    |
    = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `Fun::F`
-  --> $DIR/issue-68644-codegen-selection.rs:6:17
+  --> $DIR/issue-68644-codegen-selection.rs:4:17
    |
 LL |     type F<'a>: Fn() -> u32;
    |                 ^^^^^^^^^^^ required by this bound in `Fun::F`

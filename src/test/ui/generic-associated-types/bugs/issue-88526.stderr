@@ -1,5 +1,5 @@
 error[E0207]: the type parameter `I` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-88526.rs:27:13
+  --> $DIR/issue-88526.rs:25:13
    |
 LL | impl<'q, Q, I, F> A for TestB<Q, F>
    |             ^ unconstrained type parameter

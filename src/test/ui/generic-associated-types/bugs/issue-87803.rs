@@ -4,8 +4,6 @@
 // This should pass, but using a type alias vs a reference directly
 // changes late-bound -> early-bound.
 
-#![feature(generic_associated_types)]
-
 trait Scanner {
     type Input<'a>;
     type Token<'a>;

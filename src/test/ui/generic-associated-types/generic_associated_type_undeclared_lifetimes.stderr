@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:8:37
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:6:37
    |
 LL |         + Deref<Target = Self::Item<'b>>;
    |                                     ^^ undeclared lifetime
@@ -19,7 +19,7 @@ LL | trait Iterable<'b> {
    |               ++++
 
 error[E0261]: use of undeclared lifetime name `'undeclared`
-  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:11:41
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:9:41
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
    |                                         ^^^^^^^^^^^ undeclared lifetime

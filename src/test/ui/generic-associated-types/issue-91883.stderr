@@ -1,5 +1,5 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/issue-91883.rs:32:24
+  --> $DIR/issue-91883.rs:30:24
    |
 LL |     type Cursor<'tx>: Cursor<'tx>
    |     ----------------------------- definition of `Cursor` from trait
@@ -8,12 +8,12 @@ LL |     type Cursor<'tx> = CursorImpl<'tx>;
    |                        ^^^^^^^^^^^^^^^- help: try copying these clauses from the trait: `where 'db: 'tx, Self: 'tx`
    |
 note: lifetime parameter instantiated with the lifetime `'db` as defined here
-  --> $DIR/issue-91883.rs:31:6
+  --> $DIR/issue-91883.rs:29:6
    |
 LL | impl<'db> Transaction<'db> for TransactionImpl<'db> {
    |      ^^^
 note: but lifetime parameter must outlive the lifetime `'tx` as defined here
-  --> $DIR/issue-91883.rs:32:17
+  --> $DIR/issue-91883.rs:30:17
    |
 LL |     type Cursor<'tx> = CursorImpl<'tx>;
    |                 ^^^

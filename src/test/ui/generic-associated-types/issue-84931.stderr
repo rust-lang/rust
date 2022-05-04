@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/issue-84931.rs:15:21
+  --> $DIR/issue-84931.rs:14:21
    |
 LL |     type Item<'a> = &'a mut T;
    |                     ^^^^^^^^^- help: consider adding a where clause: `where T: 'a`

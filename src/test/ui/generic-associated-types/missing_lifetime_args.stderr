@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `X::Y`
-  --> $DIR/missing_lifetime_args.rs:13:32
+  --> $DIR/missing_lifetime_args.rs:11:32
    |
 LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y = (&'c u32, &'d u32)>>) {}
    |                                ^ expected 2 lifetime arguments
    |
 note: associated type defined here, with 2 lifetime parameters: `'a`, `'b`
-  --> $DIR/missing_lifetime_args.rs:4:10
+  --> $DIR/missing_lifetime_args.rs:2:10
    |
 LL |     type Y<'a, 'b>;
    |          ^ --  --
@@ -15,7 +15,7 @@ LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'c, 'd> = (&'c u32, &'d u32)>>) {}
    |                                ~~~~~~~~~
 
 error[E0107]: this struct takes 3 lifetime arguments but 2 lifetime arguments were supplied
-  --> $DIR/missing_lifetime_args.rs:16:26
+  --> $DIR/missing_lifetime_args.rs:14:26
    |
 LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b>) {}
    |                          ^^^ --  -- supplied 2 lifetime arguments
@@ -23,7 +23,7 @@ LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b>) {}
    |                          expected 3 lifetime arguments
    |
 note: struct defined here, with 3 lifetime parameters: `'a`, `'b`, `'c`
-  --> $DIR/missing_lifetime_args.rs:7:8
+  --> $DIR/missing_lifetime_args.rs:5:8
    |
 LL | struct Foo<'a, 'b, 'c> {
    |        ^^^ --  --  --
@@ -33,7 +33,7 @@ LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b, 'a>) {}
    |                                    ++++
 
 error[E0107]: this struct takes 3 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/missing_lifetime_args.rs:19:16
+  --> $DIR/missing_lifetime_args.rs:17:16
    |
 LL | fn f<'a>(_arg: Foo<'a>) {}
    |                ^^^ -- supplied 1 lifetime argument
@@ -41,7 +41,7 @@ LL | fn f<'a>(_arg: Foo<'a>) {}
    |                expected 3 lifetime arguments
    |
 note: struct defined here, with 3 lifetime parameters: `'a`, `'b`, `'c`
-  --> $DIR/missing_lifetime_args.rs:7:8
+  --> $DIR/missing_lifetime_args.rs:5:8
    |
 LL | struct Foo<'a, 'b, 'c> {
    |        ^^^ --  --  --

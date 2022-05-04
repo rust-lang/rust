@@ -1,11 +1,11 @@
 error[E0637]: `'_` cannot be used here
-  --> $DIR/issue-70304.rs:48:41
+  --> $DIR/issue-70304.rs:46:41
    |
 LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
    |                                         ^^ `'_` is a reserved lifetime name
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-70304.rs:48:61
+  --> $DIR/issue-70304.rs:46:61
    |
 LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
    |                                                             ^^ expected named lifetime parameter
@@ -17,7 +17,7 @@ LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'static>> {
    |                                                             ~~~~~~~
 
 error: missing required bound on `Cursor`
-  --> $DIR/issue-70304.rs:4:5
+  --> $DIR/issue-70304.rs:2:5
    |
 LL |     type Cursor<'a>: DocCursor<'a>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-

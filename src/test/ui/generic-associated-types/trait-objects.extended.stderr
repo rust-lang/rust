@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/trait-objects.rs:16:5
+  --> $DIR/trait-objects.rs:15:5
    |
 LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize {
    |             -  - let's call the lifetime of this reference `'1`

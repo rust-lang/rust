@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/missing-where-clause-on-trait.rs:9:39
+  --> $DIR/missing-where-clause-on-trait.rs:7:39
    |
 LL |     type Assoc<'a, 'b>;
    |     ------------------ definition of `Assoc` from trait

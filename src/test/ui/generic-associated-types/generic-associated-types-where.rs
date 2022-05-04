@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 // Checking the interaction with this other feature
 #![feature(associated_type_defaults)]
 

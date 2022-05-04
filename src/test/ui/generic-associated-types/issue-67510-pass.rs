@@ -2,7 +2,6 @@
 //[base] check-fail
 //[extended] check-pass
 
-#![feature(generic_associated_types)]
 #![cfg_attr(extended, feature(generic_associated_types_extended))]
 #![cfg_attr(extended, allow(incomplete_features))]
 

@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait SomeTrait {
     type Wrapped<A>: SomeTrait;
 

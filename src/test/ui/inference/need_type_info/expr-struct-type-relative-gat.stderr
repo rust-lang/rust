@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/expr-struct-type-relative-gat.rs:17:9
+  --> $DIR/expr-struct-type-relative-gat.rs:15:9
    |
 LL |         Self::Output::Simple {};
    |         ^^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the associated type `Output`
