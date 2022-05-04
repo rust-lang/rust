@@ -469,6 +469,8 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo;
 //     x.0.bar;
+//     x.0. bar;
+//     x.0.1;
 //     x.0();
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
