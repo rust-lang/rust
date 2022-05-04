@@ -52,6 +52,7 @@ use std::iter;
 mod item_bounds;
 mod type_of;
 
+#[derive(Debug)]
 struct OnlySelfBounds(bool);
 
 ///////////////////////////////////////////////////////////////////////////
@@ -650,6 +651,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     /// AST. We do this to avoid having to convert *all* the bounds, which
     /// would create artificial cycles. Instead, we can only convert the
     /// bounds for a type parameter `X` if `X::Foo` is used.
+    #[instrument(level = "trace", skip(self, ast_generics))]
     fn type_parameter_bounds_in_generics(
         &self,
         ast_generics: &'tcx hir::Generics<'tcx>,
@@ -659,6 +661,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
+        debug!(?param_def_id);
         ast_generics
             .predicates
             .iter()
@@ -1140,6 +1143,7 @@ fn super_predicates_that_define_assoc_type(
 
         // Combine the two lists to form the complete set of superbounds:
         let superbounds = &*tcx.arena.alloc_from_iter(superbounds1.into_iter().chain(superbounds2));
+        debug!(?superbounds);
 
         // Now require that immediate supertraits are converted,
         // which will, in turn, reach indirect supertraits.

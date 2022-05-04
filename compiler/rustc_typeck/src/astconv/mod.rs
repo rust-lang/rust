@@ -1070,6 +1070,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
 
         self.add_bounds(param_ty, ast_bounds.iter(), &mut bounds, ty::List::empty());
+        debug!(?bounds);
 
         bounds
     }
