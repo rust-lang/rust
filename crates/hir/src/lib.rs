@@ -1780,6 +1780,10 @@ impl BuiltinType {
         matches!(self.inner, hir_def::builtin_type::BuiltinType::Char)
     }
 
+    pub fn is_bool(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Bool)
+    }
+
     pub fn is_str(&self) -> bool {
         matches!(self.inner, hir_def::builtin_type::BuiltinType::Str)
     }
