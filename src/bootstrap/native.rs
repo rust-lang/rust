@@ -377,7 +377,6 @@ impl Step for Llvm {
         cfg.build();
 
         if builder.config.llvm_enzyme {
-
             let executable = env::var("CMAKE").unwrap_or("cmake".to_owned());
             let mut cmd = Command::new(&executable);
             let enzyme_build = PathBuf::from("src").join("tools").join("enzyme").join("enzyme").join("build");
@@ -396,6 +395,9 @@ impl Step for Llvm {
             cmd.arg("-DENZYME_EXTERNAL_SHARED_LIB=ON");
             cmd.arg("-DLLVM_DIR=".to_owned() + llvm_build.to_str().unwrap());
             run_and_printerror(&mut cmd);
+            //panic!("BAAAAAAAR");
+        } else {
+            panic!("FOOOOOOOOOOO");
         }
 
 
@@ -407,7 +409,7 @@ impl Step for Llvm {
 }
 
 fn run_and_printerror(command: &mut Command) {
-    println!("Running: `{:?}`", command);
+    dbg!("Running: `{:?}`", &command);
     match command.status() {
         Ok(status) => {
             if !status.success() {
