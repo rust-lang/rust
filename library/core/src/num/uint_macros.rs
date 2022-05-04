@@ -434,10 +434,18 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_allow_const_fn_unstable(unchecked_math)]
+        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
         #[inline]
         pub const fn checked_add(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            let (_, overflow) = self.overflowing_add(rhs);
+            if unlikely!(overflow) {
+                None
+            } else {
+                // SAFETY: if(not overflow_on_add) checks the precondition for
+                // `unchecked_add`.
+                Some(unsafe {self.unchecked_add(rhs)})
+            }
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -503,10 +511,18 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_allow_const_fn_unstable(unchecked_math)]
+        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
         #[inline]
         pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            let (_, overflow) = self.overflowing_sub(rhs);
+            if unlikely!(overflow) {
+                None
+            } else {
+                // SAFETY: if(not overflow_on_sub) checks the precondition for
+                // `unchecked_sub`.
+                Some(unsafe {self.unchecked_sub(rhs)})
+            }
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -550,10 +566,18 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_allow_const_fn_unstable(unchecked_math)]
+        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
         #[inline]
         pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(rhs);
-            if unlikely!(b) {None} else {Some(a)}
+            let (_, overflow) = self.overflowing_mul(rhs);
+            if unlikely!(overflow) {
+                None
+            } else {
+                // SAFETY: if(not overflow_on_mul) checks the precondition for
+                // `unchecked_mul`.
+                Some(unsafe {self.unchecked_mul(rhs)})
+            }
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
