@@ -48,6 +48,7 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
+use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
 // TODO(antoyo)
@@ -224,18 +225,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             .zip(args.iter())
             .enumerate()
             .map(|(index, (expected_ty, &actual_val))| {
-                // NOTE: these intrinsics have missing parameters before the last one, so ignore the
-                // last argument type check.
-                // FIXME(antoyo): find a way to refactor in order to avoid this hack.
-                match &*func_name {
-                    "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-                    | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask" | "__builtin_ia32_sqrtps512_mask"
-                    | "__builtin_ia32_sqrtpd512_mask" => {
-                        if index == args.len() - 1 {
-                            return actual_val;
-                        }
-                    },
-                    _ => (),
+                if llvm::ignore_arg_cast(&func_name, index, args.len()) {
+                    return actual_val;
                 }
 
                 let actual_ty = actual_val.get_type();
@@ -302,7 +293,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn function_ptr_call(&mut self, func_ptr: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let mut args = self.check_ptr_call("call", func_ptr, args);
+        let args = self.check_ptr_call("call", func_ptr, args);
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
@@ -314,92 +305,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            // Some LLVM intrinsics do not map 1-to-1 to GCC intrinsics, so we add the missing
-            // arguments here.
-            if gcc_func.get_param_count() != args.len() {
-                let func_name = format!("{:?}", func_ptr);
-                match &*func_name {
-                    "__builtin_ia32_pmuldq512_mask" | "__builtin_ia32_pmuludq512_mask"
-                    // FIXME(antoyo): the following intrinsics has 4 (or 5) arguments according to the doc, but is defined with 2 (or 3) arguments in library/stdarch/crates/core_arch/src/x86/avx512f.rs.
-                    | "__builtin_ia32_pmaxsd512_mask" | "__builtin_ia32_pmaxsq512_mask" | "__builtin_ia32_pmaxsq256_mask"
-                    | "__builtin_ia32_pmaxsq128_mask" | "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-                    | "__builtin_ia32_pmaxud512_mask" | "__builtin_ia32_pmaxuq512_mask" | "__builtin_ia32_pmaxuq256_mask"
-                    | "__builtin_ia32_pmaxuq128_mask"
-                    | "__builtin_ia32_pminsd512_mask" | "__builtin_ia32_pminsq512_mask" | "__builtin_ia32_pminsq256_mask"
-                    | "__builtin_ia32_pminsq128_mask" | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask"
-                    | "__builtin_ia32_pminud512_mask" | "__builtin_ia32_pminuq512_mask" | "__builtin_ia32_pminuq256_mask"
-                    | "__builtin_ia32_pminuq128_mask" | "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask"
-                    => {
-                        // TODO: refactor by separating those intrinsics outside of this branch.
-                        let add_before_last_arg =
-                            match &*func_name {
-                                "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-                                | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask"
-                                | "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => true,
-                                _ => false,
-                            };
-                        let new_first_arg_is_zero =
-                            match &*func_name {
-                                "__builtin_ia32_pmaxuq256_mask" | "__builtin_ia32_pmaxuq128_mask"
-                                | "__builtin_ia32_pminuq256_mask" | "__builtin_ia32_pminuq128_mask" => true,
-                                _ => false
-                            };
-                        let arg3_index =
-                            match &*func_name {
-                                "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => 1,
-                                _ => 2,
-                            };
-                        let mut new_args = args.to_vec();
-                        let arg3_type = gcc_func.get_param_type(arg3_index);
-                        let first_arg =
-                            if new_first_arg_is_zero {
-                                let vector_type = arg3_type.dyncast_vector().expect("vector type");
-                                let zero = self.context.new_rvalue_zero(vector_type.get_element_type());
-                                let num_units = vector_type.get_num_units();
-                                self.context.new_rvalue_from_vector(None, arg3_type, &vec![zero; num_units])
-                            }
-                            else {
-                                self.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue()
-                            };
-                        if add_before_last_arg {
-                            new_args.insert(new_args.len() - 1, first_arg);
-                        }
-                        else {
-                            new_args.push(first_arg);
-                        }
-                        let arg4_index =
-                            match &*func_name {
-                                "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => 2,
-                                _ => 3,
-                            };
-                        let arg4_type = gcc_func.get_param_type(arg4_index);
-                        let minus_one = self.context.new_rvalue_from_int(arg4_type, -1);
-                        if add_before_last_arg {
-                            new_args.insert(new_args.len() - 1, minus_one);
-                        }
-                        else {
-                            new_args.push(minus_one);
-                        }
-                        args = new_args.into();
-                    },
-                    "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
-                        let mut new_args = args.to_vec();
-                        if args.len() == 3 {
-                            // Both llvm.fma.v16f32 and llvm.x86.avx512.vfmaddsub.ps.512 maps to
-                            // the same GCC intrinsic, but the former has 3 parameters and the
-                            // latter has 4 so it doesn't require this additional argument.
-                            let arg4_type = gcc_func.get_param_type(3);
-                            let minus_one = self.context.new_rvalue_from_int(arg4_type, -1);
-                            new_args.push(minus_one);
-                        }
-
-                        let arg5_type = gcc_func.get_param_type(4);
-                        new_args.push(self.context.new_rvalue_from_int(arg5_type, 4));
-                        args = new_args.into();
-                    },
-                    _ => (),
-                }
-            }
+            let func_name = format!("{:?}", func_ptr);
+            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
             self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             result.to_rvalue()
         }
@@ -1514,11 +1421,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.vector_reduce(src, |a, b, context| context.new_binary_op(None, op, a.get_type(), a, b))
     }
 
-    pub fn vector_reduce_fadd_fast(&mut self, acc: RValue<'gcc>, src: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_reduce_fadd_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
 
-    pub fn vector_reduce_fmul_fast(&mut self, acc: RValue<'gcc>, src: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn vector_reduce_fmul_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -1553,6 +1460,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let ones = vec![self.context.new_rvalue_one(element_type); num_units];
         let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
         let inverted_masks = masks + ones;
+        // NOTE: sometimes, the type of else_val can be different than the type of then_val in
+        // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
+        // operation to work.
+        let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
         let else_vals = inverted_masks & else_val;
 
         then_vals | else_vals
