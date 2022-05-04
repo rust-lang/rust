@@ -65,6 +65,9 @@ changelog-seen = 2
 # Indicates whether an LLVM Release build should include debug info
 #release-debuginfo = false
 
+# Indicates whether we should build the LLVM Plugin Enzyme
+enzyme = true
+
 # Indicates whether the LLVM assertions are enabled or not
 #assertions = false
 

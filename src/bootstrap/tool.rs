@@ -68,7 +68,7 @@ impl Step for ToolBuild {
             path,
             self.source_type,
             &self.extra_features,
-        );
+            );
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
@@ -157,13 +157,13 @@ impl Step for ToolBuild {
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n"
-            );
+                    );
             println!(
                 "the following dependencies are duplicated although they \
                       have the same features enabled:"
-            );
+                    );
             let (same, different): (Vec<_>, Vec<_>) =
-                duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
+                                    duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
             for (id, cur, prev) in same {
                 println!("  {}", id);
                 // same features
@@ -179,13 +179,13 @@ impl Step for ToolBuild {
                     cur.0,
                     &cur_features - &prev_features,
                     cur.1
-                );
+                    );
                 println!(
                     "    `{}` additionally enabled features {:?} at {:?}",
                     prev.0,
                     &prev_features - &cur_features,
                     prev.1
-                );
+                    );
             }
             println!();
             println!(
@@ -193,14 +193,14 @@ impl Step for ToolBuild {
                       src/tools/rustc-workspace-hack/Cargo.toml crate, as \
                       that will update the dependency graph to ensure that \
                       these crates all share the same feature set"
-            );
+                    );
             panic!("tools should not compile multiple copies of the same crate");
         }
 
         builder.save_toolstate(
             tool,
             if is_expected { ToolState::TestFail } else { ToolState::BuildFail },
-        );
+            );
 
         if !is_expected {
             if !is_optional_tool {
@@ -232,7 +232,7 @@ pub fn prepare_tool_cargo(
     path: &'static str,
     source_type: SourceType,
     extra_features: &[String],
-) -> CargoCommand {
+    ) -> CargoCommand {
     let mut cargo = builder.cargo(compiler, mode, source_type, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
@@ -241,13 +241,13 @@ pub fn prepare_tool_cargo(
     if builder.build.config.cargo_native_static {
         if path.ends_with("cargo")
             || path.ends_with("rls")
-            || path.ends_with("clippy")
-            || path.ends_with("miri")
-            || path.ends_with("rustfmt")
-        {
-            cargo.env("LIBZ_SYS_STATIC", "1");
-            features.push("rustc-workspace-hack/all-static".to_string());
-        }
+                || path.ends_with("clippy")
+                || path.ends_with("miri")
+                || path.ends_with("rustfmt")
+                {
+                    cargo.env("LIBZ_SYS_STATIC", "1");
+                    features.push("rustc-workspace-hack/all-static".to_string());
+                }
     }
 
     // if tools are using lzma we want to force the build script to build its
@@ -281,76 +281,76 @@ pub fn prepare_tool_cargo(
 
 macro_rules! bootstrap_tool {
     ($(
-        $name:ident, $path:expr, $tool_name:expr
-        $(,is_external_tool = $external:expr)*
-        $(,is_unstable_tool = $unstable:expr)*
-        ;
-    )+) => {
+            $name:ident, $path:expr, $tool_name:expr
+            $(,is_external_tool = $external:expr)*
+            $(,is_unstable_tool = $unstable:expr)*
+            ;
+      )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
                 $name,
-            )+
+                )+
         }
 
         impl<'a> Builder<'a> {
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
                 match tool {
                     $(Tool::$name =>
-                        self.ensure($name {
-                            compiler: self.compiler(0, self.config.build),
-                            target: self.config.build,
-                        }),
-                    )+
+                      self.ensure($name {
+                          compiler: self.compiler(0, self.config.build),
+                          target: self.config.build,
+                      }),
+                      )+
                 }
             }
         }
 
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-        pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
-        }
-
-        impl Step for $name {
-            type Output = PathBuf;
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.path($path)
+            pub struct $name {
+                pub compiler: Compiler,
+                pub target: TargetSelection,
             }
 
-            fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($name {
-                    // snapshot compiler
-                    compiler: run.builder.compiler(0, run.builder.config.build),
-                    target: run.target,
-                });
-            }
+            impl Step for $name {
+                type Output = PathBuf;
 
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
-                builder.ensure(ToolBuild {
-                    compiler: self.compiler,
-                    target: self.target,
-                    tool: $tool_name,
-                    mode: if false $(|| $unstable)* {
-                        // use in-tree libraries for unstable features
-                        Mode::ToolStd
-                    } else {
-                        Mode::ToolBootstrap
-                    },
-                    path: $path,
-                    is_optional_tool: false,
-                    source_type: if false $(|| $external)* {
-                        SourceType::Submodule
-                    } else {
-                        SourceType::InTree
-                    },
-                    extra_features: vec![],
-                }).expect("expected to build -- essential tool")
+                fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                    run.path($path)
+                }
+
+                fn make_run(run: RunConfig<'_>) {
+                    run.builder.ensure($name {
+                        // snapshot compiler
+                        compiler: run.builder.compiler(0, run.builder.config.build),
+                        target: run.target,
+                    });
+                }
+
+                fn run(self, builder: &Builder<'_>) -> PathBuf {
+                    builder.ensure(ToolBuild {
+                        compiler: self.compiler,
+                        target: self.target,
+                        tool: $tool_name,
+                        mode: if false $(|| $unstable)* {
+                            // use in-tree libraries for unstable features
+                            Mode::ToolStd
+                        } else {
+                            Mode::ToolBootstrap
+                        },
+                        path: $path,
+                        is_optional_tool: false,
+                        source_type: if false $(|| $external)* {
+                            SourceType::Submodule
+                        } else {
+                            SourceType::InTree
+                        },
+                        extra_features: vec![],
+                    }).expect("expected to build -- essential tool")
+                }
             }
-        }
-        )+
+            )+
     }
 }
 
@@ -370,7 +370,7 @@ bootstrap_tool!(
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
-);
+    );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
@@ -424,7 +424,7 @@ impl Step for ErrorIndex {
                 source_type: SourceType::InTree,
                 extra_features: Vec::new(),
             })
-            .expect("expected to build -- essential tool")
+        .expect("expected to build -- essential tool")
     }
 }
 
@@ -460,7 +460,7 @@ impl Step for RemoteTestServer {
                 source_type: SourceType::InTree,
                 extra_features: Vec::new(),
             })
-            .expect("expected to build -- essential tool")
+        .expect("expected to build -- essential tool")
     }
 }
 
@@ -515,7 +515,7 @@ impl Step for Rustdoc {
         if !builder.config.dry_run && builder.config.download_rustc && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
-            );
+                );
         }
 
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
@@ -539,12 +539,12 @@ impl Step for Rustdoc {
             "src/tools/rustdoc",
             SourceType::InTree,
             features.as_slice(),
-        );
+            );
 
         builder.info(&format!(
-            "Building rustdoc for stage{} ({})",
-            target_compiler.stage, target_compiler.host
-        ));
+                "Building rustdoc for stage{} ({})",
+                target_compiler.stage, target_compiler.host
+                ));
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
@@ -584,12 +584,12 @@ impl Step for Cargo {
         let builder = run.builder;
         run.path("src/tools/cargo").default_condition(
             builder.config.extended
-                && builder.config.tools.as_ref().map_or(
-                    true,
-                    // If `tools` is set, search list for this tool.
-                    |tools| tools.iter().any(|tool| tool == "cargo"),
+            && builder.config.tools.as_ref().map_or(
+                true,
+                // If `tools` is set, search list for this tool.
+                |tools| tools.iter().any(|tool| tool == "cargo"),
                 ),
-        )
+                )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -611,7 +611,7 @@ impl Step for Cargo {
                 source_type: SourceType::Submodule,
                 extra_features: Vec::new(),
             })
-            .expect("expected to build -- essential tool");
+        .expect("expected to build -- essential tool");
 
         let build_cred = |name, path| {
             // These credential helpers are currently experimental.
@@ -632,18 +632,18 @@ impl Step for Cargo {
             build_cred(
                 "cargo-credential-wincred",
                 "src/tools/cargo/crates/credential/cargo-credential-wincred",
-            );
+                );
         }
         if self.target.contains("apple-darwin") {
             build_cred(
                 "cargo-credential-macos-keychain",
                 "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
-            );
+                );
         }
         build_cred(
             "cargo-credential-1password",
             "src/tools/cargo/crates/credential/cargo-credential-1password",
-        );
+            );
         cargo_bin_path
     }
 }
@@ -674,7 +674,7 @@ impl Step for LldWrapper {
                 source_type: SourceType::InTree,
                 extra_features: vec![self.flavor_feature.to_owned()],
             })
-            .expect("expected to build -- essential tool");
+        .expect("expected to build -- essential tool");
 
         src_exe
     }
@@ -682,31 +682,31 @@ impl Step for LldWrapper {
 
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
-       $($name:ident,
-       $toolstate:ident,
-       $path:expr,
-       $tool_name:expr,
-       stable = $stable:expr,
-       $(in_tree = $in_tree:expr,)?
-       $(submodule = $submodule:literal,)?
-       $extra_deps:block;)+) => {
+    $($name:ident,
+      $toolstate:ident,
+      $path:expr,
+      $tool_name:expr,
+      stable = $stable:expr,
+      $(in_tree = $in_tree:expr,)?
+      $(submodule = $submodule:literal,)?
+      $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
-            pub extra_features: Vec<String>,
-        }
+            pub struct $name {
+                pub compiler: Compiler,
+                pub target: TargetSelection,
+                pub extra_features: Vec<String>,
+            }
 
-        impl Step for $name {
-            type Output = Option<PathBuf>;
-            const DEFAULT: bool = true; // Overwritten below
-            const ONLY_HOSTS: bool = true;
+            impl Step for $name {
+                type Output = Option<PathBuf>;
+                const DEFAULT: bool = true; // Overwritten below
+                const ONLY_HOSTS: bool = true;
 
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(
-                    builder.config.extended
+                fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                    let builder = run.builder;
+                    run.path($path).default_condition(
+                        builder.config.extended
                         && builder.config.tools.as_ref().map_or(
                             // By default, on nightly/dev enable all tools, else only
                             // build stable tools.
@@ -716,40 +716,40 @@ macro_rules! tool_extended {
                                 tools.iter().any(|tool| match tool.as_ref() {
                                     "clippy" => $tool_name == "clippy-driver",
                                     x => $tool_name == x,
-                            })
-                        }),
-                )
-            }
+                                })
+                            }),
+                            )
+                }
 
-            fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-                    target: run.target,
-                    extra_features: Vec::new(),
-                });
-            }
+                fn make_run(run: RunConfig<'_>) {
+                    run.builder.ensure($name {
+                        compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                        target: run.target,
+                        extra_features: Vec::new(),
+                    });
+                }
 
-            #[allow(unused_mut)]
-            fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
-                $extra_deps
-                $( $builder.update_submodule(&Path::new("src").join("tools").join($submodule)); )?
-                $builder.ensure(ToolBuild {
-                    compiler: $sel.compiler,
-                    target: $sel.target,
-                    tool: $tool_name,
-                    mode: Mode::ToolRustc,
-                    path: $path,
-                    extra_features: $sel.extra_features,
-                    is_optional_tool: true,
-                    source_type: if false $(|| $in_tree)* {
-                        SourceType::InTree
-                    } else {
-                        SourceType::Submodule
-                    },
-                })
+                #[allow(unused_mut)]
+                fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
+                    $extra_deps
+                        $( $builder.update_submodule(&Path::new("src").join("tools").join($submodule)); )?
+                        $builder.ensure(ToolBuild {
+                            compiler: $sel.compiler,
+                            target: $sel.target,
+                            tool: $tool_name,
+                            mode: Mode::ToolRustc,
+                            path: $path,
+                            extra_features: $sel.extra_features,
+                            is_optional_tool: true,
+                            source_type: if false $(|| $in_tree)* {
+                                SourceType::InTree
+                            } else {
+                                SourceType::Submodule
+                            },
+                        })
+                }
             }
-        }
-        )+
+            )+
     }
 }
 
@@ -758,22 +758,22 @@ macro_rules! tool_extended {
 // Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, miri, "src/tools/miri", "miri", stable=false, {};
-    CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
-    Rls, rls, "src/tools/rls", "rls", stable=true, {
-        builder.ensure(Clippy {
-            compiler: self.compiler,
-            target: self.target,
-            extra_features: Vec::new(),
-        });
-        self.extra_features.push("clippy".to_owned());
-    };
-    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
-    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, submodule="rust-analyzer", {};
+Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
+CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
+Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
+Miri, miri, "src/tools/miri", "miri", stable=false, {};
+CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+Rls, rls, "src/tools/rls", "rls", stable=true, {
+    builder.ensure(Clippy {
+        compiler: self.compiler,
+        target: self.target,
+        extra_features: Vec::new(),
+    });
+    self.extra_features.push("clippy".to_owned());
+};
+RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
+Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
+RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, submodule="rust-analyzer", {};
 );
 
 impl<'a> Builder<'a> {

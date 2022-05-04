@@ -61,7 +61,7 @@ impl LdFlags {
 pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
-) -> Result<PathBuf, Meta> {
+    ) -> Result<PathBuf, Meta> {
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
     if let Some(config) = builder.config.target_config.get(&target) {
@@ -90,7 +90,7 @@ pub fn prebuilt_llvm_config(
             "Warning: \
                 Using a potentially stale build of LLVM; \
                 This may not behave well.",
-        );
+                );
         return Ok(build_llvm_config);
     }
 
@@ -99,11 +99,11 @@ pub fn prebuilt_llvm_config(
             builder.info(
                 "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
-            );
+                     );
             builder.info(&format!(
-                "To force LLVM to rebuild, remove the file `{}`",
-                stamp.path.display()
-            ));
+                    "To force LLVM to rebuild, remove the file `{}`",
+                    stamp.path.display()
+                    ));
         }
         return Ok(build_llvm_config);
     }
@@ -155,9 +155,9 @@ impl Step for Llvm {
         builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.config.llvm_link_shared
             && (target.contains("windows") || target.contains("apple-darwin"))
-        {
-            panic!("shared linking to LLVM is not currently supported on {}", target.triple);
-        }
+            {
+                panic!("shared linking to LLVM is not currently supported on {}", target.triple);
+            }
 
         builder.info(&format!("Building LLVM for {}", target));
         t!(stamp.remove());
@@ -190,6 +190,8 @@ impl Step for Llvm {
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
+        // Not needed, not an LLVM component yet
+        // let enzyme = if builder.config.llvm_enzyme { "ON" } else { "OFF" };
         let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
         let enable_tests = if builder.config.llvm_tests { "ON" } else { "OFF" };
 
@@ -331,7 +333,7 @@ impl Step for Llvm {
             cfg.define(
                 "LLVM_CONFIG_PATH",
                 host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
-            );
+                );
         }
 
         if let Some(ref suffix) = builder.config.llvm_version_suffix {
@@ -374,9 +376,47 @@ impl Step for Llvm {
 
         cfg.build();
 
+        if builder.config.llvm_enzyme {
+
+            let executable = env::var("CMAKE").unwrap_or("cmake".to_owned());
+            let mut cmd = Command::new(&executable);
+            let enzyme_build = PathBuf::from("src").join("tools").join("enzyme").join("enzyme").join("build");
+            // let dst = cfg
+            //     .out_dir(&out_dir)
+            //     .clone()
+            //     .unwrap_or_else(|| PathBuf::from(getenv_unwrap("OUT_DIR")));
+            let llvm_build = out_dir.join("build")
+                .join("lib")
+                .join("cmake")
+                .join("llvm");
+
+            cmd.current_dir(&enzyme_build);
+            cmd.arg("..");
+            cmd.arg("-DCMAKE_BUILD_TYPE=".to_owned() + profile);
+            cmd.arg("-DENZYME_EXTERNAL_SHARED_LIB=ON");
+            cmd.arg("-DLLVM_DIR=".to_owned() + llvm_build.to_str().unwrap());
+            run_and_printerror(&mut cmd);
+        }
+
+
+
         t!(stamp.write());
 
         build_llvm_config
+    }
+}
+
+fn run_and_printerror(command: &mut Command) {
+    println!("Running: `{:?}`", command);
+    match command.status() {
+        Ok(status) => {
+            if !status.success() {
+                panic!("Failed: `{:?}` ({})", command, status);
+            }
+        }
+        Err(error) => {
+            panic!("Failed: `{:?}` ({})", command, error);
+        }
     }
 }
 
@@ -406,7 +446,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
-) {
+    ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
@@ -683,7 +723,7 @@ impl Step for Lld {
                 .define(
                     "LLVM_TABLEGEN_EXE",
                     llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
-                );
+                    );
         }
 
         // Explicitly set C++ standard, because upstream doesn't do so
@@ -802,9 +842,9 @@ impl Step for Sanitizers {
         if stamp.is_done() {
             if stamp.hash.is_none() {
                 builder.info(&format!(
-                    "Rebuild sanitizers by removing the file `{}`",
-                    stamp.path.display()
-                ));
+                        "Rebuild sanitizers by removing the file `{}`",
+                        stamp.path.display()
+                        ));
             }
             return runtimes;
         }
@@ -860,7 +900,7 @@ fn supported_sanitizers(
     out_dir: &Path,
     target: TargetSelection,
     channel: &str,
-) -> Vec<SanitizerRuntime> {
+    ) -> Vec<SanitizerRuntime> {
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
@@ -868,9 +908,9 @@ fn supported_sanitizers(
                 cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
                 path: out_dir
                     .join(&format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
-                name: format!("librustc-{}_rt.{}.dylib", channel, c),
+                    name: format!("librustc-{}_rt.{}.dylib", channel, c),
             })
-            .collect()
+        .collect()
     };
 
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
@@ -881,7 +921,7 @@ fn supported_sanitizers(
                 path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
                 name: format!("librustc-{}_rt.{}.a", channel, c),
             })
-            .collect()
+        .collect()
     };
 
     match &*target.triple {
@@ -974,9 +1014,9 @@ impl Step for CrtBeginEnd {
         let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtend.c");
         if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
             && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
-        {
-            return out_dir;
-        }
+            {
+                return out_dir;
+            }
 
         builder.info("Building crtbegin.o and crtend.o");
         t!(fs::create_dir_all(&out_dir));

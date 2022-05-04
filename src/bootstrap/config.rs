@@ -25,7 +25,7 @@ macro_rules! check_ci_llvm {
             $name.is_none(),
             "setting {} is incompatible with download-ci-llvm.",
             stringify!($name)
-        );
+            );
     };
 }
 
@@ -89,6 +89,7 @@ pub struct Config {
     pub llvm_skip_rebuild: bool,
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
+    pub llvm_enzyme: bool,
     pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -341,7 +342,7 @@ impl Merge for TomlConfig {
     fn merge(
         &mut self,
         TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen: _ }: Self,
-    ) {
+        ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>) {
             if let Some(new) = y {
                 if let Some(original) = x {
@@ -367,9 +368,9 @@ macro_rules! define_config {
         $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
     }) => {
         $(#[$attr])*
-        struct $name {
-            $($field: Option<$field_ty>,)*
-        }
+            struct $name {
+                $($field: Option<$field_ty>,)*
+            }
 
         impl Merge for $name {
             fn merge(&mut self, other: Self) {
@@ -377,7 +378,7 @@ macro_rules! define_config {
                     if !self.$field.is_some() {
                         self.$field = other.$field;
                     }
-                )*
+                 )*
             }
         }
 
@@ -386,64 +387,64 @@ macro_rules! define_config {
         // compile time of rustbuild.
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct Field;
-                impl<'de> serde::de::Visitor<'de> for Field {
-                    type Value = $name;
-                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        f.write_str(concat!("struct ", stringify!($name)))
-                    }
-
-                    #[inline]
-                    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-                    where
-                        A: serde::de::MapAccess<'de>,
-                    {
-                        $(let mut $field: Option<$field_ty> = None;)*
-                        while let Some(key) =
-                            match serde::de::MapAccess::next_key::<String>(&mut map) {
-                                Ok(val) => val,
-                                Err(err) => {
-                                    return Err(err);
-                                }
-                            }
-                        {
-                            match &*key {
-                                $($field_key => {
-                                    if $field.is_some() {
-                                        return Err(<A::Error as serde::de::Error>::duplicate_field(
-                                            $field_key,
-                                        ));
-                                    }
-                                    $field = match serde::de::MapAccess::next_value::<$field_ty>(
-                                        &mut map,
-                                    ) {
-                                        Ok(val) => Some(val),
-                                        Err(err) => {
-                                            return Err(err);
-                                        }
-                                    };
-                                })*
-                                key => {
-                                    return Err(serde::de::Error::unknown_field(key, FIELDS));
-                                }
-                            }
+                where
+                    D: Deserializer<'de>,
+                {
+                    struct Field;
+                    impl<'de> serde::de::Visitor<'de> for Field {
+                        type Value = $name;
+                        fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            f.write_str(concat!("struct ", stringify!($name)))
                         }
-                        Ok($name { $($field),* })
+
+                        #[inline]
+                        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+                            where
+                                A: serde::de::MapAccess<'de>,
+                            {
+                                $(let mut $field: Option<$field_ty> = None;)*
+                                    while let Some(key) =
+                                        match serde::de::MapAccess::next_key::<String>(&mut map) {
+                                            Ok(val) => val,
+                                            Err(err) => {
+                                                return Err(err);
+                                            }
+                                        }
+                                {
+                                    match &*key {
+                                        $($field_key => {
+                                            if $field.is_some() {
+                                                return Err(<A::Error as serde::de::Error>::duplicate_field(
+                                                        $field_key,
+                                                        ));
+                                            }
+                                            $field = match serde::de::MapAccess::next_value::<$field_ty>(
+                                                &mut map,
+                                                ) {
+                                                Ok(val) => Some(val),
+                                                Err(err) => {
+                                                    return Err(err);
+                                                }
+                                            };
+                                        })*
+                                        key => {
+                                            return Err(serde::de::Error::unknown_field(key, FIELDS));
+                                        }
+                                    }
+                                }
+                                Ok($name { $($field),* })
+                            }
                     }
+                    const FIELDS: &'static [&'static str] = &[
+                        $($field_key,)*
+                    ];
+                    Deserializer::deserialize_struct(
+                        deserializer,
+                        stringify!($name),
+                        FIELDS,
+                        Field,
+                        )
                 }
-                const FIELDS: &'static [&'static str] = &[
-                    $($field_key,)*
-                ];
-                Deserializer::deserialize_struct(
-                    deserializer,
-                    stringify!($name),
-                    FIELDS,
-                    Field,
-                )
-            }
         }
     }
 }
@@ -515,6 +516,7 @@ define_config! {
         release_debuginfo: Option<bool> = "release-debuginfo",
         assertions: Option<bool> = "assertions",
         tests: Option<bool> = "tests",
+        enzyme: Option<bool> = "enzyme",
         plugins: Option<bool> = "plugins",
         ccache: Option<StringOrBool> = "ccache",
         version_check: Option<bool> = "version-check",
@@ -708,13 +710,13 @@ impl Config {
             // TomlConfig and sub types to be monomorphized 5x by toml.
             match toml::from_str(&contents)
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            {
-                Ok(table) => table,
-                Err(err) => {
-                    println!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    process::exit(2);
+                {
+                    Ok(table) => table,
+                    Err(err) => {
+                        println!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                        process::exit(2);
+                    }
                 }
-            }
         };
 
         // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
@@ -831,6 +833,7 @@ impl Config {
         // we'll infer default values for them later
         let mut llvm_assertions = None;
         let mut llvm_tests = None;
+        let mut llvm_enzyme = None;
         let mut llvm_plugins = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -857,6 +860,7 @@ impl Config {
             set(&mut config.ninja_in_file, llvm.ninja);
             llvm_assertions = llvm.assertions;
             llvm_tests = llvm.tests;
+            llvm_enzyme = llvm.enzyme;
             llvm_plugins = llvm.plugins;
             llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
@@ -917,7 +921,7 @@ impl Config {
                         "x86_64-unknown-illumos",
                         "x86_64-unknown-linux-musl",
                         "x86_64-unknown-netbsd",
-                    ];
+                        ];
                     supported_platforms.contains(&&*config.build.triple)
                 }
                 Some(StringOrBool::Bool(b)) => b,
@@ -950,6 +954,7 @@ impl Config {
                 check_ci_llvm!(llvm.polly);
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.build_config);
+                check_ci_llvm!(llvm.enzyme);
                 check_ci_llvm!(llvm.plugins);
 
                 // CI-built LLVM can be either dynamic or static.
@@ -961,7 +966,7 @@ impl Config {
                     let link_type = t!(
                         std::fs::read_to_string(ci_llvm.join("link-type.txt")),
                         format!("CI llvm missing: {}", ci_llvm.display())
-                    );
+                        );
                     link_type == "dynamic"
                 };
             }
@@ -1111,6 +1116,7 @@ impl Config {
         config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
+        config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(true);
 
@@ -1180,7 +1186,7 @@ impl Config {
                         config.stage, 2,
                         "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
                         config.stage,
-                    );
+                        );
                 }
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
