@@ -1,14 +1,13 @@
-use clippy_utils::get_parent_expr;
-use clippy_utils::source::snippet;
-use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind};
+use clippy_utils::consts::{constant_full_int, constant_simple, Constant, FullInt};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{clip, unsext};
+use rustc_errors::Applicability;
+use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-
-use clippy_utils::consts::{constant_full_int, constant_simple, Constant, FullInt};
-use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{clip, unsext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -23,11 +22,6 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// x / 1 + 0 * 1 - 0 | 0;
     /// ```
-    ///
-    /// ### Known problems
-    /// False negatives: `f(0 + if b { 1 } else { 2 } + 3);` is reducible to
-    /// `f(if b { 1 } else { 2 } + 3);`. But the lint doesn't trigger for the code.
-    /// See [#8724](https://github.com/rust-lang/rust-clippy/issues/8724)
     #[clippy::version = "pre 1.29.0"]
     pub IDENTITY_OP,
     complexity,
@@ -45,31 +39,22 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
             if !is_allowed(cx, *cmp, left, right) {
                 match cmp.node {
                     BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                        if reducible_to_right(cx, expr, right) {
-                            check(cx, left, 0, expr.span, right.span);
-                        }
-                        check(cx, right, 0, expr.span, left.span);
+                        check(cx, left, 0, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                        check(cx, right, 0, expr.span, left.span, Parens::Unneeded);
                     },
                     BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-                        check(cx, right, 0, expr.span, left.span);
+                        check(cx, right, 0, expr.span, left.span, Parens::Unneeded);
                     },
                     BinOpKind::Mul => {
-                        if reducible_to_right(cx, expr, right) {
-                            check(cx, left, 1, expr.span, right.span);
-                        }
-                        check(cx, right, 1, expr.span, left.span);
+                        check(cx, left, 1, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                        check(cx, right, 1, expr.span, left.span, Parens::Unneeded);
                     },
-                    BinOpKind::Div => check(cx, right, 1, expr.span, left.span),
+                    BinOpKind::Div => check(cx, right, 1, expr.span, left.span, Parens::Unneeded),
                     BinOpKind::BitAnd => {
-                        if reducible_to_right(cx, expr, right) {
-                            check(cx, left, -1, expr.span, right.span);
-                        }
-                        check(cx, right, -1, expr.span, left.span);
+                        check(cx, left, -1, expr.span, right.span, needs_parenthesis(cx, expr, right));
+                        check(cx, right, -1, expr.span, left.span, Parens::Unneeded);
                     },
-                    BinOpKind::Rem => {
-                        // Don't call reducible_to_right because N % N is always reducible to 1
-                        check_remainder(cx, left, right, expr.span, left.span);
-                    },
+                    BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
                     _ => (),
                 }
             }
@@ -77,24 +62,50 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
     }
 }
 
-/// Checks if `left op ..right` can be actually reduced to `right`
-/// e.g. `0 + if b { 1 } else { 2 } + if b { 3 } else { 4 }`
-/// cannot be reduced to `if b { 1 } else { 2 } +  if b { 3 } else { 4 }`
-/// See #8724
-fn reducible_to_right(cx: &LateContext<'_>, binary: &Expr<'_>, right: &Expr<'_>) -> bool {
-    if let ExprKind::If(..) | ExprKind::Match(..) | ExprKind::Block(..) | ExprKind::Loop(..) = right.kind {
-        is_toplevel_binary(cx, binary)
-    } else {
-        true
-    }
+#[derive(Copy, Clone)]
+enum Parens {
+    Needed,
+    Unneeded,
 }
 
-fn is_toplevel_binary(cx: &LateContext<'_>, must_be_binary: &Expr<'_>) -> bool {
-    if let Some(parent) = get_parent_expr(cx, must_be_binary) && let ExprKind::Binary(..) = &parent.kind {
-        false
-    } else {
-        true
+/// Checks if `left op right` needs parenthesis when reduced to `right`
+/// e.g. `0 + if b { 1 } else { 2 } + if b { 3 } else { 4 }` cannot be reduced
+/// to `if b { 1 } else { 2 } + if b { 3 } else { 4 }` where the `if` could be
+/// interpreted as a statement
+///
+/// See #8724
+fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, right: &Expr<'_>) -> Parens {
+    match right.kind {
+        ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) => {
+            // ensure we're checking against the leftmost expression of `right`
+            //
+            //     ~~~ `lhs`
+            // 0 + {4} * 2
+            //     ~~~~~~~ `right`
+            return needs_parenthesis(cx, binary, lhs);
+        },
+        ExprKind::If(..) | ExprKind::Match(..) | ExprKind::Block(..) | ExprKind::Loop(..) => {},
+        _ => return Parens::Unneeded,
     }
+
+    let mut prev_id = binary.hir_id;
+    for (_, node) in cx.tcx.hir().parent_iter(binary.hir_id) {
+        if let Node::Expr(expr) = node
+            && let ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) = expr.kind
+            && lhs.hir_id == prev_id
+        {
+            // keep going until we find a node that encompasses left of `binary`
+            prev_id = expr.hir_id;
+            continue;
+        }
+
+        match node {
+            Node::Block(_) | Node::Stmt(_) => break,
+            _ => return Parens::Unneeded,
+        };
+    }
+
+    Parens::Needed
 }
 
 fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> bool {
@@ -115,11 +126,11 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
     } {
-        span_ineffective_operation(cx, span, arg);
+        span_ineffective_operation(cx, span, arg, Parens::Unneeded);
     }
 }
 
-fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
+fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
@@ -132,19 +143,27 @@ fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
             1 => v == 1,
             _ => unreachable!(),
         } {
-            span_ineffective_operation(cx, span, arg);
+            span_ineffective_operation(cx, span, arg, parens);
         }
     }
 }
 
-fn span_ineffective_operation(cx: &LateContext<'_>, span: Span, arg: Span) {
-    span_lint(
+fn span_ineffective_operation(cx: &LateContext<'_>, span: Span, arg: Span, parens: Parens) {
+    let mut applicability = Applicability::MachineApplicable;
+    let expr_snippet = snippet_with_applicability(cx, arg, "..", &mut applicability);
+
+    let suggestion = match parens {
+        Parens::Needed => format!("({expr_snippet})"),
+        Parens::Unneeded => expr_snippet.into_owned(),
+    };
+
+    span_lint_and_sugg(
         cx,
         IDENTITY_OP,
         span,
-        &format!(
-            "the operation is ineffective. Consider reducing it to `{}`",
-            snippet(cx, arg, "..")
-        ),
+        "this operation has no effect",
+        "consider reducing it to",
+        suggestion,
+        applicability,
     );
 }
