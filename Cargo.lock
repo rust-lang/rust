@@ -448,9 +448,10 @@ dependencies = [
  "lazy_static",
  "remove_dir_all",
  "serde_json",
+ "snapbox",
  "tar",
  "termcolor",
- "toml_edit 0.13.4",
+ "toml_edit 0.14.3",
  "url 2.2.2",
 ]
 
