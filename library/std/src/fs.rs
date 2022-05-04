@@ -1480,6 +1480,47 @@ impl DirEntry {
     /// # Examples
     ///
     /// ```
+    /// #![feature(dir_entry_symlink_metadata)]
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             if let Ok(metadata) = entry.symlink_metadata() {
+    ///                 // Now let's show our entry's permissions!
+    ///                 println!("{:?}: {:?}", entry.path(), metadata.permissions());
+    ///             } else {
+    ///                 println!("Couldn't get metadata for {:?}", entry.path());
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "dir_entry_symlink_metadata", issue = "none")]
+    pub fn symlink_metadata(&self) -> io::Result<Metadata> {
+        self.0.metadata().map(Metadata)
+    }
+
+    /// Returns the metadata for the file that this entry points at.
+    ///
+    /// This is the same as [`DirEntry::symlink_metadata`].
+    ///
+    /// This function will not traverse symlinks if this entry points at a
+    /// symlink. To traverse symlinks use [`fs::metadata`] or [`fs::File::metadata`].
+    ///
+    /// [`fs::metadata`]: metadata
+    /// [`fs::File::metadata`]: File::metadata
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// On Windows this function is cheap to call (no extra system calls
+    /// needed), but on Unix platforms this function is the equivalent of
+    /// calling `symlink_metadata` on the path.
+    ///
+    /// # Examples
+    ///
+    /// ```
     /// use std::fs;
     ///
     /// if let Ok(entries) = fs::read_dir(".") {
@@ -1498,7 +1539,7 @@ impl DirEntry {
     /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
-        self.0.metadata().map(Metadata)
+        self.symlink_metadata()
     }
 
     /// Returns the file type for the file that this entry points at.
