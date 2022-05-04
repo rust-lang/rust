@@ -1334,8 +1334,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // is used and no 'maybe' bounds are used.
         let expanded_traits =
             traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
-        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
-            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
+        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
+            .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
+            .partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
