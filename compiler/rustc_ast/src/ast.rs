@@ -23,7 +23,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1532,7 +1532,7 @@ impl MacCall {
 }
 
 /// Arguments passed to an attribute or a function-like macro.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum MacArgs {
     /// No arguments - `#[attr]`.
     Empty,
@@ -1542,9 +1542,18 @@ pub enum MacArgs {
     Eq(
         /// Span of the `=` token.
         Span,
-        /// "value" as a nonterminal token.
-        Token,
+        /// The "value".
+        MacArgsEq,
     ),
+}
+
+// The RHS of a `MacArgs::Eq` starts out as an expression. Once macro expansion
+// is completed, all cases end up either as a literal, which is the form used
+// after lowering to HIR, or as an error.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum MacArgsEq {
+    Ast(P<Expr>),
+    Hir(Lit),
 }
 
 impl MacArgs {
@@ -1559,7 +1568,10 @@ impl MacArgs {
         match self {
             MacArgs::Empty => None,
             MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
-            MacArgs::Eq(eq_span, token) => Some(eq_span.to(token.span)),
+            MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+                unreachable!("in literal form when getting span: {:?}", lit);
+            }
         }
     }
 
@@ -1569,7 +1581,23 @@ impl MacArgs {
         match self {
             MacArgs::Empty => TokenStream::default(),
             MacArgs::Delimited(.., tokens) => tokens.clone(),
-            MacArgs::Eq(.., token) => TokenTree::Token(token.clone()).into(),
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
+                // Currently only literals are allowed here. If more complex expression kinds are
+                // allowed in the future, then `nt_to_tokenstream` should be used to extract the
+                // token stream. This will require some cleverness, perhaps with a function
+                // pointer, because `nt_to_tokenstream` is not directly usable from this crate.
+                // It will also require changing the `parse_expr` call in `parse_mac_args_common`
+                // to `parse_expr_force_collect`.
+                if let ExprKind::Lit(lit) = &expr.kind {
+                    let token = Token::new(TokenKind::Literal(lit.token), lit.span);
+                    TokenTree::Token(token).into()
+                } else {
+                    unreachable!("couldn't extract literal when getting inner tokens: {:?}", expr)
+                }
+            }
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+                unreachable!("in literal form when getting inner tokens: {:?}", lit)
+            }
         }
     }
 
@@ -1577,6 +1605,30 @@ impl MacArgs {
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
         !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace, _))
+    }
+}
+
+impl<CTX> HashStable<CTX> for MacArgs
+where
+    CTX: crate::HashStableContext,
+{
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        mem::discriminant(self).hash_stable(ctx, hasher);
+        match self {
+            MacArgs::Empty => {}
+            MacArgs::Delimited(dspan, delim, tokens) => {
+                dspan.hash_stable(ctx, hasher);
+                delim.hash_stable(ctx, hasher);
+                tokens.hash_stable(ctx, hasher);
+            }
+            MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => {
+                unreachable!("hash_stable {:?}", expr);
+            }
+            MacArgs::Eq(eq_span, MacArgsEq::Hir(lit)) => {
+                eq_span.hash_stable(ctx, hasher);
+                lit.hash_stable(ctx, hasher);
+            }
+        }
     }
 }
 

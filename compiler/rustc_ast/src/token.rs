@@ -237,6 +237,15 @@ pub enum TokenKind {
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
 
+    /// An embedded AST node, as produced by a macro. This only exists for
+    /// historical reasons. We'd like to get rid of it, for multiple reasons.
+    /// - It's conceptually very strange. Saying a token can contain an AST
+    ///   node is like saying, in natural language, that a word can contain a
+    ///   sentence.
+    /// - It requires special handling in a bunch of places in the parser.
+    /// - It prevents `Token` from implementing `Copy`.
+    /// It adds complexity and likely slows things down. Please don't add new
+    /// occurrences of this token kind!
     Interpolated(Lrc<Nonterminal>),
 
     /// A doc comment token.

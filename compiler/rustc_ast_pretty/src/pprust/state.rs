@@ -13,7 +13,7 @@ use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
 use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::{attr, Term};
-use rustc_ast::{GenericArg, MacArgs};
+use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -469,14 +469,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 true,
                 span,
             ),
-            MacArgs::Empty | MacArgs::Eq(..) => {
+            MacArgs::Empty => {
                 self.print_path(&item.path, false, 0);
-                if let MacArgs::Eq(_, token) = &item.args {
-                    self.space();
-                    self.word_space("=");
-                    let token_str = self.token_to_string_ext(token, true);
-                    self.word(token_str);
-                }
+            }
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
+                self.print_path(&item.path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.expr_to_string(expr);
+                self.word(token_str);
+            }
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+                self.print_path(&item.path, false, 0);
+                self.space();
+                self.word_space("=");
+                let token_str = self.literal_to_string(lit);
+                self.word(token_str);
             }
         }
         self.end();
@@ -815,6 +823,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn expr_to_string(&self, e: &ast::Expr) -> String {
         Self::to_string(|s| s.print_expr(e))
+    }
+
+    fn literal_to_string(&self, lit: &ast::Lit) -> String {
+        Self::to_string(|s| s.print_literal(lit))
     }
 
     fn tt_to_string(&self, tt: &TokenTree) -> String {
