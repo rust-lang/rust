@@ -107,24 +107,24 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
 
                         args = new_args.into();
                     },
-                    "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
+                    "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
+                        | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
                         | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
-                        | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask"
-                        | "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
+                        | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask" => {
                         let mut new_args = args.to_vec();
                         let last_arg = new_args.pop().expect("last arg");
+                        let arg3_type = gcc_func.get_param_type(2);
+                        let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
+                        new_args.push(undefined);
                         let arg4_type = gcc_func.get_param_type(3);
                         let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                         new_args.push(minus_one);
                         new_args.push(last_arg);
                         args = new_args.into();
                     },
-                    "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask" => {
+                    "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
                         let mut new_args = args.to_vec();
                         let last_arg = new_args.pop().expect("last arg");
-                        let arg3_type = gcc_func.get_param_type(2);
-                        let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
-                        new_args.push(undefined);
                         let arg4_type = gcc_func.get_param_type(3);
                         let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                         new_args.push(minus_one);
@@ -154,7 +154,10 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
                     return true;
                 }
             },
-        "__builtin_ia32_vfmaddps512_mask" => {
+        "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
+            // Since there are two LLVM intrinsics that map to each of these GCC builtins and only
+            // one of them has a missing parameter before the last one, we check the number of
+            // arguments to distinguish those cases.
             if args_len == 4 && index == args_len - 1 {
                 return true;
             }
@@ -217,6 +220,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.div.ps.512" => "__builtin_ia32_divps512_mask",
         "llvm.x86.avx512.div.pd.512" => "__builtin_ia32_divpd512_mask",
         "llvm.x86.avx512.vfmadd.ps.512" => "__builtin_ia32_vfmaddps512_mask",
+        "llvm.x86.avx512.vfmadd.pd.512" => "__builtin_ia32_vfmaddpd512_mask",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
