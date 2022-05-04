@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy;
@@ -314,78 +313,55 @@ impl<'tcx> ReachableContext<'tcx> {
     }
 }
 
-// Some methods from non-exported (completely private) trait impls still have to be
-// reachable if they are called from inlinable code. Generally, it's not known until
-// monomorphization if a specific trait impl item can be reachable or not. So, we
-// conservatively mark all of them as reachable.
-// FIXME: One possible strategy for pruning the reachable set is to avoid marking impl
-// items of non-exported traits (or maybe all local traits?) unless their respective
-// trait items are used from inlinable code through method call syntax or UFCS, or their
-// trait is a lang item.
-struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
+fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    access_levels: &'a privacy::AccessLevels,
-    worklist: &'a mut Vec<LocalDefId>,
-}
+    item: &hir::Item<'_>,
+    worklist: &mut Vec<LocalDefId>,
+    access_levels: &privacy::AccessLevels
+) {
+    push_to_worklist_if_has_custom_linkage(tcx, worklist, item.def_id);
 
-impl CollectPrivateImplItemsVisitor<'_, '_> {
-    fn push_to_worklist_if_has_custom_linkage(&mut self, def_id: LocalDefId) {
-        // Anything which has custom linkage gets thrown on the worklist no
-        // matter where it is in the crate, along with "special std symbols"
-        // which are currently akin to allocator symbols.
-        if self.tcx.def_kind(def_id).has_codegen_attrs() {
-            let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
-            if codegen_attrs.contains_extern_indicator()
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
-                // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
-                // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-            {
-                self.worklist.push(def_id);
+    // We need only trait impls here, not inherent impls, and only non-exported ones
+    if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
+    item.kind
+    {
+        if !access_levels.is_reachable(item.def_id) {
+            // FIXME(#53488) remove `let`
+            let tcx = tcx;
+            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
+
+            let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
+                unreachable!();
+            };
+
+            if !trait_def_id.is_local() {
+                return;
             }
+
+            worklist.extend(
+                tcx.provided_trait_methods(trait_def_id)
+                    .map(|assoc| assoc.def_id.expect_local()),
+            );
         }
     }
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.push_to_worklist_if_has_custom_linkage(item.def_id);
-
-        // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
-            item.kind
+fn push_to_worklist_if_has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, def_id: LocalDefId) {
+    // Anything which has custom linkage gets thrown on the worklist no
+    // matter where it is in the crate, along with "special std symbols"
+    // which are currently akin to allocator symbols.
+    if tcx.def_kind(def_id).has_codegen_attrs() {
+        let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+        if codegen_attrs.contains_extern_indicator()
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+            // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
+            // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
+            // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         {
-            if !self.access_levels.is_reachable(item.def_id) {
-                // FIXME(#53488) remove `let`
-                let tcx = self.tcx;
-                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
-
-                let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
-                    unreachable!();
-                };
-
-                if !trait_def_id.is_local() {
-                    return;
-                }
-
-                self.worklist.extend(
-                    tcx.provided_trait_methods(trait_def_id)
-                        .map(|assoc| assoc.def_id.expect_local()),
-                );
-            }
+            worklist.push(def_id);
         }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.push_to_worklist_if_has_custom_linkage(impl_item.def_id);
-    }
-
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {
-        // We never export foreign functions as they have no body to export.
     }
 }
 
@@ -418,12 +394,23 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         }
     }
     {
-        let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
-            tcx,
-            access_levels,
-            worklist: &mut reachable_context.worklist,
-        };
-        tcx.hir().visit_all_item_likes(&mut collect_private_impl_items);
+        // Some methods from non-exported (completely private) trait impls still have to be
+        // reachable if they are called from inlinable code. Generally, it's not known until
+        // monomorphization if a specific trait impl item can be reachable or not. So, we
+        // conservatively mark all of them as reachable.
+        // FIXME: One possible strategy for pruning the reachable set is to avoid marking impl
+        // items of non-exported traits (or maybe all local traits?) unless their respective
+        // trait items are used from inlinable code through method call syntax or UFCS, or their
+        // trait is a lang item.
+        let crate_items = tcx.hir_crate_items(());
+
+        for id in crate_items.items() {
+            check_item(tcx, tcx.hir().item(id), &mut reachable_context.worklist, access_levels);
+        }
+
+        for id in crate_items.impl_items() {
+            push_to_worklist_if_has_custom_linkage(tcx, &mut reachable_context.worklist, id.def_id)
+        }
     }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
