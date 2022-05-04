@@ -253,6 +253,11 @@ where
                     })?;
                 }
             }
+            ty::TyAlias(def_id, substs) => {
+                let generic_ty = tcx.bound_type_of(def_id);
+                let concrete_ty = tcx.peel_off_ty_alias(generic_ty.subst(tcx, substs));
+                return self.visit_ty(concrete_ty);
+            }
             // These types don't have their own def-ids (but may have subcomponents
             // with def-ids that should be visited recursively).
             ty::Bool
@@ -270,6 +275,7 @@ where
             | ty::FnPtr(..)
             | ty::Param(..)
             | ty::Error(_)
+            | ty::TyAlias(..)
             | ty::GeneratorWitness(..) => {}
             ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
