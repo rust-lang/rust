@@ -35,6 +35,8 @@ use crate::{
     lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
+mod patch_old_style;
+
 // Conventions for configuration keys to preserve maximal extendability without breakage:
 //  - Toggles (be it binary true/false or with more options in-between) should almost always suffix as `_enable`
 //    This has the benefit of namespaces being extensible, and if the suffix doesn't fit later it can be changed without breakage.
@@ -592,6 +594,7 @@ impl Config {
                 .into_iter()
                 .map(AbsPathBuf::assert)
                 .collect();
+        patch_old_style::patch_json_for_outdated_configs(&mut json);
         self.data = ConfigData::from_json(json, &mut errors);
         self.snippets.clear();
         for (name, def) in self.data.completion_snippets_custom.iter() {
