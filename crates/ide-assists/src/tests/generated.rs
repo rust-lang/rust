@@ -1737,34 +1737,34 @@ const test: Foo = Foo {foo: 1, bar: 0}
 }
 
 #[test]
-fn doctest_reorder_impl() {
+fn doctest_reorder_impl_items() {
     check_doc_test(
-        "reorder_impl",
+        "reorder_impl_items",
         r#####"
 trait Foo {
-    fn a() {}
-    fn b() {}
-    fn c() {}
+    type A;
+    const B: u8;
+    fn c();
 }
 
 struct Bar;
 $0impl Foo for Bar {
-    fn b() {}
+    const B: u8 = 17;
     fn c() {}
-    fn a() {}
+    type A = String;
 }
 "#####,
         r#####"
 trait Foo {
-    fn a() {}
-    fn b() {}
-    fn c() {}
+    type A;
+    const B: u8;
+    fn c();
 }
 
 struct Bar;
 impl Foo for Bar {
-    fn a() {}
-    fn b() {}
+    type A = String;
+    const B: u8 = 17;
     fn c() {}
 }
 "#####,

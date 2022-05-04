@@ -37,7 +37,7 @@
 //!   should be available more or less everywhere, which isn't useful. So
 //!   instead we only show it if the user *selects* the items they want to sort.
 //! * Consider grouping related assists together (see [`Assists::add_group`]).
-//! * Make assists robust. If the assist depends on results of type-inference to
+//! * Make assists robust. If the assist depends on results of type-inference too
 //!   much, it might only fire in fully-correct code. This makes assist less
 //!   useful and (worse) less predictable. The user should have a clear
 //!   intuition when each particular assist is available.
@@ -54,7 +54,6 @@
 //!   something. If something *could* be a diagnostic, it should be a
 //!   diagnostic. Conversely, it might be valuable to turn a diagnostic with a
 //!   lot of false errors into an assist.
-//! *
 //!
 //! See also this post:
 //! <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
@@ -170,7 +169,7 @@ mod handlers {
     mod remove_mut;
     mod remove_unused_param;
     mod reorder_fields;
-    mod reorder_impl;
+    mod reorder_impl_items;
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
@@ -257,7 +256,7 @@ mod handlers {
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
-            reorder_impl::reorder_impl,
+            reorder_impl_items::reorder_impl_items,
             replace_try_expr_with_match::replace_try_expr_with_match,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,

@@ -6,46 +6,46 @@ use syntax::{
     ted, AstNode,
 };
 
-use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: reorder_impl
+// Assist: reorder_impl_items
 //
-// Reorder the methods of an `impl Trait`. The methods will be ordered
+// Reorder the items of an `impl Trait`. The items will be ordered
 // in the same order as in the trait definition.
 //
 // ```
 // trait Foo {
-//     fn a() {}
-//     fn b() {}
-//     fn c() {}
+//     type A;
+//     const B: u8;
+//     fn c();
 // }
 //
 // struct Bar;
 // $0impl Foo for Bar {
-//     fn b() {}
+//     const B: u8 = 17;
 //     fn c() {}
-//     fn a() {}
+//     type A = String;
 // }
 // ```
 // ->
 // ```
 // trait Foo {
-//     fn a() {}
-//     fn b() {}
-//     fn c() {}
+//     type A;
+//     const B: u8;
+//     fn c();
 // }
 //
 // struct Bar;
 // impl Foo for Bar {
-//     fn a() {}
-//     fn b() {}
+//     type A = String;
+//     const B: u8 = 17;
 //     fn c() {}
 // }
 // ```
-pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
-    let methods = get_methods(&items);
+    let assoc_items = items.assoc_items().collect::<Vec<_>>();
 
     let path = impl_ast
         .trait_()
@@ -55,29 +55,37 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         })?
         .path()?;
 
-    let ranks = compute_method_ranks(&path, ctx)?;
-    let sorted: Vec<_> = methods
+    let ranks = compute_item_ranks(&path, ctx)?;
+    let sorted: Vec<_> = assoc_items
         .iter()
         .cloned()
-        .sorted_by_key(|f| {
-            f.name().and_then(|n| ranks.get(&n.to_string()).copied()).unwrap_or(usize::max_value())
+        .sorted_by_key(|i| {
+            let name = match i {
+                ast::AssocItem::Const(c) => c.name(),
+                ast::AssocItem::Fn(f) => f.name(),
+                ast::AssocItem::TypeAlias(t) => t.name(),
+                ast::AssocItem::MacroCall(_) => None,
+            };
+
+            name.and_then(|n| ranks.get(&n.to_string()).copied()).unwrap_or(usize::max_value())
         })
         .collect();
 
     // Don't edit already sorted methods:
-    if methods == sorted {
+    if assoc_items == sorted {
         cov_mark::hit!(not_applicable_if_sorted);
         return None;
     }
 
     let target = items.syntax().text_range();
     acc.add(
-        AssistId("reorder_impl", AssistKind::RefactorRewrite),
-        "Sort methods by trait definition",
+        AssistId("reorder_impl_items", AssistKind::RefactorRewrite),
+        "Sort items by trait definition",
         target,
         |builder| {
-            let methods = methods.into_iter().map(|fn_| builder.make_mut(fn_)).collect::<Vec<_>>();
-            methods
+            let assoc_items =
+                assoc_items.into_iter().map(|item| builder.make_mut(item)).collect::<Vec<_>>();
+            assoc_items
                 .into_iter()
                 .zip(sorted)
                 .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
@@ -85,18 +93,15 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     )
 }
 
-fn compute_method_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
+fn compute_item_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
     let td = trait_definition(path, &ctx.sema)?;
 
     Some(
         td.items(ctx.db())
             .iter()
-            .flat_map(|i| match i {
-                hir::AssocItem::Function(f) => Some(f),
-                _ => None,
-            })
+            .flat_map(|i| i.name(ctx.db()))
             .enumerate()
-            .map(|(idx, func)| (func.name(ctx.db()).to_string(), idx))
+            .map(|(idx, name)| (name.to_string(), idx))
             .collect(),
     )
 }
@@ -118,15 +123,19 @@ mod tests {
     fn not_applicable_if_sorted() {
         cov_mark::check!(not_applicable_if_sorted);
         check_assist_not_applicable(
-            reorder_impl,
+            reorder_impl_items,
             r#"
 trait Bar {
+    type T;
+    const C: ();
     fn a() {}
     fn z() {}
     fn b() {}
 }
 struct Foo;
 $0impl Bar for Foo {
+    type T = ();
+    const C: () = ();
     fn a() {}
     fn z() {}
     fn b() {}
@@ -136,9 +145,48 @@ $0impl Bar for Foo {
     }
 
     #[test]
+    fn reorder_impl_trait_functions() {
+        check_assist(
+            reorder_impl_items,
+            r#"
+trait Bar {
+    fn a() {}
+    fn c() {}
+    fn b() {}
+    fn d() {}
+}
+
+struct Foo;
+$0impl Bar for Foo {
+    fn d() {}
+    fn b() {}
+    fn c() {}
+    fn a() {}
+}
+"#,
+            r#"
+trait Bar {
+    fn a() {}
+    fn c() {}
+    fn b() {}
+    fn d() {}
+}
+
+struct Foo;
+impl Bar for Foo {
+    fn a() {}
+    fn c() {}
+    fn b() {}
+    fn d() {}
+}
+"#,
+        )
+    }
+
+    #[test]
     fn not_applicable_if_empty() {
         check_assist_not_applicable(
-            reorder_impl,
+            reorder_impl_items,
             r#"
 trait Bar {};
 struct Foo;
@@ -148,69 +196,85 @@ $0impl Bar for Foo {}
     }
 
     #[test]
-    fn reorder_impl_trait_functions() {
+    fn reorder_impl_trait_items() {
         check_assist(
-            reorder_impl,
+            reorder_impl_items,
             r#"
 trait Bar {
     fn a() {}
+    type T0;
     fn c() {}
+    const C1: ();
     fn b() {}
+    type T1;
     fn d() {}
+    const C0: ();
 }
 
 struct Foo;
 $0impl Bar for Foo {
+    type T1 = ();
     fn d() {}
     fn b() {}
     fn c() {}
+    const C1: () = ();
     fn a() {}
+    type T0 = ();
+    const C0: () = ();
 }
         "#,
             r#"
 trait Bar {
     fn a() {}
+    type T0;
     fn c() {}
+    const C1: ();
     fn b() {}
+    type T1;
     fn d() {}
+    const C0: ();
 }
 
 struct Foo;
 impl Bar for Foo {
     fn a() {}
+    type T0 = ();
     fn c() {}
+    const C1: () = ();
     fn b() {}
+    type T1 = ();
     fn d() {}
+    const C0: () = ();
 }
         "#,
         )
     }
 
     #[test]
-    fn reorder_impl_trait_methods_uneven_ident_lengths() {
+    fn reorder_impl_trait_items_uneven_ident_lengths() {
         check_assist(
-            reorder_impl,
+            reorder_impl_items,
             r#"
 trait Bar {
-    fn foo(&mut self) {}
-    fn fooo(&mut self) {}
+    type Foo;
+    type Fooo;
 }
 
 struct Foo;
 impl Bar for Foo {
-    fn fooo(&mut self) {}
-    fn foo(&mut self) {$0}
+    type Fooo = ();
+    type Foo = ();$0
 }"#,
             r#"
 trait Bar {
-    fn foo(&mut self) {}
-    fn fooo(&mut self) {}
+    type Foo;
+    type Fooo;
 }
 
 struct Foo;
 impl Bar for Foo {
-    fn foo(&mut self) {}
-    fn fooo(&mut self) {}
+    type Foo = ();
+    type Fooo = ();
 }"#,
         )
     }
