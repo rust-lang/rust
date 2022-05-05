@@ -117,8 +117,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn const_real(&self, _t: Type<'gcc>, _val: f64) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
+        self.context.new_rvalue_from_double(typ, val)
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {

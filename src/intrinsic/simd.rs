@@ -1,15 +1,17 @@
 use std::cmp::Ordering;
 
-use gccjit::{RValue, Type, ToRValue};
+use gccjit::{BinaryOp, RValue, Type, ToRValue};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
+use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
 use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, Symbol, sym};
+use rustc_target::abi::Align;
 
 use crate::builder::Builder;
 use crate::intrinsic;
@@ -55,7 +57,53 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     let sig =
         tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
-    let name_str = name.as_str();
+
+    if name == sym::simd_select_bitmask {
+        require_simd!(arg_tys[1], "argument");
+        let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+
+        let expected_int_bits = (len.max(8) - 1).next_power_of_two();
+        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+
+        let mask_ty = arg_tys[0];
+        let mut mask = match mask_ty.kind() {
+            ty::Int(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+            ty::Array(elem, len)
+                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                        == Some(expected_bytes) =>
+            {
+                let place = PlaceRef::alloca(bx, args[0].layout);
+                args[0].val.store(bx, place);
+                let int_ty = bx.type_ix(expected_bytes * 8);
+                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                bx.load(int_ty, ptr, Align::ONE)
+            }
+            _ => return_error!(
+                "invalid bitmask `{}`, expected `u{}` or `[u8; {}]`",
+                mask_ty,
+                expected_int_bits,
+                expected_bytes
+            ),
+        };
+
+        let arg1 = args[1].immediate();
+        let arg1_type = arg1.get_type();
+        let arg1_vector_type = arg1_type.unqualified().dyncast_vector().expect("vector type");
+        let arg1_element_type = arg1_vector_type.get_element_type();
+
+        let mut elements = vec![];
+        let one = bx.context.new_rvalue_one(mask.get_type());
+        for _ in 0..len {
+            let element = bx.context.new_cast(None, mask & one, arg1_element_type);
+            elements.push(element);
+            mask = mask >> one;
+        }
+        let vector_mask = bx.context.new_rvalue_from_vector(None, arg1_type, &elements);
+
+        return Ok(bx.vector_select(vector_mask, arg1, args[2].immediate()));
+    }
 
     // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");
@@ -102,7 +150,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         ));
     }
 
-    if let Some(stripped) = name_str.strip_prefix("simd_shuffle") {
+    if let Some(stripped) = name.as_str().strip_prefix("simd_shuffle") {
         let n: u64 =
             if stripped.is_empty() {
                 // Make sure this is actually an array, since typeck only checks the length-suffixed
@@ -172,6 +220,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         // NOTE: we cannot cast to an array and assign to its element here because the value might
         // not be an l-value. So, call a builtin to set the element.
         // TODO(antoyo): perhaps we could create a new vector or maybe there's a GIMPLE instruction for that?
+        // TODO(antoyo): don't use target specific builtins here.
         let func_name =
             match in_len {
                 2 => {
@@ -202,14 +251,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             };
         let builtin = bx.context.get_target_builtin_function(func_name);
         let param1_type = builtin.get_param(0).to_rvalue().get_type();
-        let vector =
-            if vector.get_type() != param1_type {
-                // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                bx.context.new_bitcast(None, vector, param1_type)
-            }
-            else {
-                vector
-            };
+        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+        let vector = bx.cx.bitcast_if_needed(vector, param1_type);
         let result = bx.context.new_call(None, builtin, &[vector, value, bx.context.new_cast(None, index, bx.int_type)]);
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
@@ -226,6 +269,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         );
         let vector = args[0].immediate();
         return Ok(bx.context.new_vector_access(None, vector, args[1].immediate()).to_rvalue());
+    }
+
+    if name == sym::simd_select {
+        let m_elem_ty = in_elem;
+        let m_len = in_len;
+        require_simd!(arg_tys[1], "argument");
+        let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+        require!(
+            m_len == v_len,
+            "mismatched lengths: mask length `{}` != other vector length `{}`",
+            m_len,
+            v_len
+        );
+        match m_elem_ty.kind() {
+            ty::Int(_) => {}
+            _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty),
+        }
+        return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
 
     if name == sym::simd_cast {
@@ -336,6 +397,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 });
             }
             (Style::Int(_), Style::Float) => {
+                // TODO: add support for internal functions in libgccjit to get access to IFN_VEC_CONVERT which is
+                // doing like __builtin_convertvector?
+                // Or maybe provide convert_vector as an API since it might not easy to get the
+                // types of internal functions.
                 unimplemented!();
             }
             (Style::Float, Style::Int(_)) => {
@@ -539,10 +604,150 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let func = bx.context.get_target_builtin_function(builtin_name);
+        let param1_type = func.get_param(0).to_rvalue().get_type();
+        let param2_type = func.get_param(1).to_rvalue().get_type();
+        let lhs = bx.cx.bitcast_if_needed(lhs, param1_type);
+        let rhs = bx.cx.bitcast_if_needed(rhs, param2_type);
         let result = bx.context.new_call(None, func, &[lhs, rhs]);
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vec_ty));
     }
+
+    macro_rules! arith_red {
+        ($name:ident : $vec_op:expr, $float_reduce:ident, $ordered:expr, $op:ident,
+         $identity:expr) => {
+            if name == sym::$name {
+                require!(
+                    ret_ty == in_elem,
+                    "expected return type `{}` (element of input `{}`), found `{}`",
+                    in_elem,
+                    in_ty,
+                    ret_ty
+                );
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) => {
+                        let r = bx.vector_reduce_op(args[0].immediate(), $vec_op);
+                        if $ordered {
+                            // if overflow occurs, the result is the
+                            // mathematical result modulo 2^n:
+                            Ok(bx.$op(args[1].immediate(), r))
+                        }
+                        else {
+                            Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
+                        }
+                    }
+                    ty::Float(_) => {
+                        if $ordered {
+                            // ordered arithmetic reductions take an accumulator
+                            let acc = args[1].immediate();
+                            Ok(bx.$float_reduce(acc, args[0].immediate()))
+                        }
+                        else {
+                            Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
+                        }
+                    }
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    arith_red!(
+        simd_reduce_add_unordered: BinaryOp::Plus,
+        vector_reduce_fadd_fast,
+        false,
+        add,
+        0.0 // TODO: Use this argument.
+    );
+    arith_red!(
+        simd_reduce_mul_unordered: BinaryOp::Mult,
+        vector_reduce_fmul_fast,
+        false,
+        mul,
+        1.0
+    );
+
+    macro_rules! minmax_red {
+        ($name:ident: $reduction:ident) => {
+            if name == sym::$name {
+                require!(
+                    ret_ty == in_elem,
+                    "expected return type `{}` (element of input `{}`), found `{}`",
+                    in_elem,
+                    in_ty,
+                    ret_ty
+                );
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) | ty::Float(_) => Ok(bx.$reduction(args[0].immediate())),
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    minmax_red!(simd_reduce_min: vector_reduce_min);
+    minmax_red!(simd_reduce_max: vector_reduce_max);
+
+    macro_rules! bitwise_red {
+        ($name:ident : $op:expr, $boolean:expr) => {
+            if name == sym::$name {
+                let input = if !$boolean {
+                    require!(
+                        ret_ty == in_elem,
+                        "expected return type `{}` (element of input `{}`), found `{}`",
+                        in_elem,
+                        in_ty,
+                        ret_ty
+                    );
+                    args[0].immediate()
+                } else {
+                    match in_elem.kind() {
+                        ty::Int(_) | ty::Uint(_) => {}
+                        _ => return_error!(
+                            "unsupported {} from `{}` with element `{}` to `{}`",
+                            sym::$name,
+                            in_ty,
+                            in_elem,
+                            ret_ty
+                        ),
+                    }
+
+                    // boolean reductions operate on vectors of i1s:
+                    let i1 = bx.type_i1();
+                    let i1xn = bx.type_vector(i1, in_len as u64);
+                    bx.trunc(args[0].immediate(), i1xn)
+                };
+                return match in_elem.kind() {
+                    ty::Int(_) | ty::Uint(_) => {
+                        let r = bx.vector_reduce_op(input, $op);
+                        Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
+                    }
+                    _ => return_error!(
+                        "unsupported {} from `{}` with element `{}` to `{}`",
+                        sym::$name,
+                        in_ty,
+                        in_elem,
+                        ret_ty
+                    ),
+                };
+            }
+        };
+    }
+
+    bitwise_red!(simd_reduce_and: BinaryOp::BitwiseAnd, false);
+    bitwise_red!(simd_reduce_or: BinaryOp::BitwiseOr, false);
 
     unimplemented!("simd {}", name);
 }

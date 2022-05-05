@@ -27,12 +27,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
         // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
         // SIMD builtins require a constant value.
-        if value.get_type() != typ {
-            self.context.new_bitcast(None, value, typ)
-        }
-        else {
-            value
-        }
+        self.bitcast_if_needed(value, typ)
     }
 }
 
@@ -86,13 +81,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // TODO(antoyo): set alignment.
 
-        let value =
-            if value.get_type() != gcc_type {
-                self.context.new_bitcast(None, value, gcc_type)
-            }
-            else {
-                value
-            };
+        let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior

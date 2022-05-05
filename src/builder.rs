@@ -7,6 +7,7 @@ use gccjit::{
     BinaryOp,
     Block,
     ComparisonOp,
+    Context,
     Function,
     LValue,
     RValue,
@@ -47,6 +48,7 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
+use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
 // TODO(antoyo)
@@ -216,11 +218,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             return Cow::Borrowed(args);
         }
 
+        let func_name = format!("{:?}", func_ptr);
+
         let casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
             .enumerate()
             .map(|(index, (expected_ty, &actual_val))| {
+                if llvm::ignore_arg_cast(&func_name, index, args.len()) {
+                    return actual_val;
+                }
+
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
                     if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() && actual_ty.get_size() != expected_ty.get_size() {
@@ -297,6 +305,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+            let func_name = format!("{:?}", func_ptr);
+            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
             self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             result.to_rvalue()
         }
@@ -1316,6 +1326,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 element_type
             }
             else {
+                #[cfg(feature="master")]
+                {
+                    self.cx.type_ix(element_type.get_size() as u64 * 8)
+                }
+                #[cfg(not(feature="master"))]
                 self.int_type
             };
         for i in 0..mask_num_units {
@@ -1343,7 +1358,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 }
                 // TODO(antoyo): switch to using new_vector_access.
                 let array = self.context.new_bitcast(None, v2, array_type);
-                for i in 0..vec_num_units {
+                for i in 0..(mask_num_units - vec_num_units) {
                     elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
                 }
                 let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);
@@ -1380,6 +1395,98 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn shuffle_vector(&mut self, _v1: RValue<'gcc>, _v2: RValue<'gcc>, _mask: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        let mut vector_elements = vec![];
+        for i in 0..element_count {
+            vector_elements.push(i);
+        }
+        let mask_type = self.context.new_vector_type(self.int_type, element_count as u64);
+        let mut shift = 1;
+        let mut res = src;
+        while shift < element_count {
+            let vector_elements: Vec<_> =
+                vector_elements.iter()
+                    .map(|i| self.context.new_rvalue_from_int(self.int_type, ((i + shift) % element_count) as i32))
+                    .collect();
+            let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+            let shifted = self.context.new_rvalue_vector_perm(None, res, res, mask);
+            shift *= 2;
+            res = op(res, shifted, &self.context);
+        }
+        self.context.new_vector_access(None, res, self.context.new_rvalue_zero(self.int_type))
+            .to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_op(&mut self, src: RValue<'gcc>, op: BinaryOp) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| context.new_binary_op(None, op, a.get_type(), a, b))
+    }
+
+    pub fn vector_reduce_fadd_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_fmul_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    // Inspired by Hacker's Delight min implementation.
+    pub fn vector_reduce_min(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Minus, a.get_type(), a, differences_or_zeros)
+        })
+    }
+
+    // Inspired by Hacker's Delight max implementation.
+    pub fn vector_reduce_max(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Plus, b.get_type(), b, differences_or_zeros)
+        })
+    }
+
+    pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
+        // cond is a vector of integers, not of bools.
+        let cond_type = cond.get_type();
+        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
+        let num_units = vector_type.get_num_units();
+        let element_type = vector_type.get_element_type();
+        let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
+        let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
+
+        let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
+        let then_vals = masks & then_val;
+
+        let ones = vec![self.context.new_rvalue_one(element_type); num_units];
+        let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
+        let inverted_masks = masks + ones;
+        // NOTE: sometimes, the type of else_val can be different than the type of then_val in
+        // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
+        // operation to work.
+        let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
+        let else_vals = inverted_masks & else_val;
+
+        then_vals | else_vals
+    }
+}
+
+fn difference_or_zero<'gcc>(a: RValue<'gcc>, b: RValue<'gcc>, context: &'gcc Context<'gcc>) -> RValue<'gcc> {
+    let difference = a - b;
+    let masks = context.new_comparison(None, ComparisonOp::GreaterThanEquals, b, a);
+    difference & masks
 }
 
 impl<'a, 'gcc, 'tcx> StaticBuilderMethods for Builder<'a, 'gcc, 'tcx> {
