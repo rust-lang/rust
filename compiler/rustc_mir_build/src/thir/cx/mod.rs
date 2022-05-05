@@ -34,8 +34,8 @@ crate fn thir_tree<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
 ) -> String {
-    match thir_body(tcx, owner_def) {
-        Ok((thir, _)) => format!("{:#?}", thir.steal()),
+    match tcx.thir_body(owner_def) {
+        Ok((thir, _)) => format!("{:#?}", thir.borrow()),
         Err(_) => "error".into(),
     }
 }
