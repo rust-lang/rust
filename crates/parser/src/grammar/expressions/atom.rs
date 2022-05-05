@@ -17,20 +17,56 @@ pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     T![true],
     T![false],
     INT_NUMBER,
-    FLOAT_NUMBER,
+    FLOAT_NUMBER_START_0,
+    FLOAT_NUMBER_START_1,
+    FLOAT_NUMBER_START_2,
     BYTE,
     CHAR,
     STRING,
     BYTE_STRING,
 ]);
 
+pub(crate) const FLOAT_LITERAL_FIRST: TokenSet =
+    TokenSet::new(&[FLOAT_NUMBER_START_0, FLOAT_NUMBER_START_1, FLOAT_NUMBER_START_2]);
+
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     if !p.at_ts(LITERAL_FIRST) {
         return None;
     }
     let m = p.start();
-    p.bump_any();
+    if p.at_ts(FLOAT_LITERAL_FIRST) {
+        float_literal(p);
+    } else {
+        // Everything else is just one token.
+        p.bump_any();
+    }
     Some(m.complete(p, LITERAL))
+}
+
+// test float_literal
+// fn f() {
+//     0.0;
+//     1.;
+//     0e0;
+//     0e0f32;
+//     1.23f64;
+// }
+pub(crate) fn float_literal(p: &mut Parser) {
+    // Floats can be up to 3 tokens. The first token indicates how many there are.
+    let f = p.start();
+    if p.at(FLOAT_NUMBER_START_0) {
+        p.bump(FLOAT_NUMBER_START_0);
+    } else if p.at(FLOAT_NUMBER_START_1) {
+        p.bump(FLOAT_NUMBER_START_1);
+        p.bump(DOT);
+    } else if p.at(FLOAT_NUMBER_START_2) {
+        p.bump(FLOAT_NUMBER_START_2);
+        p.bump(DOT);
+        p.bump(FLOAT_NUMBER_PART);
+    } else {
+        unreachable!();
+    }
+    f.complete(p, FLOAT_LITERAL);
 }
 
 // E.g. for after the break in `if break {}`, this should not match

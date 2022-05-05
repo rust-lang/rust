@@ -1,0 +1,51 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LITERAL
+            FLOAT_LITERAL
+              FLOAT_NUMBER_START_2 "0"
+              DOT "."
+              FLOAT_NUMBER_PART "0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LITERAL
+            FLOAT_LITERAL
+              FLOAT_NUMBER_START_1 "1"
+              DOT "."
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LITERAL
+            FLOAT_LITERAL
+              FLOAT_NUMBER_START_0 "0e0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LITERAL
+            FLOAT_LITERAL
+              FLOAT_NUMBER_START_0 "0e0f32"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LITERAL
+            FLOAT_LITERAL
+              FLOAT_NUMBER_START_2 "1"
+              DOT "."
+              FLOAT_NUMBER_PART "23f64"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

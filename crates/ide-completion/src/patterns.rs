@@ -230,7 +230,7 @@ pub(crate) fn determine_location(
                 let receiver = find_in_original_file(it.expr(), original_file);
                 let receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) = &receiver {
                     match l.kind() {
-                        ast::LiteralKind::FloatNumber { .. } => l.token().text().ends_with('.'),
+                        ast::LiteralKind::FloatNumber { .. } => l.to_string().ends_with('.'),
                         _ => false,
                     }
                 } else {

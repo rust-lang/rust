@@ -30,7 +30,15 @@ pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Optio
         INT_NUMBER if token.ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
             SymbolKind::Field.into()
         }
-        INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
+        INT_NUMBER | FLOAT_NUMBER_PART | FLOAT_NUMBER_START_0 | FLOAT_NUMBER_START_1
+        | FLOAT_NUMBER_START_2 => HlTag::NumericLiteral.into(),
+        DOT if matches!(
+            token.prev_token().map(|n| n.kind()),
+            Some(FLOAT_NUMBER_START_1 | FLOAT_NUMBER_START_2)
+        ) =>
+        {
+            HlTag::NumericLiteral.into()
+        }
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
         IDENT if token.parent().and_then(ast::TokenTree::cast).is_some() => {

@@ -1086,6 +1086,26 @@ impl UnderscoreExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FloatLiteral {
+    pub(crate) syntax: SyntaxNode,
+}
+impl FloatLiteral {
+    pub fn float_number_start_0_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_0])
+    }
+    pub fn float_number_start_1_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_1])
+    }
+    pub fn float_number_start_2_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_2])
+    }
+    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
+    pub fn float_number_part_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_part])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StmtList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2710,6 +2730,17 @@ impl AstNode for LetExpr {
 }
 impl AstNode for UnderscoreExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == UNDERSCORE_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for FloatLiteral {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FLOAT_LITERAL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -4604,6 +4635,11 @@ impl std::fmt::Display for LetExpr {
     }
 }
 impl std::fmt::Display for UnderscoreExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FloatLiteral {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

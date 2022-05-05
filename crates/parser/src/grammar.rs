@@ -39,6 +39,7 @@ mod generic_params;
 mod types;
 
 use crate::{
+    grammar::expressions::FLOAT_LITERAL_FIRST,
     parser::{CompletedMarker, Marker, Parser},
     SyntaxKind::{self, *},
     TokenSet, T,
@@ -318,9 +319,15 @@ fn name_ref(p: &mut Parser) {
 }
 
 fn name_ref_or_index(p: &mut Parser) {
-    assert!(p.at(IDENT) || p.at(INT_NUMBER));
+    assert!(
+        p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST)
+    );
     let m = p.start();
-    p.bump_any();
+    if p.at_ts(FLOAT_LITERAL_FIRST) {
+        p.bump_remap(FLOAT_NUMBER_PART);
+    } else {
+        p.bump_any();
+    }
     m.complete(p, NAME_REF);
 }
 

@@ -365,12 +365,19 @@ MacroExpr =
 
 Literal =
   Attr* value:(
-    'int_number' | 'float_number'
+    'int_number' | FloatLiteral
   | 'string' | 'raw_string'
   | 'byte_string' | 'raw_byte_string'
   | 'true' | 'false'
   | 'char' | 'byte'
   )
+
+FloatLiteral =
+  'float_number_start_0'?
+  'float_number_start_1'?
+  'float_number_start_2'?
+  '.'?
+  'float_number_part'?
 
 PathExpr =
   Attr* Path
