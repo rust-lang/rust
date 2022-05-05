@@ -27,7 +27,6 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(backtrace)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![cfg_attr(bootstrap, feature(derive_default_enum))]

@@ -1,4 +1,3 @@
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(let_else)]
 #![feature(internal_output_capture)]

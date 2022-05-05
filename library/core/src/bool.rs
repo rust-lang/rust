@@ -9,12 +9,10 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bool_to_option)]
-    ///
     /// assert_eq!(false.then_some(0), None);
     /// assert_eq!(true.then_some(0), Some(0));
     /// ```
-    #[unstable(feature = "bool_to_option", issue = "80967")]
+    #[stable(feature = "bool_to_option", since = "1.62.0")]
     #[rustc_const_unstable(feature = "const_bool_to_option", issue = "91917")]
     #[inline]
     pub const fn then_some<T>(self, t: T) -> Option<T>
