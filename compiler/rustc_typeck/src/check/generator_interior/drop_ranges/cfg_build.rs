@@ -71,7 +71,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// ```
 ///
 /// Rule 3:
-/// ```rust
+/// ```compile_fail,E0382
 /// let mut a = (vec![0], vec![0]);
 /// drop(a);
 /// a.1 = vec![1];

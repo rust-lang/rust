@@ -616,7 +616,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `<expr>.await` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// match ::std::future::IntoFuture::into_future(<expr>) {
     ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
@@ -1363,7 +1363,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// {
     ///     let result = match IntoIterator::into_iter(<head>) {
     ///         mut iter => {
@@ -1474,7 +1474,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// match Try::branch(<expr>) {
     ///     ControlFlow::Continue(val) => #[allow(unreachable_code)] val,,
     ///     ControlFlow::Break(residual) =>

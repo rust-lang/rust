@@ -4,7 +4,7 @@
 //!
 //! ## Meta-variables must not be bound twice
 //!
-//! ```
+//! ```compile_fail
 //! macro_rules! foo { ($x:tt $x:tt) => { $x }; }
 //! ```
 //!
@@ -604,9 +604,9 @@ fn check_ops_is_prefix(
 /// Kleene operators of its binder as a prefix.
 ///
 /// Consider $i in the following example:
-///
-///     ( $( $i:ident = $($j:ident),+ );* ) => { $($( $i += $j; )+)* }
-///
+/// ```ignore (illustrative)
+/// ( $( $i:ident = $($j:ident),+ );* ) => { $($( $i += $j; )+)* }
+/// ```
 /// It occurs under the Kleene stack ["*", "+"] and is bound under ["*"] only.
 ///
 /// Arguments:

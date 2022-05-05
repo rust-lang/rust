@@ -18,7 +18,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ///
     /// Consider a case where we have
     ///
-    /// ```no_run
+    /// ```compile_fail,E0623
     /// fn foo(x: &mut Vec<&u8>, y: &u8) {
     ///     x.push(y);
     /// }

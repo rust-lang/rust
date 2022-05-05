@@ -41,7 +41,7 @@
 //!
 //! For example, if you have `struct S(Ty, U)` where `S: TypeFoldable` and `U:
 //! TypeFoldable`, and an instance `S(ty, u)`, it would be visited like so:
-//! ```
+//! ```text
 //! s.visit_with(visitor) calls
 //! - s.super_visit_with(visitor) calls
 //!   - ty.visit_with(visitor) calls
@@ -486,13 +486,13 @@ impl<'tcx> TyCtxt<'tcx> {
             /// traversed. If we encounter a bound region bound by this
             /// binder or one outer to it, it appears free. Example:
             ///
-            /// ```
-            ///    for<'a> fn(for<'b> fn(), T)
-            /// ^          ^          ^     ^
-            /// |          |          |     | here, would be shifted in 1
-            /// |          |          | here, would be shifted in 2
-            /// |          | here, would be `INNERMOST` shifted in by 1
-            /// | here, initially, binder would be `INNERMOST`
+            /// ```ignore (illustrative)
+            ///       for<'a> fn(for<'b> fn(), T)
+            /// // ^          ^          ^     ^
+            /// // |          |          |     | here, would be shifted in 1
+            /// // |          |          | here, would be shifted in 2
+            /// // |          | here, would be `INNERMOST` shifted in by 1
+            /// // | here, initially, binder would be `INNERMOST`
             /// ```
             ///
             /// You see that, initially, *any* bound value is free,

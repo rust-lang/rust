@@ -401,7 +401,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 /// The reason for this separate call is to resolve what would otherwise
 /// be a cycle. Consider this example:
 ///
-/// ```rust
+/// ```ignore UNSOLVED (maybe @jackh726 knows what lifetime parameter to give Sub)
 /// trait Base<'a> {
 ///     type BaseItem;
 /// }
@@ -2546,7 +2546,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// Returns all the late-bound vars that come into scope from supertrait HRTBs, based on the
     /// associated type name and starting trait.
     /// For example, imagine we have
-    /// ```rust
+    /// ```ignore (illustrative)
     /// trait Foo<'a, 'b> {
     ///   type As;
     /// }

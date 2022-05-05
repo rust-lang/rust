@@ -803,16 +803,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope (which can be larger or smaller).
     ///
     /// Consider:
-    ///
-    ///     let x = foo(bar(X, Y));
-    ///
+    /// ```ignore (illustrative)
+    /// let x = foo(bar(X, Y));
+    /// ```
     /// We wish to pop the storage for X and Y after `bar()` is
     /// called, not after the whole `let` is completed.
     ///
     /// As another example, if the second argument diverges:
-    ///
-    ///     foo(Box::new(2), panic!())
-    ///
+    /// ```ignore (illustrative)
+    /// foo(Box::new(2), panic!())
+    /// ```
     /// We would allocate the box but then free it on the unwinding
     /// path; we would also emit a free on the 'success' path from
     /// panic, but that will turn out to be removed as dead-code.
@@ -944,7 +944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Example: when compiling the call to `foo` here:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// foo(bar(), ...)
     /// ```
     ///
@@ -955,7 +955,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// dropped). However, if no unwind occurs, then `_X` will be
     /// unconditionally consumed by the `call`:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// bb {
     ///   ...
     ///   _R = CALL(foo, _X, ...)

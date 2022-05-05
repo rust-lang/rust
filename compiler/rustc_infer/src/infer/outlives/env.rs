@@ -103,7 +103,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     ///
     /// Example:
     ///
-    /// ```
+    /// ```ignore (pseudo-rust)
     /// fn foo<T>() {
     ///    callback(for<'a> |x: &'a T| {
     ///         // ^^^^^^^ not legal syntax, but probably should be

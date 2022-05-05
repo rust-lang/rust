@@ -337,7 +337,7 @@ impl<'tcx> Instance<'tcx> {
     /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// fn foo<T: Debug>(t: T) { ... }
     /// ```
     ///

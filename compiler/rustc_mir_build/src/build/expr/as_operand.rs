@@ -42,15 +42,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// We tweak the handling of parameters of unsized type slightly to avoid the need to create a
     /// local variable of unsized type. For example, consider this program:
     ///
-    /// ```rust
-    /// fn foo(p: dyn Debug) { ... }
+    /// ```
+    /// #![feature(unsized_locals, unsized_fn_params)]
+    /// # use core::fmt::Debug;
+    /// fn foo(p: dyn Debug) { dbg!(p); }
     ///
-    /// fn bar(box_p: Box<dyn Debug>) { foo(*p); }
+    /// fn bar(box_p: Box<dyn Debug>) { foo(*box_p); }
     /// ```
     ///
     /// Ordinarily, for sized types, we would compile the call `foo(*p)` like so:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// let tmp0 = *box_p; // tmp0 would be the operand returned by this function call
     /// foo(tmp0)
     /// ```
@@ -60,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that we create *stores the entire box*, and the parameter to the call itself will be
     /// `*tmp0`:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// let tmp0 = box_p; call foo(*tmp0)
     /// ```
     ///

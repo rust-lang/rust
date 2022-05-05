@@ -438,7 +438,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     ///
     /// This function will build CGU names of the form:
     ///
-    /// ```
+    /// ```text
     /// <crate-name>.<crate-disambiguator>[-in-<local-crate-id>](-<component>)*[.<special-suffix>]
     /// <local-crate-id> = <local-crate-name>.<local-crate-disambiguator>
     /// ```

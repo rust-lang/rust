@@ -159,9 +159,9 @@ pub struct InferCtxtInner<'tcx> {
     /// outlive the lifetime 'a". These constraints derive from
     /// instantiated type parameters. So if you had a struct defined
     /// like
-    ///
+    /// ```ignore (illustrative)
     ///     struct Foo<T:'static> { ... }
-    ///
+    /// ```
     /// then in some expression `let x = Foo { ... }` it will
     /// instantiate the type parameter `T` with a fresh type `$0`. At
     /// the same time, it will record a region obligation of

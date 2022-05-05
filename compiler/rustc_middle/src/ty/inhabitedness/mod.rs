@@ -56,7 +56,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
     ///
     /// # Example
-    /// ```rust
+    /// ```
+    /// #![feature(never_type)]
+    /// # fn main() {}
     /// enum Void {}
     /// mod a {
     ///     pub mod b {
@@ -67,6 +69,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// }
     ///
     /// mod c {
+    ///     use super::Void;
     ///     pub struct AlsoSecretlyUninhabited {
     ///         _priv: Void,
     ///     }
@@ -84,7 +87,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// contain `Foo`.
     ///
     /// # Example
-    /// ```rust
+    /// ```ignore (illustrative)
     /// let foo_result: Result<T, Foo> = ... ;
     /// let Ok(t) = foo_result;
     /// ```

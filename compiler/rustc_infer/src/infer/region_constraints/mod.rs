@@ -174,19 +174,19 @@ pub enum GenericKind<'tcx> {
 /// Describes the things that some `GenericKind` value `G` is known to
 /// outlive. Each variant of `VerifyBound` can be thought of as a
 /// function:
-///
-///     fn(min: Region) -> bool { .. }
-///
+/// ```ignore (pseudo-rust)
+/// fn(min: Region) -> bool { .. }
+/// ```
 /// where `true` means that the region `min` meets that `G: min`.
 /// (False means nothing.)
 ///
 /// So, for example, if we have the type `T` and we have in scope that
 /// `T: 'a` and `T: 'b`, then the verify bound might be:
-///
-///     fn(min: Region) -> bool {
-///        ('a: min) || ('b: min)
-///     }
-///
+/// ```ignore (pseudo-rust)
+/// fn(min: Region) -> bool {
+///    ('a: min) || ('b: min)
+/// }
+/// ```
 /// This is described with an `AnyRegion('a, 'b)` node.
 #[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
@@ -194,7 +194,7 @@ pub enum VerifyBound<'tcx> {
     /// following, where `G` is the generic for which this verify
     /// bound was created:
     ///
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// fn(min) -> bool {
     ///     if G == K {
     ///         B(min)
@@ -218,7 +218,7 @@ pub enum VerifyBound<'tcx> {
     ///
     /// So we would compile to a verify-bound like
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
     /// ```
     ///
@@ -228,7 +228,7 @@ pub enum VerifyBound<'tcx> {
 
     /// Given a region `R`, expands to the function:
     ///
-    /// ```
+    /// ```ignore (pseudo-rust)
     /// fn(min) -> bool {
     ///     R: min
     /// }
@@ -243,7 +243,7 @@ pub enum VerifyBound<'tcx> {
 
     /// Given a set of bounds `B`, expands to the function:
     ///
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// fn(min) -> bool {
     ///     exists (b in B) { b(min) }
     /// }
@@ -255,7 +255,7 @@ pub enum VerifyBound<'tcx> {
 
     /// Given a set of bounds `B`, expands to the function:
     ///
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// fn(min) -> bool {
     ///     forall (b in B) { b(min) }
     /// }

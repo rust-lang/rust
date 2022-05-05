@@ -87,9 +87,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ///
     /// with a mapping M that maps `'?0` to `'static`. But if we found that there
     /// exists only one possible impl of `Trait`, and it looks like
-    ///
-    ///     impl<T> Trait<'static> for T { .. }
-    ///
+    /// ```ignore (illustrative)
+    /// impl<T> Trait<'static> for T { .. }
+    /// ```
     /// then we would prepare a query result R that (among other
     /// things) includes a mapping to `'?0 := 'static`. When
     /// canonicalizing this query result R, we would leave this

@@ -1,10 +1,12 @@
 //! The general point of the optimizations provided here is to simplify something like:
 //!
 //! ```rust
+//! # fn foo<T, E>(x: Result<T, E>) -> Result<T, E> {
 //! match x {
 //!     Ok(x) => Ok(x),
 //!     Err(x) => Err(x)
 //! }
+//! # }
 //! ```
 //!
 //! into just `x`.
@@ -23,7 +25,7 @@ use std::slice::Iter;
 ///
 /// This is done by transforming basic blocks where the statements match:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
 /// _TMP_2 = _LOCAL_TMP;
 /// ((_LOCAL_0 as Variant).FIELD: TY) = move _TMP_2;
@@ -32,7 +34,7 @@ use std::slice::Iter;
 ///
 /// into:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_0 = move _LOCAL_1
 /// ```
 pub struct SimplifyArmIdentity;
@@ -472,7 +474,7 @@ impl Visitor<'_> for LocalUseCounter {
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_INTO = ((_LOCAL_FROM as Variant).FIELD: TY);
 /// ```
 fn match_get_variant_field<'tcx>(
@@ -492,7 +494,7 @@ fn match_get_variant_field<'tcx>(
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// ((_LOCAL_FROM as Variant).FIELD: TY) = move _LOCAL_INTO;
 /// ```
 fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
@@ -507,7 +509,7 @@ fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// discriminant(_LOCAL_TO_SET) = VAR_IDX;
 /// ```
 fn match_set_discr(stmt: &Statement<'_>) -> Option<(Local, VariantIdx)> {
@@ -690,7 +692,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     ///
     /// Statements can be trivially equal if the kinds match.
     /// But they can also be considered equal in the following case A:
-    /// ```
+    /// ```ignore (MIR)
     /// discriminant(_0) = 0;   // bb1
     /// _0 = move _1;           // bb2
     /// ```

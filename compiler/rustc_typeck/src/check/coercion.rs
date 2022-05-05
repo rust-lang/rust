@@ -21,7 +21,7 @@
 //! When inferring the generic arguments of functions, the argument
 //! order is relevant, which can lead to the following edge case:
 //!
-//! ```rust
+//! ```ignore (illustrative)
 //! fn foo<T>(a: T, b: T) {
 //!     // ...
 //! }
@@ -1210,7 +1210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// let mut coerce = CoerceMany::new(expected_ty);
 /// for expr in exprs {
 ///     let expr_ty = fcx.check_expr_with_expectation(expr, expected);
