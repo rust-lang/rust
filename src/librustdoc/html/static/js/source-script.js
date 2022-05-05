@@ -9,7 +9,10 @@
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
-(function () {
+
+"use strict";
+
+(function() {
 
 function getCurrentFilePath() {
     const parts = window.location.pathname.split("/");
