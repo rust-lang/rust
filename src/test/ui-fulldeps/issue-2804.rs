@@ -2,27 +2,38 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-#![feature(rustc_private)]
 
-extern crate rustc_serialize;
-
-use std::collections::HashMap;
-use rustc_serialize::json::{self, Json};
+use std::collections::{BTreeMap, HashMap};
 use std::option;
+
+#[derive(Clone, Debug)]
+enum Json {
+    I64(i64),
+    U64(u64),
+    F64(f64),
+    String(String),
+    Boolean(bool),
+    Array(Array),
+    Object(Object),
+    Null,
+}
+
+type Array = Vec<Json>;
+type Object = BTreeMap<String, Json>;
 
 enum object {
     bool_value(bool),
     int_value(i64),
 }
 
-fn lookup(table: json::Object, key: String, default: String) -> String
+fn lookup(table: Object, key: String, default: String) -> String
 {
     match table.get(&key) {
         option::Option::Some(&Json::String(ref s)) => {
             s.to_string()
         }
         option::Option::Some(value) => {
-            println!("{} was expected to be a string but is a {}", key, value);
+            println!("{} was expected to be a string but is a {:?}", key, value);
             default
         }
         option::Option::None => {
@@ -31,7 +42,7 @@ fn lookup(table: json::Object, key: String, default: String) -> String
     }
 }
 
-fn add_interface(_store: isize, managed_ip: String, data: json::Json) -> (String, object)
+fn add_interface(_store: isize, managed_ip: String, data: Json) -> (String, object)
 {
     match &data {
         &Json::Object(ref interface) => {
@@ -43,13 +54,13 @@ fn add_interface(_store: isize, managed_ip: String, data: json::Json) -> (String
             (label, object::bool_value(false))
         }
         _ => {
-            println!("Expected dict for {} interfaces, found {}", managed_ip, data);
+            println!("Expected dict for {} interfaces, found {:?}", managed_ip, data);
             ("gnos:missing-interface".to_string(), object::bool_value(true))
         }
     }
 }
 
-fn add_interfaces(store: isize, managed_ip: String, device: HashMap<String, json::Json>)
+fn add_interfaces(store: isize, managed_ip: String, device: HashMap<String, Json>)
 -> Vec<(String, object)> {
     match device["interfaces"] {
         Json::Array(ref interfaces) =>
@@ -60,7 +71,7 @@ fn add_interfaces(store: isize, managed_ip: String, device: HashMap<String, json
         }
         _ =>
         {
-            println!("Expected list for {} interfaces, found {}", managed_ip,
+            println!("Expected list for {} interfaces, found {:?}", managed_ip,
                      device["interfaces"]);
             Vec::new()
         }
