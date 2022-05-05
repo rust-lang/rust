@@ -17,8 +17,8 @@ fn baz(file$0) {}
 "#,
         expect![[r#"
             bn file_id: usize
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 }
@@ -33,8 +33,8 @@ fn baz(foo: (), file$0) {}
 "#,
         expect![[r#"
             bn file_id: usize
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 }
@@ -49,8 +49,8 @@ fn baz(file$0 id: u32) {}
 "#,
         expect![[r#"
             bn file_id: usize,
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 }
@@ -63,8 +63,8 @@ fn foo(file_id: usize) {}
 fn bar(file_id: u32, $0) {}
 "#,
         expect![[r#"
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 
@@ -73,10 +73,10 @@ fn bar(file_id: u32, $0) {}
 fn f(#[foo = "bar"] baz: u32,) {}
 fn g(baz: (), ba$0)
 "#,
-        expect![[r##"
-                kw ref
-                kw mut
-            "##]],
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
     )
 }
 
@@ -91,8 +91,8 @@ pub(crate) trait SourceRoot {
 "#,
         expect![[r#"
             bn file_id: usize
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 }
@@ -107,8 +107,8 @@ fn outer(text: &str) {
 "#,
         expect![[r#"
             bn text: &str
-            kw ref
             kw mut
+            kw ref
         "#]],
     )
 }
@@ -122,11 +122,11 @@ fn foo(Bar { bar }: Bar) {}
 fn foo2($0) {}
 "#,
         expect![[r#"
-            bn Bar { bar }: Bar
-            kw ref
-            kw mut
-            bn Bar              Bar { bar$1 }: Bar$0
             st Bar
+            bn Bar              Bar { bar$1 }: Bar$0
+            bn Bar { bar }: Bar
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -143,15 +143,15 @@ impl A {
 }
 "#,
         expect![[r#"
-            bn self
-            bn &self
-            bn mut self
-            bn &mut self
-            bn file_id: usize
-            kw ref
-            kw mut
             sp Self
             st A
+            bn &mut self
+            bn &self
+            bn file_id: usize
+            bn mut self
+            bn self
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -168,11 +168,11 @@ impl A {
 }
 "#,
         expect![[r#"
-            bn file_id: usize
-            kw ref
-            kw mut
             sp Self
             st A
+            bn file_id: usize
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -195,11 +195,11 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            bn foo: i32
-            bn baz: i32
             bn bar: i32
-            kw ref
+            bn baz: i32
+            bn foo: i32
             kw mut
+            kw ref
         "#]],
     )
 }
@@ -220,11 +220,11 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            bn baz: i32
             bn bar: i32
+            bn baz: i32
             bn foo: i32
-            kw ref
             kw mut
+            kw ref
         "#]],
     )
 }
@@ -238,8 +238,8 @@ fn bar(bar$0) {}
 "#,
         expect![[r#"
             bn bar: u32
-            kw ref
             kw mut
+            kw ref
         "#]],
     )
 }

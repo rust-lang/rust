@@ -22,8 +22,8 @@ fn quux() {
 }
 "#,
         expect![[r#"
-            kw ref
             kw mut
+            kw ref
         "#]],
     );
 }
@@ -113,19 +113,19 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            en Enum
-            bn Record    Record { field$1 }$0
-            st Record
-            bn Tuple     Tuple($1)$0
-            st Tuple
-            md module
-            st Unit
-            ma makro!(…) macro_rules! makro
-            bn TupleV    TupleV($1)$0
-            ev TupleV
             ct CONST
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            ev TupleV
+            bn Record    Record { field$1 }$0
+            bn Tuple     Tuple($1)$0
+            bn TupleV    TupleV($1)$0
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -143,17 +143,17 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Record            Record { field$1 }$0
-            st Record
-            bn Tuple             Tuple($1)$0
-            st Tuple
-            ev Variant
-            md module
             en SingleVariantEnum
-            st Unit
             ma makro!(…)         macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            ev Variant
+            bn Record            Record { field$1 }$0
+            bn Tuple             Tuple($1)$0
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -166,15 +166,15 @@ fn foo(a$0) {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Record    Record { field$1 }: Record$0
-            st Record
-            bn Tuple     Tuple($1): Tuple$0
-            st Tuple
-            md module
-            st Unit
             ma makro!(…) macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            bn Record    Record { field$1 }: Record$0
+            bn Tuple     Tuple($1): Tuple$0
+            kw mut
+            kw ref
         "#]],
     );
     check(
@@ -183,15 +183,15 @@ fn foo(a$0: Tuple) {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Record    Record { field$1 }$0
-            st Record
-            bn Tuple     Tuple($1)$0
-            st Tuple
-            md module
-            st Unit
             ma makro!(…) macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            bn Record    Record { field$1 }$0
+            bn Tuple     Tuple($1)$0
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -210,9 +210,9 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
             ma m!(…) macro_rules! m
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -229,10 +229,10 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
             en E
             ma m!(…) macro_rules! m
+            kw mut
+            kw ref
         "#]],
     );
 }
@@ -253,14 +253,14 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Record    Record { field$1, .. }$0
-            st Record
-            bn Tuple     Tuple($1, ..)$0
-            st Tuple
-            st Invisible
             md foo
+            st Invisible
+            st Record
+            st Tuple
+            bn Record    Record { field$1, .. }$0
+            bn Tuple     Tuple($1, ..)$0
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -279,12 +279,12 @@ impl Foo {
 }
     "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Self Self($1)$0
             sp Self
-            bn Foo  Foo($1)$0
             st Foo
+            bn Foo  Foo($1)$0
+            bn Self Self($1)$0
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -303,10 +303,10 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ev TupleV(…)   TupleV(u32)
-            ev RecordV {…} RecordV { field: u32 }
-            ev UnitV       UnitV
             ct ASSOC_CONST const ASSOC_CONST: ()
+            ev RecordV {…} RecordV { field: u32 }
+            ev TupleV(…)   TupleV(u32)
+            ev UnitV       UnitV
         "#]],
     );
 }
@@ -320,12 +320,12 @@ struct Bar(u32);
 fn outer(Foo { bar: $0 }: Foo) {}
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Foo Foo { bar$1 }$0
+            st Bar
             st Foo
             bn Bar Bar($1)$0
-            st Bar
+            bn Foo Foo { bar$1 }$0
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -351,12 +351,12 @@ struct Bar(u32);
 fn foo($0) {}
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Foo Foo { bar$1 }: Foo$0
+            st Bar
             st Foo
             bn Bar Bar($1): Bar$0
-            st Bar
+            bn Foo Foo { bar$1 }: Foo$0
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -372,12 +372,12 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            kw ref
-            kw mut
-            bn Foo Foo { bar$1 }$0
+            st Bar
             st Foo
             bn Bar Bar($1)$0
-            st Bar
+            bn Foo Foo { bar$1 }$0
+            kw mut
+            kw ref
         "#]],
     )
 }
@@ -394,9 +394,9 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            kw crate::
             kw self::
             kw super::
-            kw crate::
         "#]],
     );
     check_empty(
@@ -409,13 +409,13 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            fn foo()  fn()
+            st Foo
+            bt u32
+            kw crate
             kw return
             kw self
             kw super
-            kw crate
-            st Foo
-            fn foo()  fn()
-            bt u32
         "#]],
     );
     check_empty(

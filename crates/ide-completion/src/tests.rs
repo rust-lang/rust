@@ -98,6 +98,7 @@ fn completion_list_with_config(
         })
         .filter(|it| include_keywords || it.kind() != CompletionItemKind::Keyword)
         .filter(|it| include_keywords || it.kind() != CompletionItemKind::Snippet)
+        .sorted_by_key(|it| (it.kind(), it.label().to_owned(), it.detail().map(ToOwned::to_owned)))
         .collect();
     render_completion_list(items)
 }

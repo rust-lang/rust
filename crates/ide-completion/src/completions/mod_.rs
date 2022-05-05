@@ -182,8 +182,8 @@ fn bar() {}
 fn ignored_bar() {}
 "#,
             expect![[r#"
-                md foo;
                 md bar;
+                md foo;
             "#]],
         );
     }
@@ -219,8 +219,8 @@ fn bar() {}
 fn ignored_bar() {}
 "#,
             expect![[r#"
-                md foo;
                 md bar;
+                md foo;
             "#]],
         );
     }
@@ -346,8 +346,8 @@ fn bar() {}
 fn ignored_bar() {}
 "#,
             expect![[r#"
-                md foo;
                 md bar;
+                md foo;
             "#]],
         );
     }

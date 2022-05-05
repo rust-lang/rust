@@ -18,18 +18,18 @@ fn target_type_or_trait_in_impl_block() {
 impl Tra$0
 "#,
         expect![[r#"
-            kw self
-            kw super
-            kw crate
-            tt Trait
             en Enum
+            ma makro!(…) macro_rules! makro
+            md module
             st Record
             st Tuple
-            md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            tt Trait
             un Union
             bt u32
+            kw crate
+            kw self
+            kw super
         "#]],
     )
 }
@@ -41,18 +41,18 @@ fn target_type_in_trait_impl_block() {
 impl Trait for Str$0
 "#,
         expect![[r#"
-            kw self
-            kw super
-            kw crate
-            tt Trait
             en Enum
+            ma makro!(…) macro_rules! makro
+            md module
             st Record
             st Tuple
-            md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            tt Trait
             un Union
             bt u32
+            kw crate
+            kw self
+            kw super
         "#]],
     )
 }
@@ -72,17 +72,17 @@ fn after_target_name_in_impl() {
     check(
         r"impl Trait $0",
         expect![[r#"
-            kw where
             kw for
+            kw where
         "#]],
     );
     // FIXME: This should not emit `kw for`
     check(
         r"impl Trait for Type $0",
         expect![[r#"
-        kw where
-        kw for
-    "#]],
+            kw for
+            kw where
+        "#]],
     );
 }
 
@@ -92,30 +92,30 @@ fn after_struct_name() {
     check(
         r"struct Struct $0",
         expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
+            kw const
+            kw crate
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
-            kw static
-            kw mod
-            kw enum
-            kw struct
-            kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
             kw self
+            kw static
+            kw struct
             kw super
-            kw crate
-            md module
-            ma makro!(…)           macro_rules! makro
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
         "#]],
     );
 }
@@ -126,30 +126,30 @@ fn after_fn_name() {
     check(
         r"fn func() $0",
         expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
+            kw const
+            kw crate
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
-            kw static
-            kw mod
-            kw enum
-            kw struct
-            kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
             kw self
+            kw static
+            kw struct
             kw super
-            kw crate
-            md module
-            ma makro!(…)           macro_rules! makro
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
         "#]],
     );
 }
@@ -164,9 +164,9 @@ struct Foo {
 }
 "#,
         expect![[r#"
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
         "#]],
     )
 }

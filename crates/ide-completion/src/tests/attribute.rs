@@ -17,25 +17,25 @@ fn proc_macros() {
 struct Foo;
 "#,
         expect![[r#"
-            md proc_macros
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
+            at derive(…)
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
-            at derive(…)
-            at repr(…)
             at non_exhaustive
+            at repr(…)
+            at warn(…)
+            md proc_macros
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     )
 }
@@ -77,15 +77,15 @@ fn with_existing_attr() {
     check(
         r#"#[no_mangle] #[$0] mcall!();"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
             at forbid(…)
             at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     )
 }
@@ -95,29 +95,29 @@ fn attr_on_source_file() {
     check(
         r#"#![$0]"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
+            at crate_name = ""
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
-            at must_use
-            at no_mangle
-            at crate_name = ""
+            at doc(hidden)
             at feature(…)
+            at forbid(…)
+            at must_use
             at no_implicit_prelude
             at no_main
+            at no_mangle
             at no_std
             at recursion_limit = "…"
             at type_length_limit = …
+            at warn(…)
             at windows_subsystem = "…"
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -127,44 +127,44 @@ fn attr_on_module() {
     check(
         r#"#[$0] mod foo;"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
+            at macro_use
             at must_use
             at no_mangle
-            at macro_use
             at path = "…"
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check(
         r#"mod foo {#![$0]}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
-            at no_mangle
             at no_implicit_prelude
+            at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -174,23 +174,23 @@ fn attr_on_macro_rules() {
     check(
         r#"#[$0] macro_rules! foo {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
-            at must_use
-            at no_mangle
+            at doc(hidden)
+            at forbid(…)
             at macro_export
             at macro_use
+            at must_use
+            at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -200,21 +200,21 @@ fn attr_on_macro_def() {
     check(
         r#"#[$0] macro foo {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -224,22 +224,22 @@ fn attr_on_extern_crate() {
     check(
         r#"#[$0] extern crate foo;"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
+            at macro_use
             at must_use
             at no_mangle
-            at macro_use
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -249,21 +249,21 @@ fn attr_on_use() {
     check(
         r#"#[$0] use foo;"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -273,21 +273,21 @@ fn attr_on_type_alias() {
     check(
         r#"#[$0] type foo = ();"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -301,26 +301,26 @@ fn attr_on_struct() {
 struct Foo;
 "#,
         expect![[r#"
-            md core
-            at derive           macro derive
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
+            at derive           macro derive
+            at derive(…)
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
-            at derive(…)
-            at repr(…)
             at non_exhaustive
+            at repr(…)
+            at warn(…)
+            md core
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -330,24 +330,24 @@ fn attr_on_enum() {
     check(
         r#"#[$0] enum Foo {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
+            at derive(…)
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
-            at derive(…)
-            at repr(…)
             at non_exhaustive
+            at repr(…)
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -357,21 +357,21 @@ fn attr_on_const() {
     check(
         r#"#[$0] const FOO: () = ();"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -381,26 +381,26 @@ fn attr_on_static() {
     check(
         r#"#[$0] static FOO: () = ()"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
-            at must_use
-            at no_mangle
+            at doc(hidden)
             at export_name = "…"
+            at forbid(…)
+            at global_allocator
             at link_name = "…"
             at link_section = "…"
-            at global_allocator
+            at must_use
+            at no_mangle
             at used
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -410,22 +410,22 @@ fn attr_on_trait() {
     check(
         r#"#[$0] trait Foo {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
+            at must_use
             at must_use
             at no_mangle
-            at must_use
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -435,42 +435,42 @@ fn attr_on_impl() {
     check(
         r#"#[$0] impl () {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
+            at automatically_derived
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
-            at automatically_derived
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check(
         r#"impl () {#![$0]}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
             at must_use
             at no_mangle
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -480,43 +480,43 @@ fn attr_on_extern_block() {
     check(
         r#"#[$0] extern {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
+            at link
             at must_use
             at no_mangle
-            at link
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check(
         r#"extern {#![$0]}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
+            at doc(hidden)
+            at forbid(…)
+            at link
             at must_use
             at no_mangle
-            at link
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -526,16 +526,16 @@ fn attr_on_variant() {
     check(
         r#"enum Foo { #[$0] Bar }"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
             at forbid(…)
-            at warn(…)
             at non_exhaustive
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -545,36 +545,36 @@ fn attr_on_fn() {
     check(
         r#"#[$0] fn main() {}"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
+            at cold
             at deny(…)
-            at forbid(…)
-            at warn(…)
             at deprecated
             at doc = "…"
-            at doc(hidden)
             at doc(alias = "…")
-            at must_use
-            at no_mangle
+            at doc(hidden)
             at export_name = "…"
-            at link_name = "…"
-            at link_section = "…"
-            at cold
+            at forbid(…)
             at ignore = "…"
             at inline
+            at link_name = "…"
+            at link_section = "…"
             at must_use
+            at must_use
+            at no_mangle
             at panic_handler
             at proc_macro
-            at proc_macro_derive(…)
             at proc_macro_attribute
+            at proc_macro_derive(…)
             at should_panic
             at target_feature = "…"
             at test
             at track_caller
+            at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -585,15 +585,15 @@ fn attr_on_expr() {
     check(
         r#"fn main() { #[$0] foo() }"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
             at deny(…)
             at forbid(…)
             at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -603,9 +603,6 @@ fn attr_in_source_file_end() {
     check(
         r#"#[$0]"#,
         expect![[r#"
-            kw self::
-            kw super::
-            kw crate::
             at allow(…)
             at automatically_derived
             at cfg(…)
@@ -642,6 +639,9 @@ fn attr_in_source_file_end() {
             at track_caller
             at used
             at warn(…)
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -654,8 +654,8 @@ mod cfg {
         check(
             r#"#[cfg(target_endian = $0"#,
             expect![[r#"
-                ba little
                 ba big
+                ba little
             "#]],
         );
     }
@@ -688,17 +688,17 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                md core
-                de Default                macro Default
+                de Clone                  macro Clone
                 de Clone, Copy
+                de Default                macro Default
                 de PartialEq              macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
-                de Clone                  macro Clone
                 de PartialEq, PartialOrd
+                md core
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
             "#]],
         );
     }
@@ -711,16 +711,16 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                md core
-                de Default             macro Default
+                de Clone               macro Clone
                 de Clone, Copy
+                de Default             macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone               macro Clone
                 de PartialOrd
+                md core
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
             "#]],
         )
     }
@@ -733,16 +733,16 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                md core
-                de Default             macro Default
+                de Clone               macro Clone
                 de Clone, Copy
+                de Default             macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone               macro Clone
                 de PartialOrd
+                md core
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
             "#]],
         );
     }
@@ -755,15 +755,15 @@ mod derive {
 #[derive(PartialEq, Eq, Or$0)] struct Test;
 "#,
             expect![[r#"
-                md core
-                de Default         macro Default
-                de Clone, Copy
-                de PartialOrd, Ord
                 de Clone           macro Clone
+                de Clone, Copy
+                de Default         macro Default
                 de PartialOrd
+                de PartialOrd, Ord
+                md core
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
             "#]],
         );
     }
@@ -777,12 +777,12 @@ mod derive {
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                md proc_macros
+                de DeriveIdentity (use proc_macros::DeriveIdentity) proc_macro DeriveIdentity
                 md core
+                md proc_macros
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
-                de DeriveIdentity (use proc_macros::DeriveIdentity) proc_macro DeriveIdentity
             "#]],
         );
         check_derive(
@@ -794,11 +794,11 @@ use proc_macros::DeriveIdentity;
 "#,
             expect![[r#"
                 de DeriveIdentity proc_macro DeriveIdentity
-                md proc_macros
                 md core
+                md proc_macros
+                kw crate::
                 kw self::
                 kw super::
-                kw crate::
             "#]],
         );
     }
@@ -953,22 +953,22 @@ mod repr {
         check_repr(
             r#"#[repr($0)] struct Test;"#,
             expect![[r#"
+                ba C
                 ba align($0)
+                ba i16
+                ba i28
+                ba i32
+                ba i64
+                ba i8
+                ba isize
                 ba packed
                 ba transparent
-                ba C
-                ba u8
+                ba u128
                 ba u16
                 ba u32
                 ba u64
-                ba u128
+                ba u8
                 ba usize
-                ba i8
-                ba i16
-                ba i32
-                ba i64
-                ba i28
-                ba isize
             "#]],
         );
     }
@@ -983,20 +983,20 @@ mod repr {
         check_repr(
             r#"#[repr(align(1), $0)] struct Test;"#,
             expect![[r#"
-                ba transparent
                 ba C
-                ba u8
+                ba i16
+                ba i28
+                ba i32
+                ba i64
+                ba i8
+                ba isize
+                ba transparent
+                ba u128
                 ba u16
                 ba u32
                 ba u64
-                ba u128
+                ba u8
                 ba usize
-                ba i8
-                ba i16
-                ba i32
-                ba i64
-                ba i28
-                ba isize
             "#]],
         );
     }
@@ -1006,20 +1006,20 @@ mod repr {
         check_repr(
             r#"#[repr(packed, $0)] struct Test;"#,
             expect![[r#"
-                ba transparent
                 ba C
-                ba u8
+                ba i16
+                ba i28
+                ba i32
+                ba i64
+                ba i8
+                ba isize
+                ba transparent
+                ba u128
                 ba u16
                 ba u32
                 ba u64
-                ba u128
+                ba u8
                 ba usize
-                ba i8
-                ba i16
-                ba i32
-                ba i64
-                ba i28
-                ba isize
             "#]],
         );
     }
@@ -1030,19 +1030,19 @@ mod repr {
             r#"#[repr(C, $0)] struct Test;"#,
             expect![[r#"
                 ba align($0)
+                ba i16
+                ba i28
+                ba i32
+                ba i64
+                ba i8
+                ba isize
                 ba packed
-                ba u8
+                ba u128
                 ba u16
                 ba u32
                 ba u64
-                ba u128
+                ba u8
                 ba usize
-                ba i8
-                ba i16
-                ba i32
-                ba i64
-                ba i28
-                ba isize
             "#]],
         );
     }
@@ -1052,9 +1052,9 @@ mod repr {
         check_repr(
             r#"#[repr(usize, $0)] struct Test;"#,
             expect![[r#"
+                ba C
                 ba align($0)
                 ba packed
-                ba C
             "#]],
         );
     }

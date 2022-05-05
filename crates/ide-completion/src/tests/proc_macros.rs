@@ -25,15 +25,15 @@ fn main() {
 "#,
         expect![[r#"
             me foo() fn(&self)
-            sn ref   &expr
-            sn refm  &mut expr
-            sn match match expr {}
             sn box   Box::new(expr)
+            sn call  function(expr)
             sn dbg   dbg!(expr)
             sn dbgr  dbg!(&expr)
-            sn call  function(expr)
             sn let   let
             sn letm  let mut
+            sn match match expr {}
+            sn ref   &expr
+            sn refm  &mut expr
         "#]],
     )
 }
@@ -55,15 +55,15 @@ fn main() {
 "#,
         expect![[r#"
             me foo() fn(&self)
-            sn ref   &expr
-            sn refm  &mut expr
-            sn match match expr {}
             sn box   Box::new(expr)
+            sn call  function(expr)
             sn dbg   dbg!(expr)
             sn dbgr  dbg!(&expr)
-            sn call  function(expr)
             sn let   let
             sn letm  let mut
+            sn match match expr {}
+            sn ref   &expr
+            sn refm  &mut expr
         "#]],
     )
 }
@@ -87,15 +87,15 @@ fn main() {}
 "#,
         expect![[r#"
             me foo() fn(&self)
-            sn ref   &expr
-            sn refm  &mut expr
-            sn match match expr {}
             sn box   Box::new(expr)
+            sn call  function(expr)
             sn dbg   dbg!(expr)
             sn dbgr  dbg!(&expr)
-            sn call  function(expr)
             sn let   let
             sn letm  let mut
+            sn match match expr {}
+            sn ref   &expr
+            sn refm  &mut expr
         "#]],
     )
 }
@@ -119,15 +119,15 @@ fn main() {}
 "#,
         expect![[r#"
             me foo() fn(&self)
-            sn ref   &expr
-            sn refm  &mut expr
-            sn match match expr {}
             sn box   Box::new(expr)
+            sn call  function(expr)
             sn dbg   dbg!(expr)
             sn dbgr  dbg!(&expr)
-            sn call  function(expr)
             sn let   let
             sn letm  let mut
+            sn match match expr {}
+            sn ref   &expr
+            sn refm  &mut expr
         "#]],
     )
 }

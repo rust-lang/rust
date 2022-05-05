@@ -16,19 +16,19 @@ fn predicate_start() {
 struct Foo<'lt, T, const C: usize> where $0 {}
 "#,
         expect![[r#"
-            kw self
-            kw super
-            kw crate
-            tt Trait
             en Enum
-            st Record
-            st Tuple
+            ma makro!(…) macro_rules! makro
             md module
             st Foo<…>
+            st Record
+            st Tuple
             st Unit
-            ma makro!(…) macro_rules! makro
+            tt Trait
             un Union
             bt u32
+            kw crate
+            kw self
+            kw super
         "#]],
     );
 }
@@ -40,12 +40,12 @@ fn bound_for_type_pred() {
 struct Foo<'lt, T, const C: usize> where T: $0 {}
 "#,
         expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            tt Trait
+            kw crate
             kw self
             kw super
-            kw crate
-            tt Trait
-            md module
-            ma makro!(…) macro_rules! makro
         "#]],
     );
 }
@@ -59,12 +59,12 @@ fn bound_for_lifetime_pred() {
 struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
 "#,
         expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            tt Trait
+            kw crate
             kw self
             kw super
-            kw crate
-            tt Trait
-            md module
-            ma makro!(…) macro_rules! makro
         "#]],
     );
 }
@@ -76,12 +76,12 @@ fn bound_for_for_pred() {
 struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
 "#,
         expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            tt Trait
+            kw crate
             kw self
             kw super
-            kw crate
-            tt Trait
-            md module
-            ma makro!(…) macro_rules! makro
         "#]],
     );
 }
@@ -93,19 +93,19 @@ fn param_list_for_for_pred() {
 struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
 "#,
         expect![[r#"
-            kw self
-            kw super
-            kw crate
-            tt Trait
             en Enum
-            st Record
-            st Tuple
+            ma makro!(…) macro_rules! makro
             md module
             st Foo<…>
+            st Record
+            st Tuple
             st Unit
-            ma makro!(…) macro_rules! makro
+            tt Trait
             un Union
             bt u32
+            kw crate
+            kw self
+            kw super
         "#]],
     );
 }
@@ -119,19 +119,19 @@ impl Record {
 }
 "#,
         expect![[r#"
-            kw self
-            kw super
-            kw crate
-            sp Self
-            tt Trait
             en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            sp Self
             st Record
             st Tuple
-            md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            tt Trait
             un Union
             bt u32
+            kw crate
+            kw self
+            kw super
         "#]],
     );
 }

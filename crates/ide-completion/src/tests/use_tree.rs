@@ -24,9 +24,9 @@ mod foo {}
         expect![[r#"
             md foo
             md other_crate
+            kw crate::
             kw self::
             kw super::
-            kw crate::
         "#]],
     );
 }
@@ -60,8 +60,8 @@ mod foo { pub struct S; }
 use self::{foo::*, bar$0};
 "#,
         expect![[r#"
-            st S
             md foo
+            st S
         "#]],
     );
 }
@@ -91,8 +91,8 @@ mod foo {
 use foo::{$0}
 "#,
         expect![[r#"
-            kw self
             md bar
+            kw self
         "#]],
     );
 }
@@ -126,8 +126,8 @@ mod foo {
 use foo::{bar::{$0}}
 "#,
         expect![[r#"
-            kw self
             md baz
+            kw self
         "#]],
     );
 }
@@ -147,8 +147,8 @@ mod foo {
 struct Bar;
 "#,
         expect![[r#"
-            st Foo
             ma foo macro_rules! foo_
+            st Foo
         "#]],
     );
 }
@@ -200,10 +200,10 @@ mod foo {}
 struct Bar;
 "#,
         expect![[r#"
-            kw super::
-            st Bar
             md bar
             md foo
+            st Bar
+            kw super::
         "#]],
     );
 }
@@ -221,9 +221,9 @@ mod a {
 }
 "#,
         expect![[r#"
-            kw super::
-            md b
             ct A
+            md b
+            kw super::
         "#]],
     );
 }
@@ -255,8 +255,8 @@ pub struct Foo;
 pub mod foo {}
 "#,
         expect![[r#"
-            st Foo
             md foo
+            st Foo
         "#]],
     );
 }
@@ -271,9 +271,9 @@ pub use $0;
 "#,
         expect![[r#"
             md bar
+            kw crate::
             kw self::
             kw super::
-            kw crate::
         "#]],
     );
 }
@@ -288,9 +288,9 @@ use {$0};
 "#,
         expect![[r#"
             md bar
+            kw crate::
             kw self::
             kw super::
-            kw crate::
         "#]],
     );
 }
