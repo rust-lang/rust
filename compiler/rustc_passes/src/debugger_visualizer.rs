@@ -1,4 +1,4 @@
-//! Detecting usage of the #[debugger_visualizer] attribute.
+//! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use hir::CRATE_HIR_ID;
 use rustc_data_structures::fx::FxHashSet;
