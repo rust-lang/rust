@@ -367,8 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if self.is_fn_ty(rcvr_ty, span) {
                     if let SelfSource::MethodCall(expr) = source {
-                        let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() {
-                            let local_id = def_id.expect_local();
+                        let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() && let Some(local_id) = def_id.as_local() {
                             let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
                             let node = tcx.hir().get(hir_id);
                             let fields = node.tuple_fields();
