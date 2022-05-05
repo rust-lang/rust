@@ -7,6 +7,8 @@
 /* global addClass, removeClass, onEach, onEachLazy, NOT_DISPLAYED_ID */
 /* global MAIN_ID, getVar, getSettingsButton, switchDisplayedElement, getNotDisplayedElem */
 
+"use strict";
+
 (function () {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 

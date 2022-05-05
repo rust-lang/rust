@@ -20,8 +20,8 @@ use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, Wr
 use std::hash::Hash;
 
 use super::{
-    alloc_range, CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, OpTy, Scalar, ScalarMaybeUninit, ValueVisitor,
+    alloc_range, CheckInAllocMsg, GlobalAlloc, Immediate, InterpCx, InterpResult, MPlaceTy,
+    Machine, MemPlaceMeta, OpTy, Scalar, ScalarMaybeUninit, ValueVisitor,
 };
 
 macro_rules! throw_validation_failure {
@@ -487,6 +487,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         ))
     }
 
+    fn read_immediate_forced(
+        &self,
+        op: &OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        Ok(*try_validation!(
+            self.ecx.read_immediate_raw(op, /*force*/ true),
+            self.path,
+            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
+        ).unwrap())
+    }
+
     /// Check if this is a value of primitive type, and if yes check the validity of the value
     /// at that type.  Return `true` if the type is indeed primitive.
     fn try_visit_primitive(
@@ -626,18 +637,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
     fn visit_scalar(
         &mut self,
-        op: &OpTy<'tcx, M::PointerTag>,
+        scalar: ScalarMaybeUninit<M::PointerTag>,
         scalar_layout: ScalarAbi,
     ) -> InterpResult<'tcx> {
         // We check `is_full_range` in a slightly complicated way because *if* we are checking
         // number validity, then we want to ensure that `Scalar::Initialized` is indeed initialized,
         // i.e. that we go over the `check_init` below.
+        let size = scalar_layout.size(self.ecx);
         let is_full_range = match scalar_layout {
             ScalarAbi::Initialized { valid_range, .. } => {
                 if M::enforce_number_validity(self.ecx) {
                     false // not "full" since uninit is not accepted
                 } else {
-                    valid_range.is_full_for(op.layout.size)
+                    valid_range.is_full_for(size)
                 }
             }
             ScalarAbi::Union { .. } => true,
@@ -646,21 +658,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // Nothing to check
             return Ok(());
         }
-        // We have something to check.
+        // We have something to check: it must at least be initialized.
         let valid_range = scalar_layout.valid_range(self.ecx);
         let WrappingRange { start, end } = valid_range;
-        let max_value = op.layout.size.unsigned_int_max();
+        let max_value = size.unsigned_int_max();
         assert!(end <= max_value);
-        // Determine the allowed range
-        let value = self.read_scalar(op)?;
         let value = try_validation!(
-            value.check_init(),
+            scalar.check_init(),
             self.path,
-            err_ub!(InvalidUninitBytes(None)) => { "{:x}", value }
+            err_ub!(InvalidUninitBytes(None)) => { "{:x}", scalar }
                 expected { "something {}", wrapping_range_format(valid_range, max_value) },
         );
         let bits = match value.try_to_int() {
-            Ok(int) => int.assert_bits(op.layout.size),
+            Ok(int) => int.assert_bits(size),
             Err(_) => {
                 // So this is a pointer then, and casting to an int failed.
                 // Can only happen during CTFE.
@@ -678,7 +688,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     } else {
                         return Ok(());
                     }
-                } else if scalar_layout.valid_range(self.ecx).is_full_for(op.layout.size) {
+                } else if scalar_layout.valid_range(self.ecx).is_full_for(size) {
                     // Easy. (This is reachable if `enforce_number_validity` is set.)
                     return Ok(());
                 } else {
@@ -817,13 +827,23 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
             }
             Abi::Scalar(scalar_layout) => {
-                self.visit_scalar(op, scalar_layout)?;
+                let scalar = self.read_immediate_forced(op)?.to_scalar_or_uninit();
+                self.visit_scalar(scalar, scalar_layout)?;
             }
-            Abi::ScalarPair { .. } | Abi::Vector { .. } => {
-                // These have fields that we already visited above, so we already checked
-                // all their scalar-level restrictions.
-                // There is also no equivalent to `rustc_layout_scalar_valid_range_start`
-                // that would make skipping them here an issue.
+            Abi::ScalarPair(a_layout, b_layout) => {
+                // We would validate these things as we descend into the fields,
+                // but that can miss bugs in layout computation. Layout computation
+                // is subtle due to enums having ScalarPair layout, where one field
+                // is the discriminant.
+                if cfg!(debug_assertions) {
+                    let (a, b) = self.read_immediate_forced(op)?.to_scalar_or_uninit_pair();
+                    self.visit_scalar(a, a_layout)?;
+                    self.visit_scalar(b, b_layout)?;
+                }
+            }
+            Abi::Vector { .. } => {
+                // No checks here, we assume layout computation gets this right.
+                // (This is harder to check since Miri does not represent these as `Immediate`.)
             }
             Abi::Aggregate { .. } => {
                 // Nothing to do.

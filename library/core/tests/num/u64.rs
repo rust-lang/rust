@@ -1,1 +1,1 @@
-uint_module!(u64, u64);
+uint_module!(u64);

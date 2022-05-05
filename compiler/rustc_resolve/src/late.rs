@@ -486,6 +486,9 @@ struct DiagnosticMetadata<'ast> {
     current_where_predicate: Option<&'ast WherePredicate>,
 
     current_type_path: Option<&'ast Ty>,
+
+    /// The current impl items (used to suggest).
+    current_impl_items: Option<&'ast [P<AssocItem>]>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -1637,7 +1640,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 items: ref impl_items,
                 ..
             }) => {
+                self.diagnostic_metadata.current_impl_items = Some(impl_items);
                 self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
+                self.diagnostic_metadata.current_impl_items = None;
             }
 
             ItemKind::Trait(box Trait { ref generics, ref bounds, ref items, .. }) => {

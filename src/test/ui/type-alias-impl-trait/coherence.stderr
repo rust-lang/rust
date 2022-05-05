@@ -1,9 +1,14 @@
-error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/coherence.rs:14:6
+error: cannot implement trait on type alias impl trait
+  --> $DIR/coherence.rs:14:41
    |
 LL | impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-   |      ^ unconstrained type parameter
+   |                                         ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/coherence.rs:9:30
+   |
+LL | type AliasOfForeignType<T> = impl LocalTrait;
+   |                              ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0207`.

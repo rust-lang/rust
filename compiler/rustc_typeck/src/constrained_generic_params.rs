@@ -59,7 +59,7 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
+            ty::Projection(..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return ControlFlow::CONTINUE;
             }
