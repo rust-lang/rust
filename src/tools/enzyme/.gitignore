@@ -3,3 +3,9 @@
 *.out
 build
 .vscode
+
+
+# Added by cargo
+
+/target
+Cargo.lock
