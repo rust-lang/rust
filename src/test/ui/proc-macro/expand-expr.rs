@@ -2,9 +2,9 @@
 
 extern crate expand_expr;
 
-use expand_expr::{
-    check_expand_expr_file, echo_pm, expand_expr_fail, expand_expr_is, recursive_expand,
-};
+use expand_expr::{check_expand_expr_file, echo_pm, expand_expr_fail, expand_expr_is};
+use expand_expr::{expand_expr_is_trim, recursive_expand};
+
 
 // Check builtin macros can be expanded.
 
@@ -47,21 +47,21 @@ macro_rules! echo_expr {
 
 macro_rules! simple_lit {
     ($l:literal) => {
-        expand_expr_is!($l, $l);
-        expand_expr_is!($l, echo_lit!($l));
-        expand_expr_is!($l, echo_expr!($l));
-        expand_expr_is!($l, echo_tts!($l));
-        expand_expr_is!($l, echo_pm!($l));
+        expand_expr_is_trim!($l, $l);
+        expand_expr_is_trim!($l, echo_lit!($l));
+        expand_expr_is_trim!($l, echo_expr!($l));
+        expand_expr_is_trim!($l, echo_tts!($l));
+        expand_expr_is_trim!($l, echo_pm!($l));
         const _: () = {
             macro_rules! mac {
                 () => {
                     $l
                 };
             }
-            expand_expr_is!($l, mac!());
-            expand_expr_is!($l, echo_expr!(mac!()));
-            expand_expr_is!($l, echo_tts!(mac!()));
-            expand_expr_is!($l, echo_pm!(mac!()));
+            expand_expr_is_trim!($l, mac!());
+            expand_expr_is_trim!($l, echo_expr!(mac!()));
+            expand_expr_is_trim!($l, echo_tts!(mac!()));
+            expand_expr_is_trim!($l, echo_pm!(mac!()));
         };
     };
 }

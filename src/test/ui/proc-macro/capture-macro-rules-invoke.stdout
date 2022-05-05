@@ -1,4 +1,5 @@
 PRINT-BANG INPUT (DISPLAY): self
+PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ self /*»*/
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
@@ -13,8 +14,10 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 ]
 PRINT-BANG INPUT (DISPLAY): 1 + 1, { "a" }, let a = 1;, String, my_name, 'a, my_val = 30,
 std::option::Option, pub(in some::path) , [a b c], -30
-PRINT-BANG RE-COLLECTED (DISPLAY): 1 + 1, { "a" }, let a = 1, String, my_name, 'a, my_val = 30,
-std :: option :: Option, pub(in some :: path), [a b c], - 30
+PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ 1 + 1 /*»*/, /*«*/ { "a" } /*»*/, /*«*/ let a = 1 /*»*/, /*«*/
+String /*»*/, my_name, /*«*/ 'a /*»*/, /*«*/ my_val = 30 /*»*/, /*«*/
+std :: option :: Option /*»*/, /*«*/ pub(in some :: path) /*»*/, [a b c],
+/*«*/ - 30 /*»*/
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
@@ -295,6 +298,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-BANG INPUT (DISPLAY): (a, b)
+PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ (a, b) /*»*/
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
