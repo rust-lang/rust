@@ -125,6 +125,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_allow_incoherent_impl => {
                     self.check_allow_incoherent_impl(&attr, span, target)
                 }
+                sym::rustc_has_incoherent_inherent_impls => {
+                    self.check_has_incoherent_inherent_impls(&attr, span, target)
+                }
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1096,7 +1099,6 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Warns against some misuses of `#[pass_by_value]`
     fn check_allow_incoherent_impl(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         match target {
             Target::Method(MethodKind::Inherent) => true,
@@ -1108,6 +1110,30 @@ impl CheckAttrVisitor<'_> {
                         "`rustc_allow_incoherent_impl` attribute should be applied to impl items.",
                     )
                     .span_label(span, "the only currently supported targets are inherent methods")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    fn check_has_incoherent_inherent_impls(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {
+                true
+            }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.",
+                    )
+                    .span_label(span, "only adts, extern types and traits are supported")
                     .emit();
                 false
             }

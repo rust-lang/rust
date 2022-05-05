@@ -27,6 +27,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
     find_best_match_for_name_with_substrings, lev_distance_with_substrings,
 };
+use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::autoderef::{self, Autoderef};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -642,16 +643,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
+                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                }
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
                 self.assemble_inherent_impl_candidates_for_type(def_id);
-                if Some(def_id) == self.tcx.lang_items().c_str() {
+                if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
                     self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
                 }
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
+                if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
+                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                }
             }
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);

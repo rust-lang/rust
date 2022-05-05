@@ -77,7 +77,7 @@ use crate::str;
 #[derive(Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[unstable(feature = "core_c_str", issue = "94079")]
-#[cfg_attr(not(bootstrap), lang = "CStr")]
+#[cfg_attr(not(bootstrap), rustc_has_incoherent_inherent_impls)]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
 // on `CStr` being layout-compatible with `[u8]`.
