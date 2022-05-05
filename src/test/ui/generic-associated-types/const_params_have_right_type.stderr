@@ -1,0 +1,15 @@
+error[E0053]: associated type `Foo` has an incompatible const parameter type for trait
+  --> $DIR/const_params_have_right_type.rs:8:14
+   |
+LL |     type Foo<const N: u64> = u32;
+   |              ^^^^^^^^^^^^
+   |
+note: the const parameter `N` has type `u64`, but the declaration in trait `Trait::Foo` has type `u8`
+  --> $DIR/const_params_have_right_type.rs:4:14
+   |
+LL |     type Foo<const N: u8>;
+   |              ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

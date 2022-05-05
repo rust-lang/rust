@@ -1,0 +1,52 @@
+error[E0049]: method `foo` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:5:12
+   |
+LL |     fn foo<U>() {}
+   |            - expected 1 type parameter
+...
+LL |     fn foo<const M: u64>() {}
+   |            ^^^^^^^^^^^^ found 0 type parameters
+
+error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:5:12
+   |
+LL |     fn foo<U>() {}
+   |            - expected 0 const parameters
+...
+LL |     fn foo<const M: u64>() {}
+   |            ^^^^^^^^^^^^ found 1 const parameter
+
+error[E0049]: method `bar` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:13:12
+   |
+LL |     fn bar<const M: u8>() {}
+   |            ----------- expected 0 type parameters
+...
+LL |     fn bar<T>() {}
+   |            ^ found 1 type parameter
+
+error[E0049]: method `bar` has 0 const parameters but its trait declaration has 1 const parameter
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:13:12
+   |
+LL |     fn bar<const M: u8>() {}
+   |            ----------- expected 1 const parameter
+...
+LL |     fn bar<T>() {}
+   |            ^ found 0 const parameters
+
+error[E0053]: method `baz` has an incompatible const parameter type for trait
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:21:12
+   |
+LL |     fn baz<const N: i32>() {}
+   |            ^^^^^^^^^^^^
+   |
+note: the const parameter `N` has type `i32`, but the declaration in trait `Uwu::baz` has type `u32`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:18:12
+   |
+LL |     fn baz<const N: u32>() {}
+   |            ^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0049, E0053.
+For more information about an error, try `rustc --explain E0049`.
