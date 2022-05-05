@@ -1,0 +1,89 @@
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:7:19
+   |
+LL |             break 'a $val;
+   |                   ^^ undeclared label `'a`
+...
+LL |                 mac2!(2);
+   |                 -------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:32:19
+   |
+LL |     let x: u8 = mac3!('b: {
+   |                       -- a label with a similar name is reachable
+LL |         if true {
+LL |             break 'a 3;
+   |                   ^^
+   |                   |
+   |                   undeclared label `'a`
+   |                   help: try using similarly named label: `'b`
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:37:29
+   |
+LL |     let x: u8 = mac3!(break 'a 4);
+   |                             ^^ undeclared label `'a`
+
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/label_break_value_invalid.rs:22:13
+   |
+LL |       let x: u8 = 'a: {
+   |                   -- first declared here
+...
+LL |               'a: {
+   |               ^^ label `'a` already in scope
+...
+LL |       let x: u8 = mac3!('b: {
+   |  _________________-
+LL | |         if true {
+LL | |             break 'a 3;
+LL | |         }
+LL | |         0
+LL | |     });
+   | |______- in this macro invocation
+   |
+   = note: this warning originates in the macro `mac3` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: label name `'b` shadows a label name that is already in scope
+  --> $DIR/label_break_value_invalid.rs:30:23
+   |
+LL |         'b: {
+   |         -- first declared here
+...
+LL |     let x: u8 = mac3!('b: {
+   |                       ^^ label `'b` already in scope
+
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/label_break_value_invalid.rs:22:13
+   |
+LL |     let x: u8 = 'a: {
+   |                 -- first declared here
+...
+LL |             'a: {
+   |             ^^ label `'a` already in scope
+...
+LL |     let x: u8 = mac3!(break 'a 4);
+   |                 ----------------- in this macro invocation
+   |
+   = note: this warning originates in the macro `mac3` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: label name `'a` shadows a label name that is already in scope
+  --> $DIR/label_break_value_invalid.rs:22:13
+   |
+LL |             'a: {
+   |             ^^
+   |             |
+   |             first declared here
+   |             label `'a` already in scope
+...
+LL |     let x: u8 = mac3!(break 'a 4);
+   |                 ----------------- in this macro invocation
+   |
+   = note: this warning originates in the macro `mac3` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0426`.
