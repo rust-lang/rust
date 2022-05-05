@@ -211,6 +211,10 @@ fn mutable_closure_in_loop() {
     let mut closure = |n| value += n;
     for _ in 0..5 {
         Some(1).map(|n| closure(n));
+
+        let mut value = 0;
+        let mut in_loop = |n| value += n;
+        Some(1).map(|n| in_loop(n));
     }
 }
 
@@ -274,4 +278,16 @@ mod bind_by_ref {
         // should not lint
         Some(A).map(|ref a| B::from(a));
     }
+}
+
+// #7812 False positive on coerced closure
+fn coerced_closure() {
+    fn function_returning_unit<F: FnMut(i32)>(f: F) {}
+    function_returning_unit(|x| std::process::exit(x));
+
+    fn arr() -> &'static [u8; 0] {
+        &[]
+    }
+    fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
+    slice_fn(|| arr());
 }

@@ -432,8 +432,8 @@ impl Types {
     fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, context: CheckTyContext) {
         // Ignore functions in trait implementations as they are usually forced by the trait definition.
         //
-        // FIXME: idially we would like to warn *if the compicated type can be simplified*, but it's hard to
-        // check.
+        // FIXME: ideally we would like to warn *if the complicated type can be simplified*, but it's hard
+        // to check.
         if context.is_in_trait_impl {
             return;
         }

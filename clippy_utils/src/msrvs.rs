@@ -32,4 +32,5 @@ msrv_aliases! {
     1,28,0 { FROM_BOOL }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
+    1,24,0 { IS_ASCII_DIGIT }
 }

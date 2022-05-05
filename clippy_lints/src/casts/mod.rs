@@ -270,7 +270,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Casting a function pointer to an integer can have surprising results and can occur
-    /// accidentally if parantheses are omitted from a function call. If you aren't doing anything
+    /// accidentally if parentheses are omitted from a function call. If you aren't doing anything
     /// low-level with function pointers then you can opt-out of casting functions to integers in
     /// order to avoid mistakes. Alternatively, you can use this lint to audit all uses of function
     /// pointer casts in your code.
@@ -487,6 +487,7 @@ declare_clippy_lint! {
     /// let y: u32 = x.abs() as u32;
     /// ```
     /// Use instead:
+    /// ```rust
     /// let x: i32 = -42;
     /// let y: u32 = x.unsigned_abs();
     /// ```

@@ -3,7 +3,7 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::{get_enclosing_loop_or_closure, higher, path_to_local, path_to_local_id};
+use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -103,6 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         let closure_ty = cx.typeck_results().expr_ty(expr);
 
         if_chain!(
+            if !is_adjusted(cx, &body.value);
             if let ExprKind::Call(callee, args) = body.value.kind;
             if let ExprKind::Path(_) = callee.kind;
             if check_inputs(cx, body.params, args);
@@ -125,8 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                         if_chain! {
                             if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
                             if substs.as_closure().kind() == ClosureKind::FnMut;
-                            if get_enclosing_loop_or_closure(cx.tcx, expr).is_some()
-                                || path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, callee));
+                            if path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr));
 
                             then {
                                 // Mutable closure is used after current expr; we cannot consume it.
@@ -145,6 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         );
 
         if_chain!(
+            if !is_adjusted(cx, &body.value);
             if let ExprKind::MethodCall(path, args, _) = body.value.kind;
             if check_inputs(cx, body.params, args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();

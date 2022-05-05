@@ -1,10 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::visitors::{expr_visitor, is_local_used};
-use rustc_errors::Applicability;
+use clippy_utils::ty::needs_ordered_drop;
+use clippy_utils::visitors::{expr_visitor, expr_visitor_no_bodies, is_local_used};
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{
+    BindingAnnotation, Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
+    StmtKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -71,6 +75,31 @@ fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) ->
     .visit_stmt(stmt);
 
     seen
+}
+
+fn contains_let(cond: &Expr<'_>) -> bool {
+    let mut seen = false;
+    expr_visitor_no_bodies(|expr| {
+        if let ExprKind::Let(_) = expr.kind {
+            seen = true;
+        }
+
+        !seen
+    })
+    .visit_expr(cond);
+
+    seen
+}
+
+fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
+    let StmtKind::Local(local) = stmt.kind else { return false };
+    !local.pat.walk_short(|pat| {
+        if let PatKind::Binding(.., None) = pat.kind {
+            !needs_ordered_drop(cx, cx.typeck_results().pat_ty(pat))
+        } else {
+            true
+        }
+    })
 }
 
 #[derive(Debug)]
@@ -187,11 +216,14 @@ fn first_usage<'tcx>(
     local_stmt_id: HirId,
     block: &'tcx Block<'tcx>,
 ) -> Option<Usage<'tcx>> {
+    let significant_drop = needs_ordered_drop(cx, cx.typeck_results().node_type(binding_id));
+
     block
         .stmts
         .iter()
         .skip_while(|stmt| stmt.hir_id != local_stmt_id)
         .skip(1)
+        .take_while(|stmt| !significant_drop || !stmt_needs_ordered_drop(cx, stmt))
         .find(|&stmt| is_local_used(cx, stmt, binding_id))
         .and_then(|stmt| match stmt.kind {
             StmtKind::Expr(expr) => Some(Usage {
@@ -235,12 +267,15 @@ fn check<'tcx>(
     match usage.expr.kind {
         ExprKind::Assign(..) => {
             let assign = LocalAssign::new(cx, usage.expr, binding_id)?;
+            let mut msg_span = MultiSpan::from_spans(vec![local_stmt.span, assign.span]);
+            msg_span.push_span_label(local_stmt.span, "created here");
+            msg_span.push_span_label(assign.span, "initialised here");
 
             span_lint_and_then(
                 cx,
                 NEEDLESS_LATE_INIT,
-                local_stmt.span,
-                "unneeded late initalization",
+                msg_span,
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(
                         local_stmt.span,
@@ -258,14 +293,14 @@ fn check<'tcx>(
                 },
             );
         },
-        ExprKind::If(_, then_expr, Some(else_expr)) => {
+        ExprKind::If(cond, then_expr, Some(else_expr)) if !contains_let(cond) => {
             let (applicability, suggestions) = assignment_suggestions(cx, binding_id, [then_expr, else_expr])?;
 
             span_lint_and_then(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 
@@ -296,7 +331,7 @@ fn check<'tcx>(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 
@@ -333,12 +368,11 @@ fn check<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
-
         if_chain! {
             if let Local {
                 init: None,
                 pat: &Pat {
-                    kind: PatKind::Binding(_, binding_id, _, None),
+                    kind: PatKind::Binding(BindingAnnotation::Unannotated, binding_id, _, None),
                     ..
                 },
                 source: LocalSource::Normal,

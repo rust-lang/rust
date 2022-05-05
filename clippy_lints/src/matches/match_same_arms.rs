@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
         .map(|a| NormalizedPat::from_pat(cx, &arena, a.pat))
         .collect();
 
-    // The furthast forwards a pattern can move without semantic changes
+    // The furthest forwards a pattern can move without semantic changes
     let forwards_blocking_idxs: Vec<_> = normalized_pats
         .iter()
         .enumerate()
@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
         })
         .collect();
 
-    // The furthast backwards a pattern can move without semantic changes
+    // The furthest backwards a pattern can move without semantic changes
     let backwards_blocking_idxs: Vec<_> = normalized_pats
         .iter()
         .enumerate()

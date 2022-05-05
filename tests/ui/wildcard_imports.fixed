@@ -8,8 +8,7 @@
 // FIXME: We should likely add another edition 2021 test case for this lint
 
 #![warn(clippy::wildcard_imports)]
-#![allow(unused)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]
 #![warn(unused_imports)]
 
 extern crate wildcard_imports_helper;

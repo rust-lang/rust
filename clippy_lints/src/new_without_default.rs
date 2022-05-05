@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let hir::ItemKind::Impl(hir::Impl {
             of_trait: None,
-            ref generics,
+            generics,
             self_ty: impl_self_ty,
             items,
             ..

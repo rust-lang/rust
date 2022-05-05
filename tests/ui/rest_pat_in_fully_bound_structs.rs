@@ -39,4 +39,19 @@ fn main() {
 
     // No lint
     foo!(a_struct);
+
+    #[non_exhaustive]
+    struct B {
+        a: u32,
+        b: u32,
+        c: u64,
+    }
+
+    let b_struct = B { a: 5, b: 42, c: 342 };
+
+    match b_struct {
+        B { a: 5, b: 42, .. } => {},
+        B { a: 0, b: 0, c: 128, .. } => {}, // No Lint
+        _ => {},
+    }
 }

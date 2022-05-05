@@ -26,6 +26,7 @@ mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
+mod is_digit_ascii_radix;
 mod iter_cloned_collect;
 mod iter_count;
 mod iter_next_slice;
@@ -42,6 +43,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod needless_option_as_deref;
+mod needless_option_take;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -294,15 +296,15 @@ declare_clippy_lint! {
     /// Checks for methods with certain name prefixes and which
     /// doesn't match how self is taken. The actual rules are:
     ///
-    /// |Prefix |Postfix     |`self` taken           | `self` type  |
-    /// |-------|------------|-----------------------|--------------|
-    /// |`as_`  | none       |`&self` or `&mut self` | any          |
-    /// |`from_`| none       | none                  | any          |
-    /// |`into_`| none       |`self`                 | any          |
-    /// |`is_`  | none       |`&self` or none        | any          |
-    /// |`to_`  | `_mut`     |`&mut self`            | any          |
-    /// |`to_`  | not `_mut` |`self`                 | `Copy`       |
-    /// |`to_`  | not `_mut` |`&self`                | not `Copy`   |
+    /// |Prefix |Postfix     |`self` taken                   | `self` type  |
+    /// |-------|------------|-------------------------------|--------------|
+    /// |`as_`  | none       |`&self` or `&mut self`         | any          |
+    /// |`from_`| none       | none                          | any          |
+    /// |`into_`| none       |`self`                         | any          |
+    /// |`is_`  | none       |`&mut self` or `&self` or none | any          |
+    /// |`to_`  | `_mut`     |`&mut self`                    | any          |
+    /// |`to_`  | not `_mut` |`self`                         | `Copy`       |
+    /// |`to_`  | not `_mut` |`&self`                        | not `Copy`   |
     ///
     /// Note: Clippy doesn't trigger methods with `to_` prefix in:
     /// - Traits definition.
@@ -1265,7 +1267,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.55.0"]
     pub EXTEND_WITH_DRAIN,
     perf,
-    "using vec.append(&mut vec) to move the full range of a vecor to another"
+    "using vec.append(&mut vec) to move the full range of a vector to another"
 }
 
 declare_clippy_lint! {
@@ -2007,13 +2009,27 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// // Bad
-    ///  let (key, value) = _.splitn(2, '=').next_tuple()?;
-    ///  let value = _.splitn(2, '=').nth(1)?;
+    /// let s = "key=value=add";
+    /// let (key, value) = s.splitn(2, '=').next_tuple()?;
+    /// let value = s.splitn(2, '=').nth(1)?;
     ///
-    /// // Good
-    /// let (key, value) = _.split_once('=')?;
-    /// let value = _.split_once('=')?.1;
+    /// let mut parts = s.splitn(2, '=');
+    /// let key = parts.next()?;
+    /// let value = parts.next()?;
     /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// // Good
+    /// let s = "key=value=add";
+    /// let (key, value) = s.split_once('=')?;
+    /// let value = s.split_once('=')?.1;
+    ///
+    /// let (key, value) = s.split_once('=')?;
+    /// ```
+    ///
+    /// ### Limitations
+    /// The multiple statement variant currently only detects `iter.next()?`/`iter.next().unwrap()`
+    /// in two separate `let` statements that immediately follow the `splitn()`
     #[clippy::version = "1.57.0"]
     pub MANUAL_SPLIT_ONCE,
     complexity,
@@ -2099,7 +2115,7 @@ declare_clippy_lint! {
     /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
     /// will prevent loop unrolling and will result in a negative performance impact.
     ///
-    /// Additionlly, differences have been observed between aarch64 and x86_64 assembly output,
+    /// Additionally, differences have been observed between aarch64 and x86_64 assembly output,
     /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
     #[clippy::version = "1.61.0"]
     pub UNNECESSARY_JOIN,
@@ -2129,6 +2145,56 @@ declare_clippy_lint! {
     pub NEEDLESS_OPTION_AS_DEREF,
     complexity,
     "no-op use of `deref` or `deref_mut` method to `Option`."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds usages of [`char::is_digit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
+    /// can be replaced with [`is_ascii_digit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
+    /// [`is_ascii_hexdigit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
+    ///
+    /// ### Why is this bad?
+    /// `is_digit(..)` is slower and requires specifying the radix.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let c: char = '6';
+    /// c.is_digit(10);
+    /// c.is_digit(16);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let c: char = '6';
+    /// c.is_ascii_digit();
+    /// c.is_ascii_hexdigit();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub IS_DIGIT_ASCII_RADIX,
+    style,
+    "use of `char::is_digit(..)` with literal radix of 10 or 16"
+}
+
+declare_clippy_lint! {
+    ///
+    /// ### Why is this bad?
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = Some(3);
+    /// x.as_ref().take();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = Some(3);
+    /// x.as_ref();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub NEEDLESS_OPTION_TAKE,
+    complexity,
+    "using `.as_ref().take()` on a temporary value"
 }
 
 pub struct Methods {
@@ -2219,6 +2285,8 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_JOIN,
     ERR_EXPECT,
     NEEDLESS_OPTION_AS_DEREF,
+    IS_DIGIT_ASCII_RADIX,
+    NEEDLESS_OPTION_TAKE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2254,7 +2322,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 single_char_add_str::check(cx, expr, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
+                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args, self.msrv.as_ref());
             },
             hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -2516,6 +2584,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
+            ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, msrv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
             ("join", [join_arg]) => {
@@ -2574,12 +2643,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                 if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                     suspicious_splitn::check(cx, name, expr, recv, count);
-                    if count == 2 && meets_msrv(msrv, &msrvs::STR_SPLIT_ONCE) {
-                        str_splitn::check_manual_split_once(cx, name, expr, recv, pat_arg);
-                    }
-                    if count >= 2 {
-                        str_splitn::check_needless_splitn(cx, name, expr, recv, pat_arg, count);
-                    }
+                    str_splitn::check(cx, name, expr, recv, pat_arg, count, msrv);
                 }
             },
             ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
@@ -2595,6 +2659,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     }
                 }
             },
+            ("take", []) => needless_option_take::check(cx, expr, recv),
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv);
             },
