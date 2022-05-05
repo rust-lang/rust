@@ -34,7 +34,7 @@ pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
                             diag.span_suggestion(
                                 local.pat.span,
                                 "use a wild (`_`) binding",
-                                "_".into(),
+                                "_",
                                 Applicability::MaybeIncorrect, // snippet
                             );
                     },

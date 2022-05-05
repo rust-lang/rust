@@ -95,4 +95,7 @@ trait FooIter: Iterator<Item = Foo> {
     }
 }
 
+// This should not lint
+fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+
 fn main() {}

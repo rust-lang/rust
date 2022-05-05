@@ -235,7 +235,7 @@ pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem
     if let QPath::Resolved(_, path) = qpath {
         if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res {
             if let Ok(item_id) = cx.tcx.lang_items().require(lang_item) {
-                return cx.tcx.parent(ctor_id) == Some(item_id);
+                return cx.tcx.parent(ctor_id) == item_id;
             }
         }
     }
@@ -1690,7 +1690,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    matches!(kind, FnKind::ItemFn(_, _, header, _) if header.asyncness == IsAsync::Async)
+    matches!(kind, FnKind::ItemFn(_, _, header) if header.asyncness == IsAsync::Async)
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async function,

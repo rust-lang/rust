@@ -160,8 +160,8 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
 fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second: ItemLocalId) -> bool {
     let scope_tree = cx.tcx.region_scope_tree(owner.to_def_id());
-    let first_scope = scope_tree.var_scope(first);
-    let second_scope = scope_tree.var_scope(second);
+    let first_scope = scope_tree.var_scope(first).unwrap();
+    let second_scope = scope_tree.var_scope(second).unwrap();
     scope_tree.is_subscope_of(second_scope, first_scope)
 }
 

@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
             hir::ItemKind::Trait(_, unsafety, ..) => {
@@ -622,7 +622,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let fallback_bundle =
-                    rustc_errors::fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
+                    rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     None,

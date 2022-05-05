@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
+use rustc_data_structures::sync::Lrc;
 use rustc_hir::{Block, BlockCheckMode, UnsafeSource};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{BytePos, Pos, SyntaxContext};
-use std::rc::Rc;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -117,7 +117,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
         //     ^--------------------------------------------^
         if let Ok(unsafe_line) = source_map.lookup_line(block.span.lo())
             && let Ok(macro_line) = source_map.lookup_line(ctxt.outer_expn_data().def_site.lo())
-            && Rc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
+            && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
             macro_line.line < unsafe_line.line && text_has_safety_comment(
@@ -133,7 +133,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
         && let Some(body) = cx.enclosing_body
         && let Some(body_span) = walk_span_to_context(cx.tcx.hir().body(body).value.span, SyntaxContext::root())
         && let Ok(body_line) = source_map.lookup_line(body_span.lo())
-        && Rc::ptr_eq(&unsafe_line.sf, &body_line.sf)
+        && Lrc::ptr_eq(&unsafe_line.sf, &body_line.sf)
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         // Get the text from the start of function body to the unsafe block.

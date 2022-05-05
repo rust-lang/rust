@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
                     return;
                 }

@@ -7,12 +7,6 @@ LL | fn unused_lt<'a>(x: u8) {}
    = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
 
 error: this lifetime isn't used in the function definition
-  --> $DIR/extra_unused_lifetimes.rs:16:25
-   |
-LL | fn unused_lt_transitive<'a, 'b: 'a>(x: &'b u8) {
-   |                         ^^
-
-error: this lifetime isn't used in the function definition
   --> $DIR/extra_unused_lifetimes.rs:41:10
    |
 LL |     fn x<'a>(&self) {}
@@ -42,5 +36,5 @@ error: this lifetime isn't used in the function definition
 LL |         pub fn something<'c>() -> Self {
    |                          ^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

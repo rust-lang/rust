@@ -214,6 +214,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Yeet(..)
             | ast::ExprKind::Struct(..)
             | ast::ExprKind::Try(..)
             | ast::ExprKind::TryBlock(..)

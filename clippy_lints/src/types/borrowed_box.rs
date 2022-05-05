@@ -104,8 +104,10 @@ fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id:
         if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
         if synthetic;
+        if let Some(generics) = cx.tcx.hir().get_generics(id.owner);
+        if let Some(pred) = generics.bounds_for_param(did.expect_local()).next();
         then {
-            Some(generic_param.bounds)
+            Some(pred.bounds)
         } else {
             None
         }

@@ -179,7 +179,7 @@ impl Constant {
 }
 
 /// Parses a `LitKind` to a `Constant`.
-pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
+pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
@@ -301,7 +301,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {
-                    Some(lit_to_constant(&lit.node, self.typeck_results.expr_ty_opt(e)))
+                    Some(lit_to_mir_constant(&lit.node, self.typeck_results.expr_ty_opt(e)))
                 }
             },
             ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),

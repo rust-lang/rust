@@ -177,9 +177,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
             && let [.., name] = p.segments
             && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = p.res
             && name.ident.as_str().starts_with('_')
-            && let Some(variant_id) = cx.tcx.parent(id)
-            && let Some(enum_id) = cx.tcx.parent(variant_id)
         {
+            let variant_id = cx.tcx.parent(id);
+            let enum_id = cx.tcx.parent(variant_id);
+
             self.constructed_enum_variants.insert((enum_id, variant_id));
         }
     }

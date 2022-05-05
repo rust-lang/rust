@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Item, ItemKind, VisibilityKind};
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::hygiene::MacroKind;
 
 declare_clippy_lint! {
@@ -44,7 +46,7 @@ impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if_chain! {
-            if let VisibilityKind::Crate { .. } = item.vis.node;
+            if cx.tcx.visibility(item.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id());
             if !cx.access_levels.is_exported(item.def_id) && self.is_exported.last() == Some(&false);
             if is_not_macro_export(item);
             then {
@@ -57,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
                     &format!("pub(crate) {} inside private module", descr),
                     |diag| {
                         diag.span_suggestion(
-                            item.vis.span,
+                            item.vis_span,
                             "consider using",
                             "pub".to_string(),
                             Applicability::MachineApplicable,
@@ -84,6 +86,8 @@ fn is_not_macro_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = path.res {
             return false;
         }
+    } else if let ItemKind::Macro(..) = item.kind {
+        return false;
     }
 
     true

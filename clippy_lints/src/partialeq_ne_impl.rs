@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
             if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
             if trait_ref.path.res.def_id() == eq_trait;
             then {
-                for impl_item in impl_items {
+                for impl_item in *impl_items {
                     if impl_item.ident.name == sym::ne {
                         span_lint_hir(
                             cx,
