@@ -500,6 +500,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 (!source_file.is_imported() || self.is_proc_macro)
             })
             .map(|(_, source_file)| {
+                // At export time we expand all source file paths to absolute paths because
+                // downstream compilation sessions can have a different compiler working
+                // directory, so relative paths from this or any other upstream crate
+                // won't be valid anymore.
+                //
+                // At this point we also erase the actual on-disk path and only keep
+                // the remapped version -- as is necessary for reproducible builds.
                 match source_file.name {
                     FileName::Real(ref original_file_name) => {
                         let adapted_file_name =

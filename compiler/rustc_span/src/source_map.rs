@@ -1099,6 +1099,8 @@ impl FilePathMapping {
     /// the path was affected by the mapping.
     pub fn map_prefix(&self, path: PathBuf) -> (PathBuf, bool) {
         if path.as_os_str().is_empty() {
+            // Exit early if the path is empty and therefore there's nothing to remap.
+            // This is mostly to reduce spam for `RUSTC_LOG=[remap_path_prefix]`.
             return (path, false);
         }
 
