@@ -37,7 +37,7 @@ fn main() {
     }
 
     // See #815
-    let e = Some(1u8).map(divergent);
+    let e = Some(1u8).map(|a| divergent(a));
     let e = Some(1u8).map(generic);
     let e = Some(1u8).map(generic);
     // See #515
@@ -211,6 +211,10 @@ fn mutable_closure_in_loop() {
     let mut closure = |n| value += n;
     for _ in 0..5 {
         Some(1).map(&mut closure);
+
+        let mut value = 0;
+        let mut in_loop = |n| value += n;
+        Some(1).map(in_loop);
     }
 }
 
@@ -229,7 +233,7 @@ fn late_bound_lifetimes() {
     {
     }
     map_str(|s| take_asref_path(s));
-    map_str_to_path(std::convert::AsRef::as_ref);
+    map_str_to_path(|s| s.as_ref());
 }
 
 mod type_param_bound {
@@ -274,4 +278,16 @@ mod bind_by_ref {
         // should not lint
         Some(A).map(|ref a| B::from(a));
     }
+}
+
+// #7812 False positive on coerced closure
+fn coerced_closure() {
+    fn function_returning_unit<F: FnMut(i32)>(f: F) {}
+    function_returning_unit(|x| std::process::exit(x));
+
+    fn arr() -> &'static [u8; 0] {
+        &[]
+    }
+    fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
+    slice_fn(|| arr());
 }

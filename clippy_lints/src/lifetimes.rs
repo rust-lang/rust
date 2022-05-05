@@ -1,16 +1,19 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::trait_ref_of_method;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty, Visitor,
+    walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    walk_poly_trait_ref, walk_trait_ref, walk_ty, Visitor,
 };
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
-    BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem,
+    BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
     ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier,
     TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -82,8 +85,10 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
+        if let ItemKind::Fn(ref sig, generics, id) = item.kind {
             check_fn_inner(cx, sig.decl, Some(id), None, generics, item.span, true);
+        } else if let ItemKind::Impl(impl_) = item.kind {
+            report_extra_impl_lifetimes(cx, impl_);
         }
     }
 
@@ -95,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 sig.decl,
                 Some(id),
                 None,
-                &item.generics,
+                item.generics,
                 item.span,
                 report_extra_lifetimes,
             );
@@ -108,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig.decl, body, trait_sig, &item.generics, item.span, true);
+            check_fn_inner(cx, sig.decl, body, trait_sig, item.generics, item.span, true);
         }
     }
 }
@@ -201,8 +206,7 @@ fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: 
             visitor.visit_ty(self_ty);
 
             !visitor.all_lts().is_empty()
-        }
-        else {
+        } else {
             false
         }
     }
@@ -486,11 +490,29 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
     false
 }
 
-struct LifetimeChecker {
+struct LifetimeChecker<'cx, 'tcx, F> {
+    cx: &'cx LateContext<'tcx>,
     map: FxHashMap<Symbol, Span>,
+    phantom: std::marker::PhantomData<F>,
 }
 
-impl<'tcx> Visitor<'tcx> for LifetimeChecker {
+impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
+    fn new(cx: &'cx LateContext<'tcx>, map: FxHashMap<Symbol, Span>) -> LifetimeChecker<'cx, 'tcx, F> {
+        Self {
+            cx,
+            map,
+            phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'cx, 'tcx, F> Visitor<'tcx> for LifetimeChecker<'cx, 'tcx, F>
+where
+    F: NestedFilter<'tcx>,
+{
+    type Map = rustc_middle::hir::map::Map<'tcx>;
+    type NestedFilter = F;
+
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.map.remove(&lifetime.name.ident().name);
@@ -506,6 +528,10 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
             walk_generic_param(self, param);
         }
     }
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
 }
 
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
@@ -517,7 +543,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
             _ => None,
         })
         .collect();
-    let mut checker = LifetimeChecker { map: hs };
+    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, hs);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
@@ -529,6 +555,32 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
             v,
             "this lifetime isn't used in the function definition",
         );
+    }
+}
+
+fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'_>) {
+    let hs = impl_
+        .generics
+        .params
+        .iter()
+        .filter_map(|par| match par.kind {
+            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            _ => None,
+        })
+        .collect();
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, hs);
+
+    walk_generics(&mut checker, impl_.generics);
+    if let Some(ref trait_ref) = impl_.of_trait {
+        walk_trait_ref(&mut checker, trait_ref);
+    }
+    walk_ty(&mut checker, impl_.self_ty);
+    for item in impl_.items {
+        walk_impl_item_ref(&mut checker, item);
+    }
+
+    for &v in checker.map.values() {
+        span_lint(cx, EXTRA_UNUSED_LIFETIMES, v, "this lifetime isn't used in the impl");
     }
 }
 

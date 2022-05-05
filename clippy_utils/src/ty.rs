@@ -3,11 +3,11 @@
 #![allow(clippy::module_name_repetitions)]
 
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, TyKind, Unsafety};
+use rustc_hir::{Expr, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
@@ -22,7 +22,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
-use crate::{match_def_path, must_use_attr, path_res};
+use crate::{match_def_path, must_use_attr, path_res, paths};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -81,6 +81,20 @@ pub fn get_associated_type<'tcx>(
             let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
             cx.tcx.normalize_erasing_regions(cx.param_env, proj)
         })
+}
+
+/// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
+/// implements a trait marked with a diagnostic item use [`implements_trait`].
+///
+/// For a further exploitation what diagnostic items are see [diagnostic items] in
+/// rustc-dev-guide.
+///
+/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
+pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
+    match ty.kind() {
+        ty::Adt(adt, _) => cx.tcx.get_diagnostic_name(adt.did()),
+        _ => None,
+    }
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
@@ -317,6 +331,57 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
         ty::Adt(adt, _) => match_def_path(cx, adt.did(), path),
         _ => false,
     }
+}
+
+/// Checks if the drop order for a type matters. Some std types implement drop solely to
+/// deallocate memory. For these types, and composites containing them, changing the drop order
+/// won't result in any observable side effects.
+pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
+        if !seen.insert(ty) {
+            return false;
+        }
+        if !ty.has_significant_drop(cx.tcx, cx.param_env) {
+            false
+        }
+        // Check for std types which implement drop, but only for memory allocation.
+        else if is_type_lang_item(cx, ty, LangItem::OwnedBox)
+            || matches!(
+                get_type_diagnostic_name(cx, ty),
+                Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type)
+            )
+            || match_type(cx, ty, &paths::WEAK_RC)
+            || match_type(cx, ty, &paths::WEAK_ARC)
+        {
+            // Check all of the generic arguments.
+            if let ty::Adt(_, subs) = ty.kind() {
+                subs.types().any(|ty| needs_ordered_drop_inner(cx, ty, seen))
+            } else {
+                true
+            }
+        } else if !cx
+            .tcx
+            .lang_items()
+            .drop_trait()
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        {
+            // This type doesn't implement drop, so no side effects here.
+            // Check if any component type has any.
+            match ty.kind() {
+                ty::Tuple(fields) => fields.iter().any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
+                ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
+                ty::Adt(adt, subs) => adt
+                    .all_fields()
+                    .map(|f| f.ty(cx.tcx, subs))
+                    .any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
+                _ => true,
+            }
+        } else {
+            true
+        }
+    }
+
+    needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
 }
 
 /// Peels off all references on the type. Returns the underlying type and the number of references

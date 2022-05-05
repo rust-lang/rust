@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{meets_msrv, msrvs, over};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, Mutability, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// *disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*.
     ///
     /// ### Why is this bad?
-    /// In the example above, `Some` is repeated, which unncessarily complicates the pattern.
+    /// In the example above, `Some` is repeated, which unnecessarily complicates the pattern.
     ///
     /// ### Example
     /// ```rust
@@ -230,6 +230,10 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
         Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_)
+        // Skip immutable refs, as grouping them saves few characters,
+        // and almost always requires adding parens (increasing noisiness).
+        // In the case of only two patterns, replacement adds net characters.
+        | Ref(_, Mutability::Not)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
@@ -241,10 +245,10 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
             |k| matches!(k, Box(_)),
             |k| always_pat!(k, Box(p) => p),
         ),
-        // Transform `&m x | ... | &m y` into `&m (x | y)`.
-        Ref(target, m1) => extend_with_matching(
+        // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
+        Ref(target, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
-            |k| matches!(k, Ref(_, m2) if m1 == m2), // Mutabilities must match.
+            |k| matches!(k, Ref(_, Mutability::Mut)),
             |k| always_pat!(k, Ref(p, _) => p),
         ),
         // Transform `b @ p0 | ... b @ p1` into `b @ (p0 | p1)`.

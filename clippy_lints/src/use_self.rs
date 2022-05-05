@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
-    /// - False positive with assotiated types in traits (#4140)
+    /// - False positive with associated types in traits (#4140)
     ///
     /// ### Example
     /// ```rust

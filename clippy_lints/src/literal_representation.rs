@@ -42,17 +42,12 @@ declare_clippy_lint! {
     /// This is most probably a typo
     ///
     /// ### Known problems
-    /// - Recommends a signed suffix, even though the number might be too big and an unsigned
-    ///   suffix is required
+    /// - Does not match on integers too large to fit in the corresponding unsigned type
     /// - Does not match on `_127` since that is a valid grouping for decimal and octal numbers
     ///
     /// ### Example
-    /// ```rust
-    /// // Probably mistyped
-    /// 2_32;
-    ///
-    /// // Good
-    /// 2_i32;
+    /// `2_32` => `2_i32`
+    /// `250_8 => `250_u8`
     /// ```
     #[clippy::version = "1.30.0"]
     pub MISTYPED_LITERAL_SUFFIXES,
@@ -310,18 +305,47 @@ impl LiteralDigitGrouping {
             return true;
         }
 
-        let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut num_lit.exponent {
-            (exponent, &["32", "64"][..], 'f')
+        let (part, mistyped_suffixes, is_float) = if let Some((_, exponent)) = &mut num_lit.exponent {
+            (exponent, &["32", "64"][..], true)
         } else if num_lit.fraction.is_some() {
-            (&mut num_lit.integer, &["32", "64"][..], 'f')
+            return true;
         } else {
-            (&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i')
+            (&mut num_lit.integer, &["8", "16", "32", "64"][..], false)
         };
 
         let mut split = part.rsplit('_');
         let last_group = split.next().expect("At least one group");
         if split.next().is_some() && mistyped_suffixes.contains(&last_group) {
-            *part = &part[..part.len() - last_group.len()];
+            let main_part = &part[..part.len() - last_group.len()];
+            let missing_char;
+            if is_float {
+                missing_char = 'f';
+            } else {
+                let radix = match num_lit.radix {
+                    Radix::Binary => 2,
+                    Radix::Octal => 8,
+                    Radix::Decimal => 10,
+                    Radix::Hexadecimal => 16,
+                };
+                if let Ok(int) = u64::from_str_radix(&main_part.replace('_', ""), radix) {
+                    missing_char = match (last_group, int) {
+                        ("8", i) if i8::try_from(i).is_ok() => 'i',
+                        ("16", i) if i16::try_from(i).is_ok() => 'i',
+                        ("32", i) if i32::try_from(i).is_ok() => 'i',
+                        ("64", i) if i64::try_from(i).is_ok() => 'i',
+                        ("8", u) if u8::try_from(u).is_ok() => 'u',
+                        ("16", u) if u16::try_from(u).is_ok() => 'u',
+                        ("32", u) if u32::try_from(u).is_ok() => 'u',
+                        ("64", _) => 'u',
+                        _ => {
+                            return true;
+                        },
+                    }
+                } else {
+                    return true;
+                }
+            }
+            *part = main_part;
             let mut sugg = num_lit.format();
             sugg.push('_');
             sugg.push(missing_char);

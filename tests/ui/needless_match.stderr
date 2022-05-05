@@ -72,19 +72,19 @@ LL |     let _ = if let Some(a) = Some(1) { Some(a) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:110:31
+  --> $DIR/needless_match.rs:122:31
    |
 LL |     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:111:31
+  --> $DIR/needless_match.rs:123:31
    |
 LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:117:21
+  --> $DIR/needless_match.rs:129:21
    |
 LL |       let _: Simple = if let Simple::A = x {
    |  _____________________^
@@ -97,7 +97,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:156:26
+  --> $DIR/needless_match.rs:168:26
    |
 LL |           let _: Complex = match ce {
    |  __________________________^

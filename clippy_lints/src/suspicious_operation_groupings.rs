@@ -550,7 +550,7 @@ fn ident_difference_expr_with_base_location(
     // IdentIter, then the output of this function will be almost always be correct
     // in practice.
     //
-    // If it turns out that problematic cases are more prelavent than we assume,
+    // If it turns out that problematic cases are more prevalent than we assume,
     // then we should be able to change this function to do the correct traversal,
     // without needing to change the rest of the code.
 
