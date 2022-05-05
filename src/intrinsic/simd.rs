@@ -220,6 +220,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         // NOTE: we cannot cast to an array and assign to its element here because the value might
         // not be an l-value. So, call a builtin to set the element.
         // TODO(antoyo): perhaps we could create a new vector or maybe there's a GIMPLE instruction for that?
+        // TODO(antoyo): don't use target specific builtins here.
         let func_name =
             match in_len {
                 2 => {
@@ -396,6 +397,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 });
             }
             (Style::Int(_), Style::Float) => {
+                // TODO: add support for internal functions in libgccjit to get access to IFN_VEC_CONVERT which is
+                // doing like __builtin_convertvector?
+                // Or maybe provide convert_vector as an API since it might not easy to get the
+                // types of internal functions.
                 unimplemented!();
             }
             (Style::Float, Style::Int(_)) => {
