@@ -44,6 +44,8 @@
 
 #include "llvm/Support/CommandLine.h"
 
+#include "llvm/ADT/SetVector.h"
+
 #include "llvm/IR/Dominators.h"
 
 #if LLVM_VERSION_MAJOR >= 10
@@ -196,6 +198,14 @@ static inline void dumpMap(
 /// Print a set
 template <typename T>
 static inline void dumpSet(const llvm::SmallPtrSetImpl<T *> &o) {
+  llvm::errs() << "<begin dump>\n";
+  for (auto a : o)
+    llvm::errs() << *a << "\n";
+  llvm::errs() << "</end dump>\n";
+}
+
+template <typename T>
+static inline void dumpSet(const llvm::SetVector<T *> &o) {
   llvm::errs() << "<begin dump>\n";
   for (auto a : o)
     llvm::errs() << *a << "\n";
