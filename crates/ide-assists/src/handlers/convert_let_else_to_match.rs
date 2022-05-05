@@ -16,7 +16,10 @@ fn binders_in_pat(
         IdentPat(p) => {
             let ident = p.name()?;
             let ismut = p.ref_token().is_none() && p.mut_token().is_some();
-            acc.push((ident, ismut));
+            // check for const reference
+            if !(p.is_simple_ident() && sem.resolve_bind_pat_to_const(p).is_some()) {
+                acc.push((ident, ismut));
+            }
             if let Some(inner) = p.pat() {
                 binders_in_pat(acc, &inner, sem)?;
             }
@@ -240,6 +243,54 @@ fn main() {
         Ok(x) => x,
         _ => continue,
     };
+}",
+        );
+    }
+
+    #[test]
+    fn convert_let_else_to_match_const_ref() {
+        check_assist(
+            convert_let_else_to_match,
+            r"
+enum Option<T> {
+    Some(T),
+    None,
+}
+use Option::*;
+fn main() {
+    let None = f() el$0se { continue };
+}",
+            r"
+enum Option<T> {
+    Some(T),
+    None,
+}
+use Option::*;
+fn main() {
+    match f() {
+        None => {}
+        _ => continue,
+    }
+}",
+        );
+    }
+
+    #[test]
+    fn convert_let_else_to_match_const_ref_const() {
+        check_assist(
+            convert_let_else_to_match,
+            r"
+const NEG1: i32 = -1;
+fn main() {
+    let NEG1 = f() el$0se { continue };
+}",
+            r"
+const NEG1: i32 = -1;
+fn main() {
+    match f() {
+        NEG1 => {}
+        _ => continue,
+    }
 }",
         );
     }
