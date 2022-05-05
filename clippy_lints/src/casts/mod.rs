@@ -413,6 +413,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `as` casts between raw pointers to slices with differently sized elements.
     ///
     /// ### Why is this bad?
