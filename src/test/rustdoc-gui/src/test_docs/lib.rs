@@ -274,3 +274,6 @@ impl EmptyTrait3 for HasEmptyTraits {}
 
 mod macros;
 pub use macros::*;
+
+#[doc(alias = "AliasForTheStdReexport")]
+pub use ::std as TheStdReexport;
