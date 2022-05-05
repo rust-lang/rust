@@ -19,7 +19,23 @@ trait Uwu {
 }
 impl Uwu for () {
     fn baz<const N: i32>() {}
-    //~^ error: method `baz` has an incompatible const parameter type for trait
+    //~^ error: method `baz` has an incompatible generic parameter for trait
+}
+
+trait Aaaaaa {
+    fn bbbb<const N: u32, T>() {}
+}
+impl Aaaaaa for () {
+    fn bbbb<T, const N: u32>() {}
+    //~^ error: method `bbbb` has an incompatible generic parameter for trait
+}
+
+trait Names {
+    fn abcd<T, const N: u32>() {}
+}
+impl Names for () {
+    fn abcd<const N: u32, T>() {}
+    //~^ error: method `abcd` has an incompatible generic parameter for trait
 }
 
 fn main() {}

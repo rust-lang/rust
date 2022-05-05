@@ -6,7 +6,7 @@ trait Trait {
 
 impl Trait for () {
     type Foo<const N: u64> = u32;
-    //~^ error: type `Foo` has an incompatible const parameter type
+    //~^ error: type `Foo` has an incompatible generic parameter for trait
 }
 
 fn main() {}

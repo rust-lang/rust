@@ -1,39 +1,68 @@
-error[E0053]: method `foo` has an incompatible generic parameter for trait
+error[E0053]: method `foo` has an incompatible generic parameter for trait: `Trait`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:5:12
    |
-LL |     fn foo<const M: u64>() {}
-   |            ^^^^^^^^^^^^
-   |
-note: the trait impl specifies `M` is a const parameter of type `u64`, but the declaration in trait `Trait::foo` requires it is a type parameter
-  --> $DIR/mismatched_ty_const_in_trait_impl.rs:2:12
-   |
+LL | trait Trait {
+   |       -----
 LL |     fn foo<U>() {}
-   |            ^
+   |            - expected type parameter
+LL | }
+LL | impl Trait for () {
+   | -----------------
+LL |     fn foo<const M: u64>() {}
+   |            ^^^^^^^^^^^^ found const parameter with type `u64`
 
-error[E0053]: method `bar` has an incompatible generic parameter for trait
+error[E0053]: method `bar` has an incompatible generic parameter for trait: `Other`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:13:12
    |
-LL |     fn bar<T>() {}
-   |            ^
-   |
-note: the trait impl specifies `T` is a type parameter, but the declaration in trait `Other::bar` requires it is a const parameter of type `u8`
-  --> $DIR/mismatched_ty_const_in_trait_impl.rs:10:12
-   |
+LL | trait Other {
+   |       -----
 LL |     fn bar<const M: u8>() {}
-   |            ^^^^^^^^^^^
+   |            ----------- expected const parameter with type `u8`
+LL | }
+LL | impl Other for () {
+   | -----------------
+LL |     fn bar<T>() {}
+   |            ^ found type parameter
 
-error[E0053]: method `baz` has an incompatible const parameter type for trait
+error[E0053]: method `baz` has an incompatible generic parameter for trait: `Uwu`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:21:12
    |
-LL |     fn baz<const N: i32>() {}
-   |            ^^^^^^^^^^^^
-   |
-note: the const parameter `N` has type `i32`, but the declaration in trait `Uwu::baz` has type `u32`
-  --> $DIR/mismatched_ty_const_in_trait_impl.rs:18:12
-   |
+LL | trait Uwu {
+   |       ---
 LL |     fn baz<const N: u32>() {}
-   |            ^^^^^^^^^^^^
+   |            ------------ expected const parameter with type `u32`
+LL | }
+LL | impl Uwu for () {
+   | ---------------
+LL |     fn baz<const N: i32>() {}
+   |            ^^^^^^^^^^^^ found const parameter with type `i32`
 
-error: aborting due to 3 previous errors
+error[E0053]: method `bbbb` has an incompatible generic parameter for trait: `Aaaaaa`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:29:13
+   |
+LL | trait Aaaaaa {
+   |       ------
+LL |     fn bbbb<const N: u32, T>() {}
+   |             ------------ expected const parameter with type `u32`
+LL | }
+LL | impl Aaaaaa for () {
+   | ------------------
+LL |     fn bbbb<T, const N: u32>() {}
+   |             ^ found type parameter
+
+error[E0053]: method `abcd` has an incompatible generic parameter for trait: `Names`
+  --> $DIR/mismatched_ty_const_in_trait_impl.rs:37:13
+   |
+LL | trait Names {
+   |       -----
+LL |     fn abcd<T, const N: u32>() {}
+   |             - expected type parameter
+LL | }
+LL | impl Names for () {
+   | -----------------
+LL |     fn abcd<const N: u32, T>() {}
+   |             ^^^^^^^^^^^^ found const parameter with type `u32`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0053`.
