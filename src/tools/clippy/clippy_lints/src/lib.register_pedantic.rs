@@ -84,6 +84,8 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED),
     LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),
     LintId::of(strings::STRING_ADD_ASSIGN),
+    LintId::of(trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
+    LintId::of(trait_bounds::TYPE_REPETITION_IN_BOUNDS),
     LintId::of(transmute::TRANSMUTE_PTR_TO_PTR),
     LintId::of(types::LINKEDLIST),
     LintId::of(types::OPTION_OPTION),
