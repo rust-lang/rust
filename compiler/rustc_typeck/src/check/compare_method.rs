@@ -579,6 +579,27 @@ fn compare_self_type<'tcx>(
     Ok(())
 }
 
+/// Checks that the number of generics on a given assoc item in a trait impl is the same
+/// as the number of generics on the respective assoc item in the trait definition.
+///
+/// For example this code emits the errors in the following code:
+/// ```
+/// trait Trait {
+///     fn foo();
+///     type Assoc<T>;
+/// }
+///
+/// impl Trait for () {
+///     fn foo<T>() {}
+///     //~^ error
+///     type Assoc = u32;
+///     //~^ error
+/// }
+/// ```
+///
+/// Notably this does not error on `foo<T>` implemented as `foo<const N: u8>` or
+/// `foo<const N: u8>` implemented as `foo<const N: u32>`. This is handled in
+/// [`compare_generic_param_kinds`]. This function also does not handle lifetime parameters
 fn compare_number_of_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_: &ty::AssocItem,
@@ -588,6 +609,15 @@ fn compare_number_of_generics<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_own_counts = tcx.generics_of(trait_.def_id).own_counts();
     let impl_own_counts = tcx.generics_of(impl_.def_id).own_counts();
+
+    // This avoids us erroring on `foo<T>` implemented as `foo<const N: u8>` as this is implemented
+    // in `compare_generic_param_kinds` which will give a nicer error message than something like:
+    // "expected 1 type parameter, found 0 type parameters"
+    if (trait_own_counts.types + trait_own_counts.consts)
+        == (impl_own_counts.types + impl_own_counts.consts)
+    {
+        return Ok(());
+    }
 
     let matchings = [
         ("type", trait_own_counts.types, impl_own_counts.types),

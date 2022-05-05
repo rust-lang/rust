@@ -3,7 +3,7 @@ trait Trait {
 }
 impl Trait for () {
     fn foo<const M: u64>() {}
-    //~^ error: method `foo` has an incompatble generic parameter for trait
+    //~^ error: method `foo` has an incompatible generic parameter for trait
 }
 
 trait Other {
@@ -19,7 +19,7 @@ trait Uwu {
 }
 impl Uwu for () {
     fn baz<const N: i32>() {}
-    //~^ error: method `baz` has an incompatible generic parameter for trait
+    //~^ error: method `baz` has an incompatible const parameter type for trait
 }
 
 fn main() {}
