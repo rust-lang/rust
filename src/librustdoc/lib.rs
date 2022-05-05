@@ -95,7 +95,7 @@ use crate::passes::collect_intra_doc_links;
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// let letters = map!{"a" => "b", "c" => "d"};
 /// ```
 ///
