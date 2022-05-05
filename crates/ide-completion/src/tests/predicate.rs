@@ -26,9 +26,9 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             tt Trait
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -43,9 +43,9 @@ struct Foo<'lt, T, const C: usize> where T: $0 {}
             ma makro!(…) macro_rules! makro
             md module
             tt Trait
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -62,9 +62,9 @@ struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
             ma makro!(…) macro_rules! makro
             md module
             tt Trait
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -79,9 +79,9 @@ struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
             ma makro!(…) macro_rules! makro
             md module
             tt Trait
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -103,9 +103,9 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             tt Trait
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -129,9 +129,9 @@ impl Record {
             tt Trait
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }

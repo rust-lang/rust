@@ -29,9 +29,9 @@ struct Foo<'lt, T, const C: usize> {
             tp T
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     )
 }
@@ -55,12 +55,12 @@ struct Foo<'lt, T, const C: usize>(f$0);
             tp T
             un Union
             bt u32
-            kw crate
+            kw crate::
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
-            kw super
+            kw self::
+            kw super::
         "#]],
     )
 }
@@ -82,9 +82,9 @@ fn x<'lt, T, const C: usize>() -> $0
             tp T
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -108,9 +108,9 @@ const FOO: $0 = Foo(2);
             un Union
             bt u32
             it Foo<i32>
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -135,9 +135,9 @@ fn f2() {
             un Union
             bt u32
             it i32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -164,9 +164,9 @@ fn f2() {
             un Union
             bt u32
             it u64
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -190,9 +190,9 @@ fn f2(x: u64) -> $0 {
             un Union
             bt u32
             it u64
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -217,9 +217,9 @@ fn f2(x: $0) {
             un Union
             bt u32
             it i32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -252,9 +252,9 @@ fn foo<'lt, T, const C: usize>() {
             un Union
             bt u32
             it a::Foo<a::Foo<i32>>
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -282,9 +282,9 @@ fn foo<'lt, T, const C: usize>() {
             un Union
             bt u32
             it Foo<i32>
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
 }
@@ -309,9 +309,9 @@ fn foo<'lt, T, const C: usize>() {
             tp T
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check(
@@ -359,9 +359,9 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             tp T
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check(

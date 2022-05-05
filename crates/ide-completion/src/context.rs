@@ -71,6 +71,10 @@ pub(crate) struct PathCompletionCtx {
     pub(super) is_absolute_path: bool,
     /// The qualifier of the current path if it exists.
     pub(super) qualifier: Option<PathQualifierCtx>,
+    #[allow(dead_code)]
+    // FIXME: use this
+    /// The parent of the path we are completing.
+    pub(super) parent: Option<ast::Path>,
     pub(super) kind: Option<PathKind>,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
@@ -949,13 +953,14 @@ impl<'a> CompletionContext<'a> {
 
         let mut path_ctx = PathCompletionCtx {
             has_call_parens: false,
+            has_macro_bang: false,
             is_absolute_path: false,
             qualifier: None,
+            parent: path.parent_path(),
+            kind: None,
             has_type_args: false,
             can_be_stmt: false,
             in_loop_body: false,
-            has_macro_bang: false,
-            kind: None,
         };
         let mut pat_ctx = None;
         path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());

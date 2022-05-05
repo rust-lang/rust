@@ -10,6 +10,7 @@
 
 mod attribute;
 mod expression;
+mod flyimport;
 mod fn_param;
 mod item_list;
 mod item;
@@ -17,10 +18,10 @@ mod pattern;
 mod predicate;
 mod proc_macros;
 mod record;
+mod special;
 mod type_pos;
 mod use_tree;
 mod visibility;
-mod flyimport;
 
 use std::mem;
 

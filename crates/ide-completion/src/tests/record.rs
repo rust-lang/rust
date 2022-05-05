@@ -167,7 +167,7 @@ fn main() {
             tt Default
             tt Sized
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -175,8 +175,8 @@ fn main() {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
