@@ -40,7 +40,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if let Some(PathKind::Vis { .. }) = ctx.path_kind() {
         return;
     }
-    if ctx.has_impl_or_trait_prev_sibling() {
+    if ctx.has_unfinished_impl_or_trait_prev_sibling() {
         add_keyword("where", "where");
         if ctx.has_impl_prev_sibling() {
             add_keyword("for", "for");

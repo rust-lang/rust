@@ -95,7 +95,7 @@ fn after_struct_name() {
             ma makro!(…)           macro_rules! makro
             md module
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw fn
@@ -104,10 +104,10 @@ fn after_struct_name() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw type
             kw union
@@ -129,7 +129,7 @@ fn after_fn_name() {
             ma makro!(…)           macro_rules! makro
             md module
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw fn
@@ -138,10 +138,10 @@ fn after_fn_name() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw type
             kw union

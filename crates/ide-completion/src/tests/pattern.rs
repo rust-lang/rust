@@ -394,6 +394,9 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            fn foo()   fn()
+            st Bar
+            bt u32
             kw crate::
             kw self::
             kw super::
@@ -403,19 +406,18 @@ fn foo() {
         r#"
 struct Foo { bar: u32 }
 fn foo() {
-    match Foo { bar: 0 } {
+    match (Foo { bar: 0 }) {
         F$0 { bar } => {}
     }
 }
 "#,
         expect![[r#"
-            fn foo()  fn()
+            fn foo()   fn()
             st Foo
             bt u32
-            kw crate
-            kw return
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     );
     check_empty(

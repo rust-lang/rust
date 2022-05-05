@@ -196,12 +196,13 @@ fn pattern_path_completion(
         // qualifier can only be none here if we are in a TuplePat or RecordPat in which case special characters have to follow the path
         None if *is_absolute_path => acc.add_crate_roots(ctx),
         None => {
-            cov_mark::hit!(unqualified_path_only_modules_in_import);
             ctx.process_all_names(&mut |name, res| {
-                if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
+                // FIXME: properly filter here
+                if let ScopeDef::ModuleDef(_) = res {
                     acc.add_resolution(ctx, name, res);
                 }
             });
+
             acc.add_nameref_keywords_with_colon(ctx);
         }
     }

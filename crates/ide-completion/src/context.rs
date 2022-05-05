@@ -270,13 +270,17 @@ impl<'a> CompletionContext<'a> {
             || matches!(self.name_ctx, Some(NameContext::RecordField))
     }
 
-    pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
+    /// Whether the cursor is right after a trait or impl header.
+    /// trait Foo ident$0
+    // FIXME: This probably shouldn't exist
+    pub(crate) fn has_unfinished_impl_or_trait_prev_sibling(&self) -> bool {
         matches!(
             self.prev_sibling,
             Some(ImmediatePrevSibling::ImplDefType | ImmediatePrevSibling::TraitDefName)
         )
     }
 
+    // FIXME: This probably shouldn't exist
     pub(crate) fn has_impl_prev_sibling(&self) -> bool {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::ImplDefType))
     }
@@ -289,6 +293,7 @@ impl<'a> CompletionContext<'a> {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
+    // FIXME: This shouldn't exist
     pub(crate) fn is_path_disallowed(&self) -> bool {
         self.previous_token_is(T![unsafe])
             || matches!(

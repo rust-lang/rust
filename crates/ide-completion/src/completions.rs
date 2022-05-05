@@ -6,6 +6,7 @@ pub(crate) mod extern_abi;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
 pub(crate) mod format_string;
+pub(crate) mod item_list;
 pub(crate) mod keyword;
 pub(crate) mod lifetime;
 pub(crate) mod mod_;

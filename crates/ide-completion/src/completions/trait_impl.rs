@@ -547,12 +547,7 @@ impl Test for T {
     type Test = fn $0;
 }
 ",
-            expect![[r#"
-                sp Self
-                st T
-                tt Test
-                bt u32
-            "#]],
+            expect![[r#""#]],
         );
     }
 

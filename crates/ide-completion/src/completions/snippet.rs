@@ -46,7 +46,7 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !(ctx.expects_item() || ctx.has_block_expr_parent())
         || ctx.previous_token_is(T![unsafe])
         || ctx.path_qual().is_some()
-        || ctx.has_impl_or_trait_prev_sibling()
+        || ctx.has_unfinished_impl_or_trait_prev_sibling()
     {
         return;
     }
