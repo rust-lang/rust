@@ -53,16 +53,14 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 // }
 pub(crate) fn float_literal(p: &mut Parser) {
     // Floats can be up to 3 tokens. The first token indicates how many there are.
-    // We remap the first token to `FLOAT_NUMBER_PART` so that no subsequent code has to deal with
-    // this awful, awful hack.
     let f = p.start();
     if p.at(FLOAT_NUMBER_START_0) {
-        p.bump_remap(FLOAT_NUMBER_PART);
+        p.bump(FLOAT_NUMBER_START_0);
     } else if p.at(FLOAT_NUMBER_START_1) {
-        p.bump_remap(FLOAT_NUMBER_PART);
+        p.bump(FLOAT_NUMBER_START_1);
         p.bump(DOT);
     } else if p.at(FLOAT_NUMBER_START_2) {
-        p.bump_remap(FLOAT_NUMBER_PART);
+        p.bump(FLOAT_NUMBER_START_2);
         p.bump(DOT);
         p.bump(FLOAT_NUMBER_PART);
     } else {

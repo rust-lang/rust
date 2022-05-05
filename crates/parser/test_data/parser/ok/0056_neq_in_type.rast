@@ -20,7 +20,7 @@ SOURCE_FILE
               METHOD_CALL_EXPR
                 LITERAL
                   FLOAT_LITERAL
-                    FLOAT_NUMBER_PART "1"
+                    FLOAT_NUMBER_START_2 "1"
                     DOT "."
                     FLOAT_NUMBER_PART "0f32"
                 DOT "."
@@ -44,7 +44,7 @@ SOURCE_FILE
               METHOD_CALL_EXPR
                 LITERAL
                   FLOAT_LITERAL
-                    FLOAT_NUMBER_PART "1"
+                    FLOAT_NUMBER_START_2 "1"
                     DOT "."
                     FLOAT_NUMBER_PART "0f32"
                 DOT "."
