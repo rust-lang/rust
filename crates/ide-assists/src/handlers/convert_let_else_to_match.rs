@@ -1,73 +1,77 @@
-use syntax::ast::{edit::AstNodeEdit, AstNode, HasName, LetStmt, Pat};
+use hir::Semantics;
+use ide_db::RootDatabase;
+use syntax::ast::{edit::AstNodeEdit, AstNode, HasName, LetStmt, Name, Pat};
 use syntax::T;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 /// Gets a list of binders in a pattern, and whether they are mut.
-fn binders_in_pat(pat: &Pat) -> Option<Vec<(String, bool)>> {
+fn binders_in_pat(
+    acc: &mut Vec<(Name, bool)>,
+    pat: &Pat,
+    sem: &Semantics<RootDatabase>,
+) -> Option<()> {
     use Pat::*;
     match pat {
         IdentPat(p) => {
-            let ident = p.name()?.text().to_string();
+            let ident = p.name()?;
             let ismut = p.ref_token().is_none() && p.mut_token().is_some();
-            let mut res = vec![(ident, ismut)];
+            acc.push((ident, ismut));
             if let Some(inner) = p.pat() {
-                res.extend(binders_in_pat(&inner)?);
+                binders_in_pat(acc, &inner, sem)?;
             }
-            Some(res)
+            Some(())
         }
-        BoxPat(p) => p.pat().and_then(|p| binders_in_pat(&p)),
-        RestPat(_) | LiteralPat(_) | PathPat(_) | WildcardPat(_) | ConstBlockPat(_) => Some(vec![]),
+        BoxPat(p) => p.pat().and_then(|p| binders_in_pat(acc, &p, sem)),
+        RestPat(_) | LiteralPat(_) | PathPat(_) | WildcardPat(_) | ConstBlockPat(_) => Some(()),
         OrPat(p) => {
-            let mut v = vec![];
             for p in p.pats() {
-                v.extend(binders_in_pat(&p)?);
+                binders_in_pat(acc, &p, sem)?;
             }
-            Some(v)
+            Some(())
         }
-        ParenPat(p) => p.pat().and_then(|p| binders_in_pat(&p)),
+        ParenPat(p) => p.pat().and_then(|p| binders_in_pat(acc, &p, sem)),
         RangePat(p) => {
-            let mut start = if let Some(st) = p.start() { binders_in_pat(&st)? } else { vec![] };
-            let end = if let Some(st) = p.end() { binders_in_pat(&st)? } else { vec![] };
-            start.extend(end);
-            Some(start)
+            if let Some(st) = p.start() {
+                binders_in_pat(acc, &st, sem)?
+            }
+            if let Some(ed) = p.end() {
+                binders_in_pat(acc, &ed, sem)?
+            }
+            Some(())
         }
         RecordPat(p) => {
-            let mut v = vec![];
             for f in p.record_pat_field_list()?.fields() {
                 let pat = f.pat()?;
-                v.extend(binders_in_pat(&pat)?);
+                binders_in_pat(acc, &pat, sem)?;
             }
-            Some(v)
+            Some(())
         }
-        RefPat(p) => p.pat().and_then(|p| binders_in_pat(&p)),
+        RefPat(p) => p.pat().and_then(|p| binders_in_pat(acc, &p, sem)),
         SlicePat(p) => {
-            let mut v = vec![];
             for p in p.pats() {
-                v.extend(binders_in_pat(&p)?);
+                binders_in_pat(acc, &p, sem)?;
             }
-            Some(v)
+            Some(())
         }
         TuplePat(p) => {
-            let mut v = vec![];
             for p in p.fields() {
-                v.extend(binders_in_pat(&p)?);
+                binders_in_pat(acc, &p, sem)?;
             }
-            Some(v)
+            Some(())
         }
         TupleStructPat(p) => {
-            let mut v = vec![];
             for p in p.fields() {
-                v.extend(binders_in_pat(&p)?);
+                binders_in_pat(acc, &p, sem)?;
             }
-            Some(v)
+            Some(())
         }
         // don't support macro pat yet
         MacroPat(_) => None,
     }
 }
 
-fn binders_to_str(binders: &[(String, bool)], addmut: bool) -> String {
+fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
     let vars = binders
         .iter()
         .map(
@@ -119,7 +123,8 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext) 
         return None;
     }
     let pat = let_stmt.pat()?;
-    let binders = binders_in_pat(&pat)?;
+    let mut binders = Vec::new();
+    binders_in_pat(&mut binders, &pat, &ctx.sema)?;
 
     let target = let_stmt.syntax().text_range();
     acc.add(
@@ -139,7 +144,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext) 
             // remove the mut from the pattern
             for (b, ismut) in binders.iter() {
                 if *ismut {
-                    pat_no_mut = pat_no_mut.replace(&format!("mut {b}"), b);
+                    pat_no_mut = pat_no_mut.replace(&format!("mut {b}"), &b.to_string());
                 }
             }
 
