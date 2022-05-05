@@ -64,7 +64,7 @@ pub fn encode_and_write_metadata(
     // which is why we create it inside the output directory specifically.
     let metadata_tmpdir = TempFileBuilder::new()
         .prefix("rmeta")
-        .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
+        .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("tmp")))
         .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
