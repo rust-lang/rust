@@ -3,7 +3,7 @@
 /* eslint prefer-const: "error" */
 /* eslint prefer-arrow-callback: "error" */
 // Local js definitions:
-/* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme, loadCss */
+/* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass, onEach, onEachLazy, NOT_DISPLAYED_ID */
 /* global MAIN_ID, getVar, getSettingsButton, switchDisplayedElement, getNotDisplayedElem */
 
@@ -206,9 +206,6 @@
                 "default": false,
             },
         ];
-
-        // First, we add the settings.css file.
-        loadCss("settings");
 
         // Then we build the DOM.
         const el = document.createElement("section");
