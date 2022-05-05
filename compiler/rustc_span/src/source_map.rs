@@ -1155,4 +1155,83 @@ impl FilePathMapping {
             other => (other.clone(), false),
         }
     }
+
+    /// Expand a relative path to an absolute path with remapping taken into account.
+    /// Use this when absolute paths are required (e.g. debuginfo or crate metadata).
+    ///
+    /// The resulting `RealFileName` will have its `local_path` portion erased if
+    /// possible (i.e. if there's also a remapped path).
+    pub fn to_embeddable_absolute_path(
+        &self,
+        file_path: RealFileName,
+        working_directory: &RealFileName,
+    ) -> RealFileName {
+        match file_path {
+            // Anything that's already remapped we don't modify, except for erasing
+            // the `local_path` portion.
+            RealFileName::Remapped { local_path: _, virtual_name } => {
+                RealFileName::Remapped {
+                    // We do not want any local path to be exported into metadata
+                    local_path: None,
+                    // We use the remapped name verbatim, even if it looks like a relative
+                    // path. The assumption is that the user doesn't want us to further
+                    // process paths that have gone through remapping.
+                    virtual_name,
+                }
+            }
+
+            RealFileName::LocalPath(unmapped_file_path) => {
+                // If no remapping has been applied yet, try to do so
+                let (new_path, was_remapped) = self.map_prefix(unmapped_file_path);
+                if was_remapped {
+                    // It was remapped, so don't modify further
+                    return RealFileName::Remapped { local_path: None, virtual_name: new_path };
+                }
+
+                if new_path.is_absolute() {
+                    // No remapping has applied to this path and it is absolute,
+                    // so the working directory cannot influence it either, so
+                    // we are done.
+                    return RealFileName::LocalPath(new_path);
+                }
+
+                debug_assert!(new_path.is_relative());
+                let unmapped_file_path_rel = new_path;
+
+                match working_directory {
+                    RealFileName::LocalPath(unmapped_working_dir_abs) => {
+                        let file_path_abs = unmapped_working_dir_abs.join(unmapped_file_path_rel);
+
+                        // Although neither `working_directory` nor the file name were subject
+                        // to path remapping, the concatenation between the two may be. Hence
+                        // we need to do a remapping here.
+                        let (file_path_abs, was_remapped) = self.map_prefix(file_path_abs);
+                        if was_remapped {
+                            RealFileName::Remapped {
+                                // Erase the actual path
+                                local_path: None,
+                                virtual_name: file_path_abs,
+                            }
+                        } else {
+                            // No kind of remapping applied to this path, so
+                            // we leave it as it is.
+                            RealFileName::LocalPath(file_path_abs)
+                        }
+                    }
+                    RealFileName::Remapped {
+                        local_path: _,
+                        virtual_name: remapped_working_dir_abs,
+                    } => {
+                        // If working_directory has been remapped, then we emit
+                        // Remapped variant as the expanded path won't be valid
+                        RealFileName::Remapped {
+                            local_path: None,
+                            virtual_name: Path::new(remapped_working_dir_abs)
+                                .join(unmapped_file_path_rel),
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
