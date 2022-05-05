@@ -1755,14 +1755,19 @@ struct InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId) {
-        let PlaceBase::Upvar(_) = place.base else { return };
+    fn fake_read(
+        &mut self,
+        place: &PlaceWithHirId<'tcx>,
+        cause: FakeReadCause,
+        diag_expr_id: hir::HirId,
+    ) {
+        let PlaceBase::Upvar(_) = place.place.base else { return };
 
         // We need to restrict Fake Read precision to avoid fake reading unsafe code,
         // such as deref of a raw pointer.
         let dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
 
-        let (place, _) = restrict_capture_precision(place, dummy_capture_kind);
+        let (place, _) = restrict_capture_precision(place.place.clone(), dummy_capture_kind);
 
         let (place, _) = restrict_repr_packed_field_ref_capture(
             self.fcx.tcx,
