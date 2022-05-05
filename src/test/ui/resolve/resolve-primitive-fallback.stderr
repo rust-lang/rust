@@ -14,6 +14,11 @@ help: consider importing this builtin type
    |
 LL | use std::primitive::u8;
    |
+help: if you import `u8`, refer to it directly
+   |
+LL -     let _: ::u8;
+LL +     let _: u8;
+   | 
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/resolve-primitive-fallback.rs:3:5

@@ -1628,6 +1628,12 @@ rustc_queries! {
         desc { "looking at the source for a crate" }
         separate_provide_extern
     }
+    /// Returns the debugger visualizers defined for this crate.
+    query debugger_visualizers(_: CrateNum) -> Vec<rustc_span::DebuggerVisualizerFile> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "looking up the debugger visualizers for this crate" }
+        separate_provide_extern
+    }
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }

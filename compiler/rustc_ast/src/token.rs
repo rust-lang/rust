@@ -50,11 +50,12 @@ pub enum Delimiter {
     Brace,
     /// `[ ... ]`
     Bracket,
-    /// `Ø ... Ø`
+    /// `/*«*/ ... /*»*/`
     /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
-    /// Invisible delimiters might not survive roundtrip of a token stream through a string.
+    /// Invisible delimiters are not directly writable in normal Rust code except as comments.
+    /// Therefore, they might not survive a roundtrip of a token stream through a string.
     Invisible,
 }
 
@@ -237,6 +238,15 @@ pub enum TokenKind {
     /// treat regular and interpolated lifetime identifiers in the same way.
     Lifetime(Symbol),
 
+    /// An embedded AST node, as produced by a macro. This only exists for
+    /// historical reasons. We'd like to get rid of it, for multiple reasons.
+    /// - It's conceptually very strange. Saying a token can contain an AST
+    ///   node is like saying, in natural language, that a word can contain a
+    ///   sentence.
+    /// - It requires special handling in a bunch of places in the parser.
+    /// - It prevents `Token` from implementing `Copy`.
+    /// It adds complexity and likely slows things down. Please don't add new
+    /// occurrences of this token kind!
     Interpolated(Lrc<Nonterminal>),
 
     /// A doc comment token.
@@ -475,19 +485,29 @@ impl Token {
     }
 
     /// Returns an identifier if this token is an identifier.
+    #[inline]
     pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Ident(name, is_raw) => Some((Ident::new(name, token.span), is_raw)),
+        // We avoid using `Token::uninterpolate` here because it's slow.
+        match &self.kind {
+            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            Interpolated(nt) => match **nt {
+                NtIdent(ident, is_raw) => Some((ident, is_raw)),
+                _ => None,
+            },
             _ => None,
         }
     }
 
     /// Returns a lifetime identifier if this token is a lifetime.
+    #[inline]
     pub fn lifetime(&self) -> Option<Ident> {
-        let token = self.uninterpolate();
-        match token.kind {
-            Lifetime(name) => Some(Ident::new(name, token.span)),
+        // We avoid using `Token::uninterpolate` here because it's slow.
+        match &self.kind {
+            &Lifetime(name) => Some(Ident::new(name, self.span)),
+            Interpolated(nt) => match **nt {
+                NtLifetime(ident) => Some(ident),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -521,7 +541,7 @@ impl Token {
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(ref nt) = self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
         {
             return true;
         }

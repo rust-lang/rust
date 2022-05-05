@@ -304,42 +304,40 @@ impl<'tcx> OnUnimplementedFormatString {
             match token {
                 Piece::String(_) => (), // Normal string, no need to check it
                 Piece::NextArgument(a) => match a.position {
-                    // `{Self}` is allowed
-                    Position::ArgumentNamed(s, _) if s == kw::SelfUpper => (),
-                    // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s, _) if s == trait_name => (),
-                    // `{from_method}` is allowed
-                    Position::ArgumentNamed(s, _) if s == sym::from_method => (),
-                    // `{from_desugaring}` is allowed
-                    Position::ArgumentNamed(s, _) if s == sym::from_desugaring => (),
-                    // `{ItemContext}` is allowed
-                    Position::ArgumentNamed(s, _) if s == sym::ItemContext => (),
-                    // `{integral}` and `{integer}` and `{float}` are allowed
-                    Position::ArgumentNamed(s, _)
-                        if s == sym::integral || s == sym::integer_ || s == sym::float =>
-                    {
-                        ()
-                    }
-                    // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s, _) => {
-                        match generics.params.iter().find(|param| param.name == s) {
-                            Some(_) => (),
-                            None => {
-                                let reported = struct_span_err!(
-                                    tcx.sess,
-                                    span,
-                                    E0230,
-                                    "there is no parameter `{}` on {}",
-                                    s,
-                                    if trait_def_id == item_def_id {
-                                        format!("trait `{}`", trait_name)
-                                    } else {
-                                        "impl".to_string()
-                                    }
-                                )
-                                .emit();
-                                result = Err(reported);
-                            }
+                        match Symbol::intern(s) {
+                            // `{Self}` is allowed
+                            kw::SelfUpper => (),
+                            // `{ThisTraitsName}` is allowed
+                            s if s == trait_name => (),
+                            // `{from_method}` is allowed
+                            sym::from_method => (),
+                            // `{from_desugaring}` is allowed
+                            sym::from_desugaring => (),
+                            // `{ItemContext}` is allowed
+                            sym::ItemContext => (),
+                            // `{integral}` and `{integer}` and `{float}` are allowed
+                            sym::integral | sym::integer_ | sym::float => (),
+                            // So is `{A}` if A is a type parameter
+                            s => match generics.params.iter().find(|param| param.name == s) {
+                                Some(_) => (),
+                                None => {
+                                    let reported = struct_span_err!(
+                                        tcx.sess,
+                                        span,
+                                        E0230,
+                                        "there is no parameter `{}` on {}",
+                                        s,
+                                        if trait_def_id == item_def_id {
+                                            format!("trait `{}`", trait_name)
+                                        } else {
+                                            "impl".to_string()
+                                        }
+                                    )
+                                    .emit();
+                                    result = Err(reported);
+                                }
+                            },
                         }
                     }
                     // `{:1}` and `{}` are not to be used
@@ -392,34 +390,37 @@ impl<'tcx> OnUnimplementedFormatString {
             .map(|p| match p {
                 Piece::String(s) => s,
                 Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s, _) => match generic_map.get(&s) {
-                        Some(val) => val,
-                        None if s == name => &trait_str,
-                        None => {
-                            if let Some(val) = options.get(&s) {
-                                val
-                            } else if s == sym::from_desugaring || s == sym::from_method {
-                                // don't break messages using these two arguments incorrectly
-                                &empty_string
-                            } else if s == sym::ItemContext {
-                                &item_context
-                            } else if s == sym::integral {
-                                "{integral}"
-                            } else if s == sym::integer_ {
-                                "{integer}"
-                            } else if s == sym::float {
-                                "{float}"
-                            } else {
-                                bug!(
-                                    "broken on_unimplemented {:?} for {:?}: \
+                    Position::ArgumentNamed(s, _) => {
+                        let s = Symbol::intern(s);
+                        match generic_map.get(&s) {
+                            Some(val) => val,
+                            None if s == name => &trait_str,
+                            None => {
+                                if let Some(val) = options.get(&s) {
+                                    val
+                                } else if s == sym::from_desugaring || s == sym::from_method {
+                                    // don't break messages using these two arguments incorrectly
+                                    &empty_string
+                                } else if s == sym::ItemContext {
+                                    &item_context
+                                } else if s == sym::integral {
+                                    "{integral}"
+                                } else if s == sym::integer_ {
+                                    "{integer}"
+                                } else if s == sym::float {
+                                    "{float}"
+                                } else {
+                                    bug!(
+                                        "broken on_unimplemented {:?} for {:?}: \
                                       no argument matching {:?}",
-                                    self.0,
-                                    trait_ref,
-                                    s
-                                )
+                                        self.0,
+                                        trait_ref,
+                                        s
+                                    )
+                                }
                             }
                         }
-                    },
+                    }
                     _ => bug!("broken on_unimplemented {:?} - bad format arg", self.0),
                 },
             })

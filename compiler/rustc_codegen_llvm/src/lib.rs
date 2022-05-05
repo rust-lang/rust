@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(let_chains)]
 #![feature(let_else)]
@@ -104,19 +103,18 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
-        ModuleLlvm::new_metadata(tcx, mod_name)
-    }
-
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        module_llvm: &mut ModuleLlvm,
         module_name: &str,
         kind: AllocatorKind,
         has_alloc_error_handler: bool,
-    ) {
-        unsafe { allocator::codegen(tcx, module_llvm, module_name, kind, has_alloc_error_handler) }
+    ) -> ModuleLlvm {
+        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        unsafe {
+            allocator::codegen(tcx, &mut module_llvm, module_name, kind, has_alloc_error_handler);
+        }
+        module_llvm
     }
     fn compile_codegen_unit(
         &self,
@@ -210,9 +208,16 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, diag_handler, module, config)
     }
+    fn optimize_fat(
+        cgcx: &CodegenContext<Self>,
+        module: &mut ModuleCodegen<Self::Module>,
+    ) -> Result<(), FatalError> {
+        let diag_handler = cgcx.create_diag_handler();
+        back::lto::run_pass_manager(cgcx, &diag_handler, module, false)
+    }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
-        thin: &mut ThinModule<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
@@ -229,15 +234,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
-    }
-    fn run_lto_pass_manager(
-        cgcx: &CodegenContext<Self>,
-        module: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
-        thin: bool,
-    ) -> Result<(), FatalError> {
-        let diag_handler = cgcx.create_diag_handler();
-        back::lto::run_pass_manager(cgcx, &diag_handler, module, config, thin)
     }
 }
 

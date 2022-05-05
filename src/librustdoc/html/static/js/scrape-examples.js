@@ -1,7 +1,10 @@
 /* eslint-env es6 */
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
+/* eslint prefer-arrow-callback: "error" */
 /* global addClass, hasClass, removeClass, onEachLazy */
+
+"use strict";
 
 (function () {
     // Number of lines shown when code viewer is not expanded
@@ -38,7 +41,7 @@
 
         if (locs.length > 1) {
             // Toggle through list of examples in a given file
-            const onChangeLoc = function(changeIndex) {
+            const onChangeLoc = changeIndex => {
                 removeClass(highlights[locIndex], 'focus');
                 changeIndex();
                 scrollToLoc(example, locs[locIndex][0]);
@@ -52,15 +55,15 @@
             };
 
             example.querySelector('.prev')
-                .addEventListener('click', function() {
-                    onChangeLoc(function() {
+                .addEventListener('click', () => {
+                    onChangeLoc(() => {
                         locIndex = (locIndex - 1 + locs.length) % locs.length;
                     });
                 });
 
             example.querySelector('.next')
-                .addEventListener('click', function() {
-                    onChangeLoc(function() {
+                .addEventListener('click', () => {
+                    onChangeLoc(() => {
                         locIndex = (locIndex + 1) % locs.length;
                     });
                 });
@@ -68,7 +71,7 @@
 
         const expandButton = example.querySelector('.expand');
         if (expandButton) {
-            expandButton.addEventListener('click', function () {
+            expandButton.addEventListener('click', () => {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
                     scrollToLoc(example, locs[0][0]);
@@ -84,22 +87,22 @@
 
     const firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');
     onEachLazy(firstExamples, updateScrapedExample);
-    onEachLazy(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
+    onEachLazy(document.querySelectorAll('.more-examples-toggle'), toggle => {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
         onEachLazy(toggle.querySelectorAll('.toggle-line, .hide-more'), button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', () => {
                 toggle.open = false;
             });
         });
 
         const moreExamples = toggle.querySelectorAll('.scraped-example');
-        toggle.querySelector('summary').addEventListener('click', function() {
+        toggle.querySelector('summary').addEventListener('click', () => {
             // Wrapping in setTimeout ensures the update happens after the elements are actually
             // visible. This is necessary since updateScrapedExample calls scrollToLoc which
             // depends on offsetHeight, a property that requires an element to be visible to
             // compute correctly.
-            setTimeout(function() { onEachLazy(moreExamples, updateScrapedExample); });
+            setTimeout(() => { onEachLazy(moreExamples, updateScrapedExample); });
         }, {once: true});
     });
 })();

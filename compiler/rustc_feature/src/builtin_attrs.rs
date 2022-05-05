@@ -379,6 +379,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Unstable attributes:
     // ==========================================================================
 
+    // RFC #3191: #[debugger_visualizer] support
+    gated!(
+        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...""#),
+        DuplicatesOk, experimental!(debugger_visualizer)
+    ),
+
     // Linking:
     gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
     gated!(

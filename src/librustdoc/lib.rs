@@ -5,7 +5,6 @@
 #![feature(rustc_private)]
 #![feature(array_methods)]
 #![feature(assert_matches)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
@@ -96,7 +95,7 @@ use crate::passes::collect_intra_doc_links;
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// let letters = map!{"a" => "b", "c" => "d"};
 /// ```
 ///

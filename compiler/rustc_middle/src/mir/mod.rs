@@ -2017,9 +2017,7 @@ pub enum ProjectionElem<V, T> {
         from_end: bool,
     },
 
-    /// "Downcast" to a variant of an ADT. Currently, we only introduce
-    /// this for ADTs with more than one variant. It may be better to
-    /// just introduce it always, or always for enums.
+    /// "Downcast" to a variant of an enum or a generator.
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
@@ -2561,15 +2559,11 @@ pub enum Rvalue<'tcx> {
     UnaryOp(UnOp, Operand<'tcx>),
 
     /// Computes the discriminant of the place, returning it as an integer of type
-    /// [`discriminant_ty`].
+    /// [`discriminant_ty`]. Returns zero for types without discriminant.
     ///
     /// The validity requirements for the underlying value are undecided for this rvalue, see
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
     /// variant index; use [`discriminant_for_variant`] to convert.
-    ///
-    /// For types defined in the source code as enums, this is well behaved. This is also well
-    /// formed for other types, but yields no particular value - there is no reason it couldn't be
-    /// defined to yield eg zero though.
     ///
     /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095

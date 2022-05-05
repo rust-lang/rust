@@ -663,4 +663,9 @@ impl<Id> Res<Id> {
     pub fn expected_in_tuple_struct_pat(&self) -> bool {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
     }
+
+    /// Returns whether such a resolved path can occur in a unit struct/variant pattern
+    pub fn expected_in_unit_struct_pat(&self) -> bool {
+        matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
+    }
 }

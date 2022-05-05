@@ -14,7 +14,6 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::token;
 
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -940,14 +939,9 @@ pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
     match args {
         MacArgs::Empty => {}
         MacArgs::Delimited(_dspan, _delim, _tokens) => {}
-        // The value in `#[key = VALUE]` must be visited as an expression for backward
-        // compatibility, so that macros can be expanded in that position.
-        MacArgs::Eq(_eq_span, token) => match &token.kind {
-            token::Interpolated(nt) => match &**nt {
-                token::NtExpr(expr) => visitor.visit_expr(expr),
-                t => panic!("unexpected token in key-value attribute: {:?}", t),
-            },
-            t => panic!("unexpected token in key-value attribute: {:?}", t),
-        },
+        MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => visitor.visit_expr(expr),
+        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            unreachable!("in literal form when walking mac args eq: {:?}", lit)
+        }
     }
 }

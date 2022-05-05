@@ -58,29 +58,25 @@ type_alias! { "c_char.md", c_char = c_char_definition::c_char, NonZero_c_char = 
 // is fixed.
 #[cfg(all())]
 #[doc(cfg(all()))] }
+
 type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
 type_alias! { "c_uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
 type_alias! { "c_short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
 type_alias! { "c_ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
-#[cfg(any(target_arch = "avr", target_arch = "msp430"))]
-type_alias! { "c_int.md", c_int = i16, NonZero_c_int = NonZeroI16; }
-#[cfg(not(any(target_arch = "avr", target_arch = "msp430")))]
-type_alias! { "c_int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
-type_alias! { "c_uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
-type_alias! { "c_long.md", c_long = i32, NonZero_c_long = NonZeroI32;
-#[doc(cfg(all()))]
-#[cfg(any(target_pointer_width = "32", windows))] }
-type_alias! { "c_ulong.md", c_ulong = u32, NonZero_c_ulong = NonZeroU32;
-#[doc(cfg(all()))]
-#[cfg(any(target_pointer_width = "32", windows))] }
-type_alias! { "c_long.md", c_long = i64, NonZero_c_long = NonZeroI64;
-#[doc(cfg(all()))]
-#[cfg(all(target_pointer_width = "64", not(windows)))] }
-type_alias! { "c_ulong.md", c_ulong = u64, NonZero_c_ulong = NonZeroU64;
-#[doc(cfg(all()))]
-#[cfg(all(target_pointer_width = "64", not(windows)))] }
+
+type_alias! { "c_int.md", c_int = c_int_definition::c_int, NonZero_c_int = c_int_definition::NonZero_c_int;
+#[doc(cfg(all()))] }
+type_alias! { "c_uint.md", c_uint = c_int_definition::c_uint, NonZero_c_uint = c_int_definition::NonZero_c_uint;
+#[doc(cfg(all()))] }
+
+type_alias! { "c_long.md", c_long = c_long_definition::c_long, NonZero_c_long = c_long_definition::NonZero_c_long;
+#[doc(cfg(all()))] }
+type_alias! { "c_ulong.md", c_ulong = c_long_definition::c_ulong, NonZero_c_ulong = c_long_definition::NonZero_c_ulong;
+#[doc(cfg(all()))] }
+
 type_alias! { "c_longlong.md", c_longlong = i64, NonZero_c_longlong = NonZeroI64; }
 type_alias! { "c_ulonglong.md", c_ulonglong = u64, NonZero_c_ulonglong = NonZeroU64; }
+
 type_alias_no_nz! { "c_float.md", c_float = f32; }
 type_alias_no_nz! { "c_double.md", c_double = f64; }
 
@@ -155,6 +151,39 @@ mod c_char_definition {
             // On every other target, c_char is signed.
             pub type c_char = i8;
             pub type NonZero_c_char = crate::num::NonZeroI8;
+        }
+    }
+}
+
+mod c_int_definition {
+    cfg_if! {
+        if #[cfg(any(target_arch = "avr", target_arch = "msp430"))] {
+            pub type c_int = i16;
+            pub type NonZero_c_int = crate::num::NonZeroI16;
+            pub type c_uint = u16;
+            pub type NonZero_c_uint = crate::num::NonZeroU16;
+        } else {
+            pub type c_int = i32;
+            pub type NonZero_c_int = crate::num::NonZeroI32;
+            pub type c_uint = u32;
+            pub type NonZero_c_uint = crate::num::NonZeroU32;
+        }
+    }
+}
+
+mod c_long_definition {
+    cfg_if! {
+        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+            pub type c_long = i64;
+            pub type NonZero_c_long = crate::num::NonZeroI64;
+            pub type c_ulong = u64;
+            pub type NonZero_c_ulong = crate::num::NonZeroU64;
+        } else {
+            // The minimal size of `long` in the C standard is 32 bits
+            pub type c_long = i32;
+            pub type NonZero_c_long = crate::num::NonZeroI32;
+            pub type c_ulong = u32;
+            pub type NonZero_c_ulong = crate::num::NonZeroU32;
         }
     }
 }

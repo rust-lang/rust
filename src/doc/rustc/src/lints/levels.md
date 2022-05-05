@@ -100,9 +100,8 @@ This lint level gives you that.
 'force-warn' does for 'warn'. It's the same as 'deny' in that a lint at this
 level will produce an error, but unlike the 'deny' level, the 'forbid' level
 can not be overridden to be anything lower than an error.  However, lint
-levels may still be capped with `--cap-lints` (see below) so `rustc --cap-
-lints warn` will make lints set to 'forbid' just
-warn.
+levels may still be capped with `--cap-lints` (see below) so `rustc --cap-lints warn`
+will make lints set to 'forbid' just warn.
 
 ## Configuring warning levels
 

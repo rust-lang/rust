@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
 #![feature(let_else)]
@@ -36,6 +35,7 @@ use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
+use rustc_span::DebuggerVisualizerFile;
 use std::path::{Path, PathBuf};
 
 pub mod back;
@@ -157,6 +157,7 @@ pub struct CrateInfo {
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
+    pub debugger_visualizers: FxHashMap<CrateNum, Vec<DebuggerVisualizerFile>>,
 }
 
 #[derive(Encodable, Decodable)]

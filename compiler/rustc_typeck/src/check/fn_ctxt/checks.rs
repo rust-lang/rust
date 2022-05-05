@@ -429,9 +429,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             errors.drain_filter(|error| {
                 let Error::Invalid(input_idx, Compatibility::Incompatible(error)) = error else { return false };
                 let expected_ty = expected_input_tys[*input_idx];
-                let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
+                let Some(Some((provided_ty, _))) = final_arg_types.get(*input_idx) else { return false };
                 let cause = &self.misc(provided_args[*input_idx].span);
-                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                let trace = TypeTrace::types(cause, true, expected_ty, *provided_ty);
                 if let Some(e) = error {
                     if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
                         self.report_and_explain_type_error(trace, e).emit();
@@ -679,8 +679,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Error::Invalid(input_idx, compatibility) => {
                         let expected_ty = expected_input_tys[input_idx];
                         if let Compatibility::Incompatible(error) = &compatibility {
-                            let provided_ty = final_arg_types[input_idx].map(|ty| ty.0).unwrap();
-                            let cause = &self.misc(provided_args[input_idx].span);
+                            let provided_ty = final_arg_types
+                                .get(input_idx)
+                                .and_then(|x| x.as_ref())
+                                .map(|ty| ty.0)
+                                .unwrap_or(tcx.ty_error());
+                            let cause = &self.misc(
+                                provided_args.get(input_idx).map(|i| i.span).unwrap_or(call_span),
+                            );
                             let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                             if let Some(e) = error {
                                 self.note_type_err(
@@ -695,14 +701,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
 
-                        self.emit_coerce_suggestions(
-                            &mut err,
-                            &provided_args[input_idx],
-                            final_arg_types[input_idx].map(|ty| ty.0).unwrap(),
-                            final_arg_types[input_idx].map(|ty| ty.1).unwrap(),
-                            None,
-                            None,
-                        );
+                        if let Some(expr) = provided_args.get(input_idx) {
+                            self.emit_coerce_suggestions(
+                                &mut err,
+                                &expr,
+                                final_arg_types[input_idx].map(|ty| ty.0).unwrap(),
+                                final_arg_types[input_idx].map(|ty| ty.1).unwrap(),
+                                None,
+                                None,
+                            );
+                        }
                     }
                     Error::Extra(arg_idx) => {
                         let arg_type = if let Some((_, ty)) = final_arg_types[arg_idx] {
@@ -980,7 +988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 for (idx, arg) in matched_inputs.iter().enumerate() {
                     let suggestion_text = if let Some(arg) = arg {
-                        let arg_span = provided_args[*arg].span;
+                        let arg_span = provided_args[*arg].span.source_callsite();
                         let arg_text = source_map.span_to_snippet(arg_span).unwrap();
                         arg_text
                     } else {

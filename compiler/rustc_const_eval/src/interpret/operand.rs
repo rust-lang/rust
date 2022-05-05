@@ -84,13 +84,17 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
     }
 
     #[inline]
-    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
+    pub fn to_scalar_or_uninit_pair(self) -> (ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>) {
         match self {
-            Immediate::ScalarPair(val1, val2) => Ok((val1.check_init()?, val2.check_init()?)),
-            Immediate::Scalar(..) => {
-                bug!("Got a scalar where a scalar pair was expected")
-            }
+            Immediate::ScalarPair(val1, val2) => (val1, val2),
+            Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
         }
+    }
+
+    #[inline]
+    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
+        let (val1, val2) = self.to_scalar_or_uninit_pair();
+        Ok((val1.check_init()?, val2.check_init()?))
     }
 }
 
@@ -248,9 +252,12 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
-    fn try_read_immediate_from_mplace(
+    ///
+    /// This is an internal function; call `read_immediate` instead.
+    fn read_immediate_from_mplace_raw(
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
+        force: bool,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
@@ -271,42 +278,61 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // case where some of the bytes are initialized and others are not. So, we need an extra
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
-        match mplace.layout.abi {
-            Abi::Scalar(abi::Scalar::Initialized { .. }) => {
-                let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
-                Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
-            }
+        let scalar_layout = match mplace.layout.abi {
+            // `if` does not work nested inside patterns, making this a bit awkward to express.
+            Abi::Scalar(abi::Scalar::Initialized { value: s, .. }) => Some(s),
+            Abi::Scalar(s) if force => Some(s.primitive()),
+            _ => None,
+        };
+        if let Some(_) = scalar_layout {
+            let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
+            return Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }));
+        }
+        let scalar_pair_layout = match mplace.layout.abi {
             Abi::ScalarPair(
                 abi::Scalar::Initialized { value: a, .. },
                 abi::Scalar::Initialized { value: b, .. },
-            ) => {
-                // We checked `ptr_align` above, so all fields will have the alignment they need.
-                // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
-                // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let (a_size, b_size) = (a.size(self), b.size(self));
-                let b_offset = a_size.align_to(b.align(self).abi);
-                assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
-                let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
-                let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
-                Ok(Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout }))
-            }
-            _ => Ok(None),
+            ) => Some((a, b)),
+            Abi::ScalarPair(a, b) if force => Some((a.primitive(), b.primitive())),
+            _ => None,
+        };
+        if let Some((a, b)) = scalar_pair_layout {
+            // We checked `ptr_align` above, so all fields will have the alignment they need.
+            // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
+            // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
+            let (a_size, b_size) = (a.size(self), b.size(self));
+            let b_offset = a_size.align_to(b.align(self).abi);
+            assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
+            let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
+            let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
+            return Ok(Some(ImmTy {
+                imm: Immediate::ScalarPair(a_val, b_val),
+                layout: mplace.layout,
+            }));
         }
+        // Neither a scalar nor scalar pair.
+        return Ok(None);
     }
 
-    /// Try returning an immediate for the operand.
-    /// If the layout does not permit loading this as an immediate, return where in memory
-    /// we can find the data.
+    /// Try returning an immediate for the operand. If the layout does not permit loading this as an
+    /// immediate, return where in memory we can find the data.
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
-    pub fn try_read_immediate(
+    ///
+    /// If `force` is `true`, then even scalars with fields that can be ununit will be
+    /// read. This means the load is lossy and should not be written back!
+    /// This flag exists only for validity checking.
+    ///
+    /// This is an internal function that should not usually be used; call `read_immediate` instead.
+    pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
+        force: bool,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
         Ok(match src.try_as_mplace() {
             Ok(ref mplace) => {
-                if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
+                if let Some(val) = self.read_immediate_from_mplace_raw(mplace, force)? {
                     Ok(val)
                 } else {
                     Err(*mplace)
@@ -322,7 +348,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
-        if let Ok(imm) = self.try_read_immediate(op)? {
+        if let Ok(imm) = self.read_immediate_raw(op, /*force*/ false)? {
             Ok(imm)
         } else {
             span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);

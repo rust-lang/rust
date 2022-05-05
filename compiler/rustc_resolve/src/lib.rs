@@ -9,7 +9,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -696,6 +695,9 @@ struct UseError<'a> {
     instead: bool,
     /// Extra free-form suggestion.
     suggestion: Option<(Span, &'static str, String, Applicability)>,
+    /// Path `Segment`s at the place of use that failed. Used for accurate suggestion after telling
+    /// the user to import the item directly.
+    path: Vec<Segment>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

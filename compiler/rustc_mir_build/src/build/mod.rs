@@ -549,6 +549,18 @@ rustc_index::newtype_index! {
     struct ScopeId { .. }
 }
 
+#[derive(Debug)]
+enum NeedsTemporary {
+    /// Use this variant when whatever you are converting with `as_operand`
+    /// is the last thing you are converting. This means that if we introduced
+    /// an intermediate temporary, we'd only read it immediately after, so we can
+    /// also avoid it.
+    No,
+    /// For all cases where you aren't sure or that are too expensive to compute
+    /// for now. It is always safe to fall back to this.
+    Maybe,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`

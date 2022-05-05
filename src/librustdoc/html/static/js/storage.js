@@ -1,6 +1,9 @@
 /* eslint-env es6 */
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
+/* eslint prefer-arrow-callback: "error" */
+
+"use strict";
 
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
@@ -139,11 +142,11 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
 
     let found = false;
     if (savedHref.length === 0) {
-        onEachLazy(document.getElementsByTagName("link"), function(el) {
+        onEachLazy(document.getElementsByTagName("link"), el => {
             savedHref.push(el.href);
         });
     }
-    onEach(savedHref, function(el) {
+    onEach(savedHref, el => {
         if (el === newHref) {
             found = true;
             return true;
@@ -170,10 +173,10 @@ function useSystemTheme(value) {
     }
 }
 
-const updateSystemTheme = (function() {
+const updateSystemTheme = (function () {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
-        return function() {
+        return () => {
             const cssTheme = getComputedStyle(document.documentElement)
                 .getPropertyValue('content');
 
@@ -190,7 +193,7 @@ const updateSystemTheme = (function() {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
     function handlePreferenceChange(mql) {
-        const use = function(theme) {
+        const use = theme => {
             switchTheme(window.currentTheme, window.mainTheme, theme, true);
         };
         // maybe the user has disabled the setting in the meantime!
@@ -214,7 +217,7 @@ const updateSystemTheme = (function() {
 
     mql.addListener(handlePreferenceChange);
 
-    return function() {
+    return () => {
         handlePreferenceChange(mql);
     };
 })();
@@ -252,7 +255,7 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
 // For some reason, if we try to change the theme while the `pageshow` event is
 // running, it sometimes fails to take effect. The problem manifests on Chrome,
 // specifically when talking to a remote website with no caching.
-window.addEventListener("pageshow", function(ev) {
+window.addEventListener("pageshow", ev => {
     if (ev.persisted) {
         setTimeout(switchToSavedTheme, 0);
     }

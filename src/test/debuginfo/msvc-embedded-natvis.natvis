@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="msvc_embedded_natvis::Point">
+    <DisplayString>({x}, {y})</DisplayString>
+    <Expand>
+      <Item Name="[x]">x</Item>
+      <Item Name="[y]">y</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="msvc_embedded_natvis::Line">
+    <DisplayString>({a}, {b})</DisplayString>
+    <Expand>
+      <Item Name="[a]">a</Item>
+      <Item Name="[b]">b</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

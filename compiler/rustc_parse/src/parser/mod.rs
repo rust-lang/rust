@@ -26,11 +26,10 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
-use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
-use rustc_ast::{Visibility, VisibilityKind};
+use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacArgsEq, MacDelimiter, Mutability, StrLit};
+use rustc_ast::{Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan,
@@ -1157,13 +1156,7 @@ impl<'a> Parser<'a> {
             } else if !delimited_only {
                 if self.eat(&token::Eq) {
                     let eq_span = self.prev_token.span;
-
-                    // Collect tokens because they are used during lowering to HIR.
-                    let expr = self.parse_expr_force_collect()?;
-                    let span = expr.span;
-
-                    let token_kind = token::Interpolated(Lrc::new(token::NtExpr(expr)));
-                    MacArgs::Eq(eq_span, Token::new(token_kind, span))
+                    MacArgs::Eq(eq_span, MacArgsEq::Ast(self.parse_expr_force_collect()?))
                 } else {
                     MacArgs::Empty
                 }

@@ -866,7 +866,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return false;
             }
 
-            let orig_ty = old_pred.self_ty().skip_binder();
+            // This is a quick fix to resolve an ICE (#96223).
+            // This change should probably be deeper.
+            // As suggested by @jackh726, `mk_trait_obligation_with_new_self_ty` could take a `Binder<(TraitRef, Ty)>
+            // instead of `Binder<Ty>` leading to some changes to its call places.
+            let Some(orig_ty) = old_pred.self_ty().no_bound_vars() else {
+                return false;
+            };
             let mk_result = |new_ty| {
                 let obligation =
                     self.mk_trait_obligation_with_new_self_ty(param_env, old_pred, new_ty);

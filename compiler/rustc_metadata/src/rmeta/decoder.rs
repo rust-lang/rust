@@ -1023,6 +1023,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
     }
 
+    fn get_debugger_visualizers(self) -> Vec<rustc_span::DebuggerVisualizerFile> {
+        self.root.debugger_visualizers.decode(self).collect::<Vec<_>>()
+    }
+
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
         tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))

@@ -233,6 +233,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Lrc::clone(&cdata.source) }
+    debugger_visualizers => { cdata.get_debugger_visualizers() }
 
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);

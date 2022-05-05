@@ -575,15 +575,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     } else if let Some(kind) = tcx.allocator_kind(()) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let mut module_llvm = backend.new_metadata(tcx, &llmod_id);
-        tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(
-                tcx,
-                &mut module_llvm,
-                &llmod_id,
-                kind,
-                tcx.lang_items().oom().is_some(),
-            )
+        let module_llvm = tcx.sess.time("write_allocator_module", || {
+            backend.codegen_allocator(tcx, &llmod_id, kind, tcx.lang_items().oom().is_some())
         });
 
         Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
@@ -854,7 +847,13 @@ impl CrateInfo {
             missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
+            debugger_visualizers: Default::default(),
         };
+        let debugger_visualizers = tcx.debugger_visualizers(LOCAL_CRATE).clone();
+        if !debugger_visualizers.is_empty() {
+            info.debugger_visualizers.insert(LOCAL_CRATE, debugger_visualizers);
+        }
+
         let lang_items = tcx.lang_items();
 
         let crates = tcx.crates(());
@@ -869,7 +868,9 @@ impl CrateInfo {
             info.native_libraries
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum));
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum).clone());
+
+            let used_crate_source = tcx.used_crate_source(cnum);
+            info.used_crate_source.insert(cnum, used_crate_source.clone());
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }
@@ -890,6 +891,14 @@ impl CrateInfo {
             let missing =
                 missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
+
+            // Only include debugger visualizer files from crates that will be statically linked.
+            if used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some() {
+                let debugger_visualizers = tcx.debugger_visualizers(cnum).clone();
+                if !debugger_visualizers.is_empty() {
+                    info.debugger_visualizers.insert(cnum, debugger_visualizers);
+                }
+            }
         }
 
         info

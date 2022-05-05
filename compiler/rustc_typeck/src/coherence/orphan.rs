@@ -44,6 +44,59 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
     };
     let sp = tcx.sess.source_map().guess_head_span(item.span);
     let tr = impl_.of_trait.as_ref().unwrap();
+
+    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
+    // and #84660 where it would otherwise allow unsoundness.
+    if trait_ref.has_opaque_types() {
+        trace!("{:#?}", item);
+        // First we find the opaque type in question.
+        for ty in trait_ref.substs {
+            for ty in ty.walk() {
+                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
+                let ty::Opaque(def_id, _) = *ty.kind() else { continue };
+                trace!(?def_id);
+
+                // Then we search for mentions of the opaque type's type alias in the HIR
+                struct SpanFinder<'tcx> {
+                    sp: Span,
+                    def_id: DefId,
+                    tcx: TyCtxt<'tcx>,
+                }
+                impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
+                    #[instrument(level = "trace", skip(self, _id))]
+                    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+                        // You can't mention an opaque type directly, so we look for type aliases
+                        if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
+                            // And check if that type alias's type contains the opaque type we're looking for
+                            for arg in self.tcx.type_of(def_id).walk() {
+                                if let GenericArgKind::Type(ty) = arg.unpack() {
+                                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                                        if def_id == self.def_id {
+                                            // Finally we update the span to the mention of the type alias
+                                            self.sp = path.span;
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        hir::intravisit::walk_path(self, path)
+                    }
+                }
+
+                let mut visitor = SpanFinder { sp, def_id, tcx };
+                hir::intravisit::walk_item(&mut visitor, item);
+                let reported = tcx
+                    .sess
+                    .struct_span_err(visitor.sp, "cannot implement trait on type alias impl trait")
+                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
+                    .emit();
+                return Err(reported);
+            }
+        }
+        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
+    }
+
     match traits::orphan_check(tcx, item.def_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
@@ -141,58 +194,6 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
                 struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
             return Err(reported);
         }
-    }
-
-    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
-    // and #84660 where it would otherwise allow unsoundness.
-    if trait_ref.has_opaque_types() {
-        trace!("{:#?}", item);
-        // First we find the opaque type in question.
-        for ty in trait_ref.substs {
-            for ty in ty.walk() {
-                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
-                let ty::Opaque(def_id, _) = *ty.kind() else { continue };
-                trace!(?def_id);
-
-                // Then we search for mentions of the opaque type's type alias in the HIR
-                struct SpanFinder<'tcx> {
-                    sp: Span,
-                    def_id: DefId,
-                    tcx: TyCtxt<'tcx>,
-                }
-                impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
-                    #[instrument(level = "trace", skip(self, _id))]
-                    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
-                        // You can't mention an opaque type directly, so we look for type aliases
-                        if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
-                            // And check if that type alias's type contains the opaque type we're looking for
-                            for arg in self.tcx.type_of(def_id).walk() {
-                                if let GenericArgKind::Type(ty) = arg.unpack() {
-                                    if let ty::Opaque(def_id, _) = *ty.kind() {
-                                        if def_id == self.def_id {
-                                            // Finally we update the span to the mention of the type alias
-                                            self.sp = path.span;
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        hir::intravisit::walk_path(self, path)
-                    }
-                }
-
-                let mut visitor = SpanFinder { sp, def_id, tcx };
-                hir::intravisit::walk_item(&mut visitor, item);
-                let reported = tcx
-                    .sess
-                    .struct_span_err(visitor.sp, "cannot implement trait on type alias impl trait")
-                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
-                    .emit();
-                return Err(reported);
-            }
-        }
-        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
     }
 
     Ok(())

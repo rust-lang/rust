@@ -6,7 +6,7 @@ use crate::path_names_to_string;
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use rustc_ast::visit::FnKind;
+use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
     NodeId, Path, Ty, TyKind,
@@ -144,15 +144,22 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
         // Make the base error.
+        struct BaseError<'a> {
+            msg: String,
+            fallback_label: String,
+            span: Span,
+            could_be_expr: bool,
+            suggestion: Option<(Span, &'a str, String)>,
+        }
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
-        let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
-            (
-                format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
-                format!("not a {}", expected),
+        let base_error = if let Some(res) = res {
+            BaseError {
+                msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
+                fallback_label: format!("not a {expected}"),
                 span,
-                match res {
+                could_be_expr: match res {
                     Res::Def(DefKind::Fn, _) => {
                         // Verify whether this is a fn call or an Fn used as a type.
                         self.r
@@ -171,22 +178,49 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     | Res::Local(_) => true,
                     _ => false,
                 },
-            )
+                suggestion: None,
+            }
         } else {
             let item_span = path.last().unwrap().ident.span;
-            let (mod_prefix, mod_str) = if path.len() == 1 {
-                (String::new(), "this scope".to_string())
+            let (mod_prefix, mod_str, suggestion) = if path.len() == 1 {
+                debug!(?self.diagnostic_metadata.current_impl_items);
+                debug!(?self.diagnostic_metadata.current_function);
+                let suggestion = if let Some(items) = self.diagnostic_metadata.current_impl_items
+                    && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
+                    && self.current_trait_ref.is_none()
+                    && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
+                    && let Some(item) = items.iter().find(|i| {
+                        if let AssocItemKind::Fn(fn_) = &i.kind
+                            && !fn_.sig.decl.has_self()
+                            && i.ident.name == item_str.name
+                        {
+                            debug!(?item_str.name);
+                            debug!(?fn_.sig.decl.inputs);
+                            return true
+                        }
+                        false
+                    })
+                {
+                    Some((
+                        item_span,
+                        "consider using the associated function",
+                        format!("Self::{}", item.ident)
+                    ))
+                } else {
+                    None
+                };
+                (String::new(), "this scope".to_string(), suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.session.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
-                    (String::new(), "the list of imported crates".to_string())
+                    (String::new(), "the list of imported crates".to_string(), None)
                 } else {
-                    (String::new(), "the crate root".to_string())
+                    (String::new(), "the crate root".to_string(), None)
                 }
             } else if path.len() == 2 && path[0].ident.name == kw::Crate {
-                (String::new(), "the crate root".to_string())
+                (String::new(), "the crate root".to_string(), None)
             } else {
                 let mod_path = &path[..path.len() - 1];
                 let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), None) {
@@ -194,22 +228,28 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     _ => None,
                 }
                 .map_or_else(String::new, |res| format!("{} ", res.descr()));
-                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
+                (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), None)
             };
-            (
-                format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                if path_str == "async" && expected.starts_with("struct") {
+            BaseError {
+                msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
+                fallback_label: if path_str == "async" && expected.starts_with("struct") {
                     "`async` blocks are only allowed in Rust 2018 or later".to_string()
                 } else {
-                    format!("not found in {}", mod_str)
+                    format!("not found in {mod_str}")
                 },
-                item_span,
-                false,
-            )
+                span: item_span,
+                could_be_expr: false,
+                suggestion,
+            }
         };
 
         let code = source.error_code(res.is_some());
-        let mut err = self.r.session.struct_span_err_with_code(base_span, &base_msg, code);
+        let mut err =
+            self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
+
+        if let Some(sugg) = base_error.suggestion {
+            err.span_suggestion_verbose(sugg.0, sugg.1, sugg.2, Applicability::MaybeIncorrect);
+        }
 
         if let Some(span) = self.diagnostic_metadata.current_block_could_be_bare_struct_literal {
             err.multipart_suggestion(
@@ -269,7 +309,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
-        self.detect_assoct_type_constraint_meant_as_path(base_span, &mut err);
+        self.detect_assoct_type_constraint_meant_as_path(base_error.span, &mut err);
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
@@ -471,7 +511,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 source,
                 res,
                 &path_str,
-                &fallback_label,
+                &base_error.fallback_label,
             ) {
                 // We do this to avoid losing a secondary span when we override the main error span.
                 self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
@@ -479,8 +519,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
-        let is_macro = base_span.from_expansion() && base_span.desugaring_kind().is_none();
-        if !self.type_ascription_suggestion(&mut err, base_span) {
+        let is_macro =
+            base_error.span.from_expansion() && base_error.span.desugaring_kind().is_none();
+        if !self.type_ascription_suggestion(&mut err, base_error.span) {
             let mut fallback = false;
             if let (
                 PathSource::Trait(AliasPossibility::Maybe),
@@ -493,7 +534,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     let spans: Vec<Span> = bounds
                         .iter()
                         .map(|bound| bound.span())
-                        .filter(|&sp| sp != base_span)
+                        .filter(|&sp| sp != base_error.span)
                         .collect();
 
                     let start_span = bounds.iter().map(|bound| bound.span()).next().unwrap();
@@ -515,7 +556,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         multi_span.push_span_label(sp, msg);
                     }
                     multi_span.push_span_label(
-                        base_span,
+                        base_error.span,
                         "expected this type to be a trait...".to_string(),
                     );
                     err.span_help(
@@ -525,14 +566,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     );
                     if bounds.iter().all(|bound| match bound {
                         ast::GenericBound::Outlives(_) => true,
-                        ast::GenericBound::Trait(tr, _) => tr.span == base_span,
+                        ast::GenericBound::Trait(tr, _) => tr.span == base_error.span,
                     }) {
                         let mut sugg = vec![];
-                        if base_span != start_span {
-                            sugg.push((start_span.until(base_span), String::new()));
+                        if base_error.span != start_span {
+                            sugg.push((start_span.until(base_error.span), String::new()));
                         }
-                        if base_span != end_span {
-                            sugg.push((base_span.shrink_to_hi().to(end_span), String::new()));
+                        if base_error.span != end_span {
+                            sugg.push((base_error.span.shrink_to_hi().to(end_span), String::new()));
                         }
 
                         err.multipart_suggestion(
@@ -550,7 +591,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 fallback = true;
                 match self.diagnostic_metadata.current_let_binding {
                     Some((pat_sp, Some(ty_sp), None))
-                        if ty_sp.contains(base_span) && could_be_expr =>
+                        if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
                     {
                         err.span_suggestion_short(
                             pat_sp.between(ty_sp),
@@ -568,7 +609,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
             if fallback {
                 // Fallback label.
-                err.span_label(base_span, fallback_label);
+                err.span_label(base_error.span, base_error.fallback_label);
             }
         }
         if let Some(err_code) = &err.code {

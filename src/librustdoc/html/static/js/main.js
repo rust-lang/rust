@@ -1,10 +1,13 @@
 /* eslint-env es6 */
 /* eslint no-var: "error" */
 /* eslint prefer-const: "error" */
+/* eslint prefer-arrow-callback: "error" */
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
 /* global onEach, onEachLazy, removeClass */
 /* global switchTheme, useSystemTheme */
+
+"use strict";
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -57,11 +60,20 @@ function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
 
+function hideMain() {
+    addClass(document.getElementById(MAIN_ID), "hidden");
+}
+
+function showMain() {
+    removeClass(document.getElementById(MAIN_ID), "hidden");
+}
+
 (function () {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
     window.searchIndexJS = resourcePath("search-index", ".js");
+    window.settingsJS = resourcePath("settings", ".js");
     const sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {
@@ -104,6 +116,9 @@ function getVirtualKey(ev) {
 const THEME_PICKER_ELEMENT_ID = "theme-picker";
 const THEMES_ELEMENT_ID = "theme-choices";
 const MAIN_ID = "main-content";
+const SETTINGS_BUTTON_ID = "settings-menu";
+const ALTERNATIVE_DISPLAY_ID = "alternative-display";
+const NOT_DISPLAYED_ID = "not-displayed";
 
 function getThemesElement() {
     return document.getElementById(THEMES_ELEMENT_ID);
@@ -111,6 +126,10 @@ function getThemesElement() {
 
 function getThemePickerElement() {
     return document.getElementById(THEME_PICKER_ELEMENT_ID);
+}
+
+function getSettingsButton() {
+    return document.getElementById(SETTINGS_BUTTON_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -135,6 +154,10 @@ function hideThemeButtonState() {
     themePicker.style.borderBottomRightRadius = "3px";
     themePicker.style.borderBottomLeftRadius = "3px";
 }
+
+window.hideSettings = () => {
+    // Does nothing by default.
+};
 
 // Set up the theme picker list.
 (function () {
@@ -170,10 +193,10 @@ function hideThemeButtonState() {
 
     themePicker.onclick = switchThemeButtonState;
     themePicker.onblur = handleThemeButtonsBlur;
-    availableThemes.forEach(function(item) {
+    availableThemes.forEach(item => {
         const but = document.createElement("button");
         but.textContent = item;
-        but.onclick = function() {
+        but.onclick = () => {
             switchTheme(window.currentTheme, window.mainTheme, item, true);
             useSystemTheme(false);
         };
@@ -182,14 +205,117 @@ function hideThemeButtonState() {
     });
 }());
 
+/**
+ * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
+ * doesn't have a parent node.
+ *
+ * @param {HTMLElement} newNode
+ * @param {HTMLElement} referenceNode
+ */
+function insertAfter(newNode, referenceNode) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
+
+/**
+ * This function creates a new `<section>` with the given `id` and `classes` if it doesn't already
+ * exist.
+ *
+ * More information about this in `switchDisplayedElement` documentation.
+ *
+ * @param {string} id
+ * @param {string} classes
+ */
+function getOrCreateSection(id, classes) {
+    let el = document.getElementById(id);
+
+    if (!el) {
+        el = document.createElement("section");
+        el.id = id;
+        el.className = classes;
+        insertAfter(el, document.getElementById(MAIN_ID));
+    }
+    return el;
+}
+
+/**
+ * Returns the `<section>` element which contains the displayed element.
+ *
+ * @return {HTMLElement}
+ */
+function getAlternativeDisplayElem() {
+    return getOrCreateSection(ALTERNATIVE_DISPLAY_ID, "content hidden");
+}
+
+/**
+ * Returns the `<section>` element which contains the not-displayed elements.
+ *
+ * @return {HTMLElement}
+ */
+function getNotDisplayedElem() {
+    return getOrCreateSection(NOT_DISPLAYED_ID, "hidden");
+}
+
+/**
+ * To nicely switch between displayed "extra" elements (such as search results or settings menu)
+ * and to alternate between the displayed and not displayed elements, we hold them in two different
+ * `<section>` elements. They work in pair: one holds the hidden elements while the other
+ * contains the displayed element (there can be only one at the same time!). So basically, we switch
+ * elements between the two `<section>` elements.
+ *
+ * @param {HTMLElement} elemToDisplay
+ */
+function switchDisplayedElement(elemToDisplay) {
+    const el = getAlternativeDisplayElem();
+
+    if (el.children.length > 0) {
+        getNotDisplayedElem().appendChild(el.firstElementChild);
+    }
+    if (elemToDisplay === null) {
+        addClass(el, "hidden");
+        showMain();
+        return;
+    }
+    el.appendChild(elemToDisplay);
+    hideMain();
+    removeClass(el, "hidden");
+}
+
+function browserSupportsHistoryApi() {
+    return window.history && typeof window.history.pushState === "function";
+}
+
+// eslint-disable-next-line no-unused-vars
+function loadCss(cssFileName) {
+    const link = document.createElement("link");
+    link.href = resourcePath(cssFileName, ".css");
+    link.type = "text/css";
+    link.rel = "stylesheet";
+    document.getElementsByTagName("head")[0].appendChild(link);
+}
+
 (function() {
-    "use strict";
+    function loadScript(url) {
+        const script = document.createElement('script');
+        script.src = url;
+        document.head.append(script);
+    }
+
+    getSettingsButton().onclick = event => {
+        event.preventDefault();
+        loadScript(window.settingsJS);
+    };
 
     window.searchState = {
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
-        outputElement: function() {
-            return document.getElementById("search");
+        outputElement: () => {
+            let el = document.getElementById("search");
+            if (!el) {
+                el = document.createElement("section");
+                el.id = "search";
+                getNotDisplayedElem().appendChild(el);
+            }
+            return el;
         },
         title: document.title,
         titleBeforeSearch: document.title,
@@ -202,66 +328,53 @@ function hideThemeButtonState() {
         currentTab: 0,
         // tab and back preserves the element that was focused.
         focusedByTab: [null, null, null],
-        clearInputTimeout: function() {
+        clearInputTimeout: () => {
             if (searchState.timeout !== null) {
                 clearTimeout(searchState.timeout);
                 searchState.timeout = null;
             }
         },
+        isDisplayed: () => searchState.outputElement().parentElement.id === ALTERNATIVE_DISPLAY_ID,
         // Sets the focus on the search bar at the top of the page
-        focus: function() {
+        focus: () => {
             searchState.input.focus();
         },
         // Removes the focus from the search bar.
-        defocus: function() {
+        defocus: () => {
             searchState.input.blur();
         },
-        showResults: function(search) {
+        showResults: search => {
             if (search === null || typeof search === 'undefined') {
                 search = searchState.outputElement();
             }
-            addClass(main, "hidden");
-            removeClass(search, "hidden");
+            switchDisplayedElement(search);
             searchState.mouseMovedAfterSearch = false;
             document.title = searchState.title;
         },
-        hideResults: function(search) {
-            if (search === null || typeof search === 'undefined') {
-                search = searchState.outputElement();
-            }
-            addClass(search, "hidden");
-            removeClass(main, "hidden");
+        hideResults: () => {
+            switchDisplayedElement(null);
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
-            if (searchState.browserSupportsHistoryApi()) {
+            if (browserSupportsHistoryApi()) {
                 history.replaceState(null, window.currentCrate + " - Rust",
                     getNakedUrl() + window.location.hash);
             }
         },
-        getQueryStringParams: function() {
+        getQueryStringParams: () => {
             const params = {};
             window.location.search.substring(1).split("&").
-                map(function(s) {
+                map(s => {
                     const pair = s.split("=");
                     params[decodeURIComponent(pair[0])] =
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
             return params;
         },
-        browserSupportsHistoryApi: function() {
-            return window.history && typeof window.history.pushState === "function";
-        },
-        setup: function() {
+        setup: () => {
             const search_input = searchState.input;
             if (!searchState.input) {
                 return;
             }
-            function loadScript(url) {
-                const script = document.createElement('script');
-                script.src = url;
-                document.head.append(script);
-            }
-
             let searchLoaded = false;
             function loadSearch() {
                 if (!searchLoaded) {
@@ -271,13 +384,13 @@ function hideThemeButtonState() {
                 }
             }
 
-            search_input.addEventListener("focus", function() {
+            search_input.addEventListener("focus", () => {
                 search_input.origPlaceholder = search_input.placeholder;
                 search_input.placeholder = "Type your search here.";
                 loadSearch();
             });
 
-            if (search_input.value != '') {
+            if (search_input.value !== '') {
                 loadSearch();
             }
 
@@ -303,23 +416,20 @@ function hideThemeButtonState() {
     }
 
     const toggleAllDocsId = "toggle-all-docs";
-    const main = document.getElementById(MAIN_ID);
     let savedHash = "";
 
     function handleHashes(ev) {
-        let elem;
-        const search = searchState.outputElement();
-        if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+        if (ev !== null && searchState.isDisplayed() && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
-            searchState.hideResults(search);
+            switchDisplayedElement(null);
             const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
-            if (searchState.browserSupportsHistoryApi()) {
+            if (browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
                 history.replaceState(null, "",
                     getNakedUrl() + window.location.search + "#" + hash);
             }
-            elem = document.getElementById(hash);
+            const elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
@@ -389,14 +499,17 @@ function hideThemeButtonState() {
     }
 
     function handleEscape(ev) {
+        searchState.clearInputTimeout();
         const help = getHelpElement(false);
-        const search = searchState.outputElement();
         if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (search && !hasClass(search, "hidden")) {
-            searchState.clearInputTimeout();
+        } else {
+            switchDisplayedElement(null);
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(null, window.currentCrate + " - Rust",
+                    getNakedUrl() + window.location.hash);
+            }
             ev.preventDefault();
-            searchState.hideResults(search);
         }
         searchState.defocus();
         hideThemeButtonState();
@@ -505,7 +618,7 @@ function hideThemeButtonState() {
     document.addEventListener("keydown", handleShortcut);
 
     // delayed sidebar rendering.
-    window.initSidebarItems = function(items) {
+    window.initSidebarItems = items => {
         const sidebar = document.getElementsByClassName("sidebar-elems")[0];
         let others;
         const current = window.sidebarCurrent;
@@ -616,7 +729,7 @@ function hideThemeButtonState() {
         }
     };
 
-    window.register_implementors = function(imp) {
+    window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
         const inlined_types = new Set();
@@ -627,12 +740,12 @@ function hideThemeButtonState() {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
+            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
                 }
-                aliases.split(",").forEach(function(alias) {
+                aliases.split(",").forEach(alias => {
                     inlined_types.add(alias);
                 });
             });
@@ -666,7 +779,7 @@ function hideThemeButtonState() {
                 addClass(code, "code-header");
                 addClass(code, "in-band");
 
-                onEachLazy(code.getElementsByTagName("a"), function(elem) {
+                onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
                     if (href && href.indexOf("http") !== 0) {
@@ -711,7 +824,7 @@ function hideThemeButtonState() {
         let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
             removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
                 if (!hasClass(e, "type-contents-toggle")) {
                     e.open = true;
                 }
@@ -719,7 +832,7 @@ function hideThemeButtonState() {
             innerToggle.title = "collapse all docs";
         } else {
             addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
                 if (e.parentNode.id !== "implementations-list" ||
                     (!hasClass(e, "implementors-toggle") &&
                      !hasClass(e, "type-contents-toggle")))
@@ -731,10 +844,6 @@ function hideThemeButtonState() {
             innerToggle.title = "expand all docs";
         }
         innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
-    }
-
-    function insertAfter(newNode, referenceNode) {
-        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
 
     (function() {
@@ -750,7 +859,7 @@ function hideThemeButtonState() {
         function setImplementorsTogglesOpen(id, open) {
             const list = document.getElementById(id);
             if (list !== null) {
-                onEachLazy(list.getElementsByClassName("implementors-toggle"), function(e) {
+                onEachLazy(list.getElementsByClassName("implementors-toggle"), e => {
                     e.open = open;
                 });
             }
@@ -761,7 +870,7 @@ function hideThemeButtonState() {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
-        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function (e) {
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
             }
@@ -779,9 +888,9 @@ function hideThemeButtonState() {
 
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        let lineNumbersFunc = function() {};
+        let lineNumbersFunc = () => {};
         if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = function(x) {
+            lineNumbersFunc = x => {
                 const count = x.textContent.split("\n").length;
                 const elems = [];
                 for (let i = 0; i < count; ++i) {
@@ -793,7 +902,7 @@ function hideThemeButtonState() {
                 x.parentNode.insertBefore(node, x);
             };
         }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), e => {
             if (hasClass(e, "compile_fail")) {
                 e.addEventListener("mouseover", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
@@ -824,34 +933,34 @@ function hideThemeButtonState() {
             elem.addEventListener("click", f);
         }
     }
-    handleClick("help-button", function(ev) {
+    handleClick("help-button", ev => {
         displayHelp(true, ev);
     });
-    handleClick(MAIN_ID, function() {
+    handleClick(MAIN_ID, () => {
         hideSidebar();
     });
 
-    onEachLazy(document.getElementsByTagName("a"), function(el) {
+    onEachLazy(document.getElementsByTagName("a"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
         // the height of the document so we wind up scrolled to the wrong place.
         if (el.hash) {
-            el.addEventListener("click", function() {
+            el.addEventListener("click", () => {
                 expandSection(el.hash.slice(1));
                 hideSidebar();
             });
         }
     });
 
-    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), function(el) {
-        el.addEventListener("click", function(e) {
-            if (e.target.tagName != "SUMMARY" && e.target.tagName != "A") {
+    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), el => {
+        el.addEventListener("click", e => {
+            if (e.target.tagName !== "SUMMARY" && e.target.tagName !== "A") {
                 e.preventDefault();
             }
         });
     });
 
-    onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
+    onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
             this.getElementsByClassName('notable-traits-tooltiptext')[0]
                 .classList.toggle("force-tooltip");
@@ -860,7 +969,7 @@ function hideThemeButtonState() {
 
     const sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
     if (sidebar_menu_toggle) {
-        sidebar_menu_toggle.addEventListener("click", function() {
+        sidebar_menu_toggle.addEventListener("click", () => {
             const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
                 addClass(sidebar, "shown");
@@ -870,12 +979,12 @@ function hideThemeButtonState() {
         });
     }
 
-    let buildHelperPopup = function() {
+    let buildHelperPopup = () => {
         const popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
 
-        popup.addEventListener("click", function(ev) {
+        popup.addEventListener("click", ev => {
             if (ev.target === popup) {
                 // Clicked the blurred zone outside the help popup; dismiss help.
                 displayHelp(false, ev);
@@ -898,14 +1007,10 @@ function hideThemeButtonState() {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(function(x) {
-            return "<dt>" +
-                x[0].split(" ")
-                    .map(function(y, index) {
-                        return (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ";
-                    })
-                    .join("") + "</dt><dd>" + x[1] + "</dd>";
-        }).join("");
+        ].map(x => "<dt>" +
+            x[0].split(" ")
+                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ")
+                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
         const div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
@@ -923,9 +1028,7 @@ function hideThemeButtonState() {
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
-        ].map(function(x) {
-            return "<p>" + x + "</p>";
-        }).join("");
+        ].map(x => "<p>" + x + "</p>").join("");
         const div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
@@ -945,7 +1048,7 @@ function hideThemeButtonState() {
         popup.appendChild(container);
         insertAfter(popup, document.querySelector("main"));
         // So that it's only built once and then it'll do nothing when called!
-        buildHelperPopup = function() {};
+        buildHelperPopup = () => {};
     };
 
     onHashChange(null);
@@ -956,11 +1059,11 @@ function hideThemeButtonState() {
 (function () {
     let reset_button_timeout = null;
 
-    window.copy_path = function(but) {
+    window.copy_path = but => {
         const parent = but.parentElement;
         const path = [];
 
-        onEach(parent.childNodes, function(child) {
+        onEach(parent.childNodes, child => {
             if (child.tagName === 'A') {
                 path.push(child.textContent);
             }
@@ -986,7 +1089,7 @@ function hideThemeButtonState() {
             tmp = document.createTextNode('✓');
             but.appendChild(tmp);
         } else {
-            onEachLazy(but.childNodes, function(e) {
+            onEachLazy(but.childNodes, e => {
                 if (e.nodeType === Node.TEXT_NODE) {
                     tmp = e;
                     return true;

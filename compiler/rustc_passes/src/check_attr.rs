@@ -100,6 +100,7 @@ impl CheckAttrVisitor<'_> {
                 sym::allow_internal_unstable => {
                     self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
                 }
+                sym::debugger_visualizer => self.check_debugger_visualizer(&attr, target),
                 sym::rustc_allow_const_fn_unstable => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
                 }
@@ -1858,6 +1859,65 @@ impl CheckAttrVisitor<'_> {
                 false
             }
         }
+    }
+
+    /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
+    fn check_debugger_visualizer(&self, attr: &Attribute, target: Target) -> bool {
+        match target {
+            Target::Mod => {}
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a module")
+                    .emit();
+                return false;
+            }
+        }
+
+        let hints = match attr.meta_item_list() {
+            Some(meta_item_list) => meta_item_list,
+            None => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        let hint = match hints.len() {
+            1 => &hints[0],
+            _ => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        if !hint.has_name(sym::natvis_file) {
+            self.emit_debugger_visualizer_err(attr);
+            return false;
+        }
+
+        let meta_item = match hint.meta_item() {
+            Some(meta_item) => meta_item,
+            None => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        match (meta_item.name_or_empty(), meta_item.value_str()) {
+            (sym::natvis_file, Some(_)) => true,
+            (_, _) => {
+                self.emit_debugger_visualizer_err(attr);
+                false
+            }
+        }
+    }
+
+    fn emit_debugger_visualizer_err(&self, attr: &Attribute) {
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "invalid argument")
+            .note(r#"expected: `natvis_file = "..."`"#)
+            .emit();
     }
 
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.

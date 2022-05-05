@@ -9,8 +9,8 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-#![feature(nll)]
-#![feature(bool_to_option)]
+// We want to be able to build this crate with a stable compiler, so no
+// `#![feature]` attributes should be added.
 
 pub use Alignment::*;
 pub use Count::*;
@@ -22,7 +22,19 @@ use std::iter;
 use std::str;
 use std::string;
 
-use rustc_span::{InnerSpan, Symbol};
+// Note: copied from rustc_span
+/// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct InnerSpan {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl InnerSpan {
+    pub fn new(start: usize, end: usize) -> InnerSpan {
+        InnerSpan { start, end }
+    }
+}
 
 /// The type of format string that we are parsing.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -57,7 +69,7 @@ pub enum Piece<'a> {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
-    pub position: Position,
+    pub position: Position<'a>,
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
@@ -72,11 +84,11 @@ pub struct FormatSpec<'a> {
     /// Packed version of various flags provided.
     pub flags: u32,
     /// The integer precision to use.
-    pub precision: Count,
+    pub precision: Count<'a>,
     /// The span of the precision formatting flag (for diagnostics).
     pub precision_span: Option<InnerSpan>,
     /// The string width requested for the resulting format.
-    pub width: Count,
+    pub width: Count<'a>,
     /// The span of the width formatting flag (for diagnostics).
     pub width_span: Option<InnerSpan>,
     /// The descriptor string representing the name of the format desired for
@@ -89,16 +101,16 @@ pub struct FormatSpec<'a> {
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Position {
+pub enum Position<'a> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(Symbol, InnerSpan),
+    ArgumentNamed(&'a str, InnerSpan),
 }
 
-impl Position {
+impl Position<'_> {
     pub fn index(&self) -> Option<usize> {
         match self {
             ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
@@ -143,11 +155,11 @@ pub enum Flag {
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Count {
+pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(usize),
     /// The count is specified by the argument with the given name.
-    CountIsName(Symbol, InnerSpan),
+    CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is implied and cannot be explicitly specified.
@@ -489,7 +501,7 @@ impl<'a> Parser<'a> {
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position> {
+    fn position(&mut self) -> Option<Position<'a>> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i))
         } else {
@@ -498,7 +510,7 @@ impl<'a> Parser<'a> {
                     let word = self.word();
                     let end = start + word.len();
                     let span = self.to_span_index(start).to(self.to_span_index(end));
-                    Some(ArgumentNamed(Symbol::intern(word), span))
+                    Some(ArgumentNamed(word, span))
                 }
 
                 // This is an `ArgumentNext`.
@@ -651,7 +663,7 @@ impl<'a> Parser<'a> {
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {
+    fn count(&mut self, start: usize) -> (Count<'a>, Option<InnerSpan>) {
         if let Some(i) = self.integer() {
             if let Some(end) = self.consume_pos('$') {
                 let span = self.to_span_index(start).to(self.to_span_index(end + 1));
@@ -667,7 +679,7 @@ impl<'a> Parser<'a> {
                 (CountImplied, None)
             } else if let Some(end) = self.consume_pos('$') {
                 let span = self.to_span_index(start + 1).to(self.to_span_index(end));
-                (CountIsName(Symbol::intern(word), span), None)
+                (CountIsName(word, span), None)
             } else {
                 self.cur = tmp;
                 (CountImplied, None)
@@ -723,7 +735,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        found.then_some(cur)
+        if found { Some(cur) } else { None }
     }
 }
 

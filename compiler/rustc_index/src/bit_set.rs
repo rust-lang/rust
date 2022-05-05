@@ -479,6 +479,11 @@ impl<T: Idx> ChunkedBitSet<T> {
         }
     }
 
+    #[inline]
+    pub fn iter(&self) -> ChunkedBitIter<'_, T> {
+        ChunkedBitIter::new(self)
+    }
+
     /// Insert `elem`. Returns whether the set has changed.
     pub fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -694,6 +699,49 @@ impl<T> Clone for ChunkedBitSet<T> {
         debug_assert_eq!(self.chunks.len(), from.chunks.len());
 
         self.chunks.clone_from(&from.chunks)
+    }
+}
+
+pub struct ChunkedBitIter<'a, T: Idx> {
+    index: usize,
+    bitset: &'a ChunkedBitSet<T>,
+}
+
+impl<'a, T: Idx> ChunkedBitIter<'a, T> {
+    #[inline]
+    fn new(bitset: &'a ChunkedBitSet<T>) -> ChunkedBitIter<'a, T> {
+        ChunkedBitIter { index: 0, bitset }
+    }
+}
+
+impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        while self.index < self.bitset.domain_size() {
+            let elem = T::new(self.index);
+            let chunk = &self.bitset.chunks[chunk_index(elem)];
+            match &chunk {
+                Zeros(chunk_domain_size) => {
+                    self.index += *chunk_domain_size as usize;
+                }
+                Ones(_chunk_domain_size) => {
+                    self.index += 1;
+                    return Some(elem);
+                }
+                Mixed(_chunk_domain_size, _, words) => loop {
+                    let elem = T::new(self.index);
+                    self.index += 1;
+                    let (word_index, mask) = chunk_word_index_and_mask(elem);
+                    if (words[word_index] & mask) != 0 {
+                        return Some(elem);
+                    }
+                    if self.index % CHUNK_BITS == 0 {
+                        break;
+                    }
+                },
+            }
+        }
+        None
     }
 }
 

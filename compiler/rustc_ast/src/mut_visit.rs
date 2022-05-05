@@ -370,21 +370,12 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             visit_delim_span(dspan, vis);
             visit_tts(tokens, vis);
         }
-        MacArgs::Eq(eq_span, token) => {
+        MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => {
             vis.visit_span(eq_span);
-            if T::VISIT_TOKENS {
-                visit_token(token, vis);
-            } else {
-                // The value in `#[key = VALUE]` must be visited as an expression for backward
-                // compatibility, so that macros can be expanded in that position.
-                match &mut token.kind {
-                    token::Interpolated(nt) => match Lrc::make_mut(nt) {
-                        token::NtExpr(expr) => vis.visit_expr(expr),
-                        t => panic!("unexpected token in key-value attribute: {:?}", t),
-                    },
-                    t => panic!("unexpected token in key-value attribute: {:?}", t),
-                }
-            }
+            vis.visit_expr(expr);
+        }
+        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            unreachable!("in literal form when visiting mac args eq: {:?}", lit)
         }
     }
 }
@@ -738,7 +729,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
-            visit_interpolated(&mut nt, vis);
+            visit_nonterminal(&mut nt, vis);
         }
         _ => {}
     }
@@ -769,7 +760,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // contain multiple items, but decided against it when I looked at
 // `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
-pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
+pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
         token::NtItem(item) => visit_clobber(item, |item| {
             // This is probably okay, because the only visitors likely to
