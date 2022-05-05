@@ -706,7 +706,7 @@ impl<'hir> WherePredicate<'hir> {
 
     pub fn in_where_clause(&self) -> bool {
         match self {
-            WherePredicate::BoundPredicate(p) => p.in_where_clause,
+            WherePredicate::BoundPredicate(p) => p.origin == PredicateOrigin::WhereClause,
             WherePredicate::RegionPredicate(p) => p.in_where_clause,
             WherePredicate::EqPredicate(_) => false,
         }
@@ -721,11 +721,19 @@ impl<'hir> WherePredicate<'hir> {
     }
 }
 
+#[derive(Debug, HashStable_Generic, PartialEq, Eq)]
+pub enum PredicateOrigin {
+    WhereClause,
+    GenericParam,
+    ImplTrait,
+}
+
 /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereBoundPredicate<'hir> {
     pub span: Span,
-    pub in_where_clause: bool,
+    /// Origin of the predicate.
+    pub origin: PredicateOrigin,
     /// Any generics from a `for` binding.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
     /// The type being bounded.

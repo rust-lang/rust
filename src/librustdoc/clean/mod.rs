@@ -16,6 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::PredicateOrigin;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
@@ -493,7 +494,7 @@ fn clean_generic_param(
             let bounds = if let Some(generics) = generics {
                 generics
                     .bounds_for_param(did)
-                    .filter(|bp| !bp.in_where_clause)
+                    .filter(|bp| bp.origin != PredicateOrigin::WhereClause)
                     .flat_map(|bp| bp.bounds)
                     .filter_map(|x| x.clean(cx))
                     .collect()

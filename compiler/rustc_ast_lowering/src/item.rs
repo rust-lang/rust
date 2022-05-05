@@ -11,6 +11,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::utils::NtToTokenstream;
 use rustc_session::Session;
@@ -1346,7 +1347,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut predicates = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
             let bounds = self.lower_param_bounds(&param.bounds, itctx.reborrow());
-            self.lower_generic_bound_predicate(param.ident, param.id, &param.kind, bounds)
+            self.lower_generic_bound_predicate(
+                param.ident,
+                param.id,
+                &param.kind,
+                bounds,
+                PredicateOrigin::GenericParam,
+            )
         }));
         predicates.extend(
             generics
@@ -1380,6 +1387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: &GenericParamKind,
         bounds: &'hir [hir::GenericBound<'hir>],
+        origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
         if bounds.is_empty() {
@@ -1419,7 +1427,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     bounds,
                     span,
                     bound_generic_params: &[],
-                    in_where_clause: false,
+                    origin,
                 }))
             }
             GenericParamKind::Lifetime => {
@@ -1458,7 +1466,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 })),
                 span: self.lower_span(span),
-                in_where_clause: true,
+                origin: PredicateOrigin::WhereClause,
             }),
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,

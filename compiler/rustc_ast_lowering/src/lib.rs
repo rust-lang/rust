@@ -1298,6 +1298,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             def_node_id,
                             &GenericParamKind::Type { default: None },
                             hir_bounds,
+                            hir::PredicateOrigin::ImplTrait,
                         ) {
                             in_band_ty_bounds.push(preds)
                         }
