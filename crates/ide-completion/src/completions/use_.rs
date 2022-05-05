@@ -19,7 +19,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
     };
 
     match qualifier {
-        Some(PathQualifierCtx { path, resolution, is_super_chain, use_tree_parent }) => {
+        Some(PathQualifierCtx { path, resolution, is_super_chain, use_tree_parent, .. }) => {
             if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }

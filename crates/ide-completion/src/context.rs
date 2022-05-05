@@ -75,6 +75,7 @@ pub(crate) struct PathCompletionCtx {
     // FIXME: use this
     /// The parent of the path we are completing.
     pub(super) parent: Option<ast::Path>,
+    // FIXME: This should be PathKind, the none case should never occur
     pub(super) kind: Option<PathKind>,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
@@ -91,6 +92,8 @@ pub(crate) struct PathQualifierCtx {
     pub(crate) is_super_chain: bool,
     /// Whether the qualifier comes from a use tree parent or not
     pub(crate) use_tree_parent: bool,
+    /// <_>
+    pub(crate) is_infer_qualifier: bool,
 }
 
 #[derive(Debug)]
@@ -376,6 +379,15 @@ impl<'a> CompletionContext<'a> {
             Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
             None => false,
         }
+    }
+
+    /// Returns the traits in scope, with the [`Drop`] trait removed.
+    pub(crate) fn traits_in_scope(&self) -> hir::VisibleTraits {
+        let mut traits_in_scope = self.scope.visible_traits();
+        if let Some(drop) = self.famous_defs().core_ops_Drop() {
+            traits_in_scope.0.remove(&drop.into());
+        }
+        traits_in_scope
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
@@ -1046,7 +1058,24 @@ impl<'a> CompletionContext<'a> {
                 let res = sema.resolve_path(&path);
                 let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
                     .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-                PathQualifierCtx { path, resolution: res, is_super_chain, use_tree_parent }
+
+                // `<_>::$0`
+                let is_infer_qualifier = path.qualifier().is_none()
+                    && matches!(
+                        path.segment().and_then(|it| it.kind()),
+                        Some(ast::PathSegmentKind::Type {
+                            type_ref: Some(ast::Type::InferType(_)),
+                            trait_ref: None,
+                        })
+                    );
+
+                PathQualifierCtx {
+                    path,
+                    resolution: res,
+                    is_super_chain,
+                    use_tree_parent,
+                    is_infer_qualifier,
+                }
             });
             return Some((path_ctx, pat_ctx));
         }

@@ -13,7 +13,6 @@ pub(crate) mod lifetime;
 pub(crate) mod mod_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;
-pub(crate) mod qualified_path;
 pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod trait_impl;

@@ -88,7 +88,7 @@ pub use crate::{
         UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
-    semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo},
+    semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
 };
 
 // Be careful with these re-exports.

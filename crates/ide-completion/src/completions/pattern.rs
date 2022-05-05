@@ -163,12 +163,11 @@ fn pattern_path_completion(
                         _ => return,
                     };
 
-                    let traits_in_scope = ctx.scope.visible_traits();
                     let mut seen = FxHashSet::default();
                     ty.iterate_path_candidates(
                         ctx.db,
                         &ctx.scope,
-                        &traits_in_scope,
+                        &ctx.scope.visible_traits().0,
                         Some(ctx.module),
                         None,
                         |item| {

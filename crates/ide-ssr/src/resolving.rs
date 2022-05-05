@@ -230,7 +230,7 @@ impl<'db> ResolutionScope<'db> {
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 &self.scope,
-                &self.scope.visible_traits(),
+                &self.scope.visible_traits().0,
                 Some(module),
                 None,
                 |assoc_item| {

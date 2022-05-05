@@ -148,14 +148,13 @@ fn is_ref_and_impls_iter_method(
     let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();
     let scope = sema.scope(iterable.syntax())?;
     let krate = scope.krate();
-    let traits_in_scope = scope.visible_traits();
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
 
     let has_wanted_method = ty
         .iterate_method_candidates(
             sema.db,
             &scope,
-            &traits_in_scope,
+            &scope.visible_traits().0,
             None,
             Some(&wanted_method),
             |func| {

@@ -1370,10 +1370,10 @@ impl<'a> SemanticsScope<'a> {
         &self.resolver
     }
 
-    /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
-    pub fn visible_traits(&self) -> FxHashSet<TraitId> {
+    /// Note: `VisibleTraits` should be treated as an opaque type, passed into `Type
+    pub fn visible_traits(&self) -> VisibleTraits {
         let resolver = &self.resolver;
-        resolver.traits_in_scope(self.db.upcast())
+        VisibleTraits(resolver.traits_in_scope(self.db.upcast()))
     }
 
     pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
@@ -1424,3 +1424,5 @@ impl<'a> SemanticsScope<'a> {
         )
     }
 }
+
+pub struct VisibleTraits(pub FxHashSet<TraitId>);
