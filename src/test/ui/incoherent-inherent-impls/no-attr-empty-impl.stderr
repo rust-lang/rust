@@ -7,7 +7,7 @@ LL | impl extern_crate::StructWithAttr {}
    = note: define and implement a trait or new type instead
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/no-attr-empty-impl.rs:6:1
+  --> $DIR/no-attr-empty-impl.rs:7:1
    |
 LL | impl extern_crate::StructNoAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate.
@@ -15,7 +15,7 @@ LL | impl extern_crate::StructNoAttr {}
    = note: define and implement a trait or new type instead
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/no-attr-empty-impl.rs:8:1
+  --> $DIR/no-attr-empty-impl.rs:10:1
    |
 LL | impl extern_crate::EnumWithAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate.
@@ -23,7 +23,7 @@ LL | impl extern_crate::EnumWithAttr {}
    = note: define and implement a trait or new type instead
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/no-attr-empty-impl.rs:10:1
+  --> $DIR/no-attr-empty-impl.rs:13:1
    |
 LL | impl extern_crate::EnumNoAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate.
@@ -31,7 +31,7 @@ LL | impl extern_crate::EnumNoAttr {}
    = note: define and implement a trait or new type instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/no-attr-empty-impl.rs:12:6
+  --> $DIR/no-attr-empty-impl.rs:16:6
    |
 LL | impl f32 {}
    |      ^^^

@@ -149,7 +149,7 @@ impl<'tcx> InherentCollect<'tcx> {
                     self.tcx.sess,
                     item.span,
                     E0390,
-                    "cannot define inherent `impl` for a type outside of crate where the type is defined",
+                    "cannot define inherent `impl` for a type outside of the crate where the type is defined",
                 )
                 .help(INTO_DEFINING_CRATE)
                 .span_help(item.span, ADD_ATTR_TO_TY)
@@ -166,7 +166,7 @@ impl<'tcx> InherentCollect<'tcx> {
                         self.tcx.sess,
                         item.span,
                         E0390,
-                        "cannot define inherent `impl` for a type outside of crate where the type is defined",
+                        "cannot define inherent `impl` for a type outside of the crate where the type is defined",
                     )
                     .help(INTO_DEFINING_CRATE)
                     .span_help(impl_item.span, ADD_ATTR)
