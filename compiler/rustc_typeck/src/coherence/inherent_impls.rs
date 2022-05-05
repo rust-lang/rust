@@ -122,6 +122,8 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
 const INTO_CORE: &str = "consider moving this inherent impl into `core` if possible";
 const INTO_DEFINING_CRATE: &str =
     "consider moving this inherent impl into the crate defining the type if possible";
+const ADD_ATTR_TO_TY: &str = "alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type \
+     and `#[rustc_allow_incoherent_impl]` to the relevant impl items";
 const ADD_ATTR: &str =
     "alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items";
 
@@ -137,13 +139,28 @@ impl<'tcx> InherentCollect<'tcx> {
             return;
         }
 
-        if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-            let hir::ItemKind::Impl(hir::Impl { items, .. }) = item.kind else {
+        if self.tcx.features().rustc_attrs {
+            let hir::ItemKind::Impl(&hir::Impl { items, .. }) = item.kind else {
                 bug!("expected `impl` item: {:?}", item);
             };
 
-            for item in items {
-                if !self.tcx.has_attr(item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
+            if !self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
+                struct_span_err!(
+                    self.tcx.sess,
+                    item.span,
+                    E0390,
+                    "cannot define inherent `impl` for a type outside of crate where the type is defined",
+                )
+                .help(INTO_DEFINING_CRATE)
+                .span_help(item.span, ADD_ATTR_TO_TY)
+                .emit();
+                return;
+            }
+
+            for impl_item in items {
+                if !self
+                    .tcx
+                    .has_attr(impl_item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
                 {
                     struct_span_err!(
                         self.tcx.sess,
@@ -152,7 +169,7 @@ impl<'tcx> InherentCollect<'tcx> {
                         "cannot define inherent `impl` for a type outside of crate where the type is defined",
                     )
                     .help(INTO_DEFINING_CRATE)
-                    .span_help(item.span, ADD_ATTR)
+                    .span_help(impl_item.span, ADD_ATTR)
                     .emit();
                     return;
                 }
