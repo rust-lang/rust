@@ -219,9 +219,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        run_early_pass!(self, check_generic_param, param);
-        self.check_id(param.id);
-        ast_visit::walk_generic_param(self, param);
+        self.with_lint_attrs(param.id, &param.attrs, |cx| {
+            run_early_pass!(cx, check_generic_param, param);
+            ast_visit::walk_generic_param(cx, param);
+        });
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
