@@ -828,6 +828,7 @@ name = "core"
 version = "0.0.0"
 dependencies = [
  "rand 0.7.3",
+ "rand_xorshift",
 ]
 
 [[package]]

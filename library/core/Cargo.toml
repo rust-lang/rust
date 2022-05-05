@@ -25,6 +25,7 @@ test = true
 
 [dev-dependencies]
 rand = "0.7"
+rand_xorshift = "0.2"
 
 [features]
 # Make panics and failed asserts immediately abort without formatting any message
