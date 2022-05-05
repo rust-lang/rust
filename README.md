@@ -361,9 +361,10 @@ Moreover, Miri recognizes some environment variables:
   checkout. Note that changing files in that directory does not automatically
   trigger a re-build of the standard library; you have to clear the Miri build
   cache manually (on Linux, `rm -rf ~/.cache/miri`).
-* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
-  indicates the sysroot to use.  To do the same thing with `miri`
-  directly, use the `--sysroot` flag.
+* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite) indicates the
+  sysroot to use. Only set this if you do not want to use the automatically
+  created sysroot. (The `miri` driver sysroot is controlled via the `--sysroot`
+  flag instead.)
 * `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
