@@ -17,19 +17,24 @@ pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
     T![true],
     T![false],
     INT_NUMBER,
-    FLOAT_NUMBER_PART,
+    FLOAT_NUMBER_START_0,
+    FLOAT_NUMBER_START_1,
+    FLOAT_NUMBER_START_2,
     BYTE,
     CHAR,
     STRING,
     BYTE_STRING,
 ]);
 
+pub(crate) const FLOAT_LITERAL_FIRST: TokenSet =
+    TokenSet::new(&[FLOAT_NUMBER_START_0, FLOAT_NUMBER_START_1, FLOAT_NUMBER_START_2]);
+
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     if !p.at_ts(LITERAL_FIRST) {
         return None;
     }
     let m = p.start();
-    if p.at(FLOAT_NUMBER_PART) {
+    if p.at_ts(FLOAT_LITERAL_FIRST) {
         float_literal(p);
     } else {
         // Everything else is just one token.
@@ -38,15 +43,30 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     Some(m.complete(p, LITERAL))
 }
 
+// test float_literal
+// fn f() {
+//     0.0;
+//     1.;
+//     0e0;
+//     0e0f32;
+//     1.23f64;
+// }
 pub(crate) fn float_literal(p: &mut Parser) {
-    // Floats can be up to 3 tokens: 2 `FLOAT_NUMBER_PART`s separated by 1 `DOT`
+    // Floats can be up to 3 tokens. The first token indicates how many there are.
+    // We remap the first token to `FLOAT_NUMBER_PART` so that no subsequent code has to deal with
+    // this awful, awful hack.
     let f = p.start();
-    p.bump(FLOAT_NUMBER_PART);
-    if p.at(DOT) {
+    if p.at(FLOAT_NUMBER_START_0) {
+        p.bump_remap(FLOAT_NUMBER_PART);
+    } else if p.at(FLOAT_NUMBER_START_1) {
+        p.bump_remap(FLOAT_NUMBER_PART);
         p.bump(DOT);
-        if p.at(FLOAT_NUMBER_PART) {
-            p.bump(FLOAT_NUMBER_PART);
-        }
+    } else if p.at(FLOAT_NUMBER_START_2) {
+        p.bump_remap(FLOAT_NUMBER_PART);
+        p.bump(DOT);
+        p.bump(FLOAT_NUMBER_PART);
+    } else {
+        unreachable!();
     }
     f.complete(p, FLOAT_LITERAL);
 }

@@ -457,7 +457,7 @@ pub(crate) fn token_tree(p: &mut Parser) {
                 return;
             }
             T![')'] | T![']'] => p.err_and_bump("unmatched brace"),
-            FLOAT_NUMBER_PART => {
+            FLOAT_NUMBER_START_0 | FLOAT_NUMBER_START_1 | FLOAT_NUMBER_START_2 => {
                 float_literal(p);
             }
             _ => p.bump_any(),

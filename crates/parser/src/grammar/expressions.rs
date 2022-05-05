@@ -3,7 +3,7 @@ mod atom;
 use super::*;
 
 pub(crate) use self::atom::{block_expr, match_arm_list};
-pub(super) use self::atom::{float_literal, literal, LITERAL_FIRST};
+pub(super) use self::atom::{float_literal, literal, FLOAT_LITERAL_FIRST, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub(super) enum Semicolon {
@@ -452,6 +452,9 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo();
 //     y.bar::<T>(1, 2,);
+//
+//     0e0.sin();
+//     0e0f32.sin();
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
@@ -477,7 +480,7 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);
     p.bump(T![.]);
-    if p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) {
+    if p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST) {
         name_ref_or_index(p);
     } else {
         p.error("expected field name or number");

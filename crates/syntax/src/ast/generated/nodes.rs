@@ -1090,10 +1090,19 @@ pub struct FloatLiteral {
     pub(crate) syntax: SyntaxNode,
 }
 impl FloatLiteral {
+    pub fn float_number_start_0_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_0])
+    }
+    pub fn float_number_start_1_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_1])
+    }
+    pub fn float_number_start_2_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![float_number_start_2])
+    }
+    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn float_number_part_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![float_number_part])
     }
-    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

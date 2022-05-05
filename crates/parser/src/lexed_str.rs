@@ -240,11 +240,16 @@ impl<'a> Converter<'a> {
 
                 // In order to correctly parse nested tuple accesses like `tup.0.0`, where the `0.0`
                 // is lexed as a float, we split floats that contain a `.` into 3 tokens.
+                // To ensure that later stages can always reconstruct the token correctly, the first
+                // token in the sequence indicates the number of following tokens that are part of
+                // the float literal.
                 if let Some((before, after)) = token_text.split_once('.') {
                     let err = if err.is_empty() { None } else { Some(err) };
-                    if !before.is_empty() {
-                        self.push(FLOAT_NUMBER_PART, before.len(), None);
-                    }
+
+                    assert!(!before.is_empty());
+                    let tok =
+                        if after.is_empty() { FLOAT_NUMBER_START_1 } else { FLOAT_NUMBER_START_2 };
+                    self.push(tok, before.len(), None);
                     self.push(DOT, 1, None);
                     if !after.is_empty() {
                         self.push(FLOAT_NUMBER_PART, after.len(), err);
@@ -252,7 +257,7 @@ impl<'a> Converter<'a> {
                     return;
                 }
 
-                FLOAT_NUMBER_PART
+                FLOAT_NUMBER_START_0
             }
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {

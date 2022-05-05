@@ -373,7 +373,9 @@ Literal =
   )
 
 FloatLiteral =
-  'float_number_part'
+  'float_number_start_0'?
+  'float_number_start_1'?
+  'float_number_start_2'?
   '.'?
   'float_number_part'?
 

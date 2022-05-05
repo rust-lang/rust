@@ -463,6 +463,9 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
             [float_number_part] => { $crate::SyntaxKind::FLOAT_NUMBER_PART };
+            [float_number_start_0] => { $crate::SyntaxKind::FLOAT_NUMBER_START_0 };
+            [float_number_start_1] => { $crate::SyntaxKind::FLOAT_NUMBER_START_1 };
+            [float_number_start_2] => { $crate::SyntaxKind::FLOAT_NUMBER_START_2 };
         }
         pub use T;
     };
