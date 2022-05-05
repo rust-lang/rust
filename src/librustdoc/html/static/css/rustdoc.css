@@ -1333,6 +1333,11 @@ pre.rust {
 	border-top: 2px solid;
 }
 
+#titles > button:first-child:last-child {
+	margin-right: 1px;
+	width: calc(100% - 1px);
+}
+
 #titles > button:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
