@@ -78,18 +78,10 @@ fn complete_methods(
     mut f: impl FnMut(hir::Function),
 ) {
     let mut seen_methods = FxHashSet::default();
-    let mut traits_in_scope = ctx.scope.visible_traits();
-
-    // Remove drop from the environment as calling `Drop::drop` is not allowed
-    if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
-        cov_mark::hit!(dot_remove_drop_trait);
-        traits_in_scope.remove(&drop_trait.into());
-    }
-
     receiver.iterate_method_candidates(
         ctx.db,
         &ctx.scope,
-        &traits_in_scope,
+        &ctx.traits_in_scope().0,
         Some(ctx.module),
         None,
         |func| {
@@ -758,7 +750,6 @@ fn main() {
 
     #[test]
     fn postfix_drop_completion() {
-        cov_mark::check!(dot_remove_drop_trait);
         cov_mark::check!(postfix_drop_completion);
         check_edit(
             "drop",

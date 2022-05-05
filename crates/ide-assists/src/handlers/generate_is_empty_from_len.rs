@@ -95,10 +95,14 @@ fn get_impl_method(
 
     let scope = ctx.sema.scope(impl_.syntax())?;
     let ty = impl_def.self_ty(db);
-    let traits_in_scope = scope.visible_traits();
-    ty.iterate_method_candidates(db, &scope, &traits_in_scope, None, Some(fn_name), |func| {
-        Some(func)
-    })
+    ty.iterate_method_candidates(
+        db,
+        &scope,
+        &scope.visible_traits().0,
+        None,
+        Some(fn_name),
+        |func| Some(func),
+    )
 }
 
 #[cfg(test)]

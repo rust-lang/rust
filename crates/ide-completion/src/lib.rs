@@ -166,7 +166,6 @@ pub fn completions(
         completions::mod_::complete_mod(acc, ctx);
         completions::pattern::complete_pattern(acc, ctx);
         completions::postfix::complete_postfix(acc, ctx);
-        completions::qualified_path::complete_qualified_path(acc, ctx);
         completions::record::complete_record_literal(acc, ctx);
         completions::record::complete_record(acc, ctx);
         completions::snippet::complete_expr_snippet(acc, ctx);

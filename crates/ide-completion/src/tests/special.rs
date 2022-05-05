@@ -1,3 +1,5 @@
+//! Tests that don't fit into a specific category.
+
 use expect_test::{expect, Expect};
 
 use crate::tests::{check_edit, completion_list_no_kw};
@@ -180,4 +182,457 @@ pub mod prelude {
                 md std
             "#]],
     );
+}
+
+#[test]
+fn associated_item_visibility() {
+    check(
+        r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+
+impl S {
+    pub fn public_method() { }
+    fn private_method() { }
+    pub type PublicType = u32;
+    type PrivateType = u32;
+    pub const PUBLIC_CONST: u32 = 1;
+    const PRIVATE_CONST: u32 = 1;
+}
+
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo() { let _ = lib::S::$0 }
+"#,
+        expect![[r#"
+                ct PUBLIC_CONST    pub const PUBLIC_CONST: u32
+                fn public_method() fn()
+                ta PublicType      pub type PublicType = u32
+            "#]],
+    );
+}
+
+#[test]
+fn completes_union_associated_method() {
+    check(
+        r#"
+union U {};
+impl U { fn m() { } }
+
+fn foo() { let _ = U::$0 }
+"#,
+        expect![[r#"
+                fn m() fn()
+            "#]],
+    );
+}
+
+#[test]
+fn completes_trait_associated_method_1() {
+    check(
+        r#"
+trait Trait { fn m(); }
+
+fn foo() { let _ = Trait::$0 }
+"#,
+        expect![[r#"
+                fn m() (as Trait) fn()
+            "#]],
+    );
+}
+
+#[test]
+fn completes_trait_associated_method_2() {
+    check(
+        r#"
+trait Trait { fn m(); }
+
+struct S;
+impl Trait for S {}
+
+fn foo() { let _ = S::$0 }
+"#,
+        expect![[r#"
+                fn m() (as Trait) fn()
+            "#]],
+    );
+}
+
+#[test]
+fn completes_trait_associated_method_3() {
+    check(
+        r#"
+trait Trait { fn m(); }
+
+struct S;
+impl Trait for S {}
+
+fn foo() { let _ = <S as Trait>::$0 }
+"#,
+        expect![[r#"
+                fn m() (as Trait) fn()
+            "#]],
+    );
+}
+
+#[test]
+fn completes_ty_param_assoc_ty() {
+    check(
+        r#"
+trait Super {
+    type Ty;
+    const CONST: u8;
+    fn func() {}
+    fn method(&self) {}
+}
+
+trait Sub: Super {
+    type SubTy;
+    const C2: ();
+    fn subfunc() {}
+    fn submethod(&self) {}
+}
+
+fn foo<T: Sub>() { T::$0 }
+"#,
+        expect![[r#"
+                ct C2 (as Sub)           const C2: ()
+                ct CONST (as Super)      const CONST: u8
+                fn func() (as Super)     fn()
+                fn subfunc() (as Sub)    fn()
+                ta SubTy (as Sub)        type SubTy
+                ta Ty (as Super)         type Ty
+                me method(…) (as Super)  fn(&self)
+                me submethod(…) (as Sub) fn(&self)
+            "#]],
+    );
+}
+
+#[test]
+fn completes_self_param_assoc_ty() {
+    check(
+        r#"
+trait Super {
+    type Ty;
+    const CONST: u8 = 0;
+    fn func() {}
+    fn method(&self) {}
+}
+
+trait Sub: Super {
+    type SubTy;
+    const C2: () = ();
+    fn subfunc() {}
+    fn submethod(&self) {}
+}
+
+struct Wrap<T>(T);
+impl<T> Super for Wrap<T> {}
+impl<T> Sub for Wrap<T> {
+    fn subfunc() {
+        // Should be able to assume `Self: Sub + Super`
+        Self::$0
+    }
+}
+"#,
+        expect![[r#"
+                ct C2 (as Sub)           const C2: ()
+                ct CONST (as Super)      const CONST: u8
+                fn func() (as Super)     fn()
+                fn subfunc() (as Sub)    fn()
+                ta SubTy (as Sub)        type SubTy
+                ta Ty (as Super)         type Ty
+                me method(…) (as Super)  fn(&self)
+                me submethod(…) (as Sub) fn(&self)
+            "#]],
+    );
+}
+
+#[test]
+fn completes_type_alias() {
+    check(
+        r#"
+struct S;
+impl S { fn foo() {} }
+type T = S;
+impl T { fn bar() {} }
+
+fn main() { T::$0; }
+"#,
+        expect![[r#"
+                fn bar() fn()
+                fn foo() fn()
+            "#]],
+    );
+}
+
+#[test]
+fn completes_qualified_macros() {
+    check(
+        r#"
+#[macro_export]
+macro_rules! foo { () => {} }
+
+fn main() { let _ = crate::$0 }
+"#,
+        expect![[r#"
+                fn main()  fn()
+                ma foo!(…) macro_rules! foo
+            "#]],
+    );
+}
+
+#[test]
+fn does_not_complete_non_fn_macros() {
+    check(
+        r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro Clone {}
+}
+
+fn f() {m::$0}
+"#,
+        expect![[r#""#]],
+    );
+    check(
+        r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro bench {}
+}
+
+fn f() {m::$0}
+"#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
+fn completes_reexported_items_under_correct_name() {
+    check(
+        r#"
+fn foo() { self::m::$0 }
+
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
+        expect![[r#"
+                ct RIGHT_CONST
+                fn right_fn()  fn()
+                st RightType
+            "#]],
+    );
+
+    check_edit(
+        "RightType",
+        r#"
+fn foo() { self::m::$0 }
+
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
+        r#"
+fn foo() { self::m::RightType }
+
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
+    );
+}
+
+#[test]
+fn completes_in_simple_macro_call() {
+    check(
+        r#"
+macro_rules! m { ($e:expr) => { $e } }
+fn main() { m!(self::f$0); }
+fn foo() {}
+"#,
+        expect![[r#"
+                fn foo()  fn()
+                fn main() fn()
+            "#]],
+    );
+}
+
+#[test]
+fn function_mod_share_name() {
+    check(
+        r#"
+fn foo() { self::m::$0 }
+
+mod m {
+    pub mod z {}
+    pub fn z() {}
+}
+"#,
+        expect![[r#"
+                fn z() fn()
+                md z
+            "#]],
+    );
+}
+
+#[test]
+fn completes_hashmap_new() {
+    check(
+        r#"
+struct RandomState;
+struct HashMap<K, V, S = RandomState> {}
+
+impl<K, V> HashMap<K, V, RandomState> {
+    pub fn new() -> HashMap<K, V, RandomState> { }
+}
+fn foo() {
+    HashMap::$0
+}
+"#,
+        expect![[r#"
+                fn new() fn() -> HashMap<K, V, RandomState>
+            "#]],
+    );
+}
+
+#[test]
+fn completes_variant_through_self() {
+    check(
+        r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl Foo {
+    fn foo(self) {
+        Self::$0
+    }
+}
+"#,
+        expect![[r#"
+                ev Bar    Bar
+                ev Baz    Baz
+                me foo(…) fn(self)
+            "#]],
+    );
+}
+
+#[test]
+fn completes_primitive_assoc_const() {
+    cov_mark::check!(completes_primitive_assoc_const);
+    check(
+        r#"
+//- /lib.rs crate:lib deps:core
+fn f() {
+    u8::$0
+}
+
+//- /core.rs crate:core
+#[lang = "u8"]
+impl u8 {
+    pub const MAX: Self = 255;
+
+    pub fn func(self) {}
+}
+"#,
+        expect![[r#"
+                ct MAX     pub const MAX: Self
+                me func(…) fn(self)
+            "#]],
+    );
+}
+
+#[test]
+fn completes_variant_through_alias() {
+    cov_mark::check!(completes_variant_through_alias);
+    check(
+        r#"
+enum Foo {
+    Bar
+}
+type Foo2 = Foo;
+fn main() {
+    Foo2::$0
+}
+"#,
+        expect![[r#"
+                ev Bar Bar
+            "#]],
+    );
+}
+
+#[test]
+fn respects_doc_hidden2() {
+    cov_mark::check!(qualified_path_doc_hidden);
+    check(
+        r#"
+//- /lib.rs crate:lib deps:dep
+fn f() {
+    dep::$0
+}
+
+//- /dep.rs crate:dep
+#[doc(hidden)]
+#[macro_export]
+macro_rules! m {
+    () => {}
+}
+
+#[doc(hidden)]
+pub fn f() {}
+
+#[doc(hidden)]
+pub struct S;
+
+#[doc(hidden)]
+pub mod m {}
+            "#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
+fn type_anchor_empty() {
+    check(
+        r#"
+trait Foo {
+    fn foo() -> Self;
+}
+struct Bar;
+impl Foo for Bar {
+    fn foo() -> {
+        Bar
+    }
+}
+fn bar() -> Bar {
+    <_>::$0
+}
+"#,
+        expect![[r#"
+                fn foo() (as Foo) fn() -> Self
+            "#]],
+    )
 }
