@@ -435,7 +435,7 @@ Otherwise, have a great day =^.^=
                                 <button type="button" class="btn btn-default dropdown-toggle">
                                     Version
                                     <span id="version-filter-count" class="badge">
-                                        {{versionFilterCount(version_filters)}}
+                                        {{versionFilterCount(versionFilters)}}
                                     </span>
                                     <span class="caret"></span>
                                 </button>
@@ -447,7 +447,7 @@ Otherwise, have a great day =^.^=
                                         </label>
                                     </li>
                                     <li role="separator" class="divider"></li>
-                                    <li class="checkbox" ng-repeat="(filter, vars) in version_filters">
+                                    <li class="checkbox" ng-repeat="(filter, vars) in versionFilters">
                                         <label ng-attr-for="filter-{filter}">{{filter}}</label>
                                         <span>1.</span>
                                         <input type="text"
@@ -455,7 +455,7 @@ Otherwise, have a great day =^.^=
                                                 class="version-filter-input form-control filter-input"
                                                 maxlength="2"
                                                 placeholder="xx"
-                                                ng-model="version_filters[filter].minor_version"
+                                                ng-model="versionFilters[filter].minorVersion"
                                                 ng-model-options="{debounce: 50}" />
                                         <span>.0</span>
                                     </li>

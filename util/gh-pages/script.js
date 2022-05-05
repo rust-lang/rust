@@ -136,13 +136,11 @@
             };
             $scope.themes = THEMES_DEFAULT;
 
-            const DEFAULT_VERSION_FILTERS = {
-                "≥": { enabled: false, minor_version: "" },
-                "≤": { enabled: false, minor_version: "" },
-                "=": { enabled: false, minor_version: "" },
+            $scope.versionFilters = {
+                "≥": {enabled: false, minorVersion: ""},
+                "≤": {enabled: false, minorVersion: ""},
+                "=": {enabled: false, minorVersion: ""},
             };
-            // Weird workaround to get a copy of the object
-            $scope.version_filters = JSON.parse(JSON.stringify(DEFAULT_VERSION_FILTERS));
 
             $scope.selectTheme = function (theme) {
                 setTheme(theme, true);
@@ -171,7 +169,9 @@
             }
 
             $scope.clearVersionFilters = function () {
-                $scope.version_filters = JSON.parse(JSON.stringify(DEFAULT_VERSION_FILTERS));
+                for (let filter in $scope.versionFilters) {
+                    $scope.versionFilters[filter] = { enabled: false, minorVersion: "" };
+                }
             }
 
             $scope.versionFilterCount = function(obj) {
@@ -179,21 +179,21 @@
             }
 
             $scope.byVersion = function(lint) {
-                function validate_version_str(ver) {
+                function validateVersionStr(ver) {
                     return ver.length === 2 && !isNaN(ver);
                 }
 
-                let filters = $scope.version_filters;
+                let filters = $scope.versionFilters;
 
                 // Strip the "pre " prefix for pre 1.29.0 lints
-                let lint_version = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
-                let lint_minor_verison = lint_version.substring(2, 4);
+                let lintVersion = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
+                let lintMinorVersion = lintVersion.substring(2, 4);
 
                 for (const filter in filters) {
-                    let minor_version = filters[filter].minor_version;
+                    let minorVersion = filters[filter].minorVersion;
 
                     // Skip the work for version strings with invalid lengths or characters
-                    if (!validate_version_str(minor_version)) {
+                    if (!validateVersionStr(minorVersion)) {
                         filters[filter].enabled = false;
                         continue;
                     }
@@ -203,14 +203,14 @@
                     let result;
                     switch (filter) {
                         case "≥":
-                            result = (lint_minor_verison >= minor_version);
+                            result = (lintMinorVersion >= minorVersion);
                             break;
                         case "≤":
-                            result = (lint_minor_verison <= minor_version);
+                            result = (lintMinorVersion <= minorVersion);
                             break;
                         // "=" gets the highest priority, since all filters are inclusive
                         case "=":
-                            return (lint_minor_verison === minor_version);
+                            return (lintMinorVersion === minorVersion);
                         default:
                             return true
                     }
@@ -219,19 +219,21 @@
                         return false;
                     }
 
-                    let cmp_filter;
+                    let cmpFilter;
                     if (filter === "≥") {
-                        cmp_filter = "≤";
+                        cmpFilter = "≤";
                     } else {
-                        cmp_filter = "≥";
+                        cmpFilter = "≥";
                     }
 
-                    let cmp_minor_version = filters[cmp_filter].minor_version;
-                    if (!filters[cmp_filter].enabled || !validate_version_str(cmp_minor_version)) {
+                    let cmpMinorVersion = filters[cmpFilter].minorVersion;
+                    if (!validateVersionStr(cmpMinorVersion)) {
+                        filters[cmpFilter].enabled = false;
                         return true;
                     }
 
-                    return (cmp_filter === "≥") ? (lint_minor_verison > minor_version) : (lint_minor_verison < minor_version);
+                    filters[cmpFilter].enabled = true;
+                    return (cmpFilter === "≥") ? (lintMinorVersion >= cmpMinorVersion) : (lintMinorVersion <= cmpMinorVersion);
                 }
 
                 return true;
