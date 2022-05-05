@@ -4,7 +4,6 @@ use hir::ScopeDef;
 use syntax::{ast, AstNode};
 
 use crate::{
-    completions::module_or_fn_macro,
     context::{PathCompletionCtx, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
@@ -12,14 +11,15 @@ use crate::{
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_unqualified_path");
-    if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
+    if ctx.is_path_disallowed() || ctx.has_unfinished_impl_or_trait_prev_sibling() {
         return;
     }
-    match ctx.path_context {
+
+    match &ctx.path_context {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,
-            kind: None | Some(PathKind::Expr | PathKind::Type | PathKind::Item),
+            kind: None | Some(PathKind::Expr | PathKind::Type),
             ..
         }) => (),
         _ => return,
@@ -28,15 +28,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     acc.add_nameref_keywords(ctx);
 
     match &ctx.completion_location {
-        Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
-            // only show macros in {Assoc}ItemList
-            ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
-                }
-            });
-            return;
-        }
         Some(ImmediateLocation::TypeBound) => {
             ctx.process_all_names(&mut |name, res| {
                 let add_resolution = match res {

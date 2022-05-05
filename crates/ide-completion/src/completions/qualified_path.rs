@@ -5,14 +5,12 @@ use ide_db::FxHashSet;
 use syntax::ast;
 
 use crate::{
-    completions::module_or_fn_macro,
     context::{PathCompletionCtx, PathKind},
-    patterns::ImmediateLocation,
     CompletionContext, Completions,
 };
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
+    if ctx.is_path_disallowed() || ctx.has_unfinished_impl_or_trait_prev_sibling() {
         return;
     }
     if ctx.pattern_ctx.is_some() {
@@ -54,26 +52,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
 
-    match ctx.completion_location {
-        Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
-            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-                for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
-                    if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                        acc.add_resolution(ctx, name, def);
-                    }
-                }
-            }
-            return;
-        }
-        _ => (),
-    }
-
     match kind {
         Some(
             PathKind::Pat
             | PathKind::Attr { .. }
             | PathKind::Vis { .. }
             | PathKind::Use
+            | PathKind::Item
             | PathKind::Derive,
         ) => {
             return;

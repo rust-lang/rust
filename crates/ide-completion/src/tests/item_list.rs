@@ -15,7 +15,7 @@ fn in_mod_item_list() {
         expect![[r#"
             ma makro!(…)           macro_rules! makro
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw fn
@@ -24,10 +24,10 @@ fn in_mod_item_list() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw type
             kw union
@@ -48,7 +48,7 @@ fn in_source_file_item_list() {
             ma makro!(…)           macro_rules! makro
             md module
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw fn
@@ -57,10 +57,10 @@ fn in_source_file_item_list() {
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw type
             kw union
@@ -166,13 +166,13 @@ fn in_impl_assoc_item_list() {
             ma makro!(…)  macro_rules! makro
             md module
             kw const
-            kw crate
+            kw crate::
             kw fn
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw type
             kw unsafe
         "#]],
@@ -203,10 +203,10 @@ fn in_trait_assoc_item_list() {
             ma makro!(…) macro_rules! makro
             md module
             kw const
-            kw crate
+            kw crate::
             kw fn
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw type
             kw unsafe
         "#]],
@@ -240,13 +240,13 @@ impl Test for () {
             md module
             ta type Type1 =
             kw const
-            kw crate
+            kw crate::
             kw fn
             kw pub
             kw pub(crate)
             kw pub(super)
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw type
             kw unsafe
         "#]],

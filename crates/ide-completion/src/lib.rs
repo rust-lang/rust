@@ -155,6 +155,7 @@ pub fn completions(
     completions::flyimport::import_on_the_fly(&mut acc, &ctx);
     completions::fn_param::complete_fn_param(&mut acc, &ctx);
     completions::format_string::format_string(&mut acc, &ctx);
+    completions::item_list::complete_item_list(&mut acc, &ctx);
     completions::inferred_type(&mut acc, &ctx);
     completions::keyword::complete_expr_keyword(&mut acc, &ctx);
     completions::lifetime::complete_label(&mut acc, &ctx);
