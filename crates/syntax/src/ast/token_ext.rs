@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use rustc_lexer::unescape::{unescape_literal, Mode};
+use rustc_lexer::unescape::{unescape_byte, unescape_char, unescape_literal, Mode};
 
 use crate::{
     ast::{self, AstToken},
@@ -404,5 +404,37 @@ mod tests {
         check_string_value(r"\foobar", None);
         check_string_value(r"\nfoobar", "\nfoobar");
         check_string_value(r"C:\\Windows\\System32\\", "C:\\Windows\\System32\\");
+    }
+}
+
+impl ast::Char {
+    pub fn value(&self) -> Option<char> {
+        let mut text = self.text();
+        if text.starts_with('\'') {
+            text = &text[1..];
+        } else {
+            return None;
+        }
+        if text.ends_with('\'') {
+            text = &text[0..text.len() - 1];
+        }
+
+        unescape_char(text).ok()
+    }
+}
+
+impl ast::Byte {
+    pub fn value(&self) -> Option<u8> {
+        let mut text = self.text();
+        if text.starts_with("b\'") {
+            text = &text[2..];
+        } else {
+            return None;
+        }
+        if text.ends_with('\'') {
+            text = &text[0..text.len() - 1];
+        }
+
+        unescape_byte(text).ok()
     }
 }

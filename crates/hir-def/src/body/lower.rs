@@ -983,9 +983,11 @@ impl From<ast::LiteralKind> for Literal {
                 let text = s.value().map(Box::from).unwrap_or_else(Default::default);
                 Literal::String(text)
             }
-            LiteralKind::Byte => Literal::Uint(Default::default(), Some(BuiltinUint::U8)),
+            LiteralKind::Byte(b) => {
+                Literal::Uint(b.value().unwrap_or_default() as u128, Some(BuiltinUint::U8))
+            }
+            LiteralKind::Char(c) => Literal::Char(c.value().unwrap_or_default()),
             LiteralKind::Bool(val) => Literal::Bool(val),
-            LiteralKind::Char => Literal::Char(Default::default()),
         }
     }
 }

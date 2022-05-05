@@ -133,6 +133,48 @@ impl AstToken for FloatNumber {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Char {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Char {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Char {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CHAR }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Byte {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Byte {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Byte {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     pub(crate) syntax: SyntaxToken,
 }
