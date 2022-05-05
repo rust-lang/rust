@@ -39,6 +39,15 @@ fn should_not_help() {
     let _: Vec<_> = b.drain(0..a.len()).collect();
 }
 
+fn _closed_range(mut x: Vec<String>) {
+    let _: Vec<String> = x.drain(0..=x.len()).collect();
+}
+
+fn _with_mut(x: &mut Vec<String>, y: &mut VecDeque<String>) {
+    let _: Vec<String> = x.drain(..).collect();
+    let _: Vec<String> = y.drain(..).collect();
+}
+
 #[derive(Default)]
 struct Bomb {
     fire: Vec<u8>,

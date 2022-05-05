@@ -150,5 +150,14 @@ LL +         println!("!")
 LL +     }
    |
 
-error: aborting due to 7 previous errors
+error: this `else { if .. }` block can be collapsed
+  --> $DIR/collapsible_else_if.rs:97:10
+   |
+LL |       }else{
+   |  __________^
+LL | |         if false {}
+LL | |     }
+   | |_____^ help: collapse nested if block: `if false {}`
+
+error: aborting due to 8 previous errors
 

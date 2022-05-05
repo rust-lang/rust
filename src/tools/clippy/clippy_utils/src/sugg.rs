@@ -18,7 +18,7 @@ use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::convert::TryInto;
-use std::fmt::Display;
+use std::fmt::{Display, Write as _};
 use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
@@ -902,7 +902,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+                let _ = write!(self.suggestion_start, "{}&{}", start_snip, ident_str);
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
@@ -917,8 +917,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
                         ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
-                            self.suggestion_start
-                                .push_str(&format!("{}{}", start_snip, ident_str_with_proj));
+                            let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
                             self.next_pos = span.hi();
                             return;
                         },
@@ -1026,8 +1025,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     }
                 }
 
-                self.suggestion_start
-                    .push_str(&format!("{}{}", start_snip, replacement_str));
+                let _ = write!(self.suggestion_start, "{}{}", start_snip, replacement_str);
             }
             self.next_pos = span.hi();
         }

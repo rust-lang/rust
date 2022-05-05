@@ -61,6 +61,7 @@ pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
+pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
 #[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
@@ -148,6 +149,8 @@ pub const CONVERT_IDENTITY: [&str; 3] = ["core", "convert", "identity"];
 pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
+pub const STRING_NEW: [&str; 4] = ["alloc", "string", "String", "new"];
+pub const STR_BYTES: [&str; 4] = ["core", "str", "<impl str>", "bytes"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];

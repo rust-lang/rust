@@ -57,7 +57,7 @@ impl<'a> NumericLiteral<'a> {
                 .trim_start()
                 .chars()
                 .next()
-                .map_or(false, |c| c.is_digit(10))
+                .map_or(false, |c| c.is_ascii_digit())
         {
             let (unsuffixed, suffix) = split_suffix(src, lit_kind);
             let float = matches!(lit_kind, LitKind::Float(..));

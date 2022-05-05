@@ -156,8 +156,9 @@ fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) ->
         .array_windows::<2>()
         .rev()
         .map_while(|[start, end]| {
-            src.get(start.to_usize() - offset..end.to_usize() - offset)
-                .map(|text| (start.to_usize(), text.trim_start()))
+            let start = start.to_usize() - offset;
+            let end = end.to_usize() - offset;
+            src.get(start..end).map(|text| (start, text.trim_start()))
         })
         .filter(|(_, text)| !text.is_empty());
 
@@ -182,7 +183,7 @@ fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) ->
     let (mut line_start, mut line) = (line_start, line);
     loop {
         if line.starts_with("/*") {
-            let src = src[line_start..line_starts.last().unwrap().to_usize()].trim_start();
+            let src = src[line_start..line_starts.last().unwrap().to_usize() - offset].trim_start();
             let mut tokens = tokenize(src);
             return src[..tokens.next().unwrap().len]
                 .to_ascii_uppercase()

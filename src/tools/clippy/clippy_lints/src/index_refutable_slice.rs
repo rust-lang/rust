@@ -116,7 +116,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
             let bound_ty = cx.typeck_results().node_type(pat.hir_id);
             if let ty::Slice(inner_ty) | ty::Array(inner_ty, _) = bound_ty.peel_refs().kind() {
                 // The values need to use the `ref` keyword if they can't be copied.
-                // This will need to be adjusted if the lint want to support multable access in the future
+                // This will need to be adjusted if the lint want to support mutable access in the future
                 let src_is_ref = bound_ty.is_ref() && binding != hir::BindingAnnotation::Ref;
                 let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
 

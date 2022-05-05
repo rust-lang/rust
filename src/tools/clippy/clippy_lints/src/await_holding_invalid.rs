@@ -1,11 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
+use rustc_hir::{def::Res, AsyncGeneratorKind, Body, BodyId, GeneratorKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::GeneratorInteriorTypeCause;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
+
+use crate::utils::conf::DisallowedType;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -127,9 +130,75 @@ declare_clippy_lint! {
     "inside an async function, holding a `RefCell` ref while calling `await`"
 }
 
-declare_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Allows users to configure types which should not be held across `await`
+    /// suspension points.
+    ///
+    /// ### Why is this bad?
+    /// There are some types which are perfectly "safe" to be used concurrently
+    /// from a memory access perspective but will cause bugs at runtime if they
+    /// are held in such a way.
+    ///
+    /// ### Known problems
+    ///
+    /// ### Example
+    ///
+    /// ```toml
+    /// await-holding-invalid-types = [
+    ///   # You can specify a type name
+    ///   "CustomLockType",
+    ///   # You can (optionally) specify a reason
+    ///   { path = "OtherCustomLockType", reason = "Relies on a thread local" }
+    /// ]
+    /// ```
+    ///
+    /// ```rust
+    /// # async fn baz() {}
+    /// struct CustomLockType;
+    /// struct OtherCustomLockType;
+    /// async fn foo() {
+    ///   let _x = CustomLockType;
+    ///   let _y = OtherCustomLockType;
+    ///   baz().await; // Lint violation
+    /// }
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub AWAIT_HOLDING_INVALID_TYPE,
+    suspicious,
+    "holding a type across an await point which is not allowed to be held as per the configuration"
+}
+
+impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
+
+#[derive(Debug)]
+pub struct AwaitHolding {
+    conf_invalid_types: Vec<DisallowedType>,
+    def_ids: FxHashMap<DefId, DisallowedType>,
+}
+
+impl AwaitHolding {
+    pub(crate) fn new(conf_invalid_types: Vec<DisallowedType>) -> Self {
+        Self {
+            conf_invalid_types,
+            def_ids: FxHashMap::default(),
+        }
+    }
+}
 
 impl LateLintPass<'_> for AwaitHolding {
+    fn check_crate(&mut self, cx: &LateContext<'_>) {
+        for conf in &self.conf_invalid_types {
+            let path = match conf {
+                DisallowedType::Simple(path) | DisallowedType::WithReason { path, .. } => path,
+            };
+            let segs: Vec<_> = path.split("::").collect();
+            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs) {
+                self.def_ids.insert(id, conf.clone());
+            }
+        }
+    }
+
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
         if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
@@ -137,7 +206,7 @@ impl LateLintPass<'_> for AwaitHolding {
                 hir_id: body.value.hir_id,
             };
             let typeck_results = cx.tcx.typeck_body(body_id);
-            check_interior_types(
+            self.check_interior_types(
                 cx,
                 typeck_results.generator_interior_types.as_ref().skip_binder(),
                 body.value.span,
@@ -146,44 +215,66 @@ impl LateLintPass<'_> for AwaitHolding {
     }
 }
 
-fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
-    for ty_cause in ty_causes {
-        if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
-            if is_mutex_guard(cx, adt.did()) {
-                span_lint_and_then(
-                    cx,
-                    AWAIT_HOLDING_LOCK,
-                    ty_cause.span,
-                    "this `MutexGuard` is held across an `await` point",
-                    |diag| {
-                        diag.help(
-                            "consider using an async-aware `Mutex` type or ensuring the \
+impl AwaitHolding {
+    fn check_interior_types(&self, cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+        for ty_cause in ty_causes {
+            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+                if is_mutex_guard(cx, adt.did()) {
+                    span_lint_and_then(
+                        cx,
+                        AWAIT_HOLDING_LOCK,
+                        ty_cause.span,
+                        "this `MutexGuard` is held across an `await` point",
+                        |diag| {
+                            diag.help(
+                                "consider using an async-aware `Mutex` type or ensuring the \
                                 `MutexGuard` is dropped before calling await",
-                        );
-                        diag.span_note(
-                            ty_cause.scope_span.unwrap_or(span),
-                            "these are all the `await` points this lock is held through",
-                        );
-                    },
-                );
-            }
-            if is_refcell_ref(cx, adt.did()) {
-                span_lint_and_then(
-                    cx,
-                    AWAIT_HOLDING_REFCELL_REF,
-                    ty_cause.span,
-                    "this `RefCell` reference is held across an `await` point",
-                    |diag| {
-                        diag.help("ensure the reference is dropped before calling `await`");
-                        diag.span_note(
-                            ty_cause.scope_span.unwrap_or(span),
-                            "these are all the `await` points this reference is held through",
-                        );
-                    },
-                );
+                            );
+                            diag.span_note(
+                                ty_cause.scope_span.unwrap_or(span),
+                                "these are all the `await` points this lock is held through",
+                            );
+                        },
+                    );
+                } else if is_refcell_ref(cx, adt.did()) {
+                    span_lint_and_then(
+                        cx,
+                        AWAIT_HOLDING_REFCELL_REF,
+                        ty_cause.span,
+                        "this `RefCell` reference is held across an `await` point",
+                        |diag| {
+                            diag.help("ensure the reference is dropped before calling `await`");
+                            diag.span_note(
+                                ty_cause.scope_span.unwrap_or(span),
+                                "these are all the `await` points this reference is held through",
+                            );
+                        },
+                    );
+                } else if let Some(disallowed) = self.def_ids.get(&adt.did()) {
+                    emit_invalid_type(cx, ty_cause.span, disallowed);
+                }
             }
         }
     }
+}
+
+fn emit_invalid_type(cx: &LateContext<'_>, span: Span, disallowed: &DisallowedType) {
+    let (type_name, reason) = match disallowed {
+        DisallowedType::Simple(path) => (path, &None),
+        DisallowedType::WithReason { path, reason } => (path, reason),
+    };
+
+    span_lint_and_then(
+        cx,
+        AWAIT_HOLDING_INVALID_TYPE,
+        span,
+        &format!("`{type_name}` may not be held across an `await` point per `clippy.toml`",),
+        |diag| {
+            if let Some(reason) = reason {
+                diag.note(reason.clone());
+            }
+        },
+    );
 }
 
 fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {

@@ -163,6 +163,8 @@ mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+mod renamed_lints;
+
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
 mod approx_const;
@@ -181,6 +183,7 @@ mod bool_assert_comparison;
 mod booleans;
 mod borrow_as_ptr;
 mod bytecount;
+mod bytes_count_to_len;
 mod cargo;
 mod case_sensitive_file_extension_comparisons;
 mod casts;
@@ -209,6 +212,7 @@ mod double_parens;
 mod drop_forget_ref;
 mod duration_subsec;
 mod else_if_without_else;
+mod empty_drop;
 mod empty_enum;
 mod empty_structs_with_brackets;
 mod entry;
@@ -231,6 +235,7 @@ mod floating_point_arithmetic;
 mod format;
 mod format_args;
 mod format_impl;
+mod format_push_string;
 mod formatting;
 mod from_over_into;
 mod from_str_radix_10;
@@ -259,6 +264,7 @@ mod items_after_statements;
 mod iter_not_returning_iterator;
 mod large_const_arrays;
 mod large_enum_variant;
+mod large_include_file;
 mod large_stack_arrays;
 mod len_zero;
 mod let_if_seq;
@@ -336,6 +342,7 @@ mod precedence;
 mod ptr;
 mod ptr_eq;
 mod ptr_offset_with_cast;
+mod pub_use;
 mod question_mark;
 mod ranges;
 mod redundant_clone;
@@ -383,6 +390,7 @@ mod unit_hash;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
+mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
@@ -499,7 +507,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     {
         store.register_early_pass(|| Box::new(utils::internal_lints::ClippyLintsInternal));
         store.register_early_pass(|| Box::new(utils::internal_lints::ProduceIce));
-        store.register_late_pass(|| Box::new(utils::inspector::DeepCodeInspector));
         store.register_late_pass(|| Box::new(utils::internal_lints::CollapsibleCalls));
         store.register_late_pass(|| Box::new(utils::internal_lints::CompilerLintFunctions::new()));
         store.register_late_pass(|| Box::new(utils::internal_lints::IfChainStyle));
@@ -511,8 +518,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
+    store.register_late_pass(|| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|| Box::new(utils::author::Author));
-    store.register_late_pass(|| Box::new(await_holding_invalid::AwaitHolding));
+    let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
+    store.register_late_pass(move || {
+        Box::new(await_holding_invalid::AwaitHolding::new(
+            await_holding_invalid_types.clone(),
+        ))
+    });
     store.register_late_pass(|| Box::new(serde_api::SerdeApi));
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     let type_complexity_threshold = conf.type_complexity_threshold;
@@ -572,7 +585,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(approx_const::ApproxConstant::new(msrv)));
     store.register_late_pass(move || Box::new(methods::Methods::new(avoid_breaking_exported_api, msrv)));
     store.register_late_pass(move || Box::new(matches::Matches::new(msrv)));
-    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustive::new(msrv)));
+    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(msrv)));
+    store.register_late_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(msrv)));
     store.register_late_pass(move || Box::new(manual_strip::ManualStrip::new(msrv)));
     store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv)));
     store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(msrv)));
@@ -812,6 +826,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
+    store.register_late_pass(|| Box::new(empty_drop::EmptyDrop));
     store.register_late_pass(|| Box::new(strings::StrToString));
     store.register_late_pass(|| Box::new(strings::StringToString));
     store.register_late_pass(|| Box::new(zero_sized_map_values::ZeroSizedMapValues));
@@ -868,6 +883,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
     store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
+    store.register_late_pass(|| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
+    store.register_early_pass(|| Box::new(pub_use::PubUse));
+    store.register_late_pass(|| Box::new(format_push_string::FormatPushString));
+    store.register_late_pass(|| Box::new(bytes_count_to_len::BytesCountToLen));
+    let max_include_file_size = conf.max_include_file_size;
+    store.register_late_pass(move || Box::new(large_include_file::LargeIncludeFile::new(max_include_file_size)));
+    store.register_late_pass(|| Box::new(strings::TrimSplitWhitespace));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
@@ -919,43 +941,9 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
 ///
 /// Used in `./src/driver.rs`.
 pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
-    // NOTE: when renaming a lint, add a corresponding test to tests/ui/rename.rs
-    ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
-    ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
-    ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
-    ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
-    ls.register_renamed("clippy::option_and_then_some", "clippy::bind_instead_of_map");
-    ls.register_renamed("clippy::box_vec", "clippy::box_collection");
-    ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
-    ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
-    ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::option_unwrap_used", "clippy::unwrap_used");
-    ls.register_renamed("clippy::result_unwrap_used", "clippy::unwrap_used");
-    ls.register_renamed("clippy::option_expect_used", "clippy::expect_used");
-    ls.register_renamed("clippy::result_expect_used", "clippy::expect_used");
-    ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles");
-    ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
-    ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
-    ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
-    ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
-    ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
-    ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
-    ls.register_renamed("clippy::disallowed_method", "clippy::disallowed_methods");
-    ls.register_renamed("clippy::ref_in_deref", "clippy::needless_borrow");
-    ls.register_renamed("clippy::to_string_in_display", "clippy::recursive_format_impl");
-
-    // uplifted lints
-    ls.register_renamed("clippy::invalid_ref", "invalid_value");
-    ls.register_renamed("clippy::into_iter_on_array", "array_into_iter");
-    ls.register_renamed("clippy::unused_label", "unused_labels");
-    ls.register_renamed("clippy::drop_bounds", "drop_bounds");
-    ls.register_renamed("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr");
-    ls.register_renamed("clippy::panic_params", "non_fmt_panics");
-    ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
-    ls.register_renamed("clippy::invalid_atomic_ordering", "invalid_atomic_ordering");
-    ls.register_renamed("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums");
+    for (old_name, new_name) in renamed_lints::RENAMED_LINTS {
+        ls.register_renamed(old_name, new_name);
+    }
 }
 
 // only exists to let the dogfood integration test works.

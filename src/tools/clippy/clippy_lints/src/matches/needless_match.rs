@@ -83,7 +83,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
             return false;
         }
 
-        // Recurrsively check for each `else if let` phrase,
+        // Recursively check for each `else if let` phrase,
         if let Some(ref nested_if_let) = higher::IfLet::hir(cx, if_else) {
             return check_if_let(cx, nested_if_let);
         }
@@ -99,7 +99,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
                 if let ExprKind::Path(ref qpath) = ret.kind {
                     return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
                 }
-                return true;
+                return false;
             }
             return eq_expr_value(cx, if_let.let_expr, ret);
         }
@@ -118,7 +118,7 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 }
 
 /// Manually check for coercion casting by checking if the type of the match operand or let expr
-/// differs with the assigned local variable or the funtion return type.
+/// differs with the assigned local variable or the function return type.
 fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>) -> bool {
     if let Some(p_node) = get_parent_node(cx.tcx, p_expr.hir_id) {
         match p_node {

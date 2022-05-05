@@ -23,7 +23,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     # Run
     - name: Build
