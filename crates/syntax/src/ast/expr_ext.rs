@@ -283,8 +283,8 @@ pub enum LiteralKind {
     ByteString(ast::ByteString),
     IntNumber(ast::IntNumber),
     FloatNumber(ast::FloatNumber),
-    Char,
-    Byte,
+    Char(ast::Char),
+    Byte(ast::Byte),
     Bool(bool),
 }
 
@@ -312,12 +312,16 @@ impl ast::Literal {
         if let Some(t) = ast::ByteString::cast(token.clone()) {
             return LiteralKind::ByteString(t);
         }
+        if let Some(t) = ast::Char::cast(token.clone()) {
+            return LiteralKind::Char(t);
+        }
+        if let Some(t) = ast::Byte::cast(token.clone()) {
+            return LiteralKind::Byte(t);
+        }
 
         match token.kind() {
             T![true] => LiteralKind::Bool(true),
             T![false] => LiteralKind::Bool(false),
-            CHAR => LiteralKind::Char,
-            BYTE => LiteralKind::Byte,
             _ => unreachable!(),
         }
     }

@@ -3510,6 +3510,94 @@ const FOO$0: &str = "bar";
             This is a doc
         "#]],
     );
+    // show char literal
+    check(
+        r#"
+/// This is a doc
+const FOO$0: char = 'a';
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: char = 'a'
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // show escaped char literal
+    check(
+        r#"
+/// This is a doc
+const FOO$0: char = '\x61';
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: char = 'a'
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // show byte literal
+    check(
+        r#"
+/// This is a doc
+const FOO$0: u8 = b'a';
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: u8 = 97 (0x61)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // show escaped byte literal
+    check(
+        r#"
+/// This is a doc
+const FOO$0: u8 = b'\x61';
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: u8 = 97 (0x61)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]

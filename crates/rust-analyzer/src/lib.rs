@@ -8,7 +8,6 @@
 //!
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
-#![recursion_limit = "512"]
 
 pub mod cli;
 

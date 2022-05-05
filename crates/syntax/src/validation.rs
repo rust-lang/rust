@@ -151,12 +151,12 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
                 }
             }
         }
-        ast::LiteralKind::Char => {
+        ast::LiteralKind::Char(_) => {
             if let Some(Err(e)) = unquote(text, 1, '\'').map(unescape_char) {
                 push_err(1, e);
             }
         }
-        ast::LiteralKind::Byte => {
+        ast::LiteralKind::Byte(_) => {
             if let Some(Err(e)) = unquote(text, 2, '\'').map(unescape_byte) {
                 push_err(2, e);
             }
