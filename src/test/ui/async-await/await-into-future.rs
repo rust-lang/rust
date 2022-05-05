@@ -10,9 +10,9 @@ struct AwaitMe;
 
 impl IntoFuture for AwaitMe {
     type Output = i32;
-    type Future = Pin<Box<dyn Future<Output = i32>>>;
+    type IntoFuture = Pin<Box<dyn Future<Output = i32>>>;
 
-    fn into_future(self) -> Self::Future {
+    fn into_future(self) -> Self::IntoFuture {
         Box::pin(me())
     }
 }

@@ -25,16 +25,19 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(control_flow_enum)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -47,6 +50,7 @@ pub mod builtin;
 mod context;
 mod early;
 mod enum_intrinsics_non_enums;
+mod expect;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
@@ -96,7 +100,7 @@ use unused::*;
 pub use builtin::SoftLints;
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
-pub use early::check_ast_crate;
+pub use early::{check_ast_node, EarlyCheckNode};
 pub use late::check_crate;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
@@ -481,6 +485,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
          <https://github.com/rust-lang/rust/issues/59014> for more information",
     );
     store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
+    store.register_removed(
+        "unsupported_naked_functions",
+        "converted into hard error, see RFC 2972 \
+         <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -488,6 +497,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
     store.register_late_pass(|| Box::new(DefaultHashTypes));
+    store.register_lints(&QueryStability::get_lints());
+    store.register_late_pass(|| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
     store.register_late_pass(|| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
@@ -500,6 +511,7 @@ fn register_internals(store: &mut LintStore) {
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(USAGE_OF_TY_TYKIND),
             LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),

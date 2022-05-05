@@ -120,13 +120,15 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 pub use self::error::{
     struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
     InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess,
+    UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
 
 pub use self::allocation::{
-    alloc_range, AllocRange, Allocation, InitChunk, InitChunkIter, InitMask, Relocations,
+    alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
+    Relocations,
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
@@ -147,7 +149,7 @@ pub struct GlobalId<'tcx> {
 
 impl<'tcx> GlobalId<'tcx> {
     pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
-        let instance_name = with_no_trimmed_paths(|| tcx.def_path_str(self.instance.def.def_id()));
+        let instance_name = with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()));
         if let Some(promoted) = self.promoted {
             format!("{}::{:?}", instance_name, promoted)
         } else {
@@ -273,20 +275,20 @@ pub struct AllocDecodingSession<'s> {
 
 impl<'s> AllocDecodingSession<'s> {
     /// Decodes an `AllocId` in a thread-safe way.
-    pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> Result<AllocId, D::Error>
+    pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> AllocId
     where
         D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation.
-        let idx = usize::try_from(decoder.read_u32()?).unwrap();
+        let idx = usize::try_from(decoder.read_u32()).unwrap();
         let pos = usize::try_from(self.state.data_offsets[idx]).unwrap();
 
         // Decode the `AllocDiscriminant` now so that we know if we have to reserve an
         // `AllocId`.
         let (alloc_kind, pos) = decoder.with_position(pos, |decoder| {
-            let alloc_kind = AllocDiscriminant::decode(decoder)?;
-            Ok((alloc_kind, decoder.position()))
-        })?;
+            let alloc_kind = AllocDiscriminant::decode(decoder);
+            (alloc_kind, decoder.position())
+        });
 
         // Check the decoding state to see if it's already decoded or if we should
         // decode it here.
@@ -295,7 +297,7 @@ impl<'s> AllocDecodingSession<'s> {
 
             match *entry {
                 State::Done(alloc_id) => {
-                    return Ok(alloc_id);
+                    return alloc_id;
                 }
                 ref mut entry @ State::Empty => {
                     // We are allowed to decode.
@@ -329,7 +331,7 @@ impl<'s> AllocDecodingSession<'s> {
                 State::InProgress(ref mut sessions, alloc_id) => {
                     if sessions.contains(&self.session_id) {
                         // Don't recurse.
-                        return Ok(alloc_id);
+                        return alloc_id;
                     } else {
                         // Start decoding concurrently.
                         sessions.insert(self.session_id);
@@ -343,37 +345,37 @@ impl<'s> AllocDecodingSession<'s> {
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
                 AllocDiscriminant::Alloc => {
-                    let alloc = <&'tcx Allocation as Decodable<_>>::decode(decoder)?;
+                    let alloc = <ConstAllocation<'tcx> as Decodable<_>>::decode(decoder);
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
                     decoder.tcx().set_alloc_id_same_memory(alloc_id, alloc);
-                    Ok(alloc_id)
+                    alloc_id
                 }
                 AllocDiscriminant::Fn => {
                     assert!(alloc_id.is_none());
                     trace!("creating fn alloc ID");
-                    let instance = ty::Instance::decode(decoder)?;
+                    let instance = ty::Instance::decode(decoder);
                     trace!("decoded fn alloc instance: {:?}", instance);
                     let alloc_id = decoder.tcx().create_fn_alloc(instance);
-                    Ok(alloc_id)
+                    alloc_id
                 }
                 AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc ID");
-                    let did = <DefId as Decodable<D>>::decode(decoder)?;
+                    let did = <DefId as Decodable<D>>::decode(decoder);
                     trace!("decoded static def-ID: {:?}", did);
                     let alloc_id = decoder.tcx().create_static_alloc(did);
-                    Ok(alloc_id)
+                    alloc_id
                 }
             }
-        })?;
+        });
 
         self.state.decoding_state[idx].with_lock(|entry| {
             *entry = State::Done(alloc_id);
         });
 
-        Ok(alloc_id)
+        alloc_id
     }
 }
 
@@ -387,14 +389,14 @@ pub enum GlobalAlloc<'tcx> {
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
     /// The alloc ID points to memory.
-    Memory(&'tcx Allocation),
+    Memory(ConstAllocation<'tcx>),
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
     /// Panics if the `GlobalAlloc` does not refer to an `GlobalAlloc::Memory`
     #[track_caller]
     #[inline]
-    pub fn unwrap_memory(&self) -> &'tcx Allocation {
+    pub fn unwrap_memory(&self) -> ConstAllocation<'tcx> {
         match *self {
             GlobalAlloc::Memory(mem) => mem,
             _ => bug!("expected memory, got {:?}", self),
@@ -512,7 +514,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
     /// their data will be deduplicated through `Allocation` interning -- but they
     /// are different places in memory and as such need different IDs.
-    pub fn create_memory_alloc(self, mem: &'tcx Allocation) -> AllocId {
+    pub fn create_memory_alloc(self, mem: ConstAllocation<'tcx>) -> AllocId {
         let id = self.reserve_alloc_id();
         self.set_alloc_id_memory(id, mem);
         id
@@ -543,7 +545,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
-    pub fn set_alloc_id_memory(self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
         }
@@ -551,7 +553,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
+    fn set_alloc_id_same_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }

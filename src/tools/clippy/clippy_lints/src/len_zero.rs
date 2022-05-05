@@ -10,7 +10,7 @@ use rustc_hir::{
     ItemKind, Mutability, Node, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, AssocKind, FnSig, Ty, TyS};
+use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{
     source_map::{Span, Spanned, Symbol},
@@ -248,13 +248,13 @@ enum LenOutput<'tcx> {
 fn parse_len_output<'tcx>(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenOutput<'tcx>> {
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did))
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
         },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did) => subs
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => subs
             .type_at(0)
             .is_integral()
-            .then(|| LenOutput::Result(adt.did, subs.type_at(1))),
+            .then(|| LenOutput::Result(adt.did(), subs.type_at(1))),
         _ => None,
     }
 }
@@ -263,9 +263,9 @@ impl LenOutput<'_> {
     fn matches_is_empty_output(self, ty: Ty<'_>) -> bool {
         match (self, ty.kind()) {
             (_, &ty::Bool) => true,
-            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did => subs.type_at(0).is_bool(),
-            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did => {
-                subs.type_at(0).is_bool() && TyS::same_type(subs.type_at(1), err_ty)
+            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did() => {
+                subs.type_at(0).is_bool() && subs.type_at(1) == err_ty
             },
             _ => false,
         }
@@ -294,7 +294,7 @@ impl LenOutput<'_> {
 /// Checks if the given signature matches the expectations for `is_empty`
 fn check_is_empty_sig(sig: FnSig<'_>, self_kind: ImplicitSelfKind, len_output: LenOutput<'_>) -> bool {
     match &**sig.inputs_and_output {
-        [arg, res] if len_output.matches_is_empty_output(res) => {
+        [arg, res] if len_output.matches_is_empty_output(*res) => {
             matches!(
                 (arg.kind(), self_kind),
                 (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
@@ -370,7 +370,7 @@ fn check_for_is_empty(
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
-    if let (&ExprKind::MethodCall(method_path, _, args, _), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind) {
+    if let (&ExprKind::MethodCall(method_path, args, _), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
             if name.as_str() == "is_empty" {
@@ -488,7 +488,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 .any(|item| is_is_empty(cx, item))
         }),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
-        ty::Adt(id, _) => has_is_empty_impl(cx, id.did),
+        ty::Adt(id, _) => has_is_empty_impl(cx, id.did()),
         ty::Array(..) | ty::Slice(..) | ty::Str => true,
         _ => false,
     }

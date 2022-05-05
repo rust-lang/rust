@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 
 trait Bar {
     fn bar() -> u8;

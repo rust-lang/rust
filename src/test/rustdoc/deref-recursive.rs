@@ -8,9 +8,9 @@
 // @has '-' '//*[@id="deref-methods-Baz"]' 'Methods from Deref<Target = Baz>'
 // @has '-' '//*[@class="impl-items"]//*[@id="method.baz"]' 'pub fn baz(&self)'
 // @has '-' '//*[@class="sidebar-title"]/a[@href="#deref-methods-Bar"]' 'Methods from Deref<Target=Bar>'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.bar"]' 'bar'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.bar"]' 'bar'
 // @has '-' '//*[@class="sidebar-title"]/a[@href="#deref-methods-Baz"]' 'Methods from Deref<Target=Baz>'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.baz"]' 'baz'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.baz"]' 'baz'
 
 #![crate_name = "foo"]
 

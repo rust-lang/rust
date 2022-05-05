@@ -2,7 +2,7 @@ use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use crate::thir::pattern::pat_from_hir;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -41,7 +41,7 @@ crate fn mir_built<'tcx>(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let body_owner_kind = tcx.hir().body_owner_kind(def.did);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
@@ -104,8 +104,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
 
     tcx.infer_ctxt().enter(|infcx| {
-        let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
-            build::construct_error(&infcx, def, id, body_id, body_owner_kind)
+        let body = if let Some(error_reported) = typeck_results.tainted_by_errors {
+            build::construct_error(&infcx, def, id, body_id, body_owner_kind, error_reported)
         } else if body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
@@ -118,7 +118,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
@@ -229,7 +231,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let return_ty = typeck_results.node_type(id);
 
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
@@ -266,9 +270,8 @@ fn liberated_closure_env_ty(
 ) -> Ty<'_> {
     let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
 
-    let (closure_def_id, closure_substs) = match *closure_ty.kind() {
-        ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
-        _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
+    let ty::Closure(closure_def_id, closure_substs) = *closure_ty.kind() else {
+        bug!("closure expr does not have closure type: {:?}", closure_ty);
     };
 
     let bound_vars =
@@ -347,6 +350,7 @@ struct Builder<'a, 'tcx> {
 
     def_id: DefId,
     hir_id: hir::HirId,
+    parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
@@ -545,6 +549,18 @@ rustc_index::newtype_index! {
     struct ScopeId { .. }
 }
 
+#[derive(Debug)]
+enum NeedsTemporary {
+    /// Use this variant when whatever you are converting with `as_operand`
+    /// is the last thing you are converting. This means that if we introduced
+    /// an intermediate temporary, we'd only read it immediately after, so we can
+    /// also avoid it.
+    No,
+    /// For all cases where you aren't sure or that are too expensive to compute
+    /// for now. It is always safe to fall back to this.
+    Maybe,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`
@@ -715,6 +731,7 @@ fn construct_error<'a, 'tcx>(
     hir_id: hir::HirId,
     body_id: hir::BodyId,
     body_owner_kind: hir::BodyOwnerKind,
+    err: ErrorGuaranteed,
 ) -> Body<'tcx> {
     let tcx = infcx.tcx;
     let span = tcx.hir().span(hir_id);
@@ -769,6 +786,7 @@ fn construct_error<'a, 'tcx>(
         vec![],
         span,
         generator_kind,
+        Some(err),
     );
     body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
@@ -797,20 +815,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(hir_id),
+            tcx.hir().body_owner_kind(def.did),
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
         );
 
         let lint_level = LintLevel::Explicit(hir_id);
+        let param_env = tcx.param_env(def.did);
         let mut builder = Builder {
             thir,
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
             region_scope_tree: tcx.region_scope_tree(def.did),
-            param_env: tcx.param_env(def.did),
+            param_env,
             def_id: def.did.to_def_id(),
             hir_id,
+            parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
@@ -857,6 +877,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info,
             self.fn_span,
             self.generator_kind,
+            self.typeck_results.tainted_by_errors,
         )
     }
 
@@ -875,14 +896,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt {
-                if let Some(ident) = arg.pat.simple_ident() {
-                    self.var_debug_info.push(VarDebugInfo {
-                        name: ident.name,
-                        source_info,
-                        value: VarDebugInfoContents::Place(arg_local.into()),
-                    });
-                }
+            if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {
+                self.var_debug_info.push(VarDebugInfo {
+                    name: ident.name,
+                    source_info,
+                    value: VarDebugInfoContents::Place(arg_local.into()),
+                });
             }
         }
 
@@ -900,7 +919,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
             if let ty::Ref(_, ty, _) = closure_ty.kind() {
                 closure_env_projs.push(ProjectionElem::Deref);
-                closure_ty = ty;
+                closure_ty = *ty;
             }
             let upvar_substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
@@ -935,7 +954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     };
 
                     self.var_debug_info.push(VarDebugInfo {
-                        name: sym,
+                        name: *sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         value: VarDebugInfoContents::Place(Place {
                             local: ty::CAPTURE_STRUCT_LOCAL,

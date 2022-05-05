@@ -8,6 +8,8 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
+#![feature(drain_filter)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
@@ -16,9 +18,12 @@
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
+#![feature(type_alias_impl_trait)]
+#![feature(generic_associated_types)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -76,7 +81,7 @@ use std::io;
 use std::process;
 
 use rustc_driver::{abort_on_err, describe_lints};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -90,7 +95,7 @@ use crate::passes::collect_intra_doc_links;
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// let letters = map!{"a" => "b", "c" => "d"};
 /// ```
 ///
@@ -174,7 +179,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorReported),
+        _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
     });
     process::exit(exit_code);
 }
@@ -256,6 +261,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti("L", "library-path", "directory to add to crate search path", "DIR")
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
+        unstable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
             o.optmulti(
@@ -593,6 +599,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "collect function call information for functions from the target crate",
             )
         }),
+        unstable("scrape-tests", |o| {
+            o.optflag("", "scrape-tests", "Include test code when scraping examples")
+        }),
         unstable("with-examples", |o| {
             o.optmulti(
                 "",
@@ -663,7 +672,7 @@ fn usage(argv0: &str) {
 }
 
 /// A result type used by several functions under `main()`.
-type MainResult = Result<(), ErrorReported>;
+type MainResult = Result<(), ErrorGuaranteed>;
 
 fn main_args(at_args: &[String]) -> MainResult {
     let args = rustc_driver::args::arg_expand_all(at_args);
@@ -683,12 +692,17 @@ fn main_args(at_args: &[String]) -> MainResult {
     // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
+        Err(code) => {
+            return if code == 0 {
+                Ok(())
+            } else {
+                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            };
+        }
     };
-    rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals(
+    rustc_interface::util::run_in_thread_pool_with_globals(
         options.edition,
         1, // this runs single-threaded, even in a parallel compiler
-        &None,
         move || main_options(options),
     )
 }
@@ -697,8 +711,8 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     match res {
         Ok(()) => Ok(()),
         Err(err) => {
-            diag.struct_err(&err).emit();
-            Err(ErrorReported)
+            let reported = diag.struct_err(&err).emit();
+            Err(reported)
         }
     }
 }
@@ -715,12 +729,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
-            if file.is_empty() {
-                msg.emit()
-            } else {
-                msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+            if !file.is_empty() {
+                msg.note(&format!("failed to create or modify \"{}\"", file));
             }
-            Err(ErrorReported)
+            Err(msg.emit())
         }
     }
 }
@@ -759,6 +771,7 @@ fn main_options(options: config::Options) -> MainResult {
     let externs = options.externs.clone();
     let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let document_private = options.render_options.document_private;
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -779,12 +792,18 @@ fn main_options(options: config::Options) -> MainResult {
             let (resolver, resolver_caches) = {
                 let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
-                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate, externs)
+                    collect_intra_doc_links::early_resolve_intra_doc_links(
+                        resolver,
+                        sess,
+                        krate,
+                        externs,
+                        document_private,
+                    )
                 });
                 (resolver.clone(), resolver_caches)
             };
 
-            if sess.diagnostic().has_errors_or_lint_errors() {
+            if sess.diagnostic().has_errors_or_lint_errors().is_some() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

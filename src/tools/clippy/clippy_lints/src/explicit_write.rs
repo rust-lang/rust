@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::FormatArgsExpn;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -35,10 +36,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, _, [write_call], _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, [write_call], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, _, [write_recv, write_arg], _) = write_call.kind;
+            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = write_call.kind;
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
@@ -79,28 +80,22 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                         "print".into(),
                     )
                 };
-                let msg = format!("use of `{}.unwrap()`", used);
-                if let [write_output] = *format_args.format_string_parts {
-                    let mut write_output = write_output.to_string();
-                    if write_output.ends_with('\n') {
-                        write_output.pop();
-                    }
-
-                    let sugg = format!("{}{}!(\"{}\")", prefix, sugg_mac, write_output.escape_default());
-                    span_lint_and_sugg(
-                        cx,
-                        EXPLICIT_WRITE,
-                        expr.span,
-                        &msg,
-                        "try this",
-                        sugg,
-                        Applicability::MachineApplicable
-                    );
-                } else {
-                    // We don't have a proper suggestion
-                    let help = format!("consider using `{}{}!` instead", prefix, sugg_mac);
-                    span_lint_and_help(cx, EXPLICIT_WRITE, expr.span, &msg, None, &help);
-                }
+                let mut applicability = Applicability::MachineApplicable;
+                let inputs_snippet = snippet_with_applicability(
+                    cx,
+                    format_args.inputs_span(),
+                    "..",
+                    &mut applicability,
+                );
+                span_lint_and_sugg(
+                    cx,
+                    EXPLICIT_WRITE,
+                    expr.span,
+                    &format!("use of `{}.unwrap()`", used),
+                    "try this",
+                    format!("{}{}!({})", prefix, sugg_mac, inputs_snippet),
+                    applicability,
+                )
             }
         }
     }

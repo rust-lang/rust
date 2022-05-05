@@ -4,10 +4,10 @@ error: expected identifier, found keyword `true`
 LL |     foo!(true);
    |          ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `true` to use it as an identifier
    |
 LL |     foo!(r#true);
-   |          ~~~~~~
+   |          ++
 
 error: invalid `struct` delimiters or `fn` call arguments
   --> $DIR/issue-44406.rs:3:9

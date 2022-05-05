@@ -3,6 +3,11 @@ error: expected one of `,`, `:`, `=`, or `>`, found `(`
    |
 LL | type Type_2 = Type_1_<'static ()>;
    |                               ^ expected one of `,`, `:`, `=`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | type Type_2 = Type_1_<'static> ()>;
+   |                              +
 
 error: aborting due to previous error
 

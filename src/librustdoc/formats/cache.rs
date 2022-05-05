@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{sym, Symbol};
@@ -127,6 +127,8 @@ crate struct Cache {
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
 struct CacheBuilder<'a, 'tcx> {
     cache: &'a mut Cache,
+    /// This field is used to prevent duplicated impl blocks.
+    impl_ids: FxHashMap<DefId, FxHashSet<DefId>>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -170,12 +172,19 @@ impl Cache {
                 .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
         }
 
-        krate = CacheBuilder { tcx, cache: &mut cx.cache }.fold_crate(krate);
+        let (krate, mut impl_ids) = {
+            let mut cache_builder =
+                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: FxHashMap::default() };
+            krate = cache_builder.fold_crate(krate);
+            (krate, cache_builder.impl_ids)
+        };
 
         for (trait_did, dids, impl_) in cx.cache.orphan_trait_impls.drain(..) {
             if cx.cache.traits.contains_key(&trait_did) {
                 for did in dids {
-                    cx.cache.impls.entry(did).or_default().push(impl_.clone());
+                    if impl_ids.entry(did).or_default().insert(impl_.def_id()) {
+                        cx.cache.impls.entry(did).or_default().push(impl_.clone());
+                    }
                 }
             }
         }
@@ -186,8 +195,8 @@ impl Cache {
 
 impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        if item.def_id.is_local() {
-            debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.def_id);
+        if item.item_id.is_local() {
+            debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.item_id);
         }
 
         // If this is a stripped module,
@@ -202,7 +211,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
         if let clean::ImplItem(ref i) = *item.kind {
-            if self.cache.masked_crates.contains(&item.def_id.krate())
+            if self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
                     .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
@@ -217,7 +226,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id.expect_def_id()).or_insert_with(|| {
+            self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| {
                 clean::TraitWithExtraInfo {
                     trait_: t.clone(),
                     is_notable: item.attrs.has_doc_flag(sym::notable_trait),
@@ -242,14 +251,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let Some(ref s) = item.name {
             let (parent, is_inherent_impl_item) = match *item.kind {
                 clean::StrippedItem(..) => ((None, None), false),
-                clean::AssocConstItem(..) | clean::TypedefItem(_, true)
+                clean::AssocConstItem(..) | clean::AssocTypeItem(..)
                     if self.cache.parent_is_trait_impl =>
                 {
                     // skip associated items in trait impls
                     ((None, None), false)
                 }
-                clean::AssocTypeItem(..)
-                | clean::TyMethodItem(..)
+                clean::TyMethodItem(..)
+                | clean::TyAssocConstItem(..)
+                | clean::TyAssocTypeItem(..)
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
@@ -258,7 +268,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     ),
                     false,
                 ),
-                clean::MethodItem(..) | clean::AssocConstItem(..) => {
+                clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
                     if self.cache.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
@@ -292,7 +302,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.def_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
+                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
@@ -303,7 +313,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
-                            search_type: get_function_type_for_search(&item, self.tcx),
+                            search_type: get_function_type_for_search(&item, self.tcx, self.cache),
                             aliases: item.attrs.get_doc_aliases(),
                         });
                     }
@@ -350,11 +360,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // `public_items` map, so we can skip inserting into the
                     // paths map if there was already an entry present and we're
                     // not a public item.
-                    if !self.cache.paths.contains_key(&item.def_id.expect_def_id())
-                        || self.cache.access_levels.is_public(item.def_id.expect_def_id())
+                    if !self.cache.paths.contains_key(&item.item_id.expect_def_id())
+                        || self.cache.access_levels.is_public(item.item_id.expect_def_id())
                     {
                         self.cache.paths.insert(
-                            item.def_id.expect_def_id(),
+                            item.item_id.expect_def_id(),
                             (self.cache.stack.clone(), item.type_()),
                         );
                     }
@@ -363,7 +373,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::PrimitiveItem(..) => {
                 self.cache
                     .paths
-                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
+                    .insert(item.item_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -373,7 +383,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::TyMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
+            | clean::TyAssocConstItem(..)
             | clean::AssocConstItem(..)
+            | clean::TyAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem(..) => {
@@ -393,7 +405,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.def_id.expect_def_id());
+                self.cache.parent_stack.push(item.item_id.expect_def_id());
                 self.cache.parent_is_trait_impl = false;
                 true
             }
@@ -464,7 +476,13 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let impl_item = Impl { impl_item: item };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
-                    self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
+                    if self.impl_ids.entry(did).or_default().insert(impl_item.def_id()) {
+                        self.cache
+                            .impls
+                            .entry(did)
+                            .or_insert_with(Vec::new)
+                            .push(impl_item.clone());
+                    }
                 }
             } else {
                 let trait_did = impl_item.trait_did().expect("no trait did");

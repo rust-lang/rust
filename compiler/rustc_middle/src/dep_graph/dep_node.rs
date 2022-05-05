@@ -60,7 +60,7 @@ use crate::mir::mono::MonoItem;
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
 use rustc_query_system::dep_graph::FingerprintStyle;
@@ -266,7 +266,9 @@ impl DepNodeExt for DepNode {
     /// has been removed.
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
-            Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into())))
+            Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
+                panic!("Failed to extract DefId: {:?} {}", self.kind, self.hash)
+            }))
         } else {
             None
         }
@@ -364,7 +366,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 
     #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
+        let def_id = self.as_def_id();
         def_id.to_fingerprint(tcx)
     }
 

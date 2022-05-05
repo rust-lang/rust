@@ -554,6 +554,7 @@ pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
 ///
 /// Same requirements calling `get_unchecked` directly.
 #[doc(hidden)]
+#[inline]
 pub(in crate::iter::adapters) unsafe fn try_get_unchecked<I>(it: &mut I, idx: usize) -> I::Item
 where
     I: Iterator,
@@ -576,6 +577,7 @@ unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
 }
 
 unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
+    #[inline]
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.

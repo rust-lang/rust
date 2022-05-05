@@ -166,7 +166,7 @@ impl EarlyLintPass for NonAsciiIdents {
         }
 
         let mut has_non_ascii_idents = false;
-        let symbols = cx.sess.parse_sess.symbol_gallery.symbols.lock();
+        let symbols = cx.sess().parse_sess.symbol_gallery.symbols.lock();
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
@@ -180,13 +180,13 @@ impl EarlyLintPass for NonAsciiIdents {
             }
             has_non_ascii_idents = true;
             cx.struct_span_lint(NON_ASCII_IDENTS, sp, |lint| {
-                lint.build("identifier contains non-ASCII characters").emit()
+                lint.build("identifier contains non-ASCII characters").emit();
             });
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
                 cx.struct_span_lint(UNCOMMON_CODEPOINTS, sp, |lint| {
-                    lint.build("identifier contains uncommon Unicode codepoints").emit()
+                    lint.build("identifier contains uncommon Unicode codepoints").emit();
                 })
             }
         }
@@ -301,10 +301,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     BTreeMap::new();
 
                 'outerloop: for (augment_script_set, usage) in script_states {
-                    let (mut ch_list, sp) = match usage {
-                        ScriptSetUsage::Verified => continue,
-                        ScriptSetUsage::Suspicious(ch_list, sp) => (ch_list, sp),
-                    };
+                    let ScriptSetUsage::Suspicious(mut ch_list, sp) = usage else { continue };
 
                     if augment_script_set.is_all() {
                         continue;
@@ -340,7 +337,7 @@ impl EarlyLintPass for NonAsciiIdents {
                             let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
                             note += &char_info;
                         }
-                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit()
+                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit();
                     });
                 }
             }

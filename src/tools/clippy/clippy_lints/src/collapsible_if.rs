@@ -42,7 +42,7 @@ declare_clippy_lint! {
     ///
     /// Should be written:
     ///
-    /// ```rust.ignore
+    /// ```rust,ignore
     /// if x && y {
     ///     …
     /// }
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     ///
     /// Should be written:
     ///
-    /// ```rust.ignore
+    /// ```rust,ignore
     /// if x {
     ///     …
     /// } else if y {

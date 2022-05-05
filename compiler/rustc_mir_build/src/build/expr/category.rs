@@ -69,9 +69,12 @@ impl Category {
             | ExprKind::AssignOp { .. }
             | ExprKind::ThreadLocalRef(_) => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
-            ExprKind::ConstBlock { .. } | ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => {
-                Some(Category::Constant)
-            }
+            ExprKind::ConstBlock { .. }
+            | ExprKind::Literal { .. }
+            | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ConstParam { .. }
+            | ExprKind::StaticRef { .. }
+            | ExprKind::NamedConst { .. } => Some(Category::Constant),
 
             ExprKind::Loop { .. }
             | ExprKind::Block { .. }

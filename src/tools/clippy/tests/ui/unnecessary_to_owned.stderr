@@ -491,5 +491,11 @@ LL -         let path = match get_file_path(&t) {
 LL +         let path = match get_file_path(t) {
    | 
 
-error: aborting due to 76 previous errors
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned.rs:260:24
+   |
+LL |         Box::new(build(y.to_string()))
+   |                        ^^^^^^^^^^^^^ help: use: `y`
+
+error: aborting due to 77 previous errors
 

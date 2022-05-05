@@ -17,8 +17,8 @@ pub(super) fn check_fn<'tcx>(
     hir_id: hir::HirId,
 ) {
     let unsafety = match kind {
-        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
-        intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
+        intravisit::FnKind::Method(_, sig) => sig.header.unsafety,
         intravisit::FnKind::Closure => return,
     };
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::MethodCall(_, _, args, _) => {
+            hir::ExprKind::MethodCall(_, args, _) => {
                 let def_id = self.typeck_results.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
 

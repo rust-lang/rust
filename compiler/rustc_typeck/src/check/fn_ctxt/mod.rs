@@ -1,9 +1,9 @@
 mod _impl;
+mod arg_matrix;
 mod checks;
 mod suggestions;
 
 pub use _impl::*;
-pub use checks::*;
 pub use suggestions::*;
 
 use crate::astconv::AstConv;
@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -56,8 +56,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// like `expected_ty` to access the declared return type (if
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
-
-    pub(super) ret_coercion_impl_trait: Option<Ty<'tcx>>,
 
     pub(super) ret_type_span: Option<Span>,
 
@@ -130,7 +128,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            ret_coercion_impl_trait: None,
             ret_type_span: None,
             in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
@@ -187,8 +184,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         _: Ident,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let item_def_id = tcx.hir().ty_param_owner(hir_id);
+        let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
         ty::GenericPredicates {
@@ -239,7 +235,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    ) -> &'tcx Const<'tcx> {
+    ) -> Const<'tcx> {
         if let Some(param) = param {
             if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
                 return ct;
@@ -282,7 +278,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
-            self.normalize_associated_types_in(span, &ty)
+            self.normalize_associated_types_in(span, ty)
         }
     }
 

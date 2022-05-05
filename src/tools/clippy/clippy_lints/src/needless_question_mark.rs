@@ -4,9 +4,8 @@ use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
-use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
+use rustc_hir::{AsyncGeneratorKind, Block, Body, Expr, ExprKind, GeneratorKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -88,7 +87,26 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        check(cx, body.value.peel_blocks());
+        if let Some(GeneratorKind::Async(AsyncGeneratorKind::Fn)) = body.generator_kind {
+            if let ExprKind::Block(
+                Block {
+                    expr:
+                        Some(Expr {
+                            kind: ExprKind::DropTemps(async_body),
+                            ..
+                        }),
+                    ..
+                },
+                _,
+            ) = body.value.kind
+            {
+                if let ExprKind::Block(Block { expr: Some(expr), .. }, ..) = async_body.kind {
+                    check(cx, expr);
+                }
+            }
+        } else {
+            check(cx, body.value.peel_blocks());
+        }
     }
 }
 
@@ -109,7 +127,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.ctxt() == inner_expr.span.ctxt();
         let expr_ty = cx.typeck_results().expr_ty(expr);
         let inner_ty = cx.typeck_results().expr_ty(inner_expr);
-        if TyS::same_type(expr_ty, inner_ty);
+        if expr_ty == inner_ty;
         then {
             span_lint_and_sugg(
                 cx,

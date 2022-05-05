@@ -1,4 +1,4 @@
-use crate::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::DefId;
 use crate::hir;
 
 use rustc_ast as ast;
@@ -78,7 +78,7 @@ pub enum DefKind {
     Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
-    Static,
+    Static(ast::Mutability),
     /// Refers to the struct or enum variant's constructor.
     ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
@@ -124,11 +124,9 @@ impl DefKind {
     pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
-            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE => {
-                "crate"
-            }
+            DefKind::Mod if def_id.is_crate_root() && !def_id.is_local() => "crate",
             DefKind::Mod => "module",
-            DefKind::Static => "static",
+            DefKind::Static(..) => "static",
             DefKind::Enum => "enum",
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
@@ -202,7 +200,7 @@ impl DefKind {
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
-            | DefKind::Static
+            | DefKind::Static(..)
             | DefKind::Ctor(..)
             | DefKind::AssocFn
             | DefKind::AssocConst => Some(Namespace::ValueNS),
@@ -221,6 +219,14 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl => None,
+        }
+    }
+
+    #[inline]
+    pub fn is_fn_like(self) -> bool {
+        match self {
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator => true,
+            _ => false,
         }
     }
 }
@@ -266,59 +272,67 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
-    /// The `Self` type, optionally with the trait it is associated with
-    /// and optionally with the [`DefId`] of the impl it is associated with.
+    /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
+    /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
     ///
     /// **Belongs to the type namespace.**
     ///
-    /// For example, the `Self` in
-    ///
+    /// Examples:
     /// ```
+    /// struct Bar(Box<Self>);
+    /// // `Res::SelfTy { trait_: None, alias_of: Some(Bar) }`
+    ///
     /// trait Foo {
     ///     fn foo() -> Box<Self>;
+    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: None }`
     /// }
-    /// ```
-    ///
-    /// would have the [`DefId`] of `Foo` associated with it. The `Self` in
-    ///
-    /// ```
-    /// struct Bar;
     ///
     /// impl Bar {
-    ///     fn new() -> Self { Bar }
+    ///     fn blah() {
+    ///         let _: Self;
+    ///         // `Res::SelfTy { trait_: None, alias_of: Some(::{impl#0}) }`
+    ///     }
     /// }
-    /// ```
     ///
-    /// would have the [`DefId`] of the impl associated with it. Finally, the `Self` in
-    ///
-    /// ```
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { Box::new(Bar) }
+    ///     fn foo() -> Box<Self> {
+    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///         let _: Self;
+    ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///
+    ///         todo!()
+    ///     }
     /// }
     /// ```
-    ///
-    /// would have both the [`DefId`] of `Foo` and the [`DefId`] of the impl
-    /// associated with it.
     ///
     /// *See also [`Res::SelfCtor`].*
     ///
     /// -----
     ///
-    /// HACK(min_const_generics): impl self types also have an optional requirement to **not** mention
+    /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+    ///
+    /// struct Bar([u8; baz::<Self>()]);
+    /// const fn baz<T>() -> usize { 10 }
     /// ```
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint.
-    ///
-    /// FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
-    SelfTy(
-        /// Optionally, the trait associated with this `Self` type.
-        Option<DefId>,
-        /// Optionally, the impl associated with this `Self` type.
-        Option<(DefId, bool)>,
-    ),
+    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint:
+    /// ```
+    /// fn foo<T>() {
+    ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+    /// }
+    /// ```
+    // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
+    SelfTy {
+        /// The trait this `Self` is a generic arg for.
+        trait_: Option<DefId>,
+        /// The item introducing the `Self` type alias. Can be used in the `type_of` query
+        /// to get the underlying type. Additionally whether the `Self` type is disallowed
+        /// from mentioning generics (i.e. when used in an anonymous constant).
+        alias_to: Option<(DefId, bool)>,
+    },
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
     ///
     /// **Belongs to the type namespace.**
@@ -550,7 +564,7 @@ impl<Id> Res<Id> {
 
             Res::Local(..)
             | Res::PrimTy(..)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
             | Res::NonMacroAttr(..)
@@ -573,7 +587,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::SelfTy(..) => "self type",
+            Res::SelfTy { .. } => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
@@ -596,11 +610,24 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::SelfTy(a, b) => Res::SelfTy(a, b),
+            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
         }
+    }
+
+    pub fn apply_id<R, E>(self, mut map: impl FnMut(Id) -> Result<R, E>) -> Result<Res<R>, E> {
+        Ok(match self {
+            Res::Def(kind, id) => Res::Def(kind, id),
+            Res::SelfCtor(id) => Res::SelfCtor(id),
+            Res::PrimTy(id) => Res::PrimTy(id),
+            Res::Local(id) => Res::Local(map(id)?),
+            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::ToolMod => Res::ToolMod,
+            Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
+            Res::Err => Res::Err,
+        })
     }
 
     #[track_caller]
@@ -620,7 +647,7 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => Some(Namespace::TypeNS),
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::ToolMod => Some(Namespace::TypeNS),
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,
@@ -635,5 +662,10 @@ impl<Id> Res<Id> {
     /// Returns whether such a resolved path can occur in a tuple struct/variant pattern
     pub fn expected_in_tuple_struct_pat(&self) -> bool {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
+    }
+
+    /// Returns whether such a resolved path can occur in a unit struct/variant pattern
+    pub fn expected_in_unit_struct_pat(&self) -> bool {
+        matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
 }

@@ -4,7 +4,7 @@ use crate::mir::interpret::ConstValue;
 use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty};
 
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
@@ -15,7 +15,7 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ErrorReported),
+    Reported(ErrorGuaranteed),
     /// Already emitted a lint for this evaluation.
     Linted,
     /// Don't emit an error, the evaluation failed because the MIR was generic
@@ -23,8 +23,8 @@ pub enum ErrorHandled {
     TooGeneric,
 }
 
-impl From<ErrorReported> for ErrorHandled {
-    fn from(err: ErrorReported) -> ErrorHandled {
+impl From<ErrorGuaranteed> for ErrorHandled {
+    fn from(err: ErrorGuaranteed) -> ErrorHandled {
         ErrorHandled::Reported(err)
     }
 }
@@ -36,7 +36,10 @@ TrivialTypeFoldableAndLiftImpls! {
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
-pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
+pub fn struct_error<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    msg: &str,
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 
@@ -88,7 +91,7 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
-            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+            ErrorHandled::Reported(ErrorGuaranteed { .. }) | ErrorHandled::Linted => {
                 err_inval!(ReferencedConstant)
             }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
@@ -97,8 +100,8 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
     }
 }
 
-impl From<ErrorReported> for InterpErrorInfo<'_> {
-    fn from(err: ErrorReported) -> Self {
+impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
+    fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err)).into()
     }
 }
@@ -138,7 +141,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// which already produced an error.
     ReferencedConstant,
     /// Abort in case errors are already reported.
-    AlreadyReported(ErrorReported),
+    AlreadyReported(ErrorGuaranteed),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
@@ -157,7 +160,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
-            AlreadyReported(ErrorReported) => {
+            AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
             Layout(ref err) => write!(f, "{}", err),
@@ -181,6 +184,8 @@ pub enum CheckInAllocMsg {
     MemoryAccessTest,
     /// We are doing pointer arithmetic.
     PointerArithmeticTest,
+    /// We are doing pointer offset_from.
+    OffsetFromTest,
     /// None of the above -- generic/unspecific inbounds test.
     InboundsTest,
 }
@@ -196,6 +201,7 @@ impl fmt::Display for CheckInAllocMsg {
                 CheckInAllocMsg::DerefTest => "dereferencing pointer failed: ",
                 CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
+                CheckInAllocMsg::OffsetFromTest => "out-of-bounds offset_from: ",
                 CheckInAllocMsg::InboundsTest => "",
             }
         )
@@ -215,6 +221,13 @@ pub struct UninitBytesAccess {
     pub uninit_size: Size,
 }
 
+/// Information about a size mismatch.
+#[derive(Debug)]
+pub struct ScalarSizeMismatch {
+    pub target_size: u64,
+    pub data_size: u64,
+}
+
 /// Error information for when the program caused Undefined Behavior.
 pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
@@ -230,6 +243,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
     RemainderByZero,
+    /// Signed division overflowed (INT_MIN / -1).
+    DivisionOverflow,
+    /// Signed remainder overflowed (INT_MIN % -1).
+    RemainderOverflow,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
@@ -288,10 +305,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
-    ScalarSizeMismatch {
-        target_size: u64,
-        data_size: u64,
-    },
+    ScalarSizeMismatch(ScalarSizeMismatch),
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten,
 }
@@ -307,6 +321,8 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
+            DivisionOverflow => write!(f, "overflow in signed division (dividing MIN by -1)"),
+            RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
             InvalidVtableDropFn(sig) => write!(
@@ -349,6 +365,9 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
             }
+            DanglingIntPointer(0, msg) => {
+                write!(f, "{}null pointer is not a valid pointer", msg)
+            }
             DanglingIntPointer(i, msg) => {
                 write!(f, "{}0x{:x} is not a valid pointer", msg, i)
             }
@@ -370,7 +389,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidChar(c) => {
                 write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
             }
-            InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
+            InvalidTag(val) => write!(f, "enum value has invalid tag: {:x}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {:?} as function pointer but it does not point to a function", p)
             }
@@ -385,7 +404,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 Pointer::new(*alloc, access.access_offset),
                 access.uninit_size.bytes(),
                 pluralize!(access.uninit_size.bytes()),
-                if access.uninit_size.bytes() != 1 { "are" } else { "is" },
+                pluralize!("is", access.uninit_size.bytes()),
                 Pointer::new(*alloc, access.uninit_offset),
             ),
             InvalidUninitBytes(None) => write!(
@@ -393,7 +412,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 "using uninitialized data, but this operation requires initialized memory"
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ScalarSizeMismatch { target_size, data_size } => write!(
+            ScalarSizeMismatch(self::ScalarSizeMismatch { target_size, data_size }) => write!(
                 f,
                 "scalar size mismatch: expected {} bytes but got {} bytes instead",
                 target_size, data_size

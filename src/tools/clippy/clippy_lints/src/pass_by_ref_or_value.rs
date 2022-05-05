@@ -167,8 +167,8 @@ impl<'tcx> PassByRefOrValue {
 
                     if_chain! {
                         if !output_lts.contains(input_lt);
-                        if is_copy(cx, ty);
-                        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
+                        if is_copy(cx, *ty);
+                        if let Some(size) = cx.layout_of(*ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;
                         if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
                     return;
                 }

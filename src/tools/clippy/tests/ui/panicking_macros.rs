@@ -1,7 +1,22 @@
-#![warn(clippy::unimplemented, clippy::unreachable, clippy::todo, clippy::panic)]
 #![allow(clippy::assertions_on_constants, clippy::eq_op)]
+#![feature(inline_const)]
+#![warn(clippy::unimplemented, clippy::unreachable, clippy::todo, clippy::panic)]
 
 extern crate core;
+
+const _: () = {
+    if 1 == 0 {
+        panic!("A balanced diet means a cupcake in each hand");
+    }
+};
+
+fn inline_const() {
+    let _ = const {
+        if 1 == 0 {
+            panic!("When nothing goes right, go left")
+        }
+    };
+}
 
 fn panic() {
     let a = 2;

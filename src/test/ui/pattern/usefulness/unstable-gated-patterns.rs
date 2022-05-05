@@ -4,19 +4,19 @@
 
 extern crate unstable;
 
-use unstable::Foo;
+use unstable::UnstableEnum;
 
 fn main() {
-    match Foo::Stable {
-        Foo::Stable => {}
-        Foo::Stable2 => {}
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
+        UnstableEnum::Stable2 => {}
     }
     //~^^^^ non-exhaustive patterns: `Unstable` not covered
 
     // Ok: all variants are explicitly matched
-    match Foo::Stable {
-        Foo::Stable => {}
-        Foo::Stable2 => {}
-        Foo::Unstable => {}
+    match UnstableEnum::Stable {
+        UnstableEnum::Stable => {}
+        UnstableEnum::Stable2 => {}
+        UnstableEnum::Unstable => {}
     }
 }

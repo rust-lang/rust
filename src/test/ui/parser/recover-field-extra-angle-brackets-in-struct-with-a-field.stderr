@@ -1,0 +1,11 @@
+error: unmatched angle bracket
+  --> $DIR/recover-field-extra-angle-brackets-in-struct-with-a-field.rs:2:25
+   |
+LL |       next: Option<String>>
+   |  _________________________^
+LL | |
+LL | | }
+   | |_ help: remove extra angle bracket
+
+error: aborting due to previous error
+

@@ -461,7 +461,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
                 (combined / 10) as u32 as Limb
             });
 
-            // Reduce the sigificand to avoid wasting time dividing 0's.
+            // Reduce the significand to avoid wasting time dividing 0's.
             while sig.last() == Some(&0) {
                 sig.pop();
             }

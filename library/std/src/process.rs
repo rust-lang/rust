@@ -525,7 +525,11 @@ impl Command {
     /// * No arguments to the program
     /// * Inherit the current process's environment
     /// * Inherit the current process's working directory
-    /// * Inherit stdin/stdout/stderr for `spawn` or `status`, but create pipes for `output`
+    /// * Inherit stdin/stdout/stderr for [`spawn`] or [`status`], but create pipes for [`output`]
+    ///
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
@@ -772,11 +776,14 @@ impl Command {
 
     /// Configuration for the child process's standard input (stdin) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
@@ -798,11 +805,14 @@ impl Command {
 
     /// Configuration for the child process's standard output (stdout) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
@@ -824,11 +834,14 @@ impl Command {
 
     /// Configuration for the child process's standard error (stderr) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
@@ -915,7 +928,7 @@ impl Command {
     ///                      .status()
     ///                      .expect("failed to execute process");
     ///
-    /// println!("process finished with: {}", status);
+    /// println!("process finished with: {status}");
     ///
     /// assert!(status.success());
     /// ```
@@ -1277,7 +1290,7 @@ impl fmt::Debug for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdin> for Stdio {
-    /// Converts a `ChildStdin` into a `Stdio`
+    /// Converts a [`ChildStdin`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1306,7 +1319,7 @@ impl From<ChildStdin> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdout> for Stdio {
-    /// Converts a `ChildStdout` into a `Stdio`
+    /// Converts a [`ChildStdout`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1335,7 +1348,7 @@ impl From<ChildStdout> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStderr> for Stdio {
-    /// Converts a `ChildStderr` into a `Stdio`
+    /// Converts a [`ChildStderr`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1366,7 +1379,7 @@ impl From<ChildStderr> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<fs::File> for Stdio {
-    /// Converts a `File` into a `Stdio`
+    /// Converts a [`File`](fs::File) into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1404,6 +1417,15 @@ impl From<fs::File> for Stdio {
 /// For proper error reporting of failed processes, print the value of `ExitStatus` or
 /// `ExitStatusError` using their implementations of [`Display`](crate::fmt::Display).
 ///
+/// # Differences from `ExitStatus`
+///
+/// `ExitCode` is intended for terminating the currently running process, via
+/// the `Termination` trait, in contrast to [`ExitStatus`], which represents the
+/// termination of a child process. These APIs are separate due to platform
+/// compatibility differences and their expected usage; it is not generally
+/// possible to exactly reproduce an ExitStatus from a child for the current
+/// process after the fact.
+///
 /// [`status`]: Command::status
 /// [`wait`]: Child::wait
 //
@@ -1434,7 +1456,7 @@ impl ExitStatus {
     ///                      .status()
     ///                      .expect("ls could not be executed");
     ///
-    /// println!("ls: {}", status);
+    /// println!("ls: {status}");
     /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
     /// # } // cfg!(unix)
     /// ```
@@ -1459,7 +1481,7 @@ impl ExitStatus {
     /// if status.success() {
     ///     println!("'projects/' directory created");
     /// } else {
-    ///     println!("failed to create 'projects/' directory: {}", status);
+    ///     println!("failed to create 'projects/' directory: {status}");
     /// }
     /// ```
     #[must_use]
@@ -1490,7 +1512,7 @@ impl ExitStatus {
     ///                      .expect("failed to execute mkdir");
     ///
     /// match status.code() {
-    ///     Some(code) => println!("Exited with status code: {}", code),
+    ///     Some(code) => println!("Exited with status code: {code}"),
     ///     None       => println!("Process terminated by signal")
     /// }
     /// ```
@@ -1636,8 +1658,16 @@ impl fmt::Display for ExitStatusError {
 #[unstable(feature = "exit_status_error", issue = "84908")]
 impl crate::error::Error for ExitStatusError {}
 
-/// This type represents the status code a process can return to its
-/// parent under normal termination.
+/// This type represents the status code the current process can return
+/// to its parent under normal termination.
+///
+/// `ExitCode` is intended to be consumed only by the standard library (via
+/// [`Termination::report()`]), and intentionally does not provide accessors like
+/// `PartialEq`, `Eq`, or `Hash`. Instead the standard library provides the
+/// canonical `SUCCESS` and `FAILURE` exit codes as well as `From<u8> for
+/// ExitCode` for constructing other arbitrary exit codes.
+///
+/// # Portability
 ///
 /// Numeric values used in this type don't have portable meanings, and
 /// different platforms may mask different amounts of them.
@@ -1648,32 +1678,81 @@ impl crate::error::Error for ExitStatusError {}
 /// [`SUCCESS`]: ExitCode::SUCCESS
 /// [`FAILURE`]: ExitCode::FAILURE
 ///
-/// **Warning**: While various forms of this were discussed in [RFC #1937],
-/// it was ultimately cut from that RFC, and thus this type is more subject
-/// to change even than the usual unstable item churn.
+/// # Differences from `ExitStatus`
 ///
-/// [RFC #1937]: https://github.com/rust-lang/rfcs/pull/1937
+/// `ExitCode` is intended for terminating the currently running process, via
+/// the `Termination` trait, in contrast to [`ExitStatus`], which represents the
+/// termination of a child process. These APIs are separate due to platform
+/// compatibility differences and their expected usage; it is not generally
+/// possible to exactly reproduce an ExitStatus from a child for the current
+/// process after the fact.
+///
+/// # Examples
+///
+/// `ExitCode` can be returned from the `main` function of a crate, as it implements
+/// [`Termination`]:
+///
+/// ```
+/// use std::process::ExitCode;
+/// # fn check_foo() -> bool { true }
+///
+/// fn main() -> ExitCode {
+///     if !check_foo() {
+///         return ExitCode::from(42);
+///     }
+///
+///     ExitCode::SUCCESS
+/// }
+/// ```
 #[derive(Clone, Copy, Debug)]
-#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+#[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
-#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+#[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {
-    /// The canonical ExitCode for successful termination on this platform.
+    /// The canonical `ExitCode` for successful termination on this platform.
     ///
     /// Note that a `()`-returning `main` implicitly results in a successful
     /// termination, so there's no need to return this from `main` unless
     /// you're also returning other possible codes.
-    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const SUCCESS: ExitCode = ExitCode(imp::ExitCode::SUCCESS);
 
-    /// The canonical ExitCode for unsuccessful termination on this platform.
+    /// The canonical `ExitCode` for unsuccessful termination on this platform.
     ///
     /// If you're only returning this and `SUCCESS` from `main`, consider
     /// instead returning `Err(_)` and `Ok(())` respectively, which will
     /// return the same codes (but will also `eprintln!` the error).
-    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+}
+
+impl ExitCode {
+    // This is private/perma-unstable because ExitCode is opaque; we don't know that i32 will serve
+    // all usecases, for example windows seems to use u32, unix uses the 8-15th bits of an i32, we
+    // likely want to isolate users anything that could restrict the platform specific
+    // representation of an ExitCode
+    //
+    // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
+    /// Convert an `ExitCode` into an i32
+    #[unstable(
+        feature = "process_exitcode_internals",
+        reason = "exposed only for libstd",
+        issue = "none"
+    )]
+    #[inline]
+    #[doc(hidden)]
+    pub fn to_i32(self) -> i32 {
+        self.0.as_i32()
+    }
+}
+
+#[stable(feature = "process_exitcode", since = "1.61.0")]
+impl From<u8> for ExitCode {
+    /// Construct an `ExitCode` from an arbitrary u8 value.
+    fn from(code: u8) -> Self {
+        ExitCode(imp::ExitCode::from(code))
+    }
 }
 
 impl Child {
@@ -1783,13 +1862,13 @@ impl Child {
     /// let mut child = Command::new("ls").spawn().unwrap();
     ///
     /// match child.try_wait() {
-    ///     Ok(Some(status)) => println!("exited with: {}", status),
+    ///     Ok(Some(status)) => println!("exited with: {status}"),
     ///     Ok(None) => {
     ///         println!("status not ready yet, let's really wait");
     ///         let res = child.wait();
-    ///         println!("result: {:?}", res);
+    ///         println!("result: {res:?}");
     ///     }
-    ///     Err(e) => println!("error attempting to wait: {}", e),
+    ///     Err(e) => println!("error attempting to wait: {e}"),
     /// }
     /// ```
     #[stable(feature = "process_try_wait", since = "1.18.0")]
@@ -1889,7 +1968,7 @@ impl Child {
 ///     std::process::exit(match run_app() {
 ///         Ok(_) => 0,
 ///         Err(err) => {
-///             eprintln!("error: {:?}", err);
+///             eprintln!("error: {err:?}");
 ///             1
 ///         }
 ///     });
@@ -2007,8 +2086,13 @@ pub fn id() -> u32 {
 ///
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
+///
+/// Because different runtimes have different specifications on the return value
+/// of the `main` function, this trait is likely to be available only on
+/// standard library's runtime for convenience. Other runtimes are not required
+/// to provide similar functionality.
 #[cfg_attr(not(test), lang = "termination")]
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(
     message = "`main` has invalid return type `{Self}`",
     label = "`main` can only return types that implement `{Termination}`"
@@ -2016,20 +2100,21 @@ pub fn id() -> u32 {
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
-    fn report(self) -> i32;
+    #[stable(feature = "termination_trait_lib", since = "1.61.0")]
+    fn report(self) -> ExitCode;
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for () {
     #[inline]
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         ExitCode::SUCCESS.report()
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         match self {
             Ok(()) => ().report(),
             Err(err) => Err::<!, _>(err).report(),
@@ -2037,34 +2122,34 @@ impl<E: fmt::Debug> Termination for Result<(), E> {
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ! {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         self
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
-        eprintln!("Error: {:?}", err);
+        eprintln!("Error: {err:?}");
         ExitCode::FAILURE.report()
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
         Err::<!, _>(err).report()
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ExitCode {
     #[inline]
-    fn report(self) -> i32 {
-        self.0.as_i32()
+    fn report(self) -> ExitCode {
+        self
     }
 }

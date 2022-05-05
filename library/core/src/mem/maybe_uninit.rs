@@ -1,8 +1,9 @@
 use crate::any::type_name;
 use crate::fmt;
 use crate::intrinsics;
-use crate::mem::ManuallyDrop;
+use crate::mem::{self, ManuallyDrop};
 use crate::ptr;
+use crate::slice;
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
@@ -349,13 +350,13 @@ impl<T> MaybeUninit<T> {
     /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
     /// let data = read(&mut buf);
     /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
-    #[rustc_const_unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_uninit_array", issue = "96097")]
     #[must_use]
     #[inline(always)]
-    pub const fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+    pub const fn uninit_array<const N: usize>() -> [Self; N] {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-        unsafe { MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init() }
+        unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -621,7 +622,7 @@ impl<T> MaybeUninit<T> {
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init", since = "1.59.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
     #[inline(always)]
     #[rustc_diagnostic_item = "assume_init"]
     #[track_caller]
@@ -787,7 +788,7 @@ impl<T> MaybeUninit<T> {
     /// }
     /// ```
     #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init", since = "1.59.0")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_ref", since = "1.59.0")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &T {
         // SAFETY: the caller must guarantee that `self` is initialized.
@@ -816,6 +817,7 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
+    /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
     /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
@@ -940,19 +942,24 @@ impl<T> MaybeUninit<T> {
     ///
     /// assert_eq!(array, [0, 1, 2]);
     /// ```
-    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "80908")]
+    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_array_assume_init", issue = "96097")]
     #[inline(always)]
     #[track_caller]
-    pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
+    pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized
         // * `MaybeUninit<T>` and T are guaranteed to have the same layout
         // * `MaybeUninit` does not drop, so there are no double-frees
         // And thus the conversion is safe
-        unsafe {
+        let ret = unsafe {
             intrinsics::assert_inhabited::<[T; N]>();
             (&array as *const _ as *const [T; N]).read()
-        }
+        };
+
+        // FIXME: required to avoid `~const Destruct` bound
+        super::forget(array);
+        ret
     }
 
     /// Assuming all the elements are initialized, get a slice to them.
@@ -1159,5 +1166,127 @@ impl<T> MaybeUninit<T> {
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
+
+    /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
+    ///
+    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
+    /// contain padding bytes which are left uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let val = 0x12345678i32;
+    /// let uninit = MaybeUninit::new(val);
+    /// let uninit_bytes = uninit.as_bytes();
+    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(uninit_bytes) };
+    /// assert_eq!(bytes, val.to_ne_bytes());
+    /// ```
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    pub fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+        // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
+        unsafe {
+            slice::from_raw_parts(self.as_ptr() as *const MaybeUninit<u8>, mem::size_of::<T>())
+        }
+    }
+
+    /// Returns the contents of this `MaybeUninit` as a mutable slice of potentially uninitialized
+    /// bytes.
+    ///
+    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
+    /// contain padding bytes which are left uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_as_bytes)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let val = 0x12345678i32;
+    /// let mut uninit = MaybeUninit::new(val);
+    /// let uninit_bytes = uninit.as_bytes_mut();
+    /// if cfg!(target_endian = "little") {
+    ///     uninit_bytes[0].write(0xcd);
+    /// } else {
+    ///     uninit_bytes[3].write(0xcd);
+    /// }
+    /// let val2 = unsafe { uninit.assume_init() };
+    /// assert_eq!(val2, 0x123456cd);
+    /// ```
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    pub fn as_bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr() as *mut MaybeUninit<u8>,
+                mem::size_of::<T>(),
+            )
+        }
+    }
+
+    /// Returns the contents of this slice of `MaybeUninit` as a slice of potentially uninitialized
+    /// bytes.
+    ///
+    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
+    /// contain padding bytes which are left uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
+    /// let uninit_bytes = MaybeUninit::slice_as_bytes(&uninit);
+    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(&uninit_bytes) };
+    /// let val1 = u16::from_ne_bytes(bytes[0..2].try_into().unwrap());
+    /// let val2 = u16::from_ne_bytes(bytes[2..4].try_into().unwrap());
+    /// assert_eq!(&[val1, val2], &[0x1234u16, 0x5678u16]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    pub fn slice_as_bytes(this: &[MaybeUninit<T>]) -> &[MaybeUninit<u8>] {
+        // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
+        unsafe {
+            slice::from_raw_parts(
+                this.as_ptr() as *const MaybeUninit<u8>,
+                this.len() * mem::size_of::<T>(),
+            )
+        }
+    }
+
+    /// Returns the contents of this mutable slice of `MaybeUninit` as a mutable slice of
+    /// potentially uninitialized bytes.
+    ///
+    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
+    /// contain padding bytes which are left uninitialized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
+    /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
+    /// MaybeUninit::write_slice(uninit_bytes, &[0x12, 0x34, 0x56, 0x78]);
+    /// let vals = unsafe { MaybeUninit::slice_assume_init_ref(&uninit) };
+    /// if cfg!(target_endian = "little") {
+    ///     assert_eq!(vals, &[0x3412u16, 0x7856u16]);
+    /// } else {
+    ///     assert_eq!(vals, &[0x1234u16, 0x5678u16]);
+    /// }
+    /// ```
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    pub fn slice_as_bytes_mut(this: &mut [MaybeUninit<T>]) -> &mut [MaybeUninit<u8>] {
+        // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
+        unsafe {
+            slice::from_raw_parts_mut(
+                this.as_mut_ptr() as *mut MaybeUninit<u8>,
+                this.len() * mem::size_of::<T>(),
+            )
+        }
     }
 }

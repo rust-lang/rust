@@ -97,9 +97,9 @@ impl TcpStream {
 
     pub fn connect_timeout(addr: &SocketAddr, dur: Duration) -> io::Result<TcpStream> {
         if dur == Duration::default() {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"cannot set a 0 duration timeout",
+                "cannot set a 0 duration timeout",
             ));
         }
         Self::connect(Ok(addr)) // FIXME: ignoring timeout
@@ -108,9 +108,9 @@ impl TcpStream {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidInput,
-                    &"cannot set a 0 duration timeout",
+                    "cannot set a 0 duration timeout",
                 ));
             }
             _ => sgx_ineffective(()),
@@ -120,9 +120,9 @@ impl TcpStream {
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidInput,
-                    &"cannot set a 0 duration timeout",
+                    "cannot set a 0 duration timeout",
                 ));
             }
             _ => sgx_ineffective(()),
@@ -501,7 +501,7 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     type Error = io::Error;
 
     fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
-        LookupHost::new(format!("{}:{}", host, port))
+        LookupHost::new(format!("{host}:{port}"))
     }
 }
 

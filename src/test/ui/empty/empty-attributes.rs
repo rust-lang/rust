@@ -1,5 +1,8 @@
+#![feature(lint_reasons)]
+
 #![deny(unused_attributes)]
 #![allow()] //~ ERROR unused attribute
+#![expect()] //~ ERROR unused attribute
 #![warn()] //~ ERROR unused attribute
 #![deny()] //~ ERROR unused attribute
 #![forbid()] //~ ERROR unused attribute

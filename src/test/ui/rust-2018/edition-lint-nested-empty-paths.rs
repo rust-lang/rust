@@ -21,9 +21,13 @@ use foo::{bar::{baz::{}}};
 use foo::{bar::{XX, baz::{}}};
 //~^ ERROR absolute paths must start with
 //~| WARN this is accepted in the current edition
+//~| ERROR absolute paths must start with
+//~| WARN this is accepted in the current edition
 
 use foo::{bar::{baz::{}, baz1::{}}};
 //~^ ERROR absolute paths must start with
+//~| WARN this is accepted in the current edition
+//~| ERROR absolute paths must start with
 //~| WARN this is accepted in the current edition
 
 fn main() {

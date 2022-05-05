@@ -17,7 +17,7 @@ fn two(x: bool) -> impl Foo {
     //~| expected `i32`, found `u32`
 }
 
-fn sum_to(n: u32) -> impl Foo { //~ ERROR type annotations needed
+fn sum_to(n: u32) -> impl Foo {
     if n == 0 {
         0
     } else {

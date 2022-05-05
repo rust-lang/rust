@@ -62,7 +62,7 @@
 //!
 //! Note: we will often abbreviate "constructor" as "ctor".
 //!
-//! The idea that powers everything that is done in this file is the following: a (matcheable)
+//! The idea that powers everything that is done in this file is the following: a (matchable)
 //! value is made from a constructor applied to a number of subvalues. Examples of constructors are
 //! `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for a struct
 //! `Foo`), and `2` (the constructor for the number `2`). This is natural when we think of
@@ -71,7 +71,7 @@
 //! Some of the ctors listed above might feel weird: `None` and `2` don't take any arguments.
 //! That's ok: those are ctors that take a list of 0 arguments; they are the simplest case of
 //! ctors. We treat `2` as a ctor because `u64` and other number types behave exactly like a huge
-//! `enum`, with one variant for each number. This allows us to see any matcheable value as made up
+//! `enum`, with one variant for each number. This allows us to see any matchable value as made up
 //! from a tree of ctors, each having a set number of children. For example: `Foo { bar: None,
 //! baz: Ok(0) }` is made from 4 different ctors, namely `Foo{..}`, `None`, `Ok` and `0`.
 //!
@@ -325,7 +325,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
             }
             _ => false,
         }
@@ -342,7 +342,7 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Wether the current pattern is from a `non_exhaustive` enum.
+    /// Whether the current pattern is from a `non_exhaustive` enum.
     pub(super) is_non_exhaustive: bool,
 }
 
@@ -765,10 +765,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(
-    level = "debug",
-    skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level)
-)]
+#[instrument(level = "debug", skip(cx, matrix, hir_id))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -800,6 +797,7 @@ fn is_useful<'p, 'tcx>(
 
     let ty = v.head().ty();
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+    debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
     let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
@@ -809,9 +807,11 @@ fn is_useful<'p, 'tcx>(
         // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
         for v in v.expand_or_pat() {
+            debug!(?v);
             let usefulness = ensure_sufficient_stack(|| {
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false)
             });
+            debug!(?usefulness);
             ret.extend(usefulness);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
@@ -822,6 +822,7 @@ fn is_useful<'p, 'tcx>(
         }
     } else {
         let v_ctor = v.head().ctor();
+        debug!(?v_ctor);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
             // Lint on likely incorrect range patterns (#63987)
             ctor_range.lint_overlapping_range_endpoints(
@@ -895,7 +896,7 @@ fn is_useful<'p, 'tcx>(
 }
 
 /// The arm of a match expression.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 crate struct MatchArm<'p, 'tcx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
     crate pat: &'p DeconstructedPat<'p, 'tcx>,
@@ -928,6 +929,7 @@ crate struct UsefulnessReport<'p, 'tcx> {
 ///
 /// Note: the input patterns must have been lowered through
 /// `check_match::MatchVisitor::lower_pattern`.
+#[instrument(skip(cx, arms), level = "debug")]
 crate fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
@@ -939,6 +941,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         .iter()
         .copied()
         .map(|arm| {
+            debug!(?arm);
             let v = PatStack::from_pattern(arm.pat);
             is_useful(cx, &matrix, &v, RealArm, arm.hir_id, arm.has_guard, true);
             if !arm.has_guard {

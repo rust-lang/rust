@@ -132,7 +132,7 @@ impl<T: RegisterArgument> RegisterArgument for Option<NonNull<T>> {
 
 impl ReturnValue for ! {
     fn from_registers(call: &'static str, _regs: (Register, Register)) -> Self {
-        rtabort!("Usercall {}: did not expect to be re-entered", call);
+        rtabort!("Usercall {call}: did not expect to be re-entered");
     }
 }
 

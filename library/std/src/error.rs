@@ -26,6 +26,7 @@ use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
 use crate::fmt::{self, Debug, Display, Write};
+use crate::io;
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -96,7 +97,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e);
+    ///             println!("Error: {e}");
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -139,7 +140,7 @@ pub trait Error: Debug + Display {
     /// ```
     /// if let Err(e) = "xc".parse::<u32>() {
     ///     // Print `e` itself, no need for description().
-    ///     eprintln!("Error: {}", e);
+    ///     eprintln!("Error: {e}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -516,6 +517,14 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[unstable(feature = "thin_box", issue = "92791")]
+impl<T: ?Sized + crate::error::Error> crate::error::Error for crate::boxed::ThinBox<T> {
+    fn source(&self) -> Option<&(dyn crate::error::Error + 'static)> {
+        use core::ops::Deref;
+        self.deref().source()
+    }
+}
+
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
@@ -602,7 +611,49 @@ impl Error for char::ParseCharError {
 impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for time::FromSecsError {}
+impl Error for time::FromFloatSecsError {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for alloc::ffi::NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for io::Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`io::Error`].
+    fn from(_: alloc::ffi::NulError) -> io::Error {
+        io::const_io_error!(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for core::ffi::FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for core::ffi::FromBytesUntilNulError {}
+
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl Error for alloc::ffi::FromVecWithNulError {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl Error for alloc::ffi::IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(self.__source())
+    }
+}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
@@ -1074,7 +1125,7 @@ impl<E> Report<E> {
     ///
     /// let error = SuperError { source: SuperErrorSideKick };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1135,7 +1186,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick { source };
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1210,7 +1261,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick::new();
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true).show_backtrace(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces something similar to the following output:
@@ -1267,7 +1318,7 @@ where
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1278,7 +1329,7 @@ where
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1289,9 +1340,9 @@ where
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }
@@ -1333,7 +1384,7 @@ impl Report<Box<dyn Error>> {
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1344,7 +1395,7 @@ impl Report<Box<dyn Error>> {
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1355,9 +1406,9 @@ impl Report<Box<dyn Error>> {
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }

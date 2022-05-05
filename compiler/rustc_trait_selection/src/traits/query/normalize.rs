@@ -140,8 +140,8 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
         ControlFlow::CONTINUE
     }
 
-    fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.val {
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match ct.val() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
@@ -188,7 +188,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         }
 
         if let Some(ty) = self.cache.get(&ty) {
-            return Ok(ty);
+            return Ok(*ty);
         }
 
         // See note in `rustc_trait_selection::traits::project` about why we
@@ -200,7 +200,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
-                // Only normalize `impl Trait` after type-checking, usually in codegen.
+                // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
 
@@ -324,8 +324,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
     fn try_fold_const(
         &mut self,
-        constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        constant: ty::Const<'tcx>,
+    ) -> Result<ty::Const<'tcx>, Self::Error> {
         let constant = constant.try_super_fold_with(self)?;
         Ok(constant.eval(self.infcx.tcx, self.param_env))
     }
@@ -334,6 +334,21 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         &mut self,
         constant: mir::ConstantKind<'tcx>,
     ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        constant.try_super_fold_with(self)
+        let constant_kind = match constant {
+            mir::ConstantKind::Ty(c) => {
+                let const_folded = c.try_fold_with(self)?;
+                match const_folded.val() {
+                    ty::ConstKind::Value(cv) => {
+                        // FIXME With Valtrees we need to convert `cv: ValTree`
+                        // to a `ConstValue` here.
+                        mir::ConstantKind::Val(cv, const_folded.ty())
+                    }
+                    _ => mir::ConstantKind::Ty(const_folded),
+                }
+            }
+            mir::ConstantKind::Val(_, _) => constant.try_super_fold_with(self)?,
+        };
+
+        Ok(constant_kind)
     }
 }

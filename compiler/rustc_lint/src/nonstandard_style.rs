@@ -164,7 +164,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         let has_repr_c = it
             .attrs
             .iter()
-            .any(|attr| attr::find_repr_attrs(&cx.sess, attr).contains(&attr::ReprC));
+            .any(|attr| attr::find_repr_attrs(cx.sess(), attr).contains(&attr::ReprC));
 
         if has_repr_c {
             return;
@@ -406,7 +406,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 }
                 _ => (),
             },
-            FnKind::ItemFn(ident, _, header, _) => {
+            FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
                 if header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle) {
                     return;

@@ -1,4 +1,4 @@
-//! A double-ended queue implemented with a growable ring buffer.
+//! A double-ended queue (deque) implemented with a growable ring buffer.
 //!
 //! This queue has *O*(1) amortized inserts and removals from both ends of the
 //! container. It also has *O*(1) indexing like a vector. The contained elements
@@ -12,7 +12,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
@@ -53,6 +53,10 @@ mod pair_slices;
 use self::ring_slices::RingSlices;
 
 mod ring_slices;
+
+use self::spec_extend::SpecExtend;
+
+mod spec_extend;
 
 #[cfg(test)]
 mod tests;
@@ -156,7 +160,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for VecDeque<T> {
-    /// Creates an empty `VecDeque<T>`.
+    /// Creates an empty deque.
     #[inline]
     fn default() -> VecDeque<T> {
         VecDeque::new()
@@ -181,16 +185,28 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Turn ptr into a slice
+    /// Turn ptr into a slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_slice(&self) -> &[MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
-    /// Turn ptr into a mut slice
+    /// Turn ptr into a mut slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts_mut(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
     /// Moves an element out of the buffer
@@ -483,14 +499,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
 }
 
 impl<T> VecDeque<T> {
-    /// Creates an empty `VecDeque`.
+    /// Creates an empty deque.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let vector: VecDeque<u32> = VecDeque::new();
+    /// let deque: VecDeque<u32> = VecDeque::new();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -499,14 +515,14 @@ impl<T> VecDeque<T> {
         VecDeque::new_in(Global)
     }
 
-    /// Creates an empty `VecDeque` with space for at least `capacity` elements.
+    /// Creates an empty deque with space for at least `capacity` elements.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -517,14 +533,14 @@ impl<T> VecDeque<T> {
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
-    /// Creates an empty `VecDeque`.
+    /// Creates an empty deque.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let vector: VecDeque<u32> = VecDeque::new();
+    /// let deque: VecDeque<u32> = VecDeque::new();
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -532,14 +548,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         VecDeque::with_capacity_in(INITIAL_CAPACITY, alloc)
     }
 
-    /// Creates an empty `VecDeque` with space for at least `capacity` elements.
+    /// Creates an empty deque with space for at least `capacity` elements.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
@@ -636,7 +652,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { ptr::swap(self.ptr().add(ri), self.ptr().add(rj)) }
     }
 
-    /// Returns the number of elements the `VecDeque` can hold without
+    /// Returns the number of elements the deque can hold without
     /// reallocating.
     ///
     /// # Examples
@@ -654,7 +670,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
-    /// given `VecDeque`. Does nothing if the capacity is already sufficient.
+    /// given deque. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
     /// capacity can not be relied upon to be precisely minimal. Prefer [`reserve`] if future
@@ -669,7 +685,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into();
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -681,7 +697,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// `VecDeque`. The collection may reserve more space to avoid frequent reallocations.
+    /// deque. The collection may reserve more space to avoid frequent reallocations.
     ///
     /// # Panics
     ///
@@ -692,7 +708,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into();
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -714,7 +730,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `VecDeque<T>`. After calling `try_reserve_exact`,
+    /// be inserted in the given deque. After calling `try_reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
     ///
@@ -756,7 +772,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
+    /// in the given deque. The collection may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
@@ -805,10 +821,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         Ok(())
     }
 
-    /// Shrinks the capacity of the `VecDeque` as much as possible.
+    /// Shrinks the capacity of the deque as much as possible.
     ///
     /// It will drop down as close as possible to the length but the allocator may still inform the
-    /// `VecDeque` that there is space for a few more elements.
+    /// deque that there is space for a few more elements.
     ///
     /// # Examples
     ///
@@ -826,7 +842,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.shrink_to(0);
     }
 
-    /// Shrinks the capacity of the `VecDeque` with a lower bound.
+    /// Shrinks the capacity of the deque with a lower bound.
     ///
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
@@ -909,10 +925,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Shortens the `VecDeque`, keeping the first `len` elements and dropping
+    /// Shortens the deque, keeping the first `len` elements and dropping
     /// the rest.
     ///
-    /// If `len` is greater than the `VecDeque`'s current length, this has no
+    /// If `len` is greater than the deque's current length, this has no
     /// effect.
     ///
     /// # Examples
@@ -1027,10 +1043,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
-    /// `VecDeque`.
+    /// deque.
     ///
     /// If [`make_contiguous`] was previously called, all elements of the
-    /// `VecDeque` will be in the first slice and the second slice will be empty.
+    /// deque will be in the first slice and the second slice will be empty.
     ///
     /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
@@ -1039,33 +1055,37 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector = VecDeque::new();
+    /// let mut deque = VecDeque::new();
     ///
-    /// vector.push_back(0);
-    /// vector.push_back(1);
-    /// vector.push_back(2);
+    /// deque.push_back(0);
+    /// deque.push_back(1);
+    /// deque.push_back(2);
     ///
-    /// assert_eq!(vector.as_slices(), (&[0, 1, 2][..], &[][..]));
+    /// assert_eq!(deque.as_slices(), (&[0, 1, 2][..], &[][..]));
     ///
-    /// vector.push_front(10);
-    /// vector.push_front(9);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
     ///
-    /// assert_eq!(vector.as_slices(), (&[9, 10][..], &[0, 1, 2][..]));
+    /// assert_eq!(deque.as_slices(), (&[9, 10][..], &[0, 1, 2][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let buf = self.buffer_as_slice();
-            RingSlices::ring_slices(buf, self.head, self.tail)
+            let (front, back) = RingSlices::ring_slices(buf, self.head, self.tail);
+            (MaybeUninit::slice_assume_init_ref(front), MaybeUninit::slice_assume_init_ref(back))
         }
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
-    /// `VecDeque`.
+    /// deque.
     ///
     /// If [`make_contiguous`] was previously called, all elements of the
-    /// `VecDeque` will be in the first slice and the second slice will be empty.
+    /// deque will be in the first slice and the second slice will be empty.
     ///
     /// [`make_contiguous`]: VecDeque::make_contiguous
     ///
@@ -1074,57 +1094,61 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector = VecDeque::new();
+    /// let mut deque = VecDeque::new();
     ///
-    /// vector.push_back(0);
-    /// vector.push_back(1);
+    /// deque.push_back(0);
+    /// deque.push_back(1);
     ///
-    /// vector.push_front(10);
-    /// vector.push_front(9);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
     ///
-    /// vector.as_mut_slices().0[0] = 42;
-    /// vector.as_mut_slices().1[0] = 24;
-    /// assert_eq!(vector.as_slices(), (&[42, 10][..], &[24, 1][..]));
+    /// deque.as_mut_slices().0[0] = 42;
+    /// deque.as_mut_slices().1[0] = 24;
+    /// assert_eq!(deque.as_slices(), (&[42, 10][..], &[24, 1][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let head = self.head;
             let tail = self.tail;
             let buf = self.buffer_as_mut_slice();
-            RingSlices::ring_slices(buf, head, tail)
+            let (front, back) = RingSlices::ring_slices(buf, head, tail);
+            (MaybeUninit::slice_assume_init_mut(front), MaybeUninit::slice_assume_init_mut(back))
         }
     }
 
-    /// Returns the number of elements in the `VecDeque`.
+    /// Returns the number of elements in the deque.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v = VecDeque::new();
-    /// assert_eq!(v.len(), 0);
-    /// v.push_back(1);
-    /// assert_eq!(v.len(), 1);
+    /// let mut deque = VecDeque::new();
+    /// assert_eq!(deque.len(), 0);
+    /// deque.push_back(1);
+    /// assert_eq!(deque.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         count(self.tail, self.head, self.cap())
     }
 
-    /// Returns `true` if the `VecDeque` is empty.
+    /// Returns `true` if the deque is empty.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v = VecDeque::new();
-    /// assert!(v.is_empty());
-    /// v.push_front(1);
-    /// assert!(!v.is_empty());
+    /// let mut deque = VecDeque::new();
+    /// assert!(deque.is_empty());
+    /// deque.push_front(1);
+    /// assert!(!deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
@@ -1141,24 +1165,24 @@ impl<T, A: Allocator> VecDeque<T, A> {
         (tail, head)
     }
 
-    /// Creates an iterator that covers the specified range in the `VecDeque`.
+    /// Creates an iterator that covers the specified range in the deque.
     ///
     /// # Panics
     ///
     /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// the end point is greater than the length of the deque.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let v: VecDeque<_> = [1, 2, 3].into_iter().collect();
-    /// let range = v.range(2..).copied().collect::<VecDeque<_>>();
+    /// let deque: VecDeque<_> = [1, 2, 3].into();
+    /// let range = deque.range(2..).copied().collect::<VecDeque<_>>();
     /// assert_eq!(range, [3]);
     ///
     /// // A full range covers all contents
-    /// let all = v.range(..);
+    /// let all = deque.range(..);
     /// assert_eq!(all.len(), 3);
     /// ```
     #[inline]
@@ -1176,29 +1200,29 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Creates an iterator that covers the specified mutable range in the `VecDeque`.
+    /// Creates an iterator that covers the specified mutable range in the deque.
     ///
     /// # Panics
     ///
     /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// the end point is greater than the length of the deque.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
-    /// for v in v.range_mut(2..) {
+    /// let mut deque: VecDeque<_> = [1, 2, 3].into();
+    /// for v in deque.range_mut(2..) {
     ///   *v *= 2;
     /// }
-    /// assert_eq!(v, vec![1, 2, 6]);
+    /// assert_eq!(deque, [1, 2, 6]);
     ///
     /// // A full range covers all contents
-    /// for v in v.range_mut(..) {
+    /// for v in deque.range_mut(..) {
     ///   *v *= 2;
     /// }
-    /// assert_eq!(v, vec![2, 4, 12]);
+    /// assert_eq!(deque, [2, 4, 12]);
     /// ```
     #[inline]
     #[stable(feature = "deque_range", since = "1.51.0")]
@@ -1215,34 +1239,38 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { IterMut::new(ring, tail, head, PhantomData) }
     }
 
-    /// Creates a draining iterator that removes the specified range in the
-    /// `VecDeque` and yields the removed items.
+    /// Removes the specified range from the deque in bulk, returning all
+    /// removed elements as an iterator. If the iterator is dropped before
+    /// being fully consumed, it drops the remaining removed elements.
     ///
-    /// Note 1: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// The returned iterator keeps a mutable borrow on the queue to optimize
+    /// its implementation.
     ///
-    /// Note 2: It is unspecified how many elements are removed from the deque,
-    /// if the `Drain` value is not dropped, but the borrow it holds expires
-    /// (e.g., due to `mem::forget`).
     ///
     /// # Panics
     ///
     /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// the end point is greater than the length of the deque.
+    ///
+    /// # Leaking
+    ///
+    /// If the returned iterator goes out of scope without being dropped (due to
+    /// [`mem::forget`], for example), the deque may have lost and leaked
+    /// elements arbitrarily, including elements outside the range.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
-    /// let drained = v.drain(2..).collect::<VecDeque<_>>();
+    /// let mut deque: VecDeque<_> = [1, 2, 3].into();
+    /// let drained = deque.drain(2..).collect::<VecDeque<_>>();
     /// assert_eq!(drained, [3]);
-    /// assert_eq!(v, [1, 2]);
+    /// assert_eq!(deque, [1, 2]);
     ///
-    /// // A full range clears all contents
-    /// v.drain(..);
-    /// assert!(v.is_empty());
+    /// // A full range clears all contents, like `clear()` does
+    /// deque.drain(..);
+    /// assert!(deque.is_empty());
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
@@ -1297,17 +1325,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { Drain::new(drain_head, head, iter, deque) }
     }
 
-    /// Clears the `VecDeque`, removing all values.
+    /// Clears the deque, removing all values.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v = VecDeque::new();
-    /// v.push_back(1);
-    /// v.clear();
-    /// assert!(v.is_empty());
+    /// let mut deque = VecDeque::new();
+    /// deque.push_back(1);
+    /// deque.clear();
+    /// assert!(deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1315,21 +1343,27 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.truncate(0);
     }
 
-    /// Returns `true` if the `VecDeque` contains an element equal to the
+    /// Returns `true` if the deque contains an element equal to the
     /// given value.
+    ///
+    /// This operation is *O*(*n*).
+    ///
+    /// Note that if you have a sorted `VecDeque`, [`binary_search`] may be faster.
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    /// let mut deque: VecDeque<u32> = VecDeque::new();
     ///
-    /// vector.push_back(0);
-    /// vector.push_back(1);
+    /// deque.push_back(0);
+    /// deque.push_back(1);
     ///
-    /// assert_eq!(vector.contains(&1), true);
-    /// assert_eq!(vector.contains(&10), false);
+    /// assert_eq!(deque.contains(&1), true);
+    /// assert_eq!(deque.contains(&10), false);
     /// ```
     #[stable(feature = "vec_deque_contains", since = "1.12.0")]
     pub fn contains(&self, x: &T) -> bool
@@ -1340,7 +1374,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         a.contains(x) || b.contains(x)
     }
 
-    /// Provides a reference to the front element, or `None` if the `VecDeque` is
+    /// Provides a reference to the front element, or `None` if the deque is
     /// empty.
     ///
     /// # Examples
@@ -1361,7 +1395,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
-    /// `VecDeque` is empty.
+    /// deque is empty.
     ///
     /// # Examples
     ///
@@ -1384,7 +1418,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.get_mut(0)
     }
 
-    /// Provides a reference to the back element, or `None` if the `VecDeque` is
+    /// Provides a reference to the back element, or `None` if the deque is
     /// empty.
     ///
     /// # Examples
@@ -1405,7 +1439,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
-    /// `VecDeque` is empty.
+    /// deque is empty.
     ///
     /// # Examples
     ///
@@ -1428,7 +1462,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.get_mut(self.len().wrapping_sub(1))
     }
 
-    /// Removes the first element and returns it, or `None` if the `VecDeque` is
+    /// Removes the first element and returns it, or `None` if the deque is
     /// empty.
     ///
     /// # Examples
@@ -1455,7 +1489,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Removes the last element from the `VecDeque` and returns it, or `None` if
+    /// Removes the last element from the deque and returns it, or `None` if
     /// it is empty.
     ///
     /// # Examples
@@ -1480,7 +1514,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Prepends an element to the `VecDeque`.
+    /// Prepends an element to the deque.
     ///
     /// # Examples
     ///
@@ -1505,7 +1539,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Appends an element to the back of the `VecDeque`.
+    /// Appends an element to the back of the deque.
     ///
     /// # Examples
     ///
@@ -1535,7 +1569,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.tail <= self.head
     }
 
-    /// Removes an element from anywhere in the `VecDeque` and returns it,
+    /// Removes an element from anywhere in the deque and returns it,
     /// replacing it with the first element.
     ///
     /// This does not preserve ordering, but is *O*(1).
@@ -1570,8 +1604,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.pop_front()
     }
 
-    /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
-    /// last element.
+    /// Removes an element from anywhere in the deque and returns it,
+    /// replacing it with the last element.
     ///
     /// This does not preserve ordering, but is *O*(1).
     ///
@@ -1605,14 +1639,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.pop_back()
     }
 
-    /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
-    /// greater than or equal to `index` towards the back.
+    /// Inserts an element at `index` within the deque, shifting all elements
+    /// with indices greater than or equal to `index` towards the back.
     ///
     /// Element at index 0 is the front of the queue.
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than `VecDeque`'s length
+    /// Panics if `index` is greater than deque's length
     ///
     /// # Examples
     ///
@@ -1829,7 +1863,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Removes and returns the element at `index` from the `VecDeque`.
+    /// Removes and returns the element at `index` from the deque.
     /// Whichever end is closer to the removal point will be moved to make
     /// room, and all the affected elements will be moved to new positions.
     /// Returns `None` if `index` is out of bounds.
@@ -2007,10 +2041,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         elem
     }
 
-    /// Splits the `VecDeque` into two at the given index.
+    /// Splits the deque into two at the given index.
     ///
     /// Returns a newly allocated `VecDeque`. `self` contains elements `[0, at)`,
-    /// and the returned `VecDeque` contains elements `[at, len)`.
+    /// and the returned deque contains elements `[at, len)`.
     ///
     /// Note that the capacity of `self` does not change.
     ///
@@ -2025,7 +2059,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2, 3].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2, 3].into();
     /// let buf2 = buf.split_off(1);
     /// assert_eq!(buf, [1]);
     /// assert_eq!(buf2, [2, 3]);
@@ -2091,8 +2125,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2].into_iter().collect();
-    /// let mut buf2: VecDeque<_> = [3, 4].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2].into();
+    /// let mut buf2: VecDeque<_> = [3, 4].into();
     /// buf.append(&mut buf2);
     /// assert_eq!(buf, [1, 2, 3, 4]);
     /// assert_eq!(buf2, []);
@@ -2115,7 +2149,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
@@ -2154,15 +2188,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_retain_mut)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -2175,7 +2207,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// });
     /// assert_eq!(buf, [3, 5]);
     /// ```
-    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    #[stable(feature = "vec_retain_mut", since = "1.61.0")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
@@ -2227,7 +2259,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         debug_assert!(!self.is_full());
     }
 
-    /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
+    /// Modifies the deque in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
     /// elements generated by calling `generator` to the back.
     ///
@@ -2272,7 +2304,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// Once the internal storage is contiguous, the [`as_slices`] and
     /// [`as_mut_slices`] methods will return the entire contents of the
-    /// `VecDeque` in a single slice.
+    /// deque in a single slice.
     ///
     /// [`as_slices`]: VecDeque::as_slices
     /// [`as_mut_slices`]: VecDeque::as_mut_slices
@@ -2323,7 +2355,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if self.is_contiguous() {
             let tail = self.tail;
             let head = self.head;
-            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
+            // Safety:
+            // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+            // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+            return unsafe {
+                MaybeUninit::slice_assume_init_mut(
+                    RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+                )
+            };
         }
 
         let buf = self.buf.ptr();
@@ -2409,7 +2448,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         let tail = self.tail;
         let head = self.head;
-        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+        unsafe {
+            MaybeUninit::slice_assume_init_mut(
+                RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+            )
+        }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2524,7 +2570,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches this sorted `VecDeque` for a given element.
+    /// Binary searches this `VecDeque` for a given element.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2534,6 +2581,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search_by`]: VecDeque::binary_search_by
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2547,7 +2595,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
     /// assert_eq!(deque.binary_search(&13),  Ok(9));
     /// assert_eq!(deque.binary_search(&4),   Err(7));
@@ -2556,15 +2604,16 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
     ///
-    /// If you want to insert an item to a sorted `VecDeque`, while maintaining
-    /// sort order:
+    /// If you want to insert an item to a sorted deque, while maintaining
+    /// sort order, consider using [`partition_point`]:
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.binary_search(&num).unwrap_or_else(|x| x);
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
@@ -2577,12 +2626,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.binary_search_by(|e| e.cmp(x))
     }
 
-    /// Binary searches this sorted `VecDeque` with a comparator function.
+    /// Binary searches this `VecDeque` with a comparator function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// The comparator function should implement an order consistent
-    /// with the sort order of the underlying `VecDeque`, returning an
-    /// order code that indicates whether its argument is `Less`,
-    /// `Equal` or `Greater` than the desired target.
+    /// with the sort order of the deque, returning an order code that
+    /// indicates whether its argument is `Less`, `Equal` or `Greater`
+    /// than the desired target.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2592,6 +2642,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2605,7 +2656,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
     /// assert_eq!(deque.binary_search_by(|x| x.cmp(&13)),  Ok(9));
     /// assert_eq!(deque.binary_search_by(|x| x.cmp(&4)),   Err(7));
@@ -2630,9 +2681,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches this sorted `VecDeque` with a key extraction function.
+    /// Binary searches this `VecDeque` with a key extraction function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
-    /// Assumes that the `VecDeque` is sorted by the key, for instance with
+    /// Assumes that the deque is sorted by the key, for instance with
     /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
@@ -2643,6 +2695,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by`]: VecDeque::binary_search_by
@@ -2658,7 +2711,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![(0, 0), (2, 1), (4, 1), (5, 1),
+    /// let deque: VecDeque<_> = [(0, 0), (2, 1), (4, 1), (5, 1),
     ///          (3, 1), (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)].into();
     ///
@@ -2687,7 +2740,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
     /// (all odd numbers are at the start, all even at the end).
     ///
-    /// If this deque is not partitioned, the returned result is unspecified and meaningless,
+    /// If the deque is not partitioned, the returned result is unspecified and meaningless,
     /// as this method performs a kind of binary search.
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
@@ -2701,12 +2754,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
+    /// let deque: VecDeque<_> = [1, 2, 3, 3, 5, 6, 7].into();
     /// let i = deque.partition_point(|&x| x < 5);
     ///
     /// assert_eq!(i, 4);
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If you want to insert an item to a sorted deque, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let num = 42;
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// deque.insert(idx, num);
+    /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
@@ -2724,7 +2790,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 }
 
 impl<T: Clone, A: Allocator> VecDeque<T, A> {
-    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
+    /// Modifies the deque in-place so that `len()` is equal to new_len,
     /// either by removing excess elements from the back or by appending clones of `value`
     /// to the back.
     ///
@@ -2878,7 +2944,7 @@ impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
-    /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
+    /// Consumes the deque into a front-to-back iterator yielding elements by
     /// value.
     fn into_iter(self) -> IntoIter<T, A> {
         IntoIter::new(self)
@@ -2908,24 +2974,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iter.into_iter() {
-        //          self.push_back(item);
-        //      }
-        let mut iter = iter.into_iter();
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
-            unsafe {
-                self.buffer_write(head, element);
-            }
-        }
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
@@ -2942,7 +2991,7 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+        self.spec_extend(iter.into_iter());
     }
 
     #[inline]
@@ -3049,6 +3098,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+    /// Converts a `[T; N]` into a `VecDeque<T>`.
+    ///
     /// ```
     /// use std::collections::VecDeque;
     ///

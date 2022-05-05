@@ -210,7 +210,7 @@ struct SuspensionPoint<'tcx> {
 
 struct TransformVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    state_adt_ref: &'tcx AdtDef,
+    state_adt_ref: AdtDef<'tcx>,
     state_substs: SubstsRef<'tcx>,
 
     // The type of the discriminant in the generator struct
@@ -243,11 +243,11 @@ impl<'tcx> TransformVisitor<'tcx> {
         val: Operand<'tcx>,
         source_info: SourceInfo,
     ) -> impl Iterator<Item = Statement<'tcx>> {
-        let kind = AggregateKind::Adt(self.state_adt_ref.did, idx, self.state_substs, None, None);
-        assert_eq!(self.state_adt_ref.variants[idx].fields.len(), 1);
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_substs, None, None);
+        assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
         let ty = self
             .tcx
-            .type_of(self.state_adt_ref.variants[idx].fields[0].did)
+            .type_of(self.state_adt_ref.variant(idx).fields[0].did)
             .subst(self.tcx, self.state_substs);
         expand_aggregate(
             Place::return_place(),
@@ -463,10 +463,8 @@ fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results = MaybeBorrowedLocals::all_borrows()
-        .into_engine(tcx, body_ref)
-        .pass_name("generator")
-        .iterate_to_fixpoint();
+    let borrowed_locals_results =
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
@@ -502,7 +500,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
-                // borrows, so we conseratively assume that all borrowed locals are live until
+                // borrows, so we conservatively assume that all borrowed locals are live until
                 // we find a StorageDead statement referencing the locals.
                 // To do this we just union our `liveness` result with `borrowed_locals`, which
                 // contains all the locals which has been borrowed before this suspension point.
@@ -1237,13 +1235,11 @@ fn create_cases<'tcx>(
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::GeneratorLowering)
+        Some(MirPhase::GeneratorsLowered)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let yield_ty = if let Some(yield_ty) = body.yield_ty() {
-            yield_ty
-        } else {
+        let Some(yield_ty) = body.yield_ty() else {
             // This only applies to generators
             return;
         };
@@ -1415,22 +1411,16 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
 impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        let lhs = match self.assigned_local {
-            Some(l) => l,
-            None => {
-                // This visitor only invokes `visit_place` for the right-hand side of an assignment
-                // and only after setting `self.assigned_local`. However, the default impl of
-                // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
-                // with debuginfo. Ignore them here.
-                assert!(!context.is_use());
-                return;
-            }
+        let Some(lhs) = self.assigned_local else {
+            // This visitor only invokes `visit_place` for the right-hand side of an assignment
+            // and only after setting `self.assigned_local`. However, the default impl of
+            // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
+            // with debuginfo. Ignore them here.
+            assert!(!context.is_use());
+            return;
         };
 
-        let rhs = match self.saved_local_for_direct_place(*place) {
-            Some(l) => l,
-            None => return,
-        };
+        let Some(rhs) = self.saved_local_for_direct_place(*place) else { return };
 
         if !self.storage_conflicts.contains(lhs, rhs) {
             bug!(
@@ -1451,6 +1441,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)

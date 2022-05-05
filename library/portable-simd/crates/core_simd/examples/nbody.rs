@@ -1,11 +1,13 @@
-#![cfg_attr(feature = "std", feature(portable_simd))]
+#![feature(portable_simd)]
+extern crate std_float;
 
 /// Benchmarks game nbody code
 /// Taken from the `packed_simd` crate
 /// Run this benchmark with `cargo test --example nbody`
-#[cfg(feature = "std")]
 mod nbody {
-    use core_simd::*;
+    use core_simd::simd::*;
+    #[allow(unused)] // False positive?
+    use std_float::StdFloat;
 
     use std::f64::consts::PI;
     const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -105,10 +107,10 @@ mod nbody {
         let mut e = 0.;
         for i in 0..N_BODIES {
             let bi = &bodies[i];
-            e += bi.mass * (bi.v * bi.v).horizontal_sum() * 0.5;
+            e += bi.mass * (bi.v * bi.v).reduce_sum() * 0.5;
             for bj in bodies.iter().take(N_BODIES).skip(i + 1) {
                 let dx = bi.x - bj.x;
-                e -= bi.mass * bj.mass / (dx * dx).horizontal_sum().sqrt()
+                e -= bi.mass * bj.mass / (dx * dx).reduce_sum().sqrt()
             }
         }
         e
@@ -132,8 +134,8 @@ mod nbody {
         let mut mag = [0.0; N];
         for i in (0..N).step_by(2) {
             let d2s = f64x2::from_array([
-                (r[i] * r[i]).horizontal_sum(),
-                (r[i + 1] * r[i + 1]).horizontal_sum(),
+                (r[i] * r[i]).reduce_sum(),
+                (r[i + 1] * r[i + 1]).reduce_sum(),
             ]);
             let dmags = f64x2::splat(dt) / (d2s * d2s.sqrt());
             mag[i] = dmags[0];
@@ -167,7 +169,6 @@ mod nbody {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     // Good enough for demonstration purposes, not going for strictness here.
@@ -184,10 +185,9 @@ mod tests {
 }
 
 fn main() {
-    #[cfg(feature = "std")]
     {
         let (energy_before, energy_after) = nbody::run(1000);
-        println!("Energy before: {}", energy_before);
-        println!("Energy after:  {}", energy_after);
+        println!("Energy before: {energy_before}");
+        println!("Energy after:  {energy_after}");
     }
 }

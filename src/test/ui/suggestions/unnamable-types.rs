@@ -8,14 +8,14 @@ const A = 5;
 //~| HELP: provide a type for the constant
 
 static B: _ = "abc";
-//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures for static variables
+//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for static variables
 //~| NOTE: not allowed in type signatures
 //~| HELP: replace with the correct type
 
 
 // FIXME: this should also suggest a function pointer, as the closure is non-capturing
 const C: _ = || 42;
-//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures for constants
+//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for constants
 //~| NOTE: not allowed in type signatures
 //~| NOTE: however, the inferred type
 

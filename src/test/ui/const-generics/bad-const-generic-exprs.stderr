@@ -1,0 +1,59 @@
+error: invalid const generic expression
+  --> $DIR/bad-const-generic-exprs.rs:4:16
+   |
+LL |     let _: Wow<if true {}>;
+   |                ^^^^^^^^^^
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ if true {} }>;
+   |                +            +
+
+error: invalid const generic expression
+  --> $DIR/bad-const-generic-exprs.rs:7:16
+   |
+LL |     let _: Wow<|| ()>;
+   |                ^^^^^
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ || () }>;
+   |                +       +
+
+error: expected one of `,` or `>`, found `.`
+  --> $DIR/bad-const-generic-exprs.rs:10:17
+   |
+LL |     let _: Wow<A.b>;
+   |                 ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ A.b }>;
+   |                +     +
+
+error: expected one of `,` or `>`, found `.`
+  --> $DIR/bad-const-generic-exprs.rs:13:17
+   |
+LL |     let _: Wow<A.0>;
+   |                 ^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     let _: Wow<{ A.0 }>;
+   |                +     +
+
+error: expected type, found `12`
+  --> $DIR/bad-const-generic-exprs.rs:19:17
+   |
+LL |     let _: Wow<[12]>;
+   |                 ^^ expected type
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/bad-const-generic-exprs.rs:19:16
+   |
+LL |     let _: Wow<[12]>;
+   |                ^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0747`.

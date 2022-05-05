@@ -255,7 +255,38 @@ declare_clippy_lint! {
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that allow lints without a reason.
+    ///
+    /// (This requires the `lint_reasons` feature)
+    ///
+    /// ### Why is this bad?
+    /// Allowing a lint should always have a reason. This reason should be documented to
+    /// ensure that others understand the reasoning
+    ///
+    /// ### Example
+    /// Bad:
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint)]
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ALLOW_ATTRIBUTES_WITHOUT_REASON,
+    restriction,
+    "ensures that all `allow` and `expect` attributes have a reason"
+}
+
 declare_lint_pass!(Attributes => [
+    ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
@@ -268,6 +299,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             if let Some(ident) = attr.ident() {
                 if is_lint_level(ident.name) {
                     check_clippy_lint_names(cx, ident.name, items);
+                }
+                if matches!(ident.name, sym::allow | sym::expect) {
+                    check_lint_reason(cx, ident.name, items, attr);
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -402,6 +436,30 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
             }
         }
     }
+}
+
+fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
+    // Check for the feature
+    if !cx.tcx.sess.features_untracked().lint_reasons {
+        return;
+    }
+
+    // Check if the reason is present
+    if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
+        && let MetaItemKind::NameValue(_) = &item.kind
+        && item.path == sym::reason
+    {
+        return;
+    }
+
+    span_lint_and_help(
+        cx,
+        ALLOW_ATTRIBUTES_WITHOUT_REASON,
+        attr.span,
+        &format!("`{}` attribute without specifying a reason", name.as_str()),
+        None,
+        "try adding a reason at the end with `, reason = \"..\"`",
+    );
 }
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
@@ -659,5 +717,5 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
 }
 
 fn is_lint_level(symbol: Symbol) -> bool {
-    matches!(symbol, sym::allow | sym::warn | sym::deny | sym::forbid)
+    matches!(symbol, sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid)
 }

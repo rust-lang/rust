@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{Ty, TyS, TypeckResults};
+use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
@@ -17,7 +17,6 @@ use rustc_typeck::hir_ty_to_ty;
 use if_chain::if_chain;
 
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 
@@ -69,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
 
         fn suggestion<'tcx>(
             cx: &LateContext<'tcx>,
-            diag: &mut DiagnosticBuilder<'_>,
+            diag: &mut Diagnostic,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,
@@ -123,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
-                    if differing_macro_contexts(item.span, target.span()) {
+                    if item.span.ctxt() != target.span().ctxt() {
                         return;
                     }
 
@@ -179,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             )
                             .and_then(|snip| {
                                 let i = snip.find("fn")?;
-                                Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                                Some(item.span.lo() + BytePos((i + snip[i..].find('(')?) as u32))
                             })
                             .expect("failed to create span for type parameters");
                             Span::new(pos, pos, item.span.ctxt(), item.span.parent())
@@ -346,7 +345,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             if let Some(ty_did) = ty_path.res.opt_def_id();
             then {
-                if !TyS::same_type(self.target.ty(), self.maybe_typeck_results.unwrap().expr_ty(e)) {
+                if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
                     return;
                 }
 

@@ -8,6 +8,7 @@ use rustc_hir::{
     Item, ItemKind, PathSegment, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::kw;
 use rustc_span::{sym, BytePos};
@@ -115,7 +116,8 @@ impl LateLintPass<'_> for WildcardImports {
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
-        if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
+        let module = cx.tcx.parent_module_from_def_id(item.def_id);
+        if cx.tcx.visibility(item.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
             return;
         }
         if_chain! {

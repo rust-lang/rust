@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{any_parent_is_automatically_derived, contains_name, match_def_path, paths};
+use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -88,6 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if let ExprKind::Path(ref qpath) = path.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if !is_update_syntax_base(cx, expr);
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             if let QPath::Resolved(None, _path) = qpath;
             let expr_ty = cx.typeck_results().expr_ty(expr);
@@ -95,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             then {
                 // TODO: Work out a way to put "whatever the imported way of referencing
                 // this type in this file" rather than a fully-qualified type.
-                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
+                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did()));
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_TRAIT_ACCESS,
@@ -136,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 if let Some(adt) = binding_type.ty_adt_def();
                 if adt.is_struct();
                 let variant = adt.non_enum_variant();
-                if adt.did.is_local() || !variant.is_field_list_non_exhaustive();
+                if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
                 let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
                 if variant
                     .fields
@@ -215,7 +216,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     if let ty::Adt(adt_def, substs) = binding_type.kind();
                     if !substs.is_empty();
                     then {
-                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
                         let generic_args = substs.iter().collect::<Vec<_>>();
                         let tys_str = generic_args
                             .iter()
@@ -287,6 +288,19 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
             Some((field_ident, assign_rhs))
         } else {
             None
+        }
+    }
+}
+
+/// Returns whether `expr` is the update syntax base: `Foo { a: 1, .. base }`
+fn is_update_syntax_base<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    if_chain! {
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let ExprKind::Struct(_, _, Some(base)) = parent.kind;
+        then {
+            base.hir_id == expr.hir_id
+        } else {
+            false
         }
     }
 }

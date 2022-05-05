@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use rustc_ast::ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -10,6 +8,7 @@ use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::framework::BitSetExt;
 use crate::impls::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
@@ -248,7 +247,7 @@ pub trait RustcPeekAt<'tcx>: Analysis<'tcx> {
 impl<'tcx, A, D> RustcPeekAt<'tcx> for A
 where
     A: Analysis<'tcx, Domain = D> + HasMoveData<'tcx>,
-    D: JoinSemiLattice + Clone + Borrow<BitSet<MovePathIndex>>,
+    D: JoinSemiLattice + Clone + BitSetExt<MovePathIndex>,
 {
     fn peek_at(
         &self,
@@ -259,7 +258,7 @@ where
     ) {
         match self.move_data().rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(peek_mpi) => {
-                let bit_state = flow_state.borrow().contains(peek_mpi);
+                let bit_state = flow_state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}", call.arg, place, bit_state);
                 if !bit_state {
                     tcx.sess.span_err(call.span, "rustc_peek: bit not set");

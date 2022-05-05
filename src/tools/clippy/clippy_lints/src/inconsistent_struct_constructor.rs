@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();
             if adt_def.is_struct();
-            if let Some(variant) = adt_def.variants.iter().next();
+            if let Some(variant) = adt_def.variants().iter().next();
             if fields.iter().all(|f| f.is_shorthand);
             then {
                 let mut def_order_map = FxHashMap::default();

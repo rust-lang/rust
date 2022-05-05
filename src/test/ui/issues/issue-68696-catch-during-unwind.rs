@@ -4,7 +4,6 @@
 // entering the catch_unwind.
 //
 // run-pass
-#![feature(cfg_panic)]
 
 use std::panic::catch_unwind;
 

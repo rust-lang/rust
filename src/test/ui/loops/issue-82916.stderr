@@ -4,10 +4,7 @@ error[E0382]: use of moved value: `x`
 LL | fn foo(x: Vec<S>) {
    |        - move occurs because `x` has type `Vec<S>`, which does not implement the `Copy` trait
 LL |     for y in x {
-   |              -
-   |              |
-   |              `x` moved due to this implicit call to `.into_iter()`
-   |              help: consider borrowing to avoid moving into the for loop: `&x`
+   |              - `x` moved due to this implicit call to `.into_iter()`
 ...
 LL |     let z = x;
    |             ^ value used here after move
@@ -17,6 +14,10 @@ note: this function takes ownership of the receiver `self`, which moves `x`
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
+help: consider iterating over a slice of the `Vec<S>`'s content to avoid moving into the `for` loop
+   |
+LL |     for y in &x {
+   |              +
 
 error: aborting due to previous error
 

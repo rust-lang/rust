@@ -153,6 +153,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This function may have to perform normalizations, and hence it
     /// returns an `InferOk` with subobligations that must be
     /// processed.
+    #[instrument(level = "debug", skip(self, region_bound_pairs_map))]
     pub fn process_registered_region_obligations(
         &self,
         region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
@@ -163,8 +164,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             !self.in_snapshot.get(),
             "cannot process registered region obligations in a snapshot"
         );
-
-        debug!(?param_env, "process_registered_region_obligations()");
 
         let my_region_obligations = self.take_registered_region_obligations();
 
@@ -189,7 +188,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx.sess.delay_span_bug(
                     origin.span(),
                     &format!("no region-bound-pairs for {:?}", body_id),
-                )
+                );
             }
         }
     }
@@ -285,7 +284,7 @@ where
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, region1);
+                    self.delegate.push_sub_region_constraint(origin, region, *region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
@@ -366,7 +365,7 @@ where
         debug!("projection_must_outlive: approx_env_bounds={:?}", approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
-        // which are also deducable from the trait. This arises (cc
+        // which are also deducible from the trait. This arises (cc
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.

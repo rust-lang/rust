@@ -2,5 +2,4 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html' '//div[@class="block version"]/p' 'Version <script>alert("hi")</script>'
-// @has 'foo/all.html' '//div[@class="block version"]/p' 'Version <script>alert("hi")</script>'
+// @has 'foo/index.html' '//li[@class="version"]' 'Version <script>alert("hi")</script>'

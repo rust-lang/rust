@@ -20,7 +20,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// If the user can ensure that b is larger than a, the `.abs()` is
-    /// technically unneccessary. However, it will make the code more robust and doesn't have any
+    /// technically unnecessary. However, it will make the code more robust and doesn't have any
     /// large performance implications. If the abs call was deliberately left out for performance
     /// reasons, it is probably better to state this explicitly in the code, which then can be done
     /// with an allow.
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
 
         if_chain! {
 
-            // left hand side is a substraction
+            // left hand side is a subtraction
             if let ExprKind::Binary(
                 Spanned {
                     node: BinOpKind::Sub,
@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
             if let Res::Def(DefKind::AssocConst, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id);
             if match_def_path(cx, def_id, &paths::F32_EPSILON) || match_def_path(cx, def_id, &paths::F64_EPSILON);
 
-            // values of the substractions on the left hand side are of the type float
+            // values of the subtractions on the left hand side are of the type float
             let t_val_l = cx.typeck_results().expr_ty(val_l);
             let t_val_r = cx.typeck_results().expr_ty(val_r);
             if let ty::Float(_) = t_val_l.kind();

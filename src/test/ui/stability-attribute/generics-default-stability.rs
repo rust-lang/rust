@@ -217,25 +217,25 @@ fn main() {
 
     let _ = ENUM4;
     let _: Enum4<isize> = Enum4::Some(1);
-    //~^ use of deprecated variant `unstable_generic_param::Enum4::Some`: test [deprecated]
+    //~^ use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
     let _ = ENUM4;
     let _: Enum4 = ENUM4; //~ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
     let _: Enum4<usize> = ENUM4; //~ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
     let _: Enum4<isize> = Enum4::Some(0);
-    //~^ use of deprecated variant `unstable_generic_param::Enum4::Some`: test [deprecated]
+    //~^ use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
 
     let _ = ENUM5;
     let _: Enum5<isize> = Enum5::Some(1); //~ ERROR use of unstable library feature 'unstable_default'
-    //~^ use of deprecated variant `unstable_generic_param::Enum5::Some`: test [deprecated]
+    //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _ = ENUM5;
     let _: Enum5 = ENUM5; //~ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _: Enum5<usize> = ENUM5; //~ ERROR use of unstable library feature 'unstable_default'
     //~^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _: Enum5<isize> = Enum5::Some(0); //~ ERROR use of unstable library feature 'unstable_default'
-    //~^ use of deprecated variant `unstable_generic_param::Enum5::Some`: test [deprecated]
+    //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
 
     let _: Enum6<isize> = Enum6::Some(1); // ok

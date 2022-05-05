@@ -32,7 +32,7 @@ fn main() -> () {
         _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/receiver-ptr-mutability.rs:14:26: 14:46
                                          // mir::Constant
                                          // + span: $DIR/receiver-ptr-mutability.rs:14:26: 14:44
-                                         // + literal: Const { ty: fn() -> *mut Test {std::ptr::null_mut::<Test>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> *mut Test {null_mut::<Test>}, val: Value(Scalar(<ZST>)) }
     }
 
     bb1: {

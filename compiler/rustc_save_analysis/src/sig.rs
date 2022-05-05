@@ -416,7 +416,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Macro(_) => {
+            hir::ItemKind::Macro(..) => {
                 let mut text = "macro".to_owned();
                 let name = self.ident.to_string();
                 text.push_str(&name);
@@ -573,7 +573,7 @@ impl<'hir> Sig for hir::Path<'hir> {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match res {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::Err => {
                 return Ok(Signature { text: path_to_string(self), defs: vec![], refs: vec![] });
             }
             Res::Def(DefKind::AssocConst | DefKind::Variant | DefKind::Ctor(..), _) => {
@@ -628,31 +628,6 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 if let Some(default) = default {
                     param_text.push_str(" = ");
                     param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
-                }
-            }
-            if !param.bounds.is_empty() {
-                param_text.push_str(": ");
-                match param.kind {
-                    hir::GenericParamKind::Lifetime { .. } => {
-                        let bounds = param
-                            .bounds
-                            .iter()
-                            .map(|bound| match bound {
-                                hir::GenericBound::Outlives(lt) => lt.name.ident().to_string(),
-                                _ => panic!(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" + ");
-                        param_text.push_str(&bounds);
-                        // FIXME add lifetime bounds refs.
-                    }
-                    hir::GenericParamKind::Type { .. } => {
-                        param_text.push_str(&bounds_to_string(param.bounds));
-                        // FIXME descend properly into bounds.
-                    }
-                    hir::GenericParamKind::Const { .. } => {
-                        // Const generics cannot contain bounds.
-                    }
                 }
             }
             text.push_str(&param_text);

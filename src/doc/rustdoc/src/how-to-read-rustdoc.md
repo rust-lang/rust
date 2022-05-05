@@ -26,7 +26,7 @@ At the top is some at-a-glance info and controls:
 - a button to collapse or expand the top-level documentation for that item
   (`[+]` or `[-]`),
 - a link to the source code (`[src]`),
-  if [configured](the-doc-attribute.html#html_no_source),
+  if [configured](write-documentation/the-doc-attribute.html#html_no_source),
   and present (the source may not be available if
   the documentation was created with `cargo doc --no-deps`),
 - and the version in which the item became stable,
@@ -52,7 +52,7 @@ For example, when looking at documentation for the crate root,
 it shows all the crates documented in the documentation bundle,
 and quick links to the modules, structs, traits, functions, and macros available
 from the current crate.
-At the top, it displays a [configurable logo](the-doc-attribute.html#html_logo_url)
+At the top, it displays a [configurable logo](write-documentation/the-doc-attribute.html#html_logo_url)
 alongside the current crate's name and version,
 or the current item whose documentation is being displayed.
 

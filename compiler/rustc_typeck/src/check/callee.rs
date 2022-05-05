@@ -2,7 +2,7 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -43,7 +43,7 @@ pub fn check_legal_trait_for_method_call(
         let (sp, suggestion) = receiver
             .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
             .filter(|snippet| !snippet.is_empty())
-            .map(|snippet| (expr_span, format!("drop({})", snippet)))
+            .map(|snippet| (expr_span, format!("drop({snippet})")))
             .unwrap_or_else(|| (span, "drop".to_string()));
 
         err.span_suggestion(
@@ -219,10 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (self.tcx.lang_items().fn_mut_trait(), Ident::with_dummy_span(sym::call_mut), true),
             (self.tcx.lang_items().fn_once_trait(), Ident::with_dummy_span(sym::call_once), false),
         ] {
-            let trait_def_id = match opt_trait_def_id {
-                Some(def_id) => def_id,
-                None => continue,
-            };
+            let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_types = opt_arg_exprs.map(|arg_exprs| {
                 [self.tcx.mk_tup(arg_exprs.iter().map(|e| {
@@ -246,11 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let (region, mutbl) = if let ty::Ref(r, _, mutbl) =
-                        method.sig.inputs()[0].kind()
-                    {
-                        (r, mutbl)
-                    } else {
+                    let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
                         self.tcx
@@ -269,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     };
                     autoref = Some(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                         target: method.sig.inputs()[0],
                     });
                 }
@@ -284,7 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// likely intention is to call the closure, suggest `(||{})()`. (#55851)
     fn identify_bad_closure_def_and_call(
         &self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut Diagnostic,
         hir_id: hir::HirId,
         callee_node: &hir::ExprKind<'_>,
         callee_span: Span,
@@ -305,6 +298,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+    }
+
+    /// Give appropriate suggestion when encountering `[("a", 0) ("b", 1)]`, where the
+    /// likely intention is to create an array containing tuples.
+    fn maybe_suggest_bad_array_definition(
+        &self,
+        err: &mut Diagnostic,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        callee_expr: &'tcx hir::Expr<'tcx>,
+    ) -> bool {
+        let hir_id = self.tcx.hir().get_parent_node(call_expr.hir_id);
+        let parent_node = self.tcx.hir().get(hir_id);
+        if let (
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Array(_), .. }),
+            hir::ExprKind::Tup(exp),
+            hir::ExprKind::Call(_, args),
+        ) = (parent_node, &callee_expr.kind, &call_expr.kind)
+            && args.len() == exp.len()
+        {
+            let start = callee_expr.span.shrink_to_hi();
+            err.span_suggestion(
+                start,
+                "consider separating array elements with a comma",
+                ",".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     fn confirm_builtin_call(
@@ -350,15 +372,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ref t => {
                 let mut unit_variant = None;
                 let mut removal_span = call_expr.span;
-                if let ty::Adt(adt_def, ..) = t {
-                    if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(expr, _) = call_expr.kind {
-                            removal_span =
-                                expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-                            unit_variant =
-                                self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
-                        }
-                    }
+                if let ty::Adt(adt_def, ..) = t
+                    && adt_def.is_enum()
+                    && let hir::ExprKind::Call(expr, _) = call_expr.kind
+                {
+                    removal_span =
+                        expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+                    unit_variant =
+                        self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                 }
 
                 let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -369,8 +390,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     E0618,
                     "expected function, found {}",
                     match unit_variant {
-                        Some(ref path) => format!("enum variant `{}`", path),
-                        None => format!("`{}`", callee_ty),
+                        Some(ref path) => format!("enum variant `{path}`"),
+                        None => format!("`{callee_ty}`"),
                     }
                 );
 
@@ -385,8 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         removal_span,
                         &format!(
-                            "`{}` is a unit variant, you need to write it without the parentheses",
-                            path
+                            "`{path}` is a unit variant, you need to write it without the parentheses",
                         ),
                         String::new(),
                         Applicability::MachineApplicable,
@@ -422,19 +442,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => Res::Err,
                 };
 
-                err.span_label(call_expr.span, "call expression requires function");
+                if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
+                    err.span_label(call_expr.span, "call expression requires function");
+                }
 
                 if let Some(span) = self.tcx.hir().res_span(def) {
                     let callee_ty = callee_ty.to_string();
                     let label = match (unit_variant, inner_callee_path) {
-                        (Some(path), _) => Some(format!("`{}` defined here", path)),
+                        (Some(path), _) => Some(format!("`{path}` defined here")),
                         (_, Some(hir::QPath::Resolved(_, path))) => self
                             .tcx
                             .sess
                             .source_map()
                             .span_to_snippet(path.span)
                             .ok()
-                            .map(|p| format!("`{}` defined here returns `{}`", p, callee_ty)),
+                            .map(|p| format!("`{p}` defined here returns `{callee_ty}`")),
                         _ => {
                             match def {
                                 // Emit a different diagnostic for local variables, as they are not
@@ -450,7 +472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.tcx.def_path_str(def_id),
                                     ))
                                 }
-                                _ => Some(format!("`{}` defined here", callee_ty)),
+                                _ => Some(format!("`{callee_ty}` defined here")),
                             }
                         }
                     };
@@ -513,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
-        // `fn_sig` is the *signature* of the cosure being called. We
+        // `fn_sig` is the *signature* of the closure being called. We
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
         // do know the types expected for each argument and the return
         // type.
@@ -596,7 +618,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 for (method_arg_ty, self_arg_ty) in
                     iter::zip(method_sig.inputs().iter().skip(1), self.fn_sig.inputs())
                 {
-                    fcx.demand_eqtype(self.call_expr.span, &self_arg_ty, &method_arg_ty);
+                    fcx.demand_eqtype(self.call_expr.span, *self_arg_ty, *method_arg_ty);
                 }
 
                 fcx.demand_eqtype(self.call_expr.span, method_sig.output(), self.fn_sig.output());

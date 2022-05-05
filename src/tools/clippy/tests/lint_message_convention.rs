@@ -16,7 +16,7 @@ impl Message {
     fn new(path: PathBuf) -> Self {
         let content: String = std::fs::read_to_string(&path).unwrap();
         // we don't want the first letter after "error: ", "help: " ... to be capitalized
-        // also no puncutation (except for "?" ?) at the end of a line
+        // also no punctuation (except for "?" ?) at the end of a line
         let regex_set: RegexSet = RegexSet::new(&[
             r"error: [A-Z]",
             r"help: [A-Z]",

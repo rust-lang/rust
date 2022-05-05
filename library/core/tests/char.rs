@@ -197,7 +197,7 @@ fn test_escape_debug() {
     assert_eq!(string('~'), "~");
     assert_eq!(string('é'), "é");
     assert_eq!(string('文'), "文");
-    assert_eq!(string('\x00'), "\\u{0}");
+    assert_eq!(string('\x00'), "\\0");
     assert_eq!(string('\x1f'), "\\u{1f}");
     assert_eq!(string('\x7f'), "\\u{7f}");
     assert_eq!(string('\u{80}'), "\\u{80}");
@@ -306,6 +306,33 @@ fn test_decode_utf16() {
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
     check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);
+}
+
+#[test]
+fn test_decode_utf16_size_hint() {
+    fn check(s: &[u16]) {
+        let mut iter = char::decode_utf16(s.iter().cloned());
+
+        loop {
+            let count = iter.clone().count();
+            let (lower, upper) = iter.size_hint();
+
+            assert!(
+                lower <= count && count <= upper.unwrap(),
+                "lower = {lower}, count = {count}, upper = {upper:?}"
+            );
+
+            if let None = iter.next() {
+                break;
+            }
+        }
+    }
+
+    check(&[0xD800, 0xD800, 0xDC00]);
+    check(&[0xD800, 0xD800, 0x0]);
+    check(&[0xD800, 0x41, 0x42]);
+    check(&[0xD800, 0]);
+    check(&[0xD834, 0x006d]);
 }
 
 #[test]

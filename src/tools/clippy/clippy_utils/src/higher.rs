@@ -284,8 +284,7 @@ impl<'a> VecArgs<'a> {
                 return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
                     // `vec![elem; size]` case
                     Some(VecArgs::Repeat(&args[0], &args[1]))
-                }
-                else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
+                } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
                     if_chain! {
                         if let hir::ExprKind::Box(boxed) = args[0].kind;
@@ -296,11 +295,9 @@ impl<'a> VecArgs<'a> {
                     }
 
                     None
-                }
-                else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
+                } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
                     Some(VecArgs::Vec(&[]))
-                }
-                else {
+                } else {
                     None
                 };
             }
@@ -456,7 +453,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                         if let ExprKind::Lit(lit) = &arg.kind;
                         if let LitKind::Int(num, _) = lit.node;
                         then {
-                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?))
+                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?));
                         }
                     }
                     return Some(VecInitKind::WithExprCapacity(arg.hir_id));

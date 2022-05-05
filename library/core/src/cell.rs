@@ -85,7 +85,7 @@
 //!     // of scope then the subsequent borrow would cause a dynamic thread panic.
 //!     // This is the major hazard of using `RefCell`.
 //!     let total: i32 = shared_map.borrow().values().sum();
-//!     println!("{}", total);
+//!     println!("{total}");
 //! }
 //! ```
 //!
@@ -315,6 +315,7 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for Cell<T> {
+    /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
@@ -1244,6 +1245,7 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for RefCell<T> {
+    /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
     }
@@ -1310,11 +1312,7 @@ impl Clone for BorrowRef<'_> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a Ref across suspend \
-                      points can cause BorrowErrors"
-)]
+#[must_not_suspend = "holding a Ref across suspend points can cause BorrowErrors"]
 pub struct Ref<'b, T: ?Sized + 'b> {
     value: &'b T,
     borrow: BorrowRef<'b>,
@@ -1692,11 +1690,7 @@ impl<'b> BorrowRefMut<'b> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a RefMut across suspend \
-                      points can cause BorrowErrors"
-)]
+#[must_not_suspend = "holding a RefMut across suspend points can cause BorrowErrors"]
 pub struct RefMut<'b, T: ?Sized + 'b> {
     value: &'b mut T,
     borrow: BorrowRefMut<'b>,
@@ -1967,6 +1961,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits libstd's special status, there is
@@ -1986,6 +1981,7 @@ impl<T: Default> Default for UnsafeCell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for UnsafeCell<T> {
+    /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
     }
@@ -1994,9 +1990,106 @@ impl<T> const From<T> for UnsafeCell<T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
+/// [`UnsafeCell`], but [`Sync`].
+///
+/// This is just an `UnsafeCell`, except it implements `Sync`
+/// if `T` implements `Sync`.
+///
+/// `UnsafeCell` doesn't implement `Sync`, to prevent accidental mis-use.
+/// You can use `SyncUnsafeCell` instead of `UnsafeCell` to allow it to be
+/// shared between threads, if that's intentional.
+/// Providing proper synchronization is still the task of the user,
+/// making this type just as unsafe to use.
+///
+/// See [`UnsafeCell`] for details.
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+#[repr(transparent)]
+pub struct SyncUnsafeCell<T: ?Sized> {
+    value: UnsafeCell<T>,
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+unsafe impl<T: ?Sized + Sync> Sync for SyncUnsafeCell<T> {}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T> SyncUnsafeCell<T> {
+    /// Constructs a new instance of `SyncUnsafeCell` which will wrap the specified value.
+    #[inline]
+    pub const fn new(value: T) -> Self {
+        Self { value: UnsafeCell { value } }
+    }
+
+    /// Unwraps the value.
+    #[inline]
+    pub const fn into_inner(self) -> T {
+        self.value.into_inner()
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: ?Sized> SyncUnsafeCell<T> {
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`
+    #[inline]
+    pub const fn get(&self) -> *mut T {
+        self.value.get()
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows the `SyncUnsafeCell` mutably (at compile-time) which
+    /// guarantees that we possess the only reference.
+    #[inline]
+    pub const fn get_mut(&mut self) -> &mut T {
+        self.value.get_mut()
+    }
+
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// See [`UnsafeCell::get`] for details.
+    #[inline]
+    pub const fn raw_get(this: *const Self) -> *mut T {
+        // We can just cast the pointer from `SyncUnsafeCell<T>` to `T` because
+        // of #[repr(transparent)] on both SyncUnsafeCell and UnsafeCell.
+        // See UnsafeCell::raw_get.
+        this as *const T as *mut T
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: Default> Default for SyncUnsafeCell<T> {
+    /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
+    fn default() -> SyncUnsafeCell<T> {
+        SyncUnsafeCell::new(Default::default())
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for SyncUnsafeCell<T> {
+    /// Creates a new `SyncUnsafeCell<T>` containing the given value.
+    fn from(t: T) -> SyncUnsafeCell<T> {
+        SyncUnsafeCell::new(t)
+    }
+}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+//#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
+
 #[allow(unused)]
-fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {
+fn assert_coerce_unsized(
+    a: UnsafeCell<&i32>,
+    b: SyncUnsafeCell<&i32>,
+    c: Cell<&i32>,
+    d: RefCell<&i32>,
+) {
     let _: UnsafeCell<&dyn Send> = a;
-    let _: Cell<&dyn Send> = b;
-    let _: RefCell<&dyn Send> = c;
+    let _: SyncUnsafeCell<&dyn Send> = b;
+    let _: Cell<&dyn Send> = c;
+    let _: RefCell<&dyn Send> = d;
 }

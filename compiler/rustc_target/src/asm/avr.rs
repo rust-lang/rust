@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -39,7 +40,7 @@ impl AvrInlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8; },
             Self::reg_upper => types! { _: I8; },

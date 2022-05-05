@@ -56,6 +56,9 @@ fn emit_module(
 
     let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
     let obj = product.object.write().unwrap();
+
+    tcx.sess.prof.artifact_size("object_file", name.clone(), obj.len().try_into().unwrap());
+
     if let Err(err) = std::fs::write(&tmp_file, obj) {
         tcx.sess.fatal(&format!("error writing object file: {}", err));
     }
@@ -301,8 +304,12 @@ pub(crate) fn run_aot(
     };
 
     // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu =
-        tcx.sess.opts.cg.target_cpu.as_ref().unwrap_or(&tcx.sess.target.cpu).to_owned();
+    let target_cpu = match tcx.sess.opts.cg.target_cpu {
+        Some(ref name) => name,
+        None => tcx.sess.target.cpu.as_ref(),
+    }
+    .to_owned();
+
     Box::new((
         CodegenResults {
             modules,

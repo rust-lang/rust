@@ -1,7 +1,5 @@
 // aux-build:pub-and-stability.rs
 
-#![feature(unused_feature)]
-
 // A big point of this test is that we *declare* `unstable_declared`,
 // but do *not* declare `unstable_undeclared`. This way we can check
 // that the compiler is letting in uses of declared feature-gated

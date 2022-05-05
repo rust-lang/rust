@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
             };
 
         if_chain! {
-            if let ExprKind::MethodCall(_, ok_span, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
+            if let ExprKind::MethodCall(ok_path, [ref result_types_0, ..], _) = let_expr.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
             if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = let_pat.kind; //get operation
             if method_chain_args(let_expr, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(result_types_0), sym::Result);
@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
 
                 let mut applicability = Applicability::MachineApplicable;
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
-                let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_span), "", &mut applicability);
+                let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_path.ident.span), "", &mut applicability);
                 let sugg = format!(
                     "{} let Ok({}) = {}",
                     ifwhile,

@@ -14,6 +14,7 @@ use std::ops::Range;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 
 /// Represents a single undo-able action that affects a type inference variable.
+#[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
@@ -58,6 +59,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub struct TypeVariableStorage<'tcx> {
     values: sv::SnapshotVecStorage<Delegate>,
 
@@ -137,6 +139,7 @@ pub enum TypeVariableOriginKind {
     LatticeVariable,
 }
 
+#[derive(Clone)]
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
 }
@@ -165,6 +168,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct Instantiate;
 
 pub(crate) struct Delegate;
@@ -259,7 +263,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         let index = self.values().push(TypeVariableData { origin });
         assert_eq!(eq_key.vid.as_u32(), index as u32);
 
-        debug!("new_var(index={:?}, universe={:?}, origin={:?}", eq_key.vid, universe, origin,);
+        debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key.vid, universe, origin);
 
         eq_key.vid
     }
@@ -412,6 +416,7 @@ impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     fn index(&self) -> u32 {
         self.vid.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         TyVidEqKey::from(ty::TyVid::from_u32(i))
     }

@@ -17,7 +17,7 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 /// because we sometimes need to use SimplifiedTypeGen values as stable sorting
 /// keys (in which case we use a DefPathHash as id-type) but in the general case
 /// the non-stable but fast to construct DefId-version is the better choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 pub enum SimplifiedTypeGen<D>
 where
     D: Copy + Debug + Eq,
@@ -49,15 +49,14 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum SimplifyParams {
-    Yes,
-    No,
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum StripReferences {
-    Yes,
-    No,
+pub enum TreatParams {
+    /// Treat parameters as bound types in the given environment.
+    ///
+    /// For this to be correct the input has to be fully normalized
+    /// in its param env as it may otherwise cause us to ignore
+    /// potentially applying impls.
+    AsBoundTypes,
+    AsPlaceholders,
 }
 
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
@@ -65,29 +64,21 @@ pub enum StripReferences {
 /// The idea is to get something simple that we can use to quickly decide if two types could unify,
 /// for example during method lookup.
 ///
-/// A special case here are parameters and projections. Projections can be normalized to
-/// a different type, meaning that `<T as Trait>::Assoc` and `u8` can be unified, even though
-/// their outermost layer is different while parameters like `T` of impls are later replaced
-/// with an inference variable, which then also allows unification with other types.
+/// A special case here are parameters and projections, which are only injective
+/// if they are treated as bound types.
 ///
-/// When using `SimplifyParams::Yes`, we still return a simplified type for params and projections²,
-/// the reasoning for this can be seen at the places doing this.
+/// For example when storing impls based on their simplified self type, we treat
+/// generic parameters as placeholders. We must not simplify them here,
+/// as they can unify with any other type.
 ///
-/// For diagnostics we strip references with `StripReferences::Yes`. This is currently the best
-/// way to skip some unhelpful suggestions.
+/// With projections we have to be even more careful, as even when treating them as bound types
+/// this is still only correct if they are fully normalized.
 ///
-/// ¹ meaning that if two outermost layers are different, then the whole types are also different.
-/// ² FIXME(@lcnr): this seems like it can actually end up being unsound with the way it's used during
-///   candidate selection. We do not consider non blanket impls for `<_ as Trait>::Assoc` even
-///   though `_` can be inferred to a concrete type later at which point a concrete impl
-///   could actually apply. After experimenting for about an hour I wasn't able to cause any issues
-///   this way so I am not going to change this until we actually find an issue as I am really
-///   interesting in getting an actual test for this.
-pub fn simplify_type(
-    tcx: TyCtxt<'_>,
-    ty: Ty<'_>,
-    can_simplify_params: SimplifyParams,
-    strip_references: StripReferences,
+/// ¹ meaning that if the outermost layers are different, then the whole types are also different.
+pub fn simplify_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    treat_params: TreatParams,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -95,54 +86,42 @@ pub fn simplify_type(
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
+        ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
         ty::Array(..) => Some(ArraySimplifiedType),
         ty::Slice(..) => Some(SliceSimplifiedType),
         ty::RawPtr(ptr) => Some(PtrSimplifiedType(ptr.mutbl)),
-        ty::Dynamic(ref trait_info, ..) => match trait_info.principal_def_id() {
+        ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
             Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
                 Some(TraitSimplifiedType(principal_def_id))
             }
             _ => Some(MarkerTraitObjectSimplifiedType),
         },
-        ty::Ref(_, ty, mutbl) => {
-            if strip_references == StripReferences::Yes {
-                // For diagnostics, when recommending similar impls we want to
-                // recommend impls even when there is a reference mismatch,
-                // so we treat &T and T equivalently in that case.
-                simplify_type(tcx, ty, can_simplify_params, strip_references)
-            } else {
-                Some(RefSimplifiedType(mutbl))
-            }
-        }
+        ty::Ref(_, _, mutbl) => Some(RefSimplifiedType(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
-        ty::GeneratorWitness(ref tys) => {
-            Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
-        }
+        ty::GeneratorWitness(tys) => Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len())),
         ty::Never => Some(NeverSimplifiedType),
-        ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),
-        ty::FnPtr(ref f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
-        ty::Projection(_) | ty::Param(_) => {
-            if can_simplify_params == SimplifyParams::Yes {
-                // In normalized types, projections don't unify with
-                // anything. when lazy normalization happens, this
-                // will change. It would still be nice to have a way
-                // to deal with known-not-to-unify-with-anything
-                // projections (e.g., the likes of <__S as Encoder>::Error).
+        ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
+        ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
+        ty::Param(_) | ty::Projection(_) => match treat_params {
+            // When treated as bound types, projections don't unify with
+            // anything as long as they are fully normalized.
+            //
+            // We will have to be careful with lazy normalization here.
+            TreatParams::AsBoundTypes => {
+                debug!("treating `{}` as a bound type", ty);
                 Some(ParameterSimplifiedType)
-            } else {
-                None
             }
-        }
+            TreatParams::AsPlaceholders => None,
+        },
         ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 
-impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
+impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
     pub fn def(self) -> Option<D> {
         match self {
             AdtSimplifiedType(d)
@@ -158,7 +137,7 @@ impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
     pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
     where
         F: Fn(D) -> U,
-        U: Copy + Debug + Ord + Eq,
+        U: Copy + Debug + Eq,
     {
         match self {
             BoolSimplifiedType => BoolSimplifiedType,
@@ -189,7 +168,7 @@ impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
 
 impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
 where
-    D: Copy + Debug + Ord + Eq + HashStable<StableHashingContext<'a>>,
+    D: Copy + Debug + Eq + HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);

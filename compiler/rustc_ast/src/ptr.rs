@@ -115,8 +115,8 @@ impl<T> fmt::Pointer for P<T> {
 }
 
 impl<D: Decoder, T: 'static + Decodable<D>> Decodable<D> for P<T> {
-    fn decode(d: &mut D) -> Result<P<T>, D::Error> {
-        Decodable::decode(d).map(P)
+    fn decode(d: &mut D) -> P<T> {
+        P(Decodable::decode(d))
     }
 }
 
@@ -128,14 +128,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
 
 impl<T> P<[T]> {
     pub const fn new() -> P<[T]> {
-        // HACK(eddyb) bypass the lack of a `const fn` to create an empty `Box<[T]>`
-        // (as trait methods, `default` in this case, can't be `const fn` yet).
-        P {
-            ptr: unsafe {
-                use std::ptr::NonNull;
-                std::mem::transmute(NonNull::<[T; 0]>::dangling() as NonNull<[T]>)
-            },
-        }
+        P { ptr: Box::default() }
     }
 
     #[inline(never)]
@@ -204,8 +197,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
-    fn decode(d: &mut D) -> Result<P<[T]>, D::Error> {
-        Ok(P::from_vec(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> P<[T]> {
+        P::from_vec(Decodable::decode(d))
     }
 }
 

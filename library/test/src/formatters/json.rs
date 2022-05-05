@@ -120,17 +120,15 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 Some(&*format!(r#""message": "{}""#, EscapedString(m))),
             ),
 
-            TestResult::TrIgnored => {
-                self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
-            }
-
-            TestResult::TrAllowedFail => self.write_event(
+            TestResult::TrIgnored => self.write_event(
                 "test",
                 desc.name.as_slice(),
-                "allowed_failure",
+                "ignored",
                 exec_time,
                 stdout,
-                None,
+                desc.ignore_message
+                    .map(|msg| format!(r#""message": "{}""#, EscapedString(msg)))
+                    .as_deref(),
             ),
 
             TestResult::TrBench(ref bs) => {
@@ -172,14 +170,12 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"event\": \"{}\", \
              \"passed\": {}, \
              \"failed\": {}, \
-             \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
              \"filtered_out\": {}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
-            state.failed + state.allowed_fail,
-            state.allowed_fail,
+            state.failed,
             state.ignored,
             state.measured,
             state.filtered_out,

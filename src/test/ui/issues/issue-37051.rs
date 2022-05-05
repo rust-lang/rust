@@ -1,5 +1,4 @@
 // check-pass
-// ignore-compare-mode-chalk
 
 #![feature(associated_type_defaults)]
 

@@ -119,7 +119,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
 
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if_chain! {
-            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
+            if let ExprKind::MethodCall(method, len_args, _) = end.kind;
             if method.ident.name == sym::len;
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
@@ -334,16 +334,16 @@ struct Start<'hir> {
 
 fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did) => Some(subs.type_at(0)),
-        ty::Ref(_, subty, _) => get_slice_like_element_ty(cx, subty),
-        ty::Slice(ty) | ty::Array(ty, _) => Some(ty),
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did()) => Some(subs.type_at(0)),
+        ty::Ref(_, subty, _) => get_slice_like_element_ty(cx, *subty),
+        ty::Slice(ty) | ty::Array(ty, _) => Some(*ty),
         _ => None,
     }
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, args, _) = expr.kind;
         if method.ident.name == sym::clone;
         if args.len() == 1;
         if let Some(arg) = args.get(0);

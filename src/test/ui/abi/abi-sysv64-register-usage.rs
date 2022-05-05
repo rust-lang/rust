@@ -5,6 +5,7 @@
 // ignore-android
 // ignore-arm
 // ignore-aarch64
+// needs-asm-support
 #![feature(asm_sym)]
 
 #[cfg(target_arch = "x86_64")]

@@ -44,4 +44,30 @@ pub const DIFFERENT_INT: isize = { // offset_from with two different integers: l
     //~| 0x10 is not a valid pointer
 };
 
+const OUT_OF_BOUNDS_1: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    // First ptr is out of bounds
+    unsafe { ptr_offset_from(end_ptr, start_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer at offset 10 is out-of-bounds
+};
+
+const OUT_OF_BOUNDS_2: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    // Second ptr is out of bounds
+    unsafe { ptr_offset_from(start_ptr, end_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer at offset 10 is out-of-bounds
+};
+
+const OUT_OF_BOUNDS_SAME: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    unsafe { ptr_offset_from(end_ptr, end_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer at offset 10 is out-of-bounds
+};
+
 fn main() {}

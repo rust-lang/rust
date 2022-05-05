@@ -231,10 +231,10 @@ pub struct Bridge<'a> {
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
-}
 
-impl<'a> !Sync for Bridge<'a> {}
-impl<'a> !Send for Bridge<'a> {}
+    // Prevent Send and Sync impls
+    _marker: marker::PhantomData<*mut ()>,
+}
 
 #[forbid(unsafe_code)]
 #[allow(non_camel_case_types)]

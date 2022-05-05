@@ -50,7 +50,12 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for item in cx.tcx.hir().items() {
+        for id in cx.tcx.hir().items() {
+            if !matches!(cx.tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+                continue;
+            }
+
+            let item = cx.tcx.hir().item(id);
             if let ItemKind::Impl(Impl {
                 items,
                 of_trait,
@@ -87,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         .filter(|assoc_item| {
                                             matches!(assoc_item.kind, AssocKind::Fn)
                                         })
-                                        .map(|assoc_item| assoc_item.ident.name)
+                                        .map(|assoc_item| assoc_item.name)
                                         .collect()
                                 }else{
                                     BTreeSet::new()

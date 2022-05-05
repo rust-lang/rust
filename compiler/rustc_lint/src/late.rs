@@ -503,4 +503,7 @@ pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
             });
         },
     );
+
+    // This check has to be run after all lints are done processing for this crate
+    tcx.sess.time("check_lint_expectations", || crate::expect::check_expectations(tcx));
 }

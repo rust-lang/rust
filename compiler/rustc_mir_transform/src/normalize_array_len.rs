@@ -3,10 +3,11 @@
 
 use crate::MirPass;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::intern::Interned;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ReErased, Region, TyCtxt};
 
 const MAX_NUM_BLOCKS: usize = 800;
 const MAX_NUM_LOCALS: usize = 3000;
@@ -211,12 +212,7 @@ fn normalize_array_len_call<'tcx>(
                         let Some(local) = place.as_local() else { return };
                         match operand {
                             Operand::Copy(place) | Operand::Move(place) => {
-                                let operand_local =
-                                    if let Some(local) = place.local_or_deref_local() {
-                                        local
-                                    } else {
-                                        return;
-                                    };
+                                let Some(operand_local) = place.local_or_deref_local() else { return; };
                                 if !interesting_locals.contains(operand_local) {
                                     return;
                                 }
@@ -231,11 +227,15 @@ fn normalize_array_len_call<'tcx>(
                                     // current way of patching doesn't allow to work with `mut`
                                     (
                                         ty::Ref(
-                                            ty::RegionKind::ReErased,
+                                            Region(Interned(ReErased, _)),
                                             operand_ty,
                                             Mutability::Not,
                                         ),
-                                        ty::Ref(ty::RegionKind::ReErased, cast_ty, Mutability::Not),
+                                        ty::Ref(
+                                            Region(Interned(ReErased, _)),
+                                            cast_ty,
+                                            Mutability::Not,
+                                        ),
                                     ) => {
                                         match (operand_ty.kind(), cast_ty.kind()) {
                                             // current way of patching doesn't allow to work with `mut`

@@ -198,11 +198,8 @@ pub struct Config {
     /// The rust-demangler executable.
     pub rust_demangler_path: Option<PathBuf>,
 
-    /// The Python executable to use for LLDB.
-    pub lldb_python: String,
-
-    /// The Python executable to use for htmldocck.
-    pub docck_python: String,
+    /// The Python executable to use for LLDB and htmldocck.
+    pub python: String,
 
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
@@ -357,6 +354,7 @@ pub struct Config {
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
+    pub cxxflags: String,
     pub ar: String,
     pub linker: Option<String>,
     pub llvm_components: String,

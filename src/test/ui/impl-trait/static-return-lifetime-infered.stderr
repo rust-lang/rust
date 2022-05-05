@@ -1,10 +1,10 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+  --> $DIR/static-return-lifetime-infered.rs:7:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
-   |                         |
-   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
+   |                         ----- hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:7:27: 7:34]>` captures the anonymous lifetime defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
    |
@@ -12,12 +12,12 @@ LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:6:35
+  --> $DIR/static-return-lifetime-infered.rs:7:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         -----     ^^^^^^^^^^^^^^^^^^^^^^^
-   |                         |
-   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:9:27: 9:34]>` captures the anonymous lifetime defined here
+   |                         ----- hidden type `Map<std::slice::Iter<'_, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:7:27: 7:34]>` captures the anonymous lifetime defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
    |
@@ -25,12 +25,12 @@ LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:11:37
+  --> $DIR/static-return-lifetime-infered.rs:12:9
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
-   |                    |
-   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
+   |                    -- hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:12:27: 12:34]>` captures the lifetime `'a` as defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to declare that the `impl Trait` captures `'a`, you can add an explicit `'a` lifetime bound
    |
@@ -38,12 +38,12 @@ LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                                             ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/static-return-lifetime-infered.rs:11:37
+  --> $DIR/static-return-lifetime-infered.rs:12:9
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^
-   |                    |
-   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:14:27: 14:34]>` captures the lifetime `'a` as defined here
+   |                    -- hidden type `Map<std::slice::Iter<'a, (u32, u32)>, [closure@$DIR/static-return-lifetime-infered.rs:12:27: 12:34]>` captures the lifetime `'a` as defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to declare that the `impl Trait` captures `'a`, you can add an explicit `'a` lifetime bound
    |

@@ -5,11 +5,10 @@ LL | impl C for u32 {}
    |      ^ cannot infer type for type `u32`
    |
 note: multiple `impl`s satisfying `u32: C` found
-  --> $DIR/coherence-overlap-trait-alias.rs:13:1
+  --> $DIR/coherence-overlap-trait-alias.rs:14:1
    |
 LL | impl<T: AB> C for T {}
    | ^^^^^^^^^^^^^^^^^^^
-LL | #[rustc_strict_coherence]
 LL | impl C for u32 {}
    | ^^^^^^^^^^^^^^
 

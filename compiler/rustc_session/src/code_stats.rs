@@ -91,15 +91,15 @@ impl CodeStats {
             }
         });
 
-        for info in &sorted {
+        for info in sorted {
+            let TypeSizeInfo { type_description, overall_size, align, kind, variants, .. } = info;
             println!(
-                "print-type-size type: `{}`: {} bytes, alignment: {} bytes",
-                info.type_description, info.overall_size, info.align
+                "print-type-size type: `{type_description}`: {overall_size} bytes, alignment: {align} bytes"
             );
             let indent = "    ";
 
             let discr_size = if let Some(discr_size) = info.opt_discr_size {
-                println!("print-type-size {}discriminant: {} bytes", indent, discr_size);
+                println!("print-type-size {indent}discriminant: {discr_size} bytes");
                 discr_size
             } else {
                 0
@@ -111,11 +111,11 @@ impl CodeStats {
             // to reflect the presence of the discriminant.
             let mut max_variant_size = discr_size;
 
-            let struct_like = match info.kind {
+            let struct_like = match kind {
                 DataTypeKind::Struct | DataTypeKind::Closure => true,
                 DataTypeKind::Enum | DataTypeKind::Union => false,
             };
-            for (i, variant_info) in info.variants.iter().enumerate() {
+            for (i, variant_info) in variants.into_iter().enumerate() {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
                 let indent = if !struct_like {
                     let name = match name.as_ref() {
@@ -123,10 +123,8 @@ impl CodeStats {
                         None => i.to_string(),
                     };
                     println!(
-                        "print-type-size {}variant `{}`: {} bytes",
-                        indent,
-                        name,
-                        size - discr_size
+                        "print-type-size {indent}variant `{name}`: {diff} bytes",
+                        diff = size - discr_size
                     );
                     "        "
                 } else {
@@ -144,30 +142,28 @@ impl CodeStats {
                 let mut fields = fields.clone();
                 fields.sort_by_key(|f| (f.offset, f.size));
 
-                for field in fields.iter() {
-                    let FieldInfo { ref name, offset, size, align } = *field;
+                for field in fields {
+                    let FieldInfo { ref name, offset, size, align } = field;
 
                     if offset > min_offset {
                         let pad = offset - min_offset;
-                        println!("print-type-size {}padding: {} bytes", indent, pad);
+                        println!("print-type-size {indent}padding: {pad} bytes");
                     }
 
                     if offset < min_offset {
                         // If this happens it's probably a union.
                         println!(
-                            "print-type-size {}field `.{}`: {} bytes, \
-                                  offset: {} bytes, \
-                                  alignment: {} bytes",
-                            indent, name, size, offset, align
+                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                                  offset: {offset} bytes, \
+                                  alignment: {align} bytes"
                         );
                     } else if info.packed || offset == min_offset {
-                        println!("print-type-size {}field `.{}`: {} bytes", indent, name, size);
+                        println!("print-type-size {indent}field `.{name}`: {size} bytes");
                     } else {
                         // Include field alignment in output only if it caused padding injection
                         println!(
-                            "print-type-size {}field `.{}`: {} bytes, \
-                                  alignment: {} bytes",
-                            indent, name, size, align
+                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                                  alignment: {align} bytes"
                         );
                     }
 
@@ -175,18 +171,10 @@ impl CodeStats {
                 }
             }
 
-            assert!(
-                max_variant_size <= info.overall_size,
-                "max_variant_size {} !<= {} overall_size",
-                max_variant_size,
-                info.overall_size
-            );
-            if max_variant_size < info.overall_size {
-                println!(
-                    "print-type-size {}end padding: {} bytes",
-                    indent,
-                    info.overall_size - max_variant_size
-                );
+            match overall_size.checked_sub(max_variant_size) {
+                None => panic!("max_variant_size {max_variant_size} > {overall_size} overall_size"),
+                Some(diff @ 1..) => println!("print-type-size {indent}end padding: {diff} bytes"),
+                Some(0) => {}
             }
         }
     }

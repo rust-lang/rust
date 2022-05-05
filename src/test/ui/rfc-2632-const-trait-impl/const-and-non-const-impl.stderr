@@ -1,4 +1,4 @@
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+error[E0117]: only traits defined in the current crate can be implemented for primitive types
   --> $DIR/const-and-non-const-impl.rs:5:1
    |
 LL | impl const std::ops::Add for i32 {

@@ -7,9 +7,10 @@ use rustc_middle::ty;
 use rustc_span::symbol::sym;
 
 declare_tool_lint! {
-    /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to always be passed by value.
-    /// This is usually used for types that are thin wrappers around references, so there is no benefit to an extra
-    /// layer of indirection. (Example: `Ty` which is a reference to a `TyS`)
+    /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to
+    /// always be passed by value. This is usually used for types that are thin wrappers around
+    /// references, so there is no benefit to an extra layer of indirection. (Example: `Ty` which
+    /// is a reference to an `Interned<TyS>`)
     pub rustc::PASS_BY_VALUE,
     Warn,
     "pass by reference of a type flagged as `#[rustc_pass_by_value]`",
@@ -54,10 +55,10 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
-            Res::SelfTy(None, Some((did, _))) => {
+            Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
-                    if cx.tcx.has_attr(adt.did, sym::rustc_pass_by_value) {
-                        return Some(cx.tcx.def_path_str_with_substs(adt.did, substs));
+                    if cx.tcx.has_attr(adt.did(), sym::rustc_pass_by_value) {
+                        return Some(cx.tcx.def_path_str_with_substs(adt.did(), substs));
                     }
                 }
             }
@@ -76,10 +77,10 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
             .map(|arg| match arg {
                 GenericArg::Lifetime(lt) => lt.name.ident().to_string(),
                 GenericArg::Type(ty) => {
-                    cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_default()
+                    cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_else(|_| "_".into())
                 }
                 GenericArg::Const(c) => {
-                    cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_default()
+                    cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_else(|_| "_".into())
                 }
                 GenericArg::Infer(_) => String::from("_"),
             })

@@ -5,7 +5,7 @@ use crate::mir::Promoted;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::abi::Size;
@@ -126,11 +126,12 @@ impl<'tcx> ConstKind<'tcx> {
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
     /// return `None`.
-    pub(super) fn try_eval(
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
+    ) -> Option<Result<ConstValue<'tcx>, ErrorGuaranteed>> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 

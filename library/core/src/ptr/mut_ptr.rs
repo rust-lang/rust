@@ -3,7 +3,6 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 use crate::slice::{self, SliceIndex};
 
-#[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
@@ -45,6 +44,50 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     pub const fn cast<U>(self) -> *mut U {
         self as _
+    }
+
+    /// Use the pointer value in a new pointer of another type.
+    ///
+    /// In case `val` is a (fat) pointer to an unsized type, this operation
+    /// will ignore the pointer part, whereas for (thin) pointers to sized
+    /// types, this has the same effect as a simple cast.
+    ///
+    /// The resulting pointer will have provenance of `self`, i.e., for a fat
+    /// pointer, this operation is semantically the same as creating a new
+    /// fat pointer with the data pointer value of `self` but the metadata of
+    /// `val`.
+    ///
+    /// # Examples
+    ///
+    /// This function is primarily useful for allowing byte-wise pointer
+    /// arithmetic on potentially fat pointers:
+    ///
+    /// ```
+    /// #![feature(set_ptr_value)]
+    /// # use core::fmt::Debug;
+    /// let mut arr: [i32; 3] = [1, 2, 3];
+    /// let mut ptr = arr.as_mut_ptr() as *mut dyn Debug;
+    /// let thin = ptr as *mut u8;
+    /// unsafe {
+    ///     ptr = thin.add(8).with_metadata_of(ptr);
+    ///     # assert_eq!(*(ptr as *mut i32), 3);
+    ///     println!("{:?}", &*ptr); // will print "3"
+    /// }
+    /// ```
+    #[unstable(feature = "set_ptr_value", issue = "75091")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline]
+    pub fn with_metadata_of<U>(self, mut val: *mut U) -> *mut U
+    where
+        U: ?Sized,
+    {
+        let target = &mut val as *mut *mut U as *mut *mut u8;
+        // SAFETY: In case of a thin pointer, this operations is identical
+        // to a simple assignment. In case of a fat pointer, with the current
+        // fat pointer layout implementation, the first field of such a
+        // pointer is always the data pointer, which is likewise assigned.
+        unsafe { *target = self as *mut u8 };
+        val
     }
 
     /// Changes constness without changing the type.
@@ -110,6 +153,123 @@ impl<T: ?Sized> *mut T {
         bits as Self
     }
 
+    /// Gets the "address" portion of the pointer.
+    ///
+    /// This is similar to `self as usize`, which semantically discards *provenance* and
+    /// *address-space* information. However, unlike `self as usize`, casting the returned address
+    /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
+    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    ///
+    /// If using those APIs is not possible because there is no way to preserve a pointer with the
+    /// required provenance, use [`expose_addr`][pointer::expose_addr] and
+    /// [`from_exposed_addr_mut`][from_exposed_addr_mut] instead. However, note that this makes
+    /// your code less portable and less amenable to tools that check for compliance with the Rust
+    /// memory model.
+    ///
+    /// On most platforms this will produce a value with the same bytes as the original
+    /// pointer, because all the bytes are dedicated to describing the address.
+    /// Platforms which need to store additional information in the pointer may
+    /// perform a change of representation to produce a value containing only the address
+    /// portion of the pointer. What that means is up to the platform to define.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment, and as such
+    /// might change in the future (including possibly weakening this so it becomes wholly
+    /// equivalent to `self as usize`). See the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn addr(self) -> usize
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        self as usize
+    }
+
+    /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
+    /// use in [`from_exposed_addr`][].
+    ///
+    /// This is equivalent to `self as usize`, which semantically discards *provenance* and
+    /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
+    /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
+    /// later call [`from_exposed_addr_mut`][] to reconstitute the original pointer including its
+    /// provenance. (Reconstructing address space information, if required, is your responsibility.)
+    ///
+    /// Using this method means that code is *not* following Strict Provenance rules. Supporting
+    /// [`from_exposed_addr_mut`][] complicates specification and reasoning and may not be supported
+    /// by tools that help you to stay conformant with the Rust memory model, so it is recommended
+    /// to use [`addr`][pointer::addr] wherever possible.
+    ///
+    /// On most platforms this will produce a value with the same bytes as the original pointer,
+    /// because all the bytes are dedicated to describing the address. Platforms which need to store
+    /// additional information in the pointer may not support this operation, since the 'expose'
+    /// side-effect which is required for [`from_exposed_addr_mut`][] to work is typically not
+    /// available.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
+    /// [module documentation][crate::ptr] for details.
+    ///
+    /// [`from_exposed_addr_mut`]: from_exposed_addr_mut
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn expose_addr(self) -> usize
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        self as usize
+    }
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// This performs the same operation as an `addr as ptr` cast, but copies
+    /// the *address-space* and *provenance* of `self` to the new pointer.
+    /// This allows us to dynamically preserve and propagate this important
+    /// information in a way that is otherwise impossible with a unary cast.
+    ///
+    /// This is equivalent to using [`wrapping_offset`][pointer::wrapping_offset] to offset
+    /// `self` to the given address, and therefore has all the same capabilities and restrictions.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn with_addr(self, addr: usize) -> Self
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        //
+        // In the mean-time, this operation is defined to be "as if" it was
+        // a wrapping_offset, so we can emulate it as such. This should properly
+        // restore pointer provenance even under today's compiler.
+        let self_addr = self.addr() as isize;
+        let dest_addr = addr as isize;
+        let offset = dest_addr.wrapping_sub(self_addr);
+
+        // This is the canonical desugarring of this operation
+        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+    }
+
+    /// Creates a new pointer by mapping `self`'s address to a new one.
+    ///
+    /// This is a convenience for [`with_addr`][pointer::with_addr], see that method for details.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self
+    where
+        T: Sized,
+    {
+        self.with_addr(f(self.addr()))
+    }
+
     /// Decompose a (possibly wide) pointer into its address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
@@ -142,7 +302,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -160,7 +320,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_ref() {
-    ///         println!("We got back the value: {}!", val_back);
+    ///         println!("We got back the value: {val_back}!");
     ///     }
     /// }
     /// ```
@@ -176,7 +336,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {}!", val_back);
+    ///     println!("We got back the value: {val_back}!");
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
@@ -208,7 +368,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -295,7 +455,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const unsafe fn offset(self, count: isize) -> *mut T
     where
@@ -358,7 +518,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const fn wrapping_offset(self, count: isize) -> *mut T
     where
@@ -390,7 +550,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -409,7 +569,7 @@ impl<T: ?Sized> *mut T {
     /// let first_value = unsafe { ptr.as_mut().unwrap() };
     /// *first_value = 4;
     /// # assert_eq!(s, [4, 2, 3]);
-    /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
+    /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     ///
     /// # Null-unchecked version
@@ -424,7 +584,7 @@ impl<T: ?Sized> *mut T {
     /// let first_value = unsafe { &mut *ptr };
     /// *first_value = 4;
     /// # assert_eq!(s, [4, 2, 3]);
-    /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
+    /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
@@ -455,7 +615,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -680,7 +840,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const unsafe fn add(self, count: usize) -> Self
     where
@@ -744,7 +904,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
@@ -807,7 +967,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
@@ -869,54 +1029,13 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
     pub const fn wrapping_sub(self, count: usize) -> Self
     where
         T: Sized,
     {
         self.wrapping_offset((count as isize).wrapping_neg())
-    }
-
-    /// Sets the pointer value to `ptr`.
-    ///
-    /// In case `self` is a (fat) pointer to an unsized type, this operation
-    /// will only affect the pointer part, whereas for (thin) pointers to
-    /// sized types, this has the same effect as a simple assignment.
-    ///
-    /// The resulting pointer will have provenance of `val`, i.e., for a fat
-    /// pointer, this operation is semantically the same as creating a new
-    /// fat pointer with the data pointer value of `val` but the metadata of
-    /// `self`.
-    ///
-    /// # Examples
-    ///
-    /// This function is primarily useful for allowing byte-wise pointer
-    /// arithmetic on potentially fat pointers:
-    ///
-    /// ```
-    /// #![feature(set_ptr_value)]
-    /// # use core::fmt::Debug;
-    /// let mut arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = arr.as_mut_ptr() as *mut dyn Debug;
-    /// let thin = ptr as *mut u8;
-    /// unsafe {
-    ///     ptr = ptr.set_ptr_value(thin.add(8));
-    ///     # assert_eq!(*(ptr as *mut i32), 3);
-    ///     println!("{:?}", &*ptr); // will print "3"
-    /// }
-    /// ```
-    #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[inline]
-    pub fn set_ptr_value(mut self, val: *mut u8) -> Self {
-        let thin = &mut self as *mut *mut T as *mut *mut u8;
-        // SAFETY: In case of a thin pointer, this operations is identical
-        // to a simple assignment. In case of a fat pointer, with the current
-        // fat pointer layout implementation, the first field of such a
-        // pointer is always the data pointer, which is likewise assigned.
-        unsafe { *thin = val };
-        self
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -1237,7 +1356,6 @@ impl<T: ?Sized> *mut T {
     }
 }
 
-#[lang = "mut_slice_ptr"]
 impl<T> *mut [T] {
     /// Returns the length of a raw slice.
     ///
@@ -1273,7 +1391,7 @@ impl<T> *mut [T] {
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
-    /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
+    /// assert_eq!(slice.as_mut_ptr(), ptr::null_mut());
     /// ```
     #[inline(always)]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
@@ -1302,10 +1420,11 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline(always)]
-    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
+    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked_mut(self) }
@@ -1342,7 +1461,7 @@ impl<T> *mut [T] {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -1394,7 +1513,7 @@ impl<T> *mut [T] {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!

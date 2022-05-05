@@ -7,7 +7,8 @@ $(TMPDIR)/%.calls: $(TMPDIR)/libfoobar.rmeta
 	  --extern foobar=$(TMPDIR)/libfoobar.rmeta \
 		-Z unstable-options \
 		--scrape-examples-output-path $@ \
-		--scrape-examples-target-crate foobar
+		--scrape-examples-target-crate foobar \
+		$(extra_flags)
 
 $(TMPDIR)/lib%.rmeta: src/lib.rs
 	$(RUSTC) src/lib.rs --crate-name $* --crate-type lib --emit=metadata

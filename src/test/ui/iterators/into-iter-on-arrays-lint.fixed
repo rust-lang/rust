@@ -2,6 +2,7 @@
 // run-rustfix
 // rustfix-only-machine-applicable
 
+#[allow(unused_must_use)]
 fn main() {
     let small = [1, 2];
     let big = [0u8; 33];

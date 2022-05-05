@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                     _ => false,
                 };
                 if should_emit {
-                    let path_string = cx.tcx.def_path_str(adt_def.did);
+                    let path_string = cx.tcx.def_path_str(adt_def.did());
                     span_lint_and_help(
                         cx,
                         DERIVABLE_IMPLS,

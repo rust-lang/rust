@@ -94,24 +94,22 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
             _ => None,
         };
 
-        if let Some(res) = res {
-            if let Some(def_id) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
-                if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
-                    self.worklist.push(def_id);
-                } else {
-                    match res {
-                        // If this path leads to a constant, then we need to
-                        // recurse into the constant to continue finding
-                        // items that are reachable.
-                        Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
-                            self.worklist.push(def_id);
-                        }
+        if let Some(res) = res && let Some(def_id) = res.opt_def_id().and_then(|el| el.as_local()) {
+            if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
+                self.worklist.push(def_id);
+            } else {
+                match res {
+                    // If this path leads to a constant, then we need to
+                    // recurse into the constant to continue finding
+                    // items that are reachable.
+                    Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
+                        self.worklist.push(def_id);
+                    }
 
-                        // If this wasn't a static, then the destination is
-                        // surely reachable.
-                        _ => {
-                            self.reachable_symbols.insert(def_id);
-                        }
+                    // If this wasn't a static, then the destination is
+                    // surely reachable.
+                    _ => {
+                        self.reachable_symbols.insert(def_id);
                     }
                 }
             }
@@ -282,8 +280,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
-                    let impl_def_id =
-                        self.tcx.parent(search_item.to_def_id()).unwrap().expect_local();
+                    let impl_def_id = self.tcx.local_parent(search_item);
                     if method_might_be_inlined(self.tcx, impl_item, impl_def_id) {
                         self.visit_nested_body(body)
                     }
@@ -335,6 +332,11 @@ impl CollectPrivateImplItemsVisitor<'_, '_> {
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator()
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+            // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
+            // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
+            // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         {
             self.worklist.push(def_id);
         }
@@ -354,9 +356,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                 let tcx = self.tcx;
                 self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
 
-                let trait_def_id = match trait_ref.path.res {
-                    Res::Def(DefKind::Trait, def_id) => def_id,
-                    _ => unreachable!(),
+                let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
+                    unreachable!();
                 };
 
                 if !trait_def_id.is_local() {

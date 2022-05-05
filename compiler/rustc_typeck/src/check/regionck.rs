@@ -171,8 +171,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
+    #[instrument(level = "debug", skip(self))]
     pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: FxHashSet<Ty<'tcx>>) {
-        debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
         let subject = self.tcx.hir().local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self, item_id, Subject(subject), self.param_env);
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
@@ -317,13 +317,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
-        let fn_sig = {
-            match self.typeck_results.borrow().liberated_fn_sigs().get(id) {
-                Some(f) => *f,
-                None => {
-                    bug!("No fn-sig entry for id={:?}", id);
-                }
-            }
+        let Some(fn_sig) = self.typeck_results.borrow().liberated_fn_sigs().get(id) else {
+            bug!("No fn-sig entry for id={:?}", id);
         };
 
         // Collect the types from which we create inferred bounds.
@@ -642,12 +637,9 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id, .. }| {
                 // `ref x` pattern
-                if let PatKind::Binding(..) = kind {
-                    if let Some(ty::BindByReference(mutbl)) =
-                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
-                    {
-                        self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
-                    }
+                if let PatKind::Binding(..) = kind
+                    && let Some(ty::BindByReference(mutbl)) = mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span) {
+                    self.link_region_from_node_type(*span, *hir_id, mutbl, sub_cmt);
                 }
             })
         }));
@@ -689,7 +681,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let rptr_ty = self.resolve_node_type(id);
         if let ty::Ref(r, _, _) = rptr_ty.kind() {
             debug!("rptr_ty={}", rptr_ty);
-            self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
+            self.link_region(span, *r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
     }
 

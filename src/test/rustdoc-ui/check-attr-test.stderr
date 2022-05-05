@@ -111,77 +111,41 @@ error: unknown attribute `nO_run`. Did you mean `no_run`?
    |
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `allow-fail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr-test.rs:26:1
-   |
-26 | / /// barfoo
-27 | | ///
-28 | | /// ```allow-fail,allowfail,allOw_fail
-29 | | /// boo
-30 | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
-error: unknown attribute `allowfail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr-test.rs:26:1
-   |
-26 | / /// barfoo
-27 | | ///
-28 | | /// ```allow-fail,allowfail,allOw_fail
-29 | | /// boo
-30 | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
-error: unknown attribute `allOw_fail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr-test.rs:26:1
-   |
-26 | / /// barfoo
-27 | | ///
-28 | | /// ```allow-fail,allowfail,allOw_fail
-29 | | /// boo
-30 | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
 error: unknown attribute `test-harness`. Did you mean `test_harness`?
-  --> $DIR/check-attr-test.rs:33:1
+  --> $DIR/check-attr-test.rs:26:1
    |
-33 | / /// b
-34 | | ///
-35 | | /// ```test-harness,testharness,tesT_harness
-36 | | /// boo
-37 | | /// ```
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
    | |_______^
    |
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
-  --> $DIR/check-attr-test.rs:33:1
+  --> $DIR/check-attr-test.rs:26:1
    |
-33 | / /// b
-34 | | ///
-35 | | /// ```test-harness,testharness,tesT_harness
-36 | | /// boo
-37 | | /// ```
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
    | |_______^
    |
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `tesT_harness`. Did you mean `test_harness`?
-  --> $DIR/check-attr-test.rs:33:1
+  --> $DIR/check-attr-test.rs:26:1
    |
-33 | / /// b
-34 | | ///
-35 | | /// ```test-harness,testharness,tesT_harness
-36 | | /// boo
-37 | | /// ```
+26 | / /// b
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
+30 | | /// ```
    | |_______^
    |
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: aborting due to 15 previous errors
+error: aborting due to 12 previous errors
 

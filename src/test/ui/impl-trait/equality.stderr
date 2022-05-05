@@ -12,19 +12,10 @@ error[E0308]: mismatched types
   --> $DIR/equality.rs:15:5
    |
 LL | fn two(x: bool) -> impl Foo {
-   |                    -------- expected because this return type...
-LL |     if x {
-LL |         return 1_i32;
-   |                ----- ...is found to be `i32` here
-LL |     }
+   |                    -------- expected `_` because of return type
+...
 LL |     0_u32
    |     ^^^^^ expected `i32`, found `u32`
-   |
-   = note: to return `impl Trait`, all returned values must be of the same type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = help: if the trait `Foo` were object safe, you could return a boxed trait object
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: you could instead create a new `enum` with a variant for each returned type
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11
@@ -33,23 +24,18 @@ LL |         n + sum_to(n - 1)
    |           ^ no implementation for `u32 + impl Foo`
    |
    = help: the trait `Add<impl Foo>` is not implemented for `u32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
 
-error[E0283]: type annotations needed
-  --> $DIR/equality.rs:20:22
-   |
-LL | fn sum_to(n: u32) -> impl Foo {
-   |                      ^^^^^^^^ cannot infer type for type `{integer}`
-   |
-   = note: multiple `impl`s satisfying `{integer}: ToString` found in the `alloc` crate:
-           - impl ToString for i8;
-           - impl ToString for u8;
-note: required because of the requirements on the impl of `Foo` for `{integer}`
-  --> $DIR/equality.rs:5:26
-   |
-LL | impl<T: Copy + ToString> Foo for T {}
-   |                          ^^^     ^
+error: aborting due to 2 previous errors; 1 warning emitted
 
-error: aborting due to 3 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0277, E0283, E0308.
+Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

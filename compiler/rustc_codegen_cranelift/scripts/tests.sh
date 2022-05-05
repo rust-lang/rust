@@ -57,7 +57,6 @@ function base_sysroot_tests() {
     fi
 
     echo "[AOT] dst_field_align"
-    # FIXME Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
     $MY_RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
@@ -72,6 +71,10 @@ function base_sysroot_tests() {
     echo "[AOT] track-caller-attribute"
     $MY_RUSTC example/track-caller-attribute.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/track-caller-attribute
+
+    echo "[AOT] float-minmax-pass"
+    $MY_RUSTC example/float-minmax-pass.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
+    $RUN_WRAPPER ./target/out/float-minmax-pass
 
     echo "[AOT] mod_bench"
     $MY_RUSTC example/mod_bench.rs --crate-type bin --target "$TARGET_TRIPLE"

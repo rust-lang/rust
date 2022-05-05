@@ -291,7 +291,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // like AddAssign is implemented).
 
     // For primitive types (which, despite having a trait impl, don't actually
-    // end up calling it), the evluation order is right-to-left. For example,
+    // end up calling it), the evaluation order is right-to-left. For example,
     // the following code snippet:
     //
     //    let y = &mut 0;
@@ -366,7 +366,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let target_scopes = visitor.fixup_scopes.drain(start_point..);
 
             for scope in target_scopes {
-                let mut yield_data = visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap();
+                let mut yield_data =
+                    visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap().last_mut().unwrap();
                 let count = yield_data.expr_and_pat_count;
                 let span = yield_data.span;
 
@@ -429,7 +430,13 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             };
             let data =
                 YieldData { span, expr_and_pat_count: visitor.expr_and_pat_count, source: *source };
-            visitor.scope_tree.yield_in_scope.insert(scope, data);
+            match visitor.scope_tree.yield_in_scope.get_mut(&scope) {
+                Some(yields) => yields.push(data),
+                None => {
+                    visitor.scope_tree.yield_in_scope.insert(scope, vec![data]);
+                }
+            }
+
             if visitor.pessimistic_yield {
                 debug!("resolve_expr in pessimistic_yield - marking scope {:?} for fixup", scope);
                 visitor.fixup_scopes.push(scope);
@@ -727,7 +734,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let body_id = body.id();
-        let owner_id = self.tcx.hir().body_owner(body_id);
+        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 
         debug!(
             "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",

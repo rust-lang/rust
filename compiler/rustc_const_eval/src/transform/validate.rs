@@ -3,15 +3,14 @@
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPass, MirPhase, Operand,
-    PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, Local, Location, MirPass,
+    MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement,
+    StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -36,6 +35,13 @@ pub struct Validator {
 
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
+        // terribly important that they pass the validator. However, I think other passes might
+        // still see them, in which case they might be surprised. It would probably be better if we
+        // didn't put this through the MIR pipeline at all.
+        if matches!(body.source.instance, InstanceDef::Intrinsic(..) | InstanceDef::Virtual(..)) {
+            return;
+        }
         let def_id = body.source.def_id();
         let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
@@ -55,6 +61,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
             place_cache: Vec::new(),
+            value_cache: Vec::new(),
         }
         .visit_body(body);
     }
@@ -78,7 +85,6 @@ pub fn equal_up_to_regions<'tcx>(
     }
 
     // Normalize lifetimes away on both sides, then compare.
-    let param_env = param_env.with_reveal_all_normalized(tcx);
     let normalize = |ty: Ty<'tcx>| {
         tcx.normalize_erasing_regions(
             param_env,
@@ -109,6 +115,7 @@ struct TypeChecker<'a, 'tcx> {
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
     place_cache: Vec<PlaceRef<'tcx>>,
+    value_cache: Vec<u128>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -168,9 +175,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Equal types, all is good.
             return true;
         }
+        // Normalization reveals opaque types, but we may be validating MIR while computing
+        // said opaque types, causing cycles.
+        if (src, dest).has_opaque_types() {
+            return true;
+        }
         // Normalize projections and things like that.
-        // FIXME: We need to reveal_all, as some optimizations change types in ways
-        // that require unfolding opaque types.
         let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);
@@ -204,7 +214,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
-        if self.tcx.sess.opts.debugging_opts.validate_mir {
+        if self.tcx.sess.opts.debugging_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
+        {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
@@ -236,6 +247,151 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
+    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, _: Location) {
+        // Set off any `bug!`s in the type computation code
+        let _ = place.ty(&self.body.local_decls, self.tcx);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        macro_rules! check_kinds {
+            ($t:expr, $text:literal, $($patterns:tt)*) => {
+                if !matches!(($t).kind(), $($patterns)*) {
+                    self.fail(location, format!($text, $t));
+                }
+            };
+        }
+        match rvalue {
+            Rvalue::Use(_) => {}
+            Rvalue::Aggregate(agg_kind, _) => {
+                let disallowed = match **agg_kind {
+                    AggregateKind::Array(..) => false,
+                    AggregateKind::Generator(..) => self.mir_phase >= MirPhase::GeneratorsLowered,
+                    _ => self.mir_phase >= MirPhase::Deaggregated,
+                };
+                if disallowed {
+                    self.fail(
+                        location,
+                        format!("{:?} have been lowered to field assignments", rvalue),
+                    )
+                }
+            }
+            Rvalue::Ref(_, BorrowKind::Shallow, _) => {
+                if self.mir_phase >= MirPhase::DropsLowered {
+                    self.fail(
+                        location,
+                        "`Assign` statement with a `Shallow` borrow should have been removed after drop lowering phase",
+                    );
+                }
+            }
+            Rvalue::Len(p) => {
+                let pty = p.ty(&self.body.local_decls, self.tcx).ty;
+                check_kinds!(
+                    pty,
+                    "Cannot compute length of non-array type {:?}",
+                    ty::Array(..) | ty::Slice(..)
+                );
+            }
+            Rvalue::BinaryOp(op, vals) | Rvalue::CheckedBinaryOp(op, vals) => {
+                use BinOp::*;
+                let a = vals.0.ty(&self.body.local_decls, self.tcx);
+                let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                match op {
+                    Offset => {
+                        check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        if b != self.tcx.types.isize && b != self.tcx.types.usize {
+                            self.fail(location, format!("Cannot offset by non-isize type {:?}", b));
+                        }
+                    }
+                    Eq | Lt | Le | Ne | Ge | Gt => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot compare type {:?}",
+                                ty::Bool
+                                    | ty::Char
+                                    | ty::Int(..)
+                                    | ty::Uint(..)
+                                    | ty::Float(..)
+                                    | ty::RawPtr(..)
+                                    | ty::FnPtr(..)
+                            )
+                        }
+                        // The function pointer types can have lifetimes
+                        if !self.mir_assign_valid_types(a, b) {
+                            self.fail(
+                                location,
+                                format!("Cannot compare unequal types {:?} and {:?}", a, b),
+                            );
+                        }
+                    }
+                    Shl | Shr => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot shift non-integer type {:?}",
+                                ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                    }
+                    BitAnd | BitOr | BitXor => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform bitwise op on type {:?}",
+                                ty::Uint(..) | ty::Int(..) | ty::Bool
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot perform bitwise op on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Add | Sub | Mul | Div | Rem => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform op on type {:?}",
+                                ty::Uint(..) | ty::Int(..) | ty::Float(..)
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!("Cannot perform op on unequal types {:?} and {:?}", a, b),
+                            );
+                        }
+                    }
+                }
+            }
+            Rvalue::UnaryOp(op, operand) => {
+                let a = operand.ty(&self.body.local_decls, self.tcx);
+                match op {
+                    UnOp::Neg => {
+                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..))
+                    }
+                    UnOp::Not => {
+                        check_kinds!(
+                            a,
+                            "Cannot binary not type {:?}",
+                            ty::Int(..) | ty::Uint(..) | ty::Bool
+                        );
+                    }
+                }
+            }
+            Rvalue::ShallowInitBox(operand, _) => {
+                let a = operand.ty(&self.body.local_decls, self.tcx);
+                check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
+            }
+            _ => {}
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
@@ -253,52 +409,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                match rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether the places
-                    // are identical.
-                    Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
-                        if dest == src {
-                            self.fail(
-                                location,
-                                "encountered `Assign` statement with overlapping memory",
-                            );
-                        }
+                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
+                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    // The sides of an assignment must not alias. Currently this just checks whether
+                    // the places are identical.
+                    if dest == src {
+                        self.fail(
+                            location,
+                            "encountered `Assign` statement with overlapping memory",
+                        );
                     }
-                    // The deaggregator currently does not deaggreagate arrays.
-                    // So for now, we ignore them here.
-                    Rvalue::Aggregate(box AggregateKind::Array { .. }, _) => {}
-                    // All other aggregates must be gone after some phases.
-                    Rvalue::Aggregate(box kind, _) => {
-                        if self.mir_phase > MirPhase::DropLowering
-                            && !matches!(kind, AggregateKind::Generator(..))
-                        {
-                            // Generators persist until the state machine transformation, but all
-                            // other aggregates must have been lowered.
-                            self.fail(
-                                location,
-                                format!("{:?} have been lowered to field assignments", rvalue),
-                            )
-                        } else if self.mir_phase > MirPhase::GeneratorLowering {
-                            // No more aggregates after drop and generator lowering.
-                            self.fail(
-                                location,
-                                format!("{:?} have been lowered to field assignments", rvalue),
-                            )
-                        }
-                    }
-                    Rvalue::Ref(_, BorrowKind::Shallow, _) => {
-                        if self.mir_phase > MirPhase::DropLowering {
-                            self.fail(
-                                location,
-                                "`Assign` statement with a `Shallow` borrow should have been removed after drop lowering phase",
-                            );
-                        }
-                    }
-                    _ => {}
                 }
             }
             StatementKind::AscribeUserType(..) => {
-                if self.mir_phase > MirPhase::DropLowering {
+                if self.mir_phase >= MirPhase::DropsLowered {
                     self.fail(
                         location,
                         "`AscribeUserType` should have been removed after drop lowering phase",
@@ -306,7 +430,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::FakeRead(..) => {
-                if self.mir_phase > MirPhase::DropLowering {
+                if self.mir_phase >= MirPhase::DropsLowered {
                     self.fail(
                         location,
                         "`FakeRead` should have been removed after drop lowering phase",
@@ -340,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
                 // since CopyNonOverlapping is parametrized by 1 type,
                 // we only need to check that they are equal and not keep an extra parameter.
-                if op_src_ty != op_dst_ty {
+                if !self.mir_assign_valid_types(op_src_ty, op_dst_ty) {
                     self.fail(location, format!("bad arg ({:?} != {:?})", op_src_ty, op_dst_ty));
                 }
 
@@ -349,10 +473,33 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("bad arg ({:?} != usize)", op_cnt_ty))
                 }
             }
-            StatementKind::SetDiscriminant { .. }
-            | StatementKind::StorageLive(..)
+            StatementKind::SetDiscriminant { place, .. } => {
+                if self.mir_phase < MirPhase::Deaggregated {
+                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
+                }
+                let pty = place.ty(&self.body.local_decls, self.tcx).ty.kind();
+                if !matches!(pty, ty::Adt(..) | ty::Generator(..) | ty::Opaque(..)) {
+                    self.fail(
+                        location,
+                        format!(
+                            "`SetDiscriminant` is only allowed on ADTs and generators, not {:?}",
+                            pty
+                        ),
+                    );
+                }
+            }
+            StatementKind::Deinit(..) => {
+                if self.mir_phase < MirPhase::Deaggregated {
+                    self.fail(location, "`Deinit`is not allowed until deaggregation");
+                }
+            }
+            StatementKind::Retag(_, _) => {
+                // FIXME(JakobDegen) The validator should check that `self.mir_phase <
+                // DropsLowered`. However, this causes ICEs with generation of drop shims, which
+                // seem to fail to set their `MirPhase` correctly.
+            }
+            StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
-            | StatementKind::Retag(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::Nop => {}
         }
@@ -398,6 +545,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
                 self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
+
+                self.value_cache.clear();
+                self.value_cache.extend(targets.iter().map(|(value, _)| value));
+                let all_len = self.value_cache.len();
+                self.value_cache.sort_unstable();
+                self.value_cache.dedup();
+                let has_duplicates = all_len != self.value_cache.len();
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "duplicated values in `SwitchInt` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
@@ -406,10 +569,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                if self.mir_phase > MirPhase::DropLowering {
+                if self.mir_phase >= MirPhase::DropsLowered {
                     self.fail(
                         location,
-                        "`DropAndReplace` is not permitted to exist after drop elaboration",
+                        "`DropAndReplace` should have been removed during drop elaboration",
                     );
                 }
                 self.check_edge(location, *target, EdgeKind::Normal);
@@ -476,7 +639,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                if self.mir_phase > MirPhase::GeneratorLowering {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`Yield` cannot appear outside generator bodies");
+                }
+                if self.mir_phase >= MirPhase::GeneratorsLowered {
                     self.fail(location, "`Yield` should have been replaced by generator lowering");
                 }
                 self.check_edge(location, *resume, EdgeKind::Normal);
@@ -485,10 +651,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
+                if self.mir_phase >= MirPhase::DropsLowered {
+                    self.fail(
+                        location,
+                        "`FalseEdge` should have been removed after drop elaboration",
+                    );
+                }
                 self.check_edge(location, *real_target, EdgeKind::Normal);
                 self.check_edge(location, *imaginary_target, EdgeKind::Normal);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
+                if self.mir_phase >= MirPhase::DropsLowered {
+                    self.fail(
+                        location,
+                        "`FalseUnwind` should have been removed after drop elaboration",
+                    );
+                }
                 self.check_edge(location, *real_target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
@@ -502,12 +680,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *cleanup, EdgeKind::Unwind);
                 }
             }
-            // Nothing to validate for these.
-            TerminatorKind::Resume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop => {}
+            TerminatorKind::GeneratorDrop => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
+                }
+                if self.mir_phase >= MirPhase::GeneratorsLowered {
+                    self.fail(
+                        location,
+                        "`GeneratorDrop` should have been replaced by generator lowering",
+                    );
+                }
+            }
+            TerminatorKind::Resume | TerminatorKind::Abort => {
+                let bb = location.block;
+                if !self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Resume` or `Abort` from non-cleanup basic block")
+                }
+            }
+            TerminatorKind::Return => {
+                let bb = location.block;
+                if self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Return` from cleanup basic block")
+                }
+            }
+            TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator(terminator, location);

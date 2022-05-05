@@ -173,15 +173,17 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
             .collect::<String>()
             .trim()
-            .replace('\n', " ")
-            .replace('/', "")
-            .replace('\t', " ")
-            .replace('{', "")
-            .replace('}', "")
+            .chars()
+            .filter_map(|c| match c {
+                '\n' | '\t' => Some(' '),
+                '/' | '{' | '}' => None,
+                c => Some(c),
+            })
+            .collect::<String>()
             .split(' ')
             .filter(|s| !s.is_empty())
-            .collect::<Vec<&str>>()
-            .join(" "),
+            .intersperse(" ")
+            .collect::<String>(),
     )
     .unwrap_or_else(|_| String::new())
 }

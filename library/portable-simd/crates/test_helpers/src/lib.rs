@@ -77,11 +77,21 @@ impl<T: core::fmt::Debug + DefaultStrategy, const LANES: usize> DefaultStrategy 
     }
 }
 
+#[cfg(not(miri))]
+fn make_runner() -> proptest::test_runner::TestRunner {
+    Default::default()
+}
+#[cfg(miri)]
+fn make_runner() -> proptest::test_runner::TestRunner {
+    // Only run a few tests on Miri
+    proptest::test_runner::TestRunner::new(proptest::test_runner::Config::with_cases(4))
+}
+
 /// Test a function that takes a single value.
 pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A) -> proptest::test_runner::TestCaseResult,
 ) {
-    let mut runner = proptest::test_runner::TestRunner::default();
+    let mut runner = make_runner();
     runner.run(&A::default_strategy(), f).unwrap();
 }
 
@@ -89,7 +99,7 @@ pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
 pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A, B) -> proptest::test_runner::TestCaseResult,
 ) {
-    let mut runner = proptest::test_runner::TestRunner::default();
+    let mut runner = make_runner();
     runner
         .run(&(A::default_strategy(), B::default_strategy()), |(a, b)| {
             f(a, b)
@@ -105,7 +115,7 @@ pub fn test_3<
 >(
     f: &dyn Fn(A, B, C) -> proptest::test_runner::TestCaseResult,
 ) {
-    let mut runner = proptest::test_runner::TestRunner::default();
+    let mut runner = make_runner();
     runner
         .run(
             &(
@@ -361,24 +371,28 @@ macro_rules! test_lanes {
 
                 #[test]
                 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 fn lanes_8() {
                     implementation::<8>();
                 }
 
                 #[test]
                 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 fn lanes_16() {
                     implementation::<16>();
                 }
 
                 #[test]
                 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 fn lanes_32() {
                     implementation::<32>();
                 }
 
                 #[test]
                 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+                #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 fn lanes_64() {
                     implementation::<64>();
                 }

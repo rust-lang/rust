@@ -1,5 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use super::err2io;
 use super::fd::WasiFd;
 use crate::convert::TryFrom;
 use crate::fmt;
@@ -87,24 +88,24 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn read(&self, _: &mut [u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.read_vectored(&mut [IoSliceMut::new(buf)])
     }
 
-    pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        unsupported()
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.socket().as_inner().read(bufs)
     }
 
     pub fn is_read_vectored(&self) -> bool {
         true
     }
 
-    pub fn write(&self, _: &[u8]) -> io::Result<usize> {
-        unsupported()
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        self.write_vectored(&[IoSlice::new(buf)])
     }
 
-    pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
-        unsupported()
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.socket().as_inner().write(bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {
@@ -155,8 +156,23 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        unsupported()
+    pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
+        let fdstat = unsafe {
+            wasi::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasi::Fd).map_err(err2io)?
+        };
+
+        let mut flags = fdstat.fs_flags;
+
+        if state {
+            flags |= wasi::FDFLAGS_NONBLOCK;
+        } else {
+            flags &= !wasi::FDFLAGS_NONBLOCK;
+        }
+
+        unsafe {
+            wasi::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasi::Fd, flags)
+                .map_err(err2io)
+        }
     }
 
     pub fn socket(&self) -> &Socket {
@@ -194,7 +210,16 @@ impl TcpListener {
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        unsupported()
+        let fd = unsafe {
+            wasi::sock_accept(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
+        };
+
+        Ok((
+            TcpStream::from_inner(unsafe { Socket::from_raw_fd(fd as _) }),
+            // WASI has no concept of SocketAddr yet
+            // return an unspecified IPv4Addr
+            SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0),
+        ))
     }
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
@@ -221,8 +246,23 @@ impl TcpListener {
         unsupported()
     }
 
-    pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        unsupported()
+    pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
+        let fdstat = unsafe {
+            wasi::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasi::Fd).map_err(err2io)?
+        };
+
+        let mut flags = fdstat.fs_flags;
+
+        if state {
+            flags |= wasi::FDFLAGS_NONBLOCK;
+        } else {
+            flags &= !wasi::FDFLAGS_NONBLOCK;
+        }
+
+        unsafe {
+            wasi::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasi::Fd, flags)
+                .map_err(err2io)
+        }
     }
 
     pub fn socket(&self) -> &Socket {

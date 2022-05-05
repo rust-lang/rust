@@ -8,7 +8,7 @@ fn returns_i32() -> i32 {
 }
 
 fn returns_fn_ptr() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for return types [E0121]
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types [E0121]
 //~| NOTE not allowed in type signatures
 //~| HELP replace with the correct return type
 //~| SUGGESTION fn() -> i32
@@ -16,7 +16,7 @@ fn returns_fn_ptr() -> _ {
 }
 
 fn returns_closure() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for return types [E0121]
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types [E0121]
 //~| NOTE not allowed in type signatures
 //~| HELP consider using an `Fn`, `FnMut`, or `FnOnce` trait bound
 //~| NOTE for more information on `Fn` traits and closure types, see

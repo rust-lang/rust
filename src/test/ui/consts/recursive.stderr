@@ -1,0 +1,31 @@
+warning: function cannot return without recursing
+  --> $DIR/recursive.rs:3:1
+   |
+LL | const fn f<T>(x: T) {
+   | ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     f(x);
+   |     ---- recursive call site
+   |
+   = note: `#[warn(unconditional_recursion)]` on by default
+   = help: a `loop` may express intention better if this is on purpose
+
+error: any use of this value will cause an error
+  --> $DIR/recursive.rs:4:5
+   |
+LL |     f(x);
+   |     ^^^^
+   |     |
+   |     reached the configured maximum number of stack frames
+   |     inside `f::<i32>` at $DIR/recursive.rs:4:5
+   |     [... 126 additional calls inside `f::<i32>` at $DIR/recursive.rs:4:5 ...]
+   |     inside `X` at $DIR/recursive.rs:9:15
+...
+LL | const X: () = f(1);
+   | -------------------
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to previous error; 1 warning emitted
+

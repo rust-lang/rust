@@ -173,13 +173,13 @@ struct EraseAllBoundRegions<'tcx> {
 // `ItemCtxt::to_ty`. To make things simpler, we just erase all
 // of them, regardless of depth. At worse, this will give
 // us an inaccurate span for an error message, but cannot
-// lead to unsoundess (we call `delay_span_bug` at the start
+// lead to unsoundness (we call `delay_span_bug` at the start
 // of `diagnostic_hir_wf_check`).
 impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        if let ty::ReLateBound(..) = r { &ty::ReErased } else { r }
+        if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
     }
 }

@@ -1,28 +1,29 @@
 use super::FnCtxt;
 use crate::astconv::AstConv;
+use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_span::{self, MultiSpan, Span};
-
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Expr, ExprKind, ItemKind, Node, Path, QPath, Stmt, StmtKind, TyKind};
+use rustc_hir::{
+    Expr, ExprKind, GenericBound, ItemKind, Node, Path, QPath, Stmt, StmtKind, TyKind,
+    WherePredicate,
+};
 use rustc_infer::infer::{self, TyCtxtInferExt};
+use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, Ty};
-use rustc_span::symbol::{kw, sym};
-
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, Binder, ToPredicate, Ty};
+use rustc_span::symbol::{kw, sym};
+use rustc_span::Span;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(in super::super) fn suggest_semicolon_at_end(
-        &self,
-        span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
         err.span_suggestion_short(
             span.shrink_to_hi(),
             "consider using a semicolon here",
@@ -38,7 +39,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
     pub fn suggest_mismatched_types_on_tail(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -77,7 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn suggest_fn_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -207,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_deref_ref_or_into(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -218,9 +219,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, msg, suggestion, applicability);
+                err.span_suggestion_verbose(sp, &msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, msg, suggestion, applicability);
+                err.span_suggestion(sp, &msg, suggestion, applicability);
             }
         } else if let (ty::FnDef(def_id, ..), true) =
             (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
@@ -237,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                     let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
                         .filter_map(|(receiver, method)| {
-                            let method_call = format!(".{}()", method.ident);
+                            let method_call = format!(".{}()", method.name);
                             if receiver.ends_with(&method_call) {
                                 None // do not suggest code that is already there (#53348)
                             } else {
@@ -308,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in the heap by calling `Box::new()`.
     pub(in super::super) fn suggest_boxing_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -343,7 +344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest a non-capturing closure
     pub(in super::super) fn suggest_no_capture_closure(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -378,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, err))]
     pub(in super::super) fn suggest_calling_boxed_future_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -398,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pin_box_found = self.tcx.mk_lang_item(box_found, LangItem::Pin).unwrap();
         let pin_found = self.tcx.mk_lang_item(found, LangItem::Pin).unwrap();
         match expected.kind() {
-            ty::Adt(def, _) if Some(def.did) == pin_did => {
+            ty::Adt(def, _) if Some(def.did()) == pin_did => {
                 if self.can_coerce(pin_box_found, expected) {
                     debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
                     match found.kind() {
@@ -434,9 +435,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-                let fn_name = match self.tcx.hir().find(parent) {
-                    Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) => fn_name,
-                    _ => return false,
+                let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
+                    return false;
                 };
                 match fn_name.kind {
                     ExprKind::Path(QPath::TypeRelative(
@@ -474,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// it suggests adding a semicolon.
     fn suggest_missing_semicolon(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) {
@@ -515,32 +515,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// type.
     pub(in super::super) fn suggest_missing_return_type(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
         fn_id: hir::HirId,
     ) -> bool {
+        let found =
+            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
+        match (&fn_decl.output, found.is_suggestable(self.tcx), can_suggest, expected.is_unit()) {
             (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
-                err.span_suggestion(
-                    span,
-                    "try adding a return type",
-                    format!("-> {} ", self.resolve_vars_with_obligations(found)),
-                    Applicability::MachineApplicable,
-                );
+                err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found });
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                err.span_label(span, "possibly return type missing here?");
+                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
+                // that.
+                err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
-                err.span_label(span, "expected `()` because of default return type");
+                err.subdiagnostic(ExpectedReturnTypeLabel::Unit { span });
                 true
             }
             // expectation was caused by something else, not the default return
@@ -549,16 +548,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let sp = ty.span;
+                let span = ty.span;
                 let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
                 let ty = Binder::bind_with_vars(ty, bound_vars);
-                let ty = self.normalize_associated_types_in(sp, ty);
+                let ty = self.normalize_associated_types_in(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
                 if self.can_coerce(expected, ty) {
-                    err.span_label(sp, format!("expected `{}` because of return type", expected));
+                    err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                    self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
                     return true;
                 }
                 false
@@ -566,9 +566,116 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// check whether the return type is a generic type with a trait bound
+    /// only suggest this if the generic param is not present in the arguments
+    /// if this is true, hint them towards changing the return type to `impl Trait`
+    /// ```
+    /// fn cant_name_it<T: Fn() -> u32>() -> T {
+    ///     || 3
+    /// }
+    /// ```
+    fn try_suggest_return_impl_trait(
+        &self,
+        err: &mut Diagnostic,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        fn_id: hir::HirId,
+    ) {
+        // Only apply the suggestion if:
+        //  - the return type is a generic parameter
+        //  - the generic param is not used as a fn param
+        //  - the generic param has at least one bound
+        //  - the generic param doesn't appear in any other bounds where it's not the Self type
+        // Suggest:
+        //  - Changing the return type to be `impl <all bounds>`
+
+        debug!("try_suggest_return_impl_trait, expected = {:?}, found = {:?}", expected, found);
+
+        let ty::Param(expected_ty_as_param) = expected.kind() else { return };
+
+        let fn_node = self.tcx.hir().find(fn_id);
+
+        let Some(hir::Node::Item(hir::Item {
+            kind:
+                hir::ItemKind::Fn(
+                    hir::FnSig { decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. }, .. },
+                    hir::Generics { params, predicates, .. },
+                    _body_id,
+                ),
+            ..
+        })) = fn_node else { return };
+
+        if params.get(expected_ty_as_param.index as usize).is_none() {
+            return;
+        };
+
+        // get all where BoundPredicates here, because they are used in to cases below
+        let where_predicates = predicates
+            .iter()
+            .filter_map(|p| match p {
+                WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bounds,
+                    bounded_ty,
+                    ..
+                }) => {
+                    // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
+                    let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, bounded_ty);
+                    Some((ty, bounds))
+                }
+                _ => None,
+            })
+            .map(|(ty, bounds)| match ty.kind() {
+                ty::Param(param_ty) if param_ty == expected_ty_as_param => Ok(Some(bounds)),
+                // check whether there is any predicate that contains our `T`, like `Option<T>: Send`
+                _ => match ty.contains(expected) {
+                    true => Err(()),
+                    false => Ok(None),
+                },
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        let Ok(where_predicates) = where_predicates else { return };
+
+        // now get all predicates in the same types as the where bounds, so we can chain them
+        let predicates_from_where =
+            where_predicates.iter().flatten().flat_map(|bounds| bounds.iter());
+
+        // extract all bounds from the source code using their spans
+        let all_matching_bounds_strs = predicates_from_where
+            .filter_map(|bound| match bound {
+                GenericBound::Trait(_, _) => {
+                    self.tcx.sess.source_map().span_to_snippet(bound.span()).ok()
+                }
+                _ => None,
+            })
+            .collect::<Vec<String>>();
+
+        if all_matching_bounds_strs.len() == 0 {
+            return;
+        }
+
+        let all_bounds_str = all_matching_bounds_strs.join(" + ");
+
+        let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, param);
+                matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
+            });
+
+        if ty_param_used_in_fn_params {
+            return;
+        }
+
+        err.span_suggestion(
+            fn_return.span(),
+            "consider using an impl return type",
+            format!("impl {}", all_bounds_str),
+            Applicability::MaybeIncorrect,
+        );
+    }
+
     pub(in super::super) fn suggest_missing_break_or_return_expr(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
@@ -609,14 +716,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => self.tcx.infer_ctxt().enter(|infcx| {
-                    infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
-                        span_bug!(
-                            fn_decl.output.span(),
-                            "failed to get output type of async function"
-                        )
+                hir::IsAsync::Async => self
+                    .tcx
+                    .infer_ctxt()
+                    .enter(|infcx| {
+                        infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                            span_bug!(
+                                fn_decl.output.span(),
+                                "failed to get output type of async function"
+                            )
+                        })
                     })
-                }),
+                    .skip_binder(),
                 hir::IsAsync::NotAsync => ty,
             };
             if self.can_coerce(found, ty) {
@@ -634,13 +745,84 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn suggest_missing_parentheses(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
     ) {
         let sp = self.tcx.sess.source_map().start_point(expr.span);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp);
+        }
+    }
+
+    /// Given an expression type mismatch, peel any `&` expressions until we get to
+    /// a block expression, and then suggest replacing the braces with square braces
+    /// if it was possibly mistaken array syntax.
+    pub(crate) fn suggest_block_to_brackets_peeling_refs(
+        &self,
+        diag: &mut Diagnostic,
+        mut expr: &hir::Expr<'_>,
+        mut expr_ty: Ty<'tcx>,
+        mut expected_ty: Ty<'tcx>,
+    ) {
+        loop {
+            match (&expr.kind, expr_ty.kind(), expected_ty.kind()) {
+                (
+                    hir::ExprKind::AddrOf(_, _, inner_expr),
+                    ty::Ref(_, inner_expr_ty, _),
+                    ty::Ref(_, inner_expected_ty, _),
+                ) => {
+                    expr = *inner_expr;
+                    expr_ty = *inner_expr_ty;
+                    expected_ty = *inner_expected_ty;
+                }
+                (hir::ExprKind::Block(blk, _), _, _) => {
+                    self.suggest_block_to_brackets(diag, *blk, expr_ty, expected_ty);
+                    break;
+                }
+                _ => break,
+            }
+        }
+    }
+
+    /// Suggest wrapping the block in square brackets instead of curly braces
+    /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
+    pub(crate) fn suggest_block_to_brackets(
+        &self,
+        diag: &mut Diagnostic,
+        blk: &hir::Block<'_>,
+        blk_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if let ty::Slice(elem_ty) | ty::Array(elem_ty, _) = expected_ty.kind() {
+            if self.can_coerce(blk_ty, *elem_ty)
+                && blk.stmts.is_empty()
+                && blk.rules == hir::BlockCheckMode::DefaultBlock
+            {
+                let source_map = self.tcx.sess.source_map();
+                if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
+                    if snippet.starts_with('{') && snippet.ends_with('}') {
+                        diag.multipart_suggestion_verbose(
+                            "to create an array, use square brackets instead of curly braces",
+                            vec![
+                                (
+                                    blk.span
+                                        .shrink_to_lo()
+                                        .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
+                                    "[".to_string(),
+                                ),
+                                (
+                                    blk.span
+                                        .shrink_to_hi()
+                                        .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
+                                    "]".to_string(),
+                                ),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -652,5 +834,54 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_local_statement(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
         matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
+    }
+
+    /// Suggest that `&T` was cloned instead of `T` because `T` does not implement `Clone`,
+    /// which is a side-effect of autoref.
+    pub(crate) fn note_type_is_not_clone(
+        &self,
+        diag: &mut Diagnostic,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+        expr: &hir::Expr<'_>,
+    ) {
+        let hir::ExprKind::MethodCall(segment, &[ref callee_expr], _) = expr.kind else { return; };
+        let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
+        let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
+        let results = self.typeck_results.borrow();
+        // First, look for a `Clone::clone` call
+        if segment.ident.name == sym::clone
+            && results.type_dependent_def_id(expr.hir_id).map_or(
+                false,
+                |did| {
+                    self.tcx.associated_item(did).container
+                        == ty::AssocItemContainer::TraitContainer(clone_trait_did)
+                },
+            )
+            // If that clone call hasn't already dereferenced the self type (i.e. don't give this
+            // diagnostic in cases where we have `(&&T).clone()` and we expect `T`).
+            && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
+            // Check that we're in fact trying to clone into the expected type
+            && self.can_coerce(*pointee_ty, expected_ty)
+            // And the expected type doesn't implement `Clone`
+            && !self.predicate_must_hold_considering_regions(&traits::Obligation {
+                cause: traits::ObligationCause::dummy(),
+                param_env: self.param_env,
+                recursion_depth: 0,
+                predicate: ty::Binder::dummy(ty::TraitRef {
+                    def_id: clone_trait_did,
+                    substs: self.tcx.mk_substs([expected_ty.into()].iter()),
+                })
+                .without_const()
+                .to_predicate(self.tcx),
+            })
+        {
+            diag.span_note(
+                callee_expr.span,
+                &format!(
+                    "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
+                ),
+            );
+        }
     }
 }

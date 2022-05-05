@@ -151,9 +151,12 @@ use core::ptr;
 
 use crate::collections::TryReserveError;
 use crate::slice;
-use crate::vec::{self, AsIntoIter, Vec};
+use crate::vec::{self, AsVecIntoIter, Vec};
 
 use super::SpecExtend;
+
+#[cfg(test)]
+mod tests;
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -194,7 +197,7 @@ use super::SpecExtend;
 /// // We can iterate over the items in the heap, although they are returned in
 /// // a random order.
 /// for x in &heap {
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // If we instead pop these scores, they should come back in order.
@@ -433,7 +436,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    /// let mut heap = BinaryHeap::from([1, 3]);
     ///
     /// assert_eq!(heap.pop(), Some(3));
     /// assert_eq!(heap.pop(), Some(1));
@@ -506,7 +509,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut heap = BinaryHeap::from(vec![1, 2, 4, 5, 7]);
+    /// let mut heap = BinaryHeap::from([1, 2, 4, 5, 7]);
     /// heap.push(6);
     /// heap.push(3);
     ///
@@ -725,11 +728,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let v = vec![-10, 1, 2, 3, 3];
-    /// let mut a = BinaryHeap::from(v);
-    ///
-    /// let v = vec![-20, 5, 43];
-    /// let mut b = BinaryHeap::from(v);
+    /// let mut a = BinaryHeap::from([-10, 1, 2, 3, 3]);
+    /// let mut b = BinaryHeap::from([-20, 5, 43]);
     ///
     /// a.append(&mut b);
     ///
@@ -749,9 +749,12 @@ impl<T: Ord> BinaryHeap<T> {
         self.rebuild_tail(start);
     }
 
-    /// Returns an iterator which retrieves elements in heap order.
-    /// The retrieved elements are removed from the original heap.
-    /// The remaining elements will be removed on drop in heap order.
+    /// Clears the binary heap, returning an iterator over the removed elements
+    /// in heap order. If the iterator is dropped before being fully consumed,
+    /// it drops the remaining elements in heap order.
+    ///
+    /// The returned iterator keeps a mutable borrow on the heap to optimize
+    /// its implementation.
     ///
     /// Note:
     /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
@@ -765,7 +768,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// #![feature(binary_heap_drain_sorted)]
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    /// let mut heap = BinaryHeap::from([1, 2, 3, 4, 5]);
     /// assert_eq!(heap.len(), 5);
     ///
     /// drop(heap.drain_sorted()); // removes all elements in heap order
@@ -779,7 +782,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns
+    /// In other words, remove all elements `e` for which `f(&e)` returns
     /// `false`. The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -790,7 +793,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// #![feature(binary_heap_retain)]
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut heap = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
+    /// let mut heap = BinaryHeap::from([-10, -5, 1, 2, 4, 13]);
     ///
     /// heap.retain(|x| x % 2 == 0); // only keep even numbers
     ///
@@ -826,11 +829,11 @@ impl<T> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4]);
+    /// let heap = BinaryHeap::from([1, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -848,9 +851,9 @@ impl<T> BinaryHeap<T> {
     /// ```
     /// #![feature(binary_heap_into_iter_sorted)]
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    /// let heap = BinaryHeap::from([1, 2, 3, 4, 5]);
     ///
-    /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
+    /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), [5, 4]);
     /// ```
     #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
     pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
@@ -1086,7 +1089,7 @@ impl<T> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     /// use std::io::{self, Write};
     ///
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
+    /// let heap = BinaryHeap::from([1, 2, 3, 4, 5, 6, 7]);
     ///
     /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
@@ -1105,12 +1108,12 @@ impl<T> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
+    /// let heap = BinaryHeap::from([1, 2, 3, 4, 5, 6, 7]);
     /// let vec = heap.into_vec();
     ///
     /// // Will print in some order
     /// for x in vec {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
@@ -1127,7 +1130,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 3]);
+    /// let heap = BinaryHeap::from([1, 3]);
     ///
     /// assert_eq!(heap.len(), 2);
     /// ```
@@ -1161,9 +1164,12 @@ impl<T> BinaryHeap<T> {
         self.len() == 0
     }
 
-    /// Clears the binary heap, returning an iterator over the removed elements.
+    /// Clears the binary heap, returning an iterator over the removed elements
+    /// in arbitrary order. If the iterator is dropped before being fully
+    /// consumed, it drops the remaining elements in arbitrary order.
     ///
-    /// The elements are removed in arbitrary order.
+    /// The returned iterator keeps a mutable borrow on the heap to optimize
+    /// its implementation.
     ///
     /// # Examples
     ///
@@ -1171,12 +1177,12 @@ impl<T> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    /// let mut heap = BinaryHeap::from([1, 3]);
     ///
     /// assert!(!heap.is_empty());
     ///
     /// for x in heap.drain() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// assert!(heap.is_empty());
@@ -1195,7 +1201,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    /// let mut heap = BinaryHeap::from([1, 3]);
     ///
     /// assert!(!heap.is_empty());
     ///
@@ -1398,6 +1404,8 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+// In addition to the SAFETY invariants of the following three unsafe traits
+// also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T> SourceIter for IntoIter<T> {
@@ -1413,7 +1421,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 #[doc(hidden)]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
-impl<I> AsIntoIter for IntoIter<I> {
+unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
@@ -1616,12 +1624,12 @@ impl<T> IntoIterator for BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4]);
+    /// let heap = BinaryHeap::from([1, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.into_iter() {
     ///     // x has type i32, not &i32
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     fn into_iter(self) -> IntoIter<T> {

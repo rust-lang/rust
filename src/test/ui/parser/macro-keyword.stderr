@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `macro`
 LL | fn macro() {
    |    ^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `macro` to use it as an identifier
    |
 LL | fn r#macro() {
-   |    ~~~~~~~
+   |    ++
 
 error: aborting due to previous error
 

@@ -3,7 +3,7 @@ use libc::c_uint;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_span::symbol::sym;
 
 use crate::debuginfo;
@@ -64,7 +64,8 @@ pub(crate) unsafe fn codegen(
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
-            attributes::emit_uwtable(llfn, true);
+            let uwtable = attributes::uwtable_attr(llcx);
+            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
         }
 
         let callee = kind.fn_name(method.name);
@@ -105,20 +106,22 @@ pub(crate) unsafe fn codegen(
     let name = "__rust_alloc_error_handler";
     let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
     // -> ! DIFlagNoReturn
-    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
+    let no_return = llvm::AttributeKind::NoReturn.create_attr(llcx);
+    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[no_return]);
 
     if tcx.sess.target.default_hidden_visibility {
         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
     }
     if tcx.sess.must_emit_unwind_tables() {
-        attributes::emit_uwtable(llfn, true);
+        let uwtable = attributes::uwtable_attr(llcx);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
     }
 
     let kind = if has_alloc_error_handler { AllocatorKind::Global } else { AllocatorKind::Default };
     let callee = kind.fn_name(sym::oom);
     let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
     // -> ! DIFlagNoReturn
-    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, callee);
+    attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
     llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
     let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());
@@ -136,9 +139,19 @@ pub(crate) unsafe fn codegen(
     llvm::LLVMBuildRetVoid(llbuilder);
     llvm::LLVMDisposeBuilder(llbuilder);
 
+    // __rust_alloc_error_handler_should_panic
+    let name = OomStrategy::SYMBOL;
+    let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
+    if tcx.sess.target.default_hidden_visibility {
+        llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
+    }
+    let val = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let llval = llvm::LLVMConstInt(i8, val as u64, False);
+    llvm::LLVMSetInitializer(ll_g, llval);
+
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CrateDebugContext::new(llmod);
-        debuginfo::metadata::compile_unit_metadata(tcx, module_name, &dbg_cx);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(llmod);
+        debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
 }

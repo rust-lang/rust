@@ -2,19 +2,18 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, single_segment_path};
+use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, path_to_local};
 use clippy_utils::{higher, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, PathSegment, QPath};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
-use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -190,7 +189,7 @@ impl_lint_pass!(Ranges => [
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::MethodCall(path, _, args, _) => {
+            ExprKind::MethodCall(path, args, _) => {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
@@ -220,12 +219,12 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
         _ => return,
     };
     // value, name, order (higher/lower), inclusiveness
-    if let (Some((lval, lname, name_span, lval_span, lord, linc)), Some((rval, rname, _, rval_span, rord, rinc))) =
+    if let (Some((lval, lid, name_span, lval_span, lord, linc)), Some((rval, rid, _, rval_span, rord, rinc))) =
         (check_range_bounds(cx, l), check_range_bounds(cx, r))
     {
         // we only lint comparisons on the same name and with different
         // direction
-        if lname != rname || lord == rord {
+        if lid != rid || lord == rord {
             return;
         }
         let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l), &lval, &rval);
@@ -293,7 +292,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
     }
 }
 
-fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, Ident, Span, Span, Ordering, bool)> {
+fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, HirId, Span, Span, Ordering, bool)> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -302,24 +301,13 @@ fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, 
             BinOpKind::Le => (true, Ordering::Less),
             _ => return None,
         };
-        if let Some(id) = match_ident(l) {
+        if let Some(id) = path_to_local(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
                 return Some((c, id, l.span, r.span, ordering, inclusive));
             }
-        } else if let Some(id) = match_ident(r) {
+        } else if let Some(id) = path_to_local(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
                 return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
-            }
-        }
-    }
-    None
-}
-
-fn match_ident(e: &Expr<'_>) -> Option<Ident> {
-    if let ExprKind::Path(ref qpath) = e.kind {
-        if let Some(seg) = single_segment_path(qpath) {
-            if seg.args.is_none() {
-                return Some(seg.ident);
             }
         }
     }
@@ -331,13 +319,13 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if path.ident.as_str() == "zip";
         if let [iter, zip_arg] = args;
         // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, _, iter_args, _) = iter.kind;
+        if let ExprKind::MethodCall(iter_path, iter_args, _) = iter.kind;
         if iter_path.ident.name == sym::iter;
         // range expression in `.zip()` call: `0..x.len()`
         if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
-        if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
+        if let ExprKind::MethodCall(len_path, len_args, _) = end.kind;
         if len_path.ident.name == sym::len && len_args.len() == 1;
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;

@@ -2,14 +2,12 @@ error[E0623]: lifetime mismatch
   --> $DIR/issue-63388-1.rs:14:9
    |
 LL |         &'a self, foo: &dyn Foo
-   |         -------- this parameter and the returned future are declared with different lifetimes...
+   |                        -------- this parameter and the return type are declared with different lifetimes...
 LL |     ) -> &dyn Foo
    |          --------
-   |          |
-   |          this `async fn` implicitly returns an `impl Future<Output = &dyn Foo>`
 LL |     {
 LL |         foo
-   |         ^^^ ...but data from `foo` is held across an await point here
+   |         ^^^ ...but data from `foo` is returned here
 
 error: aborting due to previous error
 

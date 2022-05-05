@@ -1,0 +1,21 @@
+error[E0282]: type annotations needed
+  --> $DIR/cross-return-site-inference.rs:31:24
+   |
+LL | fn muh() -> Result<(), impl std::fmt::Debug> {
+   |                        ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/cross-return-site-inference.rs:36:25
+   |
+LL | fn muh2() -> Result<(), impl std::fmt::Debug> {
+   |                         ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/cross-return-site-inference.rs:41:25
+   |
+LL | fn muh3() -> Result<(), impl std::fmt::Debug> {
+   |                         ^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

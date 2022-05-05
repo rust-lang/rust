@@ -132,11 +132,11 @@ type ObligationTreeIdGenerator =
     std::iter::Map<std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
 
 pub struct ObligationForest<O: ForestObligation> {
-    /// The list of obligations. In between calls to `process_obligations`,
+    /// The list of obligations. In between calls to [Self::process_obligations],
     /// this list only contains nodes in the `Pending` or `Waiting` state.
     ///
     /// `usize` indices are used here and throughout this module, rather than
-    /// `rustc_index::newtype_index!` indices, because this code is hot enough
+    /// [`rustc_index::newtype_index!`] indices, because this code is hot enough
     /// that the `u32`-to-`usize` conversions that would be required are
     /// significant, and space considerations are not important.
     nodes: Vec<Node<O>>,
@@ -146,10 +146,11 @@ pub struct ObligationForest<O: ForestObligation> {
 
     /// A cache of the nodes in `nodes`, indexed by predicate. Unfortunately,
     /// its contents are not guaranteed to match those of `nodes`. See the
-    /// comments in `process_obligation` for details.
+    /// comments in [`Self::process_obligation` for details.
     active_cache: FxHashMap<O::CacheKey, usize>,
 
-    /// A vector reused in compress() and find_cycles_from_node(), to avoid allocating new vectors.
+    /// A vector reused in [Self::compress()] and [Self::find_cycles_from_node()],
+    /// to avoid allocating new vectors.
     reused_node_vec: Vec<usize>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,

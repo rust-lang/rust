@@ -61,6 +61,26 @@ pub enum LLVMMachineType {
     ARM = 0x01c0,
 }
 
+/// LLVM's Module::ModFlagBehavior, defined in llvm/include/llvm/IR/Module.h.
+///
+/// When merging modules (e.g. during LTO), their metadata flags are combined. Conflicts are
+/// resolved according to the merge behaviors specified here. Flags differing only in merge
+/// behavior are still considered to be in conflict.
+///
+/// In order for Rust-C LTO to work, we must specify behaviors compatible with Clang. Notably,
+/// 'Error' and 'Warning' cannot be mixed for a given flag.
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum LLVMModFlagBehavior {
+    Error = 1,
+    Warning = 2,
+    Require = 3,
+    Override = 4,
+    Append = 5,
+    AppendUnique = 6,
+    Max = 7,
+}
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
@@ -135,7 +155,7 @@ pub enum DLLStorageClass {
 /// though it is not ABI compatible (since it's a C++ enum)
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub enum Attribute {
+pub enum AttributeKind {
     AlwaysInline = 0,
     ByVal = 1,
     Cold = 2,
@@ -169,6 +189,8 @@ pub enum Attribute {
     StackProtectReq = 30,
     StackProtectStrong = 31,
     StackProtect = 32,
+    NoUndef = 33,
+    SanitizeMemTag = 34,
 }
 
 /// LLVMIntPredicate
@@ -419,7 +441,9 @@ pub enum MetadataType {
     MD_nontemporal = 9,
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
+    MD_align = 17,
     MD_type = 19,
+    MD_noundef = 29,
 }
 
 /// LLVMRustAsmDialect
@@ -553,12 +577,12 @@ pub enum PassKind {
     Module,
 }
 
-/// LLVMRustThinLTOData
+// LLVMRustThinLTOData
 extern "C" {
     pub type ThinLTOData;
 }
 
-/// LLVMRustThinLTOBuffer
+// LLVMRustThinLTOBuffer
 extern "C" {
     pub type ThinLTOBuffer;
 }
@@ -620,6 +644,9 @@ extern "C" {
 }
 extern "C" {
     pub type ConstantInt;
+}
+extern "C" {
+    pub type Attribute;
 }
 extern "C" {
     pub type Metadata;
@@ -967,6 +994,7 @@ pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
+    pub fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
@@ -1146,6 +1174,22 @@ extern "C" {
     ) -> Option<&Value>;
     pub fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
 
+    // Operations on attributes
+    pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
+    pub fn LLVMCreateStringAttribute(
+        C: &Context,
+        Name: *const c_char,
+        NameLen: c_uint,
+        Value: *const c_char,
+        ValueLen: c_uint,
+    ) -> &Attribute;
+    pub fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
+    pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
+
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(
         M: &'a Module,
@@ -1154,19 +1198,12 @@ extern "C" {
         FunctionTy: &'a Type,
     ) -> &'a Value;
     pub fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
-    pub fn LLVMRustAddAlignmentAttr(Fn: &Value, index: c_uint, bytes: u32);
-    pub fn LLVMRustAddDereferenceableAttr(Fn: &Value, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: &Value, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddByValAttr(Fn: &Value, index: c_uint, ty: &Type);
-    pub fn LLVMRustAddStructRetAttr(Fn: &Value, index: c_uint, ty: &Type);
-    pub fn LLVMRustAddFunctionAttribute(Fn: &Value, index: c_uint, attr: Attribute);
-    pub fn LLVMRustAddFunctionAttrStringValue(
-        Fn: &Value,
+    pub fn LLVMRustAddFunctionAttributes<'a>(
+        Fn: &'a Value,
         index: c_uint,
-        Name: *const c_char,
-        Value: *const c_char,
+        Attrs: *const &'a Attribute,
+        AttrsLen: size_t,
     );
-    pub fn LLVMRustRemoveFunctionAttributes(Fn: &Value, index: c_uint, attr: Attribute);
 
     // Operations on parameters
     pub fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
@@ -1187,13 +1224,12 @@ extern "C" {
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
-    pub fn LLVMRustAddCallSiteAttribute(Instr: &Value, index: c_uint, attr: Attribute);
-    pub fn LLVMRustAddCallSiteAttrString(Instr: &Value, index: c_uint, Name: *const c_char);
-    pub fn LLVMRustAddAlignmentCallSiteAttr(Instr: &Value, index: c_uint, bytes: u32);
-    pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: &Value, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: &Value, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddByValCallSiteAttr(Instr: &Value, index: c_uint, ty: &Type);
-    pub fn LLVMRustAddStructRetCallSiteAttr(Instr: &Value, index: c_uint, ty: &Type);
+    pub fn LLVMRustAddCallSiteAttributes<'a>(
+        Instr: &'a Value,
+        index: c_uint,
+        Attrs: *const &'a Attribute,
+        AttrsLen: size_t,
+    );
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
@@ -1789,24 +1825,22 @@ extern "C" {
 
     pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
 
-    pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
-    pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
-    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(
+    pub fn LLVMRustPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
+    pub fn LLVMRustPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
+    pub fn LLVMRustPassManagerBuilderUseInlinerWithThreshold(
         PMB: &PassManagerBuilder,
         threshold: c_uint,
     );
-    pub fn LLVMPassManagerBuilderPopulateModulePassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateModulePassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
 
-    pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateFunctionPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
-    pub fn LLVMPassManagerBuilderPopulateLTOPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateLTOPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
         Internalize: Bool,
@@ -1893,9 +1927,16 @@ extern "C" {
     pub fn LLVMRustVersionMinor() -> u32;
     pub fn LLVMRustVersionPatch() -> u32;
 
-    pub fn LLVMRustIsRustLLVM() -> bool;
-
-    pub fn LLVMRustAddModuleFlag(M: &Module, name: *const c_char, value: u32);
+    /// Add LLVM module flags.
+    ///
+    /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
+    /// "compatible" means depends on the merge behaviors involved.
+    pub fn LLVMRustAddModuleFlag(
+        M: &Module,
+        merge_behavior: LLVMModFlagBehavior,
+        name: *const c_char,
+        value: u32,
+    );
 
     pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
@@ -2265,6 +2306,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         PGOSampleUsePath: *const c_char,
+        SizeLevel: c_int,
     );
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
@@ -2494,4 +2536,6 @@ extern "C" {
         remark_passes_len: usize,
     );
 
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 }

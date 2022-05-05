@@ -23,7 +23,7 @@ use rustc_incremental::{
 };
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::exported_symbols::SymbolExportInfo;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
@@ -218,7 +218,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            bc_cmdline: sess.target.bitcode_llvm_cmdline.clone(),
+            bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
@@ -304,7 +304,7 @@ pub type TargetMachineFactoryFn<B> = Arc<
         + Sync,
 >;
 
-pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportLevel)>>>;
+pub type ExportedSymbols = FxHashMap<CrateNum, Arc<Vec<(String, SymbolExportInfo)>>>;
 
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
@@ -477,7 +477,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         codegen_worker_receive,
         shared_emitter_main,
         future: coordinator_thread,
-        output_filenames: tcx.output_filenames(()),
+        output_filenames: tcx.output_filenames(()).clone(),
     }
 }
 
@@ -779,7 +779,7 @@ pub fn compute_per_cgu_lto_type(
     // we'll encounter later.
     let is_allocator = module_kind == ModuleKind::Allocator;
 
-    // We ignore a request for full crate grath LTO if the cate type
+    // We ignore a request for full crate graph LTO if the crate type
     // is only an rlib, as there is no full crate graph to process,
     // that'll happen later.
     //
@@ -889,7 +889,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
 fn execute_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    mut module: lto::LtoModuleCodegen<B>,
+    module: lto::LtoModuleCodegen<B>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let module = unsafe { module.optimize(cgcx)? };
@@ -1033,6 +1033,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     } else {
         tcx.backend_optimization_level(())
     };
+    let backend_features = tcx.global_backend_features(());
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
         crate_types: sess.crate_types().to_vec(),
@@ -1050,17 +1051,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
-        output_filenames: tcx.output_filenames(()),
+        output_filenames: tcx.output_filenames(()).clone(),
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: backend.target_machine_factory(tcx.sess, ol),
+        tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
         target_pointer_width: tcx.sess.target.pointer_width,
-        target_arch: tcx.sess.target.arch.clone(),
+        target_arch: tcx.sess.target.arch.to_string(),
         debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf_kind,
@@ -1706,22 +1707,32 @@ impl SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
+        let fluent_args = self.to_fluent_args(diag.args());
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: diag.message(),
+            msg: self.translate_messages(&diag.message, &fluent_args).to_string(),
             code: diag.code.clone(),
-            lvl: diag.level,
+            lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                msg: child.message(),
+                msg: self.translate_messages(&child.message, &fluent_args).to_string(),
                 code: None,
                 lvl: child.level,
             })));
         }
         drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
     }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
+    }
+
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        None
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        panic!("shared emitter attempted to translate a diagnostic");
     }
 }
 
@@ -1747,15 +1758,15 @@ impl SharedEmitterMain {
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
-                    handler.emit_diagnostic(&d);
+                    handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
 
                     let mut err = match level {
-                        Level::Error { lint: false } => sess.struct_err(&msg),
-                        Level::Warning => sess.struct_warn(&msg),
-                        Level::Note => sess.struct_note_without_error(&msg),
+                        Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),
+                        Level::Warning => sess.struct_warn(msg),
+                        Level::Note => sess.struct_note_without_error(msg),
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
 

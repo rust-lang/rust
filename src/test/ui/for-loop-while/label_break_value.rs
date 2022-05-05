@@ -95,6 +95,50 @@ fn label_break_mixed(v: u32) -> u32 {
     r
 }
 
+fn label_break_match(c: u8, xe: u8, ye: i8) {
+    let mut x = 0;
+    let y = 'a: {
+        match c {
+            0 => break 'a 0,
+            v if { if v % 2 == 0 { break 'a 1; }; v % 3 == 0 } => { x += 1; },
+            v if { 'b: { break 'b v == 5; } } => { x = 41; },
+            _ => 'b: { //~ WARNING `'b` shadows a label
+                break 'b ();
+            },
+        }
+        x += 1;
+        -1
+    };
+
+    assert_eq!(x, xe);
+    assert_eq!(y, ye);
+}
+
+#[allow(unused_labels)]
+fn label_break_macro() {
+    macro_rules! mac1 {
+        ($target:lifetime, $val:expr) => {
+            break $target $val;
+        };
+    }
+    let x: u8 = 'a: {
+        'b: {
+            mac1!('b, 1);
+        };
+        0
+    };
+    assert_eq!(x, 0);
+    let x: u8 = 'a: { //~ WARNING `'a` shadows a label
+        'b: { //~ WARNING `'b` shadows a label
+            if true {
+                mac1!('a, 1);
+            }
+        };
+        0
+    };
+    assert_eq!(x, 1);
+}
+
 pub fn main() {
     assert_eq!(label_break(true, false), 1);
     assert_eq!(label_break(false, true), 2);
@@ -112,5 +156,12 @@ pub fn main() {
     assert_eq!(label_break_mixed(5), 5);
     assert_eq!(label_break_mixed(6), 6);
 
-    // FIXME: ensure that labeled blocks work if produced by macros and in match arms
+    label_break_match(0, 0, 0);
+    label_break_match(1, 1, -1);
+    label_break_match(2, 0, 1);
+    label_break_match(3, 2, -1);
+    label_break_match(5, 42, -1);
+    label_break_match(7, 1, -1);
+
+    label_break_macro();
 }

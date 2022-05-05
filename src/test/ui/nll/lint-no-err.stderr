@@ -1,0 +1,17 @@
+warning: cannot borrow `conflict` as mutable because it is also borrowed as immutable
+  --> $DIR/lint-no-err.rs:25:5
+   |
+LL |     let prev = conflict.get();
+   |                -------------- immutable borrow occurs here
+LL |     conflict.insert(*prev + *x);
+   |     ^^^^^^^^^^^^^^^^-----^^^^^^
+   |     |               |
+   |     |               immutable borrow later used here
+   |     mutable borrow occurs here
+   |
+   = note: `#[warn(mutable_borrow_reservation_conflict)]` on by default
+   = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
+   = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
+
+warning: 1 warning emitted
+

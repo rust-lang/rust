@@ -15,7 +15,7 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span,
     let inner_ty = match recv_ty.kind() {
         // `Option<T>` -> `T`
         ty::Adt(adt, subst)
-            if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && meets_msrv(msrv, &msrvs::OPTION_COPIED) =>
+            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && meets_msrv(msrv, &msrvs::OPTION_COPIED) =>
         {
             subst.type_at(0)
         },
@@ -30,7 +30,7 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span,
     };
     match inner_ty.kind() {
         // &T where T: Copy
-        ty::Ref(_, ty, _) if is_copy(cx, ty) => {},
+        ty::Ref(_, ty, _) if is_copy(cx, *ty) => {},
         _ => return,
     };
     span_lint_and_sugg(

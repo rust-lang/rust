@@ -1,0 +1,8 @@
+error: expected `used`, `used(compiler)` or `used(linker)`
+  --> $DIR/used_with_multi_args.rs:3:1
+   |
+LL | #[used(compiler, linker)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

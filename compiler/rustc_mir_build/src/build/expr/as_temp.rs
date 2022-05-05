@@ -70,7 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
                 }
-                ExprKind::Literal { const_id: Some(def_id), .. } => {
+                ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
                     local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
                 }
                 _ => {}

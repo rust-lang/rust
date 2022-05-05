@@ -104,6 +104,32 @@ fn main() {
             "attempted to instantiate uninhabited type `Bar`"
         );
 
+        test_panic_msg(
+            || mem::uninitialized::<[Foo; 2]>(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+        test_panic_msg(
+            || mem::zeroed::<[Foo; 2]>(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+        test_panic_msg(
+            || MaybeUninit::<[Foo; 2]>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<[Bar; 2]>(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
+        );
+        test_panic_msg(
+            || mem::zeroed::<[Bar; 2]>(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
+        );
+        test_panic_msg(
+            || MaybeUninit::<[Bar; 2]>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `[Bar; 2]`"
+        );
+
         // Types that do not like zero-initialziation
         test_panic_msg(
             || mem::uninitialized::<fn()>(),
@@ -199,7 +225,9 @@ fn main() {
         let _val = mem::zeroed::<OneVariant>();
         let _val = mem::zeroed::<Option<&'static i32>>();
         let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
+        let _val = mem::zeroed::<[!; 0]>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
+        let _val = mem::uninitialized::<[!; 0]>();
 
         // These are UB because they have not been officially blessed, but we await the resolution
         // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing

@@ -5,13 +5,10 @@
     clippy::no_effect,
     clippy::redundant_closure_call,
     clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn
-)]
-#![warn(
-    clippy::redundant_closure,
-    clippy::redundant_closure_for_method_calls,
+    clippy::option_map_unit_fn,
     clippy::needless_borrow
 )]
+#![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
 
 use std::path::{Path, PathBuf};
 
@@ -258,4 +255,23 @@ fn arc_fp() {
     true.then(|| rc());
     (0..5).map(|n| arc(n));
     Some(4).map(|n| ref_arc(n));
+}
+
+// #8460 Don't replace closures with params bounded as `ref`
+mod bind_by_ref {
+    struct A;
+    struct B;
+
+    impl From<&A> for B {
+        fn from(A: &A) -> Self {
+            B
+        }
+    }
+
+    fn test() {
+        // should not lint
+        Some(A).map(|a| B::from(&a));
+        // should not lint
+        Some(A).map(|ref a| B::from(a));
+    }
 }

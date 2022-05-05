@@ -1,4 +1,4 @@
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_span::Span;
 use smallvec::smallvec;
 use smallvec::SmallVec;
@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
@@ -43,12 +43,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
     /// Adds diagnostic labels to `diag` for the expansion path of a trait through all intermediate
     /// trait aliases.
-    pub fn label_with_exp_info(
-        &self,
-        diag: &mut DiagnosticBuilder<'_>,
-        top_label: &str,
-        use_desc: &str,
-    ) {
+    pub fn label_with_exp_info(&self, diag: &mut Diagnostic, top_label: &str, use_desc: &str) {
         diag.span_label(self.top().1, top_label);
         if self.path.len() > 1 {
             for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {
@@ -195,19 +190,19 @@ impl Iterator for SupertraitDefIds<'_> {
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
-/// Instantiate all bound parameters of the impl with the given substs,
-/// returning the resulting trait ref and all obligations that arise.
+/// Instantiate all bound parameters of the impl subject with the given substs,
+/// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
+pub fn impl_subject_and_oblig<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
-) -> (ty::TraitRef<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
-    let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
-    let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), impl_trait_ref);
+) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
+    let subject = selcx.tcx().impl_subject(impl_def_id);
+    let subject = subject.subst(selcx.tcx(), impl_substs);
+    let Normalized { value: subject, obligations: normalization_obligations1 } =
+        super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
@@ -220,7 +215,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
         .chain(normalization_obligations1.into_iter())
         .chain(normalization_obligations2.into_iter());
 
-    (impl_trait_ref, impl_obligations)
+    (subject, impl_obligations)
 }
 
 pub fn predicates_for_generics<'tcx>(

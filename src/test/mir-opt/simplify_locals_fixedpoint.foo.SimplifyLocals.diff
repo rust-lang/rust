@@ -18,9 +18,12 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
           StorageLive(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          Deinit(_2);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
           discriminant(_2) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
           StorageLive(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          Deinit(_3);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
           discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          Deinit(_1);                      // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
           (_1.0: std::option::Option<u8>) = move _2; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
           (_1.1: std::option::Option<T>) = move _3; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
           StorageDead(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69

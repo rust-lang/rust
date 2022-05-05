@@ -287,7 +287,7 @@ note: struct defined here, with at most 3 generic parameters: `A`, `B`, `C`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
 LL |     struct Ty<A, B, C = &'static str>;
-   |            ^^ -  -  -
+   |            ^^ -  -  ----------------
 
 error[E0107]: this struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:96:14
@@ -922,7 +922,7 @@ note: struct defined here, with at most 3 generic parameters: `K`, `V`, `S`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
    |
 LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -  -
+   |            ^^^^^^^ -  -  ---------------
 
 error[E0107]: this struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:319:18

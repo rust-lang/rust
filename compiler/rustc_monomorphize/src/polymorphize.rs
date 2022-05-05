@@ -65,7 +65,7 @@ fn unused_generic_params<'tcx>(
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
     debug!(?unused_parameters, "(after default)");
 
-    // Visit MIR and accumululate used generic parameters.
+    // Visit MIR and accumulate used generic parameters.
     let body = match tcx.hir().body_const_context(def_id.expect_local()) {
         // Const functions are actually called and should thus be considered for polymorphization
         // via their runtime MIR.
@@ -158,7 +158,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Fn
         | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static
+        | DefKind::Static(_)
         | DefKind::Ctor(_, _)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -201,7 +201,7 @@ fn emit_unused_generic_params_error<'tcx>(
         return;
     }
 
-    let fn_span = match tcx.opt_item_name(def_id) {
+    let fn_span = match tcx.opt_item_ident(def_id) {
         Some(ident) => ident.span,
         _ => tcx.def_span(def_id),
     };
@@ -267,7 +267,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_const(&mut self, c: &&'tcx Const<'tcx>, _: Location) {
+    fn visit_const(&mut self, c: Const<'tcx>, _: Location) {
         c.visit_with(self);
     }
 
@@ -278,12 +278,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val {
+        match c.val() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.clear(param.index);
@@ -348,12 +348,12 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
     type BreakTy = ();
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val {
+        match c.val() {
             ty::ConstKind::Param(param) => {
                 if self.unused_parameters.contains(param.index).unwrap_or(false) {
                     ControlFlow::CONTINUE

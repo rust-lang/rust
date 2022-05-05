@@ -73,7 +73,7 @@ fn fn_eagerness<'tcx>(
         // than marker traits.
         // Due to the limited operations on these types functions should be fairly cheap.
         if def
-            .variants
+            .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
@@ -141,7 +141,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
-                ExprKind::MethodCall(name, _, args, _) => {
+                ExprKind::MethodCall(name, args, _) => {
                     self.eagerness |= self
                         .cx
                         .typeck_results()

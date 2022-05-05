@@ -8,7 +8,7 @@ use crate::traits::{
     FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
     Unimplemented,
 };
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -18,21 +18,16 @@ use rustc_middle::ty::{self, TyCtxt};
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
 ///
-/// Assumes that this is run after the entire crate has been successfully type-checked.
 /// This also expects that `trait_ref` is fully normalized.
+#[instrument(level = "debug", skip(tcx))]
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
+) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorGuaranteed> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
-    debug!(
-        "codegen_fulfill_obligation(trait_ref={:?}, def_id={:?})",
-        (param_env, trait_ref),
-        trait_ref.def_id()
-    );
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -47,12 +42,12 @@ pub fn codegen_fulfill_obligation<'tcx>(
             Ok(Some(selection)) => selection,
             Ok(None) => {
                 // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
+                // expands to some humongous type that never occurred
+                // statically -- this humongous type can then overflow,
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
-                infcx.tcx.sess.delay_span_bug(
+                let reported = infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
                         "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
@@ -60,39 +55,44 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(reported);
             }
             Err(Unimplemented) => {
                 // This can trigger when we probe for the source of a `'static` lifetime requirement
                 // on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
-                infcx.tcx.sess.delay_span_bug(
+                // This can also trigger when we have a global bound that is not actually satisfied,
+                // but was included during typeck due to the trivial_bounds feature.
+                let guar = infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
                         "Encountered error `Unimplemented` selecting `{:?}` during codegen",
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(guar);
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
             }
         };
 
-        debug!("fulfill_obligation: selection={:?}", selection);
+        debug!(?selection);
 
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
         let mut fulfill_cx = FulfillmentContext::new();
         let impl_source = selection.map(|predicate| {
-            debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
-        debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
-        Ok(impl_source)
+        // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
+        // as they will get constrained elsewhere, too.
+        let _opaque_types = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+        debug!("Cache miss: {trait_ref:?} => {impl_source:?}");
+        Ok(&*tcx.arena.alloc(impl_source))
     })
 }
 
@@ -101,7 +101,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
 /// Finishes processes any obligations that remain in the
 /// fulfillment context, and then returns the result with all type
 /// variables removed and regions erased. Because this is intended
-/// for use after type-check has completed, if any errors occur,
+/// for use outside of type inference, if any errors occur,
 /// it will panic. It is used during normalization and other cases
 /// where processing the obligations in `fulfill_cx` may cause
 /// type inference variables that appear in `result` to be
@@ -124,7 +124,10 @@ where
     if !errors.is_empty() {
         infcx.tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
-            &format!("Encountered errors `{:?}` resolving bounds after type-checking", errors),
+            &format!(
+                "Encountered errors `{:?}` resolving bounds outside of type inference",
+                errors
+            ),
         );
     }
 

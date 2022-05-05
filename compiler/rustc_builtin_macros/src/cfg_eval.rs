@@ -5,6 +5,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::visit::Visitor;
+use rustc_ast::NodeId;
 use rustc_ast::{mut_visit, visit};
 use rustc_ast::{AstLike, Attribute};
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -26,15 +27,16 @@ crate fn expand(
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
     warn_on_duplicate_attribute(&ecx, &annotatable, sym::cfg_eval);
-    vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable)]
+    vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable, ecx.current_expansion.lint_node_id)]
 }
 
 crate fn cfg_eval(
     sess: &Session,
     features: Option<&Features>,
     annotatable: Annotatable,
+    lint_node_id: NodeId,
 ) -> Annotatable {
-    CfgEval { cfg: &mut StripUnconfigured { sess, features, config_tokens: true } }
+    CfgEval { cfg: &mut StripUnconfigured { sess, features, config_tokens: true, lint_node_id } }
         .configure_annotatable(annotatable)
         // Since the item itself has already been configured by the `InvocationCollector`,
         // we know that fold result vector will contain exactly one element.
@@ -135,7 +137,7 @@ impl CfgEval<'_, '_> {
         }
 
         // The majority of parsed attribute targets will never need to have early cfg-expansion
-        // run (e.g. they are not part of a `#[derive]` or `#[cfg_eval]` macro inoput).
+        // run (e.g. they are not part of a `#[derive]` or `#[cfg_eval]` macro input).
         // Therefore, we normally do not capture the necessary information about `#[cfg]`
         // and `#[cfg_attr]` attributes during parsing.
         //
@@ -201,7 +203,7 @@ impl CfgEval<'_, '_> {
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrAnnotatedTokenStream` (specifically, we capture
-        // `AttrAnnotatedTokenTree::AttributesData` for all occurences of `#[cfg]` and `#[cfg_attr]`)
+        // `AttrAnnotatedTokenTree::AttributesData` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
         let mut parser =
             rustc_parse::stream_to_parser(&self.cfg.sess.parse_sess, orig_tokens, None);
         parser.capture_cfg = true;

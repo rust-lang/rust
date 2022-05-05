@@ -33,5 +33,11 @@ LL | |         return x;
 LL | |     });
    | |______^ help: remove the call to `map`
 
-error: aborting due to 5 previous errors
+error: unnecessary map of the identity function
+  --> $DIR/map_identity.rs:21:36
+   |
+LL |     let _: Result<u32, u32> = Ok(1).map_err(|a| a);
+   |                                    ^^^^^^^^^^^^^^^ help: remove the call to `map_err`
+
+error: aborting due to 6 previous errors
 

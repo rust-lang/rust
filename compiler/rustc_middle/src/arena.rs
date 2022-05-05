@@ -6,10 +6,10 @@
 macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
-            [] layout: rustc_target::abi::Layout,
+            [] layout: rustc_target::abi::LayoutS<'tcx>,
             [] fn_abi: rustc_target::abi::call::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
-            [decode] adt_def: rustc_middle::ty::AdtDef,
+            [decode] adt_def: rustc_middle::ty::AdtDefData,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
             [decode] mir: rustc_middle::mir::Body<'tcx>,
@@ -52,6 +52,9 @@ macro_rules! arena_types {
                         Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
+            [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
+            [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
+            [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
             [] type_op_subtype:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, ()>
@@ -84,8 +87,9 @@ macro_rules! arena_types {
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_middle::ty::TyS<'tcx>,
-            [] predicates: rustc_middle::ty::PredicateInner<'tcx>,
+            [] tys: rustc_data_structures::intern::WithStableHash<rustc_middle::ty::TyS<'tcx>>,
+            [] predicates: rustc_middle::ty::PredicateS<'tcx>,
+            [] consts: rustc_middle::ty::ConstS<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
@@ -95,6 +99,7 @@ macro_rules! arena_types {
             // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
             [decode] span: rustc_span::Span,
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
+            [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
         ]);

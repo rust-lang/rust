@@ -370,7 +370,6 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
     /// The radix or base of the internal representation of `f64`.
@@ -449,7 +448,10 @@ impl f64 {
     #[inline]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f64 {
-        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
+        // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
+        unsafe {
+            mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & 0x7fff_ffff_ffff_ffff)
+        }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -472,7 +474,10 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_infinite(self) -> bool {
-        self.abs_private() == Self::INFINITY
+        // Getting clever with transmutation can result in incorrect answers on some FPUs
+        // FIXME: alter the Rust <-> Rust calling convention to prevent this problem.
+        // See https://github.com/rust-lang/rust/issues/72327
+        (self == f64::INFINITY) | (self == f64::NEG_INFINITY)
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
@@ -568,15 +573,67 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
+        // A previous implementation tried to only use bitmask-based checks,
+        // using f64::to_bits to transmute the float to its bit repr and match on that.
+        // Unfortunately, floating point numbers can be much worse than that.
+        // This also needs to not result in recursive evaluations of f64::to_bits.
+        //
+        // On some processors, in some cases, LLVM will "helpfully" lower floating point ops,
+        // in spite of a request for them using f32 and f64, to things like x87 operations.
+        // These have an f64's mantissa, but can have a larger than normal exponent.
+        // FIXME(jubilee): Using x87 operations is never necessary in order to function
+        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
+        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
+        //
+        // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
+        // And it may not be NaN, as it can simply be an "overextended" finite value.
+        if self.is_nan() {
+            FpCategory::Nan
+        } else {
+            // However, std can't simply compare to zero to check for zero, either,
+            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
+            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
+            // So, this does use bitpattern matching for the rest.
+
+            // SAFETY: f64 to u64 is fine. Usually.
+            // If control flow has gotten this far, the value is definitely in one of the categories
+            // that f64::partial_classify can correctly analyze.
+            unsafe { f64::partial_classify(self) }
+        }
+    }
+
+    // This doesn't actually return a right answer for NaN on purpose,
+    // seeing as how it cannot correctly discern between a floating point NaN,
+    // and some normal floating point numbers truncated from an x87 FPU.
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const unsafe fn partial_classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits = self.to_bits();
-        match (bits & MAN_MASK, bits & EXP_MASK) {
+        // SAFETY: The caller is not asking questions for which this will tell lies.
+        let b = unsafe { mem::transmute::<f64, u64>(self) };
+        match (b & MAN_MASK, b & EXP_MASK) {
+            (0, EXP_MASK) => FpCategory::Infinite,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
+    }
+
+    // This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
+    // FIXME(jubilee): In a just world, this would be the entire impl for classify,
+    // plus a transmute. We do not live in a just world, but we can make it more so.
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn classify_bits(b: u64) -> FpCategory {
+        const EXP_MASK: u64 = 0x7ff0000000000000;
+        const MAN_MASK: u64 = 0x000fffffffffffff;
+
+        match (b & MAN_MASK, b & EXP_MASK) {
             (0, EXP_MASK) => FpCategory::Infinite,
             (_, EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
         }
     }
@@ -623,7 +680,10 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
-        self.to_bits() & 0x8000_0000_0000_0000 != 0
+        // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
+        // applies to zeros and NaNs as well.
+        // SAFETY: This is just transmuting to get the sign bit, it's fine.
+        unsafe { mem::transmute::<f64, u64>(self) & 0x8000_0000_0000_0000 != 0 }
     }
 
     #[must_use]
@@ -691,7 +751,7 @@ impl f64 {
     /// Returns the maximum of the two numbers.
     ///
     /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmin.
+    /// This matches the behavior of libm’s fmax.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -848,8 +908,31 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
     pub const fn to_bits(self) -> u64 {
-        // SAFETY: `u64` is a plain old datatype so we can always transmute to it
-        unsafe { mem::transmute(self) }
+        // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
+        // ...sorta.
+        //
+        // See the SAFETY comment in f64::from_bits for more.
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_f64_to_u64(ct: f64) -> u64 {
+            match ct.classify() {
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f64::to_bits on a NaN")
+                }
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f64::to_bits on a subnormal number")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
+                    unsafe { mem::transmute::<f64, u64>(ct) }
+                }
+            }
+        }
+        // SAFETY: `u64` is a plain old datatype so we can always... uh...
+        // ...look, just pretend you forgot what you just read.
+        // Stability concerns.
+        let rt_f64_to_u64 = |rt| unsafe { mem::transmute::<f64, u64>(rt) };
+        // SAFETY: We use internal implementations that either always work or fail at compile time.
+        unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
     }
 
     /// Raw transmutation from `u64`.
@@ -893,9 +976,56 @@ impl f64 {
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u64) -> Self {
-        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
-        unsafe { mem::transmute(v) }
+        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to floating point modes that alter nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        // This is not a problem usually, but at least one tier2 platform for Rust
+        // actually exhibits an FTZ behavior by default: thumbv7neon
+        // aka "the Neon FPU in AArch32 state"
+        //
+        // Even with this, not all instructions exhibit the FTZ behaviors on thumbv7neon,
+        // so this should load the same bits if LLVM emits the "correct" instructions,
+        // but LLVM sometimes makes interesting choices about float optimization,
+        // and other FPUs may do similar. Thus, it is wise to indulge luxuriously in caution.
+        //
+        // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU enabled,
+        // i.e. not soft-float, the way Rust does parameter passing can actually alter
+        // a number that is "not infinity" to have the same exponent as infinity,
+        // in a slightly unpredictable manner.
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // reject any of these possible situations from happening.
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_u64_to_f64(ct: u64) -> f64 {
+            match f64::classify_bits(ct) {
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f64::from_bits on a subnormal number")
+                }
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f64::from_bits on NaN")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: It's not a frumious number
+                    unsafe { mem::transmute::<u64, f64>(ct) }
+                }
+            }
+        }
+        // SAFETY: `u64` is a plain old datatype so we can always... uh...
+        // ...look, just pretend you forgot what you just read.
+        // Stability concerns.
+        let rt_u64_to_f64 = |rt| unsafe { mem::transmute::<u64, f64>(rt) };
+        // SAFETY: We use internal implementations that either always work or fail at compile time.
+        unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
     }
 
     /// Return the memory representation of this floating point number as a byte array in
@@ -1024,31 +1154,38 @@ impl f64 {
         Self::from_bits(u64::from_ne_bytes(bytes))
     }
 
-    /// Returns an ordering between self and other values.
+    /// Return the ordering between `self` and `other`.
+    ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to
-    /// the totalOrder predicate as defined in IEEE 754 (2008 revision)
-    /// floating point standard. The values are ordered in following order:
-    /// - Negative quiet NaN
-    /// - Negative signaling NaN
-    /// - Negative infinity
-    /// - Negative numbers
-    /// - Negative subnormal numbers
-    /// - Negative zero
-    /// - Positive zero
-    /// - Positive subnormal numbers
-    /// - Positive numbers
-    /// - Positive infinity
-    /// - Positive signaling NaN
-    /// - Positive quiet NaN
+    /// the `totalOrder` predicate as defined in the IEEE 754 (2008 revision)
+    /// floating point standard. The values are ordered in the following sequence:
     ///
-    /// Note that this function does not always agree with the [`PartialOrd`]
-    /// and [`PartialEq`] implementations of `f64`. In particular, they regard
-    /// negative and positive zero as equal, while `total_cmp` doesn't.
+    /// - negative quiet NaN
+    /// - negative signaling NaN
+    /// - negative infinity
+    /// - negative numbers
+    /// - negative subnormal numbers
+    /// - negative zero
+    /// - positive zero
+    /// - positive subnormal numbers
+    /// - positive numbers
+    /// - positive infinity
+    /// - positive signaling NaN
+    /// - positive quiet NaN.
+    ///
+    /// The ordering established by this function does not always agree with the
+    /// [`PartialOrd`] and [`PartialEq`] implementations of `f64`. For example,
+    /// they consider negative and positive zero equal, while `total_cmp`
+    /// doesn't.
+    ///
+    /// The interpretation of the signaling NaN bit follows the definition in
+    /// the IEEE 754 standard, which may not match the interpretation by some of
+    /// the older, non-conformant (e.g. MIPS) hardware implementations.
     ///
     /// # Example
+    ///
     /// ```
-    /// #![feature(total_cmp)]
     /// struct GoodBoy {
     ///     name: String,
     ///     weight: f64,
@@ -1068,7 +1205,7 @@ impl f64 {
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f64::INFINITY, f64::NAN].iter())
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
-    #[unstable(feature = "total_cmp", issue = "72599")]
+    #[stable(feature = "total_cmp", since = "1.62.0")]
     #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {

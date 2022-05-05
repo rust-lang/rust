@@ -7,12 +7,12 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ty::TyCtxt;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_macros::HashStable;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -173,9 +173,8 @@ impl Scope {
     /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> Span {
-        let hir_id = match self.hir_id(scope_tree) {
-            Some(hir_id) => hir_id,
-            None => return DUMMY_SP,
+        let Some(hir_id) = self.hir_id(scope_tree) else {
+            return DUMMY_SP;
         };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
@@ -215,14 +214,14 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
-    pub parent_map: FxHashMap<Scope, (Scope, ScopeDepth)>,
+    pub parent_map: FxIndexMap<Scope, (Scope, ScopeDepth)>,
 
     /// Maps from a variable or binding ID to the block in which that
     /// variable is declared.
-    var_map: FxHashMap<hir::ItemLocalId, Scope>,
+    var_map: FxIndexMap<hir::ItemLocalId, Scope>,
 
     /// Maps from a `NodeId` to the associated destruction scope (if any).
-    destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
+    destruction_scopes: FxIndexMap<hir::ItemLocalId, Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose
     /// cleanup scope is larger than the default. The map goes from the
@@ -308,7 +307,7 @@ pub struct ScopeTree {
     /// The reason is that semantically, until the `box` expression returns,
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
-    pub yield_in_scope: FxHashMap<Scope, YieldData>,
+    pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
@@ -363,12 +362,9 @@ impl ScopeTree {
         self.parent_map.get(&id).cloned().map(|(p, _)| p)
     }
 
-    /// Returns the lifetime of the local variable `var_id`
-    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Scope {
-        self.var_map
-            .get(&var_id)
-            .cloned()
-            .unwrap_or_else(|| bug!("no enclosing scope for id {:?}", var_id))
+    /// Returns the lifetime of the local variable `var_id`, if any.
+    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
+        self.var_map.get(&var_id).cloned()
     }
 
     /// Returns the scope when the temp created by `expr_id` will be cleaned up.
@@ -423,8 +419,8 @@ impl ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some(YieldData)`. If not, returns `None`.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<YieldData> {
-        self.yield_in_scope.get(&scope).cloned()
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<&Vec<YieldData>> {
+        self.yield_in_scope.get(&scope)
     }
 
     /// Gives the number of expressions visited in a body.
@@ -447,10 +443,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
             ref yield_in_scope,
         } = *self;
 
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            root_body.hash_stable(hcx, hasher)
-        });
-
+        root_body.hash_stable(hcx, hasher);
         body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);

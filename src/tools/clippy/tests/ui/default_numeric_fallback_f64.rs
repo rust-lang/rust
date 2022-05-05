@@ -134,7 +134,7 @@ mod enum_ctor {
 }
 
 mod method_calls {
-    struct StructForMethodCallTest {}
+    struct StructForMethodCallTest;
 
     impl StructForMethodCallTest {
         fn concrete_arg(&self, f: f64) {}

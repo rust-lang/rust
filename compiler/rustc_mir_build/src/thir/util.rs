@@ -20,7 +20,7 @@ crate trait UserAnnotatedTyHelpers<'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, ..) => {
                 if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {
-                    *did = adt_def.did;
+                    *did = adt_def.did();
                 }
                 Some(user_ty)
             }

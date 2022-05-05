@@ -11,17 +11,17 @@ use std::thread;
 
 fn main() {
     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i16::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i32::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i128::MIN / -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
     //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
@@ -35,17 +35,17 @@ fn main() {
     assert!(thread::spawn(move|| { 1i128 / 0; }).join().is_err());
     //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { i128::MIN % -1; }).join().is_err());
-    //~^ ERROR arithmetic operation will overflow
+    //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
     //~^ ERROR operation will panic
     assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());

@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for (index, conf) in self.conf_disallowed.iter().enumerate() {
             let segs: Vec<_> = conf.path().split("::").collect();
-            if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &segs) {
+            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs) {
                 self.disallowed.insert(id, index);
             }
         }

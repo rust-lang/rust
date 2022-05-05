@@ -332,12 +332,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         let def_id = local_def_id.to_def_id();
 
         // Don't run unused pass for #[derive()]
-        if let Some(parent) = self.tcx.parent(def_id) {
-            if let DefKind::Impl = self.tcx.def_kind(parent.expect_local()) {
-                if self.tcx.has_attr(parent, sym::automatically_derived) {
-                    return;
-                }
-            }
+        let parent = self.tcx.local_parent(local_def_id);
+        if let DefKind::Impl = self.tcx.def_kind(parent)
+            && self.tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
+        {
+            return;
         }
 
         // Don't run unused pass for #[naked]
@@ -1044,7 +1043,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
-                        | hir::InlineAsmOperand::Sym { .. } => {}
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
                                 succ = self.write_place(expr, succ, ACC_WRITE);
@@ -1065,8 +1065,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let mut succ = succ;
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
-                        hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Sym { expr, .. } => {
+                        hir::InlineAsmOperand::In { expr, .. } => {
                             succ = self.propagate_through_expr(expr, succ)
                         }
                         hir::InlineAsmOperand::Out { expr, .. } => {
@@ -1083,7 +1082,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             }
                             succ = self.propagate_through_expr(in_expr, succ);
                         }
-                        hir::InlineAsmOperand::Const { .. } => {}
+                        hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }
                 succ
@@ -1430,9 +1431,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_min_captures = match self.closure_min_captures {
-            None => return,
-            Some(closure_min_captures) => closure_min_captures,
+        let Some(closure_min_captures) = self.closure_min_captures else {
+            return;
         };
 
         // If closure_min_captures is Some(), upvars must be Some() too.
@@ -1590,7 +1590,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 shorthands,
                                 Applicability::MachineApplicable,
                             );
-                            err.emit()
+                            err.emit();
                         },
                     );
                 } else {
@@ -1613,7 +1613,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 non_shorthands,
                                 Applicability::MachineApplicable,
                             );
-                            err.emit()
+                            err.emit();
                         },
                     );
                 }

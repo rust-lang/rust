@@ -579,7 +579,7 @@ fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx
     let mut hcx = tcx.create_no_span_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
     let owner = hir_body.id().hir_id.owner;
-    let bodies = &tcx.hir_owner_nodes(owner).as_ref().unwrap().bodies;
+    let bodies = &tcx.hir_owner_nodes(owner).unwrap().bodies;
     hcx.with_hir_bodies(false, owner, bodies, |hcx| {
         hir_body.value.hash_stable(hcx, &mut stable_hasher)
     });

@@ -1,7 +1,7 @@
 use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::{DefId, LocalDefId};
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
@@ -31,7 +31,7 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
+pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.kind() {
@@ -40,13 +40,13 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
                 tcx,
                 drop_impl_did.expect_local(),
                 dtor_self_type,
-                adt_def.did,
+                adt_def.did(),
             )?;
 
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
                 dtor_predicates,
-                adt_def.did.expect_local(),
+                adt_def.did().expect_local(),
                 self_to_impl_substs,
             )
         }
@@ -55,11 +55,11 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(
+            let reported = tcx.sess.delay_span_bug(
                 span,
-                &format!("should have been rejected by coherence check: {}", dtor_self_type),
+                &format!("should have been rejected by coherence check: {dtor_self_type}"),
             );
-            Err(ErrorReported)
+            Err(reported)
         }
     }
 }
@@ -69,7 +69,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     drop_impl_did: LocalDefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let drop_impl_hir_id = tcx.hir().local_def_id_to_hir_id(drop_impl_did);
 
     // check that the impl type can be made to match the trait type.
@@ -94,7 +94,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
                 let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
-                struct_span_err!(
+                let reported = struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
                     E0366,
@@ -104,20 +104,19 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                     item_span,
                     &format!(
                         "use the same sequence of generic type, lifetime and const parameters \
-                        as the {} definition",
-                        self_descr,
+                        as the {self_descr} definition",
                     ),
                 )
                 .emit();
-                return Err(ErrorReported);
+                return Err(reported);
             }
         }
 
         let errors = fulfillment_cx.select_all_or_error(&infcx);
         if !errors.is_empty() {
             // this could be reached when we get lazy normalization
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorReported);
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
         }
 
         // NB. It seems a bit... suspicious to use an empty param-env
@@ -146,7 +145,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     dtor_predicates: ty::GenericPredicates<'tcx>,
     self_type_did: LocalDefId,
     self_to_impl_substs: SubstsRef<'tcx>,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let mut result = Ok(());
 
     // Here is an example, analogous to that from
@@ -229,7 +228,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
                 (ty::PredicateKind::Trait(a), ty::PredicateKind::Trait(b)) => {
-                    relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
+                    // Since struct predicates cannot have ~const, project the impl predicate
+                    // onto one that ignores the constness. This is equivalent to saying that
+                    // we match a `Trait` bound on the struct with a `Trait` or `~const Trait`
+                    // in the impl.
+                    let non_const_a =
+                        ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..a };
+                    relator.relate(predicate.rebind(non_const_a), p.rebind(b)).is_ok()
                 }
                 (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
@@ -237,7 +242,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 (
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
-                ) => tcx.try_unify_abstract_consts((a, b)),
+                ) => tcx.try_unify_abstract_consts(self_param_env.and((a, b))),
                 (
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),
@@ -252,17 +257,15 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
             let item_span = tcx.def_span(self_type_did);
             let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
-            struct_span_err!(
+            let reported = struct_span_err!(
                 tcx.sess,
                 predicate_sp,
                 E0367,
-                "`Drop` impl requires `{}` but the {} it is implemented for does not",
-                predicate,
-                self_descr,
+                "`Drop` impl requires `{predicate}` but the {self_descr} it is implemented for does not",
             )
             .span_note(item_span, "the implementor must specify the same requirement")
             .emit();
-            result = Err(ErrorReported);
+            result = Err(reported);
         }
     }
 
@@ -356,9 +359,9 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug!("SimpleEqRelation::consts(a={:?}, b={:?})", a, b);
         ty::relate::super_relate_consts(self, a, b)
     }

@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
 LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required because it appears within the type `*const SalsaStorage`
+   = note: required because it appears within the type `PhantomData<SalsaStorage>`
    = note: required because it appears within the type `Unique<SalsaStorage>`
    = note: required because it appears within the type `Box<SalsaStorage>`
 note: required because it appears within the type `Runtime<RootDatabase>`

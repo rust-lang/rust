@@ -71,6 +71,7 @@
 //~^^ WARN this was previously accepted by the compiler
 // see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
+//~^ WARN `#[must_use]` has no effect
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs
@@ -597,17 +598,17 @@ mod deprecated {
     #[deprecated] impl super::StructForDeprecated { }
 }
 
-#[must_use]
+#[must_use] //~ WARN `#[must_use]` has no effect
 mod must_use {
-    mod inner { #![must_use] }
+    mod inner { #![must_use] } //~ WARN `#[must_use]` has no effect
 
     #[must_use] fn f() { }
 
     #[must_use] struct S;
 
-    #[must_use] type T = S;
+    #[must_use] type T = S; //~ WARN `#[must_use]` has no effect
 
-    #[must_use] impl S { }
+    #[must_use] impl S { } //~ WARN `#[must_use]` has no effect
 }
 
 #[windows_subsystem = "windows"]

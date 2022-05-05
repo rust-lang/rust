@@ -1,6 +1,10 @@
 // Various tests related to testing how region inference works
 // with respect to the object receivers.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 trait Foo {
     fn borrowed<'a>(&'a self) -> &'a ();
 }
@@ -9,7 +13,9 @@ trait Foo {
 // with the longer lifetime when (from the signature) we only know
 // that it lives as long as the shorter lifetime. Therefore, error.
 fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (dyn Foo + 'b)) -> &'b () {
-    x.borrowed() //~ ERROR cannot infer
+    x.borrowed()
+    //[base]~^ ERROR cannot infer
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

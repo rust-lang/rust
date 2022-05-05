@@ -1,5 +1,4 @@
 #![feature(associated_type_defaults)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(exact_size_is_empty)]
@@ -28,7 +27,7 @@ pub use self::drop_flag_effects::{
 pub use self::framework::{
     fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, CallReturnPlaces,
     Direction, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor,
-    ResultsRefCursor, ResultsVisitable, ResultsVisitor,
+    ResultsRefCursor, ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
 };
 
 use self::move_paths::MoveData;

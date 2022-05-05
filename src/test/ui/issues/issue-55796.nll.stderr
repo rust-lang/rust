@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-55796.rs:18:9
+  --> $DIR/issue-55796.rs:16:9
    |
 LL | pub trait Graph<'a> {
    |                 -- lifetime `'a` defined here
@@ -8,7 +8,7 @@ LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-55796.rs:23:9
+  --> $DIR/issue-55796.rs:21:9
    |
 LL | pub trait Graph<'a> {
    |                 -- lifetime `'a` defined here

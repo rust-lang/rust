@@ -62,10 +62,10 @@ fn cell_update() {
 #[test]
 fn cell_has_sensible_show() {
     let x = Cell::new("foo bar");
-    assert!(format!("{:?}", x).contains(x.get()));
+    assert!(format!("{x:?}").contains(x.get()));
 
     x.set("baz qux");
-    assert!(format!("{:?}", x).contains(x.get()));
+    assert!(format!("{x:?}").contains(x.get()));
 }
 
 #[test]
@@ -73,11 +73,11 @@ fn ref_and_refmut_have_sensible_show() {
     let refcell = RefCell::new("foo");
 
     let refcell_refmut = refcell.borrow_mut();
-    assert!(format!("{:?}", refcell_refmut).contains("foo"));
+    assert!(format!("{refcell_refmut:?}").contains("foo"));
     drop(refcell_refmut);
 
     let refcell_ref = refcell.borrow();
-    assert!(format!("{:?}", refcell_ref).contains("foo"));
+    assert!(format!("{refcell_ref:?}").contains("foo"));
     drop(refcell_ref);
 }
 

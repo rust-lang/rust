@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 
 crate use renderer::{run_format, FormatRenderer};
 
-use crate::clean;
+use crate::clean::{self, ItemId};
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
@@ -39,5 +39,25 @@ impl Impl {
 
     crate fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.as_ref().map(|t| t.def_id())
+    }
+
+    /// This function is used to extract a `DefId` to be used as a key for the `Cache::impls` field.
+    ///
+    /// It allows to prevent having duplicated implementations showing up (the biggest issue was
+    /// with blanket impls).
+    ///
+    /// It panics if `self` is a `ItemId::Primitive`.
+    crate fn def_id(&self) -> DefId {
+        match self.impl_item.item_id {
+            ItemId::Blanket { impl_id, .. } => impl_id,
+            ItemId::Auto { trait_, .. } => trait_,
+            ItemId::DefId(def_id) => def_id,
+            ItemId::Primitive(_, _) => {
+                panic!(
+                    "Unexpected ItemId::Primitive in expect_def_id: {:?}",
+                    self.impl_item.item_id
+                )
+            }
+        }
     }
 }

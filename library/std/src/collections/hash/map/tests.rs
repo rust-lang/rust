@@ -515,10 +515,10 @@ fn test_show() {
     map.insert(1, 2);
     map.insert(3, 4);
 
-    let map_str = format!("{:?}", map);
+    let map_str = format!("{map:?}");
 
     assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-    assert_eq!(format!("{:?}", empty), "{}");
+    assert_eq!(format!("{empty:?}"), "{}");
 }
 
 #[test]
@@ -702,7 +702,7 @@ fn test_entry_take_doesnt_corrupt() {
     // Test for #19292
     fn check(m: &HashMap<i32, ()>) {
         for k in m.keys() {
-            assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
         }
     }
 
@@ -817,6 +817,7 @@ fn test_retain() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 
@@ -828,11 +829,21 @@ fn test_try_reserve() {
         "usize::MAX should trigger an overflow!"
     );
 
-    assert_matches!(
-        empty_bytes.try_reserve(MAX_USIZE / 8).map_err(|e| e.kind()),
-        Err(AllocError { .. }),
-        "usize::MAX / 8 should trigger an OOM!"
-    );
+    if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 16).map_err(|e| e.kind()) {
+    } else {
+        // This may succeed if there is enough free memory. Attempt to
+        // allocate a few more hashmaps to ensure the allocation will fail.
+        let mut empty_bytes2: HashMap<u8, u8> = HashMap::new();
+        let _ = empty_bytes2.try_reserve(MAX_USIZE / 16);
+        let mut empty_bytes3: HashMap<u8, u8> = HashMap::new();
+        let _ = empty_bytes3.try_reserve(MAX_USIZE / 16);
+        let mut empty_bytes4: HashMap<u8, u8> = HashMap::new();
+        assert_matches!(
+            empty_bytes4.try_reserve(MAX_USIZE / 16).map_err(|e| e.kind()),
+            Err(AllocError { .. }),
+            "usize::MAX / 16 should trigger an OOM!"
+        );
+    }
 }
 
 #[test]

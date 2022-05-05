@@ -47,4 +47,14 @@ struct Baz<'a, 'b, 'c> {
     //~| HELP remove this lifetime argument
 }
 
+pub trait T {
+    type A;
+    type B;
+}
+
+fn trait_bound_generic<I: T<u8, u16>>(_i: I) {
+    //~^ ERROR this trait takes 0 generic arguments
+    //~| HELP replace the generic bounds with the associated types
+}
+
 fn main() {}

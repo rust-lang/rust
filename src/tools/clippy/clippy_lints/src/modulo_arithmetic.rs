@@ -4,7 +4,7 @@ use clippy_utils::sext;
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::fmt::Display;
 
@@ -77,7 +77,7 @@ fn floating_point_operand_info<T: Display + PartialOrd + From<f32>>(f: &T) -> Op
     }
 }
 
-fn might_have_negative_value(t: &ty::TyS<'_>) -> bool {
+fn might_have_negative_value(t: Ty<'_>) -> bool {
     t.is_signed() || t.is_floating_point()
 }
 

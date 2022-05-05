@@ -1,4 +1,4 @@
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function `Pin::<P>::new_unchecked` is unsafe and requires unsafe function or block
   --> $DIR/coerce-unsafe-closure-to-unsafe-fn-ptr.rs:5:31
    |
 LL |     let _: unsafe fn() = || { ::std::pin::Pin::new_unchecked(&0_u8); };

@@ -8,7 +8,7 @@ use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
-    adtdef: &ty::AdtDef,
+    adtdef: ty::AdtDef<'tcx>,
     ty: Ty<'tcx>,
 ) -> Vec<Ty<'tcx>> {
     use ty::TyKind::*;
@@ -24,7 +24,7 @@ fn sized_constraint_for_ty<'tcx>(
 
         Tuple(ref tys) => match tys.last() {
             None => vec![],
-            Some(ty) => sized_constraint_for_ty(tcx, adtdef, ty.expect_ty()),
+            Some(&ty) => sized_constraint_for_ty(tcx, adtdef, ty),
         },
 
         Adt(adt, substs) => {
@@ -49,17 +49,14 @@ fn sized_constraint_for_ty<'tcx>(
             // we know that `T` is Sized and do not need to check
             // it on the impl.
 
-            let sized_trait = match tcx.lang_items().sized_trait() {
-                Some(x) => x,
-                _ => return vec![ty],
-            };
+            let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let sized_predicate = ty::Binder::dummy(ty::TraitRef {
                 def_id: sized_trait,
                 substs: tcx.mk_substs_trait(ty, &[]),
             })
             .without_const()
             .to_predicate(tcx);
-            let predicates = tcx.predicates_of(adtdef.did).predicates;
+            let predicates = tcx.predicates_of(adtdef.did()).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
         }
 
@@ -80,15 +77,6 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
     }
 }
 
-fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    if let hir::ItemKind::Impl(impl_) = &item.kind {
-        impl_.constness
-    } else {
-        bug!("`impl_constness` called on {:?}", item);
-    }
-}
-
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
@@ -102,7 +90,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
     let def = tcx.adt_def(def_id);
 
     let result = tcx.mk_type_list(
-        def.variants
+        def.variants()
             .iter()
             .flat_map(|v| v.fields.last())
             .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did))),
@@ -149,7 +137,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // kind of an "idempotent" action, but I'm not sure where would be
     // a better place. In practice, we construct environments for
     // every fn once during type checking, and we'll abort if there
-    // are any errors at that point, so after type checking you can be
+    // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
 
     if tcx.sess.opts.debugging_opts.chalk {
@@ -410,7 +398,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
+        ty::Dynamic(ref data, re) if re.is_static() => data.principal().is_none(),
         _ => false,
     };
 
@@ -426,12 +414,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     let node = tcx.hir().get_by_def_id(def_id.expect_local());
-
-    let fn_kind = node.fn_kind().unwrap_or_else(|| {
-        bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
-    });
-
-    fn_kind.asyncness()
+    if let Some(fn_kind) = node.fn_kind() { fn_kind.asyncness() } else { hir::IsAsync::NotAsync }
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
@@ -457,16 +440,16 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
             // (a) It has no variants (i.e. an empty `enum`);
             // (b) Each of its variants (a single one in the case of a `struct`) has at least
             //     one uninhabited field.
-            def.variants.iter().all(|var| {
+            def.variants().iter().all(|var| {
                 var.fields.iter().any(|field| {
                     let ty = tcx.type_of(field.did).subst(tcx, substs);
                     tcx.conservative_is_privately_uninhabited(param_env.and(ty))
                 })
             })
         }
-        ty::Tuple(..) => {
+        ty::Tuple(fields) => {
             debug!("ty::Tuple(..) =>");
-            ty.tuple_fields().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
+            fields.iter().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
         }
         ty::Array(ty, len) => {
             debug!("ty::Array(ty, len) =>");
@@ -474,7 +457,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
                 Some(0) | None => false,
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(*ty)),
             }
         }
         ty::Ref(..) => {
@@ -501,7 +484,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
-        impl_constness,
         conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };

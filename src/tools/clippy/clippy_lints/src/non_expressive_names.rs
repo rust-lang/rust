@@ -3,7 +3,7 @@ use rustc_ast::ast::{
     self, Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
 };
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -356,7 +356,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if in_external_macro(cx.sess, item.span) {
+        if in_external_macro(cx.sess(), item.span) {
             return;
         }
 
@@ -371,7 +371,7 @@ impl EarlyLintPass for NonExpressiveNames {
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &AssocItem) {
-        if in_external_macro(cx.sess, item.span) {
+        if in_external_macro(cx.sess(), item.span) {
             return;
         }
 

@@ -7,7 +7,7 @@
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <ArrayItems>
         <Size>len</Size>
-        <ValuePointer>buf.ptr.pointer</ValuePointer>
+        <ValuePointer>buf.ptr.pointer.pointer</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
@@ -24,7 +24,7 @@
           <If Condition="i == head">
             <Break/>
           </If>
-          <Item>buf.ptr.pointer[i]</Item>
+          <Item>buf.ptr.pointer.pointer[i]</Item>
           <Exec>i = (i + 1 == buf.cap ? 0 : i + 1)</Exec>
         </Loop>
       </CustomListItems>
@@ -42,17 +42,17 @@
     </Expand>
   </Type>
   <Type Name="alloc::string::String">
-    <DisplayString>{(char*)vec.buf.ptr.pointer,[vec.len]s8}</DisplayString>
-    <StringView>(char*)vec.buf.ptr.pointer,[vec.len]s8</StringView>
+    <DisplayString>{(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
+    <StringView>(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8</StringView>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">vec.len</Item>
       <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
       <Synthetic Name="[chars]">
-        <DisplayString>{(char*)vec.buf.ptr.pointer,[vec.len]s8}</DisplayString>
+        <DisplayString>{(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>vec.len</Size>
-            <ValuePointer>(char*)vec.buf.ptr.pointer</ValuePointer>
+            <ValuePointer>(char*)vec.buf.ptr.pointer.pointer</ValuePointer>
           </ArrayItems>
         </Expand>
       </Synthetic>

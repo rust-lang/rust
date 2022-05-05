@@ -57,7 +57,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #191f26;
 }
 
-.sidebar {
+.sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: #14191f;
 }
 
@@ -91,7 +91,8 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #5c6773;
 }
 
-.sidebar .current {
+.sidebar .current,
+.sidebar a:hover {
 	background-color: transparent;
 	color: #ffb44c;
 }
@@ -100,32 +101,8 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #14191f;
 }
 
-.sidebar .location {
-	border-color: #000;
-	background-color: #0f1419;
-	color: #fff;
-}
-
 .sidebar-elems .location {
 	color: #ff7733;
-}
-
-.sidebar-elems .location a {
-	color: #fff;
-}
-
-.sidebar .version {
-	border-bottom-color: #424c57;
-}
-
-.sidebar-title {
-	border-top-color: #5c6773;
-	border-bottom-color: #5c6773;
-}
-
-.block a:hover {
-	background: transparent;
-	color: #ffb44c;
 }
 
 .line-numbers span { color: #5c6773; }
@@ -206,12 +183,13 @@ pre, .rustdoc.source .example-wrap {
 	color: #a37acc;
 }
 
+.sidebar a { color: #53b1db; }
+.sidebar a.current.type { color: #53b1db; }
+.sidebar a.current.associatedtype { color: #53b1db; }
+
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
 
-nav:not(.sidebar) {
-	border-bottom-color: #424c57;
-}
 nav.main .current {
 	border-top-color: #5c6773;
 	border-bottom-color: #5c6773;
@@ -228,9 +206,15 @@ a.anchor,
 .small-section-header a,
 #source-sidebar a,
 pre.rust a,
-.sidebar a,
+.sidebar h2 a,
+.sidebar h3 a,
+.mobile-topbar h2 a,
 .in-band a {
 	color: #c5c5c5;
+}
+.sidebar h2 a,
+.sidebar h3 a {
+	color: white;
 }
 .search-results a {
 	color: #0096cf;
@@ -250,22 +234,14 @@ details.undocumented > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search {
-	color: #c5c5c5;
+#crate-search, .search-input {
 	background-color: #141920;
-	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
 	border-color: #424c57;
+	color: #c5c5c5;
 }
 
 .search-input {
 	color: #ffffff;
-	background-color: #141920;
-	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
-	transition: box-shadow 150ms ease-in-out;
-}
-
-#crate-search+.search-input:focus {
-	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
 }
 
 .module-item .stab,
@@ -510,6 +486,25 @@ a.result-static:focus {}
 a.result-primitive:focus {}
 a.result-keyword:focus {}
 
+.sidebar a.current.enum {}
+.sidebar a.current.struct {}
+.sidebar a.current.foreigntype {}
+.sidebar a.current.attr,
+.sidebar a.current.derive,
+.sidebar a.current.macro {}
+.sidebar a.current.union {}
+.sidebar a.current.constant
+.sidebar a.current.static {}
+.sidebar a.current.primitive {}
+.sidebar a.current.externcrate
+.sidebar a.current.mod {}
+.sidebar a.current.trait {}
+.sidebar a.current.traitalias {}
+.sidebar a.current.fn,
+.sidebar a.current.method,
+.sidebar a.current.tymethod {}
+.sidebar a.current.keyword {}
+
 @media (max-width: 700px) {
 	.sidebar-menu {
 		background-color: #14191f;
@@ -533,7 +528,7 @@ kbd {
 	background-color: #314559;
 	border-color: #5c6773;
 	border-bottom-color: #5c6773;
-	box-shadow-color: #c6cbd1;
+	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
 #theme-picker, #settings-menu, #help-button {
@@ -581,13 +576,6 @@ kbd {
 	}
 }
 
-#all-types {
-	background-color: #14191f;
-}
-#all-types:hover {
-	background-color: rgba(70, 70, 70, 0.33);
-}
-
 .search-results .result-name span.alias {
 	color: #c5c5c5;
 }
@@ -623,6 +611,18 @@ input:checked + .slider {
 	background-color: #ffb454 !important;
 }
 
+
+.scraped-example-list .scrape-help {
+	border-color: #aaa;
+	color: #eee;
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: white;
+	color: white;
+}
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: #999;
+}
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);
 }
@@ -636,8 +636,8 @@ input:checked + .slider {
 	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
 }
 .toggle-line-inner {
-	background: #616161;
+	background: #999;
 }
 .toggle-line:hover .toggle-line-inner {
-	background: ##898989;
+	background: #c5c5c5;
 }

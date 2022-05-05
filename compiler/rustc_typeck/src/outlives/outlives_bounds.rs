@@ -71,12 +71,9 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             result,
         );
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
-        let result = match result {
-            Ok(v) => v,
-            Err(_) => {
-                self.tcx.sess.delay_span_bug(span, "implied_outlives_bounds failed to instantiate");
-                return vec![];
-            }
+        let Ok(result) = result else {
+            self.tcx.sess.delay_span_bug(span, "implied_outlives_bounds failed to instantiate");
+            return vec![];
         };
 
         // Instantiation may have produced new inference variables and constraints on those

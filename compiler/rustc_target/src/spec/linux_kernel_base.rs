@@ -3,7 +3,7 @@ use crate::spec::{FramePointer, PanicStrategy, RelocModel, RelroLevel, StackProb
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        env: "gnu".to_string(),
+        env: "gnu".into(),
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
         // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved

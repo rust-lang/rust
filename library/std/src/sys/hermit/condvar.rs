@@ -2,7 +2,7 @@ use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
-use crate::sys::mutex::Mutex;
+use crate::sys::locks::Mutex;
 use crate::time::Duration;
 
 // The implementation is inspired by Andrew D. Birrell's paper

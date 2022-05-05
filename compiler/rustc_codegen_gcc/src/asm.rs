@@ -5,7 +5,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{AsmBuilderMethods, AsmMethods, BaseTypeMethods, BuilderMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 
 use rustc_middle::{bug, ty::Instance};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use rustc_target::asm::*;
 
 use std::borrow::Cow;
@@ -172,7 +172,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let is_target_supported = reg.reg_class().supported_types(asm_arch).iter()
                                 .any(|&(_, feature)| {
                                     if let Some(feature) = feature {
-                                        self.tcx.sess.target_features.contains(&Symbol::intern(feature))
+                                        self.tcx.sess.target_features.contains(&feature)
                                     } else {
                                         true // Register class is unconditionally supported
                                     }
@@ -258,9 +258,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
+                    // TODO(@Amanieu): Additional mangling is needed on
+                    // some targets to add a leading underscore (Mach-O)
+                    // or byte count suffixes (x86 Windows).
                     constants_len += self.tcx.symbol_name(instance).name.len();
                 }
                 InlineAsmOperandRef::SymStatic { def_id } => {
+                    // TODO(@Amanieu): Additional mangling is needed on
+                    // some targets to add a leading underscore (Mach-O).
                     constants_len += self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name.len();
                 }
             }
@@ -412,13 +417,16 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::SymFn { instance } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O)
+                            // or byte count suffixes (x86 Windows).
                             let name = self.tcx.symbol_name(instance).name;
                             template_str.push_str(name);
                         }
 
                         InlineAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(@Commeownist): This may not be sufficient for all kinds of statics.
-                            // Some statics may need the `@plt` suffix, like thread-local vars.
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);
                             let name = self.tcx.symbol_name(instance).name;
                             template_str.push_str(name);
@@ -560,6 +568,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => unimplemented!(),
             InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => unimplemented!(),
             InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => unimplemented!(),
+            InlineAsmRegClass::Msp430(_) => unimplemented!(),
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => unimplemented!(),
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => unimplemented!(),
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => unimplemented!(),
@@ -580,6 +589,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => unimplemented!(),
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => unimplemented!(),
             InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),
             InlineAsmRegClass::X86(
                 X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg,
@@ -622,6 +632,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Msp430(_) => unimplemented!(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -644,6 +655,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg) => unimplemented!(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => cx.type_i16(),
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => cx.type_i16(),
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
@@ -654,8 +666,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
     }
 }
 
-impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
-    fn codegen_global_asm(&self, template: &[InlineAsmTemplatePiece], operands: &[GlobalAsmOperandRef], options: InlineAsmOptions, _line_spans: &[Span]) {
+impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn codegen_global_asm(&self, template: &[InlineAsmTemplatePiece], operands: &[GlobalAsmOperandRef<'tcx>], options: InlineAsmOptions, _line_spans: &[Span]) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
         // Default to Intel syntax on x86
@@ -687,6 +699,22 @@ impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.
                             template_str.push_str(string);
+                        }
+
+                        GlobalAsmOperandRef::SymFn { instance } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O)
+                            // or byte count suffixes (x86 Windows).
+                            let name = self.tcx.symbol_name(instance).name;
+                            template_str.push_str(name);
+                        }
+
+                        GlobalAsmOperandRef::SymStatic { def_id } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O).
+                            let instance = Instance::mono(self.tcx, def_id);
+                            let name = self.tcx.symbol_name(instance).name;
+                            template_str.push_str(name);
                         }
                     }
                 }
@@ -729,6 +757,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         InlineAsmRegClass::Bpf(_) => unimplemented!(),
         InlineAsmRegClass::Hexagon(_) => unimplemented!(),
         InlineAsmRegClass::Mips(_) => unimplemented!(),
+        InlineAsmRegClass::Msp430(_) => unimplemented!(),
         InlineAsmRegClass::Nvptx(_) => unimplemented!(),
         InlineAsmRegClass::PowerPC(_) => unimplemented!(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg)
@@ -757,6 +786,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
             _ => unreachable!(),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => None,
         InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg) => {
             unreachable!("clobber-only")
         }

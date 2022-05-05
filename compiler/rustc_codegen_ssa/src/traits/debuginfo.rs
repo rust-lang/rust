@@ -7,7 +7,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::Size;
 
 pub trait DebugInfoMethods<'tcx>: BackendTypes {
-    fn create_vtable_metadata(
+    fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
         trait_ref: Option<PolyExistentialTraitRef<'tcx>>,

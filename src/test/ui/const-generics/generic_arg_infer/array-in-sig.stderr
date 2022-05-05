@@ -1,9 +1,0 @@
-error[E0121]: the const placeholder `_` is not allowed within types on item signatures for generics
-  --> $DIR/array-in-sig.rs:4:18
-   |
-LL | fn foo() -> [u8; _] {
-   |                  ^ not allowed in type signatures
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0121`.

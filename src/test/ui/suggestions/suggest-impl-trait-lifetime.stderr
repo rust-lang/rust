@@ -1,9 +1,6 @@
 error[E0310]: the parameter type `impl Debug` may not live long enough
   --> $DIR/suggest-impl-trait-lifetime.rs:7:5
    |
-LL | fn foo(d: impl Debug) {
-   |           ---------- help: consider adding an explicit lifetime bound...: `impl Debug + 'static`
-LL |
 LL |     bar(d);
    |     ^^^ ...so that the type `impl Debug` will meet its required lifetime bounds...
    |
@@ -12,6 +9,10 @@ note: ...that is required by this bound
    |
 LL | fn bar(d: impl Debug + 'static) {
    |                        ^^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn foo(d: impl Debug + 'static) {
+   |                      +++++++++
 
 error: aborting due to previous error
 

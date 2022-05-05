@@ -8,12 +8,12 @@ use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem,
     ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier,
-    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
+    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -83,7 +83,7 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
-            check_fn_inner(cx, sig.decl, Some(id), generics, item.span, true);
+            check_fn_inner(cx, sig.decl, Some(id), None, generics, item.span, true);
         }
     }
 
@@ -94,6 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 cx,
                 sig.decl,
                 Some(id),
+                None,
                 &item.generics,
                 item.span,
                 report_extra_lifetimes,
@@ -103,11 +104,11 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(ref sig, ref body) = item.kind {
-            let body = match *body {
-                TraitFn::Required(_) => None,
-                TraitFn::Provided(id) => Some(id),
+            let (body, trait_sig) = match *body {
+                TraitFn::Required(sig) => (None, Some(sig)),
+                TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig.decl, body, &item.generics, item.span, true);
+            check_fn_inner(cx, sig.decl, body, trait_sig, &item.generics, item.span, true);
         }
     }
 }
@@ -124,11 +125,12 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     decl: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
+    trait_sig: Option<&[Ident]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
 ) {
-    if span.from_expansion() || has_where_lifetimes(cx, &generics.where_clause) {
+    if span.from_expansion() || has_where_lifetimes(cx, generics) {
         return;
     }
 
@@ -137,35 +139,42 @@ fn check_fn_inner<'tcx>(
         .iter()
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
     for typ in types {
-        for bound in typ.bounds {
-            let mut visitor = RefVisitor::new(cx);
-            walk_param_bound(&mut visitor, bound);
-            if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
-                return;
+        for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
+            if pred.in_where_clause {
+                // has_where_lifetimes checked that this predicate contains no lifetime.
+                continue;
             }
-            if let GenericBound::Trait(ref trait_ref, _) = *bound {
-                let params = &trait_ref
-                    .trait_ref
-                    .path
-                    .segments
-                    .last()
-                    .expect("a path must have at least one segment")
-                    .args;
-                if let Some(params) = *params {
-                    let lifetimes = params.args.iter().filter_map(|arg| match arg {
-                        GenericArg::Lifetime(lt) => Some(lt),
-                        _ => None,
-                    });
-                    for bound in lifetimes {
-                        if bound.name != LifetimeName::Static && !bound.is_elided() {
-                            return;
+
+            for bound in pred.bounds {
+                let mut visitor = RefVisitor::new(cx);
+                walk_param_bound(&mut visitor, bound);
+                if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                    return;
+                }
+                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                    let params = &trait_ref
+                        .trait_ref
+                        .path
+                        .segments
+                        .last()
+                        .expect("a path must have at least one segment")
+                        .args;
+                    if let Some(params) = *params {
+                        let lifetimes = params.args.iter().filter_map(|arg| match arg {
+                            GenericArg::Lifetime(lt) => Some(lt),
+                            _ => None,
+                        });
+                        for bound in lifetimes {
+                            if bound.name != LifetimeName::Static && !bound.is_elided() {
+                                return;
+                            }
                         }
                     }
                 }
             }
         }
     }
-    if could_use_elision(cx, decl, body, generics.params) {
+    if could_use_elision(cx, decl, body, trait_sig, generics.params) {
         span_lint(
             cx,
             NEEDLESS_LIFETIMES,
@@ -179,10 +188,31 @@ fn check_fn_inner<'tcx>(
     }
 }
 
+// elision doesn't work for explicit self types, see rust-lang/rust#69064
+fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
+    if_chain! {
+        if let Some(ident) = ident;
+        if ident.name == kw::SelfLower;
+        if !func.implicit_self.has_implicit_self();
+
+        if let Some(self_ty) = func.inputs.first();
+        then {
+            let mut visitor = RefVisitor::new(cx);
+            visitor.visit_ty(self_ty);
+
+            !visitor.all_lts().is_empty()
+        }
+        else {
+            false
+        }
+    }
+}
+
 fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
+    trait_sig: Option<&[Ident]>,
     named_generics: &'tcx [GenericParam<'_>],
 ) -> bool {
     // There are two scenarios where elision works:
@@ -233,11 +263,24 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
+    if let Some(trait_sig) = trait_sig {
+        if explicit_self_type(cx, func, trait_sig.first().copied()) {
+            return false;
+        }
+    }
+
     if let Some(body_id) = body {
+        let body = cx.tcx.hir().body(body_id);
+
+        let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
+        if explicit_self_type(cx, func, first_ident) {
+            return false;
+        }
+
         let mut checker = BodyLifetimeChecker {
             lifetimes_used_in_body: false,
         };
-        checker.visit_expr(&cx.tcx.hir().body(body_id).value);
+        checker.visit_expr(&body.value);
         if checker.lifetimes_used_in_body {
             return false;
         }
@@ -286,9 +329,7 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
     let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
         if let GenericParamKind::Lifetime { .. } = par.kind {
-            if par.bounds.is_empty() {
-                allowed_lts.insert(RefLt::Named(par.name.ident().name));
-            }
+            allowed_lts.insert(RefLt::Named(par.name.ident().name));
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
@@ -409,8 +450,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
 /// Are any lifetimes mentioned in the `where` clause? If so, we don't try to
 /// reason about elision.
-fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereClause<'_>) -> bool {
-    for predicate in where_clause.predicates {
+fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) -> bool {
+    for predicate in generics.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
             WherePredicate::BoundPredicate(ref pred) => {

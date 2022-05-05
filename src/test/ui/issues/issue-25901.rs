@@ -2,7 +2,7 @@ struct A;
 struct B;
 
 static S: &'static B = &A;
-//~^ ERROR calls in statics are limited to constant functions
+//~^ ERROR cannot perform deref coercion on `A` in statics
 
 use std::ops::Deref;
 

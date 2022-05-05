@@ -1,8 +1,10 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `<Vec<usize> as Default>::default` in constant functions
   --> $DIR/std-impl-gate.rs:13:5
    |
 LL |     Default::default()
    |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 

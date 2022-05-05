@@ -141,6 +141,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
             })
+            .chain([Cfg::Cfg(sym::test, None)].into_iter())
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
@@ -153,7 +154,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name, id, m.inner);
+        let mut om = Module::new(name, id, m.spans.inner_span);
         let def_id = self.cx.tcx.hir().local_def_id(id).to_def_id();
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
@@ -187,9 +188,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
-        let res_did = if let Some(did) = res.opt_def_id() {
-            did
-        } else {
+        let Some(res_did) = res.opt_def_id() else {
             return false;
         };
 
@@ -326,8 +325,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 om.items.push((item, renamed))
             }
-            hir::ItemKind::Macro(ref macro_def) => {
-                // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
+            hir::ItemKind::Macro(ref macro_def, _) => {
+                // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
                 //

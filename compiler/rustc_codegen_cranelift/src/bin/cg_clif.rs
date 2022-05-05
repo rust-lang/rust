@@ -1,4 +1,4 @@
-#![feature(rustc_private, once_cell)]
+#![feature(rustc_private)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -9,19 +9,21 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_target;
 
-use std::lazy::SyncLazy;
 use std::panic;
 
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_interface::interface;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::config::{ErrorOutputType, TrimmedDefPaths};
 use rustc_session::early_error;
 use rustc_target::spec::PanicStrategy;
 
+// FIXME use std::lazy::SyncLazy once it stabilizes
+use once_cell::sync::Lazy;
+
 const BUG_REPORT_URL: &str = "https://github.com/bjorn3/rustc_codegen_cranelift/issues/new";
 
-static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    SyncLazy::new(|| {
+static DEFAULT_HOOK: Lazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
+    Lazy::new(|| {
         let hook = panic::take_hook();
         panic::set_hook(Box::new(|info| {
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
@@ -53,6 +55,8 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         config.opts.maybe_sysroot = Some(config.opts.maybe_sysroot.clone().unwrap_or_else(|| {
             std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned()
         }));
+
+        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
 
@@ -61,7 +65,7 @@ fn main() {
     let start_rss = get_resident_set_size();
     rustc_driver::init_rustc_env_logger();
     let mut callbacks = CraneliftPassesCallbacks::default();
-    SyncLazy::force(&DEFAULT_HOOK); // Install ice hook
+    Lazy::force(&DEFAULT_HOOK); // Install ice hook
     let exit_code = rustc_driver::catch_with_exit_code(|| {
         let args = std::env::args_os()
             .enumerate()

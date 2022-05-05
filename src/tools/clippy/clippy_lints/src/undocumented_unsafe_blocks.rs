@@ -1,22 +1,37 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_lint_allowed;
-use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, HirId, Local, UnsafeSource};
-use rustc_lexer::TokenKind;
-use rustc_lint::{LateContext, LateLintPass};
+use clippy_utils::source::walk_span_to_context;
+use rustc_data_structures::sync::Lrc;
+use rustc_hir::{Block, BlockCheckMode, UnsafeSource};
+use rustc_lexer::{tokenize, TokenKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{BytePos, Span};
-use std::borrow::Cow;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::{BytePos, Pos, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `unsafe` blocks without a `// SAFETY: ` comment
     /// explaining why the unsafe operations performed inside
     /// the block are safe.
+    ///
+    /// Note the comment must appear on the line(s) preceding the unsafe block
+    /// with nothing appearing in between. The following is ok:
+    /// ```ignore
+    /// foo(
+    ///     // SAFETY:
+    ///     // This is a valid safety comment
+    ///     unsafe { *x }
+    /// )
+    /// ```
+    /// But neither of these are:
+    /// ```ignore
+    /// // SAFETY:
+    /// // This is not a valid safety comment
+    /// foo(
+    ///     /* SAFETY: Neither is this */ unsafe { *x },
+    /// );
+    /// ```
     ///
     /// ### Why is this bad?
     /// Undocumented unsafe blocks can make it difficult to
@@ -44,179 +59,139 @@ declare_clippy_lint! {
     "creating an unsafe block without explaining why it is safe"
 }
 
-impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS]);
-
-#[derive(Default)]
-pub struct UndocumentedUnsafeBlocks {
-    pub local_level: u32,
-    pub local_span: Option<Span>,
-    // The local was already checked for an overall safety comment
-    // There is no need to continue checking the blocks in the local
-    pub local_checked: bool,
-    // Since we can only check the blocks from expanded macros
-    // We have to omit the suggestion due to the actual definition
-    // Not being available to us
-    pub macro_expansion: bool,
-}
+declare_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS]);
 
 impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'_>, block: &'_ Block<'_>) {
-        if_chain! {
-            if !self.local_checked;
-            if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id);
-            if !in_external_macro(cx.tcx.sess, block.span);
-            if let BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) = block.rules;
-            if let Some(enclosing_scope_hir_id) = cx.tcx.hir().get_enclosing_scope(block.hir_id);
-            if self.block_has_safety_comment(cx.tcx, enclosing_scope_hir_id, block.span) == Some(false);
-            then {
-                let mut span = block.span;
+        if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+            && !in_external_macro(cx.tcx.sess, block.span)
+            && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
+            && !is_unsafe_from_proc_macro(cx, block)
+            && !block_has_safety_comment(cx, block)
+        {
+            let source_map = cx.tcx.sess.source_map();
+            let span = if source_map.is_multiline(block.span) {
+                source_map.span_until_char(block.span, '\n')
+            } else {
+                block.span
+            };
 
-                if let Some(local_span) = self.local_span {
-                    span = local_span;
-
-                    let result = self.block_has_safety_comment(cx.tcx, enclosing_scope_hir_id, span);
-
-                    if result.unwrap_or(true) {
-                        self.local_checked = true;
-                        return;
-                    }
-                }
-
-                self.lint(cx, span);
-            }
-        }
-    }
-
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &'_ Local<'_>) {
-        if_chain! {
-            if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, local.hir_id);
-            if !in_external_macro(cx.tcx.sess, local.span);
-            if let Some(init) = local.init;
-            then {
-                self.visit_expr(init);
-
-                if self.local_level > 0 {
-                    self.local_span = Some(local.span);
-                }
-            }
-        }
-    }
-
-    fn check_block_post(&mut self, _: &LateContext<'_>, _: &'_ Block<'_>) {
-        self.local_level = self.local_level.saturating_sub(1);
-
-        if self.local_level == 0 {
-            self.local_checked = false;
-            self.local_span = None;
-        }
-    }
-}
-
-impl<'v> Visitor<'v> for UndocumentedUnsafeBlocks {
-    fn visit_expr(&mut self, ex: &'v Expr<'v>) {
-        match ex.kind {
-            ExprKind::Block(_, _) => self.local_level = self.local_level.saturating_add(1),
-            _ => walk_expr(self, ex),
-        }
-    }
-}
-
-impl UndocumentedUnsafeBlocks {
-    fn block_has_safety_comment(&mut self, tcx: TyCtxt<'_>, enclosing_hir_id: HirId, block_span: Span) -> Option<bool> {
-        let map = tcx.hir();
-        let source_map = tcx.sess.source_map();
-
-        let enclosing_scope_span = map.opt_span(enclosing_hir_id)?;
-
-        let between_span = if block_span.from_expansion() {
-            self.macro_expansion = true;
-            enclosing_scope_span.with_hi(block_span.hi()).source_callsite()
-        } else {
-            self.macro_expansion = false;
-            enclosing_scope_span.to(block_span).source_callsite()
-        };
-
-        let file_name = source_map.span_to_filename(between_span);
-        let source_file = source_map.get_source_file(&file_name)?;
-
-        let lex_start = (between_span.lo().0 - source_file.start_pos.0 + 1) as usize;
-        let lex_end = (between_span.hi().0 - source_file.start_pos.0) as usize;
-        let src_str = source_file.src.as_ref()?[lex_start..lex_end].to_string();
-
-        let source_start_pos = source_file.start_pos.0 as usize + lex_start;
-
-        let mut pos = 0;
-        let mut comment = false;
-
-        for token in rustc_lexer::tokenize(&src_str) {
-            match token.kind {
-                TokenKind::LineComment { doc_style: None }
-                | TokenKind::BlockComment {
-                    doc_style: None,
-                    terminated: true,
-                } => {
-                    let comment_str = src_str[pos + 2..pos + token.len].to_ascii_uppercase();
-
-                    if comment_str.contains("SAFETY:") {
-                        comment = true;
-                    }
-                },
-                // We need to add all whitespace to `pos` before checking the comment's line number
-                TokenKind::Whitespace => {},
-                _ => {
-                    if comment {
-                        // Get the line number of the "comment" (really wherever the trailing whitespace ended)
-                        let comment_line_num = source_file
-                            .lookup_file_pos(BytePos((source_start_pos + pos).try_into().unwrap()))
-                            .0;
-                        // Find the block/local's line number
-                        let block_line_num = tcx.sess.source_map().lookup_char_pos(block_span.lo()).line;
-
-                        // Check the comment is immediately followed by the block/local
-                        if block_line_num == comment_line_num + 1 || block_line_num == comment_line_num {
-                            return Some(true);
-                        }
-
-                        comment = false;
-                    }
-                },
-            }
-
-            pos += token.len;
-        }
-
-        Some(false)
-    }
-
-    fn lint(&self, cx: &LateContext<'_>, mut span: Span) {
-        let source_map = cx.tcx.sess.source_map();
-
-        if source_map.is_multiline(span) {
-            span = source_map.span_until_char(span, '\n');
-        }
-
-        if self.macro_expansion {
             span_lint_and_help(
                 cx,
                 UNDOCUMENTED_UNSAFE_BLOCKS,
                 span,
-                "unsafe block in macro expansion missing a safety comment",
-                None,
-                "consider adding a safety comment in the macro definition",
-            );
-        } else {
-            let block_indent = indent_of(cx, span);
-            let suggestion = format!("// SAFETY: ...\n{}", snippet(cx, span, ".."));
-
-            span_lint_and_sugg(
-                cx,
-                UNDOCUMENTED_UNSAFE_BLOCKS,
-                span,
                 "unsafe block missing a safety comment",
-                "consider adding a safety comment",
-                reindent_multiline(Cow::Borrowed(&suggestion), true, block_indent).to_string(),
-                Applicability::HasPlaceholders,
+                None,
+                "consider adding a safety comment on the preceding line",
             );
+        }
+    }
+}
+
+fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
+    let source_map = cx.sess().source_map();
+    let file_pos = source_map.lookup_byte_offset(block.span.lo());
+    file_pos
+        .sf
+        .src
+        .as_deref()
+        .and_then(|src| src.get(file_pos.pos.to_usize()..))
+        .map_or(true, |src| !src.starts_with("unsafe"))
+}
+
+/// Checks if the lines immediately preceding the block contain a safety comment.
+fn block_has_safety_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
+    // This intentionally ignores text before the start of a function so something like:
+    // ```
+    //     // SAFETY: reason
+    //     fn foo() { unsafe { .. } }
+    // ```
+    // won't work. This is to avoid dealing with where such a comment should be place relative to
+    // attributes and doc comments.
+
+    let source_map = cx.sess().source_map();
+    let ctxt = block.span.ctxt();
+    if ctxt != SyntaxContext::root() {
+        // From a macro expansion. Get the text from the start of the macro declaration to start of the unsafe block.
+        //     macro_rules! foo { () => { stuff }; (x) => { unsafe { stuff } }; }
+        //     ^--------------------------------------------^
+        if let Ok(unsafe_line) = source_map.lookup_line(block.span.lo())
+            && let Ok(macro_line) = source_map.lookup_line(ctxt.outer_expn_data().def_site.lo())
+            && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
+            && let Some(src) = unsafe_line.sf.src.as_deref()
+        {
+            macro_line.line < unsafe_line.line && text_has_safety_comment(
+                src,
+                &unsafe_line.sf.lines[macro_line.line + 1..=unsafe_line.line],
+                unsafe_line.sf.start_pos.to_usize(),
+            )
+        } else {
+            // Problem getting source text. Pretend a comment was found.
+            true
+        }
+    } else if let Ok(unsafe_line) = source_map.lookup_line(block.span.lo())
+        && let Some(body) = cx.enclosing_body
+        && let Some(body_span) = walk_span_to_context(cx.tcx.hir().body(body).value.span, SyntaxContext::root())
+        && let Ok(body_line) = source_map.lookup_line(body_span.lo())
+        && Lrc::ptr_eq(&unsafe_line.sf, &body_line.sf)
+        && let Some(src) = unsafe_line.sf.src.as_deref()
+    {
+        // Get the text from the start of function body to the unsafe block.
+        //     fn foo() { some_stuff; unsafe { stuff }; other_stuff; }
+        //              ^-------------^
+        body_line.line < unsafe_line.line && text_has_safety_comment(
+            src,
+            &unsafe_line.sf.lines[body_line.line + 1..=unsafe_line.line],
+            unsafe_line.sf.start_pos.to_usize(),
+        )
+    } else {
+        // Problem getting source text. Pretend a comment was found.
+        true
+    }
+}
+
+/// Checks if the given text has a safety comment for the immediately proceeding line.
+fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) -> bool {
+    let mut lines = line_starts
+        .array_windows::<2>()
+        .rev()
+        .map_while(|[start, end]| {
+            src.get(start.to_usize() - offset..end.to_usize() - offset)
+                .map(|text| (start.to_usize(), text.trim_start()))
+        })
+        .filter(|(_, text)| !text.is_empty());
+
+    let Some((line_start, line)) = lines.next() else {
+        return false;
+    };
+    // Check for a sequence of line comments.
+    if line.starts_with("//") {
+        let mut line = line;
+        loop {
+            if line.to_ascii_uppercase().contains("SAFETY:") {
+                return true;
+            }
+            match lines.next() {
+                Some((_, x)) if x.starts_with("//") => line = x,
+                _ => return false,
+            }
+        }
+    }
+    // No line comments; look for the start of a block comment.
+    // This will only find them if they are at the start of a line.
+    let (mut line_start, mut line) = (line_start, line);
+    loop {
+        if line.starts_with("/*") {
+            let src = src[line_start..line_starts.last().unwrap().to_usize()].trim_start();
+            let mut tokens = tokenize(src);
+            return src[..tokens.next().unwrap().len]
+                .to_ascii_uppercase()
+                .contains("SAFETY:")
+                && tokens.all(|t| t.kind == TokenKind::Whitespace);
+        }
+        match lines.next() {
+            Some(x) => (line_start, line) = x,
+            None => return false,
         }
     }
 }

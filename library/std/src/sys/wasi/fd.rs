@@ -228,6 +228,10 @@ impl WasiFd {
         unsafe { wasi::path_remove_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
+    pub fn sock_accept(&self, flags: wasi::Fdflags) -> io::Result<wasi::Fd> {
+        unsafe { wasi::sock_accept(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
+    }
+
     pub fn sock_recv(
         &self,
         ri_data: &mut [IoSliceMut<'_>],

@@ -220,24 +220,22 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReVar(vid) = *r {
-            if self.region_vars.0.contains(&vid) {
-                let idx = vid.index() - self.region_vars.0.start.index();
-                let origin = self.region_vars.1[idx];
-                return self.infcx.next_region_var(origin);
-            }
+        if let ty::ReVar(vid) = *r && self.region_vars.0.contains(&vid) {
+            let idx = vid.index() - self.region_vars.0.start.index();
+            let origin = self.region_vars.1[idx];
+            return self.infcx.next_region_var(origin);
         }
         r
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Infer(ty::InferConst::Var(vid)), ty } = ct {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.val() {
             if self.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.
                 let idx = (vid.index - self.const_vars.0.start.index) as usize;
                 let origin = self.const_vars.1[idx];
-                self.infcx.next_const_var(ty, origin)
+                self.infcx.next_const_var(ct.ty(), origin)
             } else {
                 ct
             }

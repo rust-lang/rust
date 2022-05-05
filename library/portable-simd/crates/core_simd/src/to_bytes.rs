@@ -8,12 +8,14 @@ macro_rules! impl_to_bytes {
             /// Return the memory representation of this integer as a byte array in native byte
             /// order.
             pub fn to_ne_bytes(self) -> crate::simd::Simd<u8, {{ $size * LANES }}> {
+                // Safety: transmuting between vectors is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             /// Create a native endian integer value from its memory representation as a byte array
             /// in native endianness.
             pub fn from_ne_bytes(bytes: crate::simd::Simd<u8, {{ $size * LANES }}>) -> Self {
+                // Safety: transmuting between vectors is safe
                 unsafe { core::mem::transmute_copy(&bytes) }
             }
         }

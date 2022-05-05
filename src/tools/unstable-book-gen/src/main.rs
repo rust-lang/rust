@@ -67,7 +67,7 @@ fn generate_unstable_book_files(src: &Path, out: &Path, features: &Features) {
     t!(fs::create_dir_all(&out));
     for feature_name in &unstable_features - &unstable_section_file_names {
         let feature_name_underscore = feature_name.replace('-', "_");
-        let file_name = format!("{}.md", feature_name);
+        let file_name = format!("{feature_name}.md");
         let out_file_path = out.join(&file_name);
         let feature = &features[&feature_name_underscore];
 

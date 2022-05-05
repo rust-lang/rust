@@ -46,7 +46,7 @@ fn valid() {
     assert_eq!(parse_positive(b".1e300"), Some(new_number(299, 1)));
     assert_eq!(parse_positive(b"101e-33"), Some(new_number(-33, 101)));
     let zeros = "0".repeat(25);
-    let s = format!("1.5e{}", zeros);
+    let s = format!("1.5e{zeros}");
     assert_eq!(parse_positive(s.as_bytes()), Some(new_number(-1, 15)));
 }
 

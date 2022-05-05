@@ -49,7 +49,7 @@ pub(crate) fn build_backend(
     cmd.env("RUSTFLAGS", rustflags);
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
-    crate::utils::spawn_and_wait(cmd);
+    super::utils::spawn_and_wait(cmd);
 
     Path::new("target").join(host_triple).join(channel)
 }

@@ -217,18 +217,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl Add, add for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl Add<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn add(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0.saturating_add(other))
-            }
-        }
-        forward_ref_binop! { impl Add, add for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl AddAssign for Saturating<$t> {
             #[inline]
@@ -242,7 +230,7 @@ macro_rules! saturating_impl {
         impl AddAssign<$t> for Saturating<$t> {
             #[inline]
             fn add_assign(&mut self, other: $t) {
-                *self = *self + other;
+                *self = *self + Saturating(other);
             }
         }
         forward_ref_op_assign! { impl AddAssign, add_assign for Saturating<$t>, $t }
@@ -259,18 +247,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl Sub, sub for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl Sub<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn sub(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0.saturating_sub(other))
-            }
-        }
-        forward_ref_binop! { impl Sub, sub for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl SubAssign for Saturating<$t> {
             #[inline]
@@ -284,7 +260,7 @@ macro_rules! saturating_impl {
         impl SubAssign<$t> for Saturating<$t> {
             #[inline]
             fn sub_assign(&mut self, other: $t) {
-                *self = *self - other;
+                *self = *self - Saturating(other);
             }
         }
         forward_ref_op_assign! { impl SubAssign, sub_assign for Saturating<$t>, $t }
@@ -301,18 +277,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl Mul, mul for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl Mul<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn mul(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0.saturating_mul(other))
-            }
-        }
-        forward_ref_binop! { impl Mul, mul for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl MulAssign for Saturating<$t> {
             #[inline]
@@ -326,7 +290,7 @@ macro_rules! saturating_impl {
         impl MulAssign<$t> for Saturating<$t> {
             #[inline]
             fn mul_assign(&mut self, other: $t) {
-                *self = *self * other;
+                *self = *self * Saturating(other);
             }
         }
         forward_ref_op_assign! { impl MulAssign, mul_assign for Saturating<$t>, $t }
@@ -362,36 +326,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl Div, div for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        /// # Examples
-        ///
-        /// Basic usage:
-        ///
-        /// ```
-        /// #![feature(saturating_int_impl, saturating_int_assign_impl)]
-        /// use std::num::Saturating;
-        ///
-        #[doc = concat!("assert_eq!(Saturating(2", stringify!($t), "), Saturating(5", stringify!($t), ") / 2);")]
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MAX), Saturating(", stringify!($t), "::MAX) / 1);")]
-        #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN), Saturating(", stringify!($t), "::MIN) / 1);")]
-        /// ```
-        ///
-        /// ```should_panic
-        /// #![feature(saturating_int_impl, saturating_int_assign_impl)]
-        /// use std::num::Saturating;
-        ///
-        #[doc = concat!("let _ = Saturating(0", stringify!($t), ") / 0;")]
-        /// ```
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl Div<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn div(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0.saturating_div(other))
-            }
-        }
-        forward_ref_binop! { impl Div, div for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
 
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl DivAssign for Saturating<$t> {
@@ -406,7 +340,7 @@ macro_rules! saturating_impl {
         impl DivAssign<$t> for Saturating<$t> {
             #[inline]
             fn div_assign(&mut self, other: $t) {
-                *self = *self / other;
+                *self = *self / Saturating(other);
             }
         }
         forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, $t }
@@ -423,18 +357,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl Rem, rem for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl Rem<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn rem(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0.rem(other))
-            }
-        }
-        forward_ref_binop! { impl Rem, rem for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl RemAssign for Saturating<$t> {
             #[inline]
@@ -448,7 +370,7 @@ macro_rules! saturating_impl {
         impl RemAssign<$t> for Saturating<$t> {
             #[inline]
             fn rem_assign(&mut self, other: $t) {
-                *self = *self % other;
+                *self = *self % Saturating(other);
             }
         }
         forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, $t }
@@ -477,18 +399,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl BitXor, bitxor for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl BitXor<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn bitxor(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0 ^ other)
-            }
-        }
-        forward_ref_binop! { impl BitXor, bitxor for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl BitXorAssign for Saturating<$t> {
             #[inline]
@@ -502,7 +412,7 @@ macro_rules! saturating_impl {
         impl BitXorAssign<$t> for Saturating<$t> {
             #[inline]
             fn bitxor_assign(&mut self, other: $t) {
-                *self = *self ^ other;
+                *self = *self ^ Saturating(other);
             }
         }
         forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Saturating<$t>, $t }
@@ -519,18 +429,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl BitOr, bitor for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl BitOr<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn bitor(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0 | other)
-            }
-        }
-        forward_ref_binop! { impl BitOr, bitor for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl BitOrAssign for Saturating<$t> {
             #[inline]
@@ -544,7 +442,7 @@ macro_rules! saturating_impl {
         impl BitOrAssign<$t> for Saturating<$t> {
             #[inline]
             fn bitor_assign(&mut self, other: $t) {
-                *self = *self | other;
+                *self = *self | Saturating(other);
             }
         }
         forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Saturating<$t>, $t }
@@ -561,18 +459,6 @@ macro_rules! saturating_impl {
         forward_ref_binop! { impl BitAnd, bitand for Saturating<$t>, Saturating<$t>,
                 #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
-        #[unstable(feature = "saturating_int_assign_impl", issue = "92354")]
-        impl BitAnd<$t> for Saturating<$t> {
-            type Output = Saturating<$t>;
-
-            #[inline]
-            fn bitand(self, other: $t) -> Saturating<$t> {
-                Saturating(self.0 & other)
-            }
-        }
-        forward_ref_binop! { impl BitAnd, bitand for Saturating<$t>, $t,
-                #[unstable(feature = "saturating_int_assign_impl", issue = "92354")] }
-
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl BitAndAssign for Saturating<$t> {
             #[inline]
@@ -586,7 +472,7 @@ macro_rules! saturating_impl {
         impl BitAndAssign<$t> for Saturating<$t> {
             #[inline]
             fn bitand_assign(&mut self, other: $t) {
-                *self = *self & other;
+                *self = *self & Saturating(other);
             }
         }
         forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, $t }

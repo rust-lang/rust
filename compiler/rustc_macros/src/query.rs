@@ -434,7 +434,9 @@ fn add_query_description_impl(
         #[allow(unused_variables)]
         fn describe(tcx: QueryCtxt<$tcx>, key: Self::Key) -> String {
             let (#tcx, #key) = (*tcx, key);
-            ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
+            ::rustc_middle::ty::print::with_no_trimmed_paths!(
+                format!(#desc)
+            )
         }
     };
 

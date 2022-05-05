@@ -32,32 +32,12 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Trait(pred) => {
-                    if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
-                        continue;
-                    }
-                    match pred.self_ty().kind() {
-                        ty::Param(ref p) => {
-                            let generics = tcx.generics_of(current);
-                            let def = generics.type_param(p, tcx);
-                            let span = tcx.def_span(def.def_id);
-                            return Err((
-                                span,
-                                "trait bounds other than `Sized` \
-                                 on const fn parameters are unstable"
-                                    .into(),
-                            ));
-                        },
-                        // other kinds of bounds are either tautologies
-                        // or cause errors in other passes
-                        _ => continue,
-                    }
-                },
             }
         }
         match predicates.parent {
@@ -149,7 +129,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
-            let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+            let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {
                 (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                     Err((span, "casting pointers to ints is unstable in const fn".into()))
@@ -231,7 +211,8 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } => check_place(tcx, **place, span, body),
+        StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => 
+            check_place(tcx, **place, span, body),
 
         StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
             check_operand(tcx, dst, span, body)?;

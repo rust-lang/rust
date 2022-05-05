@@ -30,54 +30,9 @@ pub struct DecodeUtf16Error {
 }
 
 /// Creates an iterator over the UTF-16 encoded code points in `iter`,
-/// returning unpaired surrogates as `Err`s.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::char::decode_utf16;
-///
-/// // 𝄞mus<invalid>ic<invalid>
-/// let v = [
-///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-/// ];
-///
-/// assert_eq!(
-///     decode_utf16(v.iter().cloned())
-///         .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-///         .collect::<Vec<_>>(),
-///     vec![
-///         Ok('𝄞'),
-///         Ok('m'), Ok('u'), Ok('s'),
-///         Err(0xDD1E),
-///         Ok('i'), Ok('c'),
-///         Err(0xD834)
-///     ]
-/// );
-/// ```
-///
-/// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
-///
-/// ```
-/// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
-///
-/// // 𝄞mus<invalid>ic<invalid>
-/// let v = [
-///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-/// ];
-///
-/// assert_eq!(
-///     decode_utf16(v.iter().cloned())
-///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-///        .collect::<String>(),
-///     "𝄞mus�ic�"
-/// );
-/// ```
-#[stable(feature = "decode_utf16", since = "1.9.0")]
+/// returning unpaired surrogates as `Err`s. See [`char::decode_utf16`].
 #[inline]
-pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
+pub(super) fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
     DecodeUtf16 { iter: iter.into_iter(), buf: None }
 }
 
@@ -91,7 +46,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             None => self.iter.next()?,
         };
 
-        if u < 0xD800 || 0xDFFF < u {
+        if !u.is_utf16_surrogate() {
             // SAFETY: not a surrogate
             Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
         } else if u >= 0xDC00 {
@@ -120,9 +75,34 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.iter.size_hint();
-        // we could be entirely valid surrogates (2 elements per
-        // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+
+        let (low_buf, high_buf) = match self.buf {
+            // buf is empty, no additional elements from it.
+            None => (0, 0),
+            // `u` is a non surrogate, so it's always an additional character.
+            Some(u) if !u.is_utf16_surrogate() => (1, 1),
+            // `u` is a leading surrogate (it can never be a trailing surrogate and
+            // it's a surrogate due to the previous branch) and `self.iter` is empty.
+            //
+            // `u` can't be paired, since the `self.iter` is empty,
+            // so it will always become an additional element (error).
+            Some(_u) if high == Some(0) => (1, 1),
+            // `u` is a leading surrogate and `iter` may be non-empty.
+            //
+            // `u` can either pair with a trailing surrogate, in which case no additional elements
+            // are produced, or it can become an error, in which case it's an additional character (error).
+            Some(_u) => (0, 1),
+        };
+
+        // `self.iter` could contain entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char).
+        //
+        // On odd lower bound, at least one element must stay unpaired
+        // (with other elements from `self.iter`), so we round up.
+        let low = low.div_ceil(2) + low_buf;
+        let high = high.and_then(|h| h.checked_add(high_buf));
+
+        (low, high)
     }
 }
 

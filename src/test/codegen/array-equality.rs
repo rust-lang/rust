@@ -5,20 +5,20 @@
 
 // CHECK-LABEL: @array_eq_value
 #[no_mangle]
-pub fn array_eq_value(a: [u16; 6], b: [u16; 6]) -> bool {
+pub fn array_eq_value(a: [u16; 3], b: [u16; 3]) -> bool {
     // CHECK-NEXT: start:
-    // CHECK-NEXT: %2 = icmp eq i96 %0, %1
+    // CHECK-NEXT: %2 = icmp eq i48 %0, %1
     // CHECK-NEXT: ret i1 %2
     a == b
 }
 
 // CHECK-LABEL: @array_eq_ref
 #[no_mangle]
-pub fn array_eq_ref(a: &[u16; 6], b: &[u16; 6]) -> bool {
+pub fn array_eq_ref(a: &[u16; 3], b: &[u16; 3]) -> bool {
     // CHECK: start:
-    // CHECK: load i96, i96* %{{.+}}, align 2
-    // CHECK: load i96, i96* %{{.+}}, align 2
-    // CHECK: icmp eq i96
+    // CHECK: load i48, i48* %{{.+}}, align 2
+    // CHECK: load i48, i48* %{{.+}}, align 2
+    // CHECK: icmp eq i48
     // CHECK-NEXT: ret
     a == b
 }
@@ -47,11 +47,33 @@ pub fn array_eq_long(a: &[u16; 1234], b: &[u16; 1234]) -> bool {
     a == b
 }
 
-// CHECK-LABEL: @array_eq_zero(i128 %0)
+// CHECK-LABEL: @array_eq_zero_short(i48
 #[no_mangle]
-pub fn array_eq_zero(x: [u16; 8]) -> bool {
+pub fn array_eq_zero_short(x: [u16; 3]) -> bool {
     // CHECK-NEXT: start:
-    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %0, 0
+    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i48 %0, 0
+    // CHECK-NEXT: ret i1 %[[EQ]]
+    x == [0; 3]
+}
+
+// CHECK-LABEL: @array_eq_zero_mid([8 x i16]*
+#[no_mangle]
+pub fn array_eq_zero_mid(x: [u16; 8]) -> bool {
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: bitcast
+    // CHECK-NEXT: %[[LOAD:.+]] = load i128,
+    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %[[LOAD]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     x == [0; 8]
+}
+
+// CHECK-LABEL: @array_eq_zero_long([1234 x i16]*
+#[no_mangle]
+pub fn array_eq_zero_long(x: [u16; 1234]) -> bool {
+    // CHECK-NEXT: start:
+    // CHECK-NOT: alloca
+    // CHECK: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}(
+    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
+    // CHECK-NEXT: ret i1 %[[EQ]]
+    x == [0; 1234]
 }

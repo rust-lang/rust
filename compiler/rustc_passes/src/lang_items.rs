@@ -12,8 +12,8 @@ use crate::weak_lang_items;
 
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{extract, GenericRequirement, ITEM_REFS};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
 use rustc_middle::ty::TyCtxt;
@@ -25,28 +25,6 @@ use rustc_middle::ty::query::Providers;
 struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
-}
-
-impl<'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.check_for_lang(Target::from_item(item), item.hir_id());
-
-        if let hir::ItemKind::Enum(def, ..) = &item.kind {
-            for variant in def.variants {
-                self.check_for_lang(Target::Variant, variant.id);
-            }
-        }
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        self.check_for_lang(Target::from_trait_item(trait_item), trait_item.hir_id())
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.check_for_lang(target_from_impl_item(self.tcx, impl_item), impl_item.hir_id())
-    }
-
-    fn visit_foreign_item(&mut self, _: &hir::ForeignItem<'_>) {}
 }
 
 impl<'tcx> LanguageItemCollector<'tcx> {
@@ -259,7 +237,32 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     }
 
     // Collect lang items in this crate.
-    tcx.hir().visit_all_item_likes(&mut collector);
+    let crate_items = tcx.hir_crate_items(());
+
+    for id in crate_items.items() {
+        collector.check_for_lang(Target::from_def_kind(tcx.hir().def_kind(id.def_id)), id.hir_id());
+
+        if matches!(tcx.hir().def_kind(id.def_id), DefKind::Enum) {
+            let item = tcx.hir().item(id);
+            if let hir::ItemKind::Enum(def, ..) = &item.kind {
+                for variant in def.variants {
+                    collector.check_for_lang(Target::Variant, variant.id);
+                }
+            }
+        }
+    }
+
+    // FIXME: avoid calling trait_item() when possible
+    for id in crate_items.trait_items() {
+        let item = tcx.hir().trait_item(id);
+        collector.check_for_lang(Target::from_trait_item(item), item.hir_id())
+    }
+
+    // FIXME: avoid calling impl_item() when possible
+    for id in crate_items.impl_items() {
+        let item = tcx.hir().impl_item(id);
+        collector.check_for_lang(target_from_impl_item(tcx, item), item.hir_id())
+    }
 
     // Extract out the found lang items.
     let LanguageItemCollector { mut items, .. } = collector;

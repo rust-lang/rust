@@ -121,9 +121,7 @@ fn windows_env_unicode_case() {
             assert_eq!(
                 env::var(key).ok(),
                 value.map(|s| s.to_string_lossy().into_owned()),
-                "command environment mismatch: {} {}",
-                a,
-                b
+                "command environment mismatch: {a} {b}",
             );
         }
     }
@@ -135,6 +133,8 @@ fn windows_env_unicode_case() {
 fn windows_exe_resolver() {
     use super::resolve_exe;
     use crate::io;
+    use crate::sys::fs::symlink;
+    use crate::sys_common::io::test::tmpdir;
 
     let env_paths = || env::var_os("PATH");
 
@@ -178,4 +178,20 @@ fn windows_exe_resolver() {
     // The application's directory is also searched.
     let current_exe = env::current_exe().unwrap();
     assert!(resolve_exe(current_exe.file_name().unwrap().as_ref(), empty_paths, None).is_ok());
+
+    // Create a temporary path and add a broken symlink.
+    let temp = tmpdir();
+    let mut exe_path = temp.path().to_owned();
+    exe_path.push("exists.exe");
+
+    // A broken symlink should still be resolved.
+    // Skip this check if not in CI and creating symlinks isn't possible.
+    let is_ci = env::var("CI").is_ok();
+    let result = symlink("<DOES NOT EXIST>".as_ref(), &exe_path);
+    if is_ci || result.is_ok() {
+        result.unwrap();
+        assert!(
+            resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok()
+        );
+    }
 }

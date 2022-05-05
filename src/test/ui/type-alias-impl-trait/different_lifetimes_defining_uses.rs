@@ -8,8 +8,8 @@ fn foo<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
 }
 
 fn bar<'a, 'b>(a: &'a u32, b: &'b u32) -> OneLifetime<'a, 'b> {
-    //~^ ERROR: concrete type differs from previous defining opaque type use
     b
+    //~^ ERROR: concrete type differs from previous defining opaque type use
 }
 
 fn main() {}

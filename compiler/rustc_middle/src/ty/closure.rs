@@ -116,12 +116,24 @@ impl<'tcx> ClosureKind {
     }
 
     /// Returns the representative scalar type for this closure kind.
-    /// See `TyS::to_opt_closure_kind` for more details.
+    /// See `Ty::to_opt_closure_kind` for more details.
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            ty::ClosureKind::Fn => tcx.types.i8,
-            ty::ClosureKind::FnMut => tcx.types.i16,
-            ty::ClosureKind::FnOnce => tcx.types.i32,
+            ClosureKind::Fn => tcx.types.i8,
+            ClosureKind::FnMut => tcx.types.i16,
+            ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
+    pub fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ClosureKind> {
+        if Some(def_id) == tcx.lang_items().fn_once_trait() {
+            Some(ClosureKind::FnOnce)
+        } else if Some(def_id) == tcx.lang_items().fn_mut_trait() {
+            Some(ClosureKind::FnMut)
+        } else if Some(def_id) == tcx.lang_items().fn_trait() {
+            Some(ClosureKind::Fn)
+        } else {
+            None
         }
     }
 }
@@ -164,7 +176,7 @@ impl<'tcx> CapturedPlace<'tcx> {
                         write!(
                             &mut symbol,
                             "__{}",
-                            def.variants[variant].fields[idx as usize].name.as_str(),
+                            def.variant(variant).fields[idx as usize].name.as_str(),
                         )
                         .unwrap();
                     }
@@ -281,7 +293,7 @@ pub struct CaptureInfo {
     /// let mut t = (0,1);
     ///
     /// let c = || {
-    ///     println!("{}",t); // L1
+    ///     println!("{t}"); // L1
     ///     t.1 = 4; // L2
     /// };
     /// ```
@@ -330,7 +342,7 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
                     curr_string = format!(
                         "{}.{}",
                         curr_string,
-                        def.variants[variant].fields[idx as usize].name.as_str()
+                        def.variant(variant).fields[idx as usize].name.as_str()
                     );
                 }
                 ty::Tuple(_) => {

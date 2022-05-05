@@ -68,7 +68,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for generators aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(ty::TyS::kind) {
+            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
                 let body = body.clone().subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
@@ -137,7 +137,7 @@ fn local_decls_for_sig<'tcx>(
     span: Span,
 ) -> IndexVec<Local, LocalDecl<'tcx>> {
     iter::once(LocalDecl::new(sig.output(), span))
-        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(ity, span).immutable()))
+        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(*ity, span).immutable()))
         .collect()
 }
 
@@ -234,6 +234,8 @@ fn new_body<'tcx>(
         arg_count,
         vec![],
         span,
+        None,
+        // FIXME(compiler-errors): is this correct?
         None,
     )
 }
@@ -459,10 +461,10 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
     fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>, src: Place<'tcx>, tys: I)
     where
-        I: Iterator<Item = Ty<'tcx>>,
+        I: IntoIterator<Item = Ty<'tcx>>,
     {
         let mut previous_field = None;
-        for (i, ity) in tys.enumerate() {
+        for (i, ity) in tys.into_iter().enumerate() {
             let field = Field::new(i);
             let src_field = self.tcx.mk_place_field(src, field, ity);
 
@@ -723,21 +725,19 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let span =
-        tcx.hir().span_if_local(ctor_id).unwrap_or_else(|| bug!("no span for ctor {:?}", ctor_id));
-
     let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
     let sig = tcx.fn_sig(ctor_id).no_bound_vars().expect("LBR in ADT constructor signature");
     let sig = tcx.normalize_erasing_regions(param_env, sig);
 
-    let (adt_def, substs) = match sig.output().kind() {
-        ty::Adt(adt_def, substs) => (adt_def, substs),
-        _ => bug!("unexpected type for ADT ctor {:?}", sig.output()),
+    let ty::Adt(adt_def, substs) = sig.output().kind() else {
+        bug!("unexpected type for ADT ctor {:?}", sig.output());
     };
 
     debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
+
+    let span = tcx.def_span(ctor_id);
 
     let local_decls = local_decls_for_sig(&sig, span);
 
@@ -759,10 +759,10 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let statements = expand_aggregate(
         Place::return_place(),
-        adt_def.variants[variant_index].fields.iter().enumerate().map(|(idx, field_def)| {
+        adt_def.variant(variant_index).fields.iter().enumerate().map(|(idx, field_def)| {
             (Operand::Move(Place::from(Local::new(idx + 1))), field_def.ty(tcx, substs))
         }),
-        AggregateKind::Adt(adt_def.did, variant_index, substs, None, None),
+        AggregateKind::Adt(adt_def.did(), variant_index, substs, None, None),
         source_info,
         tcx,
     )

@@ -11,10 +11,10 @@ where
     /// For each lane in the mask, choose the corresponding lane from `true_values` if
     /// that lane mask is true, and `false_values` if that lane mask is false.
     ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
-    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
+    /// # use core::simd::{Simd, Mask};
     /// let a = Simd::from_array([0, 1, 2, 3]);
     /// let b = Simd::from_array([4, 5, 6, 7]);
     /// let mask = Mask::from_array([true, false, false, true]);
@@ -31,6 +31,8 @@ where
     where
         U: SimdElement<Mask = T>,
     {
+        // Safety: The mask has been cast to a vector of integers,
+        // and the operands to select between are vectors of the same type and length.
         unsafe { intrinsics::simd_select(self.to_int(), true_values, false_values) }
     }
 
@@ -39,10 +41,10 @@ where
     /// For each lane in the mask, choose the corresponding lane from `true_values` if
     /// that lane mask is true, and `false_values` if that lane mask is false.
     ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::Mask;
-    /// # #[cfg(not(feature = "std"))] use core::simd::Mask;
+    /// # use core::simd::Mask;
     /// let a = Mask::<i32, 4>::from_array([true, true, false, false]);
     /// let b = Mask::<i32, 4>::from_array([false, false, true, true]);
     /// let mask = Mask::<i32, 4>::from_array([true, false, false, true]);

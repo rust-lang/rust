@@ -89,6 +89,8 @@ bitflags! {
         /// the MIR `InstrumentCoverage` pass and not added to the coverage map
         /// during codegen.
         const NO_COVERAGE               = 1 << 15;
+        /// `#[used(linker)]`: indicates that LLVM nor the linker can eliminate this function.
+        const USED_LINKER               = 1 << 16;
     }
 }
 

@@ -1,10 +1,10 @@
+use crate::async_iter::AsyncIterator;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::future::Future;
 use crate::ops::{Deref, DerefMut};
 use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
-use crate::stream::Stream;
 use crate::task::{Context, Poll};
 
 /// A marker trait which represents "panic safe" types in Rust.
@@ -279,6 +279,13 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     }
 }
 
+#[stable(feature = "assertunwindsafe_default", since = "1.62.0")]
+impl<T: Default> Default for AssertUnwindSafe<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
@@ -290,8 +297,8 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
     }
 }
 
-#[unstable(feature = "async_stream", issue = "79024")]
-impl<S: Stream> Stream for AssertUnwindSafe<S> {
+#[unstable(feature = "async_iterator", issue = "79024")]
+impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<S::Item>> {

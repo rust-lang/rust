@@ -12,6 +12,7 @@ use std::{env, mem, str};
 
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -75,7 +76,7 @@ pub fn get_linker<'a>(
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
-                let arch = match t.arch.as_str() {
+                let arch = match t.arch.as_ref() {
                     "x86_64" => Some("x64"),
                     "x86" => Some("x86"),
                     "aarch64" => Some("arm64"),
@@ -126,7 +127,6 @@ pub fn get_linker<'a>(
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
-
     match flavor {
         LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
             Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
@@ -149,6 +149,8 @@ pub fn get_linker<'a>(
         LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
 
         LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+
+        LinkerFlavor::L4Bender => Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>,
     }
 }
 
@@ -181,7 +183,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
-    fn debuginfo(&mut self, strip: Strip);
+    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
@@ -609,7 +611,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn debuginfo(&mut self, strip: Strip) {
+    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         // MacOS linker doesn't support stripping symbols directly anymore.
         if self.sess.target.is_like_osx {
             return;
@@ -913,7 +915,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
-    fn debuginfo(&mut self, strip: Strip) {
+    fn debuginfo(&mut self, strip: Strip, debugger_visualizers: &[PathBuf]) {
         match strip {
             Strip::None => {
                 // This will cause the Microsoft linker to generate a PDB file
@@ -939,6 +941,13 @@ impl<'a> Linker for MsvcLinker<'a> {
                             }
                         }
                     }
+                }
+
+                // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
+                for path in debugger_visualizers {
+                    let mut arg = OsString::from("/NATVIS:");
+                    arg.push(path);
+                    self.cmd.arg(arg);
                 }
             }
             Strip::Debuginfo | Strip::Symbols => {
@@ -1122,7 +1131,7 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn debuginfo(&mut self, _strip: Strip) {
+    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
@@ -1313,7 +1322,7 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn pgo_gen(&mut self) {}
 
-    fn debuginfo(&mut self, strip: Strip) {
+    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         match strip {
             Strip::None => {}
             Strip::Debuginfo => {
@@ -1337,7 +1346,7 @@ impl<'a> Linker for WasmLd<'a> {
         }
 
         // LLD will hide these otherwise-internal symbols since it only exports
-        // symbols explicity passed via the `--export` flags above and hides all
+        // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of tooling use this, so be sure these
         // symbols make their way out of the linker as well.
         self.cmd.arg("--export=__heap_base");
@@ -1355,22 +1364,164 @@ impl<'a> Linker for WasmLd<'a> {
     }
 }
 
-pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
-    if let Some(ref exports) = tcx.sess.target.override_export_symbols {
-        return exports.clone();
+/// Linker shepherd script for L4Re (Fiasco)
+pub struct L4Bender<'a> {
+    cmd: Command,
+    sess: &'a Session,
+    hinted_static: bool,
+}
+
+impl<'a> Linker for L4Bender<'a> {
+    fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
+        bug!("dylibs are not supported on L4Re");
+    }
+    fn link_staticlib(&mut self, lib: Symbol, _verbatim: bool) {
+        self.hint_static();
+        self.cmd.arg(format!("-PC{}", lib));
+    }
+    fn link_rlib(&mut self, lib: &Path) {
+        self.hint_static();
+        self.cmd.arg(lib);
+    }
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+    fn framework_path(&mut self, _: &Path) {
+        bug!("frameworks are not supported on L4Re");
+    }
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
     }
 
-    let mut symbols = Vec::new();
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
 
-    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        if level.is_below_threshold(export_threshold) {
-            symbols.push(symbol_export::symbol_name_for_instance_in_crate(
-                tcx,
-                symbol,
-                LOCAL_CRATE,
-            ));
+    fn full_relro(&mut self) {
+        self.cmd.arg("-zrelro");
+        self.cmd.arg("-znow");
+    }
+
+    fn partial_relro(&mut self) {
+        self.cmd.arg("-zrelro");
+    }
+
+    fn no_relro(&mut self) {
+        self.cmd.arg("-znorelro");
+    }
+
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
+    fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
+
+    fn link_rust_dylib(&mut self, _: Symbol, _: &Path) {
+        panic!("Rust dylibs not supported");
+    }
+
+    fn link_framework(&mut self, _framework: Symbol, _as_needed: bool) {
+        bug!("frameworks not supported on L4Re");
+    }
+
+    fn link_whole_staticlib(&mut self, lib: Symbol, _verbatim: bool, _search_path: &[PathBuf]) {
+        self.hint_static();
+        self.cmd.arg("--whole-archive").arg(format!("-l{}", lib));
+        self.cmd.arg("--no-whole-archive");
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        self.hint_static();
+        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
+    }
+
+    fn gc_sections(&mut self, keep_metadata: bool) {
+        if !keep_metadata {
+            self.cmd.arg("--gc-sections");
         }
+    }
+
+    fn no_gc_sections(&mut self) {
+        self.cmd.arg("--no-gc-sections");
+    }
+
+    fn optimize(&mut self) {
+        // GNU-style linkers support optimization with -O. GNU ld doesn't
+        // need a numeric argument, but other linkers do.
+        if self.sess.opts.optimize == config::OptLevel::Default
+            || self.sess.opts.optimize == config::OptLevel::Aggressive
+        {
+            self.cmd.arg("-O1");
+        }
+    }
+
+    fn pgo_gen(&mut self) {}
+
+    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
+        match strip {
+            Strip::None => {}
+            Strip::Debuginfo => {
+                self.cmd().arg("--strip-debug");
+            }
+            Strip::Symbols => {
+                self.cmd().arg("--strip-all");
+            }
+        }
+    }
+
+    fn no_default_libraries(&mut self) {
+        self.cmd.arg("-nostdlib");
+    }
+
+    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
+        // ToDo, not implemented, copy from GCC
+        self.sess.warn("exporting symbols not implemented yet for L4Bender");
+        return;
+    }
+
+    fn subsystem(&mut self, subsystem: &str) {
+        self.cmd.arg(&format!("--subsystem {}", subsystem));
+    }
+
+    fn reset_per_library_state(&mut self) {
+        self.hint_static(); // Reset to default before returning the composed command line.
+    }
+
+    fn group_start(&mut self) {
+        self.cmd.arg("--start-group");
+    }
+
+    fn group_end(&mut self) {
+        self.cmd.arg("--end-group");
+    }
+
+    fn linker_plugin_lto(&mut self) {}
+
+    fn control_flow_guard(&mut self) {}
+
+    fn no_crt_objects(&mut self) {}
+}
+
+impl<'a> L4Bender<'a> {
+    pub fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
+        L4Bender { cmd: cmd, sess: sess, hinted_static: false }
+    }
+
+    fn hint_static(&mut self) {
+        if !self.hinted_static {
+            self.cmd.arg("-static");
+            self.hinted_static = true;
+        }
+    }
+}
+
+fn for_each_exported_symbols_include_dep<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    crate_type: CrateType,
+    mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
+) {
+    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+        callback(symbol, info, LOCAL_CRATE);
     }
 
     let formats = tcx.dependency_formats(());
@@ -1380,16 +1531,52 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
         let cnum = CrateNum::new(index + 1);
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
-            // ... we add its symbol list to our export list.
-            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
-                if !level.is_below_threshold(export_threshold) {
-                    continue;
-                }
-
-                symbols.push(symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum));
+            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
+                callback(symbol, info, cnum);
             }
         }
     }
+}
+
+pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+    if let Some(ref exports) = tcx.sess.target.override_export_symbols {
+        return exports.iter().map(ToString::to_string).collect();
+    }
+
+    let mut symbols = Vec::new();
+
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
+        if info.level.is_below_threshold(export_threshold) {
+            symbols.push(symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum));
+        }
+    });
+
+    symbols
+}
+
+pub(crate) fn linked_symbols(
+    tcx: TyCtxt<'_>,
+    crate_type: CrateType,
+) -> Vec<(String, SymbolExportKind)> {
+    match crate_type {
+        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
+        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
+            return Vec::new();
+        }
+    }
+
+    let mut symbols = Vec::new();
+
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
+        if info.level.is_below_threshold(export_threshold) || info.used {
+            symbols.push((
+                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                info.kind,
+            ));
+        }
+    });
 
     symbols
 }
@@ -1420,7 +1607,7 @@ impl<'a> Linker for PtxLinker<'a> {
         self.cmd.arg("-L").arg(path);
     }
 
-    fn debuginfo(&mut self, _strip: Strip) {
+    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         self.cmd.arg("--debug");
     }
 
@@ -1519,7 +1706,7 @@ impl<'a> Linker for BpfLinker<'a> {
         self.cmd.arg("-L").arg(path);
     }
 
-    fn debuginfo(&mut self, _strip: Strip) {
+    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         self.cmd.arg("--debug");
     }
 

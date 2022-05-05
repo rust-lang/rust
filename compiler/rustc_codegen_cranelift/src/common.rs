@@ -21,7 +21,7 @@ pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
 }
 
 pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
-    match scalar.value {
+    match scalar.primitive() {
         Primitive::Int(int, _sign) => match int {
             Integer::I8 => types::I8,
             Integer::I16 => types::I16,
@@ -61,13 +61,13 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(_) => pointer_ty(tcx),
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 return None;
             } else {
                 pointer_ty(tcx)
             }
         }
-        ty::Adt(adt_def, _) if adt_def.repr.simd() => {
+        ty::Adt(adt_def, _) if adt_def.repr().simd() => {
             let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
             {
                 Abi::Vector { element, count } => (element.clone(), *count),
@@ -90,17 +90,16 @@ fn clif_pair_type_from_ty<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind() {
-        ty::Tuple(substs) if substs.len() == 2 => {
-            let mut types = substs.types();
-            let a = clif_type_from_ty(tcx, types.next().unwrap())?;
-            let b = clif_type_from_ty(tcx, types.next().unwrap())?;
+        ty::Tuple(types) if types.len() == 2 => {
+            let a = clif_type_from_ty(tcx, types[0])?;
+            let b = clif_type_from_ty(tcx, types[1])?;
             if a.is_vector() || b.is_vector() {
                 return None;
             }
             (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;

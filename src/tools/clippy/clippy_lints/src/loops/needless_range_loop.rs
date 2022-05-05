@@ -59,7 +59,7 @@ pub(super) fn check<'tcx>(
                 if let Some(indexed_extent) = indexed_extent {
                     let parent_def_id = cx.tcx.hir().get_parent_item(expr.hir_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
-                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
+                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
@@ -186,7 +186,7 @@ pub(super) fn check<'tcx>(
 
 fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, len_args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, len_args, _) = expr.kind;
         if len_args.len() == 1;
         if method.ident.name == sym::len;
         if let ExprKind::Path(QPath::Resolved(_, path)) = len_args[0].kind;
@@ -262,7 +262,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                 match res {
                     Res::Local(hir_id) => {
                         let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
+                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id).unwrap();
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
@@ -273,7 +273,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                         }
                         return false;  // no need to walk further *on the variable*
                     }
-                    Res::Def(DefKind::Static | DefKind::Const, ..) => {
+                    Res::Def(DefKind::Static (_)| DefKind::Const, ..) => {
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
@@ -296,7 +296,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(meth, _, [args_0, args_1, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(meth, [args_0, args_1, ..], _) = &expr.kind;
             if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(args_1, args_0, expr);
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::MethodCall(_, _, args, _) => {
+            ExprKind::MethodCall(_, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(self.cx.tcx.fn_sig(def_id).inputs().skip_binder(), args) {
                     self.prefer_mutable = false;

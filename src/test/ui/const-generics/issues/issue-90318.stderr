@@ -9,11 +9,19 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const operator in constants
   --> $DIR/issue-90318.rs:14:10
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   |
+LL | #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+   |                       ^^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: overly complex generic constant
   --> $DIR/issue-90318.rs:22:8
@@ -26,11 +34,19 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const operator in constants
   --> $DIR/issue-90318.rs:22:10
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   |
+LL | #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+   |                       ^^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

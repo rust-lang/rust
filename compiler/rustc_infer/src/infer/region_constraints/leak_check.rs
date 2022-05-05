@@ -33,7 +33,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// not entirely true. In particular, in the future, we may extend the
     /// environment with implied bounds or other info about how placeholders
     /// relate to regions in outer universes. In that case, `P1: R` for example
-    /// might become solveable.
+    /// might become solvable.
     ///
     /// # Summary of the implementation
     ///
@@ -100,6 +100,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 struct LeakCheck<'me, 'tcx> {
     tcx: TyCtxt<'tcx>,
     universe_at_start_of_snapshot: ty::UniverseIndex,
+    /// Only used when reporting region errors.
     overly_polymorphic: bool,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
@@ -154,17 +155,17 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             let scc = self.mini_graph.sccs.scc(*leak_check_node);
 
             // Set the universe of each SCC to be the minimum of its constituent universes
-            let universe = self.rcc.universe(region);
+            let universe = self.rcc.universe(*region);
             debug!(
                 "assign_placeholder_values: scc={:?} universe={:?} region={:?}",
                 scc, universe, region
             );
-            self.scc_universes[scc].take_min(universe, region);
+            self.scc_universes[scc].take_min(universe, *region);
 
             // Detect those SCCs that directly contain a placeholder
-            if let ty::RePlaceholder(placeholder) = region {
+            if let ty::RePlaceholder(placeholder) = **region {
                 if self.universe_at_start_of_snapshot.cannot_name(placeholder.universe) {
-                    self.assign_scc_value(scc, *placeholder)?;
+                    self.assign_scc_value(scc, placeholder)?;
                 }
             }
         }
@@ -209,7 +210,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         // * `scc_placeholder[scc1]` stores the placeholder that `scc1` must
         //   be equal to (if any)
         //
-        // For each succssor `scc2` where `scc1: scc2`:
+        // For each successor `scc2` where `scc1: scc2`:
         //
         // * `scc_placeholder[scc2]` stores some placeholder `P` where
         //   `scc2: P` (if any)
@@ -242,7 +243,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             // Update minimum universe of scc1.
             self.scc_universes[scc1] = scc1_universe;
 
-            // At this point, `scc_placholder[scc1]` stores the placeholder that
+            // At this point, `scc_placeholders[scc1]` stores the placeholder that
             // `scc1` must be equal to, if any.
             if let Some(scc1_placeholder) = self.scc_placeholders[scc1] {
                 debug!(

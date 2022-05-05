@@ -5,37 +5,39 @@
 use crate::thir::pattern::pat_from_hir;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_ast as ast;
 use rustc_data_structures::steal::Steal;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 
 crate fn thir_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
-) -> (&'tcx Steal<Thir<'tcx>>, ExprId) {
+) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
     let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(owner_def.did)));
     let mut cx = Cx::new(tcx, owner_def);
-    if cx.typeck_results.tainted_by_errors.is_some() {
-        return (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0));
+    if let Some(reported) = cx.typeck_results.tainted_by_errors {
+        return Err(reported);
     }
     let expr = cx.mirror_expr(&body.value);
-    (tcx.alloc_steal_thir(cx.thir), expr)
+    Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
 crate fn thir_tree<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
 ) -> String {
-    format!("{:#?}", thir_body(tcx, owner_def).0.steal())
+    match thir_body(tcx, owner_def) {
+        Ok((thir, _)) => format!("{:#?}", thir.steal()),
+        Err(_) => "error".into(),
+    }
 }
 
 struct Cx<'tcx> {
@@ -70,25 +72,6 @@ impl<'tcx> Cx<'tcx> {
             typeck_results,
             body_owner: def.did.to_def_id(),
             adjustment_span: None,
-        }
-    }
-
-    crate fn const_eval_literal(
-        &mut self,
-        lit: &'tcx ast::LitKind,
-        ty: Ty<'tcx>,
-        sp: Span,
-        neg: bool,
-    ) -> &'tcx ty::Const<'tcx> {
-        trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
-
-        match self.tcx.at(sp).lit_to_const(LitToConstInput { lit, ty, neg }) {
-            Ok(c) => c,
-            Err(LitToConstError::Reported) => {
-                // create a dummy value and continue compiling
-                self.tcx.const_error(ty)
-            }
-            Err(LitToConstError::TypeError) => bug!("const_eval_literal: had type error"),
         }
     }
 

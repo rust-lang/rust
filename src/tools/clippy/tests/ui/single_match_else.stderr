@@ -19,45 +19,5 @@ LL +         None
 LL +     }
    |
 
-error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:70:5
-   |
-LL | /     match Some(1) {
-LL | |         Some(a) => println!("${:?}", a),
-LL | |         None => {
-LL | |             println!("else block");
-LL | |             return
-LL | |         },
-LL | |     }
-   | |_____^
-   |
-help: try this
-   |
-LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
-LL +         println!("else block");
-LL +         return
-LL +     }
-   |
-
-error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:79:5
-   |
-LL | /     match Some(1) {
-LL | |         Some(a) => println!("${:?}", a),
-LL | |         None => {
-LL | |             println!("else block");
-LL | |             return;
-LL | |         },
-LL | |     }
-   | |_____^
-   |
-help: try this
-   |
-LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
-LL +         println!("else block");
-LL +         return;
-LL +     }
-   |
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

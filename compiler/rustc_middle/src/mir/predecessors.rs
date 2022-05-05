@@ -57,14 +57,14 @@ impl PredecessorCache {
 impl<S: serialize::Encoder> serialize::Encodable<S> for PredecessorCache {
     #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+        s.emit_unit()
     }
 }
 
 impl<D: serialize::Decoder> serialize::Decodable<D> for PredecessorCache {
     #[inline]
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|_v: ()| Self::new())
+    fn decode(_: &mut D) -> Self {
+        Self::new()
     }
 }
 

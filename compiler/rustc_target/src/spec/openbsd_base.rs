@@ -1,11 +1,11 @@
-use crate::spec::{FramePointer, RelroLevel, TargetOptions};
+use crate::spec::{cvs, FramePointer, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        os: "openbsd".to_string(),
+        os: "openbsd".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".to_string()],
+        families: cvs!["unix"],
         has_rpath: true,
         abi_return_struct_as_int: true,
         position_independent_executables: true,

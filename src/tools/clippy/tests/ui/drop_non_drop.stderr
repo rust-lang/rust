@@ -1,0 +1,27 @@
+error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends it's contained lifetimes
+  --> $DIR/drop_non_drop.rs:22:5
+   |
+LL |     drop(Foo);
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::drop-non-drop` implied by `-D warnings`
+note: argument has type `main::Foo`
+  --> $DIR/drop_non_drop.rs:22:10
+   |
+LL |     drop(Foo);
+   |          ^^^
+
+error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends it's contained lifetimes
+  --> $DIR/drop_non_drop.rs:37:5
+   |
+LL |     drop(Baz(Foo));
+   |     ^^^^^^^^^^^^^^
+   |
+note: argument has type `main::Baz<main::Foo>`
+  --> $DIR/drop_non_drop.rs:37:10
+   |
+LL |     drop(Baz(Foo));
+   |          ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -2,7 +2,7 @@
 //! outlives constraints.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
@@ -55,7 +55,7 @@ impl OutlivesSuggestionBuilder {
             | RegionNameSource::NamedFreeRegion(..)
             | RegionNameSource::Static => true,
 
-            // Don't give suggestions for upvars, closure return types, or other unnamable
+            // Don't give suggestions for upvars, closure return types, or other unnameable
             // regions.
             RegionNameSource::SynthesizedFreeEnvRegion(..)
             | RegionNameSource::AnonRegionFromArgument(..)
@@ -162,19 +162,18 @@ impl OutlivesSuggestionBuilder {
         &mut self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
         errci: &ErrorConstraintInfo,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diagnostic,
     ) {
         // Emit an intermediate note.
         let fr_name = self.region_vid_to_name(mbcx, errci.fr);
         let outlived_fr_name = self.region_vid_to_name(mbcx, errci.outlived_fr);
 
-        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name) {
-            if !matches!(outlived_fr_name.source, RegionNameSource::Static) {
-                diag.help(&format!(
-                    "consider adding the following bound: `{}: {}`",
-                    fr_name, outlived_fr_name
-                ));
-            }
+        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name)
+            && !matches!(outlived_fr_name.source, RegionNameSource::Static)
+        {
+            diag.help(&format!(
+                "consider adding the following bound: `{fr_name}: {outlived_fr_name}`",
+            ));
         }
     }
 
@@ -256,6 +255,6 @@ impl OutlivesSuggestionBuilder {
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        diag.buffer(&mut mbcx.errors_buffer);
+        mbcx.buffer_non_error_diag(diag);
     }
 }

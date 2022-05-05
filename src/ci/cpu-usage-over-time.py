@@ -108,37 +108,37 @@ elif sys.platform == 'darwin':
     from ctypes import *
     libc = cdll.LoadLibrary('/usr/lib/libc.dylib')
 
-    PROESSOR_CPU_LOAD_INFO = c_int(2)
+    class host_cpu_load_info_data_t(Structure):
+        _fields_ = [("cpu_ticks", c_uint * 4)]
+
+    host_statistics = libc.host_statistics
+    host_statistics.argtypes = [
+        c_uint,
+        c_int,
+        POINTER(host_cpu_load_info_data_t),
+        POINTER(c_int)
+    ]
+    host_statistics.restype = c_int
+
     CPU_STATE_USER = 0
     CPU_STATE_SYSTEM = 1
     CPU_STATE_IDLE = 2
     CPU_STATE_NICE = 3
-    c_int_p = POINTER(c_int)
-
     class State:
         def __init__(self):
-            num_cpus_u = c_uint(0)
-            cpu_info = c_int_p()
-            cpu_info_cnt = c_int(0)
-            err = libc.host_processor_info(
+            stats = host_cpu_load_info_data_t()
+            count = c_int(4) # HOST_CPU_LOAD_INFO_COUNT
+            err = libc.host_statistics(
                 libc.mach_host_self(),
-                PROESSOR_CPU_LOAD_INFO,
-                byref(num_cpus_u),
-                byref(cpu_info),
-                byref(cpu_info_cnt),
+                c_int(3), # HOST_CPU_LOAD_INFO
+                byref(stats),
+                byref(count),
             )
             assert err == 0
-            self.user = 0
-            self.system = 0
-            self.idle = 0
-            self.nice = 0
-            cur = 0
-            while cur < cpu_info_cnt.value:
-                self.user += cpu_info[cur + CPU_STATE_USER]
-                self.system += cpu_info[cur + CPU_STATE_SYSTEM]
-                self.idle += cpu_info[cur + CPU_STATE_IDLE]
-                self.nice += cpu_info[cur + CPU_STATE_NICE]
-                cur += num_cpus_u.value
+            self.system = stats.cpu_ticks[CPU_STATE_SYSTEM]
+            self.user = stats.cpu_ticks[CPU_STATE_USER]
+            self.idle = stats.cpu_ticks[CPU_STATE_IDLE]
+            self.nice = stats.cpu_ticks[CPU_STATE_NICE]
 
         def idle_since(self, prev):
             user = self.user - prev.user

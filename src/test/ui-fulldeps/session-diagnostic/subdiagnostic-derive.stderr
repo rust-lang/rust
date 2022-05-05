@@ -1,0 +1,389 @@
+error: label without `#[primary_span]` field
+  --> $DIR/subdiagnostic-derive.rs:47:1
+   |
+LL | / #[label(slug = "label-c")]
+LL | |
+LL | | struct C {
+LL | |     var: String,
+LL | | }
+   | |_^
+
+error: `#[label]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:54:1
+   |
+LL | #[label]
+   | ^^^^^^^^
+
+error: `#[foo]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:63:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[label = ...]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:73:1
+   |
+LL | #[label = "..."]
+   | ^^^^^^^^^^^^^^^^
+
+error: `#[label(bug = ...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:82:9
+   |
+LL | #[label(bug = "...")]
+   |         ^^^^^^^^^^^
+   |
+   = help: only `code`, `slug` and `applicability` are valid nested attributes
+
+error: `#[label("...")]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:91:9
+   |
+LL | #[label("...")]
+   |         ^^^^^
+
+error: `#[label(slug = ...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:100:9
+   |
+LL | #[label(slug = 4)]
+   |         ^^^^^^^^
+
+error: `#[label(slug(...))]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:109:9
+   |
+LL | #[label(slug("..."))]
+   |         ^^^^^^^^^^^
+
+error: `#[label(slug)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:118:9
+   |
+LL | #[label(slug)]
+   |         ^^^^
+
+error: `slug` must be set in a `#[label(...)]` attribute
+  --> $DIR/subdiagnostic-derive.rs:127:1
+   |
+LL | #[label()]
+   | ^^^^^^^^^^
+
+error: `code` is not a valid nested attribute of a `label` attribute
+  --> $DIR/subdiagnostic-derive.rs:136:1
+   |
+LL | #[label(code = "...")]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsupported type attribute for subdiagnostic enum
+  --> $DIR/subdiagnostic-derive.rs:145:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[bar]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:159:5
+   |
+LL |     #[bar]
+   |     ^^^^^^
+
+error: `#[bar = ...]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:171:5
+   |
+LL |     #[bar = "..."]
+   |     ^^^^^^^^^^^^^^
+
+error: `#[bar = ...]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:183:5
+   |
+LL |     #[bar = 4]
+   |     ^^^^^^^^^^
+
+error: `#[bar("...")]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:195:11
+   |
+LL |     #[bar("...")]
+   |           ^^^^^
+
+error: `code` is not a valid nested attribute of a `label` attribute
+  --> $DIR/subdiagnostic-derive.rs:207:5
+   |
+LL |     #[label(code = "...")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: subdiagnostic kind not specified
+  --> $DIR/subdiagnostic-derive.rs:224:5
+   |
+LL |     B {
+   |     ^
+
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
+  --> $DIR/subdiagnostic-derive.rs:236:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+
+error: label without `#[primary_span]` field
+  --> $DIR/subdiagnostic-derive.rs:233:1
+   |
+LL | / #[label(slug = "...")]
+LL | |
+LL | | struct V {
+LL | |     #[primary_span]
+LL | |
+LL | |     span: String,
+LL | | }
+   | |_^
+
+error: `#[applicability]` is only valid on suggestions
+  --> $DIR/subdiagnostic-derive.rs:246:5
+   |
+LL |     #[applicability]
+   |     ^^^^^^^^^^^^^^^^
+
+error: `#[bar]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:256:5
+   |
+LL |     #[bar]
+   |     ^^^^^^
+   |
+   = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
+
+error: `#[bar = ...]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:267:5
+   |
+LL |     #[bar = "..."]
+   |     ^^^^^^^^^^^^^^
+
+error: `#[bar(...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:278:5
+   |
+LL |     #[bar("...")]
+   |     ^^^^^^^^^^^^^
+
+error: unexpected unsupported untagged union
+  --> $DIR/subdiagnostic-derive.rs:294:1
+   |
+LL | / union AB {
+LL | |
+LL | |     span: u32,
+LL | |     b: u64
+LL | | }
+   | |_^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:304:9
+   |
+LL | #[label(slug = "label-ac-2")]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:301:9
+   |
+LL | #[label(slug = "label-ac-1")]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:304:1
+   |
+LL | #[label(slug = "label-ac-2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:301:1
+   |
+LL | #[label(slug = "label-ac-1")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:313:30
+   |
+LL | #[label(slug = "label-ad-1", slug = "label-ad-2")]
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:313:9
+   |
+LL | #[label(slug = "label-ad-1", slug = "label-ad-2")]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:327:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:324:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+
+error: subdiagnostic kind not specified
+  --> $DIR/subdiagnostic-derive.rs:333:8
+   |
+LL | struct AF {
+   |        ^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:370:42
+   |
+LL | #[suggestion(slug = "...", code = "...", code = "...")]
+   |                                          ^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:370:28
+   |
+LL | #[suggestion(slug = "...", code = "...", code = "...")]
+   |                            ^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:388:5
+   |
+LL |     #[applicability]
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:385:5
+   |
+LL |     #[applicability]
+   |     ^^^^^^^^^^^^^^^^
+
+error: the `#[applicability]` attribute can only be applied to fields of type `Applicability`
+  --> $DIR/subdiagnostic-derive.rs:399:5
+   |
+LL |     #[applicability]
+   |     ^^^^^^^^^^^^^^^^
+
+error: suggestion without `applicability`
+  --> $DIR/subdiagnostic-derive.rs:394:1
+   |
+LL | / #[suggestion(slug = "...", code = "...")]
+LL | |
+LL | | struct AK {
+LL | |     #[primary_span]
+...  |
+LL | |     applicability: Span,
+LL | | }
+   | |_^
+
+error: suggestion without `applicability`
+  --> $DIR/subdiagnostic-derive.rs:405:1
+   |
+LL | / #[suggestion(slug = "...", code = "...")]
+LL | |
+LL | | struct AL {
+LL | |     #[primary_span]
+LL | |     span: Span,
+LL | | }
+   | |_^
+
+error: suggestion without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:413:1
+   |
+LL | / #[suggestion(slug = "...")]
+LL | |
+LL | | struct AM {
+LL | |     #[primary_span]
+...  |
+LL | |     applicability: Applicability,
+LL | | }
+   | |_^
+
+error: invalid applicability
+  --> $DIR/subdiagnostic-derive.rs:423:41
+   |
+LL | #[suggestion(slug = "...", code ="...", applicability = "foo")]
+   |                                         ^^^^^^^^^^^^^^^^^^^^^
+
+error: suggestion without `applicability`
+  --> $DIR/subdiagnostic-derive.rs:441:1
+   |
+LL | / #[suggestion(slug = "...", code = "...")]
+LL | |
+LL | |
+LL | | struct AQ {
+LL | |     var: String,
+LL | | }
+   | |_^
+
+error: suggestion without `#[primary_span]` field
+  --> $DIR/subdiagnostic-derive.rs:441:1
+   |
+LL | / #[suggestion(slug = "...", code = "...")]
+LL | |
+LL | |
+LL | | struct AQ {
+LL | |     var: String,
+LL | | }
+   | |_^
+
+error: unsupported type attribute for subdiagnostic enum
+  --> $DIR/subdiagnostic-derive.rs:456:1
+   |
+LL | #[label]
+   | ^^^^^^^^
+
+error: `var` doesn't refer to a field on this type
+  --> $DIR/subdiagnostic-derive.rs:476:34
+   |
+LL | #[suggestion(slug = "...", code ="{var}", applicability = "machine-applicable")]
+   |                                  ^^^^^^^
+
+error: `var` doesn't refer to a field on this type
+  --> $DIR/subdiagnostic-derive.rs:495:38
+   |
+LL |     #[suggestion(slug = "...", code ="{var}", applicability = "machine-applicable")]
+   |                                      ^^^^^^^
+
+error: cannot find attribute `foo` in this scope
+  --> $DIR/subdiagnostic-derive.rs:63:3
+   |
+LL | #[foo]
+   |   ^^^
+
+error: cannot find attribute `foo` in this scope
+  --> $DIR/subdiagnostic-derive.rs:145:3
+   |
+LL | #[foo]
+   |   ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:159:7
+   |
+LL |     #[bar]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:171:7
+   |
+LL |     #[bar = "..."]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:183:7
+   |
+LL |     #[bar = 4]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:195:7
+   |
+LL |     #[bar("...")]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:256:7
+   |
+LL |     #[bar]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:267:7
+   |
+LL |     #[bar = "..."]
+   |       ^^^
+
+error: cannot find attribute `bar` in this scope
+  --> $DIR/subdiagnostic-derive.rs:278:7
+   |
+LL |     #[bar("...")]
+   |       ^^^
+
+error: aborting due to 51 previous errors
+

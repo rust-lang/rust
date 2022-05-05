@@ -277,4 +277,26 @@ fn main() {
     }
 }
 
-include!(concat!(env!("OUT_DIR"), "/error_codes.rs"));
+fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
+    let mut long_codes: Vec<(&'static str, Option<&'static str>)> = Vec::new();
+    macro_rules! register_diagnostics {
+        ($($ecode:ident: $message:expr,)*) => (
+            register_diagnostics!{$($ecode:$message,)* ;}
+        );
+
+        ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
+            $(
+                {long_codes.extend([
+                    (stringify!($ecode), Some($message)),
+                ].iter());}
+            )*
+            $(
+                {long_codes.extend([
+                    stringify!($code),
+                ].iter().cloned().map(|s| (s, None)).collect::<Vec<_>>());}
+            )*
+        )
+    }
+    include!(concat!(env!("OUT_DIR"), "/all_error_codes.rs"));
+    long_codes
+}

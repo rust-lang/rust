@@ -28,6 +28,10 @@ note: required by a bound in `Copy`
 LL | pub trait Copy: Clone {
    |                 ^^^^^ required by this bound in `Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Test1` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
 
 error[E0277]: the trait bound `Test2: Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:6:10
@@ -41,6 +45,10 @@ note: required by a bound in `Copy`
 LL | pub trait Copy: Clone {
    |                 ^^^^^ required by this bound in `Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Test2` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
 
 error: aborting due to 5 previous errors
 

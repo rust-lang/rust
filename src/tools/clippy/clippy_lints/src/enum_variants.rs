@@ -172,6 +172,9 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         let name = var.ident.name.as_str();
 
         let variant_split = camel_case_split(name);
+        if variant_split.len() == 1 {
+            return;
+        }
 
         pre = pre
             .iter()
@@ -257,7 +260,7 @@ impl LateLintPass<'_> for EnumVariantNames {
                     }
                     // The `module_name_repetitions` lint should only trigger if the item has the module in its
                     // name. Having the same name is accepted.
-                    if item.vis.node.is_pub() && item_camel.len() > mod_camel.len() {
+                    if cx.tcx.visibility(item.def_id).is_public() && item_camel.len() > mod_camel.len() {
                         let matching = count_match_start(mod_camel, &item_camel);
                         let rmatching = count_match_end(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();

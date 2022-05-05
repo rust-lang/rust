@@ -83,7 +83,7 @@ pub use alloc_crate::alloc::*;
 ///
 /// fn main() {
 ///     let a = Box::new(4); // Allocates from the system allocator.
-///     println!("{}", a);
+///     println!("{a}");
 /// }
 /// ```
 ///
@@ -315,7 +315,18 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
 }
 
 fn default_alloc_error_hook(layout: Layout) {
-    rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
+    extern "Rust" {
+        // This symbol is emitted by rustc next to __rust_alloc_error_handler.
+        // Its value depends on the -Zoom={panic,abort} compiler option.
+        static __rust_alloc_error_handler_should_panic: u8;
+    }
+
+    #[allow(unused_unsafe)]
+    if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
+        panic!("memory allocation of {} bytes failed\n", layout.size());
+    } else {
+        rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
+    }
 }
 
 #[cfg(not(test))]

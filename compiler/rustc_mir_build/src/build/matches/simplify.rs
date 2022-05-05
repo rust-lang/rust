@@ -210,7 +210,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Range(PatRange { lo, hi, end }) => {
-                let (range, bias) = match *lo.ty.kind() {
+                let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
@@ -228,7 +228,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
+                    if let (Some(lo), Some(hi)) =
+                        (lo.val().try_to_bits(sz), hi.val().try_to_bits(sz))
+                    {
                         // We want to compare ranges numerically, but the order of the bitwise
                         // representation of signed integers does not match their numeric order.
                         // Thus, to correct the ordering, we need to shift the range of signed
@@ -262,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.tcx.features().exhaustive_patterns
                             && !v
@@ -274,7 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 )
                                 .is_empty()
                     }
-                }) && (adt_def.did.is_local()
+                }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place_builder = match_pair.place.downcast(adt_def, variant_index);

@@ -1,5 +1,5 @@
 warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/multiple-declarations.rs:4:12
+  --> $DIR/multiple-declarations.rs:5:12
    |
 LL | #![feature(raw_dylib)]
    |            ^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(raw_dylib)]
    = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
 
 error: multiple declarations of external function `f` from library `foo.dll` have different calling conventions
-  --> $DIR/multiple-declarations.rs:14:9
+  --> $DIR/multiple-declarations.rs:15:9
    |
 LL |         fn f(x: i32);
    |         ^^^^^^^^^^^^^

@@ -2,7 +2,7 @@ use crate::methods::SelfKind;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
+use rustc_middle::ty::Ty;
 use rustc_span::source_map::Span;
 use std::fmt;
 
@@ -41,7 +41,7 @@ impl Convention {
     fn check<'tcx>(
         &self,
         cx: &LateContext<'tcx>,
-        self_ty: &'tcx TyS<'tcx>,
+        self_ty: Ty<'tcx>,
         other: &str,
         implements_trait: bool,
         is_trait_item: bool,
@@ -84,8 +84,8 @@ impl fmt::Display for Convention {
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     item_name: &str,
-    self_ty: &'tcx TyS<'tcx>,
-    first_arg_ty: &'tcx TyS<'tcx>,
+    self_ty: Ty<'tcx>,
+    first_arg_ty: Ty<'tcx>,
     first_arg_span: Span,
     implements_trait: bool,
     is_trait_item: bool,

@@ -7,7 +7,7 @@ LL | fn not_all_paths(a: &str) -> u32 {
    |    implicitly returns `()` as its body has no tail or `return` expression
 ...
 LL |     };
-   |      - help: consider removing this semicolon
+   |      - help: remove this semicolon
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-with-different-arm-types-as-stmt-instead-of-expr.rs:26:14

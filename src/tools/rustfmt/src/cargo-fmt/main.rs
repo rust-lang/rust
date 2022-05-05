@@ -387,8 +387,7 @@ fn get_targets_root_only(
                         .unwrap_or_default()
                         == current_dir_manifest
             })
-            .map(|p| p.targets)
-            .flatten()
+            .flat_map(|p| p.targets)
             .collect(),
     };
 

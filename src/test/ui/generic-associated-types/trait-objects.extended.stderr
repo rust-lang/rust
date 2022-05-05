@@ -1,0 +1,12 @@
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/trait-objects.rs:16:7
+   |
+LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize {
+   |                ------------------------------------------------------ help: add explicit lifetime `'a` to the type of `x`: `&'a mut (dyn StreamingIterator<for<'a> Item = &'a i32> + 'a)`
+LL |
+LL |     x.size_hint().0
+   |       ^^^^^^^^^ lifetime `'a` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

@@ -272,22 +272,16 @@ crate fn print_src(
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
-    let mut cols = 0;
-    let mut tmp = lines;
-    while tmp > 0 {
-        cols += 1;
-        tmp /= 10;
-    }
     line_numbers.write_str("<pre class=\"line-numbers\">");
     match source_context {
         SourceContext::Standalone => {
             for line in 1..=lines {
-                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", line, cols)
+                writeln!(line_numbers, "<span id=\"{0}\">{0}</span>", line)
             }
         }
         SourceContext::Embedded { offset } => {
             for line in 1..=lines {
-                writeln!(line_numbers, "<span>{0:1$}</span>", line + offset, cols)
+                writeln!(line_numbers, "<span>{0}</span>", line + offset)
             }
         }
     }

@@ -26,16 +26,14 @@ const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::target_abi, sym::cfg_target_abi, cfg_fn!(cfg_target_abi)),
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
-    (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (
         sym::target_has_atomic_equal_alignment,
-        sym::cfg_target_has_atomic,
-        cfg_fn!(cfg_target_has_atomic),
+        sym::cfg_target_has_atomic_equal_alignment,
+        cfg_fn!(cfg_target_has_atomic_equal_alignment),
     ),
+    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
     (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
-    (sym::panic, sym::cfg_panic, cfg_fn!(cfg_panic)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -284,6 +282,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
     ),
+    gated!(
+        expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk,
+        lint_reasons, experimental!(expect)
+    ),
     ungated!(
         forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
     ),
@@ -308,7 +310,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Crate properties:
     ungated!(crate_name, CrateLevel, template!(NameValueStr: "name"), FutureWarnFollowing),
-    ungated!(crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), FutureWarnFollowing),
+    ungated!(crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk),
     // crate_id is deprecated
     ungated!(crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing),
 
@@ -324,7 +326,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing),
-    ungated!(used, Normal, template!(Word), WarnFollowing),
+    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -339,7 +341,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(main, Normal, template!(Word), WarnFollowing),
     ungated!(start, Normal, template!(Word), WarnFollowing),
     ungated!(no_start, CrateLevel, template!(Word), WarnFollowing),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing),
@@ -378,6 +379,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Unstable attributes:
     // ==========================================================================
 
+    // RFC #3191: #[debugger_visualizer] support
+    gated!(
+        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...""#),
+        DuplicatesOk, experimental!(debugger_visualizer)
+    ),
+
     // Linking:
     gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
     gated!(
@@ -403,7 +410,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     },
 
     // Testing:
-    gated!(allow_fail, Normal, template!(Word), WarnFollowing, experimental!(allow_fail)),
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing, custom_test_frameworks,
         "custom test frameworks are an unstable feature",
@@ -452,16 +458,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
         as `const`, which may be removed or renamed in the future."
     ),
+    // lang-team MCP 147
+    gated!(
+        deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
+        experimental!(deprecated_safe),
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
 
-    ungated!(feature, CrateLevel, template!(List: "name1, name1, ..."), DuplicatesOk),
+    ungated!(feature, CrateLevel, template!(List: "name1, name2, ..."), DuplicatesOk),
     // DuplicatesOk since it has its own validation
     ungated!(
         rustc_deprecated, Normal,
-        template!(List: r#"since = "version", reason = "...""#), DuplicatesOk // See E0550
+        template!(List: r#"since = "version", note = "...""#), DuplicatesOk // See E0550
     ),
     // DuplicatesOk since it has its own validation
     ungated!(
@@ -581,6 +592,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_trivial_field_reads, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+    // Used by the `rustc::potential_query_instability` lint to warn methods which
+    // might not be stable during incremental compilation.
+    rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
@@ -603,17 +617,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
         "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
     rustc_attr!(
         rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
 
     // ==========================================================================
@@ -625,8 +639,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_pass_by_value, Normal,
-        template!(Word), WarnFollowing,
+        template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+    ),
+    rustc_attr!(
+        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing,
+        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+    ),
+    rustc_attr!(
+        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,

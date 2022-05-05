@@ -39,8 +39,7 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct DebugScope<S, L> {
-    // FIXME(eddyb) this should never be `None`, after initialization.
-    pub dbg_scope: Option<S>,
+    pub dbg_scope: S,
 
     /// Call site location, if this scope was inlined from another function.
     pub inlined_at: Option<L>,
@@ -61,17 +60,12 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
         cx: &Cx,
         span: Span,
     ) -> S {
-        // FIXME(eddyb) this should never be `None`.
-        let dbg_scope = self
-            .dbg_scope
-            .unwrap_or_else(|| bug!("`dbg_scope` is only `None` during initialization"));
-
         let pos = span.lo();
         if pos < self.file_start_pos || pos >= self.file_end_pos {
             let sm = cx.sess().source_map();
-            cx.extend_scope_to_file(dbg_scope, &sm.lookup_char_pos(pos).file)
+            cx.extend_scope_to_file(self.dbg_scope, &sm.lookup_char_pos(pos).file)
         } else {
-            dbg_scope
+            self.dbg_scope
         }
     }
 }
@@ -258,14 +252,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let vars = vars.iter().copied().chain(fallback_var);
 
         for var in vars {
-            let dbg_var = match var.dbg_var {
-                Some(dbg_var) => dbg_var,
-                None => continue,
-            };
-            let dbg_loc = match self.dbg_loc(var.source_info) {
-                Some(dbg_loc) => dbg_loc,
-                None => continue,
-            };
+            let Some(dbg_var) = var.dbg_var else { continue };
+            let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
             let mut direct_offset = Size::ZERO;
             // FIXME(eddyb) use smallvec here.
@@ -410,10 +398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::VarDebugInfoContents::Const(c) => {
                     if let Some(dbg_var) = dbg_var {
-                        let dbg_loc = match self.dbg_loc(var.source_info) {
-                            Some(dbg_loc) => dbg_loc,
-                            None => continue,
-                        };
+                        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
                         if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
                             let base = Self::spill_operand_to_stack(

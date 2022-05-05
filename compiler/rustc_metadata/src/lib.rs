@@ -1,14 +1,18 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
+#![feature(generators)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]
+#![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
+#![feature(slice_as_chunks)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
 
 extern crate proc_macro;
 

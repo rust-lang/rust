@@ -7,7 +7,7 @@ The tracking issue for this feature is: [#44930]
 ------------------------
 
 The `c_variadic` language feature enables C-variadic functions to be
-defined in Rust. The may be called both from within Rust and via FFI.
+defined in Rust. They may be called both from within Rust and via FFI.
 
 ## Examples
 

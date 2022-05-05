@@ -1,8 +1,8 @@
 use std::env;
+use std::ffi::{OsStr, OsString};
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use build_helper::{output, tracked_env_var_os};
+use std::process::{Command, Stdio};
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
@@ -14,13 +14,74 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
     }
 }
 
+// Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
+// break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
+// shared library, which means that when our freshly built llvm-config goes to load it's
+// associated LLVM, it actually loads the compiler's LLVM. In particular when building the first
+// compiler (i.e., in stage 0) that's a problem, as the compiler's LLVM is likely different from
+// the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
+// perfect -- we might actually want to see something from Cargo's added library paths -- but
+// for now it works.
+fn restore_library_path() {
+    let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
+    if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
+        env::set_var(&key, &env);
+    } else {
+        env::remove_var(&key);
+    }
+}
+
+/// Reads an environment variable and adds it to dependencies.
+/// Supposed to be used for all variables except those set for build scripts by cargo
+/// <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts>
+fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString> {
+    println!("cargo:rerun-if-env-changed={}", key);
+    env::var_os(key)
+}
+
+fn rerun_if_changed_anything_in_dir(dir: &Path) {
+    let mut stack = dir
+        .read_dir()
+        .unwrap()
+        .map(|e| e.unwrap())
+        .filter(|e| &*e.file_name() != ".git")
+        .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
+}
+
+#[track_caller]
+fn output(cmd: &mut Command) -> String {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => {
+            println!("\n\nfailed to execute command: {:?}\nerror: {}\n\n", cmd, e);
+            std::process::exit(1);
+        }
+    };
+    if !output.status.success() {
+        panic!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}",
+            cmd, output.status
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
+}
+
 fn main() {
     if tracked_env_var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
         return;
     }
 
-    build_helper::restore_library_path();
+    restore_library_path();
 
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config =
@@ -160,7 +221,7 @@ fn main() {
         cfg.debug(false);
     }
 
-    build_helper::rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
+    rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
     cfg.file("llvm-wrapper/PassWrapper.cpp")
         .file("llvm-wrapper/RustWrapper.cpp")
         .file("llvm-wrapper/ArchiveWrapper.cpp")

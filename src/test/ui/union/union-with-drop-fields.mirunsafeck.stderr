@@ -1,32 +1,35 @@
-error[E0740]: unions may not contain fields that need dropping
+error[E0740]: unions cannot contain fields that may need dropping
   --> $DIR/union-with-drop-fields.rs:11:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
    |
-help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
    |
 LL |     a: std::mem::ManuallyDrop<String>,
    |        +++++++++++++++++++++++      +
 
-error[E0740]: unions may not contain fields that need dropping
+error[E0740]: unions cannot contain fields that may need dropping
   --> $DIR/union-with-drop-fields.rs:19:5
    |
 LL |     a: S,
    |     ^^^^
    |
-help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
    |
 LL |     a: std::mem::ManuallyDrop<S>,
    |        +++++++++++++++++++++++ +
 
-error[E0740]: unions may not contain fields that need dropping
+error[E0740]: unions cannot contain fields that may need dropping
   --> $DIR/union-with-drop-fields.rs:24:5
    |
 LL |     a: T,
    |     ^^^^
    |
-help: wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
    |
 LL |     a: std::mem::ManuallyDrop<T>,
    |        +++++++++++++++++++++++ +

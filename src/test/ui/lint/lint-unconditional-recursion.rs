@@ -149,4 +149,46 @@ pub fn panics(x: bool) {
     }
 }
 
+pub fn unreachable1() {
+    panic!();
+    unreachable1(); // WARN unreachable statement
+}
+
+pub fn unreachable2() {
+    loop {}
+    unreachable2(); // WARN unreachable statement
+}
+
+pub fn drop_and_replace(mut a: Option<String>) { //~ ERROR function cannot return without recursing
+    a = None;
+    drop_and_replace(a);
+}
+
+// Calls are assumed to return normally.
+pub fn call() -> String { //~ ERROR function cannot return without recursing
+    let s = String::new();
+    call();
+    s
+}
+
+// Arithmetic operations are assumed not to overflow.
+pub fn overflow_check(a: i32, b: i32) { //~ ERROR function cannot return without recursing
+    let _ = a + b;
+    overflow_check(a, b);
+}
+
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Default for Point {
+    fn default() -> Self { //~ ERROR function cannot return without recursing
+        Point {
+            x: Default::default(),
+            ..Default::default()
+        }
+    }
+}
+
 fn main() {}

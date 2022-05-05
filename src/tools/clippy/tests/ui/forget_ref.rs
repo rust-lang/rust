@@ -1,6 +1,6 @@
 #![warn(clippy::forget_ref)]
 #![allow(clippy::toplevel_ref_arg)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::forget_non_drop)]
 
 use std::mem::forget;
 

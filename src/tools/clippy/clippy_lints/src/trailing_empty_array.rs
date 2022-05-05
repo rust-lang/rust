@@ -10,7 +10,7 @@ declare_clippy_lint! {
     /// Displays a warning when a struct with a trailing zero-sized array is declared without a `repr` attribute.
     ///
     /// ### Why is this bad?
-    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjuction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
+    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjunction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
     ///
     /// ### Example
     /// ```rust

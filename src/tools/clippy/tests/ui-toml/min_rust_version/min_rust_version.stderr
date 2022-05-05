@@ -1,0 +1,10 @@
+error: you are using an explicit closure for copying elements
+  --> $DIR/min_rust_version.rs:74:26
+   |
+LL |     let _: Option<u64> = Some(&16).map(|b| *b);
+   |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `Some(&16).cloned()`
+   |
+   = note: `-D clippy::map-clone` implied by `-D warnings`
+
+error: aborting due to previous error
+

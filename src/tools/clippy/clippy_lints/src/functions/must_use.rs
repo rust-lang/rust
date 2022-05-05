@@ -108,7 +108,7 @@ fn check_needless_must_use(
                 diag.span_suggestion(
                     attr.span,
                     "remove the attribute",
-                    "".into(),
+                    "",
                     Applicability::MachineApplicable,
                 );
             },
@@ -189,11 +189,11 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(adt, substs) => {
-            tys.insert(adt.did) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
-                || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
+            tys.insert(adt.did()) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+                || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did(), path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
         },
-        ty::Tuple(substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
+        ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
@@ -217,7 +217,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             return;
         }
         match expr.kind {
-            Call(_, args) | MethodCall(_, _, args, _) => {
+            Call(_, args) | MethodCall(_, args, _) => {
                 let mut tys = DefIdSet::default();
                 for arg in args {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())

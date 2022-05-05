@@ -3,8 +3,8 @@ use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit as hir_visit;
@@ -31,6 +31,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, 
 
 use std::convert::TryInto;
 use std::iter;
+use std::lazy::Lazy;
 use std::ops::ControlFlow;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -229,8 +230,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         .struct_span_err(
                             self_ty.span,
                             &format!(
-                                "first argument of `call` in `{}` lang item must be a reference",
-                                fn_lang_item_name
+                                "first argument of `call` in `{fn_lang_item_name}` lang item must be a reference",
                             ),
                         )
                         .emit();
@@ -240,8 +240,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     .struct_span_err(
                         *span,
                         &format!(
-                            "`call` function in `{}` lang item takes exactly two arguments",
-                            fn_lang_item_name
+                            "`call` function in `{fn_lang_item_name}` lang item takes exactly two arguments",
                         ),
                     )
                     .emit();
@@ -251,258 +250,188 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .struct_span_err(
                     trait_item.span,
                     &format!(
-                        "`call` trait item in `{}` lang item must be a function",
-                        fn_lang_item_name
+                        "`call` trait item in `{fn_lang_item_name}` lang item must be a function",
                     ),
                 )
                 .emit();
         }
     }
-
-    check_gat_where_clauses(tcx, trait_item, encl_trait_def_id);
 }
 
 /// Require that the user writes where clauses on GATs for the implicit
 /// outlives bounds involving trait parameters in trait functions and
 /// lifetimes passed as GAT substs. See `self-outlives-lint` test.
 ///
-/// This trait will be our running example. We are currently WF checking the `Item` item...
-///
-/// ```rust
-/// trait LendingIterator {
-///   type Item<'me>; // <-- WF checking this trait item
-///
-///   fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+/// We use the following trait as an example throughout this function:
+/// ```rust,ignore (this code fails due to this lint)
+/// trait IntoIter {
+///     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+///     type Item<'a>;
+///     fn into_iter<'a>(&'a self) -> Self::Iter<'a>;
 /// }
 /// ```
-fn check_gat_where_clauses(
-    tcx: TyCtxt<'_>,
-    trait_item: &hir::TraitItem<'_>,
-    encl_trait_def_id: DefId,
-) {
-    let item = tcx.associated_item(trait_item.def_id);
-    // If the current trait item isn't a type, it isn't a GAT
-    if !matches!(item.kind, ty::AssocKind::Type) {
-        return;
-    }
-    let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
-    // If the current associated type doesn't have any (own) params, it's not a GAT
-    // FIXME(jackh726): we can also warn in the more general case
-    if generics.params.len() == 0 {
-        return;
-    }
-    let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
-    let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
-    // For every function in this trait...
-    // In our example, this would be the `next` method
-    for item in
-        associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
-    {
-        // The clauses we that we would require from this function
-        let mut function_clauses = FxHashSet::default();
+fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRef]) {
+    // Associates every GAT's def_id to a list of possibly missing bounds detected by this lint.
+    let mut required_bounds_by_item = FxHashMap::default();
 
-        let id = hir::HirId::make_owner(item.def_id.expect_local());
-        let param_env = tcx.param_env(item.def_id.expect_local());
-
-        let sig = tcx.fn_sig(item.def_id);
-        // Get the signature using placeholders. In our example, this would
-        // convert the late-bound 'a into a free region.
-        let sig = tcx.liberate_late_bound_regions(item.def_id, sig);
-        // Collect the arguments that are given to this GAT in the return type
-        // of  the function signature. In our example, the GAT in the return
-        // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
-        let (regions, types) =
-            GATSubstCollector::visit(trait_item.def_id.to_def_id(), sig.output());
-
-        // If both regions and types are empty, then this GAT isn't in the
-        // return type, and we shouldn't try to do clause analysis
-        // (particularly, doing so would end up with an empty set of clauses,
-        // since the current method would require none, and we take the
-        // intersection of requirements of all methods)
-        if types.is_empty() && regions.is_empty() {
-            continue;
-        }
-
-        // The types we can assume to be well-formed. In our example, this
-        // would be &'a mut Self, from the first argument.
-        let mut wf_tys = FxHashSet::default();
-        wf_tys.extend(sig.inputs());
-
-        // For each region argument (e.g., 'a in our example), check for a
-        // relationship to the type arguments (e.g., Self). If there is an
-        // outlives relationship (`Self: 'a`), then we want to ensure that is
-        // reflected in a where clause on the GAT itself.
-        for (region, region_idx) in &regions {
-            // Ignore `'static` lifetimes for the purpose of this lint: it's
-            // because we know it outlives everything and so doesn't give meaninful
-            // clues
-            if let ty::ReStatic = region {
+    // Loop over all GATs together, because if this lint suggests adding a where-clause bound
+    // to one GAT, it might then require us to an additional bound on another GAT.
+    // In our `IntoIter` example, we discover a missing `Self: 'a` bound on `Iter<'a>`, which
+    // then in a second loop adds a `Self: 'a` bound to `Item` due to the relationship between
+    // those GATs.
+    loop {
+        let mut should_continue = false;
+        for gat_item in associated_items {
+            let gat_def_id = gat_item.id.def_id;
+            let gat_item = tcx.associated_item(gat_def_id);
+            // If this item is not an assoc ty, or has no substs, then it's not a GAT
+            if gat_item.kind != ty::AssocKind::Type {
                 continue;
             }
-            for (ty, ty_idx) in &types {
-                // In our example, requires that Self: 'a
-                if ty_known_to_outlive(tcx, id, param_env, &wf_tys, *ty, *region) {
-                    debug!(?ty_idx, ?region_idx);
-                    debug!("required clause: {} must outlive {}", ty, region);
-                    // Translate into the generic parameters of the GAT. In
-                    // our example, the type was Self, which will also be
-                    // Self in the GAT.
-                    let ty_param = generics.param_at(*ty_idx, tcx);
-                    let ty_param = tcx.mk_ty(ty::Param(ty::ParamTy {
-                        index: ty_param.index,
-                        name: ty_param.name,
-                    }));
-                    // Same for the region. In our example, 'a corresponds
-                    // to the 'me parameter.
-                    let region_param = generics.param_at(*region_idx, tcx);
-                    let region_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_param.def_id,
-                            index: region_param.index,
-                            name: region_param.name,
-                        }));
-                    // The predicate we expect to see. (In our example,
-                    // `Self: 'me`.)
-                    let clause = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                        ty_param,
-                        region_param,
-                    ));
-                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
-                    function_clauses.insert(clause);
-                }
-            }
-        }
-
-        // For each region argument (e.g., 'a in our example), also check for a
-        // relationship to the other region arguments. If there is an
-        // outlives relationship, then we want to ensure that is
-        // reflected in a where clause on the GAT itself.
-        for (region_a, region_a_idx) in &regions {
-            // Ignore `'static` lifetimes for the purpose of this lint: it's
-            // because we know it outlives everything and so doesn't give meaninful
-            // clues
-            if let ty::ReStatic = region_a {
+            let gat_generics = tcx.generics_of(gat_def_id);
+            // FIXME(jackh726): we can also warn in the more general case
+            if gat_generics.params.is_empty() {
                 continue;
             }
-            for (region_b, region_b_idx) in &regions {
-                if region_a == region_b {
-                    continue;
-                }
-                if let ty::ReStatic = region_b {
+
+            // Gather the bounds with which all other items inside of this trait constrain the GAT.
+            // This is calculated by taking the intersection of the bounds that each item
+            // constrains the GAT with individually.
+            let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
+            for item in associated_items {
+                let item_def_id = item.id.def_id;
+                // Skip our own GAT, since it does not constrain itself at all.
+                if item_def_id == gat_def_id {
                     continue;
                 }
 
-                if region_known_to_outlive(tcx, id, param_env, &wf_tys, *region_a, *region_b) {
-                    debug!(?region_a_idx, ?region_b_idx);
-                    debug!("required clause: {} must outlive {}", region_a, region_b);
-                    // Translate into the generic parameters of the GAT.
-                    let region_a_param = generics.param_at(*region_a_idx, tcx);
-                    let region_a_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_a_param.def_id,
-                            index: region_a_param.index,
-                            name: region_a_param.name,
-                        }));
-                    // Same for the region.
-                    let region_b_param = generics.param_at(*region_b_idx, tcx);
-                    let region_b_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_b_param.def_id,
-                            index: region_b_param.index,
-                            name: region_b_param.name,
-                        }));
-                    // The predicate we expect to see.
-                    let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                        region_a_param,
-                        region_b_param,
-                    ));
-                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
-                    function_clauses.insert(clause);
+                let item_hir_id = item.id.hir_id();
+                let param_env = tcx.param_env(item_def_id);
+
+                let item_required_bounds = match item.kind {
+                    // In our example, this corresponds to `into_iter` method
+                    hir::AssocItemKind::Fn { .. } => {
+                        // For methods, we check the function signature's return type for any GATs
+                        // to constrain. In the `into_iter` case, we see that the return type
+                        // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
+                        let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
+                            item_def_id.to_def_id(),
+                            tcx.fn_sig(item_def_id),
+                        );
+                        gather_gat_bounds(
+                            tcx,
+                            param_env,
+                            item_hir_id,
+                            sig.output(),
+                            // We also assume that all of the function signature's parameter types
+                            // are well formed.
+                            &sig.inputs().iter().copied().collect(),
+                            gat_def_id,
+                            gat_generics,
+                        )
+                    }
+                    // In our example, this corresponds to the `Iter` and `Item` associated types
+                    hir::AssocItemKind::Type => {
+                        // If our associated item is a GAT with missing bounds, add them to
+                        // the param-env here. This allows this GAT to propagate missing bounds
+                        // to other GATs.
+                        let param_env = augment_param_env(
+                            tcx,
+                            param_env,
+                            required_bounds_by_item.get(&item_def_id),
+                        );
+                        gather_gat_bounds(
+                            tcx,
+                            param_env,
+                            item_hir_id,
+                            tcx.explicit_item_bounds(item_def_id)
+                                .iter()
+                                .copied()
+                                .collect::<Vec<_>>(),
+                            &FxHashSet::default(),
+                            gat_def_id,
+                            gat_generics,
+                        )
+                    }
+                    hir::AssocItemKind::Const => None,
+                };
+
+                if let Some(item_required_bounds) = item_required_bounds {
+                    // Take the intersection of the required bounds for this GAT, and
+                    // the item_required_bounds which are the ones implied by just
+                    // this item alone.
+                    // This is why we use an Option<_>, since we need to distinguish
+                    // the empty set of bounds from the _uninitialized_ set of bounds.
+                    if let Some(new_required_bounds) = &mut new_required_bounds {
+                        new_required_bounds.retain(|b| item_required_bounds.contains(b));
+                    } else {
+                        new_required_bounds = Some(item_required_bounds);
+                    }
+                }
+            }
+
+            if let Some(new_required_bounds) = new_required_bounds {
+                let required_bounds = required_bounds_by_item.entry(gat_def_id).or_default();
+                if new_required_bounds.into_iter().any(|p| required_bounds.insert(p)) {
+                    // Iterate until our required_bounds no longer change
+                    // Since they changed here, we should continue the loop
+                    should_continue = true;
                 }
             }
         }
-
-        // Imagine we have:
-        // ```
-        // trait Foo {
-        //   type Bar<'me>;
-        //   fn gimme(&self) -> Self::Bar<'_>;
-        //   fn gimme_default(&self) -> Self::Bar<'static>;
-        // }
-        // ```
-        // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
-        // case, `'me` can be `static` from `gimme_default`)
-        match clauses.as_mut() {
-            Some(clauses) => {
-                clauses.drain_filter(|p| !function_clauses.contains(p));
-            }
-            None => {
-                clauses = Some(function_clauses);
-            }
+        // We know that this loop will eventually halt, since we only set `should_continue` if the
+        // `required_bounds` for this item grows. Since we are not creating any new region or type
+        // variables, the set of all region and type bounds that we could ever insert are limited
+        // by the number of unique types and regions we observe in a given item.
+        if !should_continue {
+            break;
         }
     }
 
-    // If there are any clauses that aren't provable, emit an error
-    let clauses = clauses.unwrap_or_default();
-    debug!(?clauses);
-    if !clauses.is_empty() {
-        let param_env = tcx.param_env(trait_item.def_id);
+    for (gat_def_id, required_bounds) in required_bounds_by_item {
+        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id);
+        debug!(?required_bounds);
+        let param_env = tcx.param_env(gat_def_id);
+        let gat_hir = gat_item_hir.hir_id();
 
-        let mut clauses: Vec<_> = clauses
+        let mut unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !region_known_to_outlive(
-                        tcx,
-                        trait_item.hir_id(),
-                        param_env,
-                        &FxHashSet::default(),
-                        a,
-                        b,
-                    )
+                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
                 }
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !ty_known_to_outlive(
-                        tcx,
-                        trait_item.hir_id(),
-                        param_env,
-                        &FxHashSet::default(),
-                        a,
-                        b,
-                    )
+                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
                 }
                 _ => bug!("Unexpected PredicateKind"),
             })
-            .map(|clause| format!("{}", clause))
+            .map(|clause| clause.to_string())
             .collect();
 
         // We sort so that order is predictable
-        clauses.sort();
+        unsatisfied_bounds.sort();
 
-        if !clauses.is_empty() {
-            let plural = if clauses.len() > 1 { "s" } else { "" };
+        if !unsatisfied_bounds.is_empty() {
+            let plural = if unsatisfied_bounds.len() > 1 { "s" } else { "" };
             let mut err = tcx.sess.struct_span_err(
-                trait_item.span,
-                &format!("missing required bound{} on `{}`", plural, trait_item.ident),
+                gat_item_hir.span,
+                &format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
             );
 
             let suggestion = format!(
                 "{} {}",
-                if !trait_item.generics.where_clause.predicates.is_empty() {
-                    ","
-                } else {
-                    " where"
-                },
-                clauses.join(", "),
+                if !gat_item_hir.generics.predicates.is_empty() { "," } else { " where" },
+                unsatisfied_bounds.join(", "),
             );
             err.span_suggestion(
-                trait_item.generics.where_clause.tail_span_for_suggestion(),
-                &format!("add the required where clause{}", plural),
+                gat_item_hir.generics.tail_span_for_predicate_suggestion(),
+                &format!("add the required where clause{plural}"),
                 suggestion,
                 Applicability::MachineApplicable,
             );
 
-            let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
+            let bound =
+                if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
             err.note(&format!(
                 "{} currently required to ensure that impls have maximum flexibility",
                 bound
@@ -513,9 +442,146 @@ fn check_gat_where_clauses(
                  for more information",
             );
 
-            err.emit()
+            err.emit();
         }
     }
+}
+
+/// Add a new set of predicates to the caller_bounds of an existing param_env.
+fn augment_param_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    new_predicates: Option<&FxHashSet<ty::Predicate<'tcx>>>,
+) -> ty::ParamEnv<'tcx> {
+    let Some(new_predicates) = new_predicates else {
+        return param_env;
+    };
+
+    if new_predicates.is_empty() {
+        return param_env;
+    }
+
+    let bounds =
+        tcx.mk_predicates(param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()));
+    // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
+    // i.e. traits::normalize_param_env_or_error
+    ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
+}
+
+/// We use the following trait as an example throughout this function.
+/// Specifically, let's assume that `to_check` here is the return type
+/// of `into_iter`, and the GAT we are checking this for is `Iter`.
+/// ```rust,ignore (this code fails due to this lint)
+/// trait IntoIter {
+///     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+///     type Item<'a>;
+///     fn into_iter<'a>(&'a self) -> Self::Iter<'a>;
+/// }
+/// ```
+fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    item_hir: hir::HirId,
+    to_check: T,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    gat_def_id: LocalDefId,
+    gat_generics: &'tcx ty::Generics,
+) -> Option<FxHashSet<ty::Predicate<'tcx>>> {
+    // The bounds we that we would require from `to_check`
+    let mut bounds = FxHashSet::default();
+
+    let (regions, types) = GATSubstCollector::visit(tcx, gat_def_id.to_def_id(), to_check);
+
+    // If both regions and types are empty, then this GAT isn't in the
+    // set of types we are checking, and we shouldn't try to do clause analysis
+    // (particularly, doing so would end up with an empty set of clauses,
+    // since the current method would require none, and we take the
+    // intersection of requirements of all methods)
+    if types.is_empty() && regions.is_empty() {
+        return None;
+    }
+
+    for (region_a, region_a_idx) in &regions {
+        // Ignore `'static` lifetimes for the purpose of this lint: it's
+        // because we know it outlives everything and so doesn't give meaningful
+        // clues
+        if let ty::ReStatic = **region_a {
+            continue;
+        }
+        // For each region argument (e.g., `'a` in our example), check for a
+        // relationship to the type arguments (e.g., `Self`). If there is an
+        // outlives relationship (`Self: 'a`), then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (ty, ty_idx) in &types {
+            // In our example, requires that `Self: 'a`
+            if ty_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *ty, *region_a) {
+                debug!(?ty_idx, ?region_a_idx);
+                debug!("required clause: {ty} must outlive {region_a}");
+                // Translate into the generic parameters of the GAT. In
+                // our example, the type was `Self`, which will also be
+                // `Self` in the GAT.
+                let ty_param = gat_generics.param_at(*ty_idx, tcx);
+                let ty_param = tcx
+                    .mk_ty(ty::Param(ty::ParamTy { index: ty_param.index, name: ty_param.name }));
+                // Same for the region. In our example, 'a corresponds
+                // to the 'me parameter.
+                let region_param = gat_generics.param_at(*region_a_idx, tcx);
+                let region_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_param.def_id,
+                        index: region_param.index,
+                        name: region_param.name,
+                    }));
+                // The predicate we expect to see. (In our example,
+                // `Self: 'me`.)
+                let clause =
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_param, region_param));
+                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                bounds.insert(clause);
+            }
+        }
+
+        // For each region argument (e.g., `'a` in our example), also check for a
+        // relationship to the other region arguments. If there is an outlives
+        // relationship, then we want to ensure that is reflected in the where clause
+        // on the GAT itself.
+        for (region_b, region_b_idx) in &regions {
+            // Again, skip `'static` because it outlives everything. Also, we trivially
+            // know that a region outlives itself.
+            if ty::ReStatic == **region_b || region_a == region_b {
+                continue;
+            }
+            if region_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *region_a, *region_b) {
+                debug!(?region_a_idx, ?region_b_idx);
+                debug!("required clause: {region_a} must outlive {region_b}");
+                // Translate into the generic parameters of the GAT.
+                let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
+                let region_a_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_a_param.def_id,
+                        index: region_a_param.index,
+                        name: region_a_param.name,
+                    }));
+                // Same for the region.
+                let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
+                let region_b_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_b_param.def_id,
+                        index: region_b_param.index,
+                        name: region_b_param.name,
+                    }));
+                // The predicate we expect to see.
+                let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                    region_a_param,
+                    region_b_param,
+                ));
+                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                bounds.insert(clause);
+            }
+        }
+    }
+
+    Some(bounds)
 }
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
@@ -569,7 +635,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     wf_tys: &FxHashSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(
         &'a InferCtxt<'a, 'tcx>,
-        &'a Vec<(&'tcx ty::RegionKind, GenericKind<'tcx>)>,
+        &'a Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
     ),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
@@ -602,20 +668,26 @@ fn resolve_regions_with_wf_tys<'tcx>(
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
 struct GATSubstCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     gat: DefId,
-    // Which region appears and which parameter index its subsituted for
+    // Which region appears and which parameter index its substituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
-    // Which params appears and which parameter index its subsituted for
+    // Which params appears and which parameter index its substituted for
     types: FxHashSet<(Ty<'tcx>, usize)>,
 }
 
 impl<'tcx> GATSubstCollector<'tcx> {
     fn visit<T: TypeFoldable<'tcx>>(
+        tcx: TyCtxt<'tcx>,
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
-        let mut visitor =
-            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+        let mut visitor = GATSubstCollector {
+            tcx,
+            gat,
+            regions: FxHashSet::default(),
+            types: FxHashSet::default(),
+        };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
@@ -623,6 +695,13 @@ impl<'tcx> GATSubstCollector<'tcx> {
 
 impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
     type BreakTy = !;
+
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        self.tcx.liberate_late_bound_regions(self.gat, t.clone()).visit_with(self)
+    }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
@@ -730,92 +809,102 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
 
-            let err_ty_str;
-            let mut is_ptr = true;
-            let err = if tcx.features().adt_const_params {
-                match ty.peel_refs().kind() {
+            if tcx.features().adt_const_params {
+                let err = match ty.peel_refs().kind() {
                     ty::FnPtr(_) => Some("function pointers"),
                     ty::RawPtr(_) => Some("raw pointers"),
                     _ => None,
-                }
-            } else {
-                match ty.kind() {
-                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => {
-                        is_ptr = false;
-                        err_ty_str = format!("`{}`", ty);
-                        Some(err_ty_str.as_str())
-                    }
-                }
-            };
-            if let Some(unsupported_type) = err {
-                if is_ptr {
+                };
+
+                if let Some(unsupported_type) = err {
                     tcx.sess.span_err(
                         hir_ty.span,
                         &format!(
                             "using {} as const generic parameters is forbidden",
                             unsupported_type
                         ),
-                    )
-                } else {
-                    let mut err = tcx.sess.struct_span_err(
-                        hir_ty.span,
-                        &format!(
-                            "{} is forbidden as the type of a const generic parameter",
-                            unsupported_type
-                        ),
                     );
-                    err.note("the only supported types are integers, `bool` and `char`");
-                    if tcx.sess.is_nightly_build() {
-                        err.help(
+                }
+
+                if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
+                    // We use the same error code in both branches, because this is really the same
+                    // issue: we just special-case the message for type parameters to make it
+                    // clearer.
+                    if let ty::Param(_) = ty.peel_refs().kind() {
+                        // Const parameters may not have type parameters as their types,
+                        // because we cannot be sure that the type parameter derives `PartialEq`
+                        // and `Eq` (just implementing them is not enough for `structural_match`).
+                        struct_span_err!(
+                            tcx.sess,
+                            hir_ty.span,
+                            E0741,
+                            "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
+                            used as the type of a const parameter",
+                            ty,
+                        )
+                        .span_label(
+                            hir_ty.span,
+                            format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
+                        )
+                        .note(
+                            "it is not currently possible to use a type parameter as the type of a \
+                            const parameter",
+                        )
+                        .emit();
+                    } else {
+                        struct_span_err!(
+                            tcx.sess,
+                            hir_ty.span,
+                            E0741,
+                            "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
+                            the type of a const parameter",
+                            ty,
+                        )
+                        .span_label(
+                            hir_ty.span,
+                            format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
+                        )
+                        .emit();
+                    }
+                }
+            } else {
+                let err_ty_str;
+                let mut is_ptr = true;
+
+                let err = match ty.kind() {
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                    ty::FnPtr(_) => Some("function pointers"),
+                    ty::RawPtr(_) => Some("raw pointers"),
+                    _ => {
+                        is_ptr = false;
+                        err_ty_str = format!("`{ty}`");
+                        Some(err_ty_str.as_str())
+                    }
+                };
+
+                if let Some(unsupported_type) = err {
+                    if is_ptr {
+                        tcx.sess.span_err(
+                            hir_ty.span,
+                            &format!(
+                                "using {unsupported_type} as const generic parameters is forbidden",
+                            ),
+                        );
+                    } else {
+                        let mut err = tcx.sess.struct_span_err(
+                            hir_ty.span,
+                            &format!(
+                                "{unsupported_type} is forbidden as the type of a const generic parameter",
+                            ),
+                        );
+                        err.note("the only supported types are integers, `bool` and `char`");
+                        if tcx.sess.is_nightly_build() {
+                            err.help(
                             "more complex types are supported with `#![feature(adt_const_params)]`",
                         );
+                        }
+                        err.emit();
                     }
-                    err.emit()
-                }
-            };
-
-            if traits::search_for_structural_match_violation(param.span, tcx, ty).is_some() {
-                // We use the same error code in both branches, because this is really the same
-                // issue: we just special-case the message for type parameters to make it
-                // clearer.
-                if let ty::Param(_) = ty.peel_refs().kind() {
-                    // Const parameters may not have type parameters as their types,
-                    // because we cannot be sure that the type parameter derives `PartialEq`
-                    // and `Eq` (just implementing them is not enough for `structural_match`).
-                    struct_span_err!(
-                        tcx.sess,
-                        hir_ty.span,
-                        E0741,
-                        "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                            used as the type of a const parameter",
-                        ty,
-                    )
-                    .span_label(
-                        hir_ty.span,
-                        format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
-                    )
-                    .note(
-                        "it is not currently possible to use a type parameter as the type of a \
-                            const parameter",
-                    )
-                    .emit();
-                } else {
-                    struct_span_err!(
-                        tcx.sess,
-                        hir_ty.span,
-                        E0741,
-                        "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                            the type of a const parameter",
-                        ty,
-                    )
-                    .span_label(
-                        hir_ty.span,
-                        format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
-                    )
-                    .emit();
                 }
             }
         }
@@ -851,10 +940,10 @@ fn check_associated_item(
                 let hir_sig = sig_if_method.expect("bad signature for method");
                 check_fn_or_method(
                     fcx,
-                    item.ident.span,
+                    item.ident(fcx.tcx).span,
                     sig,
                     hir_sig.decl,
-                    item.def_id,
+                    item.def_id.expect_local(),
                     &mut implied_bounds,
                 );
                 check_method_receiver(fcx, hir_sig, item, self_ty);
@@ -909,7 +998,7 @@ fn check_type_defn<'tcx, F>(
 {
     for_item(tcx, item).with_fcx(|fcx| {
         let variants = lookup_fields(fcx);
-        let packed = tcx.adt_def(item.def_id).repr.packed();
+        let packed = tcx.adt_def(item.def_id).repr().packed();
 
         for variant in &variants {
             // For DST, or when drop needs to copy things around, all
@@ -982,7 +1071,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         // No implied bounds in a struct definition.
         FxHashSet::default()
@@ -1010,10 +1099,15 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
     // FIXME: this shouldn't use an `FnCtxt` at all.
     for_item(tcx, item).with_fcx(|fcx| {
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         FxHashSet::default()
     });
+
+    // Only check traits, don't check trait aliases
+    if let hir::ItemKind::Trait(_, _, _, _, items) = item.kind {
+        check_gat_where_clauses(tcx, items);
+    }
 }
 
 /// Checks all associated type defaults of trait `trait_def_id`.
@@ -1053,7 +1147,7 @@ fn check_item_fn(
     for_id(tcx, def_id, span).with_fcx(|fcx| {
         let sig = tcx.fn_sig(def_id);
         let mut implied_bounds = FxHashSet::default();
-        check_fn_or_method(fcx, ident.span, sig, decl, def_id.to_def_id(), &mut implied_bounds);
+        check_fn_or_method(fcx, ident.span, sig, decl, def_id, &mut implied_bounds);
         implied_bounds
     })
 }
@@ -1147,7 +1241,7 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id.to_def_id(), None);
+        check_where_clauses(fcx, item.span, item.def_id, None);
 
         fcx.impl_implied_bounds(item.def_id.to_def_id(), item.span)
     });
@@ -1158,7 +1252,7 @@ fn check_impl<'tcx>(
 fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
-    def_id: DefId,
+    def_id: LocalDefId,
     return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     let tcx = fcx.tcx;
@@ -1226,7 +1320,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
     // First we build the defaulted substitution.
-    let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
+    let substs = InternalSubsts::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
@@ -1285,8 +1379,8 @@ fn check_where_clauses<'tcx, 'fcx>(
                     ControlFlow::BREAK
                 }
 
-                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::ConstKind::Param(param) = c.val {
+                fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    if let ty::ConstKind::Param(param) = c.val() {
                         self.params.insert(param.index);
                     }
                     c.super_visit_with(self)
@@ -1320,8 +1414,11 @@ fn check_where_clauses<'tcx, 'fcx>(
             // below: there, we are not trying to prove those predicates
             // to be *true* but merely *well-formed*.
             let pred = fcx.normalize_associated_types_in(sp, pred);
-            let cause =
-                traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
+            let cause = traits::ObligationCause::new(
+                sp,
+                fcx.body_id,
+                traits::ItemObligation(def_id.to_def_id()),
+            );
             traits::Obligation::new(cause, fcx.param_env, pred)
         });
 
@@ -1354,10 +1451,10 @@ fn check_fn_or_method<'fcx, 'tcx>(
     span: Span,
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
-    def_id: DefId,
+    def_id: LocalDefId,
     implied_bounds: &mut FxHashSet<Ty<'tcx>>,
 ) {
-    let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
+    let sig = fcx.tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -1371,14 +1468,14 @@ fn check_fn_or_method<'fcx, 'tcx>(
                 span,
                 ty,
                 WellFormedLoc::Param {
-                    function: def_id.expect_local(),
+                    function: def_id,
                     // Note that the `param_idx` of the output type is
                     // one greater than the index of the last input type.
                     param_idx: i.try_into().unwrap(),
                 },
             )
         }));
-    // Manually call `normalize_assocaited_types_in` on the other types
+    // Manually call `normalize_associated_types_in` on the other types
     // in `FnSig`. This ensures that if the types of these fields
     // ever change to include projections, we will start normalizing
     // them automatically.
@@ -1394,7 +1491,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
             input_ty.into(),
             ty.span,
             ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
-                function: def_id.expect_local(),
+                function: def_id,
                 param_idx: i.try_into().unwrap(),
             })),
         );
@@ -1461,9 +1558,8 @@ fn check_method_receiver<'fcx, 'tcx>(
                     sym::arbitrary_self_types,
                     span,
                     &format!(
-                        "`{}` cannot be used as the type of `self` without \
+                        "`{receiver_ty}` cannot be used as the type of `self` without \
                          the `arbitrary_self_types` feature",
-                        receiver_ty,
                     ),
                 )
                 .help(HELP_FOR_SELF_TYPE)
@@ -1481,8 +1577,7 @@ fn e0307<'tcx>(fcx: &FnCtxt<'_, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
         fcx.tcx.sess.diagnostic(),
         span,
         E0307,
-        "invalid `self` parameter type: {}",
-        receiver_ty,
+        "invalid `self` parameter type: {receiver_ty}"
     )
     .note("type of `self` must be `Self` or a type that dereferences to it")
     .help(HELP_FOR_SELF_TYPE)
@@ -1563,7 +1658,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            // If he receiver already has errors reported due to it, consider it valid to avoid
+            // If the receiver already has errors reported due to it, consider it valid to avoid
             // unnecessary errors (#58712).
             return receiver_ty.references_error();
         }
@@ -1630,8 +1725,28 @@ fn check_variances_for_type_defn<'tcx>(
 
     identify_constrained_generic_params(tcx, ty_predicates, None, &mut constrained_parameters);
 
+    // Lazily calculated because it is only needed in case of an error.
+    let explicitly_bounded_params = Lazy::new(|| {
+        let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
+        hir_generics
+            .predicates
+            .iter()
+            .filter_map(|predicate| match predicate {
+                hir::WherePredicate::BoundPredicate(predicate) => {
+                    match icx.to_ty(predicate.bounded_ty).kind() {
+                        ty::Param(data) => Some(Parameter(data.index)),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .collect::<FxHashSet<_>>()
+    });
+
     for (index, _) in variances.iter().enumerate() {
-        if constrained_parameters.contains(&Parameter(index as u32)) {
+        let parameter = Parameter(index as u32);
+
+        if constrained_parameters.contains(&parameter) {
             continue;
         }
 
@@ -1639,12 +1754,19 @@ fn check_variances_for_type_defn<'tcx>(
 
         match param.name {
             hir::ParamName::Error => {}
-            _ => report_bivariance(tcx, param),
+            _ => {
+                let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
+                report_bivariance(tcx, param, has_explicit_bounds);
+            }
         }
     }
 }
 
-fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
+fn report_bivariance(
+    tcx: TyCtxt<'_>,
+    param: &rustc_hir::GenericParam<'_>,
+    has_explicit_bounds: bool,
+) -> ErrorGuaranteed {
     let span = param.span;
     let param_name = param.name.ident().name;
     let mut err = error_392(tcx, span, param_name);
@@ -1658,11 +1780,11 @@ fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
             tcx.def_path_str(def_id),
         )
     } else {
-        format!("consider removing `{}` or referring to it in a field", param_name)
+        format!("consider removing `{param_name}` or referring to it in a field")
     };
     err.help(&msg);
 
-    if matches!(param.kind, rustc_hir::GenericParamKind::Type { .. }) {
+    if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
         err.help(&format!(
             "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
             param_name
@@ -1691,13 +1813,12 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
 
             // only use the span of the predicate clause (#90869)
 
-            if let Some(hir::Generics { where_clause, .. }) =
+            if let Some(hir::Generics { predicates, .. }) =
                 hir_node.and_then(|node| node.generics())
             {
                 let obligation_span = obligation.cause.span(fcx.tcx);
 
-                span = where_clause
-                    .predicates
+                span = predicates
                     .iter()
                     // There seems to be no better way to find out which predicate we are in
                     .find(|pred| pred.span().contains(obligation_span))
@@ -1853,9 +1974,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    let mut err =
-        struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
+fn error_392(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    param_name: Symbol,
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    let mut err = struct_span_err!(tcx.sess, span, E0392, "parameter `{param_name}` is never used");
     err.span_label(span, "unused parameter");
     err
 }

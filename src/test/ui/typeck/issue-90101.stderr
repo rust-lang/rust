@@ -6,7 +6,7 @@ LL |     func(Path::new("hello").to_path_buf().to_string_lossy(), "world")
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following implementations were found:
+   = help: the following other types implement trait `From<T>`:
              <PathBuf as From<&T>>
              <PathBuf as From<Box<Path>>>
              <PathBuf as From<Cow<'a, Path>>>

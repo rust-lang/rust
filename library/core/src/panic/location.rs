@@ -83,7 +83,7 @@ impl<'a> Location<'a> {
     #[stable(feature = "track_caller", since = "1.46.0")]
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[track_caller]
-    #[inline(always)] // Mark as inline so that the call gets optimized away.
+    #[inline]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
     }
@@ -123,6 +123,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[inline]
     pub fn file(&self) -> &str {
         self.file
     }
@@ -146,6 +147,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[inline]
     pub fn line(&self) -> u32 {
         self.line
     }
@@ -169,6 +171,7 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
+    #[inline]
     pub fn column(&self) -> u32 {
         self.col
     }

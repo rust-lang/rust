@@ -3,7 +3,7 @@
 // therefore should not concern itself with the lints.
 #[deny(warnings)]
 
-// @has cap_lints/struct.Foo.html //* 'Struct Foo'
+// @has cap_lints/struct.Foo.html //* 'Foo'
 pub struct Foo {
     field: i32,
 }

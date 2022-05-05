@@ -67,3 +67,27 @@ fn bench_from_array_1000(b: &mut Bencher) {
         black_box(deq);
     })
 }
+
+#[bench]
+fn bench_extend_bytes(b: &mut Bencher) {
+    let mut ring: VecDeque<u8> = VecDeque::with_capacity(1000);
+    let input: &[u8] = &[128; 512];
+
+    b.iter(|| {
+        ring.clear();
+        ring.extend(black_box(input));
+    });
+}
+
+#[bench]
+fn bench_extend_vec(b: &mut Bencher) {
+    let mut ring: VecDeque<u8> = VecDeque::with_capacity(1000);
+    let input = vec![128; 512];
+
+    b.iter(|| {
+        ring.clear();
+
+        let input = input.clone();
+        ring.extend(black_box(input));
+    });
+}

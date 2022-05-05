@@ -1,0 +1,2 @@
+error: duplicating linking modifier is currently unstable and only accepted on the nightly compiler
+

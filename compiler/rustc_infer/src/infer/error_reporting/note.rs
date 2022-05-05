@@ -1,17 +1,13 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub(super) fn note_region_origin(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        origin: &SubregionOrigin<'tcx>,
-    ) {
-        let mut label_or_note = |span, msg| {
+    pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
+        let mut label_or_note = |span, msg: &str| {
             let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);
@@ -102,6 +98,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "...so that the definition in impl matches the definition from the trait",
                 );
             }
+            infer::CheckAssociatedTypeBounds { ref parent, .. } => {
+                self.note_region_origin(err, &parent);
+            }
         }
     }
 
@@ -110,12 +109,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
-                match (sub, sup) {
+                match (*sub, *sup) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
                         note_and_explain_region(
@@ -345,6 +344,55 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     trait_item_def_id,
                     &format!("`{}: {}`", sup, sub),
                 ),
+            infer::CheckAssociatedTypeBounds { impl_item_def_id, trait_item_def_id, parent } => {
+                let mut err = self.report_concrete_failure(*parent, sub, sup);
+
+                let trait_item_span = self.tcx.def_span(trait_item_def_id);
+                let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
+                err.span_label(
+                    trait_item_span,
+                    format!("definition of `{}` from trait", item_name),
+                );
+
+                let trait_predicates = self.tcx.explicit_predicates_of(trait_item_def_id);
+                let impl_predicates = self.tcx.explicit_predicates_of(impl_item_def_id);
+
+                let impl_predicates: rustc_data_structures::stable_set::FxHashSet<_> =
+                    impl_predicates.predicates.into_iter().map(|(pred, _)| pred).collect();
+                let clauses: Vec<_> = trait_predicates
+                    .predicates
+                    .into_iter()
+                    .filter(|&(pred, _)| !impl_predicates.contains(pred))
+                    .map(|(pred, _)| format!("{}", pred))
+                    .collect();
+
+                if !clauses.is_empty() {
+                    let where_clause_span = self
+                        .tcx
+                        .hir()
+                        .get_generics(impl_item_def_id)
+                        .unwrap()
+                        .where_clause_span
+                        .shrink_to_hi();
+
+                    let suggestion = format!(
+                        "{} {}",
+                        if !impl_predicates.is_empty() { "," } else { " where" },
+                        clauses.join(", "),
+                    );
+                    err.span_suggestion(
+                        where_clause_span,
+                        &format!(
+                            "try copying {} from the trait",
+                            if clauses.len() > 1 { "these clauses" } else { "this clause" }
+                        ),
+                        suggestion,
+                        rustc_errors::Applicability::MaybeIncorrect,
+                    );
+                }
+
+                err
+            }
         }
     }
 
@@ -353,7 +401,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         placeholder_origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // I can't think how to do better than this right now. -nikomatsakis
         debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {

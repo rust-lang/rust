@@ -105,6 +105,11 @@ LL | use std::f32::consts::E;
    |
 LL | use std::f64::consts::E;
    |
+help: if you import `E`, refer to it directly
+   |
+LL -     let _: E = m::E;
+LL +     let _: E = E;
+   | 
 
 error[E0423]: expected value, found struct variant `m::E::Struct`
   --> $DIR/privacy-enum-ctor.rs:45:16

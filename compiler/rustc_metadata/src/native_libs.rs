@@ -1,8 +1,9 @@
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib};
 use rustc_session::parse::feature_err;
@@ -14,14 +15,16 @@ use rustc_target::spec::abi::Abi;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
-    tcx.hir().visit_all_item_likes(&mut collector);
+    for id in tcx.hir().items() {
+        collector.process_item(id);
+    }
     collector.process_command_line();
     collector.libs
 }
 
 crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }
@@ -31,11 +34,15 @@ struct Collector<'tcx> {
     libs: Vec<NativeLib>,
 }
 
-impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let (abi, foreign_mod_items) = match it.kind {
-            hir::ItemKind::ForeignMod { abi, items } => (abi, items),
-            _ => return,
+impl<'tcx> Collector<'tcx> {
+    fn process_item(&mut self, id: rustc_hir::ItemId) {
+        if !matches!(self.tcx.hir().def_kind(id.def_id), DefKind::ForeignMod) {
+            return;
+        }
+
+        let it = self.tcx.hir().item(id);
+        let hir::ItemKind::ForeignMod { abi, items: foreign_mod_items } = it.kind else {
+            return;
         };
 
         if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
@@ -45,9 +52,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
-            let items = match m.meta_item_list() {
-                Some(item) => item,
-                None => continue,
+            let Some(items) = m.meta_item_list() else {
+                continue;
             };
             let mut lib = NativeLib {
                 name: None,
@@ -63,9 +69,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
             for item in items.iter() {
                 if item.has_name(sym::kind) {
                     kind_specified = true;
-                    let kind = match item.value_str() {
-                        Some(name) => name,
-                        None => continue, // skip like historical compilers
+                    let Some(kind) = item.value_str() else {
+                        continue; // skip like historical compilers
                     };
                     lib.kind = match kind.as_str() {
                         "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
@@ -101,9 +106,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 } else if item.has_name(sym::name) {
                     lib.name = item.value_str();
                 } else if item.has_name(sym::cfg) {
-                    let cfg = match item.meta_item_list() {
-                        Some(list) => list,
-                        None => continue, // skip like historical compilers
+                    let Some(cfg) = item.meta_item_list() else {
+                        continue; // skip like historical compilers
                     };
                     if cfg.is_empty() {
                         sess.span_err(item.span(), "`cfg()` must have an argument");
@@ -128,13 +132,18 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
             // Do this outside the above loop so we don't depend on modifiers coming
             // after kinds
-            if let Some(item) = items.iter().find(|item| item.has_name(sym::modifiers)) {
+            let mut modifiers_count = 0;
+            for item in items.iter().filter(|item| item.has_name(sym::modifiers)) {
                 if let Some(modifiers) = item.value_str() {
+                    modifiers_count += 1;
                     let span = item.name_value_literal_span().unwrap();
+                    let mut has_duplicate_modifiers = false;
                     for modifier in modifiers.as_str().split(',') {
                         let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
                             Some(m) => (m, modifier.starts_with('+')),
                             None => {
+                                // Note: this error also excludes the case with empty modifier
+                                // string, like `modifiers = ""`.
                                 sess.span_err(
                                     span,
                                     "invalid linking modifier syntax, expected '+' or '-' prefix \
@@ -146,49 +155,81 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
                         match (modifier, &mut lib.kind) {
                             ("bundle", NativeLibKind::Static { bundle, .. }) => {
+                                if bundle.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *bundle = Some(value);
                             }
-                            ("bundle", _) => sess.span_err(
-                                span,
-                                "bundle linking modifier is only compatible with \
+                            ("bundle", _) => {
+                                sess.span_err(
+                                    span,
+                                    "bundle linking modifier is only compatible with \
                                 `static` linking kind",
-                            ),
+                                );
+                            }
 
-                            ("verbatim", _) => lib.verbatim = Some(value),
+                            ("verbatim", _) => {
+                                if lib.verbatim.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
+                                lib.verbatim = Some(value);
+                            }
 
                             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
+                                if whole_archive.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *whole_archive = Some(value);
                             }
-                            ("whole-archive", _) => sess.span_err(
-                                span,
-                                "whole-archive linking modifier is only compatible with \
+                            ("whole-archive", _) => {
+                                sess.span_err(
+                                    span,
+                                    "whole-archive linking modifier is only compatible with \
                                 `static` linking kind",
-                            ),
+                                );
+                            }
 
                             ("as-needed", NativeLibKind::Dylib { as_needed })
                             | ("as-needed", NativeLibKind::Framework { as_needed }) => {
+                                if as_needed.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *as_needed = Some(value);
                             }
-                            ("as-needed", _) => sess.span_err(
-                                span,
-                                "as-needed linking modifier is only compatible with \
+                            ("as-needed", _) => {
+                                sess.span_err(
+                                    span,
+                                    "as-needed linking modifier is only compatible with \
                                 `dylib` and `framework` linking kinds",
-                            ),
+                                );
+                            }
 
-                            _ => sess.span_err(
-                                span,
-                                &format!(
-                                    "unrecognized linking modifier `{}`, expected one \
+                            _ => {
+                                sess.span_err(
+                                    span,
+                                    &format!(
+                                        "unrecognized linking modifier `{}`, expected one \
                                     of: bundle, verbatim, whole-archive, as-needed",
-                                    modifier
-                                ),
-                            ),
+                                        modifier
+                                    ),
+                                );
+                            }
                         }
+                    }
+                    if has_duplicate_modifiers {
+                        let msg =
+                            "same modifier is used multiple times in a single `modifiers` argument";
+                        sess.span_err(item.span(), msg);
                     }
                 } else {
                     let msg = "must be of the form `#[link(modifiers = \"...\")]`";
                     sess.span_err(item.span(), msg);
                 }
+            }
+
+            if modifiers_count > 1 {
+                let msg = "multiple `modifiers` arguments in a single `#[link]` attribute";
+                sess.span_err(m.span, msg);
             }
 
             // In general we require #[link(name = "...")] but we allow
@@ -218,12 +259,6 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
-    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
-}
-
-impl Collector<'_> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
         if lib.name.as_ref().map_or(false, |&s| s == kw::Empty) {
             match span {
@@ -247,8 +282,12 @@ impl Collector<'_> {
         if matches!(lib.kind, NativeLibKind::Framework { .. }) && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
-                None => self.tcx.sess.err(msg),
+                Some(span) => {
+                    struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
+                }
+                None => {
+                    self.tcx.sess.err(msg);
+                }
             }
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {
@@ -262,22 +301,14 @@ impl Collector<'_> {
         }
         // this just unwraps lib.name; we already established that it isn't empty above.
         if let (NativeLibKind::RawDylib, Some(lib_name)) = (lib.kind, lib.name) {
-            let span = match span {
-                Some(s) => s,
-                None => {
-                    bug!("raw-dylib libraries are not supported on the command line");
-                }
+            let Some(span) = span else {
+                bug!("raw-dylib libraries are not supported on the command line");
             };
 
             if !self.tcx.sess.target.options.is_like_windows {
                 self.tcx.sess.span_fatal(
                     span,
                     "`#[link(...)]` with `kind = \"raw-dylib\"` only supported on Windows",
-                );
-            } else if !self.tcx.sess.target.options.is_like_msvc {
-                self.tcx.sess.span_warn(
-                    span,
-                    "`#[link(...)]` with `kind = \"raw-dylib\"` not supported on windows-gnu",
                 );
             }
 
@@ -348,6 +379,15 @@ impl Collector<'_> {
                 .drain_filter(|lib| {
                     if let Some(lib_name) = lib.name {
                         if lib_name.as_str() == passed_lib.name {
+                            // FIXME: This whole logic is questionable, whether modifiers are
+                            // involved or not, library reordering and kind overriding without
+                            // explicit `:rename` in particular.
+                            if lib.has_modifiers() || passed_lib.has_modifiers() {
+                                self.tcx.sess.span_err(
+                                    self.tcx.def_span(lib.foreign_module.unwrap()),
+                                    "overriding linking modifiers from command line is not supported"
+                                );
+                            }
                             if passed_lib.kind != NativeLibKind::Unspecified {
                                 lib.kind = passed_lib.kind;
                             }
@@ -401,7 +441,7 @@ impl Collector<'_> {
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
                 // nearest multiple of 4 bytes.
-                (layout.size.bytes_usize() + 3) & !3
+                (layout.size().bytes_usize() + 3) & !3
             })
             .sum()
     }
@@ -409,11 +449,13 @@ impl Collector<'_> {
     fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef) -> DllImport {
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
-                Abi::C { .. } | Abi::Cdecl => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
                 Abi::Stdcall { .. } | Abi::System { .. } => {
                     DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
                 }
-                Abi::Fastcall => DllCallingConvention::Fastcall(self.i686_arg_list_size(item)),
+                Abi::Fastcall { .. } => {
+                    DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
+                }
                 // Vectorcall is intentionally not supported at this time.
                 _ => {
                     self.tcx.sess.span_fatal(
@@ -424,7 +466,7 @@ impl Collector<'_> {
             }
         } else {
             match abi {
-                Abi::C { .. } | Abi::Win64 | Abi::System { .. } => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
                 _ => {
                     self.tcx.sess.span_fatal(
                         item.span,

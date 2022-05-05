@@ -40,7 +40,7 @@ impl io::Write for Stdout {
         unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Stdout is not able to print"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
         } else {
             Ok(len as usize)
         }
@@ -52,7 +52,7 @@ impl io::Write for Stdout {
         unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Stdout is not able to print"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stdout is not able to print"))
         } else {
             Ok(len as usize)
         }
@@ -81,7 +81,7 @@ impl io::Write for Stderr {
         unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Stderr is not able to print"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))
         } else {
             Ok(len as usize)
         }
@@ -93,7 +93,7 @@ impl io::Write for Stderr {
         unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
 
         if len < 0 {
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Stderr is not able to print"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Stderr is not able to print"))
         } else {
             Ok(len as usize)
         }

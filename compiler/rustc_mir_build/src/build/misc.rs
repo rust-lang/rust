@@ -3,6 +3,7 @@
 
 use crate::build::Builder;
 
+use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
@@ -28,9 +29,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn literal_operand(
         &mut self,
         span: Span,
-        literal: &'tcx ty::Const<'tcx>,
+        literal: mir::ConstantKind<'tcx>,
     ) -> Operand<'tcx> {
-        let literal = literal.into();
         let constant = Box::new(Constant { span, user_ty: None, literal });
         Operand::Constant(constant)
     }
@@ -38,7 +38,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
     crate fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = ty::Const::from_bits(self.tcx, 0, ty::ParamEnv::empty().and(ty));
+        let literal = ConstantKind::from_bits(self.tcx, 0, ty::ParamEnv::empty().and(ty));
 
         self.literal_operand(span, literal)
     }
@@ -58,7 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Constant {
                 span: source_info.span,
                 user_ty: None,
-                literal: ty::Const::from_usize(self.tcx, value).into(),
+                literal: ConstantKind::from_usize(self.tcx, value),
             },
         );
         temp

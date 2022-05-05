@@ -1,0 +1,15 @@
+error[E0477]: the type `(dyn Bar<&'a u32> + 'static)` does not fulfill the required lifetime
+  --> $DIR/supertrait-lifetime-bound.rs:10:5
+   |
+LL |     test1::<dyn Bar<&'a u32>, _>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type must satisfy the static lifetime as required by this binding
+  --> $DIR/supertrait-lifetime-bound.rs:5:22
+   |
+LL | fn test1<T: ?Sized + Bar<S>, S>() { }
+   |                      ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0477`.

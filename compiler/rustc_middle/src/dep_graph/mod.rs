@@ -61,7 +61,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         OP: for<'a> FnOnce(TaskDepsRef<'a>),
     {
         ty::tls::with_context_opt(|icx| {
-            let icx = if let Some(icx) = icx { icx } else { return };
+            let Some(icx) = icx else { return };
             op(icx.task_deps)
         })
     }

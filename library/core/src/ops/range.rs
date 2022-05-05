@@ -446,7 +446,7 @@ impl RangeInclusive<usize> {
     /// Converts to an exclusive `Range` for `SliceIndex` implementations.
     /// The caller is responsible for dealing with `end == usize::MAX`.
     #[inline]
-    pub(crate) fn into_slice_range(self) -> Range<usize> {
+    pub(crate) const fn into_slice_range(self) -> Range<usize> {
         // If we're not exhausted, we want to simply slice `start..end + 1`.
         // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
         // empty range that is still subject to bounds-checks for that endpoint.
@@ -653,7 +653,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// map.insert(8, "c");
 ///
 /// for (key, value) in map.range((Excluded(3), Included(8))) {
-///     println!("{}: {}", key, value);
+///     println!("{key}: {value}");
 /// }
 ///
 /// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());

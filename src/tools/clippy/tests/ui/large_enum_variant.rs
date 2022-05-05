@@ -74,6 +74,30 @@ enum LargeEnum8 {
     ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
 }
 
+enum LargeEnum9 {
+    A(Struct<()>),
+    B(Struct2),
+}
+
+enum LargeEnumOk2<T> {
+    A(T),
+    B(Struct2),
+}
+
+enum LargeEnumOk3<T> {
+    A(Struct<T>),
+    B(Struct2),
+}
+
+struct Struct<T> {
+    a: i32,
+    t: T,
+}
+
+struct Struct2 {
+    a: [i32; 8000],
+}
+
 fn main() {
     large_enum_variant!();
 }

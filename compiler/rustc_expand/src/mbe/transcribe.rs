@@ -1,15 +1,14 @@
 use crate::base::ExtCtxt;
-use crate::mbe;
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
-
+use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
+use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, NtTT, Token};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{pluralize, PResult};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::MacroRulesNormalizedIdent;
+use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
@@ -27,31 +26,28 @@ impl MutVisitor for Marker {
 }
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
-enum Frame {
-    Delimited { forest: Lrc<mbe::Delimited>, idx: usize, span: DelimSpan },
-    Sequence { forest: Lrc<mbe::SequenceRepetition>, idx: usize, sep: Option<Token> },
+enum Frame<'a> {
+    Delimited { tts: &'a [mbe::TokenTree], idx: usize, delim: Delimiter, span: DelimSpan },
+    Sequence { tts: &'a [mbe::TokenTree], idx: usize, sep: Option<Token> },
 }
 
-impl Frame {
+impl<'a> Frame<'a> {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(tts: Vec<mbe::TokenTree>) -> Frame {
-        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, tts });
-        Frame::Delimited { forest, idx: 0, span: DelimSpan::dummy() }
+    fn new(src: &'a mbe::Delimited, span: DelimSpan) -> Frame<'a> {
+        Frame::Delimited { tts: &src.tts, idx: 0, delim: src.delim, span }
     }
 }
 
-impl Iterator for Frame {
-    type Item = mbe::TokenTree;
+impl<'a> Iterator for Frame<'a> {
+    type Item = &'a mbe::TokenTree;
 
-    fn next(&mut self) -> Option<mbe::TokenTree> {
-        match *self {
-            Frame::Delimited { ref forest, ref mut idx, .. } => {
+    fn next(&mut self) -> Option<&'a mbe::TokenTree> {
+        match self {
+            Frame::Delimited { tts, ref mut idx, .. }
+            | Frame::Sequence { tts, ref mut idx, .. } => {
+                let res = tts.get(*idx);
                 *idx += 1;
-                forest.tts.get(*idx - 1).cloned()
-            }
-            Frame::Sequence { ref forest, ref mut idx, .. } => {
-                *idx += 1;
-                forest.tts.get(*idx - 1).cloned()
+                res
             }
         }
     }
@@ -80,17 +76,18 @@ impl Iterator for Frame {
 pub(super) fn transcribe<'a>(
     cx: &ExtCtxt<'a>,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-    src: Vec<mbe::TokenTree>,
+    src: &mbe::Delimited,
+    src_span: DelimSpan,
     transparency: Transparency,
 ) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...
-    if src.is_empty() {
+    if src.tts.is_empty() {
         return Ok(TokenStream::default());
     }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS.
-    let mut stack: SmallVec<[Frame; 1]> = smallvec![Frame::new(src)];
+    let mut stack: SmallVec<[Frame<'_>; 1]> = smallvec![Frame::new(&src, src_span)];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
@@ -144,14 +141,14 @@ pub(super) fn transcribe<'a>(
                 // We are done processing a Delimited. If this is the top-level delimited, we are
                 // done. Otherwise, we unwind the result_stack to append what we have produced to
                 // any previous results.
-                Frame::Delimited { forest, span, .. } => {
+                Frame::Delimited { delim, span, .. } => {
                     if result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
                         return Ok(TokenStream::new(result));
                     }
 
                     // Step back into the parent Delimited.
-                    let tree = TokenTree::Delimited(span, forest.delim, TokenStream::new(result));
+                    let tree = TokenTree::Delimited(span, delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }
@@ -165,7 +162,7 @@ pub(super) fn transcribe<'a>(
             // We are descending into a sequence. We first make sure that the matchers in the RHS
             // and the matches in `interp` have the same shape. Otherwise, either the caller or the
             // macro writer has made a mistake.
-            seq @ mbe::TokenTree::Sequence(..) => {
+            seq @ mbe::TokenTree::Sequence(_, delimited) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
                         return Err(cx.struct_span_err(
@@ -202,7 +199,7 @@ pub(super) fn transcribe<'a>(
                                 ));
                             }
                         } else {
-                            // 0 is the initial counter (we have done 0 repretitions so far). `len`
+                            // 0 is the initial counter (we have done 0 repetitions so far). `len`
                             // is the total number of repetitions we should generate.
                             repeats.push((0, len));
 
@@ -212,7 +209,7 @@ pub(super) fn transcribe<'a>(
                             stack.push(Frame::Sequence {
                                 idx: 0,
                                 sep: seq.separator.clone(),
-                                forest: seq,
+                                tts: &delimited.tts,
                             });
                         }
                     }
@@ -220,39 +217,47 @@ pub(super) fn transcribe<'a>(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            mbe::TokenTree::MetaVar(mut sp, mut orignal_ident) => {
+            mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
-                let ident = MacroRulesNormalizedIdent::new(orignal_ident);
+                let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    if let MatchedNonterminal(nt) = cur_matched {
-                        let token = if let NtTT(tt) = &**nt {
+                    match cur_matched {
+                        MatchedTokenTree(ref tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            tt.clone()
-                        } else {
+                            let token = tt.clone();
+                            result.push(token.into());
+                        }
+                        MatchedNonterminal(ref nt) => {
                             // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::None` to maintain parsing priorities.
-                            // `Interpolated` is currenty used for such groups in rustc parser.
+                            // `Delimiter::Invisible` to maintain parsing priorities.
+                            // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            TokenTree::token(token::Interpolated(nt.clone()), sp)
-                        };
-                        result.push(token.into());
-                    } else {
-                        // We were unable to descend far enough. This is an error.
-                        return Err(cx.struct_span_err(
-                            sp, /* blame the macro writer */
-                            &format!("variable '{}' is still repeating at this depth", ident),
-                        ));
+                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
+                            result.push(token.into());
+                        }
+                        MatchedSeq(..) => {
+                            // We were unable to descend far enough. This is an error.
+                            return Err(cx.struct_span_err(
+                                sp, /* blame the macro writer */
+                                &format!("variable '{}' is still repeating at this depth", ident),
+                            ));
+                        }
                     }
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut orignal_ident);
+                    marker.visit_ident(&mut original_ident);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::Token(Token::from_ast_ident(orignal_ident)).into());
+                    result.push(TokenTree::Token(Token::from_ast_ident(original_ident)).into());
                 }
+            }
+
+            // Replace meta-variable expressions with the result of their expansion.
+            mbe::TokenTree::MetaVarExpr(sp, expr) => {
+                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, &sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -262,15 +267,21 @@ pub(super) fn transcribe<'a>(
             // the previous results (from outside the Delimited).
             mbe::TokenTree::Delimited(mut span, delimited) => {
                 mut_visit::visit_delim_span(&mut span, &mut marker);
-                stack.push(Frame::Delimited { forest: delimited, idx: 0, span });
+                stack.push(Frame::Delimited {
+                    tts: &delimited.tts,
+                    delim: delimited.delim,
+                    idx: 0,
+                    span,
+                });
                 result_stack.push(mem::take(&mut result));
             }
 
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
-                let mut tt = TokenTree::Token(token);
-                mut_visit::visit_tt(&mut tt, &mut marker);
+                let mut token = token.clone();
+                mut_visit::visit_token(&mut token, &mut marker);
+                let tt = TokenTree::Token(token);
                 result.push(tt.into());
             }
 
@@ -295,7 +306,7 @@ fn lookup_cur_matched<'a>(
         let mut matched = matched;
         for &(idx, _) in repeats {
             match matched {
-                MatchedNonterminal(_) => break,
+                MatchedTokenTree(_) | MatchedNonterminal(_) => break,
                 MatchedSeq(ref ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -358,6 +369,12 @@ impl LockstepIterSize {
 /// Note that if `repeats` does not match the exact correct depth of a meta-var,
 /// `lookup_cur_matched` will return `None`, which is why this still works even in the presence of
 /// multiple nested matcher sequences.
+///
+/// Example: `$($($x $y)+*);+` -- we need to make sure that `x` and `y` repeat the same amount as
+/// each other at the given depth when the macro was invoked. If they don't it might mean they were
+/// declared at unequal depths or there was a compile bug. For example, if we have 3 repetitions of
+/// the outer sequence and 4 repetitions of the inner sequence for `x`, we should have the same for
+/// `y`; otherwise, we can't transcribe them both at the given depth.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
     interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
@@ -365,8 +382,8 @@ fn lockstep_iter_size(
 ) -> LockstepIterSize {
     use mbe::TokenTree;
     match *tree {
-        TokenTree::Delimited(_, ref delimed) => {
-            delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
+        TokenTree::Delimited(_, ref delimited) => {
+            delimited.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })
         }
@@ -379,12 +396,177 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
+                    MatchedTokenTree(_) | MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
             }
         }
+        TokenTree::MetaVarExpr(_, ref expr) => {
+            let default_rslt = LockstepIterSize::Unconstrained;
+            let Some(ident) = expr.ident() else { return default_rslt; };
+            let name = MacroRulesNormalizedIdent::new(ident);
+            match lookup_cur_matched(name, interpolations, repeats) {
+                Some(MatchedSeq(ref ads)) => {
+                    default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
+                }
+                _ => default_rslt,
+            }
+        }
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
     }
+}
+
+/// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
+/// given optional nested depth.
+///
+/// For example, a macro parameter of `$( { $( $foo:ident ),* } )*` called with `{ a, b } { c }`:
+///
+/// * `[ $( ${count(foo)} ),* ]` will return [2, 1] with a, b = 2 and c = 1
+/// * `[ $( ${count(foo, 0)} ),* ]` will be the same as `[ $( ${count(foo)} ),* ]`
+/// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
+///   declared inside a single repetition and the index `1` implies two nested repetitions.
+fn count_repetitions<'a>(
+    cx: &ExtCtxt<'a>,
+    depth_opt: Option<usize>,
+    mut matched: &NamedMatch,
+    repeats: &[(usize, usize)],
+    sp: &DelimSpan,
+) -> PResult<'a, usize> {
+    // Recursively count the number of matches in `matched` at given depth
+    // (or at the top-level of `matched` if no depth is given).
+    fn count<'a>(
+        cx: &ExtCtxt<'a>,
+        declared_lhs_depth: usize,
+        depth_opt: Option<usize>,
+        matched: &NamedMatch,
+        sp: &DelimSpan,
+    ) -> PResult<'a, usize> {
+        match matched {
+            MatchedTokenTree(_) | MatchedNonterminal(_) => {
+                if declared_lhs_depth == 0 {
+                    return Err(cx.struct_span_err(
+                        sp.entire(),
+                        "`count` can not be placed inside the inner-most repetition",
+                    ));
+                }
+                match depth_opt {
+                    None => Ok(1),
+                    Some(_) => Err(out_of_bounds_err(cx, declared_lhs_depth, sp.entire(), "count")),
+                }
+            }
+            MatchedSeq(ref named_matches) => {
+                let new_declared_lhs_depth = declared_lhs_depth + 1;
+                match depth_opt {
+                    None => named_matches
+                        .iter()
+                        .map(|elem| count(cx, new_declared_lhs_depth, None, elem, sp))
+                        .sum(),
+                    Some(0) => Ok(named_matches.len()),
+                    Some(depth) => named_matches
+                        .iter()
+                        .map(|elem| count(cx, new_declared_lhs_depth, Some(depth - 1), elem, sp))
+                        .sum(),
+                }
+            }
+        }
+    }
+    // `repeats` records all of the nested levels at which we are currently
+    // matching meta-variables. The meta-var-expr `count($x)` only counts
+    // matches that occur in this "subtree" of the `NamedMatch` where we
+    // are currently transcribing, so we need to descend to that subtree
+    // before we start counting. `matched` contains the various levels of the
+    // tree as we descend, and its final value is the subtree we are currently at.
+    for &(idx, _) in repeats {
+        if let MatchedSeq(ref ads) = matched {
+            matched = &ads[idx];
+        }
+    }
+    count(cx, 0, depth_opt, matched, sp)
+}
+
+/// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
+fn matched_from_ident<'ctx, 'interp, 'rslt>(
+    cx: &ExtCtxt<'ctx>,
+    ident: Ident,
+    interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+) -> PResult<'ctx, &'rslt NamedMatch>
+where
+    'interp: 'rslt,
+{
+    let span = ident.span;
+    let key = MacroRulesNormalizedIdent::new(ident);
+    interp.get(&key).ok_or_else(|| {
+        cx.struct_span_err(
+            span,
+            &format!("variable `{}` is not recognized in meta-variable expression", key),
+        )
+    })
+}
+
+/// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
+/// example, index(999999) in an repetition of only three elements.
+fn out_of_bounds_err<'a>(
+    cx: &ExtCtxt<'a>,
+    max: usize,
+    span: Span,
+    ty: &str,
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    cx.struct_span_err(span, &format!("{ty} depth must be less than {max}"))
+}
+
+fn transcribe_metavar_expr<'a>(
+    cx: &ExtCtxt<'a>,
+    expr: &MetaVarExpr,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    marker: &mut Marker,
+    repeats: &[(usize, usize)],
+    result: &mut Vec<TreeAndSpacing>,
+    sp: &DelimSpan,
+) -> PResult<'a, ()> {
+    let mut visited_span = || {
+        let mut span = sp.entire();
+        marker.visit_span(&mut span);
+        span
+    };
+    match *expr {
+        MetaVarExpr::Count(original_ident, depth_opt) => {
+            let matched = matched_from_ident(cx, original_ident, interp)?;
+            let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;
+            let tt = TokenTree::token(
+                TokenKind::lit(token::Integer, sym::integer(count), None),
+                visited_span(),
+            );
+            result.push(tt.into());
+        }
+        MetaVarExpr::Ignore(original_ident) => {
+            // Used to ensure that `original_ident` is present in the LHS
+            let _ = matched_from_ident(cx, original_ident, interp)?;
+        }
+        MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
+            Some((index, _)) => {
+                result.push(
+                    TokenTree::token(
+                        TokenKind::lit(token::Integer, sym::integer(*index), None),
+                        visited_span(),
+                    )
+                    .into(),
+                );
+            }
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
+        },
+        MetaVarExpr::Length(depth) => match repeats.iter().nth_back(depth) {
+            Some((_, length)) => {
+                result.push(
+                    TokenTree::token(
+                        TokenKind::lit(token::Integer, sym::integer(*length), None),
+                        visited_span(),
+                    )
+                    .into(),
+                );
+            }
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
+        },
+    }
+    Ok(())
 }

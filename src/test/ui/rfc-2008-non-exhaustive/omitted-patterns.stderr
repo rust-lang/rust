@@ -49,6 +49,34 @@ LL |     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = Nested
    = help: ensure that all fields are mentioned explicitly by adding the suggested fields
    = note: the pattern is of type `NestedStruct` and the `non_exhaustive_omitted_patterns` attribute was found
 
+warning: some fields are not explicitly listed
+  --> $DIR/omitted-patterns.rs:173:9
+   |
+LL |     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `unstable2` not listed
+   |
+note: the lint level is defined here
+  --> $DIR/omitted-patterns.rs:172:12
+   |
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: ensure that all fields are mentioned explicitly by adding the suggested fields
+   = note: the pattern is of type `OnlyUnstableStruct` and the `non_exhaustive_omitted_patterns` attribute was found
+
+warning: some fields are not explicitly listed
+  --> $DIR/omitted-patterns.rs:181:9
+   |
+LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ field `unstable` not listed
+   |
+note: the lint level is defined here
+  --> $DIR/omitted-patterns.rs:180:12
+   |
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: ensure that all fields are mentioned explicitly by adding the suggested fields
+   = note: the pattern is of type `UnstableStruct` and the `non_exhaustive_omitted_patterns` attribute was found
+
 error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:58:9
    |
@@ -143,18 +171,18 @@ LL |         #[deny(non_exhaustive_omitted_patterns)]
    = note: the matched value is of type `UnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
 error: some variants are not matched explicitly
-  --> $DIR/omitted-patterns.rs:167:9
+  --> $DIR/omitted-patterns.rs:168:9
    |
 LL |         _ => {}
    |         ^ pattern `Unstable2` not covered
    |
 note: the lint level is defined here
-  --> $DIR/omitted-patterns.rs:164:12
+  --> $DIR/omitted-patterns.rs:165:12
    |
 LL |     #[deny(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `OnlyUnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
 
-error: aborting due to 8 previous errors; 4 warnings emitted
+error: aborting due to 8 previous errors; 6 warnings emitted
 

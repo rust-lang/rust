@@ -36,7 +36,7 @@ pub struct Foo<const N: usize> where u8: Trait<N>;
 // @has foo/struct.Bar.html '//pre[@class="rust struct"]' 'pub struct Bar<T, const N: usize>(_)'
 pub struct Bar<T, const N: usize>([T; N]);
 
-// @has foo/struct.Foo.html '//div[@id="impl"]/h3[@class="code-header in-band"]' 'impl<const M: usize> Foo<M> where u8: Trait<M>'
+// @has foo/struct.Foo.html '//*[@id="impl"]/h3[@class="code-header in-band"]' 'impl<const M: usize> Foo<M> where u8: Trait<M>'
 impl<const M: usize> Foo<M> where u8: Trait<M> {
     // @has - '//*[@id="associatedconstant.FOO_ASSOC"]' 'pub const FOO_ASSOC: usize'
     pub const FOO_ASSOC: usize = M + 13;
@@ -47,7 +47,7 @@ impl<const M: usize> Foo<M> where u8: Trait<M> {
     }
 }
 
-// @has foo/struct.Bar.html '//div[@id="impl"]/h3[@class="code-header in-band"]' 'impl<const M: usize> Bar<u8, M>'
+// @has foo/struct.Bar.html '//*[@id="impl"]/h3[@class="code-header in-band"]' 'impl<const M: usize> Bar<u8, M>'
 impl<const M: usize> Bar<u8, M> {
     // @has - '//*[@id="method.hey"]' \
     //      'pub fn hey<const N: usize>(&self) -> Foo<N> where u8: Trait<N>'

@@ -117,7 +117,7 @@ mod os_impl {
                         .stderr(Stdio::null())
                         .output()
                         .unwrap_or_else(|e| {
-                            panic!("could not run git ls-files: {}", e);
+                            panic!("could not run git ls-files: {e}");
                         });
                     let path_bytes = rel_path.as_os_str().as_bytes();
                     if output.status.success() && output.stdout.starts_with(path_bytes) {

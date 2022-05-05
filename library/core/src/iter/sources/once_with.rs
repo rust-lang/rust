@@ -52,7 +52,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 ///
 /// // this will give us all of the files in .foo as well as .foorc
 /// for f in files {
-///     println!("{:?}", f);
+///     println!("{f:?}");
 /// }
 /// ```
 #[inline]

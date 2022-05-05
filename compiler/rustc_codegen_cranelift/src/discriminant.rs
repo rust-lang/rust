@@ -68,11 +68,10 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     let layout = value.layout();
 
     if layout.abi == Abi::Uninhabited {
-        return trap_unreachable_ret_value(
-            fx,
-            dest_layout,
-            "[panic] Tried to get discriminant for uninhabited type.",
-        );
+        let true_ = fx.bcx.ins().iconst(types::I32, 1);
+        fx.bcx.ins().trapnz(true_, TrapCode::UnreachableCodeReached);
+        // Return a dummy value
+        return CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout);
     }
 
     let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
@@ -106,7 +105,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     // Decode the discriminant (specifically if it's niche-encoded).
     match *tag_encoding {
         TagEncoding::Direct => {
-            let signed = match tag_scalar.value {
+            let signed = match tag_scalar.primitive() {
                 Int(_, signed) => signed,
                 _ => false,
             };
@@ -129,8 +128,16 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             let relative_discr = if niche_start == 0 {
                 tag
             } else {
-                // FIXME handle niche_start > i64::MAX
-                fx.bcx.ins().iadd_imm(tag, -i64::try_from(niche_start).unwrap())
+                let niche_start = match fx.bcx.func.dfg.value_type(tag) {
+                    types::I128 => {
+                        let lsb = fx.bcx.ins().iconst(types::I64, niche_start as u64 as i64);
+                        let msb =
+                            fx.bcx.ins().iconst(types::I64, (niche_start >> 64) as u64 as i64);
+                        fx.bcx.ins().iconcat(lsb, msb)
+                    }
+                    ty => fx.bcx.ins().iconst(ty, niche_start as i64),
+                };
+                fx.bcx.ins().isub(tag, niche_start)
             };
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let is_niche = {

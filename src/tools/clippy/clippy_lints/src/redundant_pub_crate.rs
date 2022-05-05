@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind, VisibilityKind};
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::CRATE_DEF_ID;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -41,7 +43,7 @@ impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let VisibilityKind::Crate { .. } = item.vis.node {
+        if cx.tcx.visibility(item.def_id) == ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id()) {
             if !cx.access_levels.is_exported(item.def_id) && self.is_exported.last() == Some(&false) {
                 let span = item.span.with_hi(item.ident.span.hi());
                 let descr = cx.tcx.def_kind(item.def_id).descr(item.def_id.to_def_id());
@@ -52,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
                     &format!("pub(crate) {} inside private module", descr),
                     |diag| {
                         diag.span_suggestion(
-                            item.vis.span,
+                            item.vis_span,
                             "consider using",
                             "pub".to_string(),
                             Applicability::MachineApplicable,

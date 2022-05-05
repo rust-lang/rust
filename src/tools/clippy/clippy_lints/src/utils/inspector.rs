@@ -4,6 +4,7 @@ use clippy_utils::get_attr;
 use rustc_ast::ast::{Attribute, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -45,17 +46,16 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             return;
         }
         println!("impl item `{}`", item.ident.name);
-        match item.vis.node {
-            hir::VisibilityKind::Public => println!("public"),
-            hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-            hir::VisibilityKind::Restricted { path, .. } => println!(
-                "visible in module `{}`",
-                rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
-            ),
-            hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
-        }
-        if item.defaultness.is_default() {
-            println!("default");
+        match cx.tcx.visibility(item.def_id) {
+            ty::Visibility::Public => println!("public"),
+            ty::Visibility::Restricted(def_id) => {
+                if def_id.is_top_level_module() {
+                    println!("visible crate wide")
+                } else {
+                    println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+                }
+            },
+            ty::Visibility::Invisible => println!("invisible"),
         }
         match item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
@@ -149,7 +149,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             }
             print_expr(cx, init, indent + 1);
         },
-        hir::ExprKind::MethodCall(path, _, args, _) => {
+        hir::ExprKind::MethodCall(path, args, _) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
@@ -284,8 +284,9 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::In { expr, .. }
-                    | hir::InlineAsmOperand::InOut { expr, .. }
-                    | hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
+                    | hir::InlineAsmOperand::InOut { expr, .. } => {
+                        print_expr(cx, expr, indent + 1);
+                    }
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
                             print_expr(cx, expr, indent + 1);
@@ -297,10 +298,26 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                             print_expr(cx, out_expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::Const { anon_const } => {
+                    hir::InlineAsmOperand::Const { anon_const }
+                    | hir::InlineAsmOperand::SymFn { anon_const } => {
                         println!("{}anon_const:", ind);
                         print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
                     },
+                    hir::InlineAsmOperand::SymStatic { path, .. } => {
+                        match path {
+                            hir::QPath::Resolved(ref ty, path) => {
+                                println!("{}Resolved Path, {:?}", ind, ty);
+                                println!("{}path: {:?}", ind, path);
+                            },
+                            hir::QPath::TypeRelative(ty, seg) => {
+                                println!("{}Relative Path, {:?}", ind, ty);
+                                println!("{}seg: {:?}", ind, seg);
+                            },
+                            hir::QPath::LangItem(lang_item, ..) => {
+                                println!("{}Lang Item Path, {:?}", ind, lang_item.name());
+                            },
+                        }
+                    }
                 }
             }
         },
@@ -346,14 +363,16 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
 fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     let did = item.def_id;
     println!("item `{}`", item.ident.name);
-    match item.vis.node {
-        hir::VisibilityKind::Public => println!("public"),
-        hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-        hir::VisibilityKind::Restricted { path, .. } => println!(
-            "visible in module `{}`",
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
-        ),
-        hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
+    match cx.tcx.visibility(item.def_id) {
+        ty::Visibility::Public => println!("public"),
+        ty::Visibility::Restricted(def_id) => {
+            if def_id.is_top_level_module() {
+                println!("visible crate wide")
+            } else {
+                println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+            }
+        },
+        ty::Visibility::Invisible => println!("invisible"),
     }
     match item.kind {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
@@ -376,7 +395,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
-        hir::ItemKind::Macro(ref macro_def) => {
+        hir::ItemKind::Macro(ref macro_def, _) => {
             if macro_def.macro_rules {
                 println!("macro introduced by `macro_rules!`");
             } else {

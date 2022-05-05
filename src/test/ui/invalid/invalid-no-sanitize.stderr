@@ -4,7 +4,7 @@ error: invalid argument for `no_sanitize`
 LL | #[no_sanitize(brontosaurus)]
    |               ^^^^^^^^^^^^
    |
-   = note: expected one of: `address`, `hwaddress`, `memory` or `thread`
+   = note: expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, or `thread`
 
 error: aborting due to previous error
 

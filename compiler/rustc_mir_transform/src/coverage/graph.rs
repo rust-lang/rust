@@ -1,5 +1,6 @@
 use super::Error;
 
+use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
@@ -47,7 +48,7 @@ impl CoverageGraph {
                 let mut bcb_successors = Vec::new();
                 for successor in
                     bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
-                        .filter_map(|&successor_bb| bb_to_bcb[successor_bb])
+                        .filter_map(|successor_bb| bb_to_bcb[successor_bb])
                 {
                     if !seen[successor] {
                         seen[successor] = true;
@@ -280,7 +281,7 @@ impl graph::WithPredecessors for CoverageGraph {
 }
 
 rustc_index::newtype_index! {
-    /// A node in the [control-flow graph][CFG] of CoverageGraph.
+    /// A node in the control-flow graph of CoverageGraph.
     pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
         const START_BCB = 0,
@@ -418,18 +419,11 @@ impl BasicCoverageBlockData {
     pub fn take_edge_counters(
         &mut self,
     ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
-        self.edge_from_bcbs.take().map_or(None, |m| Some(m.into_iter()))
+        self.edge_from_bcbs.take().map(|m| m.into_iter())
     }
 
     pub fn id(&self) -> String {
-        format!(
-            "@{}",
-            self.basic_blocks
-                .iter()
-                .map(|bb| bb.index().to_string())
-                .collect::<Vec<_>>()
-                .join(ID_SEPARATOR)
-        )
+        format!("@{}", self.basic_blocks.iter().map(|bb| bb.index().to_string()).join(ID_SEPARATOR))
     }
 }
 
@@ -489,7 +483,7 @@ impl std::fmt::Debug for BcbBranch {
 fn bcb_filtered_successors<'a, 'tcx>(
     body: &'tcx &'a mir::Body<'tcx>,
     term_kind: &'tcx TerminatorKind<'tcx>,
-) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a> {
+) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
     let mut successors = term_kind.successors();
     Box::new(
         match &term_kind {
@@ -500,9 +494,8 @@ fn bcb_filtered_successors<'a, 'tcx>(
             // `next().into_iter()`) into the `mir::Successors` aliased type.
             _ => successors.next().into_iter().chain(&[]),
         }
-        .filter(move |&&successor| {
-            body[successor].terminator().kind != TerminatorKind::Unreachable
-        }),
+        .copied()
+        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable),
     )
 }
 
@@ -701,7 +694,7 @@ pub struct ShortCircuitPreorder<
     F: Fn(
         &'tcx &'a mir::Body<'tcx>,
         &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>,
+    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > {
     body: &'tcx &'a mir::Body<'tcx>,
     visited: BitSet<BasicBlock>,
@@ -715,7 +708,7 @@ impl<
     F: Fn(
         &'tcx &'a mir::Body<'tcx>,
         &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>,
+    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > ShortCircuitPreorder<'a, 'tcx, F>
 {
     pub fn new(
@@ -739,7 +732,7 @@ impl<
     F: Fn(
         &'tcx &'a mir::Body<'tcx>,
         &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a>,
+    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > Iterator for ShortCircuitPreorder<'a, 'tcx, F>
 {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);

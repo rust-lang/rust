@@ -191,7 +191,7 @@ fn wait_timeout_wake() {
 
 #[test]
 #[should_panic]
-#[cfg_attr(not(unix), ignore)]
+#[cfg(all(unix, not(target_os = "linux"), not(target_os = "android")))]
 fn two_mutexes() {
     let m = Arc::new(Mutex::new(()));
     let m2 = m.clone();

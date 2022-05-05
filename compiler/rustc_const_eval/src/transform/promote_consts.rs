@@ -13,7 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
-use rustc_middle::mir::traversal::ReversePostorder;
+use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
@@ -42,7 +42,7 @@ pub struct PromoteTemps<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::ConstPromotion)
+        Some(MirPhase::ConstsPromoted)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -170,7 +170,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
 pub fn collect_temps_and_candidates<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
-    rpo: &mut ReversePostorder<'_, 'tcx>,
+    rpo: &mut ReversePostorderIter<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
         temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
@@ -496,7 +496,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if matches!(kind, CastKind::Misc) {
                     let operand_ty = operand.ty(self.body, self.tcx);
                     let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                    let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                    let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
                     if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
                         // ptr-to-int casts are not possible in consts and thus not promotable
                         return Err(Unpromotable);
@@ -747,15 +747,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         if loc.statement_index < num_stmts {
             let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
-                let rhs = match statement.kind {
-                    StatementKind::Assign(box (_, ref mut rhs)) => rhs,
-                    _ => {
-                        span_bug!(
-                            statement.source_info.span,
-                            "{:?} is not an assignment",
-                            statement
-                        );
-                    }
+                let StatementKind::Assign(box (_, ref mut rhs)) = statement.kind else {
+                    span_bug!(
+                        statement.source_info.span,
+                        "{:?} is not an assignment",
+                        statement
+                    );
                 };
 
                 (
@@ -839,7 +836,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     span,
                     user_ty: None,
                     literal: tcx
-                        .mk_const(ty::Const {
+                        .mk_const(ty::ConstS {
                             ty,
                             val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                                 def,
@@ -974,6 +971,7 @@ pub fn promote_candidates<'tcx>(
             vec![],
             body.span,
             body.generator_kind(),
+            body.tainted_by_errors,
         );
 
         let promoter = Promoter {

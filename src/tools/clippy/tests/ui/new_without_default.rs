@@ -90,6 +90,22 @@ impl Private {
     } // We don't lint private items
 }
 
+struct PrivateStruct;
+
+impl PrivateStruct {
+    pub fn new() -> PrivateStruct {
+        unimplemented!()
+    } // We don't lint public items on private structs
+}
+
+pub struct PrivateItem;
+
+impl PrivateItem {
+    fn new() -> PrivateItem {
+        unimplemented!()
+    } // We don't lint private items on public structs
+}
+
 struct Const;
 
 impl Const {
@@ -182,6 +198,16 @@ pub mod issue7220 {
         pub fn new() -> Self {
             todo!()
         }
+    }
+}
+
+// see issue #8152
+// This should not create any lints
+pub struct DocHidden;
+impl DocHidden {
+    #[doc(hidden)]
+    pub fn new() -> Self {
+        DocHidden
     }
 }
 

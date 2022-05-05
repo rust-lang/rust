@@ -6,7 +6,7 @@ use clippy_utils::{
 };
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -126,7 +126,7 @@ declare_clippy_lint! {
     /// Duplicate code is less maintainable.
     ///
     /// ### Known problems
-    /// * The lint doesn't check if the moved expressions modify values that are beeing used in
+    /// * The lint doesn't check if the moved expressions modify values that are being used in
     ///   the if condition. The suggestion can in that case modify the behavior of the program.
     ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
@@ -489,7 +489,7 @@ fn emit_branches_sharing_code_lint(
         add_expr_note = !cx.typeck_results().expr_ty(if_expr).is_unit();
     }
 
-    let add_optional_msgs = |diag: &mut DiagnosticBuilder<'_>| {
+    let add_optional_msgs = |diag: &mut Diagnostic| {
         if add_expr_note {
             diag.note("The end suggestion probably needs some adjustments to use the expression result correctly");
         }

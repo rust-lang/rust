@@ -1,0 +1,12 @@
+error[E0658]: kind="raw-dylib" is unstable
+  --> $DIR/feature-gate-raw-dylib.rs:2:1
+   |
+LL | #[link(name = "foo", kind = "raw-dylib")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
+   = help: add `#![feature(raw_dylib)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

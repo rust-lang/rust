@@ -42,16 +42,17 @@
 
 use crate::spec::LinkOutputKind;
 use rustc_serialize::json::{Json, ToJson};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-pub type CrtObjects = BTreeMap<LinkOutputKind, Vec<String>>;
+pub type CrtObjects = BTreeMap<LinkOutputKind, Vec<Cow<'static, str>>>;
 
-pub(super) fn new(obj_table: &[(LinkOutputKind, &[&str])]) -> CrtObjects {
-    obj_table.iter().map(|(z, k)| (*z, k.iter().map(|b| b.to_string()).collect())).collect()
+pub(super) fn new(obj_table: &[(LinkOutputKind, &[&'static str])]) -> CrtObjects {
+    obj_table.iter().map(|(z, k)| (*z, k.iter().map(|b| (*b).into()).collect())).collect()
 }
 
-pub(super) fn all(obj: &str) -> CrtObjects {
+pub(super) fn all(obj: &'static str) -> CrtObjects {
     new(&[
         (LinkOutputKind::DynamicNoPicExe, &[obj]),
         (LinkOutputKind::DynamicPicExe, &[obj]),

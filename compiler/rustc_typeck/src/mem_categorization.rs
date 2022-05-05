@@ -192,7 +192,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         if let Some(vec) = self.typeck_results.pat_adjustments().get(pat.hir_id) {
             if let Some(first_ty) = vec.first() {
                 debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
-                return Ok(first_ty);
+                return Ok(*first_ty);
             }
         }
 
@@ -404,7 +404,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
-            Res::Def(DefKind::Static, _) => {
+            Res::Def(DefKind::Static(_), _) => {
                 Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::StaticItem, Vec::new()))
             }
 
@@ -484,9 +484,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let (region, mutbl) = match *base_ty.kind() {
-            ty::Ref(region, _, mutbl) => (region, mutbl),
-            _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
+        let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
+            span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
         let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut { ty: place_ty, mutbl });
 
@@ -544,14 +543,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
         let ty = self.typeck_results.node_type(pat_hir_id);
-        let adt_def = match ty.kind() {
-            ty::Adt(adt_def, _) => adt_def,
-            _ => {
-                self.tcx()
-                    .sess
-                    .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
-                return Err(());
-            }
+        let ty::Adt(adt_def, _) = ty.kind() else {
+            self.tcx()
+                .sess
+                .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+            return Err(());
         };
 
         match res {
@@ -562,7 +558,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
             | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfCtor(..)
-            | Res::SelfTy(..) => {
+            | Res::SelfTy { .. } => {
                 // Structs and Unions have only have one variant.
                 Ok(VariantIdx::new(0))
             }
@@ -580,7 +576,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind() {
-            ty::Adt(adt_def, _) => Ok(adt_def.variants[variant_index].fields.len()),
+            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.tcx()
                     .sess
@@ -744,12 +740,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             PatKind::Slice(before, ref slice, after) => {
-                let element_ty = match place_with_id.place.ty().builtin_index() {
-                    Some(ty) => ty,
-                    None => {
-                        debug!("explicit index of non-indexable type {:?}", place_with_id);
-                        return Err(());
-                    }
+                let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
+                    debug!("explicit index of non-indexable type {:?}", place_with_id);
+                    return Err(());
                 };
                 let elt_place = self.cat_projection(
                     pat,

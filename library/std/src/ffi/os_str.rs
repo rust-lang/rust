@@ -452,6 +452,8 @@ impl From<String> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for OsString {
+    /// Copies any value implementing <code>[AsRef]&lt;[OsStr]&gt;</code>
+    /// into a newly allocated [`OsString`].
     fn from(s: &T) -> OsString {
         s.as_ref().to_os_string()
     }
@@ -942,6 +944,7 @@ impl OsStr {
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
 impl From<&OsStr> for Box<OsStr> {
+    /// Copies the string into a newly allocated <code>[Box]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Box<OsStr> {
         let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
@@ -951,6 +954,8 @@ impl From<&OsStr> for Box<OsStr> {
 
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, OsStr>> for Box<OsStr> {
+    /// Converts a `Cow<'a, OsStr>` into a <code>[Box]&lt;[OsStr]&gt;</code>,
+    /// by copying the contents if they are borrowed.
     #[inline]
     fn from(cow: Cow<'_, OsStr>) -> Box<OsStr> {
         match cow {
@@ -989,7 +994,8 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
-    /// Converts an [`OsString`] into an <code>[Arc]<[OsStr]></code> without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Arc]<[OsStr]></code> by moving the [`OsString`]
+    /// data into a new [`Arc`] buffer.
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -999,6 +1005,7 @@ impl From<OsString> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&OsStr> for Arc<OsStr> {
+    /// Copies the string into a newly allocated <code>[Arc]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -1008,7 +1015,8 @@ impl From<&OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
-    /// Converts an [`OsString`] into an <code>[Rc]<[OsStr]></code> without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Rc]<[OsStr]></code> by moving the [`OsString`]
+    /// data into a new [`Rc`] buffer.
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
@@ -1018,6 +1026,7 @@ impl From<OsString> for Rc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&OsStr> for Rc<OsStr> {
+    /// Copies the string into a newly allocated <code>[Rc]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
@@ -1027,6 +1036,7 @@ impl From<&OsStr> for Rc<OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<OsString> for Cow<'a, OsStr> {
+    /// Moves the string into a [`Cow::Owned`].
     #[inline]
     fn from(s: OsString) -> Cow<'a, OsStr> {
         Cow::Owned(s)
@@ -1035,6 +1045,7 @@ impl<'a> From<OsString> for Cow<'a, OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
+    /// Converts the string reference into a [`Cow::Borrowed`].
     #[inline]
     fn from(s: &'a OsStr) -> Cow<'a, OsStr> {
         Cow::Borrowed(s)
@@ -1043,6 +1054,7 @@ impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
+    /// Converts the string reference into a [`Cow::Borrowed`].
     #[inline]
     fn from(s: &'a OsString) -> Cow<'a, OsStr> {
         Cow::Borrowed(s.as_os_str())
@@ -1051,6 +1063,8 @@ impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
 
 #[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
 impl<'a> From<Cow<'a, OsStr>> for OsString {
+    /// Converts a `Cow<'a, OsStr>` into an [`OsString`],
+    /// by copying the contents if they are borrowed.
     #[inline]
     fn from(s: Cow<'a, OsStr>) -> Self {
         s.into_owned()

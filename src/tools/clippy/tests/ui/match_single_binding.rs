@@ -118,7 +118,8 @@ fn main() {
         0 => println!("Array index start"),
         _ => println!("Not an array index start"),
     }
-    // False negative
+
+    // Lint
     let x = 1;
     match x {
         // =>

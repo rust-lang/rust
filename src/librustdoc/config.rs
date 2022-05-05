@@ -10,7 +10,9 @@ use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
 use rustc_session::config::{get_cmd_lint_options, nightly_options};
-use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::config::{
+    CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, JsonUnusedExterns,
+};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -80,6 +82,8 @@ crate struct Options {
     crate extern_strs: Vec<String>,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
     crate cfgs: Vec<String>,
+    /// List of check cfg flags to hand to the compiler.
+    crate check_cfgs: Vec<String>,
     /// Codegen options to hand to the compiler.
     crate codegen_options: CodegenOptions,
     /// Codegen options strings to hand to the compiler.
@@ -145,7 +149,7 @@ crate struct Options {
     /// documentation.
     crate run_check: bool,
     /// Whether doctests should emit unused externs
-    crate json_unused_externs: bool,
+    crate json_unused_externs: JsonUnusedExterns,
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
 
@@ -172,6 +176,7 @@ impl fmt::Debug for Options {
             .field("libs", &self.libs)
             .field("externs", &FmtExterns(&self.externs))
             .field("cfgs", &self.cfgs)
+            .field("check-cfgs", &self.check_cfgs)
             .field("codegen_options", &"...")
             .field("debugging_options", &"...")
             .field("target", &self.target)
@@ -439,13 +444,12 @@ impl Options {
             matches
                 .opt_str("default-theme")
                 .iter()
-                .map(|theme| {
+                .flat_map(|theme| {
                     vec![
                         ("use-system-theme".to_string(), "false".to_string()),
                         ("theme".to_string(), theme.to_string()),
                     ]
                 })
-                .flatten()
                 .collect(),
             matches
                 .opt_strs("default-setting")
@@ -507,6 +511,7 @@ impl Options {
         };
 
         let cfgs = matches.opt_strs("cfg");
+        let check_cfgs = matches.opt_strs("check-cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
@@ -559,7 +564,7 @@ impl Options {
         let edition = config::parse_crate_edition(matches);
 
         let mut id_map = html::markdown::IdMap::new();
-        let external_html = match ExternalHtml::load(
+        let Some(external_html) = ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
@@ -570,9 +575,8 @@ impl Options {
             &mut id_map,
             edition,
             &None,
-        ) {
-            Some(eh) => eh,
-            None => return Err(3),
+        ) else {
+            return Err(3);
         };
 
         match matches.opt_str("r").as_deref() {
@@ -678,6 +682,7 @@ impl Options {
             externs,
             extern_strs,
             cfgs,
+            check_cfgs,
             codegen_options,
             codegen_options_strs,
             debugging_opts,

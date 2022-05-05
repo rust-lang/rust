@@ -1,0 +1,8 @@
+error: found associated const `BAR` when type was expected
+  --> $DIR/shadowed-const.rs:19:14
+   |
+LL |   const QUX: Self::BAR;
+   |              ^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,10 +1,9 @@
 // revisions: stock precise
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
-#![feature(const_fn_trait_bound)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
-use std::marker::PhantomData;
+use std::marker::{Destruct, PhantomData};
 
 struct NonTrivialDrop;
 
@@ -24,8 +23,7 @@ trait A { fn a() { println!("A"); } }
 
 impl A for NonTrivialDrop {}
 
-struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-//~^ ERROR `~const` is not allowed
+struct ConstDropImplWithBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
     fn drop(&mut self) {
@@ -33,7 +31,7 @@ impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
     }
 }
 
-const fn check<T: ~const Drop>(_: T) {}
+const fn check<T: ~const Destruct>(_: T) {}
 
 macro_rules! check_all {
     ($($exp:expr),*$(,)?) => {$(
@@ -43,12 +41,11 @@ macro_rules! check_all {
 
 check_all! {
     NonTrivialDrop,
-    //~^ ERROR the trait bound
+    //~^ ERROR can't drop
     ConstImplWithDropGlue(NonTrivialDrop),
-    //~^ ERROR the trait bound
+    //~^ ERROR can't drop
     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
     //~^ ERROR the trait bound
-    //~| ERROR the trait bound
 }
 
 fn main() {}

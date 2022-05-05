@@ -30,11 +30,6 @@ warning: function is never used: `foo`
 LL | fn foo(x: &dyn std::fmt::Display) {}
    |    ^^^
    |
-note: the lint level is defined here
-  --> $DIR/display-output.rs:9:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
    = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
 warning: 3 warnings emitted

@@ -1,10 +1,8 @@
 use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
-use rustc_session::lint::Level;
+use rustc_middle::{mir::*, ty};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -192,7 +190,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // This return type is usually `()`, unless the block is diverging, in which case the
             // return type is `!`. For the unit type, we need to actually return the unit, but in
             // the case of `!`, no return value is required, as the block will never return.
-            if destination_ty.is_unit() {
+            // Opaque types of empty bodies also need this unit assignment, in order to infer that their
+            // type is actually unit. Otherwise there will be no defining use found in the MIR.
+            if destination_ty.is_unit() || matches!(destination_ty.kind(), ty::Opaque(..)) {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
                 this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
@@ -209,28 +209,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.unit()
     }
 
-    /// If we are changing the safety mode, create a new source scope
+    /// If we are entering an unsafe block, create a new source scope
     fn update_source_scope_for_safety_mode(&mut self, span: Span, safety_mode: BlockSafety) {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
-            BlockSafety::Safe => None,
-            BlockSafety::BuiltinUnsafe => Some(Safety::BuiltinUnsafe),
+            BlockSafety::Safe => return,
+            BlockSafety::BuiltinUnsafe => Safety::BuiltinUnsafe,
             BlockSafety::ExplicitUnsafe(hir_id) => {
-                match self.in_scope_unsafe {
-                    Safety::Safe => {}
-                    // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
-                    Safety::FnUnsafe
-                        if self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
-                            != Level::Allow => {}
-                    _ => return,
-                }
                 self.in_scope_unsafe = Safety::ExplicitUnsafe(hir_id);
-                Some(Safety::ExplicitUnsafe(hir_id))
+                Safety::ExplicitUnsafe(hir_id)
             }
         };
 
-        if let Some(unsafety) = new_unsafety {
-            self.source_scope = self.new_source_scope(span, LintLevel::Inherited, Some(unsafety));
-        }
+        self.source_scope = self.new_source_scope(span, LintLevel::Inherited, Some(new_unsafety));
     }
 }

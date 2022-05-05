@@ -129,50 +129,8 @@ LL | | /// ```
    |
    = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
 
-error: unknown attribute `allow-fail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr.rs:33:1
-   |
-LL | / /// barfoo
-LL | |
-LL | |
-LL | |
-...  |
-LL | | /// boo
-LL | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
-error: unknown attribute `allowfail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr.rs:33:1
-   |
-LL | / /// barfoo
-LL | |
-LL | |
-LL | |
-...  |
-LL | | /// boo
-LL | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
-error: unknown attribute `alLow_fail`. Did you mean `allow_fail`?
-  --> $DIR/check-attr.rs:33:1
-   |
-LL | / /// barfoo
-LL | |
-LL | |
-LL | |
-...  |
-LL | | /// boo
-LL | | /// ```
-   | |_______^
-   |
-   = help: the code block will either not be tested if not marked as a rust one or will be run (which you might not want)
-
 error: unknown attribute `test-harness`. Did you mean `test_harness`?
-  --> $DIR/check-attr.rs:43:1
+  --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
 LL | |
@@ -186,7 +144,7 @@ LL | | /// ```
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
-  --> $DIR/check-attr.rs:43:1
+  --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
 LL | |
@@ -200,7 +158,7 @@ LL | | /// ```
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `teSt_harness`. Did you mean `test_harness`?
-  --> $DIR/check-attr.rs:43:1
+  --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
 LL | |
@@ -213,5 +171,5 @@ LL | | /// ```
    |
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
-error: aborting due to 15 previous errors
+error: aborting due to 12 previous errors
 

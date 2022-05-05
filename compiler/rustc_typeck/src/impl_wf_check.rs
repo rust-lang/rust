@@ -187,7 +187,7 @@ fn enforce_impl_params_are_constrained(
 
     // (*) This is a horrible concession to reality. I think it'd be
     // better to just ban unconstrained lifetimes outright, but in
-    // practice people do non-hygenic macros like:
+    // practice people do non-hygienic macros like:
     //
     // ```
     // macro_rules! __impl_slice_eq1 {

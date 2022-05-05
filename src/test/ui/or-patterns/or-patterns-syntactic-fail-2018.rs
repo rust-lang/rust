@@ -2,8 +2,6 @@
 
 // edition:2018
 
-#![feature(or_patterns)]
-
 fn main() {}
 
 // Test the `pat` macro fragment parser:

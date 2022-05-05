@@ -2,10 +2,10 @@
 # First, establish that certain !prof labels are attached to the expected
 # functions and branching instructions.
 
-CHECK: define void @function_called_twice(i32 %c) {{.*}} !prof [[function_called_twice_id:![0-9]+]] {
+CHECK: define void @function_called_twice(i32 {{.*}} !prof [[function_called_twice_id:![0-9]+]] {
 CHECK: br i1 {{.*}}, label {{.*}}, label {{.*}}, !prof [[branch_weights0:![0-9]+]]
 
-CHECK: define void @function_called_42_times(i32 %c) {{.*}} !prof [[function_called_42_times_id:![0-9]+]] {
+CHECK: define void @function_called_42_times(i32{{.*}} %c) {{.*}} !prof [[function_called_42_times_id:![0-9]+]] {
 CHECK:      switch i32 %c, label {{.*}} [
 CHECK-NEXT:     i32 97, label {{.*}}
 CHECK-NEXT:     i32 98, label {{.*}}

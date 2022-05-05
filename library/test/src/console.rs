@@ -47,7 +47,6 @@ pub struct ConsoleTestState {
     pub passed: usize,
     pub failed: usize,
     pub ignored: usize,
-    pub allowed_fail: usize,
     pub filtered_out: usize,
     pub measured: usize,
     pub exec_time: Option<TestSuiteExecTime>,
@@ -71,7 +70,6 @@ impl ConsoleTestState {
             passed: 0,
             failed: 0,
             ignored: 0,
-            allowed_fail: 0,
             filtered_out: 0,
             measured: 0,
             exec_time: None,
@@ -105,28 +103,34 @@ impl ConsoleTestState {
         exec_time: Option<&TestExecTime>,
     ) -> io::Result<()> {
         self.write_log(|| {
+            let TestDesc { name, ignore_message, .. } = test;
             format!(
                 "{} {}",
                 match *result {
                     TestResult::TrOk => "ok".to_owned(),
                     TestResult::TrFailed => "failed".to_owned(),
-                    TestResult::TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                    TestResult::TrIgnored => "ignored".to_owned(),
-                    TestResult::TrAllowedFail => "failed (allowed)".to_owned(),
+                    TestResult::TrFailedMsg(ref msg) => format!("failed: {msg}"),
+                    TestResult::TrIgnored => {
+                        if let Some(msg) = ignore_message {
+                            format!("ignored: {msg}")
+                        } else {
+                            "ignored".to_owned()
+                        }
+                    }
                     TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
                     TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
                 },
-                test.name,
+                name,
             )
         })?;
         if let Some(exec_time) = exec_time {
-            self.write_log(|| format!(" <{}>", exec_time))?;
+            self.write_log(|| format!(" <{exec_time}>"))?;
         }
         self.write_log(|| "\n")
     }
 
     fn current_test_count(&self) -> usize {
-        self.passed + self.failed + self.ignored + self.measured + self.allowed_fail
+        self.passed + self.failed + self.ignored + self.measured
     }
 }
 
@@ -159,14 +163,14 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             }
         };
 
-        writeln!(output, "{}: {}", name, fntype)?;
-        st.write_log(|| format!("{} {}\n", fntype, name))?;
+        writeln!(output, "{name}: {fntype}")?;
+        st.write_log(|| format!("{fntype} {name}\n"))?;
     }
 
     fn plural(count: u32, s: &str) -> String {
         match count {
-            1 => format!("{} {}", 1, s),
-            n => format!("{} {}s", n, s),
+            1 => format!("1 {s}"),
+            n => format!("{n} {s}s"),
         }
     }
 
@@ -191,7 +195,6 @@ fn handle_test_result(st: &mut ConsoleTestState, completed_test: CompletedTest) 
             st.not_failures.push((test, stdout));
         }
         TestResult::TrIgnored => st.ignored += 1,
-        TestResult::TrAllowedFail => st.allowed_fail += 1,
         TestResult::TrBench(bs) => {
             st.metrics.insert_metric(
                 test.name.as_slice(),
@@ -207,7 +210,7 @@ fn handle_test_result(st: &mut ConsoleTestState, completed_test: CompletedTest) 
         TestResult::TrFailedMsg(msg) => {
             st.failed += 1;
             let mut stdout = stdout;
-            stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
+            stdout.extend_from_slice(format!("note: {msg}").as_bytes());
             st.failures.push((test, stdout));
         }
         TestResult::TrTimedFail => {

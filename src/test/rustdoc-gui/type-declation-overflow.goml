@@ -7,11 +7,15 @@ assert-property: ("body", {"scrollWidth": "1100"})
 // However, since there is overflow in the type declaration, its scroll width is bigger.
 assert-property: (".item-decl pre", {"scrollWidth": "1324"})
 
+// In the table-ish view on the module index, the name should not be wrapped more than necessary.
+goto: file://|DOC_PATH|/lib2/too_long/index.html
+assert-property: (".item-table .struct", {"offsetWidth": "684"})
+
 // We now make the same check on type declaration...
 goto: file://|DOC_PATH|/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main-content", {"scrollWidth": "840"})
+assert-property: ("#main-content", {"scrollWidth": "825"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 
@@ -20,6 +24,14 @@ assert-property: (".item-decl pre", {"scrollWidth": "1103"})
 goto: file://|DOC_PATH|/lib2/too_long/constant.ReallyLongTypeNameLongLongLongConstBecauseWhyNotAConstRightGigaGigaSupraLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
 // We now check that the section width hasn't grown because of it.
-assert-property: ("#main-content", {"scrollWidth": "840"})
+assert-property: ("#main-content", {"scrollWidth": "825"})
 // And now checking that it has scrollable content.
 assert-property: (".item-decl pre", {"scrollWidth": "950"})
+
+// On mobile:
+size: (600, 600)
+goto: file://|DOC_PATH|/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html
+// It shouldn't have an overflow in the topbar either.
+assert-property: (".mobile-topbar .location", {"scrollWidth": "492"})
+assert-property: (".mobile-topbar .location", {"clientWidth": "492"})
+assert-css: (".mobile-topbar .location", {"overflow-x": "hidden"})

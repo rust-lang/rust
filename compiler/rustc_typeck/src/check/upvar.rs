@@ -33,7 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
@@ -46,7 +46,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::sym;
-use rustc_span::{BytePos, MultiSpan, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::stable_map::FxHashMap;
@@ -304,7 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
-        // and unify the upvar tupe type in the closure with it:
+        // and unify the upvar tuple type in the closure with it:
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
@@ -335,11 +335,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // Returns a list of `Ty`s for each upvar.
     fn final_upvar_tys(&self, closure_id: DefId) -> Vec<Ty<'tcx>> {
-        // Presently an unboxed closure type cannot "escape" out of a
-        // function, so we will only encounter ones that originated in the
-        // local crate or were inlined into it along with some function.
-        // This may change if abstract return types of some sort are
-        // implemented.
         self.typeck_results
             .borrow()
             .closure_min_captures_flattened(closure_id)
@@ -458,10 +453,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// let s: String;  // hir_id_s
     /// let mut p: Point; // his_id_p
     /// let c = || {
-    ///        println!("{}", s);  // L1
+    ///        println!("{s}");  // L1
     ///        p.x += 10;  // L2
-    ///        println!("{}" , p.y) // L3
-    ///        println!("{}", p) // L4
+    ///        println!("{}" , p.y); // L3
+    ///        println!("{p}"); // L4
     ///        drop(s);   // L5
     /// };
     /// ```
@@ -533,19 +528,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
-                None => {
-                    let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                    let min_cap_list = vec![ty::CapturedPlace {
-                        place,
-                        info: capture_info,
-                        mutability,
-                        region: None,
-                    }];
-                    root_var_min_capture_list.insert(var_hir_id, min_cap_list);
-                    continue;
-                }
-                Some(min_cap_list) => min_cap_list,
+            let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
+                let mutability = self.determine_capture_mutability(&typeck_results, &place);
+                let min_cap_list = vec![ty::CapturedPlace {
+                    place,
+                    info: capture_info,
+                    mutability,
+                    region: None,
+                }];
+                root_var_min_capture_list.insert(var_hir_id, min_cap_list);
+                continue;
             };
 
             // Go through each entry in the current list of min_captures
@@ -553,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // capture information.
             //
             // - if descendant is found, remove it from the list, and update the current place's
-            // capture information to account for the descendants's capture kind.
+            // capture information to account for the descendant's capture kind.
             //
             // We can never be in a case where the list contains both an ancestor and a descendant
             // Also there can only be ancestor but in case of descendants there might be
@@ -669,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Now that we have the minimized list of captures, sort the captures by field id.
         // This causes the closure to capture the upvars in the same order as the fields are
         // declared which is also the drop order. Thus, in situations where we capture all the
-        // fields of some type, the obserable drop order will remain the same as it previously
+        // fields of some type, the observable drop order will remain the same as it previously
         // was even though we're dropping each capture individually.
         // See https://github.com/rust-lang/project-rfc-2229/issues/42 and
         // `src/test/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
@@ -788,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Add a label pointing to where a captured variable affected by drop order
                             // is dropped
                             if lint_note.reason.drop_order {
-                                let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
+                                let drop_location_span = drop_location_span(self.tcx, closure_hir_id);
 
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
@@ -870,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos::from_usize(line1.len())).shrink_to_lo(),
                                 &diagnostic_msg,
-                                format!("\n{}{};", indent, migration_string),
+                                format!("\n{indent}{migration_string};"),
                                 Applicability::MachineApplicable,
                             );
                         } else if line1.starts_with('{') {
@@ -881,7 +873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.span_suggestion(
                                 closure_body_span.with_lo(closure_body_span.lo() + BytePos(1)).shrink_to_lo(),
                                 &diagnostic_msg,
-                                format!(" {};", migration_string),
+                                format!(" {migration_string};"),
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -890,7 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             diagnostics_builder.multipart_suggestion(
                                 &diagnostic_msg,
                                 vec![
-                                    (closure_body_span.shrink_to_lo(), format!("{{ {}; ", migration_string)),
+                                    (closure_body_span.shrink_to_lo(), format!("{{ {migration_string}; ")),
                                     (closure_body_span.shrink_to_hi(), " }".to_string()),
                                 ],
                                 Applicability::MachineApplicable
@@ -966,7 +958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(&ty::ReErased),
+                    Some(self.tcx.lifetimes.re_erased),
                 )
             }
         };
@@ -997,7 +989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(&ty::ReErased),
+                Some(self.tcx.lifetimes.re_erased),
             );
 
             // Checks if a capture implements any of the auto traits
@@ -1374,7 +1366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // represents the case of the path being completely captured by the variable.
         //
         // eg. If `a.b` is captured and we are processing `a.b`, then we can't have the closure also
-        //     capture `a.b.c`, because that voilates min capture.
+        //     capture `a.b.c`, because that violates min capture.
         let is_completely_captured = captured_by_move_projs.iter().any(|projs| projs.is_empty());
 
         assert!(!is_completely_captured || (captured_by_move_projs.len() == 1));
@@ -1404,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Observations:
             // - `captured_by_move_projs` is not empty. Therefore we can call
             //   `captured_by_move_projs.first().unwrap()` safely.
-            // - All entries in `captured_by_move_projs` have atleast one projection.
+            // - All entries in `captured_by_move_projs` have at least one projection.
             //   Therefore we can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
 
             // We don't capture derefs in case of move captures, which would have be applied to
@@ -1414,9 +1406,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::RawPtr(..) => unreachable!(),
 
             ty::Adt(def, substs) => {
-                // Multi-varaint enums are captured in entirety,
+                // Multi-variant enums are captured in entirety,
                 // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
-                assert_eq!(def.variants.len(), 1);
+                assert_eq!(def.variants().len(), 1);
 
                 // Only Field projections can be applied to a non-box Adt.
                 assert!(
@@ -1425,7 +1417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants.get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
+                def.variants().get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
@@ -1451,7 +1443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
 
-            ty::Tuple(..) => {
+            ty::Tuple(fields) => {
                 // Only Field projections can be applied to a tuple.
                 assert!(
                     captured_by_move_projs.iter().all(|projs| matches!(
@@ -1460,7 +1452,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ))
                 );
 
-                base_path_ty.tuple_fields().enumerate().any(|(i, element_ty)| {
+                fields.iter().enumerate().any(|(i, element_ty)| {
                     let paths_using_field = captured_by_move_projs
                         .iter()
                         .filter_map(|projs| {
@@ -1499,7 +1491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
-            hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
+            hir::CaptureBy::Value if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref => ty::UpvarCapture::ByRef(ty::ImmBorrow),
@@ -1535,7 +1527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.sess.struct_span_err(closure_span, "First Pass analysis includes:");
             for (place, capture_info) in capture_information {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
-                let output_str = format!("Capturing {}", capture_str);
+                let output_str = format!("Capturing {capture_str}");
 
                 let span =
                     capture_info.path_expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
@@ -1560,7 +1552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         let capture_str =
                             construct_capture_info_string(self.tcx, place, capture_info);
-                        let output_str = format!("Min Capture {}", capture_str);
+                        let output_str = format!("Min Capture {capture_str}");
 
                         if capture.info.path_expr_id != capture.info.capture_kind_expr_id {
                             let path_span = capture_info
@@ -1620,7 +1612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We don't capture derefs of raw ptrs
                 ty::RawPtr(_) => unreachable!(),
 
-                // Derefencing a mut-ref allows us to mut the Place if we don't deref
+                // Dereferencing a mut-ref allows us to mut the Place if we don't deref
                 // an immut-ref after on top of this.
                 ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
 
@@ -1652,8 +1644,9 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
         // Return true for fields of packed structs, unless those fields have alignment 1.
         match p.kind {
             ProjectionKind::Field(..) => match ty.kind() {
-                ty::Adt(def, _) if def.repr.packed() => {
-                    match tcx.layout_of(param_env.and(p.ty)) {
+                ty::Adt(def, _) if def.repr().packed() => {
+                    // We erase regions here because they cannot be hashed
+                    match tcx.layout_of(param_env.and(tcx.erase_regions(p.ty))) {
                         Ok(layout) if layout.align.abi.bytes() == 1 => {
                             // if the alignment is 1, the type can't be further
                             // disaligned.
@@ -1699,8 +1692,8 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
-    let owner_id = tcx.hir().get_enclosing_scope(*hir_id).unwrap();
+fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
+    let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir().get(owner_id);
     let owner_span = match owner_node {
@@ -1812,7 +1805,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         );
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
         }
 
@@ -1880,7 +1873,7 @@ fn restrict_precision_for_unsafe<'tcx>(
         }
 
         if proj.ty.is_union() {
-            // Don't capture preicse fields of a union.
+            // Don't capture precise fields of a union.
             truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
             break;
         }
@@ -1892,7 +1885,7 @@ fn restrict_precision_for_unsafe<'tcx>(
 /// Truncate projections so that following rules are obeyed by the captured `place`:
 /// - No Index projections are captured, since arrays are captured completely.
 /// - No unsafe block is required to capture `place`
-/// Returns the truncated place and updated cature mode.
+/// Returns the truncated place and updated capture mode.
 fn restrict_capture_precision<'tcx>(
     place: Place<'tcx>,
     curr_mode: ty::UpvarCapture,
@@ -1976,7 +1969,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
         projections_str.push_str(proj.as_str());
     }
 
-    format!("{}[{}]", variable_name, projections_str)
+    format!("{variable_name}[{projections_str}]")
 }
 
 fn construct_capture_kind_reason_string<'tcx>(
@@ -1991,13 +1984,13 @@ fn construct_capture_kind_reason_string<'tcx>(
         ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
     };
 
-    format!("{} captured as {} here", place_str, capture_kind_str)
+    format!("{place_str} captured as {capture_kind_str} here")
 }
 
 fn construct_path_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     let place_str = construct_place_string(tcx, place);
 
-    format!("{} used here", place_str)
+    format!("{place_str} used here")
 }
 
 fn construct_capture_info_string<'tcx>(
@@ -2011,7 +2004,7 @@ fn construct_capture_info_string<'tcx>(
         ty::UpvarCapture::ByValue => "ByValue".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{:?}", kind),
     };
-    format!("{} -> {}", place_str, capture_kind_str)
+    format!("{place_str} -> {capture_kind_str}")
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
@@ -2042,16 +2035,16 @@ fn migration_suggestion_for_2229(
         .collect::<Vec<_>>();
 
     let migration_ref_concat =
-        need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");
+        need_migrations_variables.iter().map(|v| format!("&{v}")).collect::<Vec<_>>().join(", ");
 
     let migration_string = if 1 == need_migrations.len() {
-        format!("let _ = {}", migration_ref_concat)
+        format!("let _ = {migration_ref_concat}")
     } else {
-        format!("let _ = ({})", migration_ref_concat)
+        format!("let _ = ({migration_ref_concat})")
     };
 
     let migrated_variables_concat =
-        need_migrations_variables.iter().map(|v| format!("`{}`", v)).collect::<Vec<_>>().join(", ");
+        need_migrations_variables.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
 
     (migration_string, migrated_variables_concat)
 }
@@ -2066,7 +2059,7 @@ fn migration_suggestion_for_2229(
 /// It is the caller's duty to figure out which path_expr_id to use.
 ///
 /// If both the CaptureKind and Expression are considered to be equivalent,
-/// then `CaptureInfo` A is preferred. This can be useful in cases where we want to priortize
+/// then `CaptureInfo` A is preferred. This can be useful in cases where we want to prioritize
 /// expressions reported back to the user as part of diagnostics based on which appears earlier
 /// in the closure. This can be achieved simply by calling
 /// `determine_capture_info(existing_info, current_info)`. This works out because the
@@ -2210,8 +2203,8 @@ fn determine_place_ancestry_relation<'tcx>(
     }
 }
 
-/// Reduces the precision of the captured place when the precision doesn't yeild any benefit from
-/// borrow checking prespective, allowing us to save us on the size of the capture.
+/// Reduces the precision of the captured place when the precision doesn't yield any benefit from
+/// borrow checking perspective, allowing us to save us on the size of the capture.
 ///
 ///
 /// Fields that are read through a shared reference will always be read via a shared ref or a copy,

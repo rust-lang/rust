@@ -1,5 +1,17 @@
+error[E0080]: evaluation of `main::{constant#3}::<&i32>` failed
+  --> $DIR/indexing_slicing_index.rs:31:14
+   |
+LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+   |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
+
+error[E0080]: erroneous constant used
+  --> $DIR/indexing_slicing_index.rs:31:5
+   |
+LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:10:5
+  --> $DIR/indexing_slicing_index.rs:22:5
    |
 LL |     x[index];
    |     ^^^^^^^^
@@ -8,7 +20,7 @@ LL |     x[index];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:22:5
+  --> $DIR/indexing_slicing_index.rs:38:5
    |
 LL |     v[0];
    |     ^^^^
@@ -16,7 +28,7 @@ LL |     v[0];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:23:5
+  --> $DIR/indexing_slicing_index.rs:39:5
    |
 LL |     v[10];
    |     ^^^^^
@@ -24,7 +36,7 @@ LL |     v[10];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:24:5
+  --> $DIR/indexing_slicing_index.rs:40:5
    |
 LL |     v[1 << 3];
    |     ^^^^^^^^^
@@ -32,7 +44,7 @@ LL |     v[1 << 3];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:30:5
+  --> $DIR/indexing_slicing_index.rs:46:5
    |
 LL |     v[N];
    |     ^^^^
@@ -40,12 +52,13 @@ LL |     v[N];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:31:5
+  --> $DIR/indexing_slicing_index.rs:47:5
    |
 LL |     v[M];
    |     ^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

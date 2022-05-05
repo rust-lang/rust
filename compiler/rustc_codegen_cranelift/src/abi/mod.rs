@@ -94,6 +94,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        if self.clif_comments.enabled() {
+            self.add_comment(func_ref, format!("{:?}", name));
+        }
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(call_inst, format!("easy_call {}", name));
@@ -117,7 +120,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             .unzip();
         let return_layout = self.layout_of(return_ty);
         let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
-            tup.types().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
+            tup.iter().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
         } else {
             vec![AbiParam::new(self.clif_type(return_ty).unwrap())]
         };
@@ -199,7 +202,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                 };
 
                 let mut params = Vec::new();
-                for (i, _arg_ty) in tupled_arg_tys.types().enumerate() {
+                for (i, _arg_ty) in tupled_arg_tys.iter().enumerate() {
                     let arg_abi = arg_abis_iter.next().unwrap();
                     let param =
                         cvalue_for_param(fx, Some(local), Some(i), arg_abi, &mut block_params_iter);
@@ -367,7 +370,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
         .unwrap_or(false);
     if is_cold {
-        // FIXME Mark current_block block as cold once Cranelift supports it
+        fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+        if let Some((_place, destination_block)) = destination {
+            fx.bcx.set_cold_block(fx.get_block(destination_block));
+        }
     }
 
     // Unpack arguments tuple for closures
@@ -501,7 +507,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let ret_block = fx.get_block(dest);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        trap_unreachable(fx, "[corruption] Diverging function returned");
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
     }
 }
 
@@ -544,7 +550,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let arg_value = drop_place.place_ref(
                     fx,
                     fx.layout_of(fx.tcx.mk_ref(
-                        &ty::RegionKind::ReErased,
+                        fx.tcx.lifetimes.re_erased,
                         TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
                     )),
                 );

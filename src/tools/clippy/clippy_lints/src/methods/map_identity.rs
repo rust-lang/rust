@@ -13,6 +13,7 @@ pub(super) fn check(
     expr: &hir::Expr<'_>,
     caller: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
+    name: &str,
     _map_span: Span,
 ) {
     let caller_ty = cx.typeck_results().expr_ty(caller);
@@ -29,7 +30,7 @@ pub(super) fn check(
                 MAP_IDENTITY,
                 sugg_span,
                 "unnecessary map of the identity function",
-                "remove the call to `map`",
+                &format!("remove the call to `{}`", name),
                 String::new(),
                 Applicability::MachineApplicable,
             )

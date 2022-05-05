@@ -10,7 +10,7 @@ error: layout_of(A) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I8,
                        false,
@@ -47,7 +47,7 @@ error: layout_of(A) = Layout {
                ],
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I8,
                        false,
@@ -60,13 +60,11 @@ error: layout_of(A) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I8,
-                           false,
-                       ),
-                       valid_range: 0..=0,
-                   },
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
                },
            ),
            align: AbiAndPrefAlign {
@@ -98,7 +96,7 @@ error: layout_of(B) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I8,
                        false,
@@ -135,7 +133,7 @@ error: layout_of(B) = Layout {
                ],
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I8,
                        false,
@@ -148,13 +146,11 @@ error: layout_of(B) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I8,
-                           false,
-                       ),
-                       valid_range: 255..=255,
-                   },
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 255..=255,
                },
            ),
            align: AbiAndPrefAlign {
@@ -186,7 +182,7 @@ error: layout_of(C) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I16,
                        false,
@@ -223,7 +219,7 @@ error: layout_of(C) = Layout {
                ],
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I16,
                        false,
@@ -236,13 +232,11 @@ error: layout_of(C) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I16,
-                           false,
-                       ),
-                       valid_range: 256..=256,
-                   },
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: 256..=256,
                },
            ),
            align: AbiAndPrefAlign {
@@ -274,7 +268,7 @@ error: layout_of(P) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I32,
                        false,
@@ -311,7 +305,7 @@ error: layout_of(P) = Layout {
                ],
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        false,
@@ -324,13 +318,11 @@ error: layout_of(P) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I32,
-                           false,
-                       ),
-                       valid_range: 268435456..=268435456,
-                   },
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 268435456..=268435456,
                },
            ),
            align: AbiAndPrefAlign {
@@ -362,7 +354,7 @@ error: layout_of(T) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I32,
                        true,
@@ -399,7 +391,7 @@ error: layout_of(T) = Layout {
                ],
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        true,
@@ -412,13 +404,11 @@ error: layout_of(T) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I32,
-                           true,
-                       ),
-                       valid_range: 2164260864..=2164260864,
-                   },
+                   value: Int(
+                       I32,
+                       true,
+                   ),
+                   valid_range: 2164260864..=2164260864,
                },
            ),
            align: AbiAndPrefAlign {
