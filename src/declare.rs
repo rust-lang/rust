@@ -11,8 +11,7 @@ use crate::intrinsic::llvm;
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn get_or_insert_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         if self.globals.borrow().contains_key(name) {
-            // TODO: use [] instead of .get().expect()?
-            let typ = self.globals.borrow().get(name).expect("global").get_type();
+            let typ = self.globals.borrow()[name].get_type();
             let global = self.context.new_global(None, GlobalKind::Imported, typ, name);
             if is_tls {
                 global.set_tls_model(self.tls_model);
@@ -110,7 +109,7 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
     }
     let func =
         if cx.functions.borrow().contains_key(name) {
-            *cx.functions.borrow().get(name).expect("function")
+            cx.functions.borrow()[name]
         }
         else {
             let params: Vec<_> = param_types.into_iter().enumerate()
