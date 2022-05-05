@@ -13,29 +13,29 @@ fn in_mod_item_list() {
     check(
         r#"mod tests { $0 }"#,
         expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            kw const
+            kw crate
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
-            kw static
-            kw mod
-            kw enum
-            kw struct
-            kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
             kw self
+            kw static
+            kw struct
             kw super
-            kw crate
-            ma makro!(…)           macro_rules! makro
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
         "#]],
     )
 }
@@ -45,30 +45,30 @@ fn in_source_file_item_list() {
     check(
         r#"$0"#,
         expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
+            kw const
+            kw crate
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
-            kw static
-            kw mod
-            kw enum
-            kw struct
-            kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
             kw self
+            kw static
+            kw struct
             kw super
-            kw crate
-            md module
-            ma makro!(…)           macro_rules! makro
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
         "#]],
     )
 }
@@ -78,25 +78,25 @@ fn in_item_list_after_attr() {
     check(
         r#"#[attr] $0"#,
         expect![[r#"
+            kw const
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
             kw static
-            kw mod
-            kw enum
             kw struct
+            kw trait
+            kw type
             kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
+            kw unsafe
+            kw use
             sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
         "#]],
     )
 }
@@ -107,8 +107,8 @@ fn in_qualified_path() {
     check(
         r#"crate::$0"#,
         expect![[r#"
-            md module
             ma makro!(…) macro_rules! makro
+            md module
         "#]],
     )
 }
@@ -119,8 +119,8 @@ fn after_unsafe_token() {
         r#"unsafe $0"#,
         expect![[r#"
             kw fn
-            kw trait
             kw impl
+            kw trait
         "#]],
     );
 }
@@ -130,17 +130,17 @@ fn after_visibility() {
     check(
         r#"pub $0"#,
         expect![[r#"
-            kw unsafe
-            kw fn
             kw const
-            kw type
-            kw use
-            kw trait
-            kw static
-            kw mod
             kw enum
+            kw fn
+            kw mod
+            kw static
             kw struct
+            kw trait
+            kw type
             kw union
+            kw unsafe
+            kw use
         "#]],
     );
 }
@@ -152,8 +152,8 @@ fn after_visibility_unsafe() {
         r#"pub unsafe $0"#,
         expect![[r#"
             kw fn
-            kw trait
             kw impl
+            kw trait
         "#]],
     );
 }
@@ -163,18 +163,18 @@ fn in_impl_assoc_item_list() {
     check(
         r#"impl Struct { $0 }"#,
         expect![[r#"
+            ma makro!(…)  macro_rules! makro
+            md module
+            kw const
+            kw crate
+            kw fn
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
             kw self
             kw super
-            kw crate
-            md module
-            ma makro!(…)  macro_rules! makro
+            kw type
+            kw unsafe
         "#]],
     )
 }
@@ -184,13 +184,13 @@ fn in_impl_assoc_item_list_after_attr() {
     check(
         r#"impl Struct { #[attr] $0 }"#,
         expect![[r#"
+            kw const
+            kw fn
+            kw pub
             kw pub(crate)
             kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
             kw type
+            kw unsafe
         "#]],
     )
 }
@@ -200,15 +200,15 @@ fn in_trait_assoc_item_list() {
     check(
         r"trait Foo { $0 }",
         expect![[r#"
-            kw unsafe
-            kw fn
+            ma makro!(…) macro_rules! makro
+            md module
             kw const
-            kw type
+            kw crate
+            kw fn
             kw self
             kw super
-            kw crate
-            md module
-            ma makro!(…) macro_rules! makro
+            kw type
+            kw unsafe
         "#]],
     );
 }
@@ -234,21 +234,21 @@ impl Test for () {
 }
 "#,
         expect![[r#"
-            kw pub(crate)
-            kw pub(super)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            ta type Type1 =
             ct const CONST1: () =
             fn fn function1()
+            ma makro!(…)          macro_rules! makro
+            md module
+            ta type Type1 =
+            kw const
+            kw crate
+            kw fn
+            kw pub
+            kw pub(crate)
+            kw pub(super)
             kw self
             kw super
-            kw crate
-            md module
-            ma makro!(…)          macro_rules! makro
+            kw type
+            kw unsafe
         "#]],
     );
 }

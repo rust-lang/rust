@@ -16,10 +16,10 @@ fn empty_pub() {
 pub($0)
 "#,
         expect![[r#"
+            kw crate
             kw in
             kw self
             kw super
-            kw crate
         "#]],
     );
 }
@@ -31,9 +31,9 @@ fn after_in_kw() {
 pub(in $0)
 "#,
         expect![[r#"
+            kw crate
             kw self
             kw super
-            kw crate
         "#]],
     );
 }

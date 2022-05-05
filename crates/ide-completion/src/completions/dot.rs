@@ -190,9 +190,9 @@ pub mod m {
 fn foo(a: lib::m::A) { a.$0 }
 "#,
             expect![[r#"
+                fd crate_field   u32
                 fd private_field u32
                 fd pub_field     u32
-                fd crate_field   u32
                 fd super_field   u32
             "#]],
         );
@@ -248,8 +248,8 @@ mod m {
 fn foo(a: lib::A) { a.$0 }
 "#,
             expect![[r#"
-                me private_method() fn(&self)
                 me crate_method()   fn(&self)
+                me private_method() fn(&self)
                 me pub_method()     fn(&self)
             "#]],
         );
@@ -686,11 +686,11 @@ struct Foo { field: i32 }
 impl Foo { fn foo(&self) { $0 } }"#,
             expect![[r#"
                 fd self.field i32
-                me self.foo() fn(&self)
                 lc self       &Foo
                 sp Self
                 st Foo
                 bt u32
+                me self.foo() fn(&self)
             "#]],
         );
         check(
@@ -700,11 +700,11 @@ struct Foo(i32);
 impl Foo { fn foo(&mut self) { $0 } }"#,
             expect![[r#"
                 fd self.0     i32
-                me self.foo() fn(&mut self)
                 lc self       &mut Foo
                 sp Self
                 st Foo
                 bt u32
+                me self.foo() fn(&mut self)
             "#]],
         );
     }

@@ -343,8 +343,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );
@@ -448,8 +448,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );
@@ -465,8 +465,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );
@@ -484,8 +484,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );
@@ -532,8 +532,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );
@@ -549,8 +549,8 @@ impl Test for T {
 ",
             expect![[r#"
                 sp Self
-                tt Test
                 st T
+                tt Test
                 bt u32
             "#]],
         );

@@ -155,32 +155,32 @@ fn main() {
 }
 "#,
         expect![[r#"
-            kw unsafe
-            kw match
-            kw while
-            kw while let
-            kw loop
-            kw if
-            kw if let
-            kw for
-            kw true
-            kw false
-            kw return
-            st Foo {…}              Foo { foo1: u32, foo2: u32 }
             fd ..Default::default()
             fd foo1                 u32
             fd foo2                 u32
-            kw self
-            kw super
-            kw crate
+            fn main()               fn()
             lc foo                  Foo
             lc thing                i32
-            st Foo
-            fn main()               fn()
             md core
-            bt u32
-            tt Sized
+            st Foo
+            st Foo {…}              Foo { foo1: u32, foo2: u32 }
             tt Default
+            tt Sized
+            bt u32
+            kw crate
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self
+            kw super
+            kw true
+            kw unsafe
+            kw while
+            kw while let
         "#]],
     );
     check(
@@ -198,9 +198,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn default() (as Default) fn() -> Self
             fd foo1                   u32
             fd foo2                   u32
+            fn default() (as Default) fn() -> Self
         "#]],
     );
 }
@@ -218,8 +218,8 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            fd foo u32
             fd bar f32
+            fd foo u32
         "#]],
     )
 }

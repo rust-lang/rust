@@ -205,8 +205,8 @@ mod tests {
             r"fn my_fn() { unsafe $0 }",
             expect![[r#"
                 kw fn
-                kw trait
                 kw impl
+                kw trait
                 sn pd
                 sn ppd
             "#]],
@@ -225,15 +225,15 @@ fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 kw await expr.await
-                sn ref   &expr
-                sn refm  &mut expr
-                sn match match expr {}
                 sn box   Box::new(expr)
+                sn call  function(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
-                sn call  function(expr)
                 sn let   let
                 sn letm  let mut
+                sn match match expr {}
+                sn ref   &expr
+                sn refm  &mut expr
             "#]],
         );
 
@@ -248,15 +248,15 @@ fn foo() {
 "#,
             expect![[r#"
                 kw await expr.await
-                sn ref   &expr
-                sn refm  &mut expr
-                sn match match expr {}
                 sn box   Box::new(expr)
+                sn call  function(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
-                sn call  function(expr)
                 sn let   let
                 sn letm  let mut
+                sn match match expr {}
+                sn ref   &expr
+                sn refm  &mut expr
             "#]],
         )
     }

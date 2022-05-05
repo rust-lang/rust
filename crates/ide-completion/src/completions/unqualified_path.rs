@@ -176,8 +176,8 @@ pub mod prelude {
 "#,
             expect![[r#"
                 md std
-                bt u32
                 st Option
+                bt u32
             "#]],
         );
     }
@@ -233,10 +233,10 @@ pub mod prelude {
 }
 "#,
             expect![[r#"
-                md std
                 md core
-                bt u32
+                md std
                 st String
+                bt u32
             "#]],
         );
     }
