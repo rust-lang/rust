@@ -1,5 +1,4 @@
 #![feature(associated_type_defaults)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(exact_size_is_empty)]
