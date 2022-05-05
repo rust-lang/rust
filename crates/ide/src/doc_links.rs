@@ -45,19 +45,19 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
         // and valid URLs so we choose to be too eager to try to resolve what might be
         // a URL.
         if target.contains("://") {
-            (target.to_string(), title.to_string())
+            (Some(LinkType::Inline), target.to_string(), title.to_string())
         } else {
             // Two possibilities:
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
-            if let Some(rewritten) = rewrite_intra_doc_link(db, definition, target, title) {
-                return rewritten;
+            if let Some((target, title)) = rewrite_intra_doc_link(db, definition, target, title) {
+                return (None, target, title);
             }
             if let Some(target) = rewrite_url_link(db, definition, target) {
-                return (target, title.to_string());
+                return (Some(LinkType::Inline), target, title.to_string());
             }
 
-            (target.to_string(), title.to_string())
+            (None, target.to_string(), title.to_string())
         }
     });
     let mut out = String::new();
@@ -368,33 +368,42 @@ fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {
 /// Rewrites a markdown document, applying 'callback' to each link.
 fn map_links<'e>(
     events: impl Iterator<Item = Event<'e>>,
-    callback: impl Fn(&str, &str) -> (String, String),
+    callback: impl Fn(&str, &str) -> (Option<LinkType>, String, String),
 ) -> impl Iterator<Item = Event<'e>> {
     let mut in_link = false;
-    let mut link_target: Option<CowStr> = None;
+    // holds the origin link target on start event and the rewritten one on end event
+    let mut end_link_target: Option<CowStr> = None;
+    // normally link's type is determined by the type of link tag in the end event,
+    // however in same cases we want to change the link type, for example,
+    // `Shortcut` type doesn't make sense for url links
+    let mut end_link_type: Option<LinkType> = None;
 
     events.map(move |evt| match evt {
         Event::Start(Tag::Link(_, ref target, _)) => {
             in_link = true;
-            link_target = Some(target.clone());
+            end_link_target = Some(target.clone());
             evt
         }
         Event::End(Tag::Link(link_type, target, _)) => {
             in_link = false;
             Event::End(Tag::Link(
-                link_type,
-                link_target.take().unwrap_or(target),
+                end_link_type.unwrap_or(link_type),
+                end_link_target.take().unwrap_or(target),
                 CowStr::Borrowed(""),
             ))
         }
         Event::Text(s) if in_link => {
-            let (link_target_s, link_name) = callback(&link_target.take().unwrap(), &s);
-            link_target = Some(CowStr::Boxed(link_target_s.into()));
+            let (link_type, link_target_s, link_name) =
+                callback(&end_link_target.take().unwrap(), &s);
+            end_link_target = Some(CowStr::Boxed(link_target_s.into()));
+            end_link_type = link_type;
             Event::Text(CowStr::Boxed(link_name.into()))
         }
         Event::Code(s) if in_link => {
-            let (link_target_s, link_name) = callback(&link_target.take().unwrap(), &s);
-            link_target = Some(CowStr::Boxed(link_target_s.into()));
+            let (link_type, link_target_s, link_name) =
+                callback(&end_link_target.take().unwrap(), &s);
+            end_link_target = Some(CowStr::Boxed(link_target_s.into()));
+            end_link_type = link_type;
             Event::Code(CowStr::Boxed(link_name.into()))
         }
         _ => evt,
@@ -468,7 +477,13 @@ fn filename_and_frag_for_def(
             Adt::Union(u) => format!("union.{}.html", u.name(db)),
         },
         Definition::Module(m) => match m.name(db) {
-            Some(name) => format!("{}/index.html", name),
+            // `#[doc(keyword = "...")]` is internal used only by rust compiler
+            Some(name) => match m.attrs(db).by_key("doc").find_string_value_in_tt("keyword") {
+                Some(kw) => {
+                    format!("keyword.{}.html", kw.trim_matches('"'))
+                }
+                None => format!("{}/index.html", name),
+            },
             None => String::from("index.html"),
         },
         Definition::Trait(t) => format!("trait.{}.html", t.name(db)),

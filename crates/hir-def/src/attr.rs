@@ -853,6 +853,25 @@ impl<'attr> AttrQuery<'attr> {
             .iter()
             .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_smol_str() == key))
     }
+
+    /// Find string value for a specific key inside token tree
+    ///
+    /// ```ignore
+    /// #[doc(html_root_url = "url")]
+    ///       ^^^^^^^^^^^^^ key
+    /// ```
+    pub fn find_string_value_in_tt(self, key: &'attr str) -> Option<&SmolStr> {
+        self.tt_values().find_map(|tt| {
+            let name = tt.token_trees.iter()
+                .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, ..} )) if text == key))
+                .nth(2);
+
+            match name {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal{ref text, ..}))) => Some(text),
+                _ => None
+            }
+        })
+    }
 }
 
 fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> RawAttrs {

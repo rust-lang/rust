@@ -3642,6 +3642,40 @@ mod return_keyword {}
 }
 
 #[test]
+fn hover_keyword_doc() {
+    check(
+        r#"
+//- /main.rs crate:main deps:std
+fn foo() {
+    let bar = mov$0e || {};
+}
+//- /libstd.rs crate:std
+#[doc(keyword = "move")]
+/// [closure]
+/// [closures][closure]
+/// [threads]
+///
+/// [closure]: ../book/ch13-01-closures.html
+/// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
+mod move_keyword {}
+"#,
+        expect![[r##"
+            *move*
+
+            ```rust
+            move
+            ```
+
+            ---
+
+            [closure](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
+            [closures](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
+            [threads](https://doc.rust-lang.org/nightly/book/ch16-01-threads.html#using-move-closures-with-threads)
+        "##]],
+    );
+}
+
+#[test]
 fn hover_keyword_as_primitive() {
     check(
         r#"
