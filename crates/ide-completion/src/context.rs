@@ -47,12 +47,17 @@ pub(crate) enum Visible {
 pub(super) enum PathKind {
     Expr,
     Type,
-    Attr { kind: AttrKind, annotated_item_kind: Option<SyntaxKind> },
+    Attr {
+        kind: AttrKind,
+        annotated_item_kind: Option<SyntaxKind>,
+    },
     Derive,
-    // This should be removed in favor of `has_macro_bang` in PathCompletionContext
-    Mac,
+    /// Path in item position, that is inside an (Assoc)ItemList
+    Item,
     Pat,
-    Vis { has_in_token: bool },
+    Vis {
+        has_in_token: bool,
+    },
     Use,
 }
 
@@ -60,6 +65,8 @@ pub(super) enum PathKind {
 pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there (or {} in case of record patterns)
     pub(super) has_call_parens: bool,
+    /// If this has a macro call bang !
+    pub(super) has_macro_bang: bool,
     /// Whether this path stars with a `::`.
     pub(super) is_absolute_path: bool,
     /// The qualifier of the current path if it exists.
@@ -942,6 +949,7 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             can_be_stmt: false,
             in_loop_body: false,
+            has_macro_bang: false,
             kind: None,
         };
         let mut pat_ctx = None;
@@ -970,7 +978,21 @@ impl<'a> CompletionContext<'a> {
                         pat_ctx = Some(pattern_context_for(original_file, it.into()));
                         Some(PathKind::Pat)
                     },
-                    ast::MacroCall(it) => it.excl_token().and(Some(PathKind::Mac)),
+                    ast::MacroCall(it) => {
+                        path_ctx.has_macro_bang = it.excl_token().is_some();
+                        match it.syntax().parent().map(|it| it.kind()) {
+                            Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
+                            Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type),
+                            Some(SyntaxKind::MACRO_EXPR) => Some(PathKind::Expr),
+                            Some(
+                                SyntaxKind::ITEM_LIST
+                                | SyntaxKind::ASSOC_ITEM_LIST
+                                | SyntaxKind::EXTERN_ITEM_LIST
+                                | SyntaxKind::SOURCE_FILE
+                            ) => Some(PathKind::Item),
+                            _ => return Some(None),
+                        }
+                    },
                     ast::Meta(meta) => (|| {
                         let attr = meta.parent_attr()?;
                         let kind = attr.kind();
@@ -989,6 +1011,10 @@ impl<'a> CompletionContext<'a> {
                     })(),
                     ast::Visibility(it) => Some(PathKind::Vis { has_in_token: it.in_token().is_some() }),
                     ast::UseTree(_) => Some(PathKind::Use),
+                    ast::ItemList(_) => Some(PathKind::Item),
+                    ast::AssocItemList(_) => Some(PathKind::Item),
+                    ast::ExternItemList(_) => Some(PathKind::Item),
+                    ast::SourceFile(_) => Some(PathKind::Item),
                     _ => return None,
                 }
             };

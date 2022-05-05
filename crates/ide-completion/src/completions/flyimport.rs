@@ -161,10 +161,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (_, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
             // and so are macros(except for attributes)
             (
-                PathKind::Expr | PathKind::Type | PathKind::Mac | PathKind::Pat,
+                PathKind::Expr | PathKind::Type | PathKind::Item | PathKind::Pat,
                 ItemInNs::Macros(mac),
             ) => mac.is_fn_like(ctx.db),
-            (PathKind::Mac, _) => true,
+            (PathKind::Item, _) => true,
 
             (PathKind::Expr, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
 
