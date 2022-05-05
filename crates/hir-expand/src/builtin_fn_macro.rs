@@ -440,7 +440,7 @@ fn concat_bytes_expand(
                             .into_iter()
                             .for_each(|x| bytes.push(x.to_string()));
                     }
-                    ast::LiteralKind::Byte => {
+                    ast::LiteralKind::Byte(_) => {
                         bytes.push(lit.to_string());
                     }
                     _ => {
@@ -477,7 +477,7 @@ fn concat_bytes_expand_subtree(
             tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                 let lit = ast::make::literal(&lit.to_string());
                 match lit.kind() {
-                    ast::LiteralKind::IntNumber(_) | ast::LiteralKind::Byte => {
+                    ast::LiteralKind::IntNumber(_) | ast::LiteralKind::Byte(_) => {
                         bytes.push(lit.to_string());
                     }
                     _ => {
