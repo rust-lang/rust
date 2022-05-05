@@ -180,7 +180,7 @@ const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that imp
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
                                    Forgetting a copy leaves the original intact";
 const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
-                                 Dropping such a type only extends it's contained lifetimes";
+                                 Dropping such a type only extends its contained lifetimes";
 const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
                                    Forgetting such a type is the same as dropping it";
 

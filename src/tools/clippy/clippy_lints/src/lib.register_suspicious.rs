@@ -5,6 +5,7 @@
 store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec![
     LintId::of(assign_ops::MISREFACTORED_ASSIGN_OP),
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
+    LintId::of(await_holding_invalid::AWAIT_HOLDING_INVALID_TYPE),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_LOCK),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
     LintId::of(casts::CAST_ABS_TO_UNSIGNED),

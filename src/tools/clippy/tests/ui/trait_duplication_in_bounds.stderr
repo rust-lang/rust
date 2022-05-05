@@ -67,5 +67,13 @@ LL |         Self: Iterator<Item = Foo>,
    |
    = help: consider removing this trait bound
 
-error: aborting due to 8 previous errors
+error: this trait bound is already specified in the where clause
+  --> $DIR/trait_duplication_in_bounds.rs:99:23
+   |
+LL | fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+   |                       ^^^^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: aborting due to 9 previous errors
 

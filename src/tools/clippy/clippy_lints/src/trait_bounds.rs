@@ -13,6 +13,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
-    pedantic,
+    nursery,
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
@@ -64,7 +65,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.47.0"]
     pub TRAIT_DUPLICATION_IN_BOUNDS,
-    pedantic,
+    nursery,
     "Check if the same trait bounds are specified twice during a function declaration"
 }
 
@@ -182,19 +183,19 @@ impl TraitBounds {
                     for b in v.iter() {
                         if let GenericBound::Trait(ref poly_trait_ref, _) = b {
                             let path = &poly_trait_ref.trait_ref.path;
-                            hint_string.push_str(&format!(
+                            let _ = write!(hint_string,
                                 " {} +",
                                 snippet_with_applicability(cx, path.span, "..", &mut applicability)
-                            ));
+                            );
                         }
                     }
                     for b in p.bounds.iter() {
                         if let GenericBound::Trait(ref poly_trait_ref, _) = b {
                             let path = &poly_trait_ref.trait_ref.path;
-                            hint_string.push_str(&format!(
+                            let _ = write!(hint_string,
                                 " {} +",
                                 snippet_with_applicability(cx, path.span, "..", &mut applicability)
-                            ));
+                            );
                         }
                     }
                     hint_string.truncate(hint_string.len() - 2);
@@ -241,7 +242,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                         );
                     }
                     else {
-                        trait_resolutions_direct.push((res_where, span_where))
+                        trait_resolutions_direct.push((res_where, span_where));
                     }
                 }
             }

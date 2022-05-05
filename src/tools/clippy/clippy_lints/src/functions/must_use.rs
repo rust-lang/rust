@@ -20,7 +20,7 @@ use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let attr = must_use_attr(attrs);
-    if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
+    if let hir::ItemKind::Fn(ref sig, _generics, ref body_id) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
@@ -105,12 +105,7 @@ fn check_needless_must_use(
             fn_header_span,
             "this unit-returning function has a `#[must_use]` attribute",
             |diag| {
-                diag.span_suggestion(
-                    attr.span,
-                    "remove the attribute",
-                    "",
-                    Applicability::MachineApplicable,
-                );
+                diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
             },
         );
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {

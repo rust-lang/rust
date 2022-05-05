@@ -6,7 +6,7 @@ use clippy_utils::msrvs;
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use clippy_utils::{extract_msrv_attr, meets_msrv};
 use if_chain::if_chain;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MacArgs, MacArgsEq, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -335,9 +335,6 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
-                            // permit `unused_imports`, `deprecated`, `unreachable_pub`,
-                            // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
-                            // and `unused_imports` for `extern crate` items with `macro_use`
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
@@ -345,10 +342,12 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "wildcard_imports")
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "enum_glob_use")
+                                            || extract_clippy_lint(lint).map_or(false, |s| {
+                                                matches!(
+                                                    s.as_str(),
+                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                )
+                                            })
                                         {
                                             return;
                                         }
@@ -594,6 +593,10 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
         };
 
         if attr.style == AttrStyle::Outer {
+            if let MacArgs::Eq(_, MacArgsEq::Ast(expr)) = &attr_item.args
+                && !matches!(expr.kind, rustc_ast::ExprKind::Lit(..)) {
+                return;
+            }
             if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
                 return;
             }

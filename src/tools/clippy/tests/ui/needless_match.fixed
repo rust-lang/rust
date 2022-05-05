@@ -80,6 +80,18 @@ fn if_let_option() {
     } else {
         None
     };
+
+    // Don't trigger
+    let _ = if let Some(a) = Some(1) { Some(a) } else { Some(2) };
+}
+
+fn if_let_option_result() -> Result<(), ()> {
+    fn f(x: i32) -> Result<Option<i32>, ()> {
+        Ok(Some(x))
+    }
+    // Don't trigger
+    let _ = if let Some(v) = f(1)? { Some(v) } else { f(2)? };
+    Ok(())
 }
 
 fn if_let_result() {

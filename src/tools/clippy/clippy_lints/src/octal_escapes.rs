@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The actual meaning can be the intended one. `\x00` can be used in these
-    /// cases to be unambigious.
+    /// cases to be unambiguous.
     ///
     /// The lint does not trigger for format strings in `print!()`, `write!()`
     /// and friends since the string is already preprocessed when Clippy lints

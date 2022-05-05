@@ -1,3 +1,4 @@
+use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -22,6 +23,11 @@ declare_clippy_lint! {
     /// # let x = 1;
     /// x / 1 + 0 * 1 - 0 | 0;
     /// ```
+    ///
+    /// ### Known problems
+    /// False negatives: `f(0 + if b { 1 } else { 2 } + 3);` is reducible to
+    /// `f(if b { 1 } else { 2 } + 3);`. But the lint doesn't trigger for the code.
+    /// See [#8724](https://github.com/rust-lang/rust-clippy/issues/8724)
     #[clippy::version = "pre 1.29.0"]
     pub IDENTITY_OP,
     complexity,
@@ -31,33 +37,63 @@ declare_clippy_lint! {
 declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
 
 impl<'tcx> LateLintPass<'tcx> for IdentityOp {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Binary(cmp, left, right) = e.kind {
-            if is_allowed(cx, cmp, left, right) {
-                return;
-            }
-            match cmp.node {
-                BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                    check(cx, left, 0, e.span, right.span);
-                    check(cx, right, 0, e.span, left.span);
-                },
-                BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => check(cx, right, 0, e.span, left.span),
-                BinOpKind::Mul => {
-                    check(cx, left, 1, e.span, right.span);
-                    check(cx, right, 1, e.span, left.span);
-                },
-                BinOpKind::Div => check(cx, right, 1, e.span, left.span),
-                BinOpKind::BitAnd => {
-                    check(cx, left, -1, e.span, right.span);
-                    check(cx, right, -1, e.span, left.span);
-                },
-                BinOpKind::Rem => check_remainder(cx, left, right, e.span, left.span),
-                _ => (),
+        if let ExprKind::Binary(cmp, left, right) = &expr.kind {
+            if !is_allowed(cx, *cmp, left, right) {
+                match cmp.node {
+                    BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
+                        if reducible_to_right(cx, expr, right) {
+                            check(cx, left, 0, expr.span, right.span);
+                        }
+                        check(cx, right, 0, expr.span, left.span);
+                    },
+                    BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
+                        check(cx, right, 0, expr.span, left.span);
+                    },
+                    BinOpKind::Mul => {
+                        if reducible_to_right(cx, expr, right) {
+                            check(cx, left, 1, expr.span, right.span);
+                        }
+                        check(cx, right, 1, expr.span, left.span);
+                    },
+                    BinOpKind::Div => check(cx, right, 1, expr.span, left.span),
+                    BinOpKind::BitAnd => {
+                        if reducible_to_right(cx, expr, right) {
+                            check(cx, left, -1, expr.span, right.span);
+                        }
+                        check(cx, right, -1, expr.span, left.span);
+                    },
+                    BinOpKind::Rem => {
+                        // Don't call reducible_to_right because N % N is always reducible to 1
+                        check_remainder(cx, left, right, expr.span, left.span);
+                    },
+                    _ => (),
+                }
             }
         }
+    }
+}
+
+/// Checks if `left op ..right` can be actually reduced to `right`
+/// e.g. `0 + if b { 1 } else { 2 } + if b { 3 } else { 4 }`
+/// cannot be reduced to `if b { 1 } else { 2 } +  if b { 3 } else { 4 }`
+/// See #8724
+fn reducible_to_right(cx: &LateContext<'_>, binary: &Expr<'_>, right: &Expr<'_>) -> bool {
+    if let ExprKind::If(..) | ExprKind::Match(..) | ExprKind::Block(..) | ExprKind::Loop(..) = right.kind {
+        is_toplevel_binary(cx, binary)
+    } else {
+        true
+    }
+}
+
+fn is_toplevel_binary(cx: &LateContext<'_>, must_be_binary: &Expr<'_>) -> bool {
+    if let Some(parent) = get_parent_expr(cx, must_be_binary) && let ExprKind::Binary(..) = &parent.kind {
+        false
+    } else {
+        true
     }
 }
 

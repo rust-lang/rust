@@ -4,6 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+aho-corasick = "0.7"
 clap = "2.33"
 indoc = "1.0"
 itertools = "0.10.1"

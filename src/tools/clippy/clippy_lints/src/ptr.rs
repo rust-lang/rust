@@ -3,6 +3,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
+use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::{Applicability, MultiSpan};
@@ -10,9 +11,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
-    self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArg,
+    self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
     ImplItemKind, ItemKind, Lifetime, LifetimeName, Mutability, Node, Param, ParamName, PatKind, QPath, TraitFn,
-    TraitItem, TraitItemKind, TyKind,
+    TraitItem, TraitItemKind, TyKind, Unsafety,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -88,19 +89,26 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for functions that take immutable
-    /// references and return mutable ones.
+    /// This lint checks for functions that take immutable references and return
+    /// mutable ones. This will not trigger if no unsafe code exists as there
+    /// are multiple safe functions which will do this transformation
+    ///
+    /// To be on the conservative side, if there's at least one mutable
+    /// reference with the output lifetime, this lint will not trigger.
     ///
     /// ### Why is this bad?
-    /// This is trivially unsound, as one can create two
-    /// mutable references from the same (immutable!) source.
-    /// This [error](https://github.com/rust-lang/rust/issues/39465)
-    /// actually lead to an interim Rust release 1.15.1.
+    /// Creating a mutable reference which can be repeatably derived from an
+    /// immutable reference is unsound as it allows creating multiple live
+    /// mutable references to the same object.
+    ///
+    /// This [error](https://github.com/rust-lang/rust/issues/39465) actually
+    /// lead to an interim Rust release 1.15.1.
     ///
     /// ### Known problems
-    /// To be on the conservative side, if there's at least one
-    /// mutable reference with the output lifetime, this lint will not trigger.
-    /// In practice, this case is unlikely anyway.
+    /// This pattern is used by memory allocators to allow allocating multiple
+    /// objects while returning mutable references to each one. So long as
+    /// different mutable references are returned each time such a function may
+    /// be safe.
     ///
     /// ### Example
     /// ```ignore
@@ -145,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 return;
             }
 
-            check_mut_from_ref(cx, sig.decl);
+            check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
                 cx.tcx.fn_sig(item.def_id).skip_binder().inputs(),
@@ -170,10 +178,10 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
         let hir = cx.tcx.hir();
         let mut parents = hir.parent_iter(body.value.hir_id);
-        let (item_id, decl, is_trait_item) = match parents.next() {
+        let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
                 if let ItemKind::Fn(sig, ..) = &i.kind {
-                    (i.def_id, sig.decl, false)
+                    (i.def_id, sig, false)
                 } else {
                     return;
                 }
@@ -185,14 +193,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return;
                 }
                 if let ImplItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig.decl, false)
+                    (i.def_id, sig, false)
                 } else {
                     return;
                 }
             },
             Some((_, Node::TraitItem(i))) => {
                 if let TraitItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig.decl, true)
+                    (i.def_id, sig, true)
                 } else {
                     return;
                 }
@@ -200,7 +208,8 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             _ => return,
         };
 
-        check_mut_from_ref(cx, decl);
+        check_mut_from_ref(cx, sig, Some(body));
+        let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, body.params)
             .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
@@ -473,31 +482,31 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         })
 }
 
-fn check_mut_from_ref(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
-    if let FnRetTy::Return(ty) = decl.output {
-        if let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty) {
-            let mut immutables = vec![];
-            for (_, mutbl, argspan) in decl
-                .inputs
-                .iter()
-                .filter_map(get_rptr_lm)
-                .filter(|&(lt, _, _)| lt.name == out.name)
-            {
-                if mutbl == Mutability::Mut {
-                    return;
-                }
-                immutables.push(argspan);
-            }
-            if immutables.is_empty() {
-                return;
-            }
+fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&'tcx Body<'_>>) {
+    if let FnRetTy::Return(ty) = sig.decl.output
+        && let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty)
+    {
+        let args: Option<Vec<_>> = sig
+            .decl
+            .inputs
+            .iter()
+            .filter_map(get_rptr_lm)
+            .filter(|&(lt, _, _)| lt.name == out.name)
+            .map(|(_, mutability, span)| (mutability == Mutability::Not).then(|| span))
+            .collect();
+        if let Some(args) = args
+            && !args.is_empty()
+            && body.map_or(true, |body| {
+                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, &body.value)
+            })
+        {
             span_lint_and_then(
                 cx,
                 MUT_FROM_REF,
                 ty.span,
                 "mutable borrow from immutable input(s)",
                 |diag| {
-                    let ms = MultiSpan::from_spans(immutables);
+                    let ms = MultiSpan::from_spans(args);
                     diag.span_note(ms, "immutable borrow here");
                 },
             );

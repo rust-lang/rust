@@ -18,5 +18,23 @@ error: this lifetime isn't used in the function definition
 LL |         fn unused_lt<'a>(x: u8) {}
    |                      ^^
 
-error: aborting due to 3 previous errors
+error: this lifetime isn't used in the impl
+  --> $DIR/extra_unused_lifetimes.rs:78:10
+   |
+LL |     impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
+   |          ^^
+
+error: this lifetime isn't used in the impl
+  --> $DIR/extra_unused_lifetimes.rs:84:10
+   |
+LL |     impl<'b> Scalar {
+   |          ^^
+
+error: this lifetime isn't used in the function definition
+  --> $DIR/extra_unused_lifetimes.rs:85:26
+   |
+LL |         pub fn something<'c>() -> Self {
+   |                          ^^
+
+error: aborting due to 6 previous errors
 
