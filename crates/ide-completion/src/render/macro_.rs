@@ -5,7 +5,7 @@ use ide_db::SymbolKind;
 use syntax::SmolStr;
 
 use crate::{
-    context::PathKind,
+    context::{PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem},
     render::RenderContext,
 };
@@ -33,8 +33,12 @@ fn render(
     let is_fn_like = macro_.is_fn_like(completion.db);
     let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
 
-    let needs_bang =
-        is_fn_like && !matches!(completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
+    let needs_bang = match completion.path_context {
+        Some(PathCompletionCtx { kind, has_macro_bang, .. }) => {
+            is_fn_like && kind != Some(PathKind::Use) && !has_macro_bang
+        }
+        _ => is_fn_like,
+    };
 
     let mut item = CompletionItem::new(
         SymbolKind::from(macro_.kind(completion.db)),

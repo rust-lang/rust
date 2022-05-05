@@ -19,7 +19,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,
-            kind: None | Some(PathKind::Expr | PathKind::Type | PathKind::Mac),
+            kind: None | Some(PathKind::Expr | PathKind::Type | PathKind::Item),
             ..
         }) => (),
         _ => return,
