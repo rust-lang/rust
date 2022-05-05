@@ -655,6 +655,7 @@ dependencies = [
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
+ "aho-corasick",
  "clap 2.34.0",
  "indoc",
  "itertools",
