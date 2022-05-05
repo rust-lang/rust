@@ -720,7 +720,7 @@ where
         }
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        // See if we can avoid an allocation. This is the counterpart to `try_read_immediate`,
+        // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
@@ -879,7 +879,7 @@ where
         }
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
-        let src = match self.try_read_immediate(src)? {
+        let src = match self.read_immediate_raw(src, /*force*/ false)? {
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
