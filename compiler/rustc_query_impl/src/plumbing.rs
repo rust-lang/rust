@@ -435,6 +435,8 @@ macro_rules! define_queries {
 
                 fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
                     if let Some(key) = recover(tcx, dep_node) {
+                        #[cfg(debug_assertions)]
+                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         let tcx = QueryCtxt::from_tcx(tcx);
                         force_query::<queries::$name<'_>, _>(tcx, key, dep_node);
                         true
@@ -532,6 +534,7 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*
             #[inline(always)]
+            #[tracing::instrument(level = "trace", skip(self, tcx))]
             fn $name(
                 &'tcx self,
                 tcx: TyCtxt<$tcx>,
