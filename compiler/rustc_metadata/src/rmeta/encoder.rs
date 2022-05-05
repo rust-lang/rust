@@ -35,7 +35,9 @@ use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{
+    self, DebuggerVisualizerFile, ExternalSource, FileName, SourceFile, Span, SyntaxContext,
+};
 use rustc_span::{
     hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind},
     RealFileName,
@@ -672,6 +674,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tables = self.tables.encode(&mut self.opaque);
         let tables_bytes = self.position() - i;
 
+        i = self.position();
+        let debugger_visualizers = self.encode_debugger_visualizers();
+        let debugger_visualizers_bytes = self.position() - i;
+
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
         // this as late as possible to give the prefetching as much time as possible to complete.
         i = self.position();
@@ -717,6 +723,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
             has_default_lib_allocator,
             proc_macro_data,
+            debugger_visualizers,
             compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
             needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
             needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
@@ -757,25 +764,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
 
             eprintln!("metadata stats:");
-            eprintln!("             dep bytes: {}", dep_bytes);
-            eprintln!("     lib feature bytes: {}", lib_feature_bytes);
-            eprintln!("       lang item bytes: {}", lang_item_bytes);
-            eprintln!(" diagnostic item bytes: {}", diagnostic_item_bytes);
-            eprintln!("          native bytes: {}", native_lib_bytes);
-            eprintln!("      source_map bytes: {}", source_map_bytes);
-            eprintln!("          traits bytes: {}", traits_bytes);
-            eprintln!("           impls bytes: {}", impls_bytes);
-            eprintln!("incoherent_impls bytes: {}", incoherent_impls_bytes);
-            eprintln!("    exp. symbols bytes: {}", exported_symbols_bytes);
-            eprintln!("  def-path table bytes: {}", def_path_table_bytes);
-            eprintln!(" def-path hashes bytes: {}", def_path_hash_map_bytes);
-            eprintln!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
-            eprintln!("             mir bytes: {}", mir_bytes);
-            eprintln!("            item bytes: {}", item_bytes);
-            eprintln!("           table bytes: {}", tables_bytes);
-            eprintln!("         hygiene bytes: {}", hygiene_bytes);
-            eprintln!("            zero bytes: {}", zero_bytes);
-            eprintln!("           total bytes: {}", total_bytes);
+            eprintln!("                  dep bytes: {}", dep_bytes);
+            eprintln!("          lib feature bytes: {}", lib_feature_bytes);
+            eprintln!("            lang item bytes: {}", lang_item_bytes);
+            eprintln!("      diagnostic item bytes: {}", diagnostic_item_bytes);
+            eprintln!("               native bytes: {}", native_lib_bytes);
+            eprintln!(" debugger visualizers bytes: {}", debugger_visualizers_bytes);
+            eprintln!("           source_map bytes: {}", source_map_bytes);
+            eprintln!("               traits bytes: {}", traits_bytes);
+            eprintln!("                impls bytes: {}", impls_bytes);
+            eprintln!("     incoherent_impls bytes: {}", incoherent_impls_bytes);
+            eprintln!("         exp. symbols bytes: {}", exported_symbols_bytes);
+            eprintln!("       def-path table bytes: {}", def_path_table_bytes);
+            eprintln!("      def-path hashes bytes: {}", def_path_hash_map_bytes);
+            eprintln!("      proc-macro-data-bytes: {}", proc_macro_data_bytes);
+            eprintln!("                  mir bytes: {}", mir_bytes);
+            eprintln!("                 item bytes: {}", item_bytes);
+            eprintln!("                table bytes: {}", tables_bytes);
+            eprintln!("              hygiene bytes: {}", hygiene_bytes);
+            eprintln!("                 zero bytes: {}", zero_bytes);
+            eprintln!("                total bytes: {}", total_bytes);
         }
 
         root
@@ -1714,6 +1722,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         } else {
             None
         }
+    }
+
+    fn encode_debugger_visualizers(&mut self) -> Lazy<[DebuggerVisualizerFile]> {
+        empty_proc_macro!(self);
+        self.lazy(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
     }
 
     fn encode_crate_deps(&mut self) -> Lazy<[CrateDep]> {

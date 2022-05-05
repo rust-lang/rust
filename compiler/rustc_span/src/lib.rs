@@ -70,6 +70,7 @@ use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use md5::Digest;
 use md5::Md5;
@@ -1196,6 +1197,28 @@ impl SourceFileHash {
             SourceFileHashAlgorithm::Sha1 => 20,
             SourceFileHashAlgorithm::Sha256 => 32,
         }
+    }
+}
+
+#[derive(HashStable_Generic)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+pub enum DebuggerVisualizerType {
+    Natvis,
+}
+
+/// A single debugger visualizer file.
+#[derive(HashStable_Generic)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
+pub struct DebuggerVisualizerFile {
+    /// The complete debugger visualizer source.
+    pub src: Arc<[u8]>,
+    /// Indicates which visualizer type this targets.
+    pub visualizer_type: DebuggerVisualizerType,
+}
+
+impl DebuggerVisualizerFile {
+    pub fn new(src: Arc<[u8]>, visualizer_type: DebuggerVisualizerType) -> Self {
+        DebuggerVisualizerFile { src, visualizer_type }
     }
 }
 

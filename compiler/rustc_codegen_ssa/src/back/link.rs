@@ -5,7 +5,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
@@ -2099,8 +2099,14 @@ fn add_order_independent_options(
     // Pass optimization flags down to the linker.
     cmd.optimize();
 
+    let debugger_visualizer_paths = if sess.target.is_like_msvc {
+        collect_debugger_visualizers(tmpdir, sess, &codegen_results.crate_info)
+    } else {
+        Vec::new()
+    };
+
     // Pass debuginfo and strip flags down to the linker.
-    cmd.debuginfo(strip_value(sess));
+    cmd.debuginfo(strip_value(sess), &debugger_visualizer_paths);
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
@@ -2117,6 +2123,47 @@ fn add_order_independent_options(
     }
 
     add_rpath_args(cmd, sess, codegen_results, out_filename);
+}
+
+// Write the debugger visualizer files for each crate to the temp directory and gather the file paths.
+fn collect_debugger_visualizers(
+    tmpdir: &Path,
+    sess: &Session,
+    crate_info: &CrateInfo,
+) -> Vec<PathBuf> {
+    let mut visualizer_paths = Vec::new();
+    let debugger_visualizers = &crate_info.debugger_visualizers;
+    let mut index = 0;
+
+    for (&cnum, visualizers) in debugger_visualizers {
+        let crate_name = if cnum == LOCAL_CRATE {
+            crate_info.local_crate_name.as_str()
+        } else {
+            crate_info.crate_name[&cnum].as_str()
+        };
+
+        for visualizer in visualizers {
+            let visualizer_out_file = tmpdir.join(format!("{}-{}.natvis", crate_name, index));
+
+            match fs::write(&visualizer_out_file, &visualizer.src) {
+                Ok(()) => {
+                    visualizer_paths.push(visualizer_out_file.clone());
+                    index += 1;
+                }
+                Err(error) => {
+                    sess.warn(
+                        format!(
+                            "Unable to write debugger visualizer file `{}`: {} ",
+                            visualizer_out_file.display(),
+                            error
+                        )
+                        .as_str(),
+                    );
+                }
+            };
+        }
+    }
+    visualizer_paths
 }
 
 /// # Native library linking
