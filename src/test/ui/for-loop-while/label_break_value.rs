@@ -102,7 +102,7 @@ fn label_break_match(c: u8, xe: u8, ye: i8) {
             0 => break 'a 0,
             v if { if v % 2 == 0 { break 'a 1; }; v % 3 == 0 } => { x += 1; },
             v if { 'b: { break 'b v == 5; } } => { x = 41; },
-            _ => 'b: { //~ WARNING `'b` shadows a label
+            _ => 'b: {
                 break 'b ();
             },
         }
@@ -128,8 +128,8 @@ fn label_break_macro() {
         0
     };
     assert_eq!(x, 0);
-    let x: u8 = 'a: { //~ WARNING `'a` shadows a label
-        'b: { //~ WARNING `'b` shadows a label
+    let x: u8 = 'a: {
+        'b: {
             if true {
                 mac1!('a, 1);
             }
