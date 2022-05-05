@@ -2015,7 +2015,12 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
         ///
         /// # Examples
         ///
@@ -2050,7 +2055,12 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
         ///
         /// # Examples
         ///
@@ -2088,7 +2098,12 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the operation results in overflow.
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
         ///
         /// # Examples
         ///
@@ -2157,7 +2172,6 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
         pub const fn checked_next_multiple_of(self, rhs: Self) -> Option<Self> {
             // This would otherwise fail when calculating `r` when self == T::MIN.
             if rhs == -1 {
