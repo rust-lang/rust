@@ -492,7 +492,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
         Ok(*try_validation!(
-            self.ecx.try_read_immediate(op, /*force*/ true),
+            self.ecx.read_immediate_raw(op, /*force*/ true),
             self.path,
             err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
         ).unwrap())

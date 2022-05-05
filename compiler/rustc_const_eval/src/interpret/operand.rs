@@ -252,7 +252,9 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
-    fn try_read_immediate_from_mplace(
+    ///
+    /// This is an internal function; call `read_immediate` instead.
+    fn read_immediate_from_mplace_raw(
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
         force: bool,
@@ -312,9 +314,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return Ok(None);
     }
 
-    /// Try returning an immediate for the operand.
-    /// If the layout does not permit loading this as an immediate, return where in memory
-    /// we can find the data.
+    /// Try returning an immediate for the operand. If the layout does not permit loading this as an
+    /// immediate, return where in memory we can find the data.
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
@@ -322,14 +323,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// If `force` is `true`, then even scalars with fields that can be ununit will be
     /// read. This means the load is lossy and should not be written back!
     /// This flag exists only for validity checking.
-    pub fn try_read_immediate(
+    ///
+    /// This is an internal function that should not usually be used; call `read_immediate` instead.
+    pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
         force: bool,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
         Ok(match src.try_as_mplace() {
             Ok(ref mplace) => {
-                if let Some(val) = self.try_read_immediate_from_mplace(mplace, force)? {
+                if let Some(val) = self.read_immediate_from_mplace_raw(mplace, force)? {
                     Ok(val)
                 } else {
                     Err(*mplace)
@@ -345,7 +348,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
-        if let Ok(imm) = self.try_read_immediate(op, /*force*/ false)? {
+        if let Ok(imm) = self.read_immediate_raw(op, /*force*/ false)? {
             Ok(imm)
         } else {
             span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);
