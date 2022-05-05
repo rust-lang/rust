@@ -2,6 +2,7 @@
 
 pub(crate) mod attribute;
 pub(crate) mod dot;
+pub(crate) mod expr;
 pub(crate) mod extern_abi;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
@@ -16,7 +17,7 @@ pub(crate) mod qualified_path;
 pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod trait_impl;
-pub(crate) mod unqualified_path;
+pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
 

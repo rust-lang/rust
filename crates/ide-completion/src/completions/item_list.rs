@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext) {
-    let _p = profile::span("complete_unqualified_path");
+    let _p = profile::span("complete_item_list");
     if ctx.is_path_disallowed() || ctx.has_unfinished_impl_or_trait_prev_sibling() {
         return;
     }

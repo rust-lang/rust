@@ -27,9 +27,9 @@ impl Tra$0
             tt Trait
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     )
 }
@@ -50,9 +50,9 @@ impl Trait for Str$0
             tt Trait
             un Union
             bt u32
-            kw crate
-            kw self
-            kw super
+            kw crate::
+            kw self::
+            kw super::
         "#]],
     )
 }

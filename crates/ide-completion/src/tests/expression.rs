@@ -48,7 +48,7 @@ fn baz() {
             un Union
             ev TupleV(…)     TupleV(u32)
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -57,8 +57,8 @@ fn baz() {
             kw match
             kw mut
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -91,7 +91,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
             lc param1     i32
             lc param2     i32
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -99,8 +99,8 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -111,7 +111,6 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
 
 #[test]
 fn completes_all_the_things_in_fn_body() {
-    cov_mark::check!(unqualified_skip_lifetime_completion);
     check(
         r#"
 use non_existant::Unresolved;
@@ -146,7 +145,7 @@ impl Unit {
             ev TupleV(…)    TupleV(u32)
             bt u32
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw false
@@ -160,10 +159,10 @@ impl Unit {
             kw match
             kw mod
             kw return
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw true
             kw type
@@ -224,7 +223,7 @@ fn complete_in_block() {
             fn foo()       fn()
             bt u32
             kw const
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw false
@@ -238,10 +237,10 @@ fn complete_in_block() {
             kw match
             kw mod
             kw return
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw true
             kw type
@@ -270,7 +269,7 @@ fn complete_after_if_expr() {
             fn foo()       fn()
             bt u32
             kw const
-            kw crate
+            kw crate::
             kw else
             kw else if
             kw enum
@@ -286,10 +285,10 @@ fn complete_after_if_expr() {
             kw match
             kw mod
             kw return
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw true
             kw type
@@ -318,7 +317,7 @@ fn complete_in_match_arm() {
         expect![[r#"
             fn foo()     fn()
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -326,8 +325,8 @@ fn complete_in_match_arm() {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -346,7 +345,7 @@ fn completes_in_loop_ctx() {
             kw break
             kw const
             kw continue
-            kw crate
+            kw crate::
             kw enum
             kw extern
             kw false
@@ -360,10 +359,10 @@ fn completes_in_loop_ctx() {
             kw match
             kw mod
             kw return
-            kw self
+            kw self::
             kw static
             kw struct
-            kw super
+            kw super::
             kw trait
             kw true
             kw type
@@ -386,7 +385,7 @@ fn completes_in_let_initializer() {
         expect![[r#"
             fn main()    fn()
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -394,8 +393,8 @@ fn completes_in_let_initializer() {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -421,7 +420,7 @@ fn foo() {
             fn foo()     fn()
             st Foo
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -429,8 +428,8 @@ fn foo() {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -457,7 +456,7 @@ fn foo() {
             fn foo()     fn()
             lc bar       i32
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -465,8 +464,8 @@ fn foo() {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -489,7 +488,7 @@ fn quux(x: i32) {
             lc x         i32
             ma m!(…)     macro_rules! m
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -497,8 +496,8 @@ fn quux(x: i32) {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
@@ -517,7 +516,7 @@ fn quux(x: i32) {
             lc x         i32
             ma m!(…)     macro_rules! m
             bt u32
-            kw crate
+            kw crate::
             kw false
             kw for
             kw if
@@ -525,8 +524,8 @@ fn quux(x: i32) {
             kw loop
             kw match
             kw return
-            kw self
-            kw super
+            kw self::
+            kw super::
             kw true
             kw unsafe
             kw while
