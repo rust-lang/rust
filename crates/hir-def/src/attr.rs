@@ -854,11 +854,13 @@ impl<'attr> AttrQuery<'attr> {
             .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_smol_str() == key))
     }
 
+    /// Find string value for a specific key inside token tree
+    ///
+    /// ```ignore
+    /// #[doc(html_root_url = "url")]
+    ///       ^^^^^^^^^^^^^ key
+    /// ```
     pub fn find_string_value_in_tt(self, key: &'attr str) -> Option<&SmolStr> {
-        if !self.exists() {
-            return None;
-        }
-
         self.tt_values().find_map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, ..} )) if text == key))
