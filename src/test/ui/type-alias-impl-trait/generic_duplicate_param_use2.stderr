@@ -1,8 +1,8 @@
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use2.rs:8:18
+  --> $DIR/generic_duplicate_param_use2.rs:11:5
    |
-LL | type Two<T, U> = impl Debug;
-   |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+LL |     t
+   |     ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
 help: consider restricting type parameter `T`
    |
