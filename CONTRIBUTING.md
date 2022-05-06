@@ -67,7 +67,7 @@ and resolved paths.
 
 [`T-AST`] issues will generally need you to match against a predefined syntax structure.
 To figure out how this syntax structure is encoded in the AST, it is recommended to run
-`rustc -Z ast-json` on an example of the structure and compare with the [nodes in the AST docs].
+`rustc -Z unpretty=ast-tree` on an example of the structure and compare with the [nodes in the AST docs].
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
