@@ -90,9 +90,20 @@ impl<'a> TtIter<'a> {
 
         let mut cursor = buffer.begin();
         let mut error = false;
+        let mut float_fragments_to_skip = 0;
         for step in tree_traversal.iter() {
             match step {
                 parser::Step::Token { kind, mut n_input_tokens } => {
+                    if float_fragments_to_skip > 0 {
+                        float_fragments_to_skip -= 1;
+                        n_input_tokens = 0;
+                    }
+                    match kind {
+                        SyntaxKind::LIFETIME_IDENT => n_input_tokens = 2,
+                        SyntaxKind::FLOAT_NUMBER_START_1 => float_fragments_to_skip = 1,
+                        SyntaxKind::FLOAT_NUMBER_START_2 => float_fragments_to_skip = 2,
+                        _ => {}
+                    }
                     if kind == SyntaxKind::LIFETIME_IDENT {
                         n_input_tokens = 2;
                     }
