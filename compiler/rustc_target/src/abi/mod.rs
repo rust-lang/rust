@@ -276,10 +276,17 @@ impl ToJson for Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
     raw: u64,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Size({} bytes)", self.bytes())
+    }
 }
 
 impl Size {
@@ -485,10 +492,17 @@ impl Step for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Align {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Align({} bytes)", self.bytes())
+    }
 }
 
 impl Align {
