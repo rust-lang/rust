@@ -102,7 +102,7 @@ The components of a lint plugin are:
 
 Lint passes are syntax traversals, but they run at a late stage of compilation
 where type information is available. `rustc`'s [built-in
-lints](https://github.com/rust-lang/rust/blob/master/src/librustc_session/lint/builtin.rs)
+lints](https://github.com/rust-lang/rust/blob/master/compiler/rustc_lint_defs/src/builtin.rs)
 mostly use the same infrastructure as lint plugins, and provide examples of how
 to access type information.
 
