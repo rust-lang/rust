@@ -10,10 +10,11 @@ use crate::intrinsics;
 ///
 /// # Safety
 ///
-/// Reaching this function is *Undefined Behavior* (UB). In particular, as the
-/// compiler assumes that all forms of Undefined Behavior can never happen, it
-/// will eliminate all branches which themselves reach a call to
-/// `unreachable_unchecked()`.
+/// Reaching this function is *Undefined Behavior*.
+///
+/// As the compiler assumes that all forms of Undefined Behavior can never
+/// happen, it will eliminate all branches in the surrounding code that it can
+/// determine will invariably lead to a call to `unreachable_unchecked()`.
 ///
 /// If the assumptions embedded in using this function turn out to be wrong -
 /// that is, if the site which is calling `unreachable_unchecked()` is actually
@@ -40,15 +41,17 @@ use crate::intrinsics;
 ///     divisors.retain(|divisor| *divisor != 0)
 /// }
 ///
-/// fn do_computation(i: u32, divisors: &[u32]) -> u32 {
+/// /// # Safety
+/// /// All elements of `divisor` must be non-zero.
+/// unsafe fn do_computation(i: u32, divisors: &[u32]) -> u32 {
 ///     divisors.iter().fold(i, |acc, divisor| {
 ///         // Convince the compiler that a division by zero can't happen here
 ///         // and a check is not needed below.
 ///         if *divisor == 0 {
-///             // SAFETY: `divisor` can't be zero because of `prepare_inputs`,
+///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
 ///             // but the compiler does not know about this. We *promise*
 ///             // that we always call `prepare_inputs`.
-///             unsafe { std::hint::unreachable_unchecked() }
+///             std::hint::unreachable_unchecked()
 ///         }
 ///         // The compiler would normally introduce a check here that prevents
 ///         // a division by zero. However, if `divisor` was zero, the branch
@@ -61,11 +64,15 @@ use crate::intrinsics;
 ///
 /// let mut divisors = vec![2, 0, 4];
 /// prepare_inputs(&mut divisors);
-/// assert_eq!(do_computation(100, &divisors), 12);
+/// let result = unsafe {
+///     // Safety: prepare_inputs() guarantees that divisors is non-zero
+///     do_computation(100, &divisors)
+/// };
+/// assert_eq!(result, 12);
 ///
 /// ```
 ///
-/// While using `unreachable_unchecked()` is perfectly safe in the following
+/// While using `unreachable_unchecked()` is perfectly sound in the following
 /// example, the compiler is able to prove that a division by zero is not
 /// possible. Benchmarking reveals that `unreachable_unchecked()` provides
 /// no benefit over using [`unreachable!`], while the latter does not introduce
