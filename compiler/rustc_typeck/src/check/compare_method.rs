@@ -1001,14 +1001,6 @@ fn compare_generic_param_kinds<'tcx>(
             (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
             (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
         } {
-            let make_param_message = |prefix: &str, param: &ty::GenericParamDef| match param.kind {
-                Const { .. } => {
-                    format!("{} const parameter of type `{}`", prefix, tcx.type_of(param.def_id))
-                }
-                Type { .. } => format!("{} type parameter", prefix),
-                Lifetime { .. } => unreachable!(),
-            };
-
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
 
@@ -1021,6 +1013,14 @@ fn compare_generic_param_kinds<'tcx>(
                 trait_item.name,
                 &tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
+
+            let make_param_message = |prefix: &str, param: &ty::GenericParamDef| match param.kind {
+                Const { .. } => {
+                    format!("{} const parameter of type `{}`", prefix, tcx.type_of(param.def_id))
+                }
+                Type { .. } => format!("{} type parameter", prefix),
+                Lifetime { .. } => unreachable!(),
+            };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
             err.span_label(trait_header_span, "");
