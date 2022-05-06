@@ -228,3 +228,25 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
         expected: Ty<'tcx>,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "typeck-unconstrained-opaque-type")]
+#[note]
+pub struct UnconstrainedOpaqueType {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0632", slug = "typeck-explicit-generic-args-with-impl-trait")]
+#[note]
+pub struct ExplicitGenericArgsWithImplTrait {
+    #[primary_span]
+    #[label]
+    pub spans: Vec<Span>,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[help(slug = "typeck-explicit-generic-args-with-impl-trait-feature")]
+pub struct ExplicitGenericArgsWithImplTraitFeature;
