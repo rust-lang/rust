@@ -214,7 +214,17 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: impl FnOnce(SyntaxE
 
 pub(crate) fn get_all_items(config: CompletionConfig, code: &str) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    crate::completions(&db, &config, position).map_or_else(Vec::default, Into::into)
+    let res = crate::completions(&db, &config, position).map_or_else(Vec::default, Into::into);
+    // validate
+    res.iter().for_each(|it| {
+        let sr = it.source_range();
+        assert!(
+            sr.contains_inclusive(position.offset),
+            "source range {sr:?} does not contain the offset {:?} of the completion request: {it:?}",
+            position.offset
+        );
+    });
+    res
 }
 
 #[test]

@@ -26,7 +26,7 @@ pub struct CompletionItem {
     /// It should be used primarily for UI, but we also use this to convert
     /// generic TextEdit into LSP's completion edit (see conv.rs).
     ///
-    /// `source_range` must contain the completion offset. `insert_text` should
+    /// `source_range` must contain the completion offset. `text_edit` should
     /// start with what `source_range` points to, or VSCode will filter out the
     /// completion silently.
     source_range: TextRange,
