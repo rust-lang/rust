@@ -7,7 +7,6 @@ use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
@@ -77,13 +76,6 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_env = rustc_trait_selection::traits::normalize_param_env_or_error(
-        tcx,
-        def_id.to_def_id(),
-        param_env,
-        ObligationCause::misc(body.span, hir_id),
-    );
 
     let mut this = Inliner {
         tcx,
