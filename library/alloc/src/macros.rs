@@ -56,6 +56,7 @@ macro_rules! vec {
 // `slice::into_vec`  function which is only available with cfg(test)
 // NB see the slice::hack module in slice.rs for more information
 #[cfg(all(not(no_global_oom_handling), test))]
+#[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
 macro_rules! vec {
     () => (
         $crate::vec::Vec::new()

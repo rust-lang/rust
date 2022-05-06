@@ -194,7 +194,7 @@ impl<'a> Resolver<'a> {
         }
 
         let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
+            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition).0,
             LoadedMacro::ProcMacro(ext) => ext,
         });
 
@@ -1218,9 +1218,18 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     // Mark the given macro as unused unless its name starts with `_`.
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
-    fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
+    fn insert_unused_macro(
+        &mut self,
+        ident: Ident,
+        def_id: LocalDefId,
+        node_id: NodeId,
+        rule_spans: &[Span],
+    ) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
+            for (rule_i, rule_span) in rule_spans.iter().enumerate() {
+                self.r.unused_macro_rules.insert((def_id, rule_i), (ident, *rule_span));
+            }
         }
     }
 
@@ -1228,15 +1237,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
         let def_id = self.r.local_def_id(item.id);
-        let (ext, ident, span, macro_rules) = match &item.kind {
+        let (ext, ident, span, macro_rules, rule_spans) = match &item.kind {
             ItemKind::MacroDef(def) => {
-                let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
-                (ext, item.ident, item.span, def.macro_rules)
+                let (ext, rule_spans) = self.r.compile_macro(item, self.r.session.edition());
+                let ext = Lrc::new(ext);
+                (ext, item.ident, item.span, def.macro_rules, rule_spans)
             }
             ItemKind::Fn(..) => match self.proc_macro_stub(item) {
                 Some((macro_kind, ident, span)) => {
                     self.r.proc_macro_stubs.insert(def_id);
-                    (self.r.dummy_ext(macro_kind), ident, span, false)
+                    (self.r.dummy_ext(macro_kind), ident, span, false, Vec::new())
                 }
                 None => return parent_scope.macro_rules,
             },
@@ -1264,7 +1274,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
             } else {
                 self.r.check_reserved_macro_name(ident, res);
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
             }
             self.r.visibilities.insert(def_id, vis);
             let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
@@ -1287,7 +1297,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _ => self.resolve_visibility(&item.vis),
             };
             if vis != ty::Visibility::Public {
-                self.insert_unused_macro(ident, def_id, item.id);
+                self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
             self.r.visibilities.insert(def_id, vis);
