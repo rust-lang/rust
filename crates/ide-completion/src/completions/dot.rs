@@ -2,7 +2,11 @@
 
 use ide_db::FxHashSet;
 
-use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
+use crate::{
+    context::{CompletionContext, PathCompletionCtx, PathKind},
+    patterns::ImmediateLocation,
+    Completions,
+};
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -34,9 +38,16 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    if ctx.is_non_trivial_path() || ctx.is_path_disallowed() || !ctx.expects_expression() {
-        return;
+    match ctx.path_context {
+        Some(PathCompletionCtx {
+            is_absolute_path: false,
+            qualifier: None,
+            kind: PathKind::Expr,
+            ..
+        }) if !ctx.is_path_disallowed() => {}
+        _ => return,
     }
+
     if let Some(func) = ctx.function_def.as_ref().and_then(|fn_| ctx.sema.to_def(fn_)) {
         if let Some(self_) = func.self_param(ctx.db) {
             let ty = self_.ty(ctx.db);
