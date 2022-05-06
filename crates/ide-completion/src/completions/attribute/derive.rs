@@ -13,10 +13,7 @@ use crate::{
 pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
     let (qualifier, is_absolute_path) = match ctx.path_context {
         Some(PathCompletionCtx {
-            kind: Some(PathKind::Derive),
-            ref qualifier,
-            is_absolute_path,
-            ..
+            kind: PathKind::Derive, ref qualifier, is_absolute_path, ..
         }) => (qualifier, is_absolute_path),
         _ => return,
     };

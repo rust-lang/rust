@@ -75,8 +75,7 @@ pub(crate) struct PathCompletionCtx {
     // FIXME: use this
     /// The parent of the path we are completing.
     pub(super) parent: Option<ast::Path>,
-    // FIXME: This should be PathKind, the none case should never occur
-    pub(super) kind: Option<PathKind>,
+    pub(super) kind: PathKind,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
     /// `true` if we are a statement or a last expr in the block.
@@ -315,11 +314,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionCtx { kind: Some(PathKind::Expr), .. }))
+        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Expr, .. }))
     }
 
     pub(crate) fn expects_type(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionCtx { kind: Some(PathKind::Type), .. }))
+        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Type, .. }))
     }
 
     pub(crate) fn path_is_call(&self) -> bool {
@@ -341,7 +340,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn path_kind(&self) -> Option<PathKind> {
-        self.path_context.as_ref().and_then(|it| it.kind)
+        self.path_context.as_ref().map(|it| it.kind)
     }
 
     pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
@@ -837,7 +836,7 @@ impl<'a> CompletionContext<'a> {
                     Self::classify_name_ref(&self.sema, &original_file, name_ref)
                 {
                     self.path_context =
-                        Some(PathCompletionCtx { kind: Some(PathKind::Derive), ..path_ctx });
+                        Some(PathCompletionCtx { kind: PathKind::Derive, ..path_ctx });
                 }
             }
             return;
@@ -969,7 +968,7 @@ impl<'a> CompletionContext<'a> {
             is_absolute_path: false,
             qualifier: None,
             parent: path.parent_path(),
-            kind: None,
+            kind: PathKind::Item,
             has_type_args: false,
             can_be_stmt: false,
             in_loop_body: false,
@@ -1041,7 +1040,7 @@ impl<'a> CompletionContext<'a> {
                 }
             };
             Some(kind)
-        }).flatten();
+        }).flatten()?;
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
