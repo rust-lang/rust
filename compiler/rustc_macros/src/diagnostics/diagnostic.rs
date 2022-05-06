@@ -5,8 +5,8 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    option_inner_ty, report_error_if_not_applied_to_span, type_matches_path, Applicability,
-    FieldInfo, HasFieldMap, SetOnce,
+    report_error_if_not_applied_to_span, type_matches_path, Applicability, FieldInfo, FieldInnerTy,
+    HasFieldMap, SetOnce,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -353,35 +353,40 @@ impl SessionDiagnosticDeriveBuilder {
         info: FieldInfo<'_>,
     ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
         let field_binding = &info.binding.binding;
-        let option_ty = option_inner_ty(&info.ty);
-        let generated_code = self.generate_non_option_field_code(
+
+        let inner_ty = FieldInnerTy::from_type(&info.ty);
+        let name = attr.path.segments.last().unwrap().ident.to_string();
+        let (binding, needs_destructure) = match (name.as_str(), &inner_ty) {
+            // `primary_span` can accept a `Vec<Span>` so don't destructure that.
+            ("primary_span", FieldInnerTy::Vec(_)) => (quote! { #field_binding.clone() }, false),
+            _ => (quote! { *#field_binding }, true),
+        };
+
+        let generated_code = self.generate_inner_field_code(
             attr,
             FieldInfo {
                 vis: info.vis,
                 binding: info.binding,
-                ty: option_ty.unwrap_or(&info.ty),
+                ty: inner_ty.inner_type().unwrap_or(&info.ty),
                 span: info.span,
             },
+            binding,
         )?;
 
-        if option_ty.is_none() {
-            Ok(quote! { #generated_code })
+        if needs_destructure {
+            Ok(inner_ty.with(field_binding, generated_code))
         } else {
-            Ok(quote! {
-                if let Some(#field_binding) = #field_binding {
-                    #generated_code
-                }
-            })
+            Ok(generated_code)
         }
     }
 
-    fn generate_non_option_field_code(
+    fn generate_inner_field_code(
         &mut self,
         attr: &Attribute,
         info: FieldInfo<'_>,
+        binding: TokenStream,
     ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
         let diag = &self.diag;
-        let field_binding = &info.binding.binding;
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
@@ -397,14 +402,14 @@ impl SessionDiagnosticDeriveBuilder {
                 "primary_span" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
                     Ok(quote! {
-                        #diag.set_span(*#field_binding);
+                        #diag.set_span(#binding);
                     })
                 }
                 "label" | "note" | "help" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
-                    Ok(self.add_subdiagnostic(field_binding, name, name))
+                    Ok(self.add_subdiagnostic(binding, name, name))
                 }
-                "subdiagnostic" => Ok(quote! { #diag.subdiagnostic(*#field_binding); }),
+                "subdiagnostic" => Ok(quote! { #diag.subdiagnostic(#binding); }),
                 _ => throw_invalid_attr!(attr, &meta, |diag| {
                     diag
                         .help("only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes")
@@ -413,7 +418,7 @@ impl SessionDiagnosticDeriveBuilder {
             Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(ref s), .. }) => match name {
                 "label" | "note" | "help" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
-                    Ok(self.add_subdiagnostic(field_binding, name, &s.value()))
+                    Ok(self.add_subdiagnostic(binding, name, &s.value()))
                 }
                 _ => throw_invalid_attr!(attr, &meta, |diag| {
                     diag.help("only `label`, `note` and `help` are valid field attributes")
@@ -509,7 +514,7 @@ impl SessionDiagnosticDeriveBuilder {
     /// `fluent_attr_identifier`.
     fn add_subdiagnostic(
         &self,
-        field_binding: &proc_macro2::Ident,
+        field_binding: TokenStream,
         kind: &str,
         fluent_attr_identifier: &str,
     ) -> TokenStream {
@@ -520,7 +525,7 @@ impl SessionDiagnosticDeriveBuilder {
         let fn_name = format_ident!("span_{}", kind);
         quote! {
             #diag.#fn_name(
-                *#field_binding,
+                #field_binding,
                 rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier)
             );
         }

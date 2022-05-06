@@ -289,12 +289,26 @@ impl ParseSess {
         self.proc_macro_quoted_spans.lock().clone()
     }
 
+    pub fn create_err<'a>(
+        &'a self,
+        err: impl SessionDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        err.into_diagnostic(self)
+    }
+
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
-        err.into_diagnostic(self).emit()
+        self.create_err(err).emit()
+    }
+
+    pub fn create_warning<'a>(
+        &'a self,
+        warning: impl SessionDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        warning.into_diagnostic(self)
     }
 
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
-        warning.into_diagnostic(self).emit()
+        self.create_warning(warning).emit()
     }
 
     pub fn struct_err(
