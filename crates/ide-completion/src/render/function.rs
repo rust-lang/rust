@@ -197,7 +197,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
     }
 
     match ctx.path_context {
-        Some(PathCompletionCtx { kind: PathKind::Expr, has_call_parens: true, .. }) => {
+        Some(PathCompletionCtx { kind: PathKind::Expr { .. }, has_call_parens: true, .. }) => {
             return false
         }
         Some(PathCompletionCtx { kind: PathKind::Use | PathKind::Type, .. }) => {

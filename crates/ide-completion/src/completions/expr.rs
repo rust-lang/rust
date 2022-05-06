@@ -15,9 +15,12 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
     }
 
     let (&is_absolute_path, qualifier) = match &ctx.path_context {
-        Some(PathCompletionCtx { kind: PathKind::Expr, is_absolute_path, qualifier, .. }) => {
-            (is_absolute_path, qualifier)
-        }
+        Some(PathCompletionCtx {
+            kind: PathKind::Expr { .. },
+            is_absolute_path,
+            qualifier,
+            ..
+        }) => (is_absolute_path, qualifier),
         _ => return,
     };
 

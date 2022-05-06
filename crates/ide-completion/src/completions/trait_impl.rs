@@ -56,19 +56,17 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     if let Some((kind, replacement_range, impl_def)) = completion_match(ctx) {
         if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
             get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| {
+                use self::ImplCompletionKind::*;
                 match (item, kind) {
-                    (
-                        hir::AssocItem::Function(fn_item),
-                        ImplCompletionKind::All | ImplCompletionKind::Fn,
-                    ) => add_function_impl(acc, ctx, replacement_range, fn_item, hir_impl),
-                    (
-                        hir::AssocItem::TypeAlias(type_item),
-                        ImplCompletionKind::All | ImplCompletionKind::TypeAlias,
-                    ) => add_type_alias_impl(acc, ctx, replacement_range, type_item),
-                    (
-                        hir::AssocItem::Const(const_item),
-                        ImplCompletionKind::All | ImplCompletionKind::Const,
-                    ) => add_const_impl(acc, ctx, replacement_range, const_item, hir_impl),
+                    (hir::AssocItem::Function(func), All | Fn) => {
+                        add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+                    }
+                    (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
+                        add_type_alias_impl(acc, ctx, replacement_range, type_alias)
+                    }
+                    (hir::AssocItem::Const(const_), All | Const) => {
+                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
+                    }
                     _ => {}
                 }
             });
@@ -76,6 +74,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     }
 }
 
+// FIXME: This should be lifted out so that we can do proper smart item keyword completions
 fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, TextRange, ast::Impl)> {
     let token = ctx.token.clone();
 
@@ -152,15 +151,15 @@ fn add_function_impl(
     func: hir::Function,
     impl_def: hir::Impl,
 ) {
-    let fn_name = func.name(ctx.db).to_smol_str();
+    let fn_name = func.name(ctx.db);
 
-    let label = if func.assoc_fn_params(ctx.db).is_empty() {
-        format!("fn {}()", fn_name)
-    } else {
-        format!("fn {}(..)", fn_name)
-    };
+    let label = format!(
+        "fn {}({})",
+        fn_name,
+        if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
+    );
 
-    let completion_kind = if func.self_param(ctx.db).is_some() {
+    let completion_kind = if func.has_self_param(ctx.db) {
         CompletionItemKind::Method
     } else {
         CompletionItemKind::SymbolKind(SymbolKind::Function)

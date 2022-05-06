@@ -1370,11 +1370,12 @@ impl Function {
         None
     }
 
+    pub fn has_self_param(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).has_self_param()
+    }
+
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
-        if !db.function_data(self.id).has_self_param() {
-            return None;
-        }
-        Some(SelfParam { func: self.id })
+        self.has_self_param(db).then(|| SelfParam { func: self.id })
     }
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
