@@ -479,31 +479,62 @@ pub trait Hasher {
     ///
     /// # Note to Implementers
     ///
-    /// The default implementation of this method includes a call to
-    /// [`Self::write_length_prefix`], so if your implementation of `Hasher`
-    /// doesn't care about prefix-freedom and you've thus overridden
-    /// that method to do nothing, there's no need to override this one.
+    /// There are at least two reasonable default ways to implement this.
+    /// Which one will be the default is not yet decided, so for now
+    /// you probably want to override it specifically.
     ///
-    /// This method is available to be overridden separately from the others
-    /// as `str` being UTF-8 means that it never contains `0xFF` bytes, which
-    /// can be used to provide prefix-freedom cheaper than hashing a length.
+    /// ## The general answer
     ///
-    /// For example, if your `Hasher` works byte-by-byte (perhaps by accumulating
-    /// them into a buffer), then you can hash the bytes of the `str` followed
-    /// by a single `0xFF` byte.
+    /// It's always correct to implement this with a length prefix:
     ///
-    /// If your `Hasher` works in chunks, you can also do this by being careful
-    /// about how you pad partial chunks.  If the chunks are padded with `0x00`
-    /// bytes then just hashing an extra `0xFF` byte doesn't necessarily
-    /// provide prefix-freedom, as `"ab"` and `"ab\u{0}"` would likely hash
-    /// the same sequence of chunks.  But if you pad with `0xFF` bytes instead,
-    /// ensuring at least one padding byte, then it can often provide
-    /// prefix-freedom cheaper than hashing the length would.
+    /// ```
+    /// # #![feature(hasher_prefixfree_extras)]
+    /// # struct Foo;
+    /// # impl std::hash::Hasher for Foo {
+    /// # fn finish(&self) -> u64 { unimplemented!() }
+    /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
+    /// fn write_str(&mut self, s: &str) {
+    ///     self.write_length_prefix(s.len());
+    ///     self.write(s.as_bytes());
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// And, if your `Hasher` works in `usize` chunks, this is likely a very
+    /// efficient way to do it, as anything more complicated may well end up
+    /// slower than just running the round with the length.
+    ///
+    /// ## If your `Hasher` works byte-wise
+    ///
+    /// One nice thing about `str` being UTF-8 is that the `b'\xFF'` byte
+    /// never happens.  That means that you can append that to the byte stream
+    /// being hashed and maintain prefix-freedom:
+    ///
+    /// ```
+    /// # #![feature(hasher_prefixfree_extras)]
+    /// # struct Foo;
+    /// # impl std::hash::Hasher for Foo {
+    /// # fn finish(&self) -> u64 { unimplemented!() }
+    /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
+    /// fn write_str(&mut self, s: &str) {
+    ///     self.write(s.as_bytes());
+    ///     self.write_u8(0xff);
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// This does require that your implementation not add extra padding, and
+    /// thus generally requires that you maintain a buffer, running a round
+    /// only once that buffer is full (or `finish` is called).
+    ///
+    /// That's because if `write` pads data out to a fixed chunk size, it's
+    /// likely that it does it in such a way that `"a"` and `"a\x00"` would
+    /// end up hashing the same sequence of things, introducing conflicts.
     #[inline]
     #[unstable(feature = "hasher_prefixfree_extras", issue = "96762")]
     fn write_str(&mut self, s: &str) {
-        self.write_length_prefix(s.len());
         self.write(s.as_bytes());
+        self.write_u8(0xff);
     }
 }
 
