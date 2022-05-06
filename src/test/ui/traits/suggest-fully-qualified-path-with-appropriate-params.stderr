@@ -1,0 +1,61 @@
+error[E0282]: type annotations needed
+  --> $DIR/suggest-fully-qualified-path-with-appropriate-params.rs:20:11
+   |
+LL |     thing.method();
+   |     ------^^^^^^--
+   |     |     |
+   |     |     cannot infer type for type parameter `T` declared on the trait `Method`
+   |     this method call resolves to `T`
+
+error[E0283]: type annotations needed
+  --> $DIR/suggest-fully-qualified-path-with-appropriate-params.rs:20:11
+   |
+LL |     thing.method();
+   |     ------^^^^^^--
+   |     |     |
+   |     |     cannot infer type for type parameter `T` declared on the trait `Method`
+   |     this method call resolves to `T`
+   |
+note: multiple `impl`s satisfying `Thing: Method<_>` found
+  --> $DIR/suggest-fully-qualified-path-with-appropriate-params.rs:8:1
+   |
+LL | impl Method<i32> for Thing {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Method<u32> for Thing {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the fully qualified path for the potential candidates
+   |
+LL |     <Thing as Method<i32>>::method(&thing);
+   |     ++++++++++++++++++++++++++++++++     ~
+LL |     <Thing as Method<u32>>::method(&thing);
+   |     ++++++++++++++++++++++++++++++++     ~
+
+error[E0283]: type annotations needed
+  --> $DIR/suggest-fully-qualified-path-with-appropriate-params.rs:23:11
+   |
+LL |     thing.mut_method();
+   |     ------^^^^^^^^^^--
+   |     |     |
+   |     |     cannot infer type for type parameter `T` declared on the trait `Method`
+   |     this method call resolves to `T`
+   |
+note: multiple `impl`s satisfying `Thing: Method<_>` found
+  --> $DIR/suggest-fully-qualified-path-with-appropriate-params.rs:8:1
+   |
+LL | impl Method<i32> for Thing {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Method<u32> for Thing {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the fully qualified path for the potential candidates
+   |
+LL |     <Thing as Method<i32>>::mut_method(&mut thing);
+   |     +++++++++++++++++++++++++++++++++++++++      ~
+LL |     <Thing as Method<u32>>::mut_method(&mut thing);
+   |     +++++++++++++++++++++++++++++++++++++++      ~
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

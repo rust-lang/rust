@@ -3,7 +3,7 @@ use clean::AttributesExt;
 use std::cmp::Ordering;
 use std::fmt;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -346,7 +346,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}import-item\">\
+                    "<div class=\"item-left {stab}{add}import-item\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      <div class=\"item-right docblock-short\">{stab_tags}</div>",
@@ -355,6 +355,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     vis = myitem.visibility.print_with_space(myitem.item_id, cx),
                     imp = import.print(cx),
                     stab_tags = stab_tags.unwrap_or_default(),
+                    id = match import.kind {
+                        clean::ImportKind::Simple(s) =>
+                            format!(" id=\"{}\"", cx.derive_id(format!("reexport.{}", s))),
+                        clean::ImportKind::Glob => String::new(),
+                    },
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
@@ -790,16 +795,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All);
 
     let cache = cx.cache();
+    let mut extern_crates = FxHashSet::default();
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
-            match implementor.inner_impl().for_ {
-                clean::Type::Path { ref path }
-                | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. }
-                    if !path.is_assoc_ty() =>
-                {
+            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cx.cache()) &&
+                !did.is_local() {
+                extern_crates.insert(did.krate);
+            }
+            match implementor.inner_impl().for_.without_borrowed_ref() {
+                clean::Type::Path { ref path } if !path.is_assoc_ty() => {
                     let did = path.def_id();
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));
@@ -898,20 +905,96 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
     }
 
+    // Include implementors in crates that depend on the current crate.
+    //
+    // This is complicated by the way rustdoc is invoked, which is basically
+    // the same way rustc is invoked: it gets called, one at a time, for each
+    // crate. When building the rustdocs for the current crate, rustdoc can
+    // see crate metadata for its dependencies, but cannot see metadata for its
+    // dependents.
+    //
+    // To make this work, we generate a "hook" at this stage, and our
+    // dependents can "plug in" to it when they build. For simplicity's sake,
+    // it's [JSONP]: a JavaScript file with the data we need (and can parse),
+    // surrounded by a tiny wrapper that the Rust side ignores, but allows the
+    // JavaScript side to include without having to worry about Same Origin
+    // Policy. The code for *that* is in `write_shared.rs`.
+    //
+    // This is further complicated by `#[doc(inline)]`. We want all copies
+    // of an inlined trait to reference the same JS file, to address complex
+    // dependency graphs like this one (lower crates depend on higher crates):
+    //
+    // ```text
+    //  --------------------------------------------
+    //  |            crate A: trait Foo            |
+    //  --------------------------------------------
+    //      |                               |
+    //  --------------------------------    |
+    //  | crate B: impl A::Foo for Bar |    |
+    //  --------------------------------    |
+    //      |                               |
+    //  ---------------------------------------------
+    //  | crate C: #[doc(inline)] use A::Foo as Baz |
+    //  |          impl Baz for Quux                |
+    //  ---------------------------------------------
+    // ```
+    //
+    // Basically, we want `C::Baz` and `A::Foo` to show the same set of
+    // impls, which is easier if they both treat `/implementors/A/trait.Foo.js`
+    // as the Single Source of Truth.
+    //
+    // We also want the `impl Baz for Quux` to be written to
+    // `trait.Foo.js`. However, when we generate plain HTML for `C::Baz`,
+    // we're going to want to generate plain HTML for `impl Baz for Quux` too,
+    // because that'll load faster, and it's better for SEO. And we don't want
+    // the same impl to show up twice on the same page.
+    //
+    // To make this work, the implementors JS file has a structure kinda
+    // like this:
+    //
+    // ```js
+    // JSONP({
+    // "B": {"impl A::Foo for Bar"},
+    // "C": {"impl Baz for Quux"},
+    // });
+    // ```
+    //
+    // First of all, this means we can rebuild a crate, and it'll replace its own
+    // data if something changes. That is, `rustdoc` is idempotent. The other
+    // advantage is that we can list the crates that get included in the HTML,
+    // and ignore them when doing the JavaScript-based part of rendering.
+    // So C's HTML will have something like this:
+    //
+    // ```html
+    // <script type="text/javascript" src="/implementors/A/trait.Foo.js"
+    //     data-ignore-extern-crates="A,B" async></script>
+    // ```
+    //
+    // And, when the JS runs, anything in data-ignore-extern-crates is known
+    // to already be in the HTML, and will be ignored.
+    //
+    // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
         .take(cx.current.len())
         .chain(std::iter::once("implementors"))
         .collect();
-    if it.item_id.is_local() {
-        js_src_path.extend(cx.current.iter().copied());
+    if let Some(did) = it.item_id.as_def_id() &&
+        let get_extern = { || cache.external_paths.get(&did).map(|s| s.0.clone()) } &&
+        let Some(fqp) = cache.exact_paths.get(&did).cloned().or_else(get_extern) {
+        js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
+        js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
     } else {
-        let (ref path, _) = cache.external_paths[&it.item_id.expect_def_id()];
-        js_src_path.extend(path[..path.len() - 1].iter().copied());
+        js_src_path.extend(cx.current.iter().copied());
+        js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), it.name.unwrap()));
     }
-    js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), it.name.unwrap()));
+    let extern_crates = extern_crates
+        .into_iter()
+        .map(|cnum| cx.shared.tcx.crate_name(cnum).to_string())
+        .collect::<Vec<_>>()
+        .join(",");
     write!(
         w,
-        "<script type=\"text/javascript\" src=\"{src}\" async></script>",
+        "<script type=\"text/javascript\" src=\"{src}\" data-ignore-extern-crates=\"{extern_crates}\" async></script>",
         src = js_src_path.finish(),
     );
 }

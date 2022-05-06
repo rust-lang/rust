@@ -2542,7 +2542,16 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
 
     let item_sections_in_use: FxHashSet<_> = items
         .iter()
-        .filter(|it| !it.is_stripped() && it.name.is_some())
+        .filter(|it| {
+            !it.is_stripped()
+                && it
+                    .name
+                    .or_else(|| {
+                        if let clean::ImportItem(ref i) = *it.kind &&
+                            let clean::ImportKind::Simple(s) = i.kind { Some(s) } else { None }
+                    })
+                    .is_some()
+        })
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
     for &sec in ItemSection::ALL.iter().filter(|sec| item_sections_in_use.contains(sec)) {

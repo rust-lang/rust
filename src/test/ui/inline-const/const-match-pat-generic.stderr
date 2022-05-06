@@ -1,17 +1,17 @@
 error[E0158]: const parameters cannot be referenced in patterns
-  --> $DIR/const-match-pat-generic.rs:9:9
+  --> $DIR/const-match-pat-generic.rs:8:9
    |
 LL |         const { V } => {},
    |         ^^^^^^^^^^^
 
 error: constant pattern depends on a generic parameter
-  --> $DIR/const-match-pat-generic.rs:21:9
+  --> $DIR/const-match-pat-generic.rs:20:9
    |
 LL |         const { f(V) } => {},
    |         ^^^^^^^^^^^^^^
 
 error: constant pattern depends on a generic parameter
-  --> $DIR/const-match-pat-generic.rs:21:9
+  --> $DIR/const-match-pat-generic.rs:20:9
    |
 LL |         const { f(V) } => {},
    |         ^^^^^^^^^^^^^^
