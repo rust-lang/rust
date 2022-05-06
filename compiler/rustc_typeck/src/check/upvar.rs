@@ -488,6 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///                                                          path_expr_id: hir_id_L4,
     ///                                                          capture_kind: ByValue
     ///                                                      },
+    /// }
     /// ```
     ///
     /// After the min capture analysis, we get:
@@ -507,6 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///                                                               capture_kind: ByValue
     ///                                                           },
     ///       ],
+    /// }
     /// ```
     fn compute_min_captures(
         &self,
