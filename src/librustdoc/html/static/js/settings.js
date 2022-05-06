@@ -274,5 +274,6 @@
         if (!isSettingsPage) {
             switchDisplayedElement(settingsMenu);
         }
+        removeClass(getSettingsButton(), "rotate");
     }, 0);
 })();

@@ -301,6 +301,7 @@ function loadCss(cssFileName) {
     }
 
     getSettingsButton().onclick = event => {
+        addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         loadScript(window.settingsJS);
     };

@@ -1401,6 +1401,18 @@ pre.rust {
 	cursor: pointer;
 }
 
+@keyframes rotating {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+#settings-menu.rotate img {
+	animation: rotating 2s linear infinite;
+}
+
 #help-button {
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
