@@ -25,7 +25,7 @@ use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -984,7 +984,7 @@ impl<T: ?Sized> Arc<T> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        let cnt = this.inner().weak.load(SeqCst);
+        let cnt = this.inner().weak.load(Acquire);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
         if cnt == usize::MAX { 0 } else { cnt - 1 }
@@ -1014,7 +1014,7 @@ impl<T: ?Sized> Arc<T> {
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(SeqCst)
+        this.inner().strong.load(Acquire)
     }
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
@@ -1976,7 +1976,7 @@ impl<T: ?Sized> Weak<T> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(SeqCst) } else { 0 }
+        if let Some(inner) = self.inner() { inner.strong.load(Acquire) } else { 0 }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
@@ -1995,8 +1995,8 @@ impl<T: ?Sized> Weak<T> {
     pub fn weak_count(&self) -> usize {
         self.inner()
             .map(|inner| {
-                let weak = inner.weak.load(SeqCst);
-                let strong = inner.strong.load(SeqCst);
+                let weak = inner.weak.load(Acquire);
+                let strong = inner.strong.load(Acquire);
                 if strong == 0 {
                     0
                 } else {
