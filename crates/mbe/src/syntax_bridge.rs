@@ -740,6 +740,7 @@ struct TtTreeSink<'a> {
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
     token_map: TokenMap,
+    remaining_float_lit_text: String,
 }
 
 impl<'a> TtTreeSink<'a> {
@@ -751,6 +752,7 @@ impl<'a> TtTreeSink<'a> {
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
             token_map: TokenMap::default(),
+            remaining_float_lit_text: String::new(),
         }
     }
 
@@ -775,6 +777,54 @@ impl<'a> TtTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
         if kind == LIFETIME_IDENT {
             n_tokens = 2;
+        }
+
+        // We need to split a float `tt::Literal` into up to 3 tokens consumed by the parser.
+        match self.cursor.token_tree() {
+            Some(tt::buffer::TokenTreeRef::Subtree(sub, _)) if sub.delimiter.is_none() => {
+                self.cursor = self.cursor.subtree().unwrap()
+            }
+            _ => {}
+        }
+        let literal = match self.cursor.token_tree() {
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => Some(lit),
+            _ => None,
+        };
+        if matches!(
+            kind,
+            FLOAT_NUMBER_PART | FLOAT_NUMBER_START_0 | FLOAT_NUMBER_START_1 | FLOAT_NUMBER_START_2
+        ) {
+            if self.remaining_float_lit_text.is_empty() {
+                always!(
+                    literal.is_some(),
+                    "kind={:?}, cursor tt={:?}",
+                    kind,
+                    self.cursor.token_tree()
+                );
+                let text = literal.map_or(String::new(), |lit| lit.to_string());
+                self.cursor = self.cursor.bump();
+                match text.split_once('.') {
+                    Some((start, end)) => {
+                        self.inner.token(kind, start);
+                        self.remaining_float_lit_text = format!(".{end}");
+                        return;
+                    }
+                    None => {
+                        self.inner.token(kind, &text);
+                        return;
+                    }
+                }
+            } else {
+                self.inner.token(kind, &self.remaining_float_lit_text);
+                self.remaining_float_lit_text.clear();
+                return;
+            }
+        }
+        if kind == DOT && !self.remaining_float_lit_text.is_empty() {
+            always!(self.remaining_float_lit_text.chars().next() == Some('.'));
+            self.inner.token(kind, ".");
+            self.remaining_float_lit_text = self.remaining_float_lit_text[1..].to_string();
+            return;
         }
 
         let mut last = self.cursor;
