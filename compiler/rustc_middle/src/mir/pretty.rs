@@ -448,6 +448,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
 
+            let fmt_val = |val: &ConstValue<'tcx>| match val {
+                ConstValue::Scalar(s) => format!("Scalar({:?})", s),
+                ConstValue::Slice { .. } => format!("Slice(..)"),
+                ConstValue::ByRef { .. } => format!("ByRef(..)"),
+            };
+
             let val = match literal {
                 ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
@@ -457,7 +463,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         uv.substs,
                         uv.promoted,
                     ),
-                    ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                    ty::ConstKind::Value(val) => format!("Value({})", fmt_val(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
@@ -467,7 +473,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 // To keep the diffs small, we render this like we render `ty::Const::Value`.
                 //
                 // This changes once `ty::Const::Value` is represented using valtrees.
-                ConstantKind::Val(val, _) => format!("Value({:?})", val),
+                ConstantKind::Val(val, _) => format!("Value({})", fmt_val(&val)),
             };
 
             self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
