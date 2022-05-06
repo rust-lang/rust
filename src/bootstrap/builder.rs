@@ -1405,8 +1405,12 @@ impl<'a> Builder<'a> {
         // FIXME(davidtwco): #[cfg(not(bootstrap))] - #95612 needs to be in the bootstrap compiler
         // for this conditional to be removed.
         if !target.contains("windows") || compiler.stage >= 1 {
-            if target.contains("linux") || target.contains("windows") || target.contains("openbsd")
-            {
+            let needs_unstable_opts = target.contains("linux")
+                || target.contains("windows")
+                || target.contains("bsd")
+                || target.contains("dragonfly");
+
+            if needs_unstable_opts {
                 rustflags.arg("-Zunstable-options");
             }
             match self.config.rust_split_debuginfo {
