@@ -317,11 +317,13 @@ to Miri failing to detect cases of undefined behavior in a program.
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
 * `-Zmiri-disable-data-race-detector` disables checking for data races.  Using
-  this flag is **unsound**.
+  this flag is **unsound**. This implies `-Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.  Using this flag is **unsound**
   (but the affected soundness rules are experimental).
+* `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
+  memory effects.
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
   enforced by default.  This is mostly useful to focus on other failures (such
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
