@@ -1,5 +1,6 @@
 //! Borrow checker diagnostics.
 
+use itertools::Itertools;
 use rustc_const_eval::util::{call_kind, CallDesugaringKind};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
@@ -161,158 +162,103 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of `place` if one can be found.
-    /// If the place is a temporary for instance, None will be returned.
+    /// If the place is a temporary for instance, `None` will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
-    /// End-user visible description of `place` if one can be found. If the
-    /// place is a temporary for instance, None will be returned.
-    /// `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
+    /// End-user visible description of `place` if one can be found. If the place is a temporary
+    /// for instance, `None` will be returned.
+    /// `IncludingDowncast` parameter makes the function return `None` if `ProjectionElem` is
     /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
         place: PlaceRef<'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
+        let local = place.local;
+        let mut autoderef_index = None;
         let mut buf = String::new();
-        match self.append_place_to_string(place, &mut buf, false, &including_downcast) {
-            Ok(()) => Some(buf),
-            Err(()) => None,
-        }
-    }
+        let mut ok = self.append_local_to_string(local, &mut buf);
 
-    /// Appends end-user visible description of `place` to `buf`.
-    fn append_place_to_string(
-        &self,
-        place: PlaceRef<'tcx>,
-        buf: &mut String,
-        mut autoderef: bool,
-        including_downcast: &IncludingDowncast,
-    ) -> Result<(), ()> {
-        match place {
-            PlaceRef { local, projection: [] } => {
-                self.append_local_to_string(local, buf)?;
-            }
-            PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_for_guard() =>
-            {
-                self.append_place_to_string(
-                    PlaceRef { local, projection: &[] },
-                    buf,
-                    autoderef,
-                    &including_downcast,
-                )?;
-            }
-            PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_to_static() =>
-            {
-                let local_info = &self.body.local_decls[local].local_info;
-                if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
-                    buf.push_str(self.infcx.tcx.item_name(def_id).as_str());
-                } else {
-                    unreachable!();
+        for (index, elem) in place.projection.into_iter().enumerate() {
+            match elem {
+                ProjectionElem::Deref => {
+                    if index == 0 {
+                        if self.body.local_decls[local].is_ref_for_guard() {
+                            continue;
+                        }
+                        if let Some(box LocalInfo::StaticRef { def_id, .. }) =
+                            &self.body.local_decls[local].local_info
+                        {
+                            buf.push_str(self.infcx.tcx.item_name(*def_id).as_str());
+                            ok = Ok(());
+                            continue;
+                        }
+                    }
+                    if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                        local,
+                        projection: place.projection.split_at(index + 1).0,
+                    }) {
+                        let var_index = field.index();
+                        buf = self.upvars[var_index].place.to_string(self.infcx.tcx);
+                        ok = Ok(());
+                        if !self.upvars[var_index].by_ref {
+                            buf.insert(0, '*');
+                        }
+                    } else {
+                        if autoderef_index.is_none() {
+                            autoderef_index =
+                                match place.projection.into_iter().rev().find_position(|elem| {
+                                    !matches!(
+                                        elem,
+                                        ProjectionElem::Deref | ProjectionElem::Downcast(..)
+                                    )
+                                }) {
+                                    Some((index, _)) => Some(place.projection.len() - index),
+                                    None => Some(0),
+                                };
+                        }
+                        if index >= autoderef_index.unwrap() {
+                            buf.insert(0, '*');
+                        }
+                    }
+                }
+                ProjectionElem::Downcast(..) if including_downcast.0 => return None,
+                ProjectionElem::Downcast(..) => (),
+                ProjectionElem::Field(field, _ty) => {
+                    // FIXME(project-rfc_2229#36): print capture precisely here.
+                    if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                        local,
+                        projection: place.projection.split_at(index + 1).0,
+                    }) {
+                        buf = self.upvars[field.index()].place.to_string(self.infcx.tcx);
+                        ok = Ok(());
+                    } else {
+                        let field_name = self.describe_field(
+                            PlaceRef { local, projection: place.projection.split_at(index).0 },
+                            *field,
+                        );
+                        buf.push('.');
+                        buf.push_str(&field_name);
+                    }
+                }
+                ProjectionElem::Index(index) => {
+                    buf.push('[');
+                    if self.append_local_to_string(*index, &mut buf).is_err() {
+                        buf.push('_');
+                    }
+                    buf.push(']');
+                }
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    // Since it isn't possible to borrow an element on a particular index and
+                    // then use another while the borrow is held, don't output indices details
+                    // to avoid confusing the end-user
+                    buf.push_str("[..]");
                 }
             }
-            PlaceRef { local, projection: [proj_base @ .., elem] } => {
-                match elem {
-                    ProjectionElem::Deref => {
-                        let upvar_field_projection = self.is_upvar_field_projection(place);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
-                            if self.upvars[var_index].by_ref {
-                                buf.push_str(&name);
-                            } else {
-                                buf.push('*');
-                                buf.push_str(&name);
-                            }
-                        } else {
-                            if autoderef {
-                                // FIXME turn this recursion into iteration
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            } else {
-                                buf.push('*');
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            }
-                        }
-                    }
-                    ProjectionElem::Downcast(..) => {
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        if including_downcast.0 {
-                            return Err(());
-                        }
-                    }
-                    ProjectionElem::Field(field, _ty) => {
-                        autoderef = true;
-
-                        // FIXME(project-rfc_2229#36): print capture precisely here.
-                        let upvar_field_projection = self.is_upvar_field_projection(place);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
-                            buf.push_str(&name);
-                        } else {
-                            let field_name = self
-                                .describe_field(PlaceRef { local, projection: proj_base }, *field);
-                            self.append_place_to_string(
-                                PlaceRef { local, projection: proj_base },
-                                buf,
-                                autoderef,
-                                &including_downcast,
-                            )?;
-                            buf.push('.');
-                            buf.push_str(&field_name);
-                        }
-                    }
-                    ProjectionElem::Index(index) => {
-                        autoderef = true;
-
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        buf.push('[');
-                        if self.append_local_to_string(*index, buf).is_err() {
-                            buf.push('_');
-                        }
-                        buf.push(']');
-                    }
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
-                        autoderef = true;
-                        // Since it isn't possible to borrow an element on a particular index and
-                        // then use another while the borrow is held, don't output indices details
-                        // to avoid confusing the end-user
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        buf.push_str("[..]");
-                    }
-                };
-            }
         }
-
-        Ok(())
+        ok.ok().map(|_| buf)
     }
 
     /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
