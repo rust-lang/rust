@@ -816,6 +816,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     span: Span,
 ) -> Result<&'ll Value, ()> {
     // macros for error handling:
+    #[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
     macro_rules! emit_error {
         ($msg: tt) => {
             emit_error!($msg, )
@@ -1144,6 +1145,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
+        #[cfg_attr(not(bootstrap), allow(unused_macro_rules))]
         macro_rules! emit_error {
             ($msg: tt) => {
                 emit_error!($msg, )

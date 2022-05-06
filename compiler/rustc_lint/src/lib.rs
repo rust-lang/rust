@@ -303,6 +303,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         PATH_STATEMENTS,
         UNUSED_ATTRIBUTES,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         UNUSED_ALLOCATION,
         UNUSED_DOC_COMMENTS,
         UNUSED_EXTERN_CRATES,

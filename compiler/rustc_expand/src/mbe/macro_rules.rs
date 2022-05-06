@@ -156,13 +156,13 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 struct MacroRulesMacroExpander {
+    node_id: NodeId,
     name: Ident,
     span: Span,
     transparency: Transparency,
     lhses: Vec<Vec<MatcherLoc>>,
     rhses: Vec<mbe::TokenTree>,
     valid: bool,
-    is_local: bool,
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
@@ -179,12 +179,12 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             cx,
             sp,
             self.span,
+            self.node_id,
             self.name,
             self.transparency,
             input,
             &self.lhses,
             &self.rhses,
-            self.is_local,
         )
     }
 }
@@ -207,14 +207,17 @@ fn generic_extension<'cx, 'tt>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
+    node_id: NodeId,
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
     lhses: &'tt [Vec<MatcherLoc>],
     rhses: &'tt [mbe::TokenTree],
-    is_local: bool,
 ) -> Box<dyn MacResult + 'cx> {
     let sess = &cx.sess.parse_sess;
+    // Macros defined in the current crate have a real node id,
+    // whereas macros from an external crate have a dummy id.
+    let is_local = node_id != DUMMY_NODE_ID;
 
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
@@ -296,6 +299,10 @@ fn generic_extension<'cx, 'tt>(
                 let mut p = Parser::new(sess, tts, false, None);
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
+                if is_local {
+                    cx.resolver.record_macro_rule_usage(node_id, i);
+                }
+
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {
@@ -372,7 +379,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     def: &ast::Item,
     edition: Edition,
-) -> SyntaxExtension {
+) -> (SyntaxExtension, Vec<Span>) {
     debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
@@ -385,6 +392,7 @@ pub fn compile_declarative_macro(
             &def.attrs,
         )
     };
+    let dummy_syn_ext = || (mk_syn_ext(Box::new(macro_rules_dummy_expander)), Vec::new());
 
     let diag = &sess.parse_sess.span_diagnostic;
     let lhs_nm = Ident::new(sym::lhs, def.span);
@@ -445,17 +453,17 @@ pub fn compile_declarative_macro(
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
             sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return dummy_syn_ext();
         }
         Error(sp, msg) => {
             sess.parse_sess
                 .span_diagnostic
                 .struct_span_err(sp.substitute_dummy(def.span), &msg)
                 .emit();
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return dummy_syn_ext();
         }
         ErrorReported => {
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return dummy_syn_ext();
         }
     };
 
@@ -530,6 +538,15 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
+    // Compute the spans of the macro rules
+    // We only take the span of the lhs here,
+    // so that the spans of created warnings are smaller.
+    let rule_spans = if def.id != DUMMY_NODE_ID {
+        lhses.iter().map(|lhs| lhs.span()).collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
     // Convert the lhses into `MatcherLoc` form, which is better for doing the
     // actual matching. Unless the matcher is invalid.
     let lhses = if valid {
@@ -549,17 +566,16 @@ pub fn compile_declarative_macro(
         vec![]
     };
 
-    mk_syn_ext(Box::new(MacroRulesMacroExpander {
+    let expander = Box::new(MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
+        node_id: def.id,
         transparency,
         lhses,
         rhses,
         valid,
-        // Macros defined in the current crate have a real node id,
-        // whereas macros from an external crate have a dummy id.
-        is_local: def.id != DUMMY_NODE_ID,
-    }))
+    });
+    (mk_syn_ext(expander), rule_spans)
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {

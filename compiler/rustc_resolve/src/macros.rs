@@ -22,7 +22,8 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE};
+use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -311,6 +312,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
         Ok(ext)
     }
 
+    fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
+        let did = self.local_def_id(id);
+        self.unused_macro_rules.remove(&(did, rule_i));
+    }
+
     fn check_unused_macros(&mut self) {
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(
@@ -318,6 +324,23 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 node_id,
                 ident.span,
                 &format!("unused macro definition: `{}`", ident.as_str()),
+            );
+        }
+        for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
+            if self.unused_macros.contains_key(&def_id) {
+                // We already lint the entire macro as unused
+                continue;
+            }
+            let node_id = self.def_id_to_node_id[def_id];
+            self.lint_buffer.buffer_lint(
+                UNUSED_MACRO_RULES,
+                node_id,
+                rule_span,
+                &format!(
+                    "{} rule of macro `{}` is never used",
+                    crate::diagnostics::ordinalize(arm_i + 1),
+                    ident.as_str()
+                ),
             );
         }
     }
@@ -830,10 +853,15 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Compile the macro into a `SyntaxExtension` and possibly replace
-    /// its expander to a pre-defined one for built-in macros.
-    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
-        let mut result = compile_declarative_macro(
+    /// Compile the macro into a `SyntaxExtension` and its rule spans.
+    ///
+    /// Possibly replace its expander to a pre-defined one for built-in macros.
+    crate fn compile_macro(
+        &mut self,
+        item: &ast::Item,
+        edition: Edition,
+    ) -> (SyntaxExtension, Vec<Span>) {
+        let (mut result, mut rule_spans) = compile_declarative_macro(
             &self.session,
             self.session.features_untracked(),
             item,
@@ -849,6 +877,7 @@ impl<'a> Resolver<'a> {
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
                     BuiltinMacroState::NotYetSeen(ext) => {
                         result.kind = ext;
+                        rule_spans = Vec::new();
                         if item.id != ast::DUMMY_NODE_ID {
                             self.builtin_macro_kinds
                                 .insert(self.local_def_id(item.id), result.macro_kind());
@@ -871,6 +900,6 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        result
+        (result, rule_spans)
     }
 }

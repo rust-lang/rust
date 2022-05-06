@@ -1,5 +1,6 @@
 // run-pass
 
+#[allow(unused_macro_rules)]
 macro_rules! a {
     ($i:literal) => { "right" };
     ($i:tt) => { "wrong" };
