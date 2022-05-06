@@ -38,6 +38,7 @@ macro_rules! m {
         let _ = 12E+99_f64;
         let _ = "rust1";
         let _ = -92;
+        let _ = -1.3e4f32;
     }
 }
 fn f() {
@@ -52,6 +53,7 @@ macro_rules! m {
         let _ = 12E+99_f64;
         let _ = "rust1";
         let _ = -92;
+        let _ = -1.3e4f32;
     }
 }
 fn f() {
@@ -60,6 +62,7 @@ fn f() {
     let _ = 12E+99_f64;
     let _ = "rust1";
     let _ = -92;
+    let _ = -1.3e4f32;
 }
 "#]],
     );
@@ -147,4 +150,28 @@ $ = ();
 }
 "#]],
     )
+}
+
+#[test]
+fn float_literal_in_output() {
+    check(
+        r#"
+macro_rules! constant {
+    ($e:expr ;) => {$e};
+}
+
+const _: () = constant!(0.0;);
+const _: () = constant!(0.;);
+const _: () = constant!(0e0;);
+"#,
+        expect![[r#"
+macro_rules! constant {
+    ($e:expr ;) => {$e};
+}
+
+const _: () = 0.0;
+const _: () = 0.;
+const _: () = 0e0;
+"#]],
+    );
 }

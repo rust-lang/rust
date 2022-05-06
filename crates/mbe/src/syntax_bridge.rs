@@ -266,11 +266,13 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                     let mut text = token.to_text(conv).to_string();
                     if kind == FLOAT_NUMBER_START_1 || kind == FLOAT_NUMBER_START_2 {
                         let (dot, dot_range) = conv.bump().unwrap();
+                        assert_eq!(dot.kind(conv), DOT);
                         text += &*dot.to_text(conv);
                         range = TextRange::new(range.start(), dot_range.end());
 
                         if kind == FLOAT_NUMBER_START_2 {
                             let (tail, tail_range) = conv.bump().unwrap();
+                            assert_eq!(tail.kind(conv), FLOAT_NUMBER_PART);
                             text += &*tail.to_text(conv);
                             range = TextRange::new(range.start(), tail_range.end());
                         }
