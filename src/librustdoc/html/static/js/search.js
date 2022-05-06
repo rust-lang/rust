@@ -1510,6 +1510,9 @@ window.initSearch = rawSearchIndex => {
             displayPath = path + "::";
             href = window.rootPath + path.replace(/::/g, "/") + "/" +
                    name + "/index.html";
+        } else if (type === "import") {
+            displayPath = item.path + "::";
+            href = window.rootPath + item.path.replace(/::/g, "/") + "/index.html#reexport." + name;
         } else if (type === "primitive" || type === "keyword") {
             displayPath = "";
             href = window.rootPath + path.replace(/::/g, "/") +

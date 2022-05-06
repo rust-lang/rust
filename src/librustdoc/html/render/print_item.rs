@@ -346,7 +346,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
-                    "<div class=\"item-left {stab}{add}import-item\">\
+                    "<div class=\"item-left {stab}{add}import-item\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      <div class=\"item-right docblock-short\">{stab_tags}</div>",
@@ -355,6 +355,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     vis = myitem.visibility.print_with_space(myitem.item_id, cx),
                     imp = import.print(cx),
                     stab_tags = stab_tags.unwrap_or_default(),
+                    id = match import.kind {
+                        clean::ImportKind::Simple(s) =>
+                            format!(" id=\"{}\"", cx.derive_id(format!("reexport.{}", s))),
+                        clean::ImportKind::Glob => String::new(),
+                    },
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }

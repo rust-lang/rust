@@ -1,0 +1,29 @@
+// Checks that the reexports are present in the search index, can have
+// doc aliases and are highligted when their ID is the hash of the page.
+goto: file://|DOC_PATH|/test_docs/index.html
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+// First we check that the reexport has the correct ID and no background color.
+assert-text: ("//*[@id='reexport.TheStdReexport']", "pub use ::std as TheStdReexport;")
+assert-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgba(0, 0, 0, 0)"})
+write: (".search-input", "TheStdReexport")
+wait-for: "//a[@class='result-import']"
+assert-attribute: (
+    "//a[@class='result-import']",
+    {"href": "../test_docs/index.html#reexport.TheStdReexport"},
+)
+assert-text: ("//a[@class='result-import']", "test_docs::TheStdReexport")
+click: "//a[@class='result-import']"
+// We check that it has the background modified thanks to the focus.
+wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgb(73, 74, 61)"})
+
+// We now check that the alias is working as well on the reexport.
+write: (".search-input", "AliasForTheStdReexport")
+wait-for: "//a[@class='result-import']"
+assert-text: (
+    "//a[@class='result-import']",
+    "AliasForTheStdReexport - see test_docs::TheStdReexport",
+)
+// Same thing again, we click on it to ensure the background is once again set as expected.
+click: "//a[@class='result-import']"
+wait-for-css: ("//*[@id='reexport.TheStdReexport']", {"background-color": "rgb(73, 74, 61)"})
