@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_target::abi::Size;
+use rustc_target::abi::{Size, VariantIdx};
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -242,6 +242,60 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let index_ty = self.body.local_decls[index].ty;
             if index_ty != self.tcx.types.usize {
                 self.fail(location, format!("bad index ({:?} != usize)", index_ty))
+            }
+        }
+        if let ProjectionElem::Field(f, ty) = elem {
+            let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+            let parent_ty = parent.ty(&self.body.local_decls, self.tcx);
+            let fail_out_of_bounds = |this: &Self, location| {
+                this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));
+            };
+            let check_equal = |this: &Self, location, f_ty| {
+                if !this.mir_assign_valid_types(ty, f_ty) {
+                    this.fail(
+                        location,
+                        format!(
+                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is {:?}",
+                            parent, f, ty, f_ty
+                        )
+                    )
+                }
+            };
+            match parent_ty.ty.kind() {
+                ty::Tuple(fields) => {
+                    let Some(f_ty) = fields.get(f.as_usize()) else {
+                        fail_out_of_bounds(self, location);
+                        return;
+                    };
+                    check_equal(self, location, *f_ty);
+                }
+                ty::Adt(adt_def, substs) => {
+                    let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
+                    let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
+                        fail_out_of_bounds(self, location);
+                        return;
+                    };
+                    check_equal(self, location, field.ty(self.tcx, substs));
+                }
+                ty::Closure(_, substs) => {
+                    let substs = substs.as_closure();
+                    let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
+                        fail_out_of_bounds(self, location);
+                        return;
+                    };
+                    check_equal(self, location, f_ty);
+                }
+                ty::Generator(_, substs, _) => {
+                    let substs = substs.as_generator();
+                    let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
+                        fail_out_of_bounds(self, location);
+                        return;
+                    };
+                    check_equal(self, location, f_ty);
+                }
+                _ => {
+                    self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
+                }
             }
         }
         self.super_projection_elem(local, proj_base, elem, context, location);
