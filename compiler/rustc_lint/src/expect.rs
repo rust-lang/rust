@@ -1,10 +1,16 @@
 use crate::builtin;
 use rustc_hir::HirId;
+use rustc_middle::ty::query::Providers;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
 use rustc_session::lint::LintExpectationId;
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 
-pub fn check_expectations(tcx: TyCtxt<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers { check_expectations, ..*providers };
+}
+
+fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     if !tcx.sess.features_untracked().enabled(sym::lint_reasons) {
         return;
     }
@@ -13,7 +19,9 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
     let lint_expectations = &tcx.lint_levels(()).lint_expectations;
 
     for (id, expectation) in lint_expectations {
-        if !fulfilled_expectations.contains(id) {
+        if !fulfilled_expectations.contains(id)
+            && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
+        {
             // This check will always be true, since `lint_expectations` only
             // holds stable ids
             if let LintExpectationId::Stable { hir_id, .. } = id {

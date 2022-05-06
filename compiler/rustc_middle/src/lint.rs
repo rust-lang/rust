@@ -210,6 +210,10 @@ pub struct LintExpectation {
     /// adjusted to include an additional note. Therefore, we have to track if
     /// the expectation is for the lint.
     pub is_unfulfilled_lint_expectations: bool,
+    /// This will hold the name of the tool that this lint belongs to. For
+    /// the lint `clippy::some_lint` the tool would be `clippy`, the same
+    /// goes for `rustdoc`. This will be `None` for rustc lints
+    pub lint_tool: Option<Symbol>,
 }
 
 impl LintExpectation {
@@ -217,8 +221,9 @@ impl LintExpectation {
         reason: Option<Symbol>,
         emission_span: Span,
         is_unfulfilled_lint_expectations: bool,
+        lint_tool: Option<Symbol>,
     ) -> Self {
-        Self { reason, emission_span, is_unfulfilled_lint_expectations }
+        Self { reason, emission_span, is_unfulfilled_lint_expectations, lint_tool }
     }
 }
 
