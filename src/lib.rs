@@ -4,7 +4,6 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(let_else)]
-#![feature(bool_to_option)]
 #![feature(io_error_more)]
 #![warn(rust_2018_idioms)]
 #![allow(
