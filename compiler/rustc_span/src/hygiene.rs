@@ -686,7 +686,7 @@ impl SyntaxContext {
     /// context up one macro definition level. That is, if we have a nested macro
     /// definition as follows:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// macro_rules! f {
     ///    macro_rules! g {
     ///        ...
@@ -710,6 +710,7 @@ impl SyntaxContext {
     /// For example, consider the following three resolutions of `f`:
     ///
     /// ```rust
+    /// #![feature(decl_macro)]
     /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
     /// m!(f);
     /// macro m($f:ident) {
@@ -746,7 +747,8 @@ impl SyntaxContext {
     /// via a glob import with the given `SyntaxContext`.
     /// For example:
     ///
-    /// ```rust
+    /// ```compile_fail,E0425
+    /// #![feature(decl_macro)]
     /// m!(f);
     /// macro m($i:ident) {
     ///     mod foo {
@@ -786,7 +788,7 @@ impl SyntaxContext {
 
     /// Undo `glob_adjust` if possible:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// if let Some(privacy_checking_scope) = self.reverse_glob_adjust(expansion, glob_ctxt) {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }

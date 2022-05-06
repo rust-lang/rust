@@ -249,7 +249,7 @@ fn generate_test_harness(
 ///
 /// By default this expands to
 ///
-/// ```
+/// ```ignore UNSOLVED (I think I still need guidance for this one. Is it correct? Do we try to make it run? How do we nicely fill it out?)
 /// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;

@@ -371,7 +371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// fn with_closure<F>(_: F)
     ///   where F: Fn(&u32) -> &u32 { .. }
     ///

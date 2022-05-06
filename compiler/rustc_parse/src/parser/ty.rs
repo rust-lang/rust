@@ -52,7 +52,7 @@ pub(super) enum RecoverQuestionMark {
 /// Signals whether parsing a type should recover `->`.
 ///
 /// More specifically, when parsing a function like:
-/// ```rust
+/// ```compile_fail
 /// fn foo() => u8 { 0 }
 /// fn bar(): u8 { 0 }
 /// ```
@@ -499,12 +499,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a function pointer type (`TyKind::BareFn`).
-    /// ```
-    /// [unsafe] [extern "ABI"] fn (S) -> T
-    ///  ^~~~~^          ^~~~^     ^~^    ^
-    ///    |               |        |     |
-    ///    |               |        |   Return type
-    /// Function Style    ABI  Parameter types
+    /// ```ignore (illustrative)
+    ///    [unsafe] [extern "ABI"] fn (S) -> T
+    /// //  ^~~~~^          ^~~~^     ^~^    ^
+    /// //    |               |        |     |
+    /// //    |               |        |   Return type
+    /// // Function Style    ABI  Parameter types
     /// ```
     /// We actually parse `FnHeader FnDecl`, but we error on `const` and `async` qualifiers.
     fn parse_ty_bare_fn(
@@ -707,7 +707,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a bound according to the grammar:
-    /// ```
+    /// ```ebnf
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, Result<GenericBound, Span>> {
@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
-    /// ```
+    /// ```ebnf
     /// LT_BOUND = LIFETIME
     /// ```
     fn parse_generic_lt_bound(
@@ -787,7 +787,7 @@ impl<'a> Parser<'a> {
     ///
     /// If no modifiers are present, this does not consume any tokens.
     ///
-    /// ```
+    /// ```ebnf
     /// TY_BOUND_MODIFIERS = ["~const"] ["?"]
     /// ```
     fn parse_ty_bound_modifiers(&mut self) -> PResult<'a, BoundModifiers> {
@@ -807,7 +807,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a type bound according to:
-    /// ```
+    /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     /// TY_BOUND_NOPAREN = [TY_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
     /// ```

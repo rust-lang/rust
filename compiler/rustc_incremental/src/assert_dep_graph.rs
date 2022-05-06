@@ -22,7 +22,7 @@
 //!
 //! Example:
 //!
-//! ```
+//! ```ignore (needs flags)
 //! #[rustc_if_this_changed(Hir)]
 //! fn foo() { }
 //!

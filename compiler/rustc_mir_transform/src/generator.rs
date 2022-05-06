@@ -18,13 +18,13 @@
 //!     First upvars are stored
 //!     It is followed by the generator state field.
 //!     Then finally the MIR locals which are live across a suspension point are stored.
-//!
+//!     ```ignore (illustrative)
 //!     struct Generator {
 //!         upvars...,
 //!         state: u32,
 //!         mir_locals...,
 //!     }
-//!
+//!     ```
 //! This pass computes the meaning of the state field and the MIR locals which are live
 //! across a suspension point. There are however three hardcoded generator states:
 //!     0 - Generator have not been resumed yet

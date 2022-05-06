@@ -1006,9 +1006,11 @@ impl<'a> MethodDef<'a> {
     ///         }
     ///     }
     /// }
-    ///
-    /// // or if A is repr(packed) - note fields are matched by-value
-    /// // instead of by-reference.
+    /// ```
+    /// or if A is repr(packed) - note fields are matched by-value
+    /// instead of by-reference.
+    /// ```
+    /// # struct A { x: i32, y: i32 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
@@ -1126,14 +1128,15 @@ impl<'a> MethodDef<'a> {
     /// // is equivalent to
     ///
     /// impl PartialEq for A {
-    ///     fn eq(&self, other: &A) -> ::bool {
+    ///     fn eq(&self, other: &A) -> bool {
+    ///         use A::*;
     ///         match (&*self, &*other) {
     ///             (&A1, &A1) => true,
     ///             (&A2(ref self_0),
     ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *other { A1(..) => 0, A2(..) => 1 };
+    ///                 let __self_vi = match *self { A1 => 0, A2(..) => 1 };
+    ///                 let __arg_1_vi = match *other { A1 => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }

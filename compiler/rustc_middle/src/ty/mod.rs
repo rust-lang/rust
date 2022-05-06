@@ -1030,9 +1030,9 @@ impl<'tcx> Predicate<'tcx> {
 /// their values.
 ///
 /// Example:
-///
-///     struct Foo<T, U: Bar<T>> { ... }
-///
+/// ```ignore (illustrative)
+/// struct Foo<T, U: Bar<T>> { ... }
+/// ```
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
@@ -1090,9 +1090,9 @@ pub struct OpaqueHiddenType<'tcx> {
     /// The type variable that represents the value of the opaque type
     /// that we require. In other words, after we compile this function,
     /// we will be created a constraint like:
-    ///
-    ///     Foo<'a, T> = ?C
-    ///
+    /// ```ignore (pseudo-rust)
+    /// Foo<'a, T> = ?C
+    /// ```
     /// where `?C` is the value of this type variable. =) It may
     /// naturally refer to the type and lifetime parameters in scope
     /// in this function, though ultimately it should only reference
@@ -1133,7 +1133,7 @@ rustc_index::newtype_index! {
     ///
     /// To make this more concrete, consider this program:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// struct Foo { }
     /// fn bar<T>(x: T) {
     ///   let y: for<'a> fn(&'a u8, Foo) = ...;
@@ -1172,7 +1172,7 @@ impl UniverseIndex {
     /// corresponds to entering a `forall` quantifier. So, for
     /// example, suppose we have this type in universe `U`:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// for<'a> fn(&'a u32)
     /// ```
     ///
@@ -1959,7 +1959,7 @@ pub enum ImplOverlapKind {
     /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied
     /// that difference, making what reduces to the following set of impls:
     ///
-    /// ```
+    /// ```compile_fail,(E0119)
     /// trait Trait {}
     /// impl Trait for dyn Send + Sync {}
     /// impl Trait for dyn Sync + Send {}

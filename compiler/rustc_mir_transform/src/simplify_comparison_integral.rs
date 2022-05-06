@@ -12,7 +12,7 @@ use rustc_middle::{
 /// Pass to convert `if` conditions on integrals into switches on the integral.
 /// For an example, it turns something like
 ///
-/// ```
+/// ```ignore (MIR)
 /// _3 = Eq(move _4, const 43i32);
 /// StorageDead(_4);
 /// switchInt(_3) -> [false: bb2, otherwise: bb3];
@@ -20,7 +20,7 @@ use rustc_middle::{
 ///
 /// into:
 ///
-/// ```
+/// ```ignore (MIR)
 /// switchInt(_4) -> [43i32: bb3, otherwise: bb2];
 /// ```
 pub struct SimplifyComparisonIntegral;

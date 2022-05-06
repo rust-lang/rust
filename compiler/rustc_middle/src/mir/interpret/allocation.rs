@@ -770,11 +770,11 @@ impl InitMask {
         ///
         /// Note that all examples below are written with 8 (instead of 64) bit blocks for simplicity,
         /// and with the least significant bit (and lowest block) first:
-        ///
-        ///          00000000|00000000
-        ///          ^      ^ ^      ^
-        ///   index: 0      7 8      15
-        ///
+        /// ```text
+        ///        00000000|00000000
+        ///        ^      ^ ^      ^
+        /// index: 0      7 8      15
+        /// ```
         /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the first 1 bit.
         fn find_bit_fast(
             init_mask: &InitMask,

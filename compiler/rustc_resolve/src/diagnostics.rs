@@ -2270,16 +2270,16 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
 /// Given a `binding_span` of a binding within a use statement:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// use foo::{a, b, c};
-///              ^
+/// //           ^
 /// ```
 ///
 /// then return the span until the next binding or the end of the statement:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// use foo::{a, b, c};
-///              ^^^
+/// //           ^^^
 /// ```
 fn find_span_of_binding_until_next_binding(
     sess: &Session,
@@ -2323,14 +2323,14 @@ fn find_span_of_binding_until_next_binding(
 /// Given a `binding_span`, return the span through to the comma or opening brace of the previous
 /// binding.
 ///
-/// ```
+/// ```ignore (illustrative)
 /// use foo::a::{a, b, c};
-///               ^^--- binding span
-///               |
-///               returned span
+/// //            ^^--- binding span
+/// //            |
+/// //            returned span
 ///
 /// use foo::{a, b, c};
-///           --- binding span
+/// //        --- binding span
 /// ```
 fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option<Span> {
     let source_map = sess.source_map();
@@ -2366,15 +2366,15 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
 /// Given a `use_span` of a binding within a use statement, returns the highlighted span and if
 /// it is a nested use tree.
 ///
-/// ```
+/// ```ignore (illustrative)
 /// use foo::a::{b, c};
-///          ^^^^^^^^^^ // false
+/// //       ^^^^^^^^^^ -- false
 ///
 /// use foo::{a, b, c};
-///          ^^^^^^^^^^ // true
+/// //       ^^^^^^^^^^ -- true
 ///
 /// use foo::{a, b::{c, d}};
-///          ^^^^^^^^^^^^^^^ // true
+/// //       ^^^^^^^^^^^^^^^ -- true
 /// ```
 fn find_span_immediately_after_crate_name(
     sess: &Session,

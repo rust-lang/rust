@@ -35,23 +35,27 @@
 //! This is enough to compute reachability: a pattern in a `match` expression is reachable iff it
 //! is useful w.r.t. the patterns above it:
 //! ```rust
+//! # fn foo(x: Option<i32>) {
 //! match x {
-//!     Some(_) => ...,
-//!     None => ..., // reachable: `None` is matched by this but not the branch above
-//!     Some(0) => ..., // unreachable: all the values this matches are already matched by
-//!                     // `Some(_)` above
+//!     Some(_) => {},
+//!     None => {},    // reachable: `None` is matched by this but not the branch above
+//!     Some(0) => {}, // unreachable: all the values this matches are already matched by
+//!                    // `Some(_)` above
 //! }
+//! # }
 //! ```
 //!
 //! This is also enough to compute exhaustiveness: a match is exhaustive iff the wildcard `_`
 //! pattern is _not_ useful w.r.t. the patterns in the match. The values returned by `usefulness`
 //! are used to tell the user which values are missing.
-//! ```rust
+//! ```compile_fail,E0004
+//! # fn foo(x: Option<i32>) {
 //! match x {
-//!     Some(0) => ...,
-//!     None => ...,
+//!     Some(0) => {},
+//!     None => {},
 //!     // not exhaustive: `_` is useful because it matches `Some(1)`
 //! }
+//! # }
 //! ```
 //!
 //! The entrypoint of this file is the [`compute_match_usefulness`] function, which computes
@@ -120,12 +124,15 @@
 //! say from knowing only the first constructor of our candidate value.
 //!
 //! Let's take the following example:
-//! ```
+//! ```compile_fail,E0004
+//! # enum Enum { Variant1(()), Variant2(Option<bool>, u32)}
+//! # fn foo(x: Enum) {
 //! match x {
 //!     Enum::Variant1(_) => {} // `p1`
 //!     Enum::Variant2(None, 0) => {} // `p2`
 //!     Enum::Variant2(Some(_), 0) => {} // `q`
 //! }
+//! # }
 //! ```
 //!
 //! We can easily see that if our candidate value `v` starts with `Variant1` it will not match `q`.
@@ -133,11 +140,13 @@
 //! and `v1`. In fact, such a `v` will be a witness of usefulness of `q` exactly when the tuple
 //! `(v0, v1)` is a witness of usefulness of `q'` in the following reduced match:
 //!
-//! ```
+//! ```compile_fail,E0004
+//! # fn foo(x: (Option<bool>, u32)) {
 //! match x {
 //!     (None, 0) => {} // `p2'`
 //!     (Some(_), 0) => {} // `q'`
 //! }
+//! # }
 //! ```
 //!
 //! This motivates a new step in computing usefulness, that we call _specialization_.
@@ -150,7 +159,7 @@
 //! like a stack. We note a pattern-stack simply with `[p_1 ... p_n]`.
 //! Here's a sequence of specializations of a list of pattern-stacks, to illustrate what's
 //! happening:
-//! ```
+//! ```ignore (illustrative)
 //! [Enum::Variant1(_)]
 //! [Enum::Variant2(None, 0)]
 //! [Enum::Variant2(Some(_), 0)]
@@ -234,7 +243,7 @@
 //!     - We return the concatenation of all the witnesses found, if any.
 //!
 //! Example:
-//! ```
+//! ```ignore (illustrative)
 //! [Some(true)] // p_1
 //! [None] // p_2
 //! [Some(_)] // q
@@ -659,13 +668,15 @@ enum ArmType {
 ///
 /// For example, if we are constructing a witness for the match against
 ///
-/// ```
+/// ```compile_fail,E0004
+/// # #![feature(type_ascription)]
 /// struct Pair(Option<(u32, u32)>, bool);
-///
+/// # fn foo(p: Pair) {
 /// match (p: Pair) {
 ///    Pair(None, _) => {}
 ///    Pair(_, false) => {}
 /// }
+/// # }
 /// ```
 ///
 /// We'll perform the following steps:

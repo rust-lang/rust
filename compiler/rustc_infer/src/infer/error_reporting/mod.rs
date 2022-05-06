@@ -889,7 +889,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// For the following code:
     ///
-    /// ```no_run
+    /// ```ignore (illustrative)
     /// let x: Foo<Bar<Qux>> = foo::<Bar<Qux>>();
     /// ```
     ///
@@ -1872,7 +1872,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// A possible error is to forget to add `.await` when using futures:
     ///
-    /// ```
+    /// ```compile_fail,E0308
     /// async fn make_u32() -> u32 {
     ///     22
     /// }

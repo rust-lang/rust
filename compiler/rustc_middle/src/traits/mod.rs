@@ -47,7 +47,8 @@ pub enum Reveal {
     /// impl. Concretely, that means that the following example will
     /// fail to compile:
     ///
-    /// ```
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
     /// trait Assoc {
     ///     type Output;
     /// }
@@ -57,7 +58,7 @@ pub enum Reveal {
     /// }
     ///
     /// fn main() {
-    ///     let <() as Assoc>::Output = true;
+    ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
     UserFacing,
@@ -515,7 +516,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// For example, the obligation may be satisfied by a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
-/// ```
+/// ```ignore (illustrative)
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
 /// impl Clone for i32 { ... }                   // Impl_3

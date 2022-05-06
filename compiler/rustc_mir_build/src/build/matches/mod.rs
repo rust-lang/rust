@@ -1032,11 +1032,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// exhaustive match, consider:
     ///
     /// ```
+    /// # fn foo(x: (bool, bool)) {
     /// match x {
     ///     (true, true) => (),
     ///     (_, false) => (),
     ///     (false, true) => (),
     /// }
+    /// # }
     /// ```
     ///
     /// For this match, we check if `x.0` matches `true` (for the first
@@ -1157,7 +1159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For example, if we have something like this:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// ...
     /// Some(x) if cond1 => ...
     /// Some(x) => ...
@@ -1481,11 +1483,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     /// # let (x, y, z) = (true, true, true);
     /// match (x, y, z) {
-    ///     (true, _, true) => true,    // (0)
-    ///     (_, true, _) => true,       // (1)
-    ///     (false, false, _) => false, // (2)
-    ///     (true, _, false) => false,  // (3)
+    ///     (true , _    , true ) => true,  // (0)
+    ///     (_    , true , _    ) => true,  // (1)
+    ///     (false, false, _    ) => false, // (2)
+    ///     (true , _    , false) => false, // (3)
     /// }
+    /// # ;
     /// ```
     ///
     /// In that case, after we test on `x`, there are 2 overlapping candidate
@@ -1502,14 +1505,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// with precisely the reachable arms being reachable - but that problem
     /// is trivially NP-complete:
     ///
-    /// ```rust
-    ///     match (var0, var1, var2, var3, ...) {
-    ///         (true, _, _, false, true, ...) => false,
-    ///         (_, true, true, false, _, ...) => false,
-    ///         (false, _, false, false, _, ...) => false,
-    ///         ...
-    ///         _ => true
-    ///     }
+    /// ```ignore (illustrative)
+    /// match (var0, var1, var2, var3, ...) {
+    ///     (true , _   , _    , false, true, ...) => false,
+    ///     (_    , true, true , false, _   , ...) => false,
+    ///     (false, _   , false, false, _   , ...) => false,
+    ///     ...
+    ///     _ => true
+    /// }
     /// ```
     ///
     /// Here the last arm is reachable only if there is an assignment to
@@ -1520,7 +1523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// our simplistic treatment of constants and guards would make it occur
     /// in very common situations - for example [#29740]:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// match x {
     ///     "foo" if foo_guard => ...,
     ///     "bar" if bar_guard => ...,

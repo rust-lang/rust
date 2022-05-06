@@ -320,7 +320,8 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 ///
 /// Then, the tree will have the following shape:
 ///
-/// ```rust
+/// ```ignore (private-internal)
+/// # use NamedMatch::*;
 /// MatchedSeq([
 ///   MatchedSeq([
 ///     MatchedNonterminal(a),

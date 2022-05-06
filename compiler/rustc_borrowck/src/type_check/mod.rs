@@ -971,7 +971,7 @@ pub enum Locations {
     /// things like the type of the return slot. Consider this
     /// example:
     ///
-    /// ```
+    /// ```compile_fail,E0515
     /// fn foo<'a>(x: &'a u32) -> &'a u32 {
     ///     let y = 22;
     ///     return &y; // error

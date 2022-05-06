@@ -82,7 +82,7 @@ bitflags! {
 ///
 /// is essentially represented with [`Ty`] as the following pseudocode:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// struct S { x }
 /// ```
 ///
