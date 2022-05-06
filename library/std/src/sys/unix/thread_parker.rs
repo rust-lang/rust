@@ -3,7 +3,10 @@
 #![cfg(not(any(
     target_os = "linux",
     target_os = "android",
-    all(target_os = "emscripten", target_feature = "atomics")
+    all(target_os = "emscripten", target_feature = "atomics"),
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "dragonfly",
 )))]
 
 use crate::cell::UnsafeCell;

@@ -284,6 +284,10 @@ impl RwLock {
     fn wake_writer(&self) -> bool {
         self.writer_notify.fetch_add(1, Release);
         futex_wake(&self.writer_notify)
+        // Note that FreeBSD and DragonFlyBSD don't tell us whether they woke
+        // up any threads or not, and always return `false` here. That still
+        // results in correct behaviour: it just means readers get woken up as
+        // well in case both readers and writers were waiting.
     }
 
     /// Spin for a while, but stop directly at the given condition.
