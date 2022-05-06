@@ -368,16 +368,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.is_fn_ty(rcvr_ty, span) {
                     if let SelfSource::MethodCall(expr) = source {
                         let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() {
-                            let local_id = def_id.expect_local();
-                            let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
-                            let node = tcx.hir().get(hir_id);
-                            let fields = node.tuple_fields();
-
-                            if let Some(fields) = fields
-                                && let Some(DefKind::Ctor(of, _)) = self.tcx.opt_def_kind(local_id) {
-                                    Some((fields, of))
+                            if let Some(local_id) = def_id.as_local() {
+                                let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
+                                let node = tcx.hir().get(hir_id);
+                                let fields = node.tuple_fields();
+                                if let Some(fields) = fields
+                                    && let Some(DefKind::Ctor(of, _)) = self.tcx.opt_def_kind(local_id) {
+                                        Some((fields.len(), of))
+                                } else {
+                                    None
+                                }
                             } else {
-                                None
+                                // The logic here isn't smart but `associated_item_def_ids`
+                                // doesn't work nicely on local.
+                                if let DefKind::Ctor(of, _) = tcx.def_kind(def_id) {
+                                    let parent_def_id = tcx.parent(*def_id);
+                                    Some((tcx.associated_item_def_ids(parent_def_id).len(), of))
+                                } else {
+                                    None
+                                }
                             }
                         } else {
                             None
@@ -385,7 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // If the function is a tuple constructor, we recommend that they call it
                         if let Some((fields, kind)) = suggest {
-                            suggest_call_constructor(expr.span, kind, fields.len(), &mut err);
+                            suggest_call_constructor(expr.span, kind, fields, &mut err);
                         } else {
                             // General case
                             err.span_label(
