@@ -5,8 +5,8 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    option_inner_ty, report_error_if_not_applied_to_applicability,
-    report_error_if_not_applied_to_span, Applicability, FieldInfo, HasFieldMap, SetOnce,
+    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
+    Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -301,11 +301,11 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
     ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
         let ast = binding.ast();
 
-        let option_ty = option_inner_ty(&ast.ty);
+        let inner_ty = FieldInnerTy::from_type(&ast.ty);
         let info = FieldInfo {
             vis: &ast.vis,
             binding: binding,
-            ty: option_ty.unwrap_or(&ast.ty),
+            ty: inner_ty.inner_type().unwrap_or(&ast.ty),
             span: &ast.span(),
         };
 
@@ -353,15 +353,7 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
             );
         };
 
-        if option_ty.is_none() {
-            Ok(quote! { #generated })
-        } else {
-            Ok(quote! {
-                if let Some(#binding) = #binding {
-                    #generated
-                }
-            })
-        }
+        Ok(inner_ty.with(binding, generated))
     }
 
     fn into_tokens(&mut self) -> Result<TokenStream, SessionDiagnosticDeriveError> {
