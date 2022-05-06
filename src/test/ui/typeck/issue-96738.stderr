@@ -4,7 +4,12 @@ error[E0599]: no method named `nonexistent_method` found for fn item `fn(_) -> O
 LL |     Some.nonexistent_method();
    |     ---- ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
    |     |
-   |     this is a function, perhaps you wish to call it
+   |     this is the constructor of an enum variant
+   |
+help: call the constructor
+   |
+LL |     (Some)(_).nonexistent_method();
+   |     +    ++++
 
 error: aborting due to previous error
 
