@@ -1,14 +1,54 @@
+use crate::fmt;
 use crate::time::Duration;
 
-pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
+pub use self::inner::Instant;
 use crate::convert::TryInto;
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
+pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SystemTime {
+    pub(in crate::sys::unix) t: Timespec,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(in crate::sys::unix) struct Timespec {
     tv_sec: i64,
     tv_nsec: i64,
+}
+
+impl SystemTime {
+    pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
+        SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
+    }
+
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+        self.t.sub_timespec(&other.t)
+    }
+
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime { t: self.t.checked_add_duration(other)? })
+    }
+
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime { t: self.t.checked_sub_duration(other)? })
+    }
+}
+
+impl From<libc::timespec> for SystemTime {
+    fn from(t: libc::timespec) -> SystemTime {
+        SystemTime { t: Timespec::from(t) }
+    }
+}
+
+impl fmt::Debug for SystemTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SystemTime")
+            .field("tv_sec", &self.t.tv_sec)
+            .field("tv_nsec", &self.t.tv_nsec)
+            .finish()
+    }
 }
 
 impl Timespec {
@@ -85,30 +125,35 @@ impl Timespec {
         }
         Some(Timespec::new(secs, nsec as i64))
     }
+
+    pub fn to_timespec(&self) -> Option<libc::timespec> {
+        use crate::convert::TryInto;
+        Some(libc::timespec {
+            tv_sec: self.tv_sec.try_into().ok()?,
+            tv_nsec: self.tv_nsec.try_into().ok()?,
+        })
+    }
+}
+
+impl From<libc::timespec> for Timespec {
+    fn from(t: libc::timespec) -> Timespec {
+        Timespec::new(t.tv_sec as i64, t.tv_nsec as i64)
+    }
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
-    use crate::fmt;
     use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
 
-    use super::Timespec;
-    use super::NSEC_PER_SEC;
+    use super::{SystemTime, Timespec, NSEC_PER_SEC};
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
     pub struct Instant {
         t: u64,
     }
-
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct SystemTime {
-        pub(in crate::sys::unix) t: Timespec,
-    }
-
-    pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
     #[repr(C)]
     #[derive(Copy, Clone)]
@@ -144,28 +189,12 @@ mod inner {
     }
 
     impl SystemTime {
-        pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
-            SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
-        }
-
         pub fn now() -> SystemTime {
             use crate::ptr;
 
             let mut s = libc::timeval { tv_sec: 0, tv_usec: 0 };
             cvt(unsafe { libc::gettimeofday(&mut s, ptr::null_mut()) }).unwrap();
             return SystemTime::from(s);
-        }
-
-        pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-            self.t.sub_timespec(&other.t)
-        }
-
-        pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-            Some(SystemTime { t: self.t.checked_add_duration(other)? })
-        }
-
-        pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-            Some(SystemTime { t: self.t.checked_sub_duration(other)? })
         }
     }
 
@@ -178,27 +207,6 @@ mod inner {
     impl From<libc::timeval> for SystemTime {
         fn from(t: libc::timeval) -> SystemTime {
             SystemTime { t: Timespec::from(t) }
-        }
-    }
-
-    impl From<libc::timespec> for Timespec {
-        fn from(t: libc::timespec) -> Timespec {
-            Timespec::new(t.tv_sec as i64, t.tv_nsec as i64)
-        }
-    }
-
-    impl From<libc::timespec> for SystemTime {
-        fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec::from(t) }
-        }
-    }
-
-    impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_struct("SystemTime")
-                .field("tv_sec", &self.t.tv_sec)
-                .field("tv_nsec", &self.t.tv_nsec)
-                .finish()
         }
     }
 
@@ -256,19 +264,12 @@ mod inner {
     use crate::sys::cvt;
     use crate::time::Duration;
 
-    use super::Timespec;
+    use super::{SystemTime, Timespec};
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Instant {
         t: Timespec,
     }
-
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct SystemTime {
-        pub(in crate::sys::unix) t: Timespec,
-    }
-
-    pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
     impl Instant {
         pub fn now() -> Instant {
@@ -298,45 +299,8 @@ mod inner {
     }
 
     impl SystemTime {
-        pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
-            SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
-        }
-
         pub fn now() -> SystemTime {
             SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
-        }
-
-        pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-            self.t.sub_timespec(&other.t)
-        }
-
-        pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-            Some(SystemTime { t: self.t.checked_add_duration(other)? })
-        }
-
-        pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-            Some(SystemTime { t: self.t.checked_sub_duration(other)? })
-        }
-    }
-
-    impl From<libc::timespec> for Timespec {
-        fn from(t: libc::timespec) -> Timespec {
-            Timespec::new(t.tv_sec as i64, t.tv_nsec as i64)
-        }
-    }
-
-    impl From<libc::timespec> for SystemTime {
-        fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec::from(t) }
-        }
-    }
-
-    impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.debug_struct("SystemTime")
-                .field("tv_sec", &self.t.tv_sec)
-                .field("tv_nsec", &self.t.tv_nsec)
-                .finish()
         }
     }
 
@@ -377,14 +341,6 @@ mod inner {
             let mut t = MaybeUninit::uninit();
             cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
             Timespec::from(unsafe { t.assume_init() })
-        }
-
-        pub fn to_timespec(&self) -> Option<libc::timespec> {
-            use crate::convert::TryInto;
-            Some(libc::timespec {
-                tv_sec: self.tv_sec.try_into().ok()?,
-                tv_nsec: self.tv_nsec.try_into().ok()?,
-            })
         }
     }
 }
