@@ -28,9 +28,10 @@
 // M. Batty, S. Owens, S. Sarkar, P. Sewell and T. Weber,
 // "Mathematizing C++ concurrency", ACM SIGPLAN Notices, vol. 46, no. 1, pp. 55-66, 2011.
 // Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
+#![feature(atomic_from_mut)]
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{fence, AtomicUsize};
+use std::sync::atomic::{fence, AtomicU16, AtomicU32, AtomicUsize};
 use std::thread::{spawn, yield_now};
 
 #[derive(Copy, Clone)]
@@ -196,6 +197,26 @@ fn test_mixed_access() {
     assert_eq!(r2, 2);
 }
 
+// Strictly speaking, atomic accesses that imperfectly overlap with existing
+// atomic objects are UB. Nonetheless we'd like to provide a sane value when
+// the access is not racy.
+fn test_imperfectly_overlapping_access() {
+    let mut qword = AtomicU32::new(42);
+    assert_eq!(qword.load(Relaxed), 42);
+    qword.store(u32::to_be(0xabbafafa), Relaxed);
+
+    let qword_mut = qword.get_mut();
+
+    let dwords_mut = unsafe { std::mem::transmute::<&mut u32, &mut [u16; 2]>(qword_mut) };
+
+    let (hi_mut, lo_mut) = dwords_mut.split_at_mut(1);
+
+    let (hi, lo) = (AtomicU16::from_mut(&mut hi_mut[0]), AtomicU16::from_mut(&mut lo_mut[0]));
+
+    assert_eq!(u16::from_be(hi.load(Relaxed)), 0xabba);
+    assert_eq!(u16::from_be(lo.load(Relaxed)), 0xfafa);
+}
+
 // The following two tests are taken from Repairing Sequential Consistency in C/C++11
 // by Lahav et al.
 // https://plv.mpi-sws.org/scfix/paper.pdf
@@ -270,6 +291,7 @@ fn test_cpp20_rwc_syncs() {
 }
 
 pub fn main() {
+    test_imperfectly_overlapping_access();
     // TODO: does this make chances of spurious success
     // "sufficiently low"? This also takes a long time to run,
     // prehaps each function should be its own test case so they
