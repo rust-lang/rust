@@ -207,7 +207,13 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, expr: &Expr<'_>) {
+fn check_possible_range_contains(
+    cx: &LateContext<'_>,
+    op: BinOpKind,
+    left: &Expr<'_>,
+    right: &Expr<'_>,
+    expr: &Expr<'_>,
+) {
     if in_constant(cx, expr.hir_id) {
         return;
     }
@@ -219,23 +225,19 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
         _ => return,
     };
     // value, name, order (higher/lower), inclusiveness
-    if let (
-        Some((lval, lexpr, lid, name_span, lval_span, lord, linc)),
-        Some((rval, _, rid, _, rval_span, rord, rinc)),
-    ) = (check_range_bounds(cx, l), check_range_bounds(cx, r))
-    {
+    if let (Some(l), Some(r)) = (check_range_bounds(cx, left), check_range_bounds(cx, right)) {
         // we only lint comparisons on the same name and with different
         // direction
-        if lid != rid || lord == rord {
+        if l.id != r.id || l.ord == r.ord {
             return;
         }
-        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(lexpr), &lval, &rval);
-        if combine_and && ord == Some(rord) {
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l.expr), &l.val, &r.val);
+        if combine_and && ord == Some(r.ord) {
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if rord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if r.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             // we only lint inclusive lower bounds
             if !l_inc {
@@ -247,7 +249,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("Range", "..")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -260,13 +262,13 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 format!("({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
-        } else if !combine_and && ord == Some(lord) {
+        } else if !combine_and && ord == Some(l.ord) {
             // `!_.contains(_)`
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if lord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if l.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             if l_inc {
                 return;
@@ -277,7 +279,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("RangeInclusive", "..=")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -294,10 +296,20 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
     }
 }
 
-fn check_range_bounds<'a>(
-    cx: &'a LateContext<'_>,
-    ex: &'a Expr<'_>,
-) -> Option<(Constant, &'a Expr<'a>, HirId, Span, Span, Ordering, bool)> {
+struct RangeBounds<'a> {
+    val: Constant,
+    expr: &'a Expr<'a>,
+    id: HirId,
+    name_span: Span,
+    val_span: Span,
+    ord: Ordering,
+    inc: bool,
+}
+
+// Takes a binary expression such as x <= 2 as input
+// Breaks apart into various pieces, such as the value of the number,
+// hir id of the variable, and direction/inclusiveness of the operator
+fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -308,11 +320,27 @@ fn check_range_bounds<'a>(
         };
         if let Some(id) = path_to_local(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
-                return Some((c, r, id, l.span, r.span, ordering, inclusive));
+                return Some(RangeBounds {
+                    val: c,
+                    expr: r,
+                    id,
+                    name_span: l.span,
+                    val_span: r.span,
+                    ord: ordering,
+                    inc: inclusive,
+                });
             }
         } else if let Some(id) = path_to_local(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
-                return Some((c, l, id, r.span, l.span, ordering.reverse(), inclusive));
+                return Some(RangeBounds {
+                    val: c,
+                    expr: l,
+                    id,
+                    name_span: r.span,
+                    val_span: l.span,
+                    ord: ordering.reverse(),
+                    inc: inclusive,
+                });
             }
         }
     }
