@@ -1003,7 +1003,7 @@ fn compare_generic_param_kinds<'tcx>(
         } {
             let make_param_message = |prefix: &str, param: &ty::GenericParamDef| match param.kind {
                 Const { .. } => {
-                    format!("{} const parameter with type `{}`", prefix, tcx.type_of(param.def_id))
+                    format!("{} const parameter of type `{}`", prefix, tcx.type_of(param.def_id))
                 }
                 Type { .. } => format!("{} type parameter", prefix),
                 Lifetime { .. } => unreachable!(),
@@ -1016,7 +1016,7 @@ fn compare_generic_param_kinds<'tcx>(
                 tcx.sess,
                 param_impl_span,
                 E0053,
-                "{} `{}` has an incompatible generic parameter for trait: `{}`",
+                "{} `{}` has an incompatible generic parameter for trait `{}`",
                 assoc_item_kind_str(&impl_item),
                 trait_item.name,
                 &tcx.def_path_str(tcx.parent(trait_item.def_id))
