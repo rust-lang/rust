@@ -55,10 +55,13 @@ impl GlobalState {
             self.reload_flycheck();
         }
 
-        // Apply experimental feature flags.
-        self.analysis_host
-            .raw_database_mut()
-            .set_enable_proc_attr_macros(self.config.expand_proc_attr_macros());
+        if self.analysis_host.raw_database().enable_proc_attr_macros()
+            != self.config.expand_proc_attr_macros()
+        {
+            self.analysis_host
+                .raw_database_mut()
+                .set_enable_proc_attr_macros(self.config.expand_proc_attr_macros());
+        }
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
