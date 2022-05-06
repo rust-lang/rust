@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, GenericParam, HirId, Mod, Node};
+use rustc_hir::{ExprKind, HirId, Mod, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -99,8 +99,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
     }
-
-    fn visit_generic_param(&mut self, _: &'tcx GenericParam<'tcx>) {}
 
     fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
         self.handle_path(path, None);
