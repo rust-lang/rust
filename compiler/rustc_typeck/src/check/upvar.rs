@@ -914,6 +914,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         reasons.auto_traits.extend(auto_trait_reasons);
         reasons.drop_order = drop_order;
 
+        // `auto_trait_reasons` are in hashset order, so sort them to put the
+        // diagnostics we emit later in a cross-platform-consistent order.
+        reasons.auto_traits.sort_unstable();
+
         reasons
     }
 
