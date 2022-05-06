@@ -44,7 +44,8 @@ impl fmt::Display for Buf {
     }
 }
 
-pub struct Slice {
+#[repr(transparent)]
+pub(crate) struct Slice {
     pub inner: Wtf8,
 }
 
