@@ -291,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ty::Array(..) | ty::Slice(..)
                 );
             }
-            Rvalue::BinaryOp(op, vals) | Rvalue::CheckedBinaryOp(op, vals) => {
+            Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
@@ -355,17 +355,55 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
-                                "Cannot perform op on type {:?}",
+                                "Cannot perform arithmetic on type {:?}",
                                 ty::Uint(..) | ty::Int(..) | ty::Float(..)
                             )
                         }
                         if a != b {
                             self.fail(
                                 location,
-                                format!("Cannot perform op on unequal types {:?} and {:?}", a, b),
+                                format!(
+                                    "Cannot perform arithmetic on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
                             );
                         }
                     }
+                }
+            }
+            Rvalue::CheckedBinaryOp(op, vals) => {
+                use BinOp::*;
+                let a = vals.0.ty(&self.body.local_decls, self.tcx);
+                let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                match op {
+                    Add | Sub | Mul => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform checked arithmetic on type {:?}",
+                                ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot perform checked arithmetic on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Shl | Shr => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform checked shift on non-integer type {:?}",
+                                ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                    }
+                    _ => self.fail(location, format!("There is no checked version of {:?}", op)),
                 }
             }
             Rvalue::UnaryOp(op, operand) => {
