@@ -1,9 +1,7 @@
 error: layout_of(A) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -33,16 +31,10 @@ error: layout_of(A) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
-                           pref: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
+                           pref: Align(1 bytes),
                        },
-                       size: Size {
-                           raw: 1,
-                       },
+                       size: Size(1 bytes),
                    },
                ],
            },
@@ -57,9 +49,7 @@ error: layout_of(A) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -68,16 +58,10 @@ error: layout_of(A) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
-               pref: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
+               pref: Align(1 bytes),
            },
-           size: Size {
-               raw: 1,
-           },
+           size: Size(1 bytes),
        }
   --> $DIR/hexagon-enum.rs:16:1
    |
@@ -87,9 +71,7 @@ LL | enum A { Apple }
 error: layout_of(B) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -119,16 +101,10 @@ error: layout_of(B) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
-                           pref: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
+                           pref: Align(1 bytes),
                        },
-                       size: Size {
-                           raw: 1,
-                       },
+                       size: Size(1 bytes),
                    },
                ],
            },
@@ -143,9 +119,7 @@ error: layout_of(B) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -154,16 +128,10 @@ error: layout_of(B) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
-               pref: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
+               pref: Align(1 bytes),
            },
-           size: Size {
-               raw: 1,
-           },
+           size: Size(1 bytes),
        }
   --> $DIR/hexagon-enum.rs:20:1
    |
@@ -173,9 +141,7 @@ LL | enum B { Banana = 255, }
 error: layout_of(C) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -205,16 +171,10 @@ error: layout_of(C) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 1,
-                           },
-                           pref: Align {
-                               pow2: 1,
-                           },
+                           abi: Align(2 bytes),
+                           pref: Align(2 bytes),
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                ],
            },
@@ -229,9 +189,7 @@ error: layout_of(C) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I16,
                        false,
@@ -240,16 +198,10 @@ error: layout_of(C) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 1,
-               },
-               pref: Align {
-                   pow2: 1,
-               },
+               abi: Align(2 bytes),
+               pref: Align(2 bytes),
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/hexagon-enum.rs:24:1
    |
@@ -259,9 +211,7 @@ LL | enum C { Chaenomeles = 256, }
 error: layout_of(P) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -291,16 +241,10 @@ error: layout_of(P) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 2,
-                           },
-                           pref: Align {
-                               pow2: 2,
-                           },
+                           abi: Align(4 bytes),
+                           pref: Align(4 bytes),
                        },
-                       size: Size {
-                           raw: 4,
-                       },
+                       size: Size(4 bytes),
                    },
                ],
            },
@@ -315,9 +259,7 @@ error: layout_of(P) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I32,
                        false,
@@ -326,16 +268,10 @@ error: layout_of(P) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 2,
-               },
-               pref: Align {
-                   pow2: 2,
-               },
+               abi: Align(4 bytes),
+               pref: Align(4 bytes),
            },
-           size: Size {
-               raw: 4,
-           },
+           size: Size(4 bytes),
        }
   --> $DIR/hexagon-enum.rs:28:1
    |
@@ -345,9 +281,7 @@ LL | enum P { Peach = 0x1000_0000isize, }
 error: layout_of(T) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -377,16 +311,10 @@ error: layout_of(T) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 2,
-                           },
-                           pref: Align {
-                               pow2: 2,
-                           },
+                           abi: Align(4 bytes),
+                           pref: Align(4 bytes),
                        },
-                       size: Size {
-                           raw: 4,
-                       },
+                       size: Size(4 bytes),
                    },
                ],
            },
@@ -401,9 +329,7 @@ error: layout_of(T) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I32,
                        true,
@@ -412,16 +338,10 @@ error: layout_of(T) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 2,
-               },
-               pref: Align {
-                   pow2: 2,
-               },
+               abi: Align(4 bytes),
+               pref: Align(4 bytes),
            },
-           size: Size {
-               raw: 4,
-           },
+           size: Size(4 bytes),
        }
   --> $DIR/hexagon-enum.rs:34:1
    |
