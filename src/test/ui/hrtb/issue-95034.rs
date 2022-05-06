@@ -17,6 +17,8 @@
 
 // This should not ICE.
 
+// Refer to the issue for more minimized versions.
+
 use std::{
     future::Future,
     marker::PhantomData,
