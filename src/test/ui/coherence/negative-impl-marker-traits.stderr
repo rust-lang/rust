@@ -1,0 +1,26 @@
+error: negative impls are not allowed for marker traits
+  --> $DIR/negative-impl-marker-traits.rs:5:6
+   |
+LL | impl !Trait for () {}
+   |      ^
+   |
+note: marker trait
+  --> $DIR/negative-impl-marker-traits.rs:3:7
+   |
+LL | trait Trait {}
+   |       ^^^^^
+
+error: negative impls are not allowed for marker traits
+  --> $DIR/negative-impl-marker-traits.rs:8:6
+   |
+LL | impl !Trait for Local {}
+   |      ^
+   |
+note: marker trait
+  --> $DIR/negative-impl-marker-traits.rs:3:7
+   |
+LL | trait Trait {}
+   |       ^^^^^
+
+error: aborting due to 2 previous errors
+

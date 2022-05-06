@@ -140,9 +140,36 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         )
                         .emit();
                     }
+
+                    if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id)
+                        && tcx.trait_def(trait_ref.def_id).is_marker
+                    {
+                        tcx
+                            .sess
+                            .struct_span_err(span, "negative impls are not allowed for marker traits")
+                            .span_note(tcx.def_ident_span(trait_ref.def_id).unwrap(), "marker trait")
+                            .emit();
+                    }
                 }
                 (ty::ImplPolarity::Reservation, _) => {
-                    // FIXME: what amount of WF checking do we need for reservation impls?
+                    if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id)
+                        && tcx.trait_def(trait_ref.def_id).is_marker
+                    {
+                        let span = tcx
+                            .sess
+                            .source_map()
+                            .guess_head_span(tcx.span_of_impl(item.def_id.to_def_id()).unwrap());
+                        tcx.sess
+                            .struct_span_err(
+                                span,
+                                "reservation impls are not allowed for marker traits",
+                            )
+                            .span_note(
+                                tcx.def_ident_span(trait_ref.def_id).unwrap(),
+                                "marker trait",
+                            )
+                            .emit();
+                    }
                 }
                 _ => unreachable!(),
             }

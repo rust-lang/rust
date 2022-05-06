@@ -16,7 +16,16 @@ LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
 LL | unsafe impl<T: 'static> Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
 
-error: aborting due to 2 previous errors
+error[E0751]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<i32>`:
+  --> $DIR/coherence-conflicting-negative-trait-impl.rs:15:1
+   |
+LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
+   | ------------------------------------------------------ positive implementation here
+...
+LL | impl !Send for TestType<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0119, E0751.
 For more information about an error, try `rustc --explain E0119`.

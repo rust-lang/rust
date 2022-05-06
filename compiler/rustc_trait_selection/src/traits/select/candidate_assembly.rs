@@ -223,6 +223,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // who might care about this case, like coherence, should use
         // that function).
         if candidates.is_empty() {
+            // It's always possible to add a marker trait impl so
+            // we can never consider any `T: Marker` bound to never apply.
+            if self
+                .tcx()
+                .trait_def(stack.obligation.predicate.skip_binder().trait_ref.def_id)
+                .is_marker
+            {
+                return Ok(None);
+            }
             // If there's an error type, 'downgrade' our result from
             // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
             // emitting additional spurious errors, since we're guaranteed

@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `NotMarker` for type `B`
+  --> $DIR/forbidden-fruit.rs:15:1
+   |
+LL | impl NotMarker for B {
+   | -------------------- first implementation here
+...
+LL | impl<T: Marker> NotMarker for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `B`
+   |
+   = note: downstream crates may implement trait `Marker` for type `B`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.
