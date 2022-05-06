@@ -26,7 +26,7 @@ impl ToOwned for Foo {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Baz;
 
 impl ToOwned for Baz {
@@ -36,7 +36,7 @@ impl ToOwned for Baz {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Bar;
 
 impl PartialEq<Foo> for Bar {

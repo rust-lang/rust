@@ -1,7 +1,7 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
 use std::iter;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Radix {
     Binary,
     Octal,

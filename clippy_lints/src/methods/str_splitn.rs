@@ -271,7 +271,7 @@ enum IterUsageKind {
     NextTuple,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum UnwrapKind {
     Unwrap,
     QuestionMark,
