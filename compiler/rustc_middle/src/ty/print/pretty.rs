@@ -1329,8 +1329,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Int
             ty::Uint(_) | ty::Int(_) => {
-                let int =
-                    ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
+                let int = ConstInt::new(self.tcx(), int.assert_bits(int.size()), ty);
                 if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char

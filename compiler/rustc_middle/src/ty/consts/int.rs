@@ -1,113 +1,124 @@
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
+use rustc_type_ir::{IntTy, UintTy};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
-use crate::ty::TyCtxt;
+#[derive(Copy, Clone)]
+enum IntegerTy {
+    Uint(UintTy),
+    Int(IntTy),
+}
 
 #[derive(Copy, Clone)]
 /// A type for representing any integer. Only used for printing.
 pub struct ConstInt {
-    /// The "untyped" variant of `ConstInt`.
-    int: ScalarInt,
-    /// Whether the value is of a signed integer type.
-    signed: bool,
-    /// Whether the value is a `usize` or `isize` type.
-    is_ptr_sized_integral: bool,
+    pointer_width: u32,
+    /// The byte value of the integer.
+    value: u128,
+    ty: IntegerTy,
 }
 
 impl ConstInt {
-    pub fn new(int: ScalarInt, signed: bool, is_ptr_sized_integral: bool) -> Self {
-        Self { int, signed, is_ptr_sized_integral }
+    pub fn new(tcx: TyCtxt<'_>, value: u128, ty: Ty<'_>) -> Self {
+        Self::new_with_width(value, ty, tcx.sess.target.pointer_width)
+    }
+
+    pub fn new_with_width(value: u128, ty: Ty<'_>, pointer_width: u32) -> Self {
+        let ty = match *ty.kind() {
+            ty::Uint(uty) => IntegerTy::Uint(uty),
+            ty::Int(ity) => IntegerTy::Int(ity),
+            _ => bug!("unexpected type for ConstInt: {ty}"),
+        };
+
+        Self { pointer_width, value, ty }
     }
 }
 
 impl std::fmt::Debug for ConstInt {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { int, signed, is_ptr_sized_integral } = *self;
-        let size = int.size().bytes();
-        let raw = int.data;
-        if signed {
-            let bit_size = size * 8;
-            let min = 1u128 << (bit_size - 1);
-            let max = min - 1;
-            if raw == min {
-                match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "isize::MIN"),
-                    (1, _) => write!(fmt, "i8::MIN"),
-                    (2, _) => write!(fmt, "i16::MIN"),
-                    (4, _) => write!(fmt, "i32::MIN"),
-                    (8, _) => write!(fmt, "i64::MIN"),
-                    (16, _) => write!(fmt, "i128::MIN"),
-                    _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
-                }
-            } else if raw == max {
-                match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "isize::MAX"),
-                    (1, _) => write!(fmt, "i8::MAX"),
-                    (2, _) => write!(fmt, "i16::MAX"),
-                    (4, _) => write!(fmt, "i32::MAX"),
-                    (8, _) => write!(fmt, "i64::MAX"),
-                    (16, _) => write!(fmt, "i128::MAX"),
-                    _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
-                }
-            } else {
-                match size {
-                    1 => write!(fmt, "{}", raw as i8)?,
-                    2 => write!(fmt, "{}", raw as i16)?,
-                    4 => write!(fmt, "{}", raw as i32)?,
-                    8 => write!(fmt, "{}", raw as i64)?,
-                    16 => write!(fmt, "{}", raw as i128)?,
-                    _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
-                }
-                if fmt.alternate() {
-                    match (size, is_ptr_sized_integral) {
-                        (_, true) => write!(fmt, "_isize")?,
-                        (1, _) => write!(fmt, "_i8")?,
-                        (2, _) => write!(fmt, "_i16")?,
-                        (4, _) => write!(fmt, "_i32")?,
-                        (8, _) => write!(fmt, "_i64")?,
-                        (16, _) => write!(fmt, "_i128")?,
-                        _ => bug!(),
+        let ConstInt { pointer_width, value, ty } = *self;
+        match ty {
+            IntegerTy::Int(ity) => {
+                let size = ity.bit_width().unwrap_or(pointer_width as u64);
+                let min = 1u128 << (size * 8 - 1);
+                let max = min - 1;
+                if value == min {
+                    match ity {
+                        IntTy::Isize => write!(fmt, "isize::MIN"),
+                        IntTy::I8 => write!(fmt, "i8::MIN"),
+                        IntTy::I16 => write!(fmt, "i16::MIN"),
+                        IntTy::I32 => write!(fmt, "i32::MIN"),
+                        IntTy::I64 => write!(fmt, "i64::MIN"),
+                        IntTy::I128 => write!(fmt, "i128::MIN"),
                     }
+                } else if value == max {
+                    match ity {
+                        IntTy::Isize => write!(fmt, "isize::MAX"),
+                        IntTy::I8 => write!(fmt, "i8::MAX"),
+                        IntTy::I16 => write!(fmt, "i16::MAX"),
+                        IntTy::I32 => write!(fmt, "i32::MAX"),
+                        IntTy::I64 => write!(fmt, "i64::MAX"),
+                        IntTy::I128 => write!(fmt, "i128::MAX"),
+                    }
+                } else {
+                    match size {
+                        1 => write!(fmt, "{}", value as i8)?,
+                        2 => write!(fmt, "{}", value as i16)?,
+                        4 => write!(fmt, "{}", value as i32)?,
+                        8 => write!(fmt, "{}", value as i64)?,
+                        16 => write!(fmt, "{}", value as i128)?,
+                        _ => bug!("signed ConstInt 0x{value:x} of size {size}"),
+                    }
+                    if fmt.alternate() {
+                        match ity {
+                            IntTy::Isize => write!(fmt, "_isize")?,
+                            IntTy::I8 => write!(fmt, "_i8")?,
+                            IntTy::I16 => write!(fmt, "_i16")?,
+                            IntTy::I32 => write!(fmt, "_i32")?,
+                            IntTy::I64 => write!(fmt, "_i64")?,
+                            IntTy::I128 => write!(fmt, "_i128")?,
+                        }
+                    }
+                    Ok(())
                 }
-                Ok(())
             }
-        } else {
-            let max = Size::from_bytes(size).truncate(u128::MAX);
-            if raw == max {
-                match (size, is_ptr_sized_integral) {
-                    (_, true) => write!(fmt, "usize::MAX"),
-                    (1, _) => write!(fmt, "u8::MAX"),
-                    (2, _) => write!(fmt, "u16::MAX"),
-                    (4, _) => write!(fmt, "u32::MAX"),
-                    (8, _) => write!(fmt, "u64::MAX"),
-                    (16, _) => write!(fmt, "u128::MAX"),
-                    _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
-                }
-            } else {
-                match size {
-                    1 => write!(fmt, "{}", raw as u8)?,
-                    2 => write!(fmt, "{}", raw as u16)?,
-                    4 => write!(fmt, "{}", raw as u32)?,
-                    8 => write!(fmt, "{}", raw as u64)?,
-                    16 => write!(fmt, "{}", raw as u128)?,
-                    _ => bug!("ConstInt 0x{:x} with size = {} and signed = {}", raw, size, signed),
-                }
-                if fmt.alternate() {
-                    match (size, is_ptr_sized_integral) {
-                        (_, true) => write!(fmt, "_usize")?,
-                        (1, _) => write!(fmt, "_u8")?,
-                        (2, _) => write!(fmt, "_u16")?,
-                        (4, _) => write!(fmt, "_u32")?,
-                        (8, _) => write!(fmt, "_u64")?,
-                        (16, _) => write!(fmt, "_u128")?,
-                        _ => bug!(),
+            IntegerTy::Uint(uty) => {
+                let size = uty.bit_width().unwrap_or(pointer_width.into());
+                let max = Size::from_bytes(size).truncate(u128::MAX);
+                if value == max {
+                    match uty {
+                        UintTy::Usize => write!(fmt, "usize::MAX"),
+                        UintTy::U8 => write!(fmt, "u8::MAX"),
+                        UintTy::U16 => write!(fmt, "u16::MAX"),
+                        UintTy::U32 => write!(fmt, "u32::MAX"),
+                        UintTy::U64 => write!(fmt, "u64::MAX"),
+                        UintTy::U128 => write!(fmt, "u128::MAX"),
                     }
+                } else {
+                    match size {
+                        1 => write!(fmt, "{}", value as u8)?,
+                        2 => write!(fmt, "{}", value as u16)?,
+                        4 => write!(fmt, "{}", value as u32)?,
+                        8 => write!(fmt, "{}", value as u64)?,
+                        16 => write!(fmt, "{}", value as u128)?,
+                        _ => bug!("unsigned ConstInt 0x{value:x} of size {size}"),
+                    }
+                    if fmt.alternate() {
+                        match uty {
+                            UintTy::Usize => write!(fmt, "_usize")?,
+                            UintTy::U8 => write!(fmt, "_u8")?,
+                            UintTy::U16 => write!(fmt, "_u16")?,
+                            UintTy::U32 => write!(fmt, "_u32")?,
+                            UintTy::U64 => write!(fmt, "_u64")?,
+                            UintTy::U128 => write!(fmt, "_u128")?,
+                        }
+                    }
+                    Ok(())
                 }
-                Ok(())
             }
         }
     }

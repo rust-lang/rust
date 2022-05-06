@@ -267,11 +267,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
             ) => {
                 // The `pretty_print_const` formatting depends on -Zverbose
                 // flag, so we cannot reuse it here.
-                let signed = matches!(ct.ty().kind(), ty::Int(_));
                 write!(
                     self,
                     "{:#?}",
-                    ty::ConstInt::new(scalar, signed, ct.ty().is_ptr_sized_integral())
+                    ty::ConstInt::new(self.tcx, scalar.assert_bits(scalar.size()), ct.ty())
                 )?;
             }
             _ => self.write_str("_")?,

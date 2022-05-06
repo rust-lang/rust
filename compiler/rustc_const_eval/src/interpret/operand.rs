@@ -245,7 +245,11 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
         let int = self.to_scalar().expect("to_const_int doesn't work on scalar pairs").assert_int();
-        ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
+        ConstInt::new_with_width(
+            int.assert_bits(int.size()),
+            self.layout.ty,
+            int.size().bytes() as u32,
+        )
     }
 }
 

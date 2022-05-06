@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
+    self, ConstInt, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
@@ -579,10 +579,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         match l {
                             Some(l) => l.to_const_int(),
                             // Invent a dummy value, the diagnostic ignores it anyway
-                            None => ConstInt::new(
-                                ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
-                                left_ty.is_signed(),
-                                left_ty.is_ptr_sized_integral(),
+                            None => ConstInt::new_with_width(
+                                1,
+                                left_ty,
+                                left_size.bytes() as u32,
                             ),
                         },
                         r.to_const_int(),
