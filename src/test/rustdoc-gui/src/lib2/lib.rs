@@ -43,6 +43,13 @@ impl implementors::Whatever for Foo {
     type Foo = u32;
 }
 
+#[doc(inline)]
+pub use implementors::TraitToReexport;
+
+pub struct StructToImplOnReexport;
+
+impl TraitToReexport for StructToImplOnReexport {}
+
 pub mod sub_mod {
     /// ```txt
     /// aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
