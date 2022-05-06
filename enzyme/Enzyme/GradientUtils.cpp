@@ -3841,32 +3841,42 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
   if (isa<Argument>(oval) && cast<Argument>(oval)->hasByValAttr()) {
     IRBuilder<> bb(inversionAllocs);
-    AllocaInst *antialloca = bb.CreateAlloca(
-        oval->getType()->getPointerElementType(),
-        cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
-        oval->getName() + "'ipa");
-    invertedPointers.insert(std::make_pair(
-        (const Value *)oval, InvertedPointerVH(this, antialloca)));
-    auto dst_arg =
-        bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
-    auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
-    auto len_arg =
-        ConstantInt::get(Type::getInt64Ty(oval->getContext()),
-                         M->getDataLayout().getTypeAllocSizeInBits(
-                             oval->getType()->getPointerElementType()) /
-                             8);
-    auto volatile_arg = ConstantInt::getFalse(oval->getContext());
+
+    auto rule1 = [&]() {
+      AllocaInst *antialloca = bb.CreateAlloca(
+          oval->getType()->getPointerElementType(),
+          cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
+          oval->getName() + "'ipa");
+
+      auto dst_arg =
+          bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
+      auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
+      auto len_arg =
+          ConstantInt::get(Type::getInt64Ty(oval->getContext()),
+                           M->getDataLayout().getTypeAllocSizeInBits(
+                               oval->getType()->getPointerElementType()) /
+                               8);
+      auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-    auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
-                                      antialloca->getAlignment());
-    Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+      auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
+                                        antialloca->getAlignment());
+      Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else
-    Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
+      Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
 #endif
-    Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-    cast<CallInst>(bb.CreateCall(
-        Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+      Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+      cast<CallInst>(bb.CreateCall(
+          Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+
+      return antialloca;
+    };
+
+    Value *antialloca = applyChainRule(oval->getType(), bb, rule1);
+
+    invertedPointers.insert(std::make_pair(
+        (const Value *)oval, InvertedPointerVH(this, antialloca)));
+
     return antialloca;
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {
