@@ -2078,10 +2078,7 @@ pub enum YieldSource {
 
 impl YieldSource {
     pub fn is_await(&self) -> bool {
-        match self {
-            YieldSource::Await { .. } => true,
-            YieldSource::Yield => false,
-        }
+        matches!(self, YieldSource::Await { .. })
     }
 }
 
