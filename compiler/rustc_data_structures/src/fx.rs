@@ -2,8 +2,9 @@ use std::hash::BuildHasherDefault;
 
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
-pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
-pub type FxIndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
+pub type FxIndexMap<K, V, Idx = usize> =
+    indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>, Idx>;
+pub type FxIndexSet<V, Idx = usize> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>, Idx>;
 
 #[macro_export]
 macro_rules! define_id_collections {

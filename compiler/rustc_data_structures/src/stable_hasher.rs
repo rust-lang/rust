@@ -354,7 +354,7 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     }
 }
 
-impl<K, V, R, CTX> HashStable<CTX> for indexmap::IndexMap<K, V, R>
+impl<K, V, R, Idx, CTX> HashStable<CTX> for indexmap::IndexMap<K, V, R, Idx>
 where
     K: HashStable<CTX> + Eq + Hash,
     V: HashStable<CTX>,
@@ -369,7 +369,7 @@ where
     }
 }
 
-impl<K, R, CTX> HashStable<CTX> for indexmap::IndexSet<K, R>
+impl<K, R, Idx, CTX> HashStable<CTX> for indexmap::IndexSet<K, R, Idx>
 where
     K: HashStable<CTX> + Eq + Hash,
     R: BuildHasher,

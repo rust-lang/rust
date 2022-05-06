@@ -18,7 +18,7 @@ pub struct BorrowSet<'tcx> {
     /// by the `Location` of the assignment statement in which it
     /// appears on the right hand side. Thus the location is the map
     /// key, and its position in the map corresponds to `BorrowIndex`.
-    pub location_map: FxIndexMap<Location, BorrowData<'tcx>>,
+    pub location_map: FxIndexMap<Location, BorrowData<'tcx>, BorrowIndex>,
 
     /// Locations which activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
@@ -36,7 +36,7 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     type Output = BorrowData<'tcx>;
 
     fn index(&self, index: BorrowIndex) -> &BorrowData<'tcx> {
-        &self.location_map[index.as_usize()]
+        &self.location_map[index]
     }
 }
 
@@ -165,7 +165,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 
     crate fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
-        self.location_map.get_index_of(location).map(BorrowIndex::from)
+        self.location_map.get_index_of(location)
     }
 
     crate fn contains(&self, location: &Location) -> bool {
@@ -176,7 +176,7 @@ impl<'tcx> BorrowSet<'tcx> {
 struct GatherBorrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    location_map: FxIndexMap<Location, BorrowData<'tcx>>,
+    location_map: FxIndexMap<Location, BorrowData<'tcx>, BorrowIndex>,
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
@@ -217,7 +217,6 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 assigned_place: *assigned_place,
             };
             let (idx, _) = self.location_map.insert_full(location, borrow);
-            let idx = BorrowIndex::from(idx);
 
             self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
@@ -237,7 +236,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         //
         //     TMP = &mut place
         if let Some(&borrow_index) = self.pending_activations.get(temp) {
-            let borrow_data = &mut self.location_map[borrow_index.as_usize()];
+            let borrow_data = &mut self.location_map[borrow_index];
 
             // Watch out: the use of TMP in the borrow itself
             // doesn't count as an activation. =)
@@ -326,7 +325,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         // Consider the borrow not activated to start. When we find an activation, we'll update
         // this field.
         {
-            let borrow_data = &mut self.location_map[borrow_index.as_usize()];
+            let borrow_data = &mut self.location_map[borrow_index];
             borrow_data.activation_location = TwoPhaseActivation::NotActivated;
         }
 
@@ -342,7 +341,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                        at borrow_index: {:?} with associated data {:?}",
                 temp,
                 old_index,
-                self.location_map[old_index.as_usize()]
+                self.location_map[old_index]
             );
         }
     }

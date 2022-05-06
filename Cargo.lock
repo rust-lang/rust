@@ -261,7 +261,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "curl",
- "indexmap",
+ "indexmap 1.8.0",
  "serde",
  "serde_json",
  "toml",
@@ -337,7 +337,7 @@ dependencies = [
  "humantime 2.0.1",
  "ignore",
  "im-rc",
- "indexmap",
+ "indexmap 1.8.0",
  "itertools",
  "jobserver",
  "lazy_static",
@@ -562,7 +562,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "ena",
- "indexmap",
+ "indexmap 1.8.0",
  "itertools",
  "petgraph",
  "rustc-hash",
@@ -608,7 +608,7 @@ checksum = "6d76c22c9b9b215eeb8d016ad3a90417bd13cb24cf8142756e6472445876cab7"
 dependencies = [
  "atty",
  "bitflags",
- "indexmap",
+ "indexmap 1.8.0",
  "lazy_static",
  "os_str_bytes",
  "strsim 0.10.0",
@@ -1574,7 +1574,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78cc372d058dcf6d5ecd98510e7fbc9e5aec4d21de70f65fea8fecebcd881bd4"
 dependencies = [
  "fallible-iterator",
- "indexmap",
+ "indexmap 1.8.0",
  "stable_deref_trait",
 ]
 
@@ -1821,8 +1821,16 @@ checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
- "rustc-rayon",
  "serde",
+]
+
+[[package]]
+name = "indexmap"
+version = "2.0.0-pre"
+source = "git+https://github.com/cuviper/indexmap?branch=indexable#3b6d807f460308e6de30cd34f9516aca624615f2"
+dependencies = [
+ "hashbrown 0.12.0",
+ "rustc-rayon",
 ]
 
 [[package]]
@@ -2515,7 +2523,7 @@ dependencies = [
  "crc32fast",
  "flate2",
  "hashbrown 0.11.2",
- "indexmap",
+ "indexmap 1.8.0",
  "memchr",
 ]
 
@@ -2777,7 +2785,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
 dependencies = [
  "fixedbitset",
- "indexmap",
+ "indexmap 1.8.0",
 ]
 
 [[package]]
@@ -3676,7 +3684,7 @@ dependencies = [
  "bitflags",
  "cfg-if 0.1.10",
  "ena",
- "indexmap",
+ "indexmap 2.0.0-pre",
  "jobserver",
  "libc",
  "measureme 10.0.0",
@@ -3858,6 +3866,7 @@ name = "rustc_index"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "indexmap 2.0.0-pre",
  "rustc_macros",
  "rustc_serialize",
  "smallvec",
@@ -4320,7 +4329,7 @@ dependencies = [
 name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
- "indexmap",
+ "indexmap 2.0.0-pre",
  "rustc_macros",
  "smallvec",
 ]
@@ -4731,7 +4740,7 @@ version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcac07dbffa1c65e7f816ab9eba78eb142c6d44410f4eeba1e26e4f5dfa56b95"
 dependencies = [
- "indexmap",
+ "indexmap 1.8.0",
  "itoa",
  "ryu",
  "serde",
@@ -5326,7 +5335,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "744e9ed5b352340aa47ce033716991b5589e23781acb97cad37d4ea70560f55b"
 dependencies = [
  "combine",
- "indexmap",
+ "indexmap 1.8.0",
  "itertools",
  "kstring 1.0.6",
  "serde",
@@ -5339,7 +5348,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba98375fd631b83696f87c64e4ed8e29e6a1f3404d6aed95fa95163bad38e705"
 dependencies = [
  "combine",
- "indexmap",
+ "indexmap 1.8.0",
  "itertools",
  "kstring 2.0.0",
  "serde",

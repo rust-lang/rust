@@ -325,7 +325,7 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
     assoc_name: Ident,
 ) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
     let mut stack: Vec<_> = bounds.collect();
-    let mut visited = FxIndexSet::default();
+    let mut visited = FxIndexSet::<_, usize>::default();
 
     std::iter::from_fn(move || {
         while let Some(trait_ref) = stack.pop() {

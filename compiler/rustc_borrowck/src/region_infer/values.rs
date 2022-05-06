@@ -93,7 +93,7 @@ rustc_index::newtype_index! {
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
-    pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
+    pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})", INDEXMAP }
 }
 
 /// An individual element in a region value -- the value of a
@@ -179,21 +179,21 @@ impl<N: Idx> LivenessValues<N> {
 /// NLL.
 #[derive(Default)]
 crate struct PlaceholderIndices {
-    indices: FxIndexSet<ty::PlaceholderRegion>,
+    indices: FxIndexSet<ty::PlaceholderRegion, PlaceholderIndex>,
 }
 
 impl PlaceholderIndices {
     crate fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
-        index.into()
+        index
     }
 
     crate fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        self.indices.get_index_of(&placeholder).unwrap().into()
+        self.indices.get_index_of(&placeholder).unwrap()
     }
 
     crate fn lookup_placeholder(&self, placeholder: PlaceholderIndex) -> ty::PlaceholderRegion {
-        self.indices[placeholder.index()]
+        self.indices[placeholder]
     }
 
     crate fn len(&self) -> usize {

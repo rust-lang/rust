@@ -294,7 +294,7 @@ fn well_formed_types_in_env<'tcx>(
     };
 
     // FIXME(eddyb) isn't the unordered nature of this a hazard?
-    let mut inputs = FxIndexSet::default();
+    let mut inputs = FxIndexSet::<_, usize>::default();
 
     match node_kind {
         // In a trait impl, we assume that the header trait ref and all its

@@ -21,3 +21,7 @@ macro_rules! static_assert_size {
         const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];
     };
 }
+
+pub mod map {
+    pub use indexmap::{Indexable, IndexMap};
+}

@@ -121,7 +121,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 }
 
 struct CoverageMapGenerator {
-    filenames: FxIndexSet<CString>,
+    filenames: FxIndexSet<CString, u32>,
 }
 
 impl CoverageMapGenerator {
@@ -185,7 +185,7 @@ impl CoverageMapGenerator {
                     .expect("null error converting filename to C string");
                 debug!("  file_id: {} = '{:?}'", current_file_id, c_filename);
                 let (filenames_index, _) = self.filenames.insert_full(c_filename);
-                virtual_file_mapping.push(filenames_index as u32);
+                virtual_file_mapping.push(filenames_index);
             }
             debug!("Adding counter {:?} to map for {:?}", counter, region);
             mapping_regions.push(CounterMappingRegion::code_region(

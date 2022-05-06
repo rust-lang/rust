@@ -197,7 +197,7 @@ where
     }
 }
 
-impl<E: Encoder, K, V, S> Encodable<E> for indexmap::IndexMap<K, V, S>
+impl<E: Encoder, K, V, S, Idx> Encodable<E> for indexmap::IndexMap<K, V, S, Idx>
 where
     K: Encodable<E> + Hash + Eq,
     V: Encodable<E>,
@@ -214,13 +214,14 @@ where
     }
 }
 
-impl<D: Decoder, K, V, S> Decodable<D> for indexmap::IndexMap<K, V, S>
+impl<D: Decoder, K, V, S, Idx> Decodable<D> for indexmap::IndexMap<K, V, S, Idx>
 where
     K: Decodable<D> + Hash + Eq,
     V: Decodable<D>,
     S: BuildHasher + Default,
+    Idx: indexmap::Indexable,
 {
-    fn decode(d: &mut D) -> indexmap::IndexMap<K, V, S> {
+    fn decode(d: &mut D) -> Self {
         let len = d.read_usize();
         let state = Default::default();
         let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
@@ -233,7 +234,7 @@ where
     }
 }
 
-impl<E: Encoder, T, S> Encodable<E> for indexmap::IndexSet<T, S>
+impl<E: Encoder, T, S, Idx> Encodable<E> for indexmap::IndexSet<T, S, Idx>
 where
     T: Encodable<E> + Hash + Eq,
     S: BuildHasher,
@@ -248,12 +249,13 @@ where
     }
 }
 
-impl<D: Decoder, T, S> Decodable<D> for indexmap::IndexSet<T, S>
+impl<D: Decoder, T, S, Idx> Decodable<D> for indexmap::IndexSet<T, S, Idx>
 where
     T: Decodable<D> + Hash + Eq,
     S: BuildHasher + Default,
+    Idx: indexmap::Indexable,
 {
-    fn decode(d: &mut D) -> indexmap::IndexSet<T, S> {
+    fn decode(d: &mut D) -> Self {
         let len = d.read_usize();
         let state = Default::default();
         let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);

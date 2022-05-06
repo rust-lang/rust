@@ -9,7 +9,8 @@ doctest = false
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 ena = "0.14"
-indexmap = { version = "1.8.0" }
+# indexmap = { version = "1.8.0" }
+indexmap = { git = "https://github.com/cuviper/indexmap", branch = "indexable" }
 tracing = "0.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 rustc_serialize = { path = "../rustc_serialize" }

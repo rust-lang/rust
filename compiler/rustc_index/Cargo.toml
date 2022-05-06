@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
+indexmap = { git = "https://github.com/cuviper/indexmap", branch = "indexable" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_macros = { path = "../rustc_macros" }
 smallvec = "1"

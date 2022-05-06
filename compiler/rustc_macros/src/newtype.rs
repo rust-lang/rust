@@ -11,6 +11,7 @@ mod kw {
     syn::custom_keyword!(ENCODABLE);
     syn::custom_keyword!(custom);
     syn::custom_keyword!(ORD_IMPL);
+    syn::custom_keyword!(INDEXMAP);
 }
 
 #[derive(Debug)]
@@ -44,6 +45,7 @@ impl Parse for Newtype {
         let mut consts = Vec::new();
         let mut encodable = true;
         let mut ord = true;
+        let mut indexmap = false;
 
         // Parse an optional trailing comma
         let try_comma = || -> Result<()> {
@@ -105,7 +107,14 @@ impl Parse for Newtype {
                     body.parse::<kw::ORD_IMPL>()?;
                     body.parse::<Token![=]>()?;
                     body.parse::<kw::custom>()?;
+                    try_comma()?;
                     ord = false;
+                    continue;
+                }
+                if body.lookahead1().peek(kw::INDEXMAP) {
+                    body.parse::<kw::INDEXMAP>()?;
+                    try_comma()?;
+                    indexmap = true;
                     continue;
                 }
 
@@ -191,6 +200,36 @@ impl Parse for Newtype {
                     }
                 }
             }
+        };
+
+        let indexmap_impl = if indexmap {
+            quote! {
+                impl ::rustc_index::map::Indexable for #name {}
+
+                impl<K, V, S> ::std::ops::Index<#name>
+                    for ::rustc_index::map::IndexMap<K, V, S, #name>
+                {
+                    type Output = V;
+
+                    fn index(&self, index: #name) -> &V {
+                        self.get_index(index)
+                            .expect("IndexMap: index out of bounds")
+                            .1
+                    }
+                }
+
+                impl<K, V, S> ::std::ops::IndexMut<#name>
+                    for ::rustc_index::map::IndexMap<K, V, S, #name>
+                {
+                    fn index_mut(&mut self, index: #name) -> &mut V {
+                        self.get_index_mut(index)
+                            .expect("IndexMap: index out of bounds")
+                            .1
+                    }
+                }
+            }
+        } else {
+            quote! {}
         };
 
         Ok(Self(quote! {
@@ -323,6 +362,7 @@ impl Parse for Newtype {
 
             #encodable_impls
             #debug_impl
+            #indexmap_impl
         }))
     }
 }
