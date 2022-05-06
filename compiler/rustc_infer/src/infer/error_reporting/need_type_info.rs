@@ -731,6 +731,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
                 //    |
                 //    = note: cannot satisfy `Impl: Into<_>`
+                debug!(?segment);
                 if !impl_candidates.is_empty() && e.span.contains(span)
                     && let Some(expr) = exprs.first()
                     && let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
@@ -739,9 +740,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let mut eraser = TypeParamEraser(self.tcx);
                     let candidate_len = impl_candidates.len();
                     let mut suggestions: Vec<_> = impl_candidates.iter().map(|candidate| {
+                        let trait_item = self.tcx
+                            .associated_items(candidate.def_id)
+                            .find_by_name_and_kind(
+                                self.tcx,
+                                segment.ident,
+                                ty::AssocKind::Fn,
+                                candidate.def_id
+                            );
+                        let prefix = if let Some(trait_item) = trait_item
+                            && let Some(trait_m) = trait_item.def_id.as_local()
+                            && let hir::TraitItemKind::Fn(fn_, _) = &self.tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m }).kind
+                        {
+                            match fn_.decl.implicit_self {
+                                hir::ImplicitSelfKind::ImmRef => "&",
+                                hir::ImplicitSelfKind::MutRef => "&mut ",
+                                _ => "",
+                            }
+                        } else {
+                            ""
+                        };
                         let candidate = candidate.super_fold_with(&mut eraser);
                         vec![
-                            (expr.span.shrink_to_lo(), format!("{}::{}(", candidate, segment.ident)),
+                            (expr.span.shrink_to_lo(), format!("{}::{}({}", candidate, segment.ident, prefix)),
                             if exprs.len() == 1 {
                                 (expr.span.shrink_to_hi().with_hi(e.span.hi()), ")".to_string())
                             } else {
