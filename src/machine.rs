@@ -636,13 +636,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let buffer_alloc = if ecx.machine.weak_memory {
             // FIXME: if this is an atomic obejct, we want to supply its initial value
             // while allocating the store buffer here.
-            Some(weak_memory::AllocExtra::new_allocation(alloc.size()))
+            Some(weak_memory::AllocExtra::new_allocation())
         } else {
             None
         };
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.convert_tag_add_extra(
             &ecx.tcx,
-            AllocExtra { stacked_borrows: stacks, data_race: race_alloc, weak_memory: buffer_alloc },
+            AllocExtra {
+                stacked_borrows: stacks,
+                data_race: race_alloc,
+                weak_memory: buffer_alloc,
+            },
             |ptr| Evaluator::tag_alloc_base_pointer(ecx, ptr),
         );
         Cow::Owned(alloc)

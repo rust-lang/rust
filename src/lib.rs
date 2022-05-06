@@ -31,6 +31,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod allocation_map;
 mod data_race;
 mod diagnostics;
 mod eval;

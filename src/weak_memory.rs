@@ -12,7 +12,7 @@
 // load by each thread. This optimisation is done in tsan11
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.h#L35-L37)
 // and here.
-// 
+//
 // 3. §4.5 of the paper wants an SC store to mark all existing stores in the buffer that happens before it
 // as SC. This is not done in the operational semantics but implemented correctly in tsan11
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167)
@@ -25,48 +25,84 @@
 // and here.
 
 use std::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{Ref, RefCell},
     collections::VecDeque,
 };
 
 use rustc_const_eval::interpret::{AllocRange, InterpResult, ScalarMaybeUninit};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::abi::Size;
 
 use crate::{
+    allocation_map::{AccessType, AllocationMap},
     data_race::{GlobalState, ThreadClockSet},
-    RangeMap, Tag, VClock, VTimestamp, VectorIdx,
+    Tag, VClock, VTimestamp, VectorIdx,
 };
 
 pub type AllocExtra = StoreBufferAlloc;
+
 #[derive(Debug, Clone)]
 pub struct StoreBufferAlloc {
     /// Store buffer of each atomic object in this allocation
-    // Load may modify a StoreBuffer to record the loading thread's
-    // timestamp so we need interior mutability here.
-    store_buffer: RefCell<RangeMap<StoreBuffer>>,
+    // Behind a RefCell because we need to allocate/remove on read access
+    store_buffer: RefCell<AllocationMap<StoreBuffer>>,
 }
 
 impl StoreBufferAlloc {
-    pub fn new_allocation(len: Size) -> Self {
-        Self { store_buffer: RefCell::new(RangeMap::new(len, StoreBuffer::default())) }
+    pub fn new_allocation() -> Self {
+        Self { store_buffer: RefCell::new(AllocationMap::new()) }
     }
 
     /// Gets a store buffer associated with an atomic object in this allocation
     pub fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
-        Ref::map(self.store_buffer.borrow(), |range_map| {
-            let (.., store_buffer) = range_map.iter(range.start, range.size).next().unwrap();
-            store_buffer
-        })
+        let access_type = self.store_buffer.borrow().access_type(range);
+        let index = match access_type {
+            AccessType::PerfectlyOverlapping(index) => index,
+            AccessType::Empty(index) => {
+                // First atomic access on this range, allocate a new StoreBuffer
+                let mut buffer = self.store_buffer.borrow_mut();
+                buffer.insert(index, range, StoreBuffer::default());
+                index
+            }
+            AccessType::ImperfectlyOverlapping(index_range) => {
+                // Accesses that imperfectly overlaps with existing atomic objects
+                // do not have well-defined behaviours. But we don't throw a UB here
+                // because we have (or will) checked that all bytes in the current
+                // access are non-racy.
+                // The behaviour here is that we delete all the existing objects this
+                // access touches, and allocate a new and empty one for the exact range.
+                // A read on an empty buffer returns None, which means the program will
+                // observe the latest value in modification order at every byte.
+                let mut buffer = self.store_buffer.borrow_mut();
+                for index in index_range.clone() {
+                    buffer.remove(index);
+                }
+                buffer.insert(index_range.start, range, StoreBuffer::default());
+                index_range.start
+            }
+        };
+        Ref::map(self.store_buffer.borrow(), |buffer| &buffer[index])
     }
 
-    pub fn get_store_buffer_mut(&self, range: AllocRange) -> RefMut<'_, StoreBuffer> {
-        RefMut::map(self.store_buffer.borrow_mut(), |range_map| {
-            let (.., store_buffer) = range_map.iter_mut(range.start, range.size).next().unwrap();
-            store_buffer
-        })
+    /// Gets a mutable store buffer associated with an atomic object in this allocation
+    pub fn get_store_buffer_mut(&mut self, range: AllocRange) -> &mut StoreBuffer {
+        let buffer = self.store_buffer.get_mut();
+        let access_type = buffer.access_type(range);
+        let index = match access_type {
+            AccessType::PerfectlyOverlapping(index) => index,
+            AccessType::Empty(index) => {
+                buffer.insert(index, range, StoreBuffer::default());
+                index
+            }
+            AccessType::ImperfectlyOverlapping(index_range) => {
+                for index in index_range.clone() {
+                    buffer.remove(index);
+                }
+                buffer.insert(index_range.start, range, StoreBuffer::default());
+                index_range.start
+            }
+        };
+        &mut buffer[index]
     }
-
 }
 
 const STORE_BUFFER_LIMIT: usize = 128;

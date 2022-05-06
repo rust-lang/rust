@@ -519,7 +519,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                     global.sc_read();
                 }
                 let mut rng = this.machine.rng.borrow_mut();
-                let buffer = alloc_buffers.get_store_buffer(alloc_range(base_offset, place.layout.size));
+                let buffer =
+                    alloc_buffers.get_store_buffer(alloc_range(base_offset, place.layout.size));
                 let loaded = buffer.buffered_read(
                     global,
                     atomic == AtomicReadOp::SeqCst,
@@ -555,12 +556,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             if atomic == AtomicWriteOp::SeqCst {
                 global.sc_write();
             }
-            let mut buffer = alloc_buffers.get_store_buffer_mut(alloc_range(base_offset, dest.layout.size));
-            buffer.buffered_write(
-                val,
-                global,
-                atomic == AtomicWriteOp::SeqCst,
-            )?;
+            let buffer =
+                alloc_buffers.get_store_buffer_mut(alloc_range(base_offset, dest.layout.size));
+            buffer.buffered_write(val, global, atomic == AtomicWriteOp::SeqCst)?;
         }
 
         Ok(())
@@ -624,17 +622,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
 
         let new_val = if min {
-            if lt {
-                &old
-            } else {
-                &rhs
-            }
+            if lt { &old } else { &rhs }
         } else {
-            if lt {
-                &rhs
-            } else {
-                &old
-            }
+            if lt { &rhs } else { &old }
         };
 
         this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
@@ -736,7 +726,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 global.sc_write();
             }
             let range = alloc_range(base_offset, place.layout.size);
-            let mut buffer = alloc_buffers.get_store_buffer_mut(range);
+            let buffer = alloc_buffers.get_store_buffer_mut(range);
             buffer.read_from_last_store(global);
             buffer.buffered_write(new_val, global, atomic == AtomicRwOp::SeqCst)?;
         }
