@@ -175,3 +175,33 @@ const _: () = 0e0;
 "#]],
     );
 }
+
+#[test]
+fn float_literal_in_tt() {
+    check(
+        r#"
+macro_rules! constant {
+    ($( $ret:expr; )*) => {};
+}
+
+macro_rules! float_const_impl {
+    () => ( constant!(0.3; 3.3;); );
+}
+
+float_const_impl! {}
+"#,
+        expect![[r#"
+macro_rules! constant {
+    ($( $ret:expr; )*) => {};
+}
+
+macro_rules! float_const_impl {
+    () => ( constant!(0.3; 3.3;); );
+}
+
+constant!(0.3;
+3.3;
+);
+"#]],
+    );
+}
