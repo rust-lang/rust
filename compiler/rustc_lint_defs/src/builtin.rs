@@ -2346,40 +2346,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `mutable_borrow_reservation_conflict` lint detects the reservation
-    /// of a two-phased borrow that conflicts with other shared borrows.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let mut v = vec![0, 1, 2];
-    /// let shared = &v;
-    /// v.push(shared.len());
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #59159] for a complete description of the
-    /// problem, and some possible solutions.
-    ///
-    /// [issue #59159]: https://github.com/rust-lang/rust/issues/59159
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub MUTABLE_BORROW_RESERVATION_CONFLICT,
-    Warn,
-    "reservation of a two-phased borrow conflicts with other shared borrows",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::Custom(
-            "this borrowing pattern was not meant to be accepted, \
-            and may become a hard error in the future"
-        ),
-        reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
-    };
-}
-
-declare_lint! {
     /// The `soft_unstable` lint detects unstable features that were
     /// unintentionally allowed on stable.
     ///
@@ -3179,7 +3145,6 @@ declare_lint_pass! {
         META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
-        MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         POINTER_STRUCTURAL_MATCH,
         NONTRIVIAL_STRUCTURAL_MATCH,
