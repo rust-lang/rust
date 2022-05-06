@@ -1146,24 +1146,17 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
-        use std::fmt::Write;
-
         debug!("EXPORTED SYMBOLS:");
-
-        let mut encoded = "[".to_string();
-        let mut symbols = symbols.iter();
-        if let Some(first_symbol) = symbols.next() {
-            write!(encoded, "{:?}", first_symbol).unwrap();
-        }
-        for symbol in symbols {
-            write!(encoded, ",{:?}", symbol).unwrap();
-        }
-        encoded.push(']');
-        debug!("{}", encoded);
 
         self.cmd.arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
+        let encoded = serde_json::to_string(
+            &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
+        )
+        .unwrap();
+        debug!("{}", encoded);
+
         arg.push(encoded);
 
         self.cmd.arg(arg);
