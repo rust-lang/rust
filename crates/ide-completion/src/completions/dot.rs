@@ -42,7 +42,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,
-            kind: PathKind::Expr,
+            kind: PathKind::Expr { .. },
             ..
         }) if !ctx.is_path_disallowed() => {}
         _ => return,

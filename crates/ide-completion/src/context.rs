@@ -45,7 +45,10 @@ pub(crate) enum Visible {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum PathKind {
-    Expr,
+    Expr {
+        in_block_expr: bool,
+        in_loop_body: bool,
+    },
     Type,
     Attr {
         kind: AttrKind,
@@ -53,12 +56,23 @@ pub(super) enum PathKind {
     },
     Derive,
     /// Path in item position, that is inside an (Assoc)ItemList
-    Item,
+    Item {
+        kind: ItemListKind,
+    },
     Pat,
     Vis {
         has_in_token: bool,
     },
     Use,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum ItemListKind {
+    SourceFile,
+    Module,
+    Impl,
+    Trait,
+    ExternBlock,
 }
 
 #[derive(Debug)]
@@ -78,9 +92,6 @@ pub(crate) struct PathCompletionCtx {
     pub(super) kind: PathKind,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
-    /// `true` if we are a statement or a last expr in the block.
-    pub(super) can_be_stmt: bool,
-    pub(super) in_loop_body: bool,
 }
 
 #[derive(Debug)]
@@ -314,7 +325,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Expr, .. }))
+        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Expr { .. }, .. }))
     }
 
     pub(crate) fn expects_type(&self) -> bool {
@@ -968,13 +979,18 @@ impl<'a> CompletionContext<'a> {
             is_absolute_path: false,
             qualifier: None,
             parent: path.parent_path(),
-            kind: PathKind::Item,
+            kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
-            can_be_stmt: false,
-            in_loop_body: false,
         };
         let mut pat_ctx = None;
-        path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());
+
+        let is_in_block = |it: &SyntaxNode| {
+            it.parent()
+                .map(|node| {
+                    ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind())
+                })
+                .unwrap_or(false)
+        };
 
         path_ctx.kind = path.syntax().ancestors().find_map(|it| {
             // using Option<Option<PathKind>> as extra controlflow
@@ -983,7 +999,10 @@ impl<'a> CompletionContext<'a> {
                     ast::PathType(_) => Some(PathKind::Type),
                     ast::PathExpr(it) => {
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
-                        Some(PathKind::Expr)
+                        let in_block_expr = is_in_block(it.syntax());
+                        let in_loop_body = is_in_loop_body(it.syntax());
+
+                        Some(PathKind::Expr { in_block_expr, in_loop_body })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1001,17 +1020,25 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::MacroCall(it) => {
                         path_ctx.has_macro_bang = it.excl_token().is_some();
-                        match it.syntax().parent().map(|it| it.kind()) {
+                        let parent = it.syntax().parent();
+                        match parent.as_ref().map(|it| it.kind()) {
                             Some(SyntaxKind::MACRO_PAT) => Some(PathKind::Pat),
                             Some(SyntaxKind::MACRO_TYPE) => Some(PathKind::Type),
-                            Some(SyntaxKind::MACRO_EXPR) => Some(PathKind::Expr),
-                            Some(
-                                SyntaxKind::ITEM_LIST
-                                | SyntaxKind::ASSOC_ITEM_LIST
-                                | SyntaxKind::EXTERN_ITEM_LIST
-                                | SyntaxKind::SOURCE_FILE
-                            ) => Some(PathKind::Item),
-                            _ => return Some(None),
+                            Some(SyntaxKind::ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::Module }),
+                            Some(SyntaxKind::ASSOC_ITEM_LIST) => Some(PathKind::Item { kind: match parent.and_then(|it| it.parent()).map(|it| it.kind()) {
+                                Some(SyntaxKind::TRAIT) => ItemListKind::Trait,
+                                Some(SyntaxKind::IMPL) => ItemListKind::Impl,
+                                _ => return Some(None),
+                            } }),
+                            Some(SyntaxKind::EXTERN_ITEM_LIST) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
+                            Some(SyntaxKind::SOURCE_FILE) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
+                            _ => {
+                               return Some(parent.and_then(ast::MacroExpr::cast).map(|it| {
+                                    let in_loop_body = is_in_loop_body(it.syntax());
+                                    let in_block_expr = is_in_block(it.syntax());
+                                    PathKind::Expr { in_block_expr, in_loop_body }
+                                }));
+                            },
                         }
                     },
                     ast::Meta(meta) => (|| {
@@ -1032,10 +1059,16 @@ impl<'a> CompletionContext<'a> {
                     })(),
                     ast::Visibility(it) => Some(PathKind::Vis { has_in_token: it.in_token().is_some() }),
                     ast::UseTree(_) => Some(PathKind::Use),
-                    ast::ItemList(_) => Some(PathKind::Item),
-                    ast::AssocItemList(_) => Some(PathKind::Item),
-                    ast::ExternItemList(_) => Some(PathKind::Item),
-                    ast::SourceFile(_) => Some(PathKind::Item),
+                    ast::ItemList(_) => Some(PathKind::Item { kind: ItemListKind::Module }),
+                    ast::AssocItemList(it) => Some(PathKind::Item { kind: {
+                            match it.syntax().parent()?.kind() {
+                                SyntaxKind::TRAIT => ItemListKind::Trait,
+                                SyntaxKind::IMPL => ItemListKind::Impl,
+                                _ => return None,
+                            }
+                        }}),
+                    ast::ExternItemList(_) => Some(PathKind::Item { kind: ItemListKind::ExternBlock }),
+                    ast::SourceFile(_) => Some(PathKind::Item { kind: ItemListKind::SourceFile }),
                     _ => return None,
                 }
             };
@@ -1086,24 +1119,6 @@ impl<'a> CompletionContext<'a> {
             }
         }
 
-        // Find either enclosing expr statement (thing with `;`) or a
-        // block. If block, check that we are the last expr.
-        path_ctx.can_be_stmt = name_ref
-            .syntax()
-            .ancestors()
-            .find_map(|node| {
-                if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
-                    return Some(stmt.syntax().text_range() == name_ref.syntax().text_range());
-                }
-                if let Some(stmt_list) = ast::StmtList::cast(node) {
-                    return Some(
-                        stmt_list.tail_expr().map(|e| e.syntax().text_range())
-                            == Some(name_ref.syntax().text_range()),
-                    );
-                }
-                None
-            })
-            .unwrap_or(false);
         Some((path_ctx, pat_ctx))
     }
 }

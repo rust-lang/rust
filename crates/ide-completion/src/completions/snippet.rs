@@ -5,8 +5,9 @@ use ide_db::{imports::insert_use::ImportScope, SnippetCap};
 use syntax::T;
 
 use crate::{
-    context::PathCompletionCtx, item::Builder, CompletionContext, CompletionItem,
-    CompletionItemKind, Completions, SnippetScope,
+    context::{ItemListKind, PathCompletionCtx, PathKind},
+    item::Builder,
+    CompletionContext, CompletionItem, CompletionItemKind, Completions, SnippetScope,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
@@ -16,14 +17,13 @@ fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str)
 }
 
 pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.function_def.is_none() {
-        return;
-    }
-
     let can_be_stmt = match ctx.path_context {
         Some(PathCompletionCtx {
-            is_absolute_path: false, qualifier: None, can_be_stmt, ..
-        }) => can_be_stmt,
+            is_absolute_path: false,
+            qualifier: None,
+            kind: PathKind::Expr { in_block_expr, .. },
+            ..
+        }) => in_block_expr,
         _ => return,
     };
 
@@ -43,11 +43,16 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.expects_item() || ctx.has_block_expr_parent())
-        || ctx.previous_token_is(T![unsafe])
-        || ctx.path_qual().is_some()
-        || ctx.has_unfinished_impl_or_trait_prev_sibling()
-    {
+    let path_kind = match ctx.path_context {
+        Some(PathCompletionCtx {
+            is_absolute_path: false,
+            qualifier: None,
+            kind: kind @ (PathKind::Item { .. } | PathKind::Expr { in_block_expr: true, .. }),
+            ..
+        }) => kind,
+        _ => return,
+    };
+    if ctx.previous_token_is(T![unsafe]) || ctx.has_unfinished_impl_or_trait_prev_sibling() {
         return;
     }
     if ctx.has_visibility_prev_sibling() {
@@ -64,7 +69,8 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     }
 
     // Test-related snippets shouldn't be shown in blocks.
-    if !ctx.has_block_expr_parent() {
+    if let PathKind::Item { kind: ItemListKind::SourceFile | ItemListKind::Module, .. } = path_kind
+    {
         let mut item = snippet(
             ctx,
             cap,
@@ -96,19 +102,22 @@ fn ${1:feature}() {
         item.lookup_by("tfn");
         item.add_to(acc);
     }
-
-    let item = snippet(
-        ctx,
-        cap,
-        "macro_rules",
-        "\
+    if let PathKind::Item { kind: ItemListKind::SourceFile | ItemListKind::Module, .. }
+    | PathKind::Expr { .. } = path_kind
+    {
+        let item = snippet(
+            ctx,
+            cap,
+            "macro_rules",
+            "\
 macro_rules! $1 {
     ($2) => {
         $0
     };
 }",
-    );
-    item.add_to(acc);
+        );
+        item.add_to(acc);
+    }
 }
 
 fn add_custom_completions(
