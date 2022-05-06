@@ -1,5 +1,4 @@
 // compile-flags: -Zmiri-tag-raw-pointers
-#![allow(mutable_borrow_reservation_conflict)]
 
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
