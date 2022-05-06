@@ -74,6 +74,17 @@ impl Hasher for StableHasher {
     }
 
     #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.state.write_str(s);
+    }
+
+    #[inline]
+    fn write_length_prefix(&mut self, len: usize) {
+        // Our impl for `usize` will extend it if needed.
+        self.write_usize(len);
+    }
+
+    #[inline]
     fn write_u8(&mut self, i: u8) {
         self.state.write_u8(i);
     }

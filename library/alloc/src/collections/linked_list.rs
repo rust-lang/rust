@@ -1944,7 +1944,7 @@ impl<T: fmt::Debug> fmt::Debug for LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for LinkedList<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
+        state.write_length_prefix(self.len());
         for elt in self {
             elt.hash(state);
         }
