@@ -1,7 +1,7 @@
 use crate::diagnostics::error::{span_err, throw_span_err, SessionDiagnosticDeriveError};
 use proc_macro::Span;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, Type, Visibility};
@@ -76,22 +76,71 @@ pub(crate) fn report_error_if_not_applied_to_span(
     report_error_if_not_applied_to_ty(attr, info, &["rustc_span", "Span"], "Span")
 }
 
-/// If `ty` is an Option, returns `Some(inner type)`, otherwise returns `None`.
-pub(crate) fn option_inner_ty(ty: &Type) -> Option<&Type> {
-    if type_matches_path(ty, &["std", "option", "Option"]) {
+/// Inner type of a field and type of wrapper.
+pub(crate) enum FieldInnerTy<'ty> {
+    /// Field is wrapped in a `Option<$inner>`.
+    Option(&'ty Type),
+    /// Field is wrapped in a `Vec<$inner>`.
+    Vec(&'ty Type),
+    /// Field isn't wrapped in an outer type.
+    None,
+}
+
+impl<'ty> FieldInnerTy<'ty> {
+    /// Returns inner type for a field, if there is one.
+    ///
+    /// - If `ty` is an `Option`, returns `FieldInnerTy::Option { inner: (inner type) }`.
+    /// - If `ty` is a `Vec`, returns `FieldInnerTy::Vec { inner: (inner type) }`.
+    /// - Otherwise returns `None`.
+    pub(crate) fn from_type(ty: &'ty Type) -> Self {
+        let variant: &dyn Fn(&'ty Type) -> FieldInnerTy<'ty> =
+            if type_matches_path(ty, &["std", "option", "Option"]) {
+                &FieldInnerTy::Option
+            } else if type_matches_path(ty, &["std", "vec", "Vec"]) {
+                &FieldInnerTy::Vec
+            } else {
+                return FieldInnerTy::None;
+            };
+
         if let Type::Path(ty_path) = ty {
             let path = &ty_path.path;
             let ty = path.segments.iter().last().unwrap();
             if let syn::PathArguments::AngleBracketed(bracketed) = &ty.arguments {
                 if bracketed.args.len() == 1 {
                     if let syn::GenericArgument::Type(ty) = &bracketed.args[0] {
-                        return Some(ty);
+                        return variant(ty);
                     }
                 }
             }
         }
+
+        unreachable!();
     }
-    None
+
+    /// Returns `Option` containing inner type if there is one.
+    pub(crate) fn inner_type(&self) -> Option<&'ty Type> {
+        match self {
+            FieldInnerTy::Option(inner) | FieldInnerTy::Vec(inner) => Some(inner),
+            FieldInnerTy::None => None,
+        }
+    }
+
+    /// Surrounds `inner` with destructured wrapper type, exposing inner type as `binding`.
+    pub(crate) fn with(&self, binding: impl ToTokens, inner: impl ToTokens) -> TokenStream {
+        match self {
+            FieldInnerTy::Option(..) => quote! {
+                if let Some(#binding) = #binding {
+                    #inner
+                }
+            },
+            FieldInnerTy::Vec(..) => quote! {
+                for #binding in #binding {
+                    #inner
+                }
+            },
+            FieldInnerTy::None => quote! { #inner },
+        }
+    }
 }
 
 /// Field information passed to the builder. Deliberately omits attrs to discourage the

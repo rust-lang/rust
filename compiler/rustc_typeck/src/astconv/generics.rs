@@ -3,7 +3,10 @@ use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::AssocTypeBindingNotAllowed;
+use crate::errors::{
+    AssocTypeBindingNotAllowed, ExplicitGenericArgsWithImplTrait,
+    ExplicitGenericArgsWithImplTraitFeature,
+};
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
@@ -636,29 +639,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
                 .collect::<Vec<_>>();
 
-            let mut err = struct_span_err! {
-                tcx.sess,
-                spans.clone(),
-                E0632,
-                "cannot provide explicit generic arguments when `impl Trait` is \
-                used in argument position"
-            };
-
-            for span in spans {
-                err.span_label(span, "explicit generic argument not allowed");
-            }
-
-            err.note(
-                "see issue #83701 <https://github.com/rust-lang/rust/issues/83701> \
-                 for more information",
-            );
+            let mut err = tcx.sess.create_err(ExplicitGenericArgsWithImplTrait { spans });
             if tcx.sess.is_nightly_build() {
-                err.help(
-                    "add `#![feature(explicit_generic_args_with_impl_trait)]` \
-                     to the crate attributes to enable",
-                );
+                err.subdiagnostic(ExplicitGenericArgsWithImplTraitFeature);
             }
-
             err.emit();
         }
 
