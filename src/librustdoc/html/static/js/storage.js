@@ -24,7 +24,7 @@ function getSettingValue(settingName) {
     if (settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
-        const def = settingsDataset[settingName.replace(/-/g,'_')];
+        const def = settingsDataset[settingName.replace(/-/g,"_")];
         if (def !== undefined) {
             return def;
         }
@@ -173,7 +173,7 @@ const updateSystemTheme = (function () {
         // fallback to the CSS computed value
         return () => {
             const cssTheme = getComputedStyle(document.documentElement)
-                .getPropertyValue('content');
+                .getPropertyValue("content");
 
             switchTheme(
                 window.currentTheme,
