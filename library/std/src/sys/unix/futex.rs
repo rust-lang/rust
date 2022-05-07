@@ -24,8 +24,9 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     // Calculate the timeout as an absolute timespec.
     //
     // Overflows are rounded up to an infinite timeout (None).
-    let timespec =
-        timeout.and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?));
+    let timespec = timeout
+        .and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?))
+        .and_then(|t| t.to_timespec());
 
     loop {
         // No need to wait if the value already changed.
@@ -41,7 +42,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                     // identical. It supports absolute timeouts through a flag
                     // in the _umtx_time struct.
                     let umtx_timeout = timespec.map(|t| libc::_umtx_time {
-                        _timeout: t.t,
+                        _timeout: t,
                         _flags: libc::UMTX_ABSTIME,
                         _clockid: libc::CLOCK_MONOTONIC as u32,
                     });
@@ -62,7 +63,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                         futex as *const AtomicU32,
                         libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                         expected,
-                        timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
+                        timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
                         null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
                         !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
                     )
