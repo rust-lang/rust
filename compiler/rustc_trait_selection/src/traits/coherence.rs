@@ -547,7 +547,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 /// 2. They ground negative reasoning for coherence. If a user wants to
 ///    write both a conditional blanket impl and a specific impl, we need to
 ///    make sure they do not overlap. For example, if we write
-///    ```
+///    ```ignore (illustrative)
 ///    impl<T> IntoIterator for Vec<T>
 ///    impl<T: Iterator> IntoIterator for T
 ///    ```

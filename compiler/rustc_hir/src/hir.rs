@@ -49,15 +49,15 @@ pub enum ParamName {
     /// Synthetic name generated when user elided a lifetime in an impl header.
     ///
     /// E.g., the lifetimes in cases like these:
-    ///
-    ///     impl Foo for &u32
-    ///     impl Foo<'_> for u32
-    ///
+    /// ```ignore (fragment)
+    /// impl Foo for &u32
+    /// impl Foo<'_> for u32
+    /// ```
     /// in that case, we rewrite to
-    ///
-    ///     impl<'f> Foo for &'f u32
-    ///     impl<'f> Foo<'f> for u32
-    ///
+    /// ```ignore (fragment)
+    /// impl<'f> Foo for &'f u32
+    /// impl<'f> Foo<'f> for u32
+    /// ```
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh(LocalDefId),
@@ -1082,7 +1082,7 @@ pub enum PatKind<'hir> {
     /// If `slice` exists, then `after` can be non-empty.
     ///
     /// The representation for e.g., `[a, b, .., c, d]` is:
-    /// ```
+    /// ```ignore (illustrative)
     /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
     /// ```
     Slice(&'hir [Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [Pat<'hir>]),
@@ -2244,7 +2244,7 @@ pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 /// wouldn't it be better to make the `ty` field an enum like the
 /// following?
 ///
-/// ```
+/// ```ignore (pseudo-rust)
 /// enum TypeBindingKind {
 ///    Equals(...),
 ///    Binding(...),

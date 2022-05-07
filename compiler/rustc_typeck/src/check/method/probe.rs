@@ -201,8 +201,9 @@ pub struct Pick<'tcx> {
     pub import_ids: SmallVec<[LocalDefId; 1]>,
 
     /// Indicates that the source expression should be autoderef'd N times
-    ///
-    ///     A = expr | *expr | **expr | ...
+    /// ```ignore (not-rust)
+    /// A = expr | *expr | **expr | ...
+    /// ```
     pub autoderefs: usize,
 
     /// Indicates that we want to add an autoref (and maybe also unsize it), or if the receiver is
@@ -1638,7 +1639,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///
     /// Example (`src/test/ui/method-two-trait-defer-resolution-1.rs`):
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// trait Foo { ... }
     /// impl Foo for Vec<i32> { ... }
     /// impl Foo for Vec<usize> { ... }

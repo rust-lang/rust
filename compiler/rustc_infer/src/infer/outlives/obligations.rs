@@ -33,9 +33,9 @@
 //! Consider:
 //!
 //! ```
-//! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T));
+//! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T)) {}
 //! fn foo<T>(x: T) {
-//!     bar(x, |y| { ... })
+//!     bar(x, |y| { /* ... */})
 //!          // ^ closure arg
 //! }
 //! ```

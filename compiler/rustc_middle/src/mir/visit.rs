@@ -29,7 +29,7 @@
 //!
 //! For example, the `super_basic_block_data` method begins like this:
 //!
-//! ```rust
+//! ```ignore (pseudo-rust)
 //! fn super_basic_block_data(&mut self,
 //!                           block: BasicBlock,
 //!                           data: & $($mutability)? BasicBlockData<'tcx>) {
@@ -1170,10 +1170,10 @@ pub enum NonMutatingUseContext {
     AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
-    ///
-    ///     z = x.y;
-    ///     f(&x.y);
-    ///
+    /// ```ignore (illustrative)
+    /// z = x.y;
+    /// f(&x.y);
+    /// ```
     Projection,
 }
 
@@ -1199,10 +1199,10 @@ pub enum MutatingUseContext {
     AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
-    ///
-    ///     x.y = ...;
-    ///     f(&mut x.y);
-    ///
+    /// ```ignore (illustrative)
+    /// x.y = ...;
+    /// f(&mut x.y);
+    /// ```
     Projection,
     /// Retagging, a "Stacked Borrows" shadow state operation
     Retag,

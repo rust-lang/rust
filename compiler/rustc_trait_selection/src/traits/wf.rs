@@ -170,7 +170,7 @@ struct WfPredicates<'a, 'tcx> {
 /// predicates. This is a kind of hack to address #43784. The
 /// underlying problem in that issue was a trait structure like:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// trait Foo: Copy { }
 /// trait Bar: Foo { }
 /// impl<T: Bar> Foo for T { }

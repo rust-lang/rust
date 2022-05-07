@@ -5,9 +5,9 @@
 //! immutable "borrow kind" (see `ty::BorrowKind` for details) and then
 //! "escalating" the kind as needed. The borrow kind proceeds according to
 //! the following lattice:
-//!
-//!     ty::ImmBorrow -> ty::UniqueImmBorrow -> ty::MutBorrow
-//!
+//! ```ignore (not-rust)
+//! ty::ImmBorrow -> ty::UniqueImmBorrow -> ty::MutBorrow
+//! ```
 //! So, for example, if we see an assignment `x = 5` to an upvar `x`, we
 //! will promote its borrow kind to mutable borrow. If we see an `&mut x`
 //! we'll do the same. Naturally, this applies not just to the upvar, but
@@ -447,16 +447,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///       the existing min_capture map that is stored in TypeckResults.
     ///
     /// Eg:
-    /// ```rust,no_run
+    /// ```
+    /// #[derive(Debug)]
     /// struct Point { x: i32, y: i32 }
     ///
-    /// let s: String;  // hir_id_s
-    /// let mut p: Point; // his_id_p
+    /// let s = String::from("s");  // hir_id_s
+    /// let mut p = Point { x: 2, y: -2 }; // his_id_p
     /// let c = || {
-    ///        println!("{s}");  // L1
+    ///        println!("{s:?}");  // L1
     ///        p.x += 10;  // L2
     ///        println!("{}" , p.y); // L3
-    ///        println!("{p}"); // L4
+    ///        println!("{p:?}"); // L4
     ///        drop(s);   // L5
     /// };
     /// ```
@@ -465,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// InferBorrowKind results in a structure like this:
     ///
-    /// ```text
+    /// ```ignore (illustrative)
     /// {
     ///       Place(base: hir_id_s, projections: [], ....) -> {
     ///                                                            capture_kind_expr: hir_id_L5,
@@ -487,10 +488,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///                                                          path_expr_id: hir_id_L4,
     ///                                                          capture_kind: ByValue
     ///                                                      },
+    /// }
     /// ```
     ///
     /// After the min capture analysis, we get:
-    /// ```text
+    /// ```ignore (illustrative)
     /// {
     ///       hir_id_s -> [
     ///            Place(base: hir_id_s, projections: [], ....) -> {
@@ -506,6 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///                                                               capture_kind: ByValue
     ///                                                           },
     ///       ],
+    /// }
     /// ```
     fn compute_min_captures(
         &self,
@@ -1285,27 +1288,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Ty(place): Type of place
     /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_by_move_projs`
     /// respectively.
-    /// ```
+    /// ```ignore (illustrative)
     ///                  (Ty(w), [ &[p, x], &[c] ])
-    ///                                 |
-    ///                    ----------------------------
-    ///                    |                          |
-    ///                    v                          v
+    /// //                              |
+    /// //                 ----------------------------
+    /// //                 |                          |
+    /// //                 v                          v
     ///        (Ty(w.p), [ &[x] ])          (Ty(w.c), [ &[] ]) // I(1)
-    ///                    |                          |
-    ///                    v                          v
+    /// //                 |                          |
+    /// //                 v                          v
     ///        (Ty(w.p), [ &[x] ])                 false
-    ///                    |
-    ///                    |
-    ///          -------------------------------
-    ///          |                             |
-    ///          v                             v
+    /// //                 |
+    /// //                 |
+    /// //       -------------------------------
+    /// //       |                             |
+    /// //       v                             v
     ///     (Ty((w.p).x), [ &[] ])     (Ty((w.p).y), []) // IMP 2
-    ///          |                             |
-    ///          v                             v
+    /// //       |                             |
+    /// //       v                             v
     ///        false              NeedsSignificantDrop(Ty(w.p.y))
-    ///                                        |
-    ///                                        v
+    /// //                                     |
+    /// //                                     v
     ///                                      true
     /// ```
     ///
@@ -1323,7 +1326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Consider another example:
     ///
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// struct X;
     /// impl Drop for X {}
     ///
@@ -1728,14 +1731,14 @@ struct InferBorrowKind<'a, 'tcx> {
     /// s.str2 via a MutableBorrow
     ///
     /// ```rust,no_run
-    /// struct SomeStruct { str1: String, str2: String }
+    /// struct SomeStruct { str1: String, str2: String };
     ///
     /// // Assume that the HirId for the variable definition is `V1`
-    /// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") }
+    /// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") };
     ///
     /// let fix_s = |new_s2| {
     ///     // Assume that the HirId for the expression `s.str1` is `E1`
-    ///     println!("Updating SomeStruct with str1=", s.str1);
+    ///     println!("Updating SomeStruct with str1={0}", s.str1);
     ///     // Assume that the HirId for the expression `*s.str2` is `E2`
     ///     s.str2 = new_s2;
     /// };
@@ -1743,7 +1746,7 @@ struct InferBorrowKind<'a, 'tcx> {
     ///
     /// For closure `fix_s`, (at a high level) the map contains
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// Place { V1, [ProjectionKind::Field(Index=0, Variant=0)] } : CaptureKind { E1, ImmutableBorrow }
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
@@ -2071,7 +2074,7 @@ fn migration_suggestion_for_2229(
 /// Consider the following example
 /// ```rust,no_run
 /// struct Point { x: i32, y: i32 }
-/// let mut p: Point { x: 10, y: 10 };
+/// let mut p = Point { x: 10, y: 10 };
 ///
 /// let c = || {
 ///     p.x     += 10;
@@ -2217,7 +2220,10 @@ fn determine_place_ancestry_relation<'tcx>(
 ///
 /// Reason we only drop the last deref is because of the following edge case:
 ///
-/// ```rust
+/// ```
+/// # struct A { field_of_a: Box<i32> }
+/// # struct B {}
+/// # struct C<'a>(&'a i32);
 /// struct MyStruct<'a> {
 ///    a: &'static A,
 ///    b: B,
@@ -2225,7 +2231,7 @@ fn determine_place_ancestry_relation<'tcx>(
 /// }
 ///
 /// fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {
-///     let c = || drop(&*m.a.field_of_a);
+///     || drop(&*m.a.field_of_a)
 ///     // Here we really do want to capture `*m.a` because that outlives `'static`
 ///
 ///     // If we capture `m`, then the closure no longer outlives `'static'

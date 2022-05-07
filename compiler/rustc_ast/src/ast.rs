@@ -573,7 +573,7 @@ pub struct Block {
     pub span: Span,
     pub tokens: Option<LazyTokenStream>,
     /// The following *isn't* a parse error, but will cause multiple errors in following stages.
-    /// ```
+    /// ```compile_fail
     /// let x = {
     ///     foo: var
     /// };

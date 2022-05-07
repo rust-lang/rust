@@ -187,12 +187,12 @@ pub enum RegionClassification {
     ///
     /// Consider this example:
     ///
-    /// ```
+    /// ```ignore (pseudo-rust)
     /// fn foo<'a, 'b>(a: &'a u32, b: &'b u32, c: &'static u32) {
     ///   let closure = for<'x> |x: &'x u32| { .. };
-    ///                 ^^^^^^^ pretend this were legal syntax
-    ///                         for declaring a late-bound region in
-    ///                         a closure signature
+    ///    //           ^^^^^^^ pretend this were legal syntax
+    ///    //                   for declaring a late-bound region in
+    ///    //                   a closure signature
     /// }
     /// ```
     ///

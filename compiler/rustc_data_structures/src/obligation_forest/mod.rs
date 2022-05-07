@@ -202,7 +202,7 @@ impl<O> Node<O> {
 /// with this node.
 ///
 /// The non-`Error` state transitions are as follows.
-/// ```
+/// ```text
 /// (Pre-creation)
 ///  |
 ///  |     register_obligation_at() (called by process_obligations() and

@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Identify some cases where `as_ref()` would be appropriate and suggest it.
     ///
     /// Given the following code:
-    /// ```
+    /// ```compile_fail,E0308
     /// struct Foo;
     /// fn takes_ref(_: &Foo) {}
     /// let ref opt = Some(Foo);
@@ -449,7 +449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Suggest using `opt.as_ref().map(|param| takes_ref(param));` instead.
     ///
     /// It only checks for `Option` and `Result` and won't work with
-    /// ```
+    /// ```ignore (illustrative)
     /// opt.map(|param| { takes_ref(param) });
     /// ```
     fn can_use_as_ref(&self, expr: &hir::Expr<'_>) -> Option<(Span, &'static str, String)> {
@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
-    /// ```
+    /// ```compile_fail,E0308
     /// fn some_fn(s: &str) {}
     ///
     /// let x = "hey!".to_owned();

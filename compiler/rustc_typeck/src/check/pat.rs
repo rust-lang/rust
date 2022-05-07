@@ -1894,7 +1894,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Syntactically, these look like `[pat_0, ..., pat_n]`.
     /// Semantically, we are type checking a pattern with structure:
-    /// ```
+    /// ```ignore (not-rust)
     /// [before_0, ..., before_n, (slice, after_0, ... after_n)?]
     /// ```
     /// The type of `slice`, if it is present, depends on the `expected` type.

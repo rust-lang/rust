@@ -211,15 +211,15 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 
 /// We also have to check the explicit predicates
 /// declared on the type.
+/// ```ignore (illustrative)
+/// struct Foo<'a, T> {
+///     field1: Bar<T>
+/// }
 ///
-///     struct Foo<'a, T> {
-///         field1: Bar<T>
-///     }
-///
-///     struct Bar<U> where U: 'static, U: Foo {
-///         ...
-///     }
-///
+/// struct Bar<U> where U: 'static, U: Foo {
+///     ...
+/// }
+/// ```
 /// Here, we should fetch the explicit predicates, which
 /// will give us `U: 'static` and `U: Foo`. The latter we
 /// can ignore, but we will want to process `U: 'static`,

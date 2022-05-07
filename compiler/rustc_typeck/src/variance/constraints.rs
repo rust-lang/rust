@@ -34,11 +34,11 @@ pub struct Constraint<'a> {
 
 /// To build constraints, we visit one item (type, trait) at a time
 /// and look at its contents. So e.g., if we have
-///
-///     struct Foo<T> {
-///         b: Bar<T>
-///     }
-///
+/// ```ignore (illustrative)
+/// struct Foo<T> {
+///     b: Bar<T>
+/// }
+/// ```
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
 /// the `DefId` and the start of `Foo`'s inferreds.
 pub struct CurrentItem {

@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
     /// the ctor would successfully solve the type mismatch and if so, suggest it:
-    /// ```
+    /// ```compile_fail,E0308
     /// fn foo(x: usize) -> usize { x }
     /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
     /// ```
@@ -463,7 +463,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// A common error is to forget to add a semicolon at the end of a block, e.g.,
     ///
-    /// ```
+    /// ```compile_fail,E0308
+    /// # fn bar_that_returns_u32() -> u32 { 4 }
     /// fn foo() {
     ///     bar_that_returns_u32()
     /// }
@@ -504,7 +505,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// A possible error is to forget to add a return type that is needed:
     ///
-    /// ```
+    /// ```compile_fail,E0308
+    /// # fn bar_that_returns_u32() -> u32 { 4 }
     /// fn foo() {
     ///     bar_that_returns_u32()
     /// }
@@ -569,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// check whether the return type is a generic type with a trait bound
     /// only suggest this if the generic param is not present in the arguments
     /// if this is true, hint them towards changing the return type to `impl Trait`
-    /// ```
+    /// ```compile_fail,E0308
     /// fn cant_name_it<T: Fn() -> u32>() -> T {
     ///     || 3
     /// }

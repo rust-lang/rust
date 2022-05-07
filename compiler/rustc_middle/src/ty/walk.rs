@@ -34,7 +34,7 @@ impl<'tcx> TypeWalker<'tcx> {
     ///
     /// Example: Imagine you are walking `Foo<Bar<i32>, usize>`.
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// let mut iter: TypeWalker = ...;
     /// iter.next(); // yields Foo
     /// iter.next(); // yields Bar<i32>

@@ -890,16 +890,19 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
 /// Tupling means that all call-side arguments are packed into a tuple and
 /// passed as a single parameter. For example, if tupling is enabled, this
 /// function:
-///
-///     fn f(x: (isize, isize))
-///
+/// ```
+/// fn f(x: (isize, isize)) {}
+/// ```
 /// Can be called as:
-///
-///     f(1, 2);
-///
+/// ```ignore UNSOLVED (can this be done in user code?)
+/// # fn f(x: (isize, isize)) {}
+/// f(1, 2);
+/// ```
 /// Instead of:
-///
-///     f((1, 2));
+/// ```
+/// # fn f(x: (isize, isize)) {}
+/// f((1, 2));
+/// ```
 #[derive(Clone, Eq, PartialEq)]
 enum TupleArgumentsFlag {
     DontTupleArguments,

@@ -737,7 +737,7 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     ///
-    /// ```
+    /// ```compile_fail,E0308
     /// fn foo(x: usize) -> bool {
     ///     loop {
     ///         true  // If `get_return_block` gets passed the `id` corresponding
