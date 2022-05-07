@@ -452,7 +452,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
 
-        self.tcx.hir().visit_all_item_likes(&mut self.as_deep_visitor());
+        self.tcx.hir().visit_all_item_likes(self);
     }
 
     fn encode_def_path_table(&mut self) {

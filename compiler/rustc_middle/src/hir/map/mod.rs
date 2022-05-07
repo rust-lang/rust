@@ -9,7 +9,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
@@ -616,7 +615,7 @@ impl<'hir> Map<'hir> {
     /// visitor and then call `intravisit::walk_crate` instead.
     pub fn visit_all_item_likes<V>(self, visitor: &mut V)
     where
-        V: itemlikevisit::ItemLikeVisitor<'hir>,
+        V: Visitor<'hir>,
     {
         let krate = self.krate();
         for owner in krate.owners.iter().filter_map(|i| i.as_owner()) {
@@ -649,7 +648,7 @@ impl<'hir> Map<'hir> {
 
     pub fn visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
     where
-        V: ItemLikeVisitor<'hir>,
+        V: Visitor<'hir>,
     {
         let module = self.tcx.hir_module_items(module);
 

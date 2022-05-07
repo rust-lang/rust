@@ -32,42 +32,11 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use crate::itemlikevisit::ParItemLikeVisitor;
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
-
-pub struct DeepVisitor<'v, V> {
-    visitor: &'v mut V,
-}
-
-impl<'v, V> DeepVisitor<'v, V> {
-    pub fn new(base: &'v mut V) -> Self {
-        DeepVisitor { visitor: base }
-    }
-}
-
-impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
-where
-    V: Visitor<'hir>,
-{
-    fn visit_item(&mut self, item: &'hir Item<'hir>) {
-        self.visitor.visit_item(item);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
-        self.visitor.visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
-        self.visitor.visit_impl_item(impl_item);
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.visitor.visit_foreign_item(foreign_item);
-    }
-}
 
 pub trait IntoVisitor<'hir> {
     type Visitor: Visitor<'hir>;
@@ -313,16 +282,6 @@ pub trait Visitor<'v>: Sized {
 
     fn visit_body(&mut self, b: &'v Body<'v>) {
         walk_body(self, b);
-    }
-
-    /// When invoking `visit_all_item_likes()`, you need to supply an
-    /// item-like visitor. This method converts an "intra-visit"
-    /// visitor into an item-like visitor that walks the entire tree.
-    /// If you use this, you probably don't want to process the
-    /// contents of nested item-like things, since the outer loop will
-    /// visit them as well.
-    fn as_deep_visitor(&mut self) -> DeepVisitor<'_, Self> {
-        DeepVisitor::new(self)
     }
 
     ///////////////////////////////////////////////////////////////////////////
