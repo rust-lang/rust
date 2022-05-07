@@ -600,7 +600,7 @@ impl Display for Arguments<'_> {
 ///
 /// Types that do not wish to use the standard suite of debug representations
 /// provided by the `Formatter` trait (`debug_struct`, `debug_tuple`,
-/// `debut_list`, `debug_set`, `debug_map`) can do something totally custom by
+/// `debug_list`, `debug_set`, `debug_map`) can do something totally custom by
 /// manually writing an arbitrary representation to the `Formatter`.
 ///
 /// ```
