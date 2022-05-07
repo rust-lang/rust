@@ -42,16 +42,6 @@ rustc-workspace-hack = "1.0"
 # UI test dependencies
 ui-test-dependencies = { path = "ui-test-dependencies" }
 clippy_utils = { path = "clippy_utils" }
-derive-new = "0.5"
-if_chain = "1.0"
-itertools = "0.10.1"
-quote = "1.0"
-serde = { version = "1.0.125", features = ["derive"] }
-syn = { version = "1.0", features = ["full"] }
-futures = "0.3"
-parking_lot = "0.12"
-tokio = { version = "1", features = ["io-util"] }
-rustc-semver = "1.1"
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }

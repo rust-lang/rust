@@ -39,29 +39,6 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "rustc_semver",
 ];
 
-// Test dependencies may need an `extern crate` here to ensure that they show up
-// in the depinfo file (otherwise cargo thinks they are unused)
-#[allow(unused_extern_crates)]
-extern crate clippy_utils;
-#[allow(unused_extern_crates)]
-extern crate derive_new;
-#[allow(unused_extern_crates)]
-extern crate futures;
-#[allow(unused_extern_crates)]
-extern crate if_chain;
-#[allow(unused_extern_crates)]
-extern crate itertools;
-#[allow(unused_extern_crates)]
-extern crate parking_lot;
-#[allow(unused_extern_crates)]
-extern crate quote;
-#[allow(unused_extern_crates)]
-extern crate rustc_semver;
-#[allow(unused_extern_crates)]
-extern crate syn;
-#[allow(unused_extern_crates)]
-extern crate tokio;
-
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
 ///
@@ -124,7 +101,7 @@ static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
         .filter(|n| !crates.contains_key(n))
         .collect();
     if option_env!("RUSTC_TEST_SUITE").is_some() {
-        // Bootstrap doesn't build clippy_utils, but that's ok since clippy only uses it for dogfood tests.
+        // Bootstrap doesn't build clippy_utils, but that's ok since clippy only uses it for internal UI tests.
         not_found.drain_filter(|x| *x == "clippy_utils");
     }
     assert!(
