@@ -822,8 +822,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             if item_is_allowed {
                 // Check parent modules stability as well if the item the path refers to is itself
                 // stable. We only emit warnings for unstable path segments if the item is stable
-                // because stability is often inherited, so the most common case is that both the
-                // segments and the item are unstable behind the same feature flag.
+                // or allowed because stability is often inherited, so the most common case is that
+                // both the segments and the item are unstable behind the same feature flag.
                 //
                 // We check here rather than in `visit_path_segment` to prevent visiting the last
                 // path segment twice
