@@ -247,8 +247,6 @@ pub struct ExplicitGenericArgsWithImplTrait {
     #[primary_span]
     #[label]
     pub spans: Vec<Span>,
+    #[help]
+    pub is_nightly_build: Option<()>,
 }
-
-#[derive(SessionSubdiagnostic)]
-#[help(slug = "typeck-explicit-generic-args-with-impl-trait-feature")]
-pub struct ExplicitGenericArgsWithImplTraitFeature;
