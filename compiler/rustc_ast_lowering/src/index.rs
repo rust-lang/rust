@@ -313,6 +313,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_assoc_type_binding(&mut self, type_binding: &'hir TypeBinding<'hir>) {
+        self.insert(type_binding.span, type_binding.hir_id, Node::TypeBinding(type_binding));
+        self.with_parent(type_binding.hir_id, |this| {
+            intravisit::walk_assoc_type_binding(this, type_binding)
+        })
+    }
+
     fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
         // Do not visit the duplicate information in TraitItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.

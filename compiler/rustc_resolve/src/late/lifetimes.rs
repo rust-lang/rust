@@ -517,30 +517,16 @@ fn late_region_as_bound_region<'tcx>(tcx: TyCtxt<'tcx>, region: &Region) -> ty::
 
 #[tracing::instrument(level = "debug")]
 fn get_lifetime_scopes_for_path(mut scope: &Scope<'_>) -> LifetimeScopeForPath {
-    let mut available_lifetimes = vec![];
     loop {
         match scope {
-            Scope::Binder { lifetimes, s, .. } => {
-                available_lifetimes.extend(lifetimes.keys());
-                scope = s;
-            }
-            Scope::Body { s, .. } => {
-                scope = s;
-            }
-            Scope::Elision { elide, s } => {
-                if let Elide::Exact(_) = elide {
-                    return LifetimeScopeForPath::Elided;
-                } else {
-                    scope = s;
-                }
-            }
-            Scope::ObjectLifetimeDefault { s, .. } => {
-                scope = s;
-            }
-            Scope::Root => {
-                return LifetimeScopeForPath::NonElided(available_lifetimes);
-            }
-            Scope::Supertrait { s, .. } | Scope::TraitRefBoundary { s, .. } => {
+            Scope::Elision { elide: Elide::Exact(_), .. } => return LifetimeScopeForPath::Elided,
+            Scope::Root => return LifetimeScopeForPath::NonElided,
+            Scope::Binder { s, .. }
+            | Scope::Body { s, .. }
+            | Scope::ObjectLifetimeDefault { s, .. }
+            | Scope::Supertrait { s, .. }
+            | Scope::TraitRefBoundary { s, .. }
+            | Scope::Elision { s, .. } => {
                 scope = s;
             }
         }
@@ -2170,6 +2156,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             // Foreign functions, `fn(...) -> R` and `Trait(...) -> R` (both types and bounds).
             Node::ForeignItem(_) | Node::Ty(_) | Node::TraitRef(_) => None,
+
+            Node::TypeBinding(_) if let Node::TraitRef(_) = self.tcx.hir().get(self.tcx.hir().get_parent_node(parent)) => None,
+
             // Everything else (only closures?) doesn't
             // actually enjoy elision in return types.
             _ => {

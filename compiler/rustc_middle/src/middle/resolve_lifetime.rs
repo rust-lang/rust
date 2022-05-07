@@ -23,8 +23,7 @@ pub enum Region {
 pub enum LifetimeScopeForPath {
     /// Contains all lifetime names that are in scope and could possibly be used in generics
     /// arguments of path.
-    NonElided(Vec<LocalDefId>),
-
+    NonElided,
     /// Information that allows us to suggest args of the form `<'_>` in case
     /// no generic arguments were provided for a path.
     Elided,
