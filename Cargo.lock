@@ -677,6 +677,7 @@ dependencies = [
  "termize",
  "tester",
  "tokio",
+ "ui-test-dependencies",
 ]
 
 [[package]]
@@ -5523,6 +5524,23 @@ name = "ucd-trie"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
+
+[[package]]
+name = "ui-test-dependencies"
+version = "0.1.0"
+dependencies = [
+ "derive-new",
+ "futures 0.3.19",
+ "if_chain",
+ "itertools",
+ "parking_lot 0.11.2",
+ "quote",
+ "regex",
+ "rustc-semver",
+ "serde",
+ "syn",
+ "tokio",
+]
 
 [[package]]
 name = "ui_test"

@@ -8,11 +8,11 @@
 #![allow(dead_code)]
 #![cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[rustfmt::skip]
-#[allow(unused_imports)]
 #[allow(unused_extern_crates)]
-#[macro_use]
-extern crate rustc_middle;
+extern crate alloc;
 
+// don't lint on unused_import when `macro_use` is present
+#[allow(unused_imports)]
 #[macro_use]
 extern crate proc_macro_derive;
 

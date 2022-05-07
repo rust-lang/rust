@@ -1,0 +1,20 @@
+[package]
+name = "ui-test-dependencies"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# clippy_utils = { path = "../clippy_utils" }
+regex = "1.5"
+derive-new = "0.5"
+if_chain = "1.0"
+itertools = "0.10.1"
+quote = "1.0"
+serde = { version = "1.0.125", features = ["derive"] }
+syn = { version = "1.0", features = ["full"] }
+futures = "0.3"
+parking_lot = "0.11.2"
+tokio = { version = "1", features = ["io-util"] }
+rustc-semver = "1.1"

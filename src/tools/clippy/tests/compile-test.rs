@@ -1,6 +1,7 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
 #![feature(is_sorted)]
+#![feature(drain_filter)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -70,7 +71,23 @@ extern crate tokio;
 /// dependencies that are not *directly* used by this test module require an
 /// `extern crate` declaration.
 static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
-    let current_exe_depinfo = {
+    let current_exe_depinfo = if let Some(lib_deps) = option_env!("TARGET_LIBS") {
+        let mut deps = std::fs::read_dir(Path::new(lib_deps).join("deps")).unwrap().into_iter().map(|x| {
+            let mut line = x.unwrap().path().into_os_string().into_string().unwrap();
+            line.push_str(":\n"); // for parse_name_path
+            line
+        }).collect();
+
+        if let Some(host_deps) = option_env!("HOST_LIBS") {
+            deps += &*std::fs::read_dir(Path::new(host_deps).join("deps")).unwrap().into_iter().map(|x| {
+                let mut line = x.unwrap().path().into_os_string().into_string().unwrap();
+                line.push_str(":\n"); // for parse_name_path
+                line
+            }).collect::<String>();
+        }
+
+        deps
+    } else {
         let mut path = env::current_exe().unwrap();
         path.set_extension("d");
         fs::read_to_string(path).unwrap()
@@ -101,11 +118,15 @@ static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
             }
         }
     }
-    let not_found: Vec<&str> = TEST_DEPENDENCIES
+    let mut not_found: Vec<&str> = TEST_DEPENDENCIES
         .iter()
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        // Bootstrap doesn't build clippy_utils, but that's ok since clippy only uses it for dogfood tests.
+        not_found.drain_filter(|x| *x == "clippy_utils");
+    }
     assert!(
         not_found.is_empty(),
         "dependencies not found in depinfo: {:?}\n\
@@ -146,10 +167,14 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     let host_libs = option_env!("HOST_LIBS")
         .map(|p| format!(" -L dependency={}", Path::new(p).join("deps").display()))
         .unwrap_or_default();
+    let target_libs = option_env!("TARGET_LIBS")
+        .map(|p| format!(" -L dependency={}", Path::new(p).join("deps").display()))
+        .unwrap_or_default();
     config.target_rustcflags = Some(format!(
-        "--emit=metadata -Dwarnings -Zui-testing -L dependency={}{}{}",
+        "--emit=metadata -Dwarnings -Zui-testing -L dependency={}{}{}{}",
         deps_path.display(),
         host_libs,
+        target_libs,
         &*EXTERN_FLAGS,
     ));
 

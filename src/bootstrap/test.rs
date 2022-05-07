@@ -642,14 +642,38 @@ impl Step for Clippy {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        let build_compiler = builder.compiler(stage, host);
 
         builder
-            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
+            .ensure(tool::Clippy {
+                compiler: build_compiler,
+                target: self.host,
+                extra_features: Vec::new(),
+            })
             .expect("in-tree tool");
+
+        // We linked Clippy with the previous stage, but now we need to run it with the *next* stage,
+        // so that it looks at the proper sysroot when loading libstd.
+        let run_compiler = builder.compiler(stage + 1, host);
+        builder.ensure(compile::Std { compiler: run_compiler, target: run_compiler.host });
+        // Clippy uses some of its own dependencies in UI tests. Build those (but only those) with the same toolchain we'll run clippy with.
+        let mut dummy_bin_cargo = tool::prepare_tool_cargo(
+            builder,
+            run_compiler,
+            // Use ToolRustc to make sure the artifacts are placed in the same directory that clippy looks in during tests.
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/clippy/ui-test-dependencies",
+            SourceType::InTree,
+            &[],
+        );
+        dummy_bin_cargo.arg("-p=ui-test-dependencies");
+        builder.run(&mut dummy_bin_cargo.into());
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolRustc,
             host,
             "test",
@@ -658,14 +682,16 @@ impl Step for Clippy {
             &[],
         );
 
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(run_compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(run_compiler));
+        let host_libs = builder.stage_out(run_compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
+        let target_libs = builder.cargo_out(run_compiler, Mode::ToolRustc, run_compiler.host);
+        cargo.env("TARGET_LIBS", target_libs);
 
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder, build_compiler);
 
         if builder.try_run(&mut cargo.into()) {
             // The tests succeeded; nothing to do.
@@ -676,7 +702,9 @@ impl Step for Clippy {
             std::process::exit(1);
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
+        // FIXME: build rustc_lexer so we can support --bless.
+        let mut cargo =
+            builder.cargo(run_compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
         cargo.arg("-p").arg("clippy_dev");
         // clippy_dev gets confused if it can't find `clippy/Cargo.toml`
         cargo.current_dir(&builder.src.join("src").join("tools").join("clippy"));

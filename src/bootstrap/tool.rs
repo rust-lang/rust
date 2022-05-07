@@ -258,6 +258,18 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
+    // clippy tests need to know about the stage sysroot. Set them consistently while building to
+    // avoid rebuilding when running tests.
+    if path.ends_with("clippy") {
+        // NOTE: this uses the compiler it will *run* with, not the compiler it is *built* with.
+        // See impl Step for test::Clippy for more details.
+        // NOTE: intentionally does *not* use `builder.compiler` - we don't actually want to build
+        // the compiler or create the sysroot, just make sure that clippy knows which path to use
+        // for the sysroot.
+        let run_compiler = Compiler { stage: compiler.stage + 1, host: compiler.host };
+        cargo.env("SYSROOT", builder.sysroot(run_compiler));
+    }
+
     // CFG_RELEASE is needed by rustfmt (and possibly other tools) which
     // import rustc-ap-rustc_attr which requires this to be set for the
     // `#[cfg(version(...))]` attribute.
