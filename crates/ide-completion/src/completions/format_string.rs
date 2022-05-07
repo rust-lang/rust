@@ -2,16 +2,21 @@
 
 use ide_db::syntax_helpers::format_string::is_format_string;
 use itertools::Itertools;
-use syntax::{ast, AstToken, TextRange, TextSize};
+use syntax::{AstToken, TextRange, TextSize};
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Completions};
+use crate::{
+    context::{CompletionContext, IdentContext},
+    CompletionItem, CompletionItemKind, Completions,
+};
 
 /// Complete identifiers in format strings.
 pub(crate) fn format_string(acc: &mut Completions, ctx: &CompletionContext) {
-    let string = match ast::String::cast(ctx.token.clone())
-        .zip(ast::String::cast(ctx.original_token.clone()))
-    {
-        Some((expanded, original)) if is_format_string(&expanded) => original,
+    let string = match &ctx.ident_ctx {
+        IdentContext::String { expanded: Some(expanded), original }
+            if is_format_string(&expanded) =>
+        {
+            original
+        }
         _ => return,
     };
     let cursor = ctx.position.offset;

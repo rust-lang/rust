@@ -9,7 +9,7 @@ use crate::{
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let (dot_access, dot_receiver) = match &ctx.nameref_ctx {
+    let (dot_access, dot_receiver) = match ctx.nameref_ctx() {
         Some(NameRefContext {
             dot_access:
                 Some(

@@ -580,25 +580,6 @@ fn attr_on_fn() {
 }
 
 #[test]
-fn attr_on_expr() {
-    cov_mark::check!(no_keyword_completion_in_attr_of_expr);
-    check(
-        r#"fn main() { #[$0] foo() }"#,
-        expect![[r#"
-            at allow(…)
-            at cfg(…)
-            at cfg_attr(…)
-            at deny(…)
-            at forbid(…)
-            at warn(…)
-            kw crate::
-            kw self::
-            kw super::
-        "#]],
-    );
-}
-
-#[test]
 fn attr_in_source_file_end() {
     check(
         r#"#[$0]"#,

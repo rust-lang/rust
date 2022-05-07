@@ -23,7 +23,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    let (dot_receiver, receiver_is_ambiguous_float_literal) = match &ctx.nameref_ctx {
+    let (dot_receiver, receiver_is_ambiguous_float_literal) = match ctx.nameref_ctx() {
         Some(NameRefContext {
             dot_access: Some(DotAccess::Method { receiver: Some(it), .. }),
             ..

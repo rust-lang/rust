@@ -207,7 +207,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
     };
 
     if matches!(
-        ctx.nameref_ctx,
+        ctx.nameref_ctx(),
         Some(NameRefContext { dot_access: Some(DotAccess::Method { has_parens: true, .. }), .. })
     ) {
         return false;

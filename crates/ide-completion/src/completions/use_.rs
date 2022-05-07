@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (&is_absolute_path, qualifier, name_ref) = match &ctx.nameref_ctx {
+    let (&is_absolute_path, qualifier, name_ref) = match ctx.nameref_ctx() {
         Some(NameRefContext {
             path_ctx:
                 Some(PathCompletionCtx { kind: PathKind::Use, is_absolute_path, qualifier, .. }),

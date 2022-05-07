@@ -15,7 +15,7 @@ use ide_db::{
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasArgList, HasName, NameOrNameRef},
-    match_ast, AstNode, NodeOrToken,
+    match_ast, AstNode, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
@@ -170,6 +170,21 @@ pub(super) struct NameRefContext {
 }
 
 #[derive(Debug)]
+pub(super) enum IdentContext {
+    Name(NameContext),
+    NameRef(NameRefContext),
+    Lifetime(LifetimeContext),
+    /// Original token, fake token
+    String {
+        original: ast::String,
+        expanded: Option<ast::String>,
+    },
+    UnexpandedAttrTT {
+        fake_attribute_under_caret: Option<ast::Attr>,
+    },
+}
+
+#[derive(Debug)]
 pub(super) enum DotAccess {
     Field {
         receiver: Option<ast::Expr>,
@@ -223,12 +238,9 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
-    pub(super) fake_attribute_under_caret: Option<ast::Attr>,
     pub(super) previous_token: Option<SyntaxToken>,
 
-    pub(super) name_ctx: Option<NameContext>,
-    pub(super) lifetime_ctx: Option<LifetimeContext>,
-    pub(super) nameref_ctx: Option<NameRefContext>,
+    pub(super) ident_ctx: IdentContext,
 
     pub(super) pattern_ctx: Option<PatternContext>,
 
@@ -262,8 +274,29 @@ impl<'a> CompletionContext<'a> {
         FamousDefs(&self.sema, self.krate)
     }
 
+    pub(super) fn nameref_ctx(&self) -> Option<&NameRefContext> {
+        match &self.ident_ctx {
+            IdentContext::NameRef(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub(super) fn name_ctx(&self) -> Option<&NameContext> {
+        match &self.ident_ctx {
+            IdentContext::Name(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub(super) fn lifetime_ctx(&self) -> Option<&LifetimeContext> {
+        match &self.ident_ctx {
+            IdentContext::Lifetime(it) => Some(it),
+            _ => None,
+        }
+    }
+
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
-        match &self.nameref_ctx {
+        match self.nameref_ctx() {
             Some(NameRefContext {
                 dot_access:
                     Some(DotAccess::Method { receiver, .. } | DotAccess::Field { receiver, .. }),
@@ -282,7 +315,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_variant(&self) -> bool {
-        matches!(self.name_ctx, Some(NameContext { kind: NameKind::Variant, .. }))
+        matches!(self.name_ctx(), Some(NameContext { kind: NameKind::Variant, .. }))
     }
 
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
@@ -307,7 +340,7 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expect_field(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::TupleField))
-            || matches!(self.name_ctx, Some(NameContext { kind: NameKind::RecordField, .. }))
+            || matches!(self.name_ctx(), Some(NameContext { kind: NameKind::RecordField, .. }))
     }
 
     /// Whether the cursor is right after a trait or impl header.
@@ -345,13 +378,13 @@ impl<'a> CompletionContext<'a> {
                 Some(ImmediateLocation::RecordPat(_) | ImmediateLocation::RecordExpr(_))
             )
             || matches!(
-                self.name_ctx,
+                self.name_ctx(),
                 Some(NameContext { kind: NameKind::Module(_) | NameKind::Rename, .. })
             )
     }
 
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
-        self.nameref_ctx.as_ref().and_then(|ctx| ctx.path_ctx.as_ref())
+        self.nameref_ctx().and_then(|ctx| ctx.path_ctx.as_ref())
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
@@ -501,7 +534,9 @@ impl<'a> CompletionContext<'a> {
             file_with_fake_ident.syntax().token_at_offset(offset).right_biased()?;
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
+        dbg!(&original_token);
         let token = sema.descend_into_macros_single(original_token.clone());
+        dbg!(&token);
         let scope = sema.scope_at_offset(&token.parent()?, offset)?;
         let krate = scope.krate();
         let module = scope.module();
@@ -530,11 +565,9 @@ impl<'a> CompletionContext<'a> {
             incomplete_let: false,
             completion_location: None,
             prev_sibling: None,
-            fake_attribute_under_caret: None,
             previous_token: None,
-            name_ctx: None,
-            lifetime_ctx: None,
-            nameref_ctx: None,
+            // dummy value, will be overwritten
+            ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
             pattern_ctx: None,
             existing_derives: Default::default(),
             locals,
@@ -544,7 +577,7 @@ impl<'a> CompletionContext<'a> {
             file_with_fake_ident.syntax().clone(),
             offset,
             fake_ident_token,
-        );
+        )?;
         Some(ctx)
     }
 
@@ -557,7 +590,7 @@ impl<'a> CompletionContext<'a> {
         mut speculative_file: SyntaxNode,
         mut offset: TextSize,
         mut fake_ident_token: SyntaxToken,
-    ) {
+    ) -> Option<()> {
         let _p = profile::span("CompletionContext::expand_and_fill");
         let mut derive_ctx = None;
 
@@ -687,7 +720,7 @@ impl<'a> CompletionContext<'a> {
             break 'expansion;
         }
 
-        self.fill(&original_file, speculative_file, offset, derive_ctx);
+        self.fill(&original_file, speculative_file, offset, derive_ctx)
     }
 
     /// Calculate the expected type and name of the cursor position.
@@ -835,7 +868,7 @@ impl<'a> CompletionContext<'a> {
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
         derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
-    ) {
+    ) -> Option<()> {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         if is_in_token_of_for_loop(syntax_element.clone()) {
@@ -844,11 +877,10 @@ impl<'a> CompletionContext<'a> {
             // don't bother populating the context
             // FIXME: the completion calculations should end up good enough
             // such that this special case becomes unnecessary
-            return;
+            return None;
         }
 
         self.previous_token = previous_token(syntax_element.clone());
-        self.fake_attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
 
         self.incomplete_let =
             syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
@@ -870,21 +902,49 @@ impl<'a> CompletionContext<'a> {
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
-                if let Some(parent) = name_ref.syntax().parent() {
-                    let (mut nameref_ctx, _) =
-                        Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
-                    if let Some(path_ctx) = &mut nameref_ctx.path_ctx {
-                        path_ctx.kind = PathKind::Derive;
-                    }
-                    self.nameref_ctx = Some(nameref_ctx);
+                let parent = name_ref.syntax().parent()?;
+                let (mut nameref_ctx, _) =
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
+                if let Some(path_ctx) = &mut nameref_ctx.path_ctx {
+                    path_ctx.kind = PathKind::Derive;
                 }
+                self.ident_ctx = IdentContext::NameRef(nameref_ctx);
+                return Some(());
             }
-            return;
+            return None;
         }
 
         let name_like = match find_node_at_offset(&file_with_fake_ident, offset) {
             Some(it) => it,
-            None => return,
+            None => {
+                if let Some(original) = ast::String::cast(self.original_token.clone()) {
+                    self.ident_ctx = IdentContext::String {
+                        original,
+                        expanded: ast::String::cast(self.token.clone()),
+                    };
+                } else {
+                    // Fix up trailing whitespace problem
+                    // #[attr(foo = $0
+                    let token = if self.token.kind() == SyntaxKind::WHITESPACE {
+                        self.previous_token.as_ref()?
+                    } else {
+                        &self.token
+                    };
+                    let p = token.parent()?;
+                    if p.kind() == SyntaxKind::TOKEN_TREE
+                        && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
+                    {
+                        self.ident_ctx = IdentContext::UnexpandedAttrTT {
+                            fake_attribute_under_caret: syntax_element
+                                .ancestors()
+                                .find_map(ast::Attr::cast),
+                        };
+                    } else {
+                        return None;
+                    }
+                }
+                return Some(());
+            }
         };
         self.completion_location =
             determine_location(&self.sema, original_file, offset, &name_like);
@@ -902,25 +962,26 @@ impl<'a> CompletionContext<'a> {
 
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
-                self.lifetime_ctx = Self::classify_lifetime(&self.sema, original_file, lifetime);
+                self.ident_ctx = IdentContext::Lifetime(Self::classify_lifetime(
+                    &self.sema,
+                    original_file,
+                    lifetime,
+                )?);
             }
             ast::NameLike::NameRef(name_ref) => {
-                if let Some(parent) = name_ref.syntax().parent() {
-                    let (nameref_ctx, pat_ctx) =
-                        Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
-                    self.nameref_ctx = Some(nameref_ctx);
-                    self.pattern_ctx = pat_ctx;
-                }
+                let parent = name_ref.syntax().parent()?;
+                let (nameref_ctx, pat_ctx) =
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
+                self.ident_ctx = IdentContext::NameRef(nameref_ctx);
+                self.pattern_ctx = pat_ctx;
             }
             ast::NameLike::Name(name) => {
-                if let Some((name_ctx, pat_ctx)) =
-                    Self::classify_name(&self.sema, original_file, name)
-                {
-                    self.pattern_ctx = pat_ctx;
-                    self.name_ctx = Some(name_ctx);
-                }
+                let (name_ctx, pat_ctx) = Self::classify_name(&self.sema, original_file, name)?;
+                self.pattern_ctx = pat_ctx;
+                self.ident_ctx = IdentContext::Name(name_ctx);
             }
         }
+        Some(())
     }
 
     fn classify_lifetime(

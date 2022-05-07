@@ -18,7 +18,7 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{CompletionContext, IdentContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     item::CompletionItem,
     Completions,
 };
@@ -35,7 +35,10 @@ pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
     ctx: &CompletionContext,
 ) -> Option<()> {
-    let attribute = ctx.fake_attribute_under_caret.as_ref()?;
+    let attribute = match &ctx.ident_ctx {
+        IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: Some(it) } => it,
+        _ => return None,
+    };
     let name_ref = match attribute.path() {
         Some(p) => Some(p.as_single_name_ref()?),
         None => None,

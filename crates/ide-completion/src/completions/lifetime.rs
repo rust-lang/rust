@@ -17,7 +17,7 @@ use crate::{
 
 /// Completes lifetimes.
 pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) {
-    let (lp, lifetime) = match &ctx.lifetime_ctx {
+    let (lp, lifetime) = match ctx.lifetime_ctx() {
         Some(LifetimeContext { kind: LifetimeKind::Lifetime, lifetime }) => (None, lifetime),
         Some(LifetimeContext {
             kind: LifetimeKind::LifetimeParam { is_decl: false, param },
@@ -49,7 +49,7 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
 
 /// Completes labels.
 pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
-    if !matches!(ctx.lifetime_ctx, Some(LifetimeContext { kind: LifetimeKind::LabelRef, .. })) {
+    if !matches!(ctx.lifetime_ctx(), Some(LifetimeContext { kind: LifetimeKind::LabelRef, .. })) {
         return;
     }
     ctx.process_all_names_raw(&mut |name, res| {
