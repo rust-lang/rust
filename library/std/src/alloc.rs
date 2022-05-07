@@ -42,8 +42,6 @@
 //! [`GlobalAlloc`] trait. This type can be provided by an external library:
 //!
 //! ```rust,ignore (demonstrates crates.io usage)
-//! extern crate jemallocator;
-//!
 //! use jemallocator::Jemalloc;
 //!
 //! #[global_allocator]

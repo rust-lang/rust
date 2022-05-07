@@ -284,7 +284,19 @@ impl StepDescription {
             }
 
             if !attempted_run {
-                panic!("error: no rules matched {}", path.display());
+                eprintln!(
+                    "error: no `{}` rules matched '{}'",
+                    builder.kind.as_str(),
+                    path.display()
+                );
+                eprintln!(
+                    "help: run `x.py {} --help --verbose` to show a list of available paths",
+                    builder.kind.as_str()
+                );
+                eprintln!(
+                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                );
+                std::process::exit(1);
             }
         }
     }
@@ -1405,8 +1417,12 @@ impl<'a> Builder<'a> {
         // FIXME(davidtwco): #[cfg(not(bootstrap))] - #95612 needs to be in the bootstrap compiler
         // for this conditional to be removed.
         if !target.contains("windows") || compiler.stage >= 1 {
-            if target.contains("linux") || target.contains("windows") || target.contains("openbsd")
-            {
+            let needs_unstable_opts = target.contains("linux")
+                || target.contains("windows")
+                || target.contains("bsd")
+                || target.contains("dragonfly");
+
+            if needs_unstable_opts {
                 rustflags.arg("-Zunstable-options");
             }
             match self.config.rust_split_debuginfo {

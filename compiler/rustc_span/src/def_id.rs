@@ -281,7 +281,12 @@ impl DefId {
     #[inline]
     #[track_caller]
     pub fn expect_local(self) -> LocalDefId {
-        self.as_local().unwrap_or_else(|| panic!("DefId::expect_local: `{:?}` isn't local", self))
+        // NOTE: `match` below is required to apply `#[track_caller]`,
+        // i.e. don't use closures.
+        match self.as_local() {
+            Some(local_def_id) => local_def_id,
+            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+        }
     }
 
     #[inline]
