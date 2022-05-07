@@ -374,19 +374,6 @@ mod baz {
     }
 
     #[test]
-    fn not_applicable_in_import_statements() {
-        check_assist_not_applicable(
-            auto_import,
-            r"
-            use PubStruct$0;
-
-            pub mod PubMod {
-                pub struct PubStruct;
-            }",
-        );
-    }
-
-    #[test]
     fn function_import() {
         check_assist(
             auto_import,
@@ -1119,6 +1106,45 @@ mod foo {
 #[derive(Copy)]
 struct Foo;
 "#,
+        );
+    }
+
+    #[test]
+    fn works_in_use_start() {
+        check_assist(
+            auto_import,
+            r#"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use foo$0::Foo;
+"#,
+            r#"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use bar::foo;
+use foo::Foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_non_start_use() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use foo::Foo$0;
+",
         );
     }
 }

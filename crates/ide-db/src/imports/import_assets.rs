@@ -114,8 +114,13 @@ impl ImportAssets {
         sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
         let candidate_node = fully_qualified_path.syntax().clone();
-        if candidate_node.ancestors().find_map(ast::Use::cast).is_some() {
-            return None;
+        if let Some(use_tree) = candidate_node.ancestors().find_map(ast::UseTree::cast) {
+            // Path is inside a use tree, then only continue if it is the first segment of a use statement.
+            if use_tree.syntax().parent().and_then(ast::Use::cast).is_none()
+                || fully_qualified_path.qualifier().is_some()
+            {
+                return None;
+            }
         }
         Some(Self {
             import_candidate: ImportCandidate::for_regular_path(sema, fully_qualified_path)?,
