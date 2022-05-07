@@ -8,7 +8,7 @@
 
     // Scroll code block to the given code location
     function scrollToLoc(elt, loc) {
-        const lines = elt.querySelector('.line-numbers');
+        const lines = elt.querySelector(".line-numbers");
         let scrollOffset;
 
         // If the block is greater than the size of the viewer,
@@ -32,16 +32,16 @@
     function updateScrapedExample(example) {
         const locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
         let locIndex = 0;
-        const highlights = Array.prototype.slice.call(example.querySelectorAll('.highlight'));
-        const link = example.querySelector('.scraped-example-title a');
+        const highlights = Array.prototype.slice.call(example.querySelectorAll(".highlight"));
+        const link = example.querySelector(".scraped-example-title a");
 
         if (locs.length > 1) {
             // Toggle through list of examples in a given file
             const onChangeLoc = changeIndex => {
-                removeClass(highlights[locIndex], 'focus');
+                removeClass(highlights[locIndex], "focus");
                 changeIndex();
                 scrollToLoc(example, locs[locIndex][0]);
-                addClass(highlights[locIndex], 'focus');
+                addClass(highlights[locIndex], "focus");
 
                 const url = locs[locIndex][1];
                 const title = locs[locIndex][2];
@@ -50,24 +50,24 @@
                 link.innerHTML = title;
             };
 
-            example.querySelector('.prev')
-                .addEventListener('click', () => {
+            example.querySelector(".prev")
+                .addEventListener("click", () => {
                     onChangeLoc(() => {
                         locIndex = (locIndex - 1 + locs.length) % locs.length;
                     });
                 });
 
-            example.querySelector('.next')
-                .addEventListener('click', () => {
+            example.querySelector("next")
+                .addEventListener("click", () => {
                     onChangeLoc(() => {
                         locIndex = (locIndex + 1) % locs.length;
                     });
                 });
         }
 
-        const expandButton = example.querySelector('.expand');
+        const expandButton = example.querySelector(".expand");
         if (expandButton) {
-            expandButton.addEventListener('click', () => {
+            expandButton.addEventListener("click", () => {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
                     scrollToLoc(example, locs[0][0]);
@@ -81,19 +81,19 @@
         scrollToLoc(example, locs[0][0]);
     }
 
-    const firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');
+    const firstExamples = document.querySelectorAll(".scraped-example-list > .scraped-example");
     onEachLazy(firstExamples, updateScrapedExample);
-    onEachLazy(document.querySelectorAll('.more-examples-toggle'), toggle => {
+    onEachLazy(document.querySelectorAll(".more-examples-toggle"), toggle => {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
-        onEachLazy(toggle.querySelectorAll('.toggle-line, .hide-more'), button => {
-            button.addEventListener('click', () => {
+        onEachLazy(toggle.querySelectorAll(".toggle-line, .hide-more"), button => {
+            button.addEventListener("click", () => {
                 toggle.open = false;
             });
         });
 
-        const moreExamples = toggle.querySelectorAll('.scraped-example');
-        toggle.querySelector('summary').addEventListener('click', () => {
+        const moreExamples = toggle.querySelectorAll(".scraped-example");
+        toggle.querySelector("summary").addEventListener("click", () => {
             // Wrapping in setTimeout ensures the update happens after the elements are actually
             // visible. This is necessary since updateScrapedExample calls scrollToLoc which
             // depends on offsetHeight, a property that requires an element to be visible to
