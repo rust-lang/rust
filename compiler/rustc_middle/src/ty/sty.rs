@@ -835,6 +835,19 @@ impl<'tcx> TraitRef<'tcx> {
 
         self
     }
+
+    pub fn with_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        if !self.constness().is_const() {
+            self.substs = tcx.mk_substs(
+                self.substs
+                    .iter()
+                    .take(self.substs.len() - 1)
+                    .chain(Some(ty::ConstnessArg::Required.into())),
+            );
+        }
+
+        self
+    }
 }
 
 pub type PolyTraitRef<'tcx> = Binder<'tcx, TraitRef<'tcx>>;

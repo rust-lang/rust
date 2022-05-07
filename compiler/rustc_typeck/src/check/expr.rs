@@ -1312,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let body = self.tcx.hir().body(anon_const.body);
 
         // Create a new function context.
-        let fcx = FnCtxt::new(self, self.param_env.with_const(), body.value.hir_id);
+        let fcx = FnCtxt::new(self, self.param_env, body.value.hir_id);
         crate::check::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(&body.value, expected);

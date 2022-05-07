@@ -186,8 +186,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     // onto one that ignores the constness. This is equivalent to saying that
                     // we match a `Trait` bound on the struct with a `Trait` or `~const Trait`
                     // in the impl.
-                    let non_const_a =
-                        ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..a };
+                    let non_const_a = a.without_const(tcx);
                     relator.relate(predicate.rebind(non_const_a), p.rebind(b)).is_ok()
                 }
                 (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {

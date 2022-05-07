@@ -980,7 +980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .type_implements_trait(
                                 check_trait,
                                 ty,
-                                self.tcx.mk_substs_trait(ty, &[]),
+                                self.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
                                 self.param_env,
                             )
                             .must_apply_modulo_regions()
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .type_implements_trait(
                                     check_trait,
                                     ty,
-                                    self.tcx.mk_substs_trait(ty, &[]),
+                                    self.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
                                     self.param_env,
                                 )
                                 .must_apply_modulo_regions()
@@ -1355,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
-            let ty_params = self.tcx.mk_substs_trait(base_path_ty, &[]);
+            let ty_params = self.tcx.mk_substs_trait(base_path_ty, &[], ty::ConstnessArg::Not);
             self.infcx
                 .type_implements_trait(
                     drop_trait,

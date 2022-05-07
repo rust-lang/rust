@@ -282,6 +282,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_segment.args(),
             item_segment.infer_args,
             None,
+            None,
         );
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(item_segment.args());
 
@@ -333,6 +334,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
+        constness: Option<ty::ConstnessArg>,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -372,7 +374,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // here and so associated type bindings will be handled regardless of whether there are any
         // non-`Self` generic parameters.
         if generics.params.is_empty() {
-            return (tcx.intern_substs(&[]), arg_count);
+            return (
+                tcx.intern_substs(&constness.map(Into::into).into_iter().collect::<Vec<_>>()),
+                arg_count,
+            );
         }
 
         let is_object = self_ty.map_or(false, |ty| ty == self.tcx().types.trait_object_dummy_self);
@@ -584,6 +589,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             &arg_count,
             &mut substs_ctx,
+            constness,
         );
 
         self.complain_about_missing_type_params(
@@ -671,6 +677,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 item_segment.args(),
                 item_segment.infer_args,
                 None,
+                None,
             )
             .0
         }
@@ -703,7 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         hir_id: hir::HirId,
         span: Span,
         binding_span: Option<Span>,
-        constness: ty::BoundConstness,
+        constness: ty::ConstnessArg,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         trait_ref_span: Span,
@@ -721,6 +728,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             Some(self_ty),
+            Some(constness),
         );
 
         let tcx = self.tcx();
@@ -733,7 +741,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.trait_bounds.push((poly_trait_ref, span, constness));
+        bounds.trait_bounds.push((poly_trait_ref, span));
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
@@ -777,7 +785,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         trait_ref: &hir::TraitRef<'_>,
         span: Span,
-        constness: ty::BoundConstness,
+        constness: ty::ConstnessArg,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
@@ -819,7 +827,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
     ) {
         let binding_span = Some(span);
-        let constness = ty::BoundConstness::NotConst;
+        let constness = ty::ConstnessArg::Not;
         let speculative = false;
         let trait_ref_span = span;
         let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
@@ -883,6 +891,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_segment.args(),
             trait_segment.infer_args,
             Some(self_ty),
+            Some(ty::ConstnessArg::Not),
         )
     }
 
@@ -990,8 +999,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let constness = match modifier {
-                        hir::TraitBoundModifier::MaybeConst => ty::BoundConstness::ConstIfConst,
-                        hir::TraitBoundModifier::None => ty::BoundConstness::NotConst,
+                        hir::TraitBoundModifier::MaybeConst => ty::ConstnessArg::Param,
+                        hir::TraitBoundModifier::None => ty::ConstnessArg::Not,
                         hir::TraitBoundModifier::Maybe => continue,
                     };
 
@@ -1327,7 +1336,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } = self.instantiate_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
-                ty::BoundConstness::NotConst,
+                ty::ConstnessArg::Not,
                 dummy_self,
                 &mut bounds,
                 false,
@@ -1338,8 +1347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits =
-            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
+        let expanded_traits = traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter());
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
             .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
             .partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
@@ -1410,10 +1418,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let regular_traits_refs_spans = bounds
             .trait_bounds
             .into_iter()
-            .filter(|(trait_ref, _, _)| !tcx.trait_is_auto(trait_ref.def_id()));
+            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
-        for (base_trait_ref, span, constness) in regular_traits_refs_spans {
-            assert_eq!(constness, ty::BoundConstness::NotConst);
+        for (base_trait_ref, span) in regular_traits_refs_spans {
+            assert_eq!(base_trait_ref.skip_binder().constness(), ty::ConstnessArg::Not);
 
             for obligation in traits::elaborate_trait_ref(tcx, base_trait_ref) {
                 debug!(
@@ -2655,6 +2663,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &hir::PathSegment::invalid(),
                     &GenericArgs::none(),
                     true,
+                    None,
                     None,
                 );
                 EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))

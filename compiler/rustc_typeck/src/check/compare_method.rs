@@ -205,11 +205,8 @@ fn compare_predicate_entailment<'tcx>(
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        hir::Constness::NotConst,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
     tcx.infer_ctxt().enter(|infcx| {
@@ -1239,11 +1236,8 @@ fn compare_type_predicate_entailment<'tcx>(
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        hir::Constness::NotConst,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());

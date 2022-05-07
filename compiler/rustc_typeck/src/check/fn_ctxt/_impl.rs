@@ -1452,6 +1452,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infer_args_for_err: &infer_args_for_err,
                     segments,
                 },
+                None,
             )
         });
         assert!(!substs.has_escaping_bound_vars());

@@ -67,6 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     span,
                                 })
                                 .into()],
+                            ty::ConstnessArg::Not,
                         );
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
@@ -74,7 +75,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.without_const().to_predicate(tcx),
+                            poly_trait_ref.to_predicate(tcx),
                         );
                         self.predicate_may_hold(&obligation)
                     })

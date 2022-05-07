@@ -29,7 +29,7 @@ pub struct Bounds<'tcx> {
 
     /// A list of trait bounds. So if you had `T: Debug` this would be
     /// `T: Debug`. Note that the self-type is explicit here.
-    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span, ty::BoundConstness)>,
+    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span)>,
 
     /// A list of projection equality bounds. So if you had `T:
     /// Iterator<Item = u32>` this would include `<T as
@@ -63,9 +63,9 @@ impl<'tcx> Bounds<'tcx> {
             tcx.lang_items().sized_trait().map(move |sized| {
                 let trait_ref = ty::Binder::dummy(ty::TraitRef {
                     def_id: sized,
-                    substs: tcx.mk_substs_trait(param_ty, &[]),
+                    substs: tcx.mk_substs_trait_non_const(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(tcx), span)
+                (trait_ref.to_predicate(tcx), span)
             })
         });
 
@@ -75,11 +75,10 @@ impl<'tcx> Bounds<'tcx> {
                 .to_predicate(tcx);
             (pred, span)
         });
-        let trait_bounds =
-            self.trait_bounds.iter().map(move |&(bound_trait_ref, span, constness)| {
-                let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
-                (predicate, span)
-            });
+        let trait_bounds = self.trait_bounds.iter().map(move |&(bound_trait_ref, span)| {
+            let predicate = bound_trait_ref.to_predicate(tcx);
+            (predicate, span)
+        });
         let projection_bounds = self
             .projection_bounds
             .iter()

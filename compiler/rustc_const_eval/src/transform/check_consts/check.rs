@@ -720,10 +720,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         return;
                     }
 
-                    let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+                    let trait_ref = TraitRef::from_method(tcx, trait_id, substs).with_const(tcx);
                     let poly_trait_pred = Binder::dummy(TraitPredicate {
                         trait_ref,
-                        constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });
                     let obligation =
@@ -735,7 +734,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     });
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                        Ok(Some(ImplSource::Param(_, ty::ConstnessArg::Required))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env

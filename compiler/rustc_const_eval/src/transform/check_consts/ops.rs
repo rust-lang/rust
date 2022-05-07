@@ -149,8 +149,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         ObligationCause::dummy(),
                         param_env,
                         Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: BoundConstness::NotConst,
+                            trait_ref: trait_ref.without_const(),
                             polarity: ImplPolarity::Positive,
                         }),
                     );

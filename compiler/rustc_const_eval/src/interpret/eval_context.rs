@@ -924,7 +924,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let param_env = param_env.with_const();
         // Use a precise span for better cycle errors.
         let val = self.tcx.at(self.cur_span()).eval_to_allocation_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)

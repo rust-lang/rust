@@ -833,6 +833,11 @@ impl<'tcx> TraitPredicate<'tcx> {
     pub fn constness(self) -> ty::ConstnessArg {
         self.trait_ref.constness()
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        self.trait_ref = self.trait_ref.without_const(tcx);
+        self
+    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {

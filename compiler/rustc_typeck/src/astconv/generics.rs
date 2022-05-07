@@ -189,6 +189,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Option<Ty<'tcx>>,
         arg_count: &GenericArgCountResult,
         ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
+        constness: Option<ty::ConstnessArg>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
@@ -382,6 +383,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
+
+        substs.extend(constness.map(Into::into));
 
         tcx.intern_substs(&substs)
     }

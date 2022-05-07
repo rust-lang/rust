@@ -521,9 +521,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
                                         def_id: t.def_id(),
-                                        substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
+                                        substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[], t.constness()),
                                     },
-                                    constness: t.constness,
                                     polarity: t.polarity,
                                 }));
                             let obl = Obligation::new(
