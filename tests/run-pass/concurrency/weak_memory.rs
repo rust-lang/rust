@@ -31,7 +31,7 @@
 #![feature(atomic_from_mut)]
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{fence, AtomicU16, AtomicU32, AtomicUsize};
+use std::sync::atomic::{AtomicU16, AtomicU32, AtomicUsize};
 use std::thread::{spawn, yield_now};
 
 #[derive(Copy, Clone)]
@@ -52,13 +52,6 @@ fn static_atomic(val: usize) -> &'static AtomicUsize {
 // Spins and yields until until acquires a pre-determined value
 fn acquires_value(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Acquire) != val {
-        yield_now();
-    }
-    val
-}
-
-fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
-    while loc.load(Relaxed) != val {
         yield_now();
     }
     val
@@ -242,54 +235,6 @@ fn test_sc_store_buffering() {
     assert_ne!((a, b), (0, 0));
 }
 
-// 2.2 Second Problem: SC Fences are Too Weak
-// This test should pass under the C++20 model Rust is using.
-// Unfortunately, Miri's weak memory emulation only follows C++11 model
-// as we don't know how to correctly emulate C++20's revised SC semantics
-#[allow(dead_code)]
-fn test_cpp20_rwc_syncs() {
-    /*
-    int main() {
-        atomic_int x = 0;
-        atomic_int y = 0;
-
-        {{{ x.store(1,mo_relaxed);
-        ||| { r1=x.load(mo_relaxed).readsvalue(1);
-              fence(mo_seq_cst);
-              r2=y.load(mo_relaxed); }
-        ||| { y.store(1,mo_relaxed);
-              fence(mo_seq_cst);
-              r3=x.load(mo_relaxed); }
-        }}}
-        return 0;
-    }
-    */
-    let x = static_atomic(0);
-    let y = static_atomic(0);
-
-    let j1 = spawn(move || {
-        x.store(1, Relaxed);
-    });
-
-    let j2 = spawn(move || {
-        reads_value(&x, 1);
-        fence(SeqCst);
-        y.load(Relaxed)
-    });
-
-    let j3 = spawn(move || {
-        y.store(1, Relaxed);
-        fence(SeqCst);
-        x.load(Relaxed)
-    });
-
-    j1.join().unwrap();
-    let b = j2.join().unwrap();
-    let c = j3.join().unwrap();
-
-    assert_ne!((b, c), (0, 0));
-}
-
 pub fn main() {
     test_imperfectly_overlapping_access();
     // TODO: does this make chances of spurious success
@@ -303,6 +248,5 @@ pub fn main() {
         test_wrc();
         test_corr();
         test_sc_store_buffering();
-        // test_cpp20_rwc_syncs();
     }
 }
