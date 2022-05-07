@@ -7,9 +7,8 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind},
+    context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
-    patterns::ImmediateLocation,
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
 };
 
@@ -196,7 +195,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
         return false;
     }
 
-    match ctx.path_context {
+    match ctx.path_context() {
         Some(PathCompletionCtx { kind: PathKind::Expr { .. }, has_call_parens: true, .. }) => {
             return false
         }
@@ -208,8 +207,8 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
     };
 
     if matches!(
-        ctx.completion_location,
-        Some(ImmediateLocation::MethodCall { has_parens: true, .. })
+        ctx.nameref_ctx(),
+        Some(NameRefContext { dot_access: Some(DotAccess::Method { has_parens: true, .. }), .. })
     ) {
         return false;
     }

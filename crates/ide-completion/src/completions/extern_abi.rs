@@ -5,7 +5,9 @@ use syntax::{
 };
 
 use crate::{
-    completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
+    completions::Completions,
+    context::{CompletionContext, IdentContext},
+    CompletionItem, CompletionItemKind,
 };
 
 // Most of these are feature gated, we should filter/add feature gate completions once we have them.
@@ -41,10 +43,14 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
 ];
 
 pub(crate) fn complete_extern_abi(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if ctx.token.parent().and_then(ast::Abi::cast).is_none() {
-        return None;
-    }
-    let abi_str = ast::String::cast(ctx.token.clone())?;
+    let abi_str = match &ctx.ident_ctx {
+        IdentContext::String { expanded: Some(expanded), .. }
+            if expanded.syntax().parent().map_or(false, |it| ast::Abi::can_cast(it.kind())) =>
+        {
+            expanded
+        }
+        _ => return None,
+    };
     let source_range = abi_str.text_range_between_quotes()?;
     for &abi in SUPPORTED_CALLING_CONVENTIONS {
         CompletionItem::new(CompletionItemKind::Keyword, source_range, abi).add_to(acc);

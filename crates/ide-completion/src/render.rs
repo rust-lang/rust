@@ -272,7 +272,7 @@ fn render_resolution_simple_(
 
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
-        ctx.completion.path_context,
+        ctx.completion.path_context(),
         Some(PathCompletionCtx { kind: PathKind::Type, has_type_args: false, .. })
     ) && ctx.completion.config.add_call_parenthesis;
     if type_path_no_ty_args {

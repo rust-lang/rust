@@ -12,17 +12,20 @@ use syntax::{ast, TokenText};
 
 use crate::{
     completions::Completions,
-    context::{CompletionContext, LifetimeContext},
+    context::{CompletionContext, LifetimeContext, LifetimeKind},
 };
 
 /// Completes lifetimes.
 pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) {
-    let lp = match &ctx.lifetime_ctx {
-        Some(LifetimeContext::Lifetime) => None,
-        Some(LifetimeContext::LifetimeParam { is_decl: false, param }) => Some(param),
+    let (lp, lifetime) = match ctx.lifetime_ctx() {
+        Some(LifetimeContext { kind: LifetimeKind::Lifetime, lifetime }) => (None, lifetime),
+        Some(LifetimeContext {
+            kind: LifetimeKind::LifetimeParam { is_decl: false, param },
+            lifetime,
+        }) => (Some(param), lifetime),
         _ => return,
     };
-    let param_lifetime = match (ctx.lifetime(), lp.and_then(|lp| lp.lifetime())) {
+    let param_lifetime = match (lifetime, lp.and_then(|lp| lp.lifetime())) {
         (Some(lt), Some(lp)) if lp == lt.clone() => return,
         (Some(_), Some(lp)) => Some(lp),
         _ => None,
@@ -46,7 +49,7 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
 
 /// Completes labels.
 pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
-    if !matches!(ctx.lifetime_ctx, Some(LifetimeContext::LabelRef)) {
+    if !matches!(ctx.lifetime_ctx(), Some(LifetimeContext { kind: LifetimeKind::LabelRef, .. })) {
         return;
     }
     ctx.process_all_names_raw(&mut |name, res| {

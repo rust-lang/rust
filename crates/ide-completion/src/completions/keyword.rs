@@ -2,7 +2,7 @@
 //! - `self`, `super` and `crate`, as these are considered part of path completions.
 //! - `await`, as this is a postfix completion we handle this in the postfix completions.
 
-use syntax::{SyntaxKind, T};
+use syntax::T;
 
 use crate::{
     context::{PathCompletionCtx, PathKind},
@@ -11,16 +11,8 @@ use crate::{
 };
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.token.kind() == SyntaxKind::COMMENT {
-        cov_mark::hit!(no_keyword_completion_in_comments);
-        return;
-    }
     if matches!(ctx.completion_location, Some(ImmediateLocation::RecordExpr(_))) {
         cov_mark::hit!(no_keyword_completion_in_record_lit);
-        return;
-    }
-    if ctx.fake_attribute_under_caret.is_some() {
-        cov_mark::hit!(no_keyword_completion_in_attr_of_expr);
         return;
     }
     if ctx.is_non_trivial_path() {
@@ -124,8 +116,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("mut", "mut ");
     }
 
-    let (can_be_stmt, in_loop_body) = match ctx.path_context {
-        Some(PathCompletionCtx {
+    let (can_be_stmt, in_loop_body) = match ctx.path_context() {
+        Some(&PathCompletionCtx {
             is_absolute_path: false,
             kind: PathKind::Expr { in_block_expr, in_loop_body, .. },
             ..

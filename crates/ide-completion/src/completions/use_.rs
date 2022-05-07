@@ -5,16 +5,19 @@ use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    context::{CompletionContext, NameRefContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     item::Builder,
     CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (&is_absolute_path, qualifier) = match &ctx.path_context {
-        Some(PathCompletionCtx { kind: PathKind::Use, is_absolute_path, qualifier, .. }) => {
-            (is_absolute_path, qualifier)
-        }
+    let (&is_absolute_path, qualifier, name_ref) = match ctx.nameref_ctx() {
+        Some(NameRefContext {
+            path_ctx:
+                Some(PathCompletionCtx { kind: PathKind::Use, is_absolute_path, qualifier, .. }),
+            nameref,
+            ..
+        }) => (is_absolute_path, qualifier, nameref),
         _ => return,
     };
 
@@ -55,7 +58,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     let unknown_is_current = |name: &hir::Name| {
                         matches!(
-                            ctx.name_ref(),
+                            name_ref,
                             Some(name_ref) if name_ref.syntax().text() == name.to_smol_str().as_str()
                         )
                     };

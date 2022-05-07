@@ -119,7 +119,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         return None;
     }
     // FIXME: This should be encoded in a different way
-    if ctx.pattern_ctx.is_none() && ctx.path_context.is_none() && !ctx.has_dot_receiver() {
+    if ctx.pattern_ctx.is_none() && ctx.path_context().is_none() && !ctx.has_dot_receiver() {
         // completion inside `ast::Name` of a item declaration
         return None;
     }
@@ -217,10 +217,9 @@ pub(crate) fn position_for_import(
 ) -> Option<SyntaxNode> {
     Some(
         match import_candidate {
-            Some(ImportCandidate::Path(_)) => ctx.name_syntax.as_ref()?.syntax(),
             Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual()?.syntax(),
             Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
-            None => return ctx.original_token.parent(),
+            Some(ImportCandidate::Path(_)) | None => return ctx.original_token.parent(),
         }
         .clone(),
     )

@@ -3,21 +3,23 @@
 use std::iter;
 
 use hir::{Module, ModuleSource};
-use ide_db::FxHashSet;
 use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
-    RootDatabase, SymbolKind,
+    FxHashSet, RootDatabase, SymbolKind,
 };
 use syntax::{ast, AstNode, SyntaxKind};
 
-use crate::{context::NameContext, CompletionItem};
-
-use crate::{context::CompletionContext, Completions};
+use crate::{
+    context::{CompletionContext, NameContext, NameKind},
+    CompletionItem, Completions,
+};
 
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let mod_under_caret = match &ctx.name_ctx {
-        Some(NameContext::Module(mod_under_caret)) if mod_under_caret.item_list().is_none() => {
+    let mod_under_caret = match ctx.name_ctx() {
+        Some(NameContext { kind: NameKind::Module(mod_under_caret), .. })
+            if mod_under_caret.item_list().is_none() =>
+        {
             mod_under_caret
         }
         _ => return None,

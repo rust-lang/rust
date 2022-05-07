@@ -3,15 +3,21 @@
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind},
-    patterns::ImmediateLocation,
+    context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
     Completions,
 };
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let dot_receiver = match ctx.dot_receiver() {
-        Some(expr) => expr,
+    let (dot_access, dot_receiver) = match ctx.nameref_ctx() {
+        Some(NameRefContext {
+            dot_access:
+                Some(
+                    access @ (DotAccess::Method { receiver: Some(receiver), .. }
+                    | DotAccess::Field { receiver: Some(receiver), .. }),
+                ),
+            ..
+        }) => (access, receiver),
         _ => return complete_undotted_self(acc, ctx),
     };
 
@@ -20,7 +26,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    if matches!(ctx.completion_location, Some(ImmediateLocation::MethodCall { .. })) {
+    if let DotAccess::Method { .. } = dot_access {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(
@@ -38,7 +44,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    match ctx.path_context {
+    match ctx.path_context() {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,

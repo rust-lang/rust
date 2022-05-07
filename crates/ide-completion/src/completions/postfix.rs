@@ -13,9 +13,8 @@ use text_edit::TextEdit;
 
 use crate::{
     completions::postfix::format_like::add_format_like_completions,
-    context::CompletionContext,
+    context::{CompletionContext, DotAccess, NameRefContext},
     item::{Builder, CompletionRelevancePostfixMatch},
-    patterns::ImmediateLocation,
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
@@ -24,11 +23,15 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    let (dot_receiver, receiver_is_ambiguous_float_literal) = match &ctx.completion_location {
-        Some(ImmediateLocation::MethodCall { receiver: Some(it), .. }) => (it, false),
-        Some(ImmediateLocation::FieldAccess {
-            receiver: Some(it),
-            receiver_is_ambiguous_float_literal,
+    let (dot_receiver, receiver_is_ambiguous_float_literal) = match ctx.nameref_ctx() {
+        Some(NameRefContext {
+            dot_access: Some(DotAccess::Method { receiver: Some(it), .. }),
+            ..
+        }) => (it, false),
+        Some(NameRefContext {
+            dot_access:
+                Some(DotAccess::Field { receiver: Some(it), receiver_is_ambiguous_float_literal }),
+            ..
         }) => (it, *receiver_is_ambiguous_float_literal),
         _ => return,
     };

@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub(crate) fn complete_vis(acc: &mut Completions, ctx: &CompletionContext) {
-    let (&is_absolute_path, qualifier, &has_in_token) = match &ctx.path_context {
+    let (&is_absolute_path, qualifier, &has_in_token) = match ctx.path_context() {
         Some(PathCompletionCtx {
             kind: PathKind::Vis { has_in_token },
             is_absolute_path,

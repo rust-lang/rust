@@ -257,7 +257,6 @@ fn foo() {
 
 #[test]
 fn no_completions_in_comments() {
-    cov_mark::check!(no_keyword_completion_in_comments);
     assert_eq!(
         completion_list(
             r#"

@@ -17,7 +17,7 @@ fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str)
 }
 
 pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    let can_be_stmt = match ctx.path_context {
+    let &can_be_stmt = match ctx.path_context() {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,
@@ -43,7 +43,7 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    let path_kind = match ctx.path_context {
+    let path_kind = match ctx.path_context() {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,

@@ -12,7 +12,7 @@ pub(crate) fn complete_item_list(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (&is_absolute_path, qualifier) = match &ctx.path_context {
+    let (&is_absolute_path, qualifier) = match ctx.path_context() {
         Some(PathCompletionCtx {
             kind: PathKind::Item { .. },
             is_absolute_path,

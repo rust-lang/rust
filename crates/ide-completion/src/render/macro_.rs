@@ -33,8 +33,8 @@ fn render(
     let is_fn_like = macro_.is_fn_like(completion.db);
     let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
 
-    let needs_bang = match completion.path_context {
-        Some(PathCompletionCtx { kind, has_macro_bang, .. }) => {
+    let needs_bang = match completion.path_context() {
+        Some(&PathCompletionCtx { kind, has_macro_bang, .. }) => {
             is_fn_like && kind != PathKind::Use && !has_macro_bang
         }
         _ => is_fn_like,

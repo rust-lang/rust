@@ -78,7 +78,7 @@ fn render_pat(
     fields_omitted: bool,
 ) -> Option<String> {
     let has_call_parens = matches!(
-        ctx.completion.path_context,
+        ctx.completion.path_context(),
         Some(PathCompletionCtx { has_call_parens: true, .. })
     );
     let mut pat = match kind {
