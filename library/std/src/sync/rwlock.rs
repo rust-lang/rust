@@ -101,7 +101,8 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    lock: &'a RwLock<T>,
+    inner_lock: &'a sys::MovableRwLock,
+    data: &'a T,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -510,7 +511,7 @@ impl<T> From<T> for RwLock<T> {
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
-        poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard { lock })
+        poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard { inner_lock: &lock.inner, data: &*lock.data.get() })
     }
 }
 
@@ -553,7 +554,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.lock.data.get() }
+        self.data
     }
 }
 
@@ -577,7 +578,7 @@ impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
         unsafe {
-            self.lock.inner.read_unlock();
+            self.inner_lock.read_unlock();
         }
     }
 }
