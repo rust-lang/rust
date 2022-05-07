@@ -1171,6 +1171,7 @@ impl<'a> Resolver<'a> {
                         | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
+                        | InlineAsmSymRibKind
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
@@ -1216,22 +1217,6 @@ impl<'a> Resolver<'a> {
                             }
                             return Res::Err;
                         }
-                        InlineAsmSymRibKind => {
-                            let features = self.session.features_untracked();
-                            if !features.generic_const_exprs {
-                                if let Some(span) = finalize {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInNonTrivialAnonConst {
-                                            name: rib_ident.name,
-                                            is_type: true,
-                                        },
-                                    );
-                                }
-                                return Res::Err;
-                            }
-                            continue;
-                        }
                     };
 
                     if let Some(span) = finalize {
@@ -1262,6 +1247,7 @@ impl<'a> Resolver<'a> {
                         | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
+                        | InlineAsmSymRibKind
                         | ForwardGenericParamBanRibKind => continue,
 
                         ConstantItemRibKind(trivial, _) => {
@@ -1295,22 +1281,6 @@ impl<'a> Resolver<'a> {
                                 );
                             }
                             return Res::Err;
-                        }
-                        InlineAsmSymRibKind => {
-                            let features = self.session.features_untracked();
-                            if !features.generic_const_exprs {
-                                if let Some(span) = finalize {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInNonTrivialAnonConst {
-                                            name: rib_ident.name,
-                                            is_type: false,
-                                        },
-                                    );
-                                }
-                                return Res::Err;
-                            }
-                            continue;
                         }
                     };
 
