@@ -1,8 +1,3 @@
-/* eslint-env es6 */
-/* eslint no-var: "error" */
-/* eslint prefer-const: "error" */
-/* eslint prefer-arrow-callback: "error" */
-
 // From rust:
 /* global search, sourcesIndex */
 
