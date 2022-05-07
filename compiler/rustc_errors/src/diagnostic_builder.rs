@@ -1,4 +1,4 @@
-use crate::diagnostic::DiagnosticArgValue;
+use crate::diagnostic::IntoDiagnosticArg;
 use crate::{Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed};
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
@@ -528,7 +528,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
-        arg: DiagnosticArgValue<'static>,
+        arg: impl IntoDiagnosticArg,
     ) -> &mut Self);
 
     forward!(pub fn subdiagnostic(

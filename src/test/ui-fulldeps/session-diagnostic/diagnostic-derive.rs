@@ -327,7 +327,7 @@ struct ErrorWithDefaultLabelAttr<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-//~^ ERROR no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
+//~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 #[error(code = "E0123", slug = "foo")]
 struct ArgFieldWithoutSkip {
     #[primary_span]

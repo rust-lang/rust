@@ -113,7 +113,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                         quote! {
                             #diag.set_arg(
                                 stringify!(#ident),
-                                #field_binding.into_diagnostic_arg()
+                                #field_binding
                             );
                         }
                     } else {

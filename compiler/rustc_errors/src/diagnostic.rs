@@ -821,9 +821,9 @@ impl Diagnostic {
     pub fn set_arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
-        arg: DiagnosticArgValue<'static>,
+        arg: impl IntoDiagnosticArg,
     ) -> &mut Self {
-        self.args.push((name.into(), arg));
+        self.args.push((name.into(), arg.into_diagnostic_arg()));
         self
     }
 

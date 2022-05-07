@@ -349,7 +349,7 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
         let generated = quote! {
             #diag.set_arg(
                 stringify!(#ident),
-                #binding.into_diagnostic_arg()
+                #binding
             );
         };
 
