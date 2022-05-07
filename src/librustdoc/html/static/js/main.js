@@ -1,7 +1,3 @@
-/* eslint-env es6 */
-/* eslint no-var: "error" */
-/* eslint prefer-const: "error" */
-/* eslint prefer-arrow-callback: "error" */
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
 /* global onEach, onEachLazy, removeClass */
