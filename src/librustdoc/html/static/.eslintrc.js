@@ -16,6 +16,9 @@ module.exports = {
         "semi": [
             "error",
             "always"
-        ]
+        ],
+        "no-var": ["error"],
+        "prefer-const": ["error"],
+        "prefer-arrow-callback": ["error"],
     }
 };
