@@ -151,7 +151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
                     sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                    match def_id.as_local().map(|def_id| hir.def_kind(def_id)) {
+                    match def_id.as_local().map(|def_id| self.tcx.def_kind(def_id)) {
                         Some(DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
                             msg = "instantiate this tuple variant";
                         }

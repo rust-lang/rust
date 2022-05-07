@@ -2676,7 +2676,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
     // Iterate all local crate items no matter where they are defined.
     let hir = tcx.hir();
     for id in hir.items() {
-        if matches!(hir.def_kind(id.def_id), DefKind::Use) {
+        if matches!(tcx.def_kind(id.def_id), DefKind::Use) {
             continue;
         }
 

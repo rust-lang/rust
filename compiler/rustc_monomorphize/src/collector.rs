@@ -1164,7 +1164,7 @@ struct RootCollector<'a, 'tcx> {
 
 impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
-        match self.tcx.hir().def_kind(id.def_id) {
+        match self.tcx.def_kind(id.def_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 let item = self.tcx.hir().item(id);
                 match item.kind {
@@ -1225,7 +1225,7 @@ impl<'v> RootCollector<'_, 'v> {
     }
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
-        if matches!(self.tcx.hir().def_kind(id.def_id), DefKind::AssocFn) {
+        if matches!(self.tcx.def_kind(id.def_id), DefKind::AssocFn) {
             self.push_if_root(id.def_id);
         }
     }

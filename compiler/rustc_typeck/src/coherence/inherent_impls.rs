@@ -9,8 +9,8 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -19,7 +19,9 @@ use rustc_span::Span;
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(tcx: TyCtxt<'_>, (): ()) -> CrateInherentImpls {
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
-    tcx.hir().visit_all_item_likes(&mut collect);
+    for id in tcx.hir().items() {
+        collect.check_item(id);
+    }
     collect.impls_map
 }
 
@@ -44,79 +46,6 @@ pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: DefId) -> &[DefId] {
 struct InherentCollect<'tcx> {
     tcx: TyCtxt<'tcx>,
     impls_map: CrateInherentImpls,
-}
-
-impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
-            return;
-        };
-
-        let self_ty = self.tcx.type_of(item.def_id);
-        match *self_ty.kind() {
-            ty::Adt(def, _) => {
-                self.check_def_id(item, self_ty, def.did());
-            }
-            ty::Foreign(did) => {
-                self.check_def_id(item, self_ty, did);
-            }
-            ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
-                self.check_def_id(item, self_ty, data.principal_def_id().unwrap());
-            }
-            ty::Dynamic(..) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    ty.span,
-                    E0785,
-                    "cannot define inherent `impl` for a dyn auto trait"
-                )
-                .span_label(ty.span, "impl requires at least one non-auto trait")
-                .note("define and implement a new trait or type instead")
-                .emit();
-            }
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::Array(..)
-            | ty::Slice(_)
-            | ty::RawPtr(_)
-            | ty::Ref(..)
-            | ty::Never
-            | ty::Tuple(..) => self.check_primitive_impl(item.def_id, self_ty, items, ty.span),
-            ty::FnPtr(_) | ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    ty.span,
-                    E0118,
-                    "no nominal type found for inherent implementation"
-                );
-
-                err.span_label(ty.span, "impl requires a nominal type")
-                    .note("either implement a trait on it or create a newtype to wrap it instead");
-
-                err.emit();
-            }
-            ty::FnDef(..)
-            | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
-            | ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(_) => {
-                bug!("unexpected impl self type of impl: {:?} {:?}", item.def_id, self_ty);
-            }
-            ty::Error(_) => {}
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
-
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }
 
 const INTO_CORE: &str = "consider moving this inherent impl into `core` if possible";
@@ -244,6 +173,76 @@ impl<'tcx> InherentCollect<'tcx> {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);
+        }
+    }
+
+    fn check_item(&mut self, id: hir::ItemId) {
+        if !matches!(self.tcx.def_kind(id.def_id), DefKind::Impl) {
+            return;
+        }
+
+        let item = self.tcx.hir().item(id);
+        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, ref items, .. }) = item.kind else {
+            return;
+        };
+
+        let self_ty = self.tcx.type_of(item.def_id);
+        match *self_ty.kind() {
+            ty::Adt(def, _) => {
+                self.check_def_id(item, self_ty, def.did());
+            }
+            ty::Foreign(did) => {
+                self.check_def_id(item, self_ty, did);
+            }
+            ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
+                self.check_def_id(item, self_ty, data.principal_def_id().unwrap());
+            }
+            ty::Dynamic(..) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    ty.span,
+                    E0785,
+                    "cannot define inherent `impl` for a dyn auto trait"
+                )
+                .span_label(ty.span, "impl requires at least one non-auto trait")
+                .note("define and implement a new trait or type instead")
+                .emit();
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(..)
+            | ty::Never
+            | ty::Tuple(..) => self.check_primitive_impl(item.def_id, self_ty, items, ty.span),
+            ty::FnPtr(_) | ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    ty.span,
+                    E0118,
+                    "no nominal type found for inherent implementation"
+                );
+
+                err.span_label(ty.span, "impl requires a nominal type")
+                    .note("either implement a trait on it or create a newtype to wrap it instead");
+
+                err.emit();
+            }
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => {
+                bug!("unexpected impl self type of impl: {:?} {:?}", item.def_id, self_ty);
+            }
+            ty::Error(_) => {}
         }
     }
 }

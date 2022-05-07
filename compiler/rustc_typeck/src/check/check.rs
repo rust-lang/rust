@@ -27,6 +27,7 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_ty_utils::representability::{self, Representability};
 
+use rustc_hir::def::DefKind;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -711,28 +712,35 @@ fn check_opaque_meets_bounds<'tcx>(
     });
 }
 
-pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
+pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
-        it.def_id,
-        tcx.def_path_str(it.def_id.to_def_id())
+        id.def_id,
+        tcx.def_path_str(id.def_id.to_def_id())
     );
     let _indenter = indenter();
-    match it.kind {
-        // Consts can play a role in type-checking, so they are included here.
-        hir::ItemKind::Static(..) => {
-            tcx.ensure().typeck(it.def_id);
-            maybe_check_static_with_link_section(tcx, it.def_id, it.span);
-            check_static_inhabited(tcx, it.def_id, it.span);
+    match tcx.def_kind(id.def_id) {
+        DefKind::Static(..) => {
+            tcx.ensure().typeck(id.def_id);
+            maybe_check_static_with_link_section(tcx, id.def_id, tcx.def_span(id.def_id));
+            check_static_inhabited(tcx, id.def_id, tcx.def_span(id.def_id));
         }
-        hir::ItemKind::Const(..) => {
-            tcx.ensure().typeck(it.def_id);
+        DefKind::Const => {
+            tcx.ensure().typeck(id.def_id);
         }
-        hir::ItemKind::Enum(ref enum_definition, _) => {
-            check_enum(tcx, it.span, &enum_definition.variants, it.def_id);
+        DefKind::Enum => {
+            let item = tcx.hir().item(id);
+            let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
+                return;
+            };
+            check_enum(tcx, item.span, &enum_definition.variants, item.def_id);
         }
-        hir::ItemKind::Fn(..) => {} // entirely within check_item_body
-        hir::ItemKind::Impl(ref impl_) => {
+        DefKind::Fn => {} // entirely within check_item_body
+        DefKind::Impl => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::Impl(ref impl_) = it.kind else {
+                return;
+            };
             debug!("ItemKind::Impl {} with id {:?}", it.ident, it.def_id);
             if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.def_id) {
                 check_impl_items_against_trait(
@@ -745,7 +753,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 check_on_unimplemented(tcx, it);
             }
         }
-        hir::ItemKind::Trait(_, _, _, _, ref items) => {
+        DefKind::Trait => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::Trait(_, _, _, _, ref items) = it.kind else {
+                return;
+            };
             check_on_unimplemented(tcx, it);
 
             for item in items.iter() {
@@ -771,28 +783,36 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 }
             }
         }
-        hir::ItemKind::Struct(..) => {
-            check_struct(tcx, it.def_id, it.span);
+        DefKind::Struct => {
+            check_struct(tcx, id.def_id, tcx.def_span(id.def_id));
         }
-        hir::ItemKind::Union(..) => {
-            check_union(tcx, it.def_id, it.span);
+        DefKind::Union => {
+            check_union(tcx, id.def_id, tcx.def_span(id.def_id));
         }
-        hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
+        DefKind::OpaqueTy => {
+            let item = tcx.hir().item(id);
+            let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
+                return;
+            };
             // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
             // `async-std` (and `pub async fn` in general).
             // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
-                let substs = InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
-                check_opaque(tcx, it.def_id, substs, it.span, &origin);
+                let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
+                check_opaque(tcx, item.def_id, substs, item.span, &origin);
             }
         }
-        hir::ItemKind::TyAlias(..) => {
-            let pty_ty = tcx.type_of(it.def_id);
-            let generics = tcx.generics_of(it.def_id);
+        DefKind::TyAlias => {
+            let pty_ty = tcx.type_of(id.def_id);
+            let generics = tcx.generics_of(id.def_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
-        hir::ItemKind::ForeignMod { abi, items } => {
+        DefKind::ForeignMod => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
+                return;
+            };
             check_abi(tcx, it.hir_id(), it.span, abi);
 
             if abi == Abi::RustIntrinsic {
@@ -851,7 +871,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 }
             }
         }
-        _ => { /* nothing to do */ }
+        _ => {}
     }
 }
 
@@ -1451,7 +1471,10 @@ pub(super) fn check_type_params_are_used<'tcx>(
 }
 
 pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
+    let module = tcx.hir_module_items(module_def_id);
+    for id in module.items() {
+        check_item_type(tcx, id);
+    }
 }
 
 pub(super) use wfcheck::check_item_well_formed;

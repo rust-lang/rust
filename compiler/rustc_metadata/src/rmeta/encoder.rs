@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            if matches!(tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+            if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
                 if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
                     let simplified_self_ty = fast_reject::simplify_type(
                         self.tcx,

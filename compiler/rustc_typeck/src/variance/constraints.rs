@@ -5,7 +5,7 @@
 
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::def::DefKind;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -62,61 +62,71 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
         constraints: Vec::new(),
     };
 
-    tcx.hir().visit_all_item_likes(&mut constraint_cx);
+    let crate_items = tcx.hir_crate_items(());
+
+    for id in crate_items.items() {
+        constraint_cx.check_item(id);
+    }
+
+    for id in crate_items.trait_items() {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
+            constraint_cx.check_node_helper(id.hir_id());
+        }
+    }
+
+    for id in crate_items.impl_items() {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
+            constraint_cx.check_node_helper(id.hir_id());
+        }
+    }
+
+    for id in crate_items.foreign_items() {
+        if let DefKind::Fn = tcx.def_kind(id.def_id) {
+            constraint_cx.check_node_helper(id.hir_id());
+        }
+    }
 
     constraint_cx
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        match item.kind {
-            hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                self.visit_node_helper(item.hir_id());
+impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
+    fn check_item(&mut self, id: hir::ItemId) {
+        let def_kind = self.tcx().def_kind(id.def_id);
+        match def_kind {
+            DefKind::Struct | DefKind::Union => {
+                let item = self.tcx().hir().item(id);
 
-                if let hir::VariantData::Tuple(..) = *struct_def {
-                    self.visit_node_helper(struct_def.ctor_hir_id().unwrap());
-                }
-            }
+                if let hir::ItemKind::Struct(ref struct_def, _)
+                | hir::ItemKind::Union(ref struct_def, _) = item.kind
+                {
+                    self.check_node_helper(item.hir_id());
 
-            hir::ItemKind::Enum(ref enum_def, _) => {
-                self.visit_node_helper(item.hir_id());
-
-                for variant in enum_def.variants {
-                    if let hir::VariantData::Tuple(..) = variant.data {
-                        self.visit_node_helper(variant.data.ctor_hir_id().unwrap());
+                    if let hir::VariantData::Tuple(..) = *struct_def {
+                        self.check_node_helper(struct_def.ctor_hir_id().unwrap());
                     }
                 }
             }
+            DefKind::Enum => {
+                let item = self.tcx().hir().item(id);
 
-            hir::ItemKind::Fn(..) => {
-                self.visit_node_helper(item.hir_id());
+                if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
+                    self.check_node_helper(item.hir_id());
+
+                    for variant in enum_def.variants {
+                        if let hir::VariantData::Tuple(..) = variant.data {
+                            self.check_node_helper(variant.data.ctor_hir_id().unwrap());
+                        }
+                    }
+                }
             }
-
+            DefKind::Fn => {
+                self.check_node_helper(id.hir_id());
+            }
             _ => {}
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Fn(..) = trait_item.kind {
-            self.visit_node_helper(trait_item.hir_id());
-        }
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.visit_node_helper(impl_item.hir_id());
-        }
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
-        if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-            self.visit_node_helper(foreign_item.hir_id());
-        }
-    }
-}
-
-impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn visit_node_helper(&mut self, id: hir::HirId) {
+    fn check_node_helper(&mut self, id: hir::HirId) {
         let tcx = self.terms_cx.tcx;
         let def_id = tcx.hir().local_def_id(id);
         self.build_constraints_for_item(def_id);
