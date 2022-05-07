@@ -161,6 +161,10 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
+    pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
+        self.tcx.hir_module_items(module).items()
+    }
+
     pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
