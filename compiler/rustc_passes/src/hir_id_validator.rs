@@ -3,7 +3,6 @@ use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
@@ -27,23 +26,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             errors: &errors,
         };
 
-        let module = tcx.hir_module_items(module_id);
-
-        for id in module.items() {
-            v.visit_item(tcx.hir().item(id))
-        }
-
-        for id in module.trait_items() {
-            v.visit_trait_item(tcx.hir().trait_item(id))
-        }
-
-        for id in module.impl_items() {
-            v.visit_impl_item(tcx.hir().impl_item(id))
-        }
-
-        for id in module.foreign_items() {
-            v.visit_foreign_item(tcx.hir().foreign_item(id))
-        }
+        tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
     });
 
     let errors = errors.into_inner();

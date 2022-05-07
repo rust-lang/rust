@@ -10,7 +10,6 @@
 use rustc_attr as attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::nested_filter;
@@ -58,41 +57,15 @@ impl NonConstExpr {
 
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
-    let module = tcx.hir_module_items(module_def_id);
-
-    for id in module.items() {
-        vis.visit_item(tcx.hir().item(id));
-        check_item(tcx, id);
-    }
-
-    for id in module.trait_items() {
-        vis.visit_trait_item(tcx.hir().trait_item(id));
-    }
-
-    for id in module.impl_items() {
-        vis.visit_impl_item(tcx.hir().impl_item(id));
-    }
-
-    for id in module.foreign_items() {
-        vis.visit_foreign_item(tcx.hir().foreign_item(id));
-    }
-
-    // for id in tcx.hir_module_items(module_def_id).items() {
-    //     check_item(tcx, id);
-    // }
+    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut vis);
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_const_bodies, ..*providers };
 }
 
-fn check_item<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
+fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
     let _: Option<_> = try {
-        if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
-            None?
-        }
-
-        let item = tcx.hir().item(id);
         if let hir::ItemKind::Impl(ref imp) = item.kind && let hir::Constness::Const = imp.constness {
             let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
             let ancestors = tcx
@@ -272,6 +245,11 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        intravisit::walk_item(self, item);
+        check_item(self.tcx, item);
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
