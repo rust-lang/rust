@@ -69,8 +69,8 @@ pub(crate) fn complete_known_attribute_input(
 }
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
-    let (is_absolute_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context {
-        Some(PathCompletionCtx {
+    let (is_absolute_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context() {
+        Some(&PathCompletionCtx {
             kind: PathKind::Attr { kind, annotated_item_kind },
             is_absolute_path,
             ref qualifier,

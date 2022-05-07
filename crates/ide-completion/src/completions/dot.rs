@@ -3,8 +3,7 @@
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind},
-    patterns::ImmediateLocation,
+    context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
     Completions,
 };
 
@@ -20,7 +19,10 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    if matches!(ctx.completion_location, Some(ImmediateLocation::MethodCall { .. })) {
+    if matches!(
+        ctx.nameref_ctx,
+        Some(NameRefContext { dot_access: Some(DotAccess::Method { .. }), .. }),
+    ) {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(
@@ -38,7 +40,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    match ctx.path_context {
+    match ctx.path_context() {
         Some(PathCompletionCtx {
             is_absolute_path: false,
             qualifier: None,

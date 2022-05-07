@@ -52,7 +52,7 @@ fn render(
     let db = completion.db;
     let kind = thing.kind(db);
     let has_call_parens =
-        matches!(completion.path_context, Some(PathCompletionCtx { has_call_parens: true, .. }));
+        matches!(completion.path_context(), Some(PathCompletionCtx { has_call_parens: true, .. }));
 
     let fields = thing.fields(completion)?;
     let (qualified_name, short_qualified_name, qualified) = match path {

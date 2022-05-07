@@ -124,8 +124,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("mut", "mut ");
     }
 
-    let (can_be_stmt, in_loop_body) = match ctx.path_context {
-        Some(PathCompletionCtx {
+    let (can_be_stmt, in_loop_body) = match ctx.path_context() {
+        Some(&PathCompletionCtx {
             is_absolute_path: false,
             kind: PathKind::Expr { in_block_expr, in_loop_body, .. },
             ..

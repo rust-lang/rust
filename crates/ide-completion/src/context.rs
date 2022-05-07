@@ -14,7 +14,7 @@ use ide_db::{
 };
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
-    ast::{self, AttrKind, HasName, NameOrNameRef},
+    ast::{self, AttrKind, HasArgList, HasName, NameOrNameRef},
     match_ast, AstNode, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
@@ -148,6 +148,26 @@ pub(super) enum NameContext {
     Variant,
 }
 
+#[derive(Debug)]
+pub(super) struct NameRefContext {
+    pub(super) dot_access: Option<DotAccess>,
+    pub(super) path_ctx: Option<PathCompletionCtx>,
+}
+
+#[derive(Debug)]
+pub(super) enum DotAccess {
+    Field {
+        receiver: Option<ast::Expr>,
+        /// True if the receiver is an integer and there is no ident in the original file after it yet
+        /// like `0.$0`
+        receiver_is_ambiguous_float_literal: bool,
+    },
+    Method {
+        receiver: Option<ast::Expr>,
+        has_parens: bool,
+    },
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ParamKind {
     Function(ast::Fn),
@@ -195,8 +215,8 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) name_ctx: Option<NameContext>,
     pub(super) lifetime_ctx: Option<LifetimeContext>,
+    pub(super) nameref_ctx: Option<NameRefContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
-    pub(super) path_context: Option<PathCompletionCtx>,
 
     pub(super) existing_derives: FxHashSet<hir::Macro>,
 
@@ -237,21 +257,18 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
-        match &self.completion_location {
-            Some(
-                ImmediateLocation::MethodCall { receiver, .. }
-                | ImmediateLocation::FieldAccess { receiver, .. },
-            ) => receiver.as_ref(),
+        match &self.nameref_ctx {
+            Some(NameRefContext {
+                dot_access:
+                    Some(DotAccess::Method { receiver, .. } | DotAccess::Field { receiver, .. }),
+                ..
+            }) => receiver.as_ref(),
             _ => None,
         }
     }
 
     pub(crate) fn has_dot_receiver(&self) -> bool {
-        matches!(
-            &self.completion_location,
-            Some(ImmediateLocation::FieldAccess { receiver, .. } | ImmediateLocation::MethodCall { receiver,.. })
-                if receiver.is_some()
-        )
+        self.dot_receiver().is_some()
     }
 
     pub(crate) fn expects_assoc_item(&self) -> bool {
@@ -324,21 +341,25 @@ impl<'a> CompletionContext<'a> {
             || matches!(self.name_ctx, Some(NameContext::Module(_) | NameContext::Rename))
     }
 
+    pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
+        self.nameref_ctx.as_ref().and_then(|ctx| ctx.path_ctx.as_ref())
+    }
+
     pub(crate) fn expects_expression(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Expr { .. }, .. }))
+        matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Expr { .. }, .. }))
     }
 
     pub(crate) fn expects_type(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionCtx { kind: PathKind::Type, .. }))
+        matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Type, .. }))
     }
 
     pub(crate) fn path_is_call(&self) -> bool {
-        self.path_context.as_ref().map_or(false, |it| it.has_call_parens)
+        self.path_context().map_or(false, |it| it.has_call_parens)
     }
 
     pub(crate) fn is_non_trivial_path(&self) -> bool {
         matches!(
-            self.path_context,
+            self.path_context(),
             Some(
                 PathCompletionCtx { is_absolute_path: true, .. }
                     | PathCompletionCtx { qualifier: Some(_), .. }
@@ -347,11 +368,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref().map(|it| &it.path))
+        self.path_context().and_then(|it| it.qualifier.as_ref().map(|it| &it.path))
     }
 
     pub(crate) fn path_kind(&self) -> Option<PathKind> {
-        self.path_context.as_ref().map(|it| it.kind)
+        self.path_context().map(|it| it.kind)
     }
 
     pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
@@ -498,17 +519,17 @@ impl<'a> CompletionContext<'a> {
             function_def: None,
             impl_def: None,
             name_syntax: None,
-            lifetime_ctx: None,
-            pattern_ctx: None,
-            name_ctx: None,
+            incomplete_let: false,
             completion_location: None,
             prev_sibling: None,
             fake_attribute_under_caret: None,
             previous_token: None,
-            path_context: None,
-            locals,
-            incomplete_let: false,
+            name_ctx: None,
+            lifetime_ctx: None,
+            nameref_ctx: None,
+            pattern_ctx: None,
             existing_derives: Default::default(),
+            locals,
         };
         ctx.expand_and_fill(
             original_file.syntax().clone(),
@@ -843,11 +864,13 @@ impl<'a> CompletionContext<'a> {
             {
                 self.name_syntax =
                     find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
-                if let Some((path_ctx, _)) =
+                if let Some((mut nameref_ctx, _)) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref)
                 {
-                    self.path_context =
-                        Some(PathCompletionCtx { kind: PathKind::Derive, ..path_ctx });
+                    if let Some(path_ctx) = &mut nameref_ctx.path_ctx {
+                        path_ctx.kind = PathKind::Derive;
+                    }
+                    self.nameref_ctx = Some(nameref_ctx);
                 }
             }
             return;
@@ -878,10 +901,10 @@ impl<'a> CompletionContext<'a> {
                 self.lifetime_ctx = Self::classify_lifetime(&self.sema, original_file, lifetime);
             }
             ast::NameLike::NameRef(name_ref) => {
-                if let Some((path_ctx, pat_ctx)) =
+                if let Some((nameref_ctx, pat_ctx)) =
                     Self::classify_name_ref(&self.sema, original_file, name_ref)
                 {
-                    self.path_context = Some(path_ctx);
+                    self.nameref_ctx = Some(nameref_ctx);
                     self.pattern_ctx = pat_ctx;
                 }
             }
@@ -968,11 +991,53 @@ impl<'a> CompletionContext<'a> {
         sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
-    ) -> Option<(PathCompletionCtx, Option<PatternContext>)> {
+    ) -> Option<(NameRefContext, Option<PatternContext>)> {
         let parent = name_ref.syntax().parent()?;
-        let segment = ast::PathSegment::cast(parent)?;
-        let path = segment.parent_path();
 
+        let mut nameref_ctx = NameRefContext { dot_access: None, path_ctx: None };
+
+        fn find_in_original_file<N: AstNode>(
+            x: Option<N>,
+            original_file: &SyntaxNode,
+        ) -> Option<N> {
+            fn find_node_with_range<N: AstNode>(
+                syntax: &SyntaxNode,
+                range: TextRange,
+            ) -> Option<N> {
+                let range = syntax.text_range().intersect(range)?;
+                syntax.covering_element(range).ancestors().find_map(N::cast)
+            }
+            x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
+        }
+        let segment = match_ast! {
+            match parent {
+                ast::PathSegment(segment) => segment,
+                ast::FieldExpr(field) => {
+                    let receiver = find_in_original_file(field.expr(), original_file);
+                    let receiver_is_ambiguous_float_literal = match &receiver {
+                        Some(ast::Expr::Literal(l)) => matches! {
+                            l.kind(),
+                            ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().map_or(false, |it| it.kind() == T![.])
+                        },
+                        _ => false,
+                    };
+                    nameref_ctx.dot_access = Some(DotAccess::Field { receiver, receiver_is_ambiguous_float_literal });
+                    return Some((nameref_ctx, None));
+                },
+                ast::MethodCallExpr(method) => {
+                    nameref_ctx.dot_access = Some(
+                        DotAccess::Method {
+                            receiver: find_in_original_file(method.receiver(), original_file),
+                            has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some())
+                        }
+                    );
+                    return Some((nameref_ctx, None));
+                },
+                _ => return None,
+            }
+        };
+
+        let path = segment.parent_path();
         let mut path_ctx = PathCompletionCtx {
             has_call_parens: false,
             has_macro_bang: false,
@@ -1109,17 +1174,13 @@ impl<'a> CompletionContext<'a> {
                     is_infer_qualifier,
                 }
             });
-            return Some((path_ctx, pat_ctx));
-        }
-
-        if let Some(segment) = path.segment() {
+        } else if let Some(segment) = path.segment() {
             if segment.coloncolon_token().is_some() {
                 path_ctx.is_absolute_path = true;
-                return Some((path_ctx, pat_ctx));
             }
         }
-
-        Some((path_ctx, pat_ctx))
+        nameref_ctx.path_ctx = Some(path_ctx);
+        Some((nameref_ctx, pat_ctx))
     }
 }
 

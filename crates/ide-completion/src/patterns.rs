@@ -8,7 +8,7 @@ use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
     algo::non_trivia_sibling,
-    ast::{self, HasArgList, HasLoopBody, HasName},
+    ast::{self, HasLoopBody, HasName},
     match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -51,16 +51,6 @@ pub(crate) enum ImmediateLocation {
     TypeBound,
     /// Original file ast node
     TypeAnnotation(TypeAnnotation),
-    /// Original file ast node
-    MethodCall {
-        receiver: Option<ast::Expr>,
-        has_parens: bool,
-    },
-    /// Original file ast node
-    FieldAccess {
-        receiver: Option<ast::Expr>,
-        receiver_is_ambiguous_float_literal: bool,
-    },
     // Only set from a type arg
     /// Original file ast node
     GenericArgList(ast::GenericArgList),
@@ -226,25 +216,6 @@ pub(crate) fn determine_location(
             ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
-            ast::FieldExpr(it) => {
-                let receiver = find_in_original_file(it.expr(), original_file);
-                let receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) = &receiver {
-                    match l.kind() {
-                        ast::LiteralKind::FloatNumber { .. } => l.to_string().ends_with('.'),
-                        _ => false,
-                    }
-                } else {
-                    false
-                };
-                ImmediateLocation::FieldAccess {
-                    receiver,
-                    receiver_is_ambiguous_float_literal,
-                }
-            },
-            ast::MethodCallExpr(it) => ImmediateLocation::MethodCall {
-                receiver: find_in_original_file(it.receiver(), original_file),
-                has_parens: it.arg_list().map_or(false, |it| it.l_paren_token().is_some())
-            },
             ast::Const(it) => {
                 if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
                     return None;

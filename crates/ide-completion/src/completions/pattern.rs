@@ -17,7 +17,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     };
     let refutable = patctx.refutability == PatternRefutability::Refutable;
 
-    if let Some(path_ctx) = &ctx.path_context {
+    if let Some(path_ctx) = ctx.path_context() {
         pattern_path_completion(acc, ctx, path_ctx);
         return;
     }

@@ -119,7 +119,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         return None;
     }
     // FIXME: This should be encoded in a different way
-    if ctx.pattern_ctx.is_none() && ctx.path_context.is_none() && !ctx.has_dot_receiver() {
+    if ctx.pattern_ctx.is_none() && ctx.path_context().is_none() && !ctx.has_dot_receiver() {
         // completion inside `ast::Name` of a item declaration
         return None;
     }
