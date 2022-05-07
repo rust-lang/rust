@@ -50,7 +50,7 @@ SOURCE_FILE
                       IDENT "x"
               DOT "."
               NAME_REF
-                FLOAT_NUMBER_PART "0"
+                INT_NUMBER "0"
             DOT "."
             WHITESPACE " "
             NAME_REF
@@ -67,10 +67,10 @@ SOURCE_FILE
                       IDENT "x"
               DOT "."
               NAME_REF
-                FLOAT_NUMBER_PART "0"
+                INT_NUMBER "0"
             DOT "."
             NAME_REF
-              FLOAT_NUMBER_PART "1"
+              INT_NUMBER "1"
           SEMICOLON ";"
         WHITESPACE "\n    "
         EXPR_STMT

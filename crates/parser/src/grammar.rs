@@ -323,8 +323,8 @@ fn name_ref_or_index(p: &mut Parser) {
         p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST)
     );
     let m = p.start();
-    if p.at_ts(FLOAT_LITERAL_FIRST) {
-        p.bump_remap(FLOAT_NUMBER_PART);
+    if p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST) {
+        p.bump_remap(INT_NUMBER);
     } else {
         p.bump_any();
     }
