@@ -5,7 +5,7 @@ LL |     let Some(x) = Some(1) else { Some(2) };
    |                                ^^^^^^^^^^^ expected `!`, found enum `Option`
    |
    = note: expected type `!`
-              found type `Option<{integer}>`
+              found enum `Option<{integer}>`
    = help: try adding a diverging expression, such as `return` or `panic!(..)`
    = help: ...or use `match` instead of `let...else`
 
@@ -20,8 +20,8 @@ LL | |         }
 LL | |     };
    | |_____^ expected `!`, found `()`
    |
-   = note: expected type `!`
-              found type `()`
+   = note:   expected type `!`
+           found unit type `()`
    = help: try adding a diverging expression, such as `return` or `panic!(..)`
    = help: ...or use `match` instead of `let...else`
 
@@ -35,7 +35,7 @@ LL | |     };
    | |_____^ expected `!`, found enum `Option`
    |
    = note: expected type `!`
-              found type `Option<{integer}>`
+              found enum `Option<{integer}>`
    = help: try adding a diverging expression, such as `return` or `panic!(..)`
    = help: ...or use `match` instead of `let...else`
 

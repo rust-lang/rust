@@ -3,7 +3,10 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /     if a % 2 == 0 {
 LL | |         move || println!("{a}")
-   | |         ----------------------- expected because of this
+   | |         -----------------------
+   | |         |
+   | |         the expected closure
+   | |         expected because of this
 LL | |     } else {
 LL | |         Box::new(move || println!("{}", b))
    | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found struct `Box`
@@ -11,8 +14,8 @@ LL | |
 LL | |     }
    | |_____- `if` and `else` have incompatible types
    |
-   = note: expected type `[closure@$DIR/box-instead-of-dyn-fn.rs:8:9: 8:32]`
-            found struct `Box<[closure@$DIR/box-instead-of-dyn-fn.rs:10:18: 10:43]>`
+   = note: expected closure `[closure@$DIR/box-instead-of-dyn-fn.rs:8:9: 8:32]`
+               found struct `Box<[closure@$DIR/box-instead-of-dyn-fn.rs:10:18: 10:43]>`
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/box-instead-of-dyn-fn.rs:5:56
