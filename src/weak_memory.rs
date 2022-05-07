@@ -40,11 +40,38 @@ use crate::{
 
 pub type AllocExtra = StoreBufferAlloc;
 
+const STORE_BUFFER_LIMIT: usize = 128;
+
 #[derive(Debug, Clone)]
 pub struct StoreBufferAlloc {
     /// Store buffer of each atomic object in this allocation
     // Behind a RefCell because we need to allocate/remove on read access
     store_buffer: RefCell<AllocationMap<StoreBuffer>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoreBuffer {
+    // Stores to this location in modification order
+    buffer: VecDeque<StoreElement>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoreElement {
+    /// The identifier of the vector index, corresponding to a thread
+    /// that performed the store.
+    store_index: VectorIdx,
+
+    /// Whether this store is SC.
+    is_seqcst: bool,
+
+    /// The timestamp of the storing thread when it performed the store
+    timestamp: VTimestamp,
+    /// The value of this store
+    val: ScalarMaybeUninit<Tag>,
+
+    /// Timestamp of first loads from this store element by each thread
+    /// Behind a RefCell to keep load op take &self
+    loads: RefCell<FxHashMap<VectorIdx, VTimestamp>>,
 }
 
 impl StoreBufferAlloc {
@@ -103,13 +130,6 @@ impl StoreBufferAlloc {
         };
         &mut buffer[index]
     }
-}
-
-const STORE_BUFFER_LIMIT: usize = 128;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoreBuffer {
-    // Stores to this location in modification order
-    buffer: VecDeque<StoreElement>,
 }
 
 impl Default for StoreBuffer {
@@ -175,7 +195,11 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
 
     /// Selects a valid store element in the buffer.
     /// The buffer does not contain the value used to initialise the atomic object
-    /// so a fresh atomic object has an empty store buffer until an explicit store.
+    /// so a fresh atomic object has an empty store buffer and this function
+    /// will return `None`. In this case, the caller should ensure that the non-buffered
+    /// value from `MiriEvalContext::read_scalar()` is observed by the program, which is
+    /// the initial value of the atomic object. `MiriEvalContext::read_scalar()` is always
+    /// the latest value in modification order so it is always correct to be observed by any thread.
     fn fetch_store<R: rand::Rng + ?Sized>(
         &self,
         is_seqcst: bool,
@@ -292,25 +316,6 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             })
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoreElement {
-    /// The identifier of the vector index, corresponding to a thread
-    /// that performed the store.
-    store_index: VectorIdx,
-
-    /// Whether this store is SC.
-    is_seqcst: bool,
-
-    /// The timestamp of the storing thread when it performed the store
-    timestamp: VTimestamp,
-    /// The value of this store
-    val: ScalarMaybeUninit<Tag>,
-
-    /// Timestamp of first loads from this store element by each thread
-    /// Behind a RefCell to keep load op take &self
-    loads: RefCell<FxHashMap<VectorIdx, VTimestamp>>,
 }
 
 impl StoreElement {
