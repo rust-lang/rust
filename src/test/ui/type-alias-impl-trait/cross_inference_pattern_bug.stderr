@@ -1,0 +1,32 @@
+error: internal compiler error: no errors encountered even though `delay_span_bug` issued
+
+error: internal compiler error: broken MIR in DefId(0:3 ~ cross_inference_pattern_bug[646d]::main) ((_1.0: u32)): can't project out of PlaceTy { ty: main::T, variant_index: None }
+  --> $DIR/cross_inference_pattern_bug.rs:23:10
+   |
+LL |     let (a, b): (u32, u32) = foo;
+   |          ^
+   |
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+   |
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+   |
+
+error: internal compiler error: broken MIR in DefId(0:3 ~ cross_inference_pattern_bug[646d]::main) ((_1.1: u32)): can't project out of PlaceTy { ty: main::T, variant_index: None }
+  --> $DIR/cross_inference_pattern_bug.rs:23:13
+   |
+LL |     let (a, b): (u32, u32) = foo;
+   |             ^
+   |
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+   |
+
+error: internal compiler error: TyKind::Error constructed but no error reported
+   |
+
+thread 'rustc' panicked
+
+query stack during panic:
+end of query stack

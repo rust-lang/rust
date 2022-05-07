@@ -250,6 +250,10 @@ pub fn prepare_tool_cargo(
         }
     }
 
+    // clippy tests need to know about the stage sysroot. Set them consistently while building to
+    // avoid rebuilding when running tests.
+    cargo.env("SYSROOT", builder.sysroot(compiler));
+
     // if tools are using lzma we want to force the build script to build its
     // own copy
     cargo.env("LZMA_API_STATIC", "1");

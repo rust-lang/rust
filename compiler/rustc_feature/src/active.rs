@@ -244,7 +244,6 @@ declare_features! (
 
     // Unstable `#[target_feature]` directives.
     (active, aarch64_ver_target_feature, "1.27.0", Some(44839), None),
-    (active, adx_target_feature, "1.32.0", Some(44839), None),
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, bpf_target_feature, "1.54.0", Some(44839), None),

@@ -291,7 +291,7 @@ function loadCss(cssFileName) {
 
 (function() {
     function loadScript(url) {
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         script.src = url;
         document.head.append(script);
     }
@@ -344,7 +344,7 @@ function loadCss(cssFileName) {
             searchState.input.blur();
         },
         showResults: search => {
-            if (search === null || typeof search === 'undefined') {
+            if (search === null || typeof search === "undefined") {
                 search = searchState.outputElement();
             }
             switchDisplayedElement(search);
@@ -390,7 +390,7 @@ function loadCss(cssFileName) {
                 loadSearch();
             });
 
-            if (search_input.value !== '') {
+            if (search_input.value !== "") {
                 loadSearch();
             }
 
@@ -968,7 +968,7 @@ function loadCss(cssFileName) {
 
     onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName('notable-traits-tooltiptext')[0]
+            this.getElementsByClassName("notable-traits-tooltiptext")[0]
                 .classList.toggle("force-tooltip");
         };
     });
@@ -1070,29 +1070,29 @@ function loadCss(cssFileName) {
         const path = [];
 
         onEach(parent.childNodes, child => {
-            if (child.tagName === 'A') {
+            if (child.tagName === "A") {
                 path.push(child.textContent);
             }
         });
 
-        const el = document.createElement('textarea');
-        el.value = path.join('::');
-        el.setAttribute('readonly', '');
+        const el = document.createElement("textarea");
+        el.value = path.join("::");
+        el.setAttribute("readonly", "");
         // To not make it appear on the screen.
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
+        el.style.position = "absolute";
+        el.style.left = "-9999px";
 
         document.body.appendChild(el);
         el.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         document.body.removeChild(el);
 
         // There is always one children, but multiple childNodes.
-        but.children[0].style.display = 'none';
+        but.children[0].style.display = "none";
 
         let tmp;
         if (but.childNodes.length < 2) {
-            tmp = document.createTextNode('✓');
+            tmp = document.createTextNode("✓");
             but.appendChild(tmp);
         } else {
             onEachLazy(but.childNodes, e => {
@@ -1101,7 +1101,7 @@ function loadCss(cssFileName) {
                     return true;
                 }
             });
-            tmp.textContent = '✓';
+            tmp.textContent = "✓";
         }
 
         if (reset_button_timeout !== null) {
@@ -1109,7 +1109,7 @@ function loadCss(cssFileName) {
         }
 
         function reset_button() {
-            tmp.textContent = '';
+            tmp.textContent = "";
             reset_button_timeout = null;
             but.children[0].style.display = "";
         }

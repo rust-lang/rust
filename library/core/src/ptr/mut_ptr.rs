@@ -287,7 +287,7 @@ impl<T: ?Sized> *mut T {
     /// For the mutable counterpart see [`as_mut`].
     ///
     /// [`as_uninit_ref`]: #method.as_uninit_ref-1
-    /// [`as_mut`]: #method.as_mut
+    /// [`as_mut`]: #method.as_mut-1
     ///
     /// # Safety
     ///

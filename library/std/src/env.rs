@@ -644,36 +644,23 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Security
 ///
-/// The output of this function should not be used in anything that might have
-/// security implications. For example:
+/// The output of this function should not be trusted for anything
+/// that might have security implications. Basically, if users can run
+/// the executable, they can change the output arbitrarily.
 ///
-/// ```
-/// fn main() {
-///     println!("{:?}", std::env::current_exe());
-/// }
-/// ```
+/// As an example, you can easily introduce a race condition. It goes
+/// like this:
 ///
-/// On Linux systems, if this is compiled as `foo`:
+/// 1. You get the path to the current executable using `current_exe()`, and
+///    store it in a variable.
+/// 2. Time passes. A malicious actor removes the current executable, and
+///    replaces it with a malicious one.
+/// 3. You then use the stored path to re-execute the current
+///    executable.
 ///
-/// ```bash
-/// $ rustc foo.rs
-/// $ ./foo
-/// Ok("/home/alex/foo")
-/// ```
-///
-/// And you make a hard link of the program:
-///
-/// ```bash
-/// $ ln foo bar
-/// ```
-///
-/// When you run it, you won’t get the path of the original executable, you’ll
-/// get the path of the hard link:
-///
-/// ```bash
-/// $ ./bar
-/// Ok("/home/alex/bar")
-/// ```
+/// You expected to safely execute the current executable, but you're
+/// instead executing something completely different. The code you
+/// just executed run with your privileges.
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly.

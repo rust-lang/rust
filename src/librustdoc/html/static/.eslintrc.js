@@ -17,6 +17,10 @@ module.exports = {
             "error",
             "always"
         ],
+        "quotes": [
+            "error",
+            "double"
+        ],
         "no-var": ["error"],
         "prefer-const": ["error"],
         "prefer-arrow-callback": ["error"],

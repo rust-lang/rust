@@ -204,7 +204,7 @@ window.initSearch = rawSearchIndex => {
      * @return {boolean}
      */
     function isPathStart(parserState) {
-        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == '::';
+        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == "::";
     }
 
     /**
@@ -215,7 +215,7 @@ window.initSearch = rawSearchIndex => {
      * @return {boolean}
      */
     function isReturnArrow(parserState) {
-        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == '->';
+        return parserState.userQuery.slice(parserState.pos, parserState.pos + 2) == "->";
     }
 
     /**
@@ -227,10 +227,10 @@ window.initSearch = rawSearchIndex => {
      */
     function isIdentCharacter(c) {
         return (
-            c === '_' ||
-            (c >= '0' && c <= '9') ||
-            (c >= 'a' && c <= 'z') ||
-            (c >= 'A' && c <= 'Z'));
+            c === "_" ||
+            (c >= "0" && c <= "9") ||
+            (c >= "a" && c <= "z") ||
+            (c >= "A" && c <= "Z"));
     }
 
     /**
@@ -264,7 +264,7 @@ window.initSearch = rawSearchIndex => {
      * @return {QueryElement}                - The newly created `QueryElement`.
      */
     function createQueryElement(query, parserState, name, generics, isInGenerics) {
-        if (name === '*' || (name.length === 0 && generics.length === 0)) {
+        if (name === "*" || (name.length === 0 && generics.length === 0)) {
             return;
         }
         if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
@@ -1708,11 +1708,12 @@ window.initSearch = rawSearchIndex => {
 
         let crates = "";
         if (window.ALL_CRATES.length > 1) {
-            crates = ` in <select id="crate-search"><option value="All crates">All crates</option>`;
+            crates = " in <select id=\"crate-search\"><option value=\"All crates\">" +
+                "All crates</option>";
             for (const c of window.ALL_CRATES) {
                 crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
             }
-            crates += `</select>`;
+            crates += "</select>";
         }
 
         let typeFilter = "";
@@ -1720,17 +1721,17 @@ window.initSearch = rawSearchIndex => {
             typeFilter = " (type: " + escape(itemTypes[results.query.typeFilter]) + ")";
         }
 
-        let output = `<div id="search-settings">` +
+        let output = "<div id=\"search-settings\">" +
             `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
             `${typeFilter}</h1> in ${crates} </div>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
-            output += '<div id="titles">' +
+            output += "<div id=\"titles\">" +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 "</div>";
             currentTab = 0;
         } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
-            output += `<div id="titles">` +
+            output += "<div id=\"titles\">" +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 makeTabHeader(1, "In Parameters", ret_in_args[1]) +
                 makeTabHeader(2, "In Return Types", ret_returned[1]) +
@@ -1740,7 +1741,7 @@ window.initSearch = rawSearchIndex => {
                 results.query.elems.length === 0 ? "In Function Return Types" :
                 results.query.returned.length === 0 ? "In Function Parameters" :
                 "In Function Signatures";
-            output += '<div id="titles">' +
+            output += "<div id=\"titles\">" +
                 makeTabHeader(0, signatureTabTitle, ret_others[1]) +
                 "</div>";
             currentTab = 0;
