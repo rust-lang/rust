@@ -16,7 +16,7 @@ use std::sync::Arc;
 fn check_for_debugger_visualizer<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_id: HirId,
-    debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>
+    debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>,
 ) {
     let attrs = tcx.hir().attrs(hir_id);
     for attr in attrs {
@@ -51,8 +51,7 @@ fn check_for_debugger_visualizer<'tcx>(
                 let contents = match std::fs::read(&file) {
                     Ok(contents) => contents,
                     Err(err) => {
-                        tcx
-                            .sess
+                        tcx.sess
                             .struct_span_err(
                                 attr.span,
                                 &format!(
@@ -71,12 +70,8 @@ fn check_for_debugger_visualizer<'tcx>(
                     DebuggerVisualizerType::Natvis,
                 ));
             } else {
-                tcx
-                    .sess
-                    .struct_span_err(
-                        attr.span,
-                        &format!("{} is not a valid file", file.display()),
-                    )
+                tcx.sess
+                    .struct_span_err(attr.span, &format!("{} is not a valid file", file.display()))
                     .emit();
             }
         }
@@ -100,7 +95,6 @@ fn debugger_visualizers<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Vec<Debugger
 
     // Collect debugger visualizers on the crate attributes.
     check_for_debugger_visualizer(tcx, CRATE_HIR_ID, &mut debugger_visualizers);
-
 
     // Extract out the found debugger_visualizer items.
     let mut visualizers = debugger_visualizers.into_iter().collect::<Vec<_>>();
