@@ -284,7 +284,19 @@ impl StepDescription {
             }
 
             if !attempted_run {
-                panic!("error: no rules matched {}", path.display());
+                eprintln!(
+                    "error: no `{}` rules matched '{}'",
+                    builder.kind.as_str(),
+                    path.display()
+                );
+                eprintln!(
+                    "help: run `x.py {} --help --verbose` to show a list of available paths",
+                    builder.kind.as_str()
+                );
+                eprintln!(
+                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                );
+                std::process::exit(1);
             }
         }
     }
