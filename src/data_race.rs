@@ -623,10 +623,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // `binary_op` will bail if either of them is not a scalar.
         let eq = this.binary_op(mir::BinOp::Eq, &old, expect_old)?;
         // If the operation would succeed, but is "weak", fail some portion
-        // of the time, based on `rate`.
-        let rate = this.machine.cmpxchg_weak_failure_rate;
+        // of the time, based on `success_rate`.
+        let success_rate = 1.0 - this.machine.cmpxchg_weak_failure_rate;
         let cmpxchg_success = eq.to_scalar()?.to_bool()?
-            && (!can_fail_spuriously || this.machine.rng.get_mut().gen::<f64>() < rate);
+            && if can_fail_spuriously {
+                this.machine.rng.get_mut().gen_bool(success_rate)
+            } else {
+                true
+            };
         let res = Immediate::ScalarPair(
             old.to_scalar_or_uninit(),
             Scalar::from_bool(cmpxchg_success).into(),
