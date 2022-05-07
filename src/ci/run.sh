@@ -141,8 +141,6 @@ $SRC/configure $RUST_CONFIGURE_ARGS
 
 retry make prepare
 
-make check-bootstrap
-
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.
 if isMacOS; then
