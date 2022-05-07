@@ -159,7 +159,6 @@ pub fn completions(
         completions::fn_param::complete_fn_param(acc, ctx);
         completions::format_string::format_string(acc, ctx);
         completions::item_list::complete_item_list(acc, ctx);
-        completions::inferred_type(acc, ctx);
         completions::keyword::complete_expr_keyword(acc, ctx);
         completions::lifetime::complete_label(acc, ctx);
         completions::lifetime::complete_lifetime(acc, ctx);
@@ -172,6 +171,7 @@ pub fn completions(
         completions::snippet::complete_item_snippet(acc, ctx);
         completions::trait_impl::complete_trait_impl(acc, ctx);
         completions::r#type::complete_type_path(acc, ctx);
+        completions::r#type::complete_inferred_type(acc, ctx);
         completions::use_::complete_use_tree(acc, ctx);
         completions::vis::complete_vis(acc, ctx);
     }

@@ -149,7 +149,7 @@ pub struct CompletionRelevance {
     pub is_private_editable: bool,
     /// Set for postfix snippet item completions
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
-    /// This is setted for type inference results
+    /// This is set for type inference results
     pub is_definite: bool,
 }
 
