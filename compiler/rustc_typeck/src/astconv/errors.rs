@@ -1,5 +1,5 @@
 use crate::astconv::AstConv;
-use crate::errors::MissingTypeParams;
+use crate::errors::{ManualImplementation, MissingTypeParams};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -121,19 +121,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if is_impl {
             let trait_name = self.tcx().def_path_str(trait_def_id);
-            struct_span_err!(
-                self.tcx().sess,
-                span,
-                E0183,
-                "manual implementations of `{}` are experimental",
-                trait_name,
-            )
-            .span_label(
-                span,
-                format!("manual implementations of `{}` are experimental", trait_name),
-            )
-            .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
-            .emit();
+            self.tcx().sess.emit_err(ManualImplementation { span, trait_name });
         }
     }
 

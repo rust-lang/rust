@@ -313,3 +313,13 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
         err
     }
 }
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0183", slug = "typeck-manual-implementation")]
+#[help]
+pub struct ManualImplementation {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub trait_name: String,
+}

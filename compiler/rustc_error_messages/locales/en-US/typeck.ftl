@@ -122,3 +122,8 @@ typeck-missing-type-params =
         *[other] references
     } to {$parameters}
     .note = because of the default `Self` reference, type parameters must be specified on object types
+
+typeck-manual-implementation =
+    manual implementations of `{$trait_name}` are experimental
+    .label = manual implementations of `{$trait_name}` are experimental
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
