@@ -1,9 +1,7 @@
 error: layout_of(MissingPayloadField) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -23,9 +21,7 @@ error: layout_of(MissingPayloadField) = Layout {
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -39,14 +35,10 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
@@ -61,14 +53,10 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 1,
-                       },
+                       size: Size(1 bytes),
                    },
                ],
            },
@@ -89,9 +77,7 @@ error: layout_of(MissingPayloadField) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -100,14 +86,10 @@ error: layout_of(MissingPayloadField) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
    |
@@ -120,9 +102,7 @@ LL | | }
 error: layout_of(CommonPayloadField) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -142,9 +122,7 @@ error: layout_of(CommonPayloadField) = Layout {
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -158,21 +136,15 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -186,14 +158,10 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                ],
            },
@@ -215,9 +183,7 @@ error: layout_of(CommonPayloadField) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -226,14 +192,10 @@ error: layout_of(CommonPayloadField) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
    |
@@ -246,9 +208,7 @@ LL | | }
 error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -268,9 +228,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -284,21 +242,15 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -312,14 +264,10 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                ],
            },
@@ -340,9 +288,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -351,14 +297,10 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
@@ -371,9 +313,7 @@ LL | | }
 error: layout_of(NicheFirst) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 0,
-                   },
+                   Size(0 bytes),
                ],
                memory_index: [
                    0,
@@ -397,12 +337,8 @@ error: layout_of(NicheFirst) = Layout {
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 0,
-                               },
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(0 bytes),
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -430,9 +366,7 @@ error: layout_of(NicheFirst) = Layout {
                        ),
                        largest_niche: Some(
                            Niche {
-                               offset: Size {
-                                   raw: 0,
-                               },
+                               offset: Size(0 bytes),
                                value: Int(
                                    I8,
                                    false,
@@ -441,14 +375,10 @@ error: layout_of(NicheFirst) = Layout {
                            },
                        ),
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
@@ -463,14 +393,10 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 0,
-                       },
+                       size: Size(0 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
@@ -485,14 +411,10 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 0,
-                       },
+                       size: Size(0 bytes),
                    },
                ],
            },
@@ -513,9 +435,7 @@ error: layout_of(NicheFirst) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 0,
-                   },
+                   offset: Size(0 bytes),
                    value: Int(
                        I8,
                        false,
@@ -524,14 +444,10 @@ error: layout_of(NicheFirst) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
@@ -545,9 +461,7 @@ LL | | }
 error: layout_of(NicheSecond) = Layout {
            fields: Arbitrary {
                offsets: [
-                   Size {
-                       raw: 1,
-                   },
+                   Size(1 bytes),
                ],
                memory_index: [
                    0,
@@ -571,12 +485,8 @@ error: layout_of(NicheSecond) = Layout {
                    Layout {
                        fields: Arbitrary {
                            offsets: [
-                               Size {
-                                   raw: 0,
-                               },
-                               Size {
-                                   raw: 1,
-                               },
+                               Size(0 bytes),
+                               Size(1 bytes),
                            ],
                            memory_index: [
                                0,
@@ -604,9 +514,7 @@ error: layout_of(NicheSecond) = Layout {
                        ),
                        largest_niche: Some(
                            Niche {
-                               offset: Size {
-                                   raw: 1,
-                               },
+                               offset: Size(1 bytes),
                                value: Int(
                                    I8,
                                    false,
@@ -615,14 +523,10 @@ error: layout_of(NicheSecond) = Layout {
                            },
                        ),
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 2,
-                       },
+                       size: Size(2 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
@@ -637,14 +541,10 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 0,
-                       },
+                       size: Size(0 bytes),
                    },
                    Layout {
                        fields: Arbitrary {
@@ -659,14 +559,10 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        align: AbiAndPrefAlign {
-                           abi: Align {
-                               pow2: 0,
-                           },
+                           abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size {
-                           raw: 0,
-                       },
+                       size: Size(0 bytes),
                    },
                ],
            },
@@ -687,9 +583,7 @@ error: layout_of(NicheSecond) = Layout {
            ),
            largest_niche: Some(
                Niche {
-                   offset: Size {
-                       raw: 1,
-                   },
+                   offset: Size(1 bytes),
                    value: Int(
                        I8,
                        false,
@@ -698,14 +592,10 @@ error: layout_of(NicheSecond) = Layout {
                },
            ),
            align: AbiAndPrefAlign {
-               abi: Align {
-                   pow2: 0,
-               },
+               abi: Align(1 bytes),
                pref: $PREF_ALIGN,
            },
-           size: Size {
-               raw: 2,
-           },
+           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |
