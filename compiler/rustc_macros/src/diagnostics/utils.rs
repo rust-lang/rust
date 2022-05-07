@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::BTreeSet;
 use std::str::FromStr;
-use syn::{spanned::Spanned, Attribute, Meta, Type, Visibility};
+use syn::{spanned::Spanned, Attribute, Meta, Type, TypeTuple, Visibility};
 use synstructure::BindingInfo;
 
 /// Checks whether the type name of `ty` matches `name`.
@@ -25,7 +25,35 @@ pub(crate) fn type_matches_path(ty: &Type, name: &[&str]) -> bool {
     }
 }
 
-/// Reports an error if the field's type is not `Applicability`.
+/// Checks whether the type `ty` is `()`.
+pub(crate) fn type_is_unit(ty: &Type) -> bool {
+    if let Type::Tuple(TypeTuple { elems, .. }) = ty { elems.is_empty() } else { false }
+}
+
+/// Reports a type error for field with `attr`.
+pub(crate) fn report_type_error(
+    attr: &Attribute,
+    ty_name: &str,
+) -> Result<!, SessionDiagnosticDeriveError> {
+    let name = attr.path.segments.last().unwrap().ident.to_string();
+    let meta = attr.parse_meta()?;
+
+    throw_span_err!(
+        attr.span().unwrap(),
+        &format!(
+            "the `#[{}{}]` attribute can only be applied to fields of type {}",
+            name,
+            match meta {
+                Meta::Path(_) => "",
+                Meta::NameValue(_) => " = ...",
+                Meta::List(_) => "(...)",
+            },
+            ty_name
+        )
+    );
+}
+
+/// Reports an error if the field's type does not match `path`.
 fn report_error_if_not_applied_to_ty(
     attr: &Attribute,
     info: &FieldInfo<'_>,
@@ -33,23 +61,7 @@ fn report_error_if_not_applied_to_ty(
     ty_name: &str,
 ) -> Result<(), SessionDiagnosticDeriveError> {
     if !type_matches_path(&info.ty, path) {
-        let name = attr.path.segments.last().unwrap().ident.to_string();
-        let name = name.as_str();
-        let meta = attr.parse_meta()?;
-
-        throw_span_err!(
-            attr.span().unwrap(),
-            &format!(
-                "the `#[{}{}]` attribute can only be applied to fields of type `{}`",
-                name,
-                match meta {
-                    Meta::Path(_) => "",
-                    Meta::NameValue(_) => " = ...",
-                    Meta::List(_) => "(...)",
-                },
-                ty_name
-            )
-        );
+        report_type_error(attr, ty_name)?;
     }
 
     Ok(())
@@ -64,7 +76,7 @@ pub(crate) fn report_error_if_not_applied_to_applicability(
         attr,
         info,
         &["rustc_errors", "Applicability"],
-        "Applicability",
+        "`Applicability`",
     )
 }
 
@@ -73,7 +85,7 @@ pub(crate) fn report_error_if_not_applied_to_span(
     attr: &Attribute,
     info: &FieldInfo<'_>,
 ) -> Result<(), SessionDiagnosticDeriveError> {
-    report_error_if_not_applied_to_ty(attr, info, &["rustc_span", "Span"], "Span")
+    report_error_if_not_applied_to_ty(attr, info, &["rustc_span", "Span"], "`Span`")
 }
 
 /// Inner type of a field and type of wrapper.

@@ -482,3 +482,25 @@ struct VecField {
     #[label]
     spans: Vec<Span>,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct UnitField {
+    #[primary_span]
+    spans: Span,
+    #[help]
+    foo: (),
+    #[help = "a"]
+    bar: (),
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct OptUnitField {
+    #[primary_span]
+    spans: Span,
+    #[help]
+    foo: Option<()>,
+    #[help = "a"]
+    bar: Option<()>,
+}
