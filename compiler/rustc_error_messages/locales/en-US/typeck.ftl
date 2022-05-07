@@ -127,3 +127,5 @@ typeck-manual-implementation =
     manual implementations of `{$trait_name}` are experimental
     .label = manual implementations of `{$trait_name}` are experimental
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+typeck-substs-on-overridden-impl = could not resolve substs on overridden impl

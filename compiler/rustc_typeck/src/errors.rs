@@ -323,3 +323,10 @@ pub struct ManualImplementation {
     pub span: Span,
     pub trait_name: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "typeck-substs-on-overridden-impl")]
+pub struct SubstsOnOverriddenImpl {
+    #[primary_span]
+    pub span: Span,
+}
