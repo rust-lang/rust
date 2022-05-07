@@ -123,7 +123,7 @@ pub(super) struct LifetimeContext {
 }
 
 #[derive(Debug)]
-pub enum LifetimeKind {
+pub(super) enum LifetimeKind {
     LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
     Lifetime,
     LabelRef,
@@ -131,7 +131,7 @@ pub enum LifetimeKind {
 }
 
 #[derive(Debug)]
-pub struct NameContext {
+pub(super) struct NameContext {
     #[allow(dead_code)]
     pub(super) name: Option<ast::Name>,
     pub(super) kind: NameKind,
@@ -534,9 +534,7 @@ impl<'a> CompletionContext<'a> {
             file_with_fake_ident.syntax().token_at_offset(offset).right_biased()?;
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
-        dbg!(&original_token);
         let token = sema.descend_into_macros_single(original_token.clone());
-        dbg!(&token);
         let scope = sema.scope_at_offset(&token.parent()?, offset)?;
         let krate = scope.krate();
         let module = scope.module();
