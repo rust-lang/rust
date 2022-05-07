@@ -7,15 +7,24 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     lock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, RwLockId> {
-    let id = ecx.read_scalar_at_offset(lock_op, 0, ecx.machine.layouts.u32)?.to_u32()?;
-    if id == 0 {
-        // 0 is a default value and also not a valid rwlock id. Need to allocate
-        // a new rwlock.
+    let value_place = ecx.offset_and_layout_to_place(lock_op, 0, ecx.machine.layouts.u32)?;
+
+    let (old, success) = ecx
+        .atomic_compare_exchange_scalar(
+            &value_place,
+            &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
+            ecx.rwlock_next_id().to_u32_scalar().into(),
+            AtomicRwOp::AcqRel,
+            AtomicReadOp::Acquire,
+            false,
+        )?
+        .to_scalar_pair()?;
+
+    if success.to_bool().expect("compare_exchange's second return value is a bool") {
         let id = ecx.rwlock_create();
-        ecx.write_scalar_at_offset(lock_op, 0, id.to_u32_scalar(), ecx.machine.layouts.u32)?;
         Ok(id)
     } else {
-        Ok(RwLockId::from_u32(id))
+        Ok(RwLockId::from_u32(old.to_u32().expect("layout is u32")))
     }
 }
 

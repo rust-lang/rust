@@ -441,6 +441,23 @@ impl MemoryCellClocks {
 /// Evaluation context extensions.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
+    /// Calculates the MPlaceTy given the offset and layout of an access on an operand
+    fn offset_and_layout_to_place(
+        &self,
+        op: &OpTy<'tcx, Tag>,
+        offset: u64,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+        let this = self.eval_context_ref();
+        let op_place = this.deref_operand(op)?;
+        let offset = Size::from_bytes(offset);
+
+        // Ensure that the access is within bounds.
+        assert!(op_place.layout.size >= offset + layout.size);
+        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        Ok(value_place)
+    }
+
     /// Atomic variant of read_scalar_at_offset.
     fn read_scalar_at_offset_atomic(
         &self,
@@ -450,12 +467,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-
-        // Ensure that the following read at an offset is within bounds.
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.offset_and_layout_to_place(op, offset, layout)?;
         this.read_scalar_atomic(&value_place, atomic)
     }
 
@@ -469,12 +481,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-
-        // Ensure that the following read at an offset is within bounds.
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.offset_and_layout_to_place(op, offset, layout)?;
         this.write_scalar_atomic(value.into(), &value_place, atomic)
     }
 

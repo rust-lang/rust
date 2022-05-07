@@ -209,6 +209,13 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     #[inline]
+    /// Peek the id of the next mutex
+    fn mutex_next_id(&self) -> MutexId {
+        let this = self.eval_context_ref();
+        this.machine.threads.sync.mutexes.next_index()
+    }
+
+    #[inline]
     /// Create state for a new mutex.
     fn mutex_create(&mut self) -> MutexId {
         let this = self.eval_context_mut();
@@ -288,6 +295,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
         this.machine.threads.sync.mutexes[id].queue.push_back(thread);
         this.block_thread(thread);
+    }
+
+    #[inline]
+    /// Peek the id of the next read write lock
+    fn rwlock_next_id(&self) -> RwLockId {
+        let this = self.eval_context_ref();
+        this.machine.threads.sync.rwlocks.next_index()
     }
 
     #[inline]
@@ -436,6 +450,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(this.rwlock_is_locked(id), "write-queueing on unlocked rwlock");
         this.machine.threads.sync.rwlocks[id].writer_queue.push_back(writer);
         this.block_thread(writer);
+    }
+
+    #[inline]
+    /// Peek the id of the next Condvar
+    fn condvar_next_id(&self) -> CondvarId {
+        let this = self.eval_context_ref();
+        this.machine.threads.sync.condvars.next_index()
     }
 
     #[inline]
