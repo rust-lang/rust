@@ -474,3 +474,11 @@ struct Subdiagnostic {
     #[subdiagnostic]
     note: Note,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct VecField {
+    #[primary_span]
+    #[label]
+    spans: Vec<Span>,
+}

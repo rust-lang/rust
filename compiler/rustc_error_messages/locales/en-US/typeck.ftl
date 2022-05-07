@@ -90,3 +90,14 @@ typeck-add-return-type-missing-here = a return type might be missing here
 typeck-expected-default-return-type = expected `()` because of default return type
 
 typeck-expected-return-type = expected `{$expected}` because of return type
+
+typeck-unconstrained-opaque-type = unconstrained opaque type
+    .note = `{$name}` must be used in combination with a concrete type within the same module
+
+typeck-explicit-generic-args-with-impl-trait =
+    cannot provide explicit generic arguments when `impl Trait` is used in argument position
+    .label = explicit generic argument not allowed
+    .note = see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+
+typeck-explicit-generic-args-with-impl-trait-feature =
+    add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable

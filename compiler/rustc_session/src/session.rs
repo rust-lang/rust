@@ -413,8 +413,20 @@ impl Session {
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
+    pub fn create_err<'a>(
+        &'a self,
+        err: impl SessionDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.parse_sess.create_err(err)
+    }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
         self.parse_sess.emit_err(err)
+    }
+    pub fn create_warning<'a>(
+        &'a self,
+        err: impl SessionDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        self.parse_sess.create_warning(err)
     }
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
