@@ -3,21 +3,23 @@
 use std::iter;
 
 use hir::{Module, ModuleSource};
-use ide_db::FxHashSet;
 use ide_db::{
     base_db::{SourceDatabaseExt, VfsPath},
-    RootDatabase, SymbolKind,
+    FxHashSet, RootDatabase, SymbolKind,
 };
 use syntax::{ast, AstNode, SyntaxKind};
 
-use crate::{context::NameContext, CompletionItem};
+use crate::{
+    context::{CompletionContext, NameContext, NameKind},
+    CompletionItem, Completions,
+};
 
-use crate::{context::CompletionContext, Completions};
-
-/// Complete mod declaration, i.e. `mod $0;`
+/// Complete mod declaration, i.e. `mod ;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let mod_under_caret = match &ctx.name_ctx {
-        Some(NameContext::Module(mod_under_caret)) if mod_under_caret.item_list().is_none() => {
+        Some(NameContext { kind: NameKind::Module(mod_under_caret), .. })
+            if mod_under_caret.item_list().is_none() =>
+        {
             mod_under_caret
         }
         _ => return None,
@@ -26,7 +28,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
     let _p = profile::span("completion::complete_mod");
 
     let mut current_module = ctx.module;
-    // For `mod $0`, `ctx.module` is its parent, but for `mod f$0`, it's `mod f` itself, but we're
+    // For `mod `, `ctx.module` is its parent, but for `mod f`, it's `mod f` itself, but we're
     // interested in its parent.
     if ctx.original_token.kind() == SyntaxKind::IDENT {
         if let Some(module) = ctx.original_token.ancestors().nth(1).and_then(ast::Module::cast) {

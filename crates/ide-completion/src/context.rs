@@ -117,7 +117,13 @@ pub(super) struct PatternContext {
 }
 
 #[derive(Debug)]
-pub(super) enum LifetimeContext {
+pub(super) struct LifetimeContext {
+    pub(super) lifetime: Option<ast::Lifetime>,
+    pub(super) kind: LifetimeKind,
+}
+
+#[derive(Debug)]
+pub enum LifetimeKind {
     LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
     Lifetime,
     LabelRef,
@@ -125,8 +131,15 @@ pub(super) enum LifetimeContext {
 }
 
 #[derive(Debug)]
+pub struct NameContext {
+    #[allow(dead_code)]
+    pub(super) name: Option<ast::Name>,
+    pub(super) kind: NameKind,
+}
+
+#[derive(Debug)]
 #[allow(dead_code)]
-pub(super) enum NameContext {
+pub(super) enum NameKind {
     Const,
     ConstParam,
     Enum,
@@ -150,6 +163,8 @@ pub(super) enum NameContext {
 
 #[derive(Debug)]
 pub(super) struct NameRefContext {
+    /// NameRef syntax in the original file
+    pub(super) nameref: Option<ast::NameRef>,
     pub(super) dot_access: Option<DotAccess>,
     pub(super) path_ctx: Option<PathCompletionCtx>,
 }
@@ -203,8 +218,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
-    /// The NameLike under the cursor in the original file if it exists.
-    pub(super) name_syntax: Option<ast::NameLike>,
     /// Are we completing inside a let statement with a missing semicolon?
     pub(super) incomplete_let: bool,
 
@@ -216,6 +229,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) name_ctx: Option<NameContext>,
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) nameref_ctx: Option<NameRefContext>,
+
     pub(super) pattern_ctx: Option<PatternContext>,
 
     pub(super) existing_derives: FxHashSet<hir::Macro>,
@@ -238,14 +252,6 @@ impl<'a> CompletionContext<'a> {
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
-    }
-
-    pub(crate) fn name_ref(&self) -> Option<&ast::NameRef> {
-        self.name_syntax.as_ref().and_then(ast::NameLike::as_name_ref)
-    }
-
-    pub(crate) fn lifetime(&self) -> Option<&ast::Lifetime> {
-        self.name_syntax.as_ref().and_then(ast::NameLike::as_lifetime)
     }
 
     pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
@@ -276,7 +282,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_variant(&self) -> bool {
-        matches!(self.name_ctx, Some(NameContext::Variant))
+        matches!(self.name_ctx, Some(NameContext { kind: NameKind::Variant, .. }))
     }
 
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
@@ -301,7 +307,7 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expect_field(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::TupleField))
-            || matches!(self.name_ctx, Some(NameContext::RecordField))
+            || matches!(self.name_ctx, Some(NameContext { kind: NameKind::RecordField, .. }))
     }
 
     /// Whether the cursor is right after a trait or impl header.
@@ -338,7 +344,10 @@ impl<'a> CompletionContext<'a> {
                 self.completion_location,
                 Some(ImmediateLocation::RecordPat(_) | ImmediateLocation::RecordExpr(_))
             )
-            || matches!(self.name_ctx, Some(NameContext::Module(_) | NameContext::Rename))
+            || matches!(
+                self.name_ctx,
+                Some(NameContext { kind: NameKind::Module(_) | NameKind::Rename, .. })
+            )
     }
 
     pub(crate) fn path_context(&self) -> Option<&PathCompletionCtx> {
@@ -518,7 +527,6 @@ impl<'a> CompletionContext<'a> {
             expected_type: None,
             function_def: None,
             impl_def: None,
-            name_syntax: None,
             incomplete_let: false,
             completion_location: None,
             prev_sibling: None,
@@ -862,11 +870,9 @@ impl<'a> CompletionContext<'a> {
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
-                self.name_syntax =
-                    find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
-                if let Some((mut nameref_ctx, _)) =
-                    Self::classify_name_ref(&self.sema, &original_file, name_ref)
-                {
+                if let Some(parent) = name_ref.syntax().parent() {
+                    let (mut nameref_ctx, _) =
+                        Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
                     if let Some(path_ctx) = &mut nameref_ctx.path_ctx {
                         path_ctx.kind = PathKind::Derive;
                     }
@@ -883,8 +889,6 @@ impl<'a> CompletionContext<'a> {
         self.completion_location =
             determine_location(&self.sema, original_file, offset, &name_like);
         self.prev_sibling = determine_prev_sibling(&name_like);
-        self.name_syntax =
-            find_node_at_offset(original_file, name_like.syntax().text_range().start());
         self.impl_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
@@ -901,9 +905,9 @@ impl<'a> CompletionContext<'a> {
                 self.lifetime_ctx = Self::classify_lifetime(&self.sema, original_file, lifetime);
             }
             ast::NameLike::NameRef(name_ref) => {
-                if let Some((nameref_ctx, pat_ctx)) =
-                    Self::classify_name_ref(&self.sema, original_file, name_ref)
-                {
+                if let Some(parent) = name_ref.syntax().parent() {
+                    let (nameref_ctx, pat_ctx) =
+                        Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
                     self.nameref_ctx = Some(nameref_ctx);
                     self.pattern_ctx = pat_ctx;
                 }
@@ -921,7 +925,7 @@ impl<'a> CompletionContext<'a> {
 
     fn classify_lifetime(
         _sema: &Semantics<RootDatabase>,
-        _original_file: &SyntaxNode,
+        original_file: &SyntaxNode,
         lifetime: ast::Lifetime,
     ) -> Option<LifetimeContext> {
         let parent = lifetime.syntax().parent()?;
@@ -929,18 +933,21 @@ impl<'a> CompletionContext<'a> {
             return None;
         }
 
-        Some(match_ast! {
+        let kind = match_ast! {
             match parent {
-                ast::LifetimeParam(param) => LifetimeContext::LifetimeParam {
+                ast::LifetimeParam(param) => LifetimeKind::LifetimeParam {
                     is_decl: param.lifetime().as_ref() == Some(&lifetime),
                     param
                 },
-                ast::BreakExpr(_) => LifetimeContext::LabelRef,
-                ast::ContinueExpr(_) => LifetimeContext::LabelRef,
-                ast::Label(_) => LifetimeContext::LabelDef,
-                _ => LifetimeContext::Lifetime,
+                ast::BreakExpr(_) => LifetimeKind::LabelRef,
+                ast::ContinueExpr(_) => LifetimeKind::LabelRef,
+                ast::Label(_) => LifetimeKind::LabelDef,
+                _ => LifetimeKind::Lifetime,
             }
-        })
+        };
+        let lifetime = find_node_at_offset(&original_file, lifetime.syntax().text_range().start());
+
+        Some(LifetimeContext { lifetime, kind })
     }
 
     fn classify_name(
@@ -950,12 +957,12 @@ impl<'a> CompletionContext<'a> {
     ) -> Option<(NameContext, Option<PatternContext>)> {
         let parent = name.syntax().parent()?;
         let mut pat_ctx = None;
-        let name_ctx = match_ast! {
+        let kind = match_ast! {
             match parent {
-                ast::Const(_) => NameContext::Const,
-                ast::ConstParam(_) => NameContext::ConstParam,
-                ast::Enum(_) => NameContext::Enum,
-                ast::Fn(_) => NameContext::Function,
+                ast::Const(_) => NameKind::Const,
+                ast::ConstParam(_) => NameKind::ConstParam,
+                ast::Enum(_) => NameKind::Enum,
+                ast::Fn(_) => NameKind::Function,
                 ast::IdentPat(bind_pat) => {
                     let is_name_in_field_pat = bind_pat
                         .syntax()
@@ -966,49 +973,38 @@ impl<'a> CompletionContext<'a> {
                         pat_ctx = Some(pattern_context_for(original_file, bind_pat.into()));
                     }
 
-                    NameContext::IdentPat
+                    NameKind::IdentPat
                 },
-                ast::MacroDef(_) => NameContext::MacroDef,
-                ast::MacroRules(_) => NameContext::MacroRules,
-                ast::Module(module) => NameContext::Module(module),
-                ast::RecordField(_) => NameContext::RecordField,
-                ast::Rename(_) => NameContext::Rename,
-                ast::SelfParam(_) => NameContext::SelfParam,
-                ast::Static(_) => NameContext::Static,
-                ast::Struct(_) => NameContext::Struct,
-                ast::Trait(_) => NameContext::Trait,
-                ast::TypeAlias(_) => NameContext::TypeAlias,
-                ast::TypeParam(_) => NameContext::TypeParam,
-                ast::Union(_) => NameContext::Union,
-                ast::Variant(_) => NameContext::Variant,
+                ast::MacroDef(_) => NameKind::MacroDef,
+                ast::MacroRules(_) => NameKind::MacroRules,
+                ast::Module(module) => NameKind::Module(module),
+                ast::RecordField(_) => NameKind::RecordField,
+                ast::Rename(_) => NameKind::Rename,
+                ast::SelfParam(_) => NameKind::SelfParam,
+                ast::Static(_) => NameKind::Static,
+                ast::Struct(_) => NameKind::Struct,
+                ast::Trait(_) => NameKind::Trait,
+                ast::TypeAlias(_) => NameKind::TypeAlias,
+                ast::TypeParam(_) => NameKind::TypeParam,
+                ast::Union(_) => NameKind::Union,
+                ast::Variant(_) => NameKind::Variant,
                 _ => return None,
             }
         };
-        Some((name_ctx, pat_ctx))
+        let name = find_node_at_offset(&original_file, name.syntax().text_range().start());
+        Some((NameContext { name, kind }, pat_ctx))
     }
 
     fn classify_name_ref(
         sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
-    ) -> Option<(NameRefContext, Option<PatternContext>)> {
-        let parent = name_ref.syntax().parent()?;
+        parent: SyntaxNode,
+    ) -> (NameRefContext, Option<PatternContext>) {
+        let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut nameref_ctx = NameRefContext { dot_access: None, path_ctx: None };
+        let mut nameref_ctx = NameRefContext { dot_access: None, path_ctx: None, nameref };
 
-        fn find_in_original_file<N: AstNode>(
-            x: Option<N>,
-            original_file: &SyntaxNode,
-        ) -> Option<N> {
-            fn find_node_with_range<N: AstNode>(
-                syntax: &SyntaxNode,
-                range: TextRange,
-            ) -> Option<N> {
-                let range = syntax.text_range().intersect(range)?;
-                syntax.covering_element(range).ancestors().find_map(N::cast)
-            }
-            x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
-        }
         let segment = match_ast! {
             match parent {
                 ast::PathSegment(segment) => segment,
@@ -1022,7 +1018,7 @@ impl<'a> CompletionContext<'a> {
                         _ => false,
                     };
                     nameref_ctx.dot_access = Some(DotAccess::Field { receiver, receiver_is_ambiguous_float_literal });
-                    return Some((nameref_ctx, None));
+                    return (nameref_ctx, None);
                 },
                 ast::MethodCallExpr(method) => {
                     nameref_ctx.dot_access = Some(
@@ -1031,9 +1027,9 @@ impl<'a> CompletionContext<'a> {
                             has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some())
                         }
                     );
-                    return Some((nameref_ctx, None));
+                    return (nameref_ctx, None);
                 },
-                _ => return None,
+                _ => return (nameref_ctx, None),
             }
         };
 
@@ -1057,7 +1053,7 @@ impl<'a> CompletionContext<'a> {
                 .unwrap_or(false)
         };
 
-        path_ctx.kind = path.syntax().ancestors().find_map(|it| {
+        let kind = path.syntax().ancestors().find_map(|it| {
             // using Option<Option<PathKind>> as extra controlflow
             let kind = match_ast! {
                 match it {
@@ -1138,7 +1134,11 @@ impl<'a> CompletionContext<'a> {
                 }
             };
             Some(kind)
-        }).flatten()?;
+        }).flatten();
+        match kind {
+            Some(kind) => path_ctx.kind = kind,
+            None => return (nameref_ctx, pat_ctx),
+        }
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
@@ -1180,7 +1180,7 @@ impl<'a> CompletionContext<'a> {
             }
         }
         nameref_ctx.path_ctx = Some(path_ctx);
-        Some((nameref_ctx, pat_ctx))
+        (nameref_ctx, pat_ctx)
     }
 }
 
@@ -1233,6 +1233,14 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
         mut_token,
         ref_token,
     }
+}
+
+fn find_in_original_file<N: AstNode>(x: Option<N>, original_file: &SyntaxNode) -> Option<N> {
+    fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
+        let range = syntax.text_range().intersect(range)?;
+        syntax.covering_element(range).ancestors().find_map(N::cast)
+    }
+    x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
 }
 
 /// Attempts to find `node` inside `syntax` via `node`'s text range.

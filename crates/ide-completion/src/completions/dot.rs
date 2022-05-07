@@ -9,8 +9,15 @@ use crate::{
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let dot_receiver = match ctx.dot_receiver() {
-        Some(expr) => expr,
+    let (dot_access, dot_receiver) = match &ctx.nameref_ctx {
+        Some(NameRefContext {
+            dot_access:
+                Some(
+                    access @ (DotAccess::Method { receiver: Some(receiver), .. }
+                    | DotAccess::Field { receiver: Some(receiver), .. }),
+                ),
+            ..
+        }) => (access, receiver),
         _ => return complete_undotted_self(acc, ctx),
     };
 
@@ -19,10 +26,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    if matches!(
-        ctx.nameref_ctx,
-        Some(NameRefContext { dot_access: Some(DotAccess::Method { .. }), .. }),
-    ) {
+    if let DotAccess::Method { .. } = dot_access {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(
