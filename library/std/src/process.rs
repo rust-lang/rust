@@ -2107,6 +2107,7 @@ pub trait Termination {
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for () {
     #[inline]
+    /// Returns `ExitCode::SUCCESS`.
     fn report(self) -> ExitCode {
         ExitCode::SUCCESS.report()
     }
@@ -2114,6 +2115,16 @@ impl Termination for () {
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
+    /// Returns a meaningful exit code, and outputs an error message if
+    /// appropriate.
+    ///
+    /// If the result is `Ok`, returns `ExitCode::SUCCESS`.
+    ///
+    /// If the result is `Err`, writes the [`fmt::Debug`] representation of
+    /// the error value to [`io::stderr`] and returns `ExitCode::FAILURE`.
+    ///
+    /// [`fmt::Debug`]: crate::fmt::Debug
+    /// [`io::stderr`]: crate::io::stderr
     fn report(self) -> ExitCode {
         match self {
             Ok(()) => ().report(),
@@ -2131,6 +2142,13 @@ impl Termination for ! {
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
+    /// Returns a meaningful exit code and outputs an error message.
+    ///
+    /// Writes the [`fmt::Debug`] representation of the error value to
+    /// [`io::stderr`] and returns  `ExitCode::FAILURE`.
+    ///
+    /// [`fmt::Debug`]: crate::fmt::Debug
+    /// [`io::stderr`]: crate::io::stderr
     fn report(self) -> ExitCode {
         let Err(err) = self;
         eprintln!("Error: {err:?}");
@@ -2140,6 +2158,13 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
+    /// Returns a meaningful exit code and outputs an error message.
+    ///
+    /// Writes the [`fmt::Debug`] representation of the error value to
+    /// [`io::stderr`] and returns  `ExitCode::FAILURE`.
+    ///
+    /// [`fmt::Debug`]: crate::fmt::Debug
+    /// [`io::stderr`]: crate::io::stderr
     fn report(self) -> ExitCode {
         let Err(err) = self;
         Err::<!, _>(err).report()
@@ -2148,6 +2173,7 @@ impl<E: fmt::Debug> Termination for Result<Infallible, E> {
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ExitCode {
+    /// Returns the `ExitCode` unchanged.
     #[inline]
     fn report(self) -> ExitCode {
         self
