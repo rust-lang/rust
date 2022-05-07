@@ -10,7 +10,7 @@ In rustc this is done using the `SubstsRef` that we mentioned above (â€œsubstsâ€
 Conceptually, you can think of `SubstsRef` as a list of types that are to be substituted for the
 generic type parameters of the ADT.
 
-`SubstsRef` is a type alias of `List<GenericArg<'tcx>>` (see [`List` rustdocs][list]).
+`SubstsRef` is a type alias of `&'tcx List<GenericArg<'tcx>>` (see [`List` rustdocs][list]).
 [`GenericArg`] is essentially a space-efficient wrapper around [`GenericArgKind`], which is an enum
 indicating what kind of generic the type parameter is (type, lifetime, or const).  Thus, `SubstsRef`
 is conceptually like a `&'tcx [GenericArgKind<'tcx>]` slice (but it is actually a `List`).
