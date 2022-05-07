@@ -363,15 +363,22 @@ mod unsafe_impl_smoke_test {
 mod unsafe_impl_from_macro {
     unsafe trait T {}
 
-    macro_rules! unsafe_impl {
+    macro_rules! no_safety_comment {
         ($t:ty) => {
             unsafe impl T for $t {}
         };
     }
-    // ok: from macro expanision
-    unsafe_impl!(());
-    // ok: from macro expansion
-    unsafe_impl!(i32);
+    // error
+    no_safety_comment!(());
+
+    macro_rules! with_safety_comment {
+        ($t:ty) => {
+            // SAFETY:
+            unsafe impl T for $t {}
+        };
+    }
+    // ok
+    with_safety_comment!((i32));
 }
 
 #[rustfmt::skip]

@@ -164,7 +164,19 @@ LL |         unsafe impl B for (u32) {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:420:5
+  --> $DIR/undocumented_unsafe_blocks.rs:368:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(());
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:427:5
    |
 LL |     unsafe impl NoComment for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +184,7 @@ LL |     unsafe impl NoComment for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:424:19
+  --> $DIR/undocumented_unsafe_blocks.rs:431:19
    |
 LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,7 +192,7 @@ LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:428:5
+  --> $DIR/undocumented_unsafe_blocks.rs:435:5
    |
 LL |     unsafe impl TrailingComment for () {} // SAFETY:
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -188,12 +200,12 @@ LL |     unsafe impl TrailingComment for () {} // SAFETY:
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:433:5
+  --> $DIR/undocumented_unsafe_blocks.rs:440:5
    |
 LL |     unsafe impl Interference for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 24 previous errors
+error: aborting due to 25 previous errors
 
