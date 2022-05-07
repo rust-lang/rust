@@ -46,7 +46,7 @@
 -     bb2: {
 +                                          // + span: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +                                          // + user_ty: UserType(0)
-+                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [65535], len: Size { raw: 16 } }, align: Align { pow2: 3 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
++                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef(..)) }
 +         Deinit((*_7));                   // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         ((*_7).0: alloc::raw_vec::RawVec<u32>) = move _8; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         ((*_7).1: usize) = const 0_usize; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
