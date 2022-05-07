@@ -461,6 +461,14 @@ fn subst_and_check_impossible_predicates<'tcx>(
     debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+
+    // Specifically check trait fulfillment to avoid an error when trying to resolve
+    // associated items.
+    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
+        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+        predicates.push(ty::Binder::dummy(trait_ref).to_poly_trait_predicate().to_predicate(tcx));
+    }
+
     predicates.retain(|predicate| !predicate.needs_subst());
     let result = impossible_predicates(tcx, predicates);
 
