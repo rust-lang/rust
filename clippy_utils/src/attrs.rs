@@ -5,7 +5,6 @@ use rustc_span::sym;
 use std::str::FromStr;
 
 /// Deprecation status of attributes known by Clippy.
-#[allow(dead_code)]
 pub enum DeprecationStatus {
     /// Attribute is deprecated
     Deprecated,

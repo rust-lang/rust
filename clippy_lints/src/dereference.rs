@@ -168,7 +168,7 @@ struct RefPat {
 }
 
 impl<'tcx> LateLintPass<'tcx> for Dereferencing {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Skip path expressions from deref calls. e.g. `Deref::deref(e)`
         if Some(expr.hir_id) == self.skip_expr.take() {
@@ -580,7 +580,7 @@ fn find_adjustments<'tcx>(
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {

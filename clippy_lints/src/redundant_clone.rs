@@ -71,7 +71,7 @@ declare_clippy_lint! {
 declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClone {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,

@@ -163,7 +163,6 @@ enum Level {
     Lower,
 }
 
-#[allow(rustc::usage_of_ty_tykind)]
 fn find_first_mismatch<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
     let mut result = None;
     pat.walk(|p| {

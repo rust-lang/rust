@@ -62,7 +62,7 @@ declare_clippy_lint! {
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveStruct {
     msrv: Option<RustcVersion>,
 }
@@ -76,7 +76,7 @@ impl ManualNonExhaustiveStruct {
 
 impl_lint_pass!(ManualNonExhaustiveStruct => [MANUAL_NON_EXHAUSTIVE]);
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct ManualNonExhaustiveEnum {
     msrv: Option<RustcVersion>,
     constructed_enum_variants: FxHashSet<(DefId, DefId)>,

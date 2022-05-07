@@ -8,7 +8,7 @@ use rustc_lint::LateContext;
 
 use super::MATCH_SINGLE_BINDING;
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if expr.span.from_expansion() || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
