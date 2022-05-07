@@ -1,9 +1,6 @@
 // This file contains type definitions that are processed by the Closure Compiler but are
 // not put into the JavaScript we include as part of the documentation. It is used for
 // type checking. See README.md in this directory for more info.
-/* eslint-env es6 */
-/* eslint no-var: "error" */
-/* eslint prefer-const: "error" */
 
 /* eslint-disable */
 let searchState;

@@ -1,7 +1,3 @@
-/* eslint-env es6 */
-/* eslint no-var: "error" */
-/* eslint prefer-const: "error" */
-/* eslint prefer-arrow-callback: "error" */
 // Local js definitions:
 /* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass, onEach, onEachLazy, NOT_DISPLAYED_ID */

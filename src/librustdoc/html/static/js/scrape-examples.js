@@ -1,7 +1,3 @@
-/* eslint-env es6 */
-/* eslint no-var: "error" */
-/* eslint prefer-const: "error" */
-/* eslint prefer-arrow-callback: "error" */
 /* global addClass, hasClass, removeClass, onEachLazy */
 
 "use strict";
