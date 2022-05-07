@@ -567,3 +567,10 @@ $ rustdoc src/lib.rs -Z unstable-options \
 
 The example above check every well known names (`target_os`, `doc`, `test`, ... via `names()`)
 and check the values of `feature`: `foo` and `bar`.
+
+### `--generate-link-to-definition`: Generate links on types in source code
+
+ * Tracking issue: [#89095](https://github.com/rust-lang/rust/issues/89095)
+
+This flag enables the generation of links in the source code pages which allow the reader
+to jump to a type definition.
