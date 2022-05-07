@@ -382,20 +382,6 @@ pub mod PubMod {
     }
 
     #[test]
-    fn not_applicable_in_import_statements() {
-        check_assist_not_applicable(
-            qualify_path,
-            r#"
-use PubStruct$0;
-
-pub mod PubMod {
-    pub struct PubStruct;
-}
-"#,
-        );
-    }
-
-    #[test]
     fn qualify_function() {
         check_assist(
             qualify_path,
@@ -1268,6 +1254,44 @@ mod foo {
 #[derive(foo::Copy)]
 struct Foo;
 "#,
+        );
+    }
+
+    #[test]
+    fn works_in_use_start() {
+        check_assist(
+            qualify_path,
+            r#"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use foo$0::Foo;
+"#,
+            r#"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use bar::foo::Foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_in_non_start_use() {
+        check_assist_not_applicable(
+            qualify_path,
+            r"
+mod bar {
+    pub mod foo {
+        pub struct Foo;
+    }
+}
+use foo::Foo$0;
+",
         );
     }
 }
