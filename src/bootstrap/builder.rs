@@ -1143,13 +1143,22 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // #[cfg(not(bootstrap)]
+        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
+        // is made to work with `--check-cfg` which is currently not easly possible until cargo
+        // get some support for setting `--check-cfg` within build script, it's the least invasive
+        // hack that still let's us have cfg checking for the vast majority of the codebase.
         if stage != 0 {
-            // Enable cfg checking of cargo features
-            // FIXME: De-comment this when cargo beta get support for it
-            // cargo.arg("-Zcheck-cfg-features");
+            // Enable cfg checking of cargo features for everything but std.
+            //
+            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+            // backtrace, core_simd, std_float, ...), those dependencies have their own features
+            // but cargo isn't involved in the #[path] and so cannot pass the complete list of
+            // features, so for that reason we don't enable checking of features for std.
+            if mode != Mode::Std {
+                cargo.arg("-Zcheck-cfg-features");
+            }
 
-            // Enable cfg checking of rustc well-known names
+            // Enable cfg checking of well known names/values
             rustflags
                 .arg("-Zunstable-options")
                 // Enable checking of well known names
