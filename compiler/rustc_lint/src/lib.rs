@@ -109,6 +109,7 @@ pub use rustc_session::lint::{LintArray, LintPass};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
+    expect::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
