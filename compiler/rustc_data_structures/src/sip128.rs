@@ -462,6 +462,14 @@ impl Hasher for SipHasher128 {
         self.slice_write(msg);
     }
 
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        // This hasher works byte-wise, and `0xFF` cannot show up in a `str`,
+        // so just hashing the one extra byte is enough to be prefix-free.
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
+    }
+
     fn finish(&self) -> u64 {
         panic!("SipHasher128 cannot provide valid 64 bit hashes")
     }

@@ -241,6 +241,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(let_chains)]
+#![feature(let_else)]
 #![feature(linkage)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
@@ -270,6 +271,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(maybe_uninit_slice)]
@@ -300,6 +302,7 @@
 #![feature(toowned_clone_into)]
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]
+#![feature(slice_concat_trait)]
 //
 // Library features (unwind):
 #![feature(panic_unwind)]

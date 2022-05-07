@@ -595,7 +595,7 @@ fn object_ty_for_trait<'tcx>(
 /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`,
 /// - require the following bound:
 ///
-///   ```
+///   ```ignore (not-rust)
 ///   Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
 ///   ```
 ///
@@ -621,13 +621,13 @@ fn object_ty_for_trait<'tcx>(
 /// Instead, we fudge a little by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
 /// Written as a chalk-style query:
-///
-///     forall (U: Trait + ?Sized) {
-///         if (Self: Unsize<U>) {
-///             Receiver: DispatchFromDyn<Receiver[Self => U]>
-///         }
+/// ```ignore (not-rust)
+/// forall (U: Trait + ?Sized) {
+///     if (Self: Unsize<U>) {
+///         Receiver: DispatchFromDyn<Receiver[Self => U]>
 ///     }
-///
+/// }
+/// ```
 /// for `self: &'a mut Self`, this means `&'a mut Self: DispatchFromDyn<&'a mut U>`
 /// for `self: Rc<Self>`, this means `Rc<Self>: DispatchFromDyn<Rc<U>>`
 /// for `self: Pin<Box<Self>>`, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`

@@ -52,7 +52,7 @@ pub struct OverlapError {
 ///
 /// For example, consider the following scenario:
 ///
-/// ```rust
+/// ```ignore (illustrative)
 /// trait Foo { ... }
 /// impl<T, U> Foo for (T, U) { ... }  // target impl
 /// impl<V> Foo for (V, V) { ... }     // source impl
@@ -64,7 +64,7 @@ pub struct OverlapError {
 /// where-clauses add some trickiness here, because they can be used to "define"
 /// an argument indirectly:
 ///
-/// ```rust
+/// ```ignore (illustrative)
 /// impl<'a, I, T: 'a> Iterator for Cloned<I>
 ///    where I: Iterator<Item = &'a T>, T: Clone
 /// ```

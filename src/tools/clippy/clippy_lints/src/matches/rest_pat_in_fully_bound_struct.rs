@@ -14,6 +14,7 @@ pub(crate) fn check(cx: &LateContext<'_>, pat: &Pat<'_>) {
         if let ty::Adt(def, _) = ty.kind();
         if def.is_struct() || def.is_union();
         if fields.len() == def.non_enum_variant().fields.len();
+        if !def.non_enum_variant().is_field_list_non_exhaustive();
 
         then {
             span_lint_and_help(

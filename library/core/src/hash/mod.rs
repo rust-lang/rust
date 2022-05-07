@@ -333,6 +333,12 @@ pub trait Hasher {
     ///
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
+    ///
+    /// # Note to Implementers
+    ///
+    /// You generally should not do length-prefixing as part of implementing
+    /// this method.  It's up to the [`Hash`] implementation to call
+    /// [`Hasher::write_length_prefix`] before sequences that need it.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, bytes: &[u8]);
 
@@ -409,6 +415,127 @@ pub trait Hasher {
     fn write_isize(&mut self, i: isize) {
         self.write_usize(i as usize)
     }
+
+    /// Writes a length prefix into this hasher, as part of being prefix-free.
+    ///
+    /// If you're implementing [`Hash`] for a custom collection, call this before
+    /// writing its contents to this `Hasher`.  That way
+    /// `(collection![1, 2, 3], collection![4, 5])` and
+    /// `(collection![1, 2], collection![3, 4, 5])` will provide different
+    /// sequences of values to the `Hasher`
+    ///
+    /// The `impl<T> Hash for [T]` includes a call to this method, so if you're
+    /// hashing a slice (or array or vector) via its `Hash::hash` method,
+    /// you should **not** call this yourself.
+    ///
+    /// This method is only for providing domain separation.  If you want to
+    /// hash a `usize` that represents part of the *data*, then it's important
+    /// that you pass it to [`Hasher::write_usize`] instead of to this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hasher_prefixfree_extras)]
+    /// # // Stubs to make the `impl` below pass the compiler
+    /// # struct MyCollection<T>(Option<T>);
+    /// # impl<T> MyCollection<T> {
+    /// #     fn len(&self) -> usize { todo!() }
+    /// # }
+    /// # impl<'a, T> IntoIterator for &'a MyCollection<T> {
+    /// #     type Item = T;
+    /// #     type IntoIter = std::iter::Empty<T>;
+    /// #     fn into_iter(self) -> Self::IntoIter { todo!() }
+    /// # }
+    ///
+    /// use std::hash::{Hash, Hasher};
+    /// impl<T: Hash> Hash for MyCollection<T> {
+    ///     fn hash<H: Hasher>(&self, state: &mut H) {
+    ///         state.write_length_prefix(self.len());
+    ///         for elt in self {
+    ///             elt.hash(state);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// # Note to Implementers
+    ///
+    /// If you've decided that your `Hasher` is willing to be susceptible to
+    /// Hash-DoS attacks, then you might consider skipping hashing some or all
+    /// of the `len` provided in the name of increased performance.
+    #[inline]
+    #[unstable(feature = "hasher_prefixfree_extras", issue = "96762")]
+    fn write_length_prefix(&mut self, len: usize) {
+        self.write_usize(len);
+    }
+
+    /// Writes a single `str` into this hasher.
+    ///
+    /// If you're implementing [`Hash`], you generally do not need to call this,
+    /// as the `impl Hash for str` does, so you should prefer that instead.
+    ///
+    /// This includes the domain separator for prefix-freedom, so you should
+    /// **not** call `Self::write_length_prefix` before calling this.
+    ///
+    /// # Note to Implementers
+    ///
+    /// There are at least two reasonable default ways to implement this.
+    /// Which one will be the default is not yet decided, so for now
+    /// you probably want to override it specifically.
+    ///
+    /// ## The general answer
+    ///
+    /// It's always correct to implement this with a length prefix:
+    ///
+    /// ```
+    /// # #![feature(hasher_prefixfree_extras)]
+    /// # struct Foo;
+    /// # impl std::hash::Hasher for Foo {
+    /// # fn finish(&self) -> u64 { unimplemented!() }
+    /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
+    /// fn write_str(&mut self, s: &str) {
+    ///     self.write_length_prefix(s.len());
+    ///     self.write(s.as_bytes());
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// And, if your `Hasher` works in `usize` chunks, this is likely a very
+    /// efficient way to do it, as anything more complicated may well end up
+    /// slower than just running the round with the length.
+    ///
+    /// ## If your `Hasher` works byte-wise
+    ///
+    /// One nice thing about `str` being UTF-8 is that the `b'\xFF'` byte
+    /// never happens.  That means that you can append that to the byte stream
+    /// being hashed and maintain prefix-freedom:
+    ///
+    /// ```
+    /// # #![feature(hasher_prefixfree_extras)]
+    /// # struct Foo;
+    /// # impl std::hash::Hasher for Foo {
+    /// # fn finish(&self) -> u64 { unimplemented!() }
+    /// # fn write(&mut self, _bytes: &[u8]) { unimplemented!() }
+    /// fn write_str(&mut self, s: &str) {
+    ///     self.write(s.as_bytes());
+    ///     self.write_u8(0xff);
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// This does require that your implementation not add extra padding, and
+    /// thus generally requires that you maintain a buffer, running a round
+    /// only once that buffer is full (or `finish` is called).
+    ///
+    /// That's because if `write` pads data out to a fixed chunk size, it's
+    /// likely that it does it in such a way that `"a"` and `"a\x00"` would
+    /// end up hashing the same sequence of things, introducing conflicts.
+    #[inline]
+    #[unstable(feature = "hasher_prefixfree_extras", issue = "96762")]
+    fn write_str(&mut self, s: &str) {
+        self.write(s.as_bytes());
+        self.write_u8(0xff);
+    }
 }
 
 #[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
@@ -454,6 +581,12 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
     }
     fn write_isize(&mut self, i: isize) {
         (**self).write_isize(i)
+    }
+    fn write_length_prefix(&mut self, len: usize) {
+        (**self).write_length_prefix(len)
+    }
+    fn write_str(&mut self, s: &str) {
+        (**self).write_str(s)
     }
 }
 
@@ -709,8 +842,7 @@ mod impls {
     impl Hash for str {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write(self.as_bytes());
-            state.write_u8(0xff)
+            state.write_str(self);
         }
     }
 
@@ -767,7 +899,7 @@ mod impls {
     impl<T: Hash> Hash for [T] {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            self.len().hash(state);
+            state.write_length_prefix(self.len());
             Hash::hash_slice(self, state)
         }
     }

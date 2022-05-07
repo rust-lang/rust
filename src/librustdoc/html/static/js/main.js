@@ -301,7 +301,11 @@ function loadCss(cssFileName) {
     }
 
     getSettingsButton().onclick = event => {
+        addClass(getSettingsButton(), "rotate");
         event.preventDefault();
+        // Sending request for the CSS and the JS files at the same time so it will
+        // hopefully be loaded when the JS will generate the settings content.
+        loadCss("settings");
         loadScript(window.settingsJS);
     };
 
@@ -755,8 +759,14 @@ function loadCss(cssFileName) {
         const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
+        // We don't want to include impls from this JS file, when the HTML already has them.
+        // The current crate should always be ignored. Other crates that should also be
+        // ignored are included in the attribute `data-ignore-extern-crates`.
+        const ignoreExternCrates = document
+            .querySelector("script[data-ignore-extern-crates]")
+            .getAttribute("data-ignore-extern-crates");
         for (const lib of libs) {
-            if (lib === window.currentCrate) {
+            if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
                 continue;
             }
             const structs = imp[lib];

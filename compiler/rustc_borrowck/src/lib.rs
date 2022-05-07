@@ -34,14 +34,13 @@ use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, Stat
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
-use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_session::lint::builtin::UNUSED_MUT;
+use rustc_span::{Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::mem;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::{
@@ -312,7 +311,6 @@ fn do_mir_borrowck<'a, 'tcx>(
                 locals_are_invalidated_at_exit,
                 access_place_error_reported: Default::default(),
                 reservation_error_reported: Default::default(),
-                reservation_warnings: Default::default(),
                 uninitialized_error_reported: Default::default(),
                 regioncx: regioncx.clone(),
                 used_mut: Default::default(),
@@ -344,7 +342,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         fn_self_span_reported: Default::default(),
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
-        reservation_warnings: Default::default(),
         uninitialized_error_reported: Default::default(),
         regioncx: Rc::clone(&regioncx),
         used_mut: Default::default(),
@@ -376,34 +373,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         &results,
         &mut mbcx,
     );
-
-    // Convert any reservation warnings into lints.
-    let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
-    for (_, (place, span, location, bk, borrow)) in reservation_warnings {
-        let initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
-
-        let scope = mbcx.body.source_info(location).scope;
-        let lint_root = match &mbcx.body.source_scopes[scope].local_data {
-            ClearCrossCrate::Set(data) => data.lint_root,
-            _ => tcx.hir().local_def_id_to_hir_id(def.did),
-        };
-
-        // Span and message don't matter; we overwrite them below anyway
-        mbcx.infcx.tcx.struct_span_lint_hir(
-            MUTABLE_BORROW_RESERVATION_CONFLICT,
-            lint_root,
-            DUMMY_SP,
-            |lint| {
-                let mut diag = lint.build("");
-
-                diag.message = initial_diag.styled_message().clone();
-                diag.span = initial_diag.span.clone();
-
-                mbcx.buffer_non_error_diag(diag);
-            },
-        );
-        initial_diag.cancel();
-    }
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
@@ -539,11 +508,6 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// used to report extra information for `FnSelfUse`, to avoid
     /// unnecessarily verbose errors.
     fn_self_span_reported: FxHashSet<Span>,
-    /// Migration warnings to be reported for #56254. We delay reporting these
-    /// so that we can suppress the warning if there's a corresponding error
-    /// for the activation of the borrow.
-    reservation_warnings:
-        FxHashMap<BorrowIndex, (Place<'tcx>, Span, Location, BorrowKind, BorrowData<'tcx>)>,
     /// This field keeps track of errors reported in the checking of uninitialized variables,
     /// so that we don't report seemingly duplicate errors.
     uninitialized_error_reported: FxHashSet<PlaceRef<'tcx>>,
@@ -995,12 +959,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let conflict_error =
             self.check_access_for_conflict(location, place_span, sd, rw, flow_state);
 
-        if let (Activation(_, borrow_idx), true) = (kind.1, conflict_error) {
-            // Suppress this warning when there's an error being emitted for the
-            // same borrow: fixing the error is likely to fix the warning.
-            self.reservation_warnings.remove(&borrow_idx);
-        }
-
         if conflict_error || mutability_error {
             debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`", place_span, kind);
             self.access_place_error_reported.insert((place_span.0, place_span.1));
@@ -1067,6 +1025,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     BorrowKind::Unique | BorrowKind::Mut { .. },
                 ) => Control::Continue,
 
+                (Reservation(_), BorrowKind::Shallow | BorrowKind::Shared) => {
+                    // This used to be a future compatibility warning (to be
+                    // disallowed on NLL). See rust-lang/rust#56254
+                    Control::Continue
+                }
+
                 (Write(WriteKind::Move), BorrowKind::Shallow) => {
                     // Handled by initialization checks.
                     Control::Continue
@@ -1093,27 +1057,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         }
                     }
                     Control::Break
-                }
-
-                (
-                    Reservation(WriteKind::MutableBorrow(bk)),
-                    BorrowKind::Shallow | BorrowKind::Shared,
-                ) if { tcx.migrate_borrowck() && this.borrow_set.contains(&location) } => {
-                    let bi = this.borrow_set.get_index_of(&location).unwrap();
-                    debug!(
-                        "recording invalid reservation of place: {:?} with \
-                         borrow index {:?} as warning",
-                        place_span.0, bi,
-                    );
-                    // rust-lang/rust#56254 - This was previously permitted on
-                    // the 2018 edition so we emit it as a warning. We buffer
-                    // these separately so that we only emit a warning if borrow
-                    // checking was otherwise successful.
-                    this.reservation_warnings
-                        .insert(bi, (place_span.0, place_span.1, location, bk, borrow.clone()));
-
-                    // Don't suppress actual errors.
-                    Control::Continue
                 }
 
                 (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {

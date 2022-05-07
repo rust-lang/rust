@@ -1,5 +1,6 @@
 use crate::clippy_project_root;
 use indoc::indoc;
+use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, ErrorKind};
@@ -232,7 +233,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         )
     });
 
-    result.push_str(&format!(
+    let _ = write!(
+        result,
         indoc! {r#"
             declare_clippy_lint! {{
                 /// ### What it does
@@ -256,7 +258,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         version = version,
         name_upper = name_upper,
         category = category,
-    ));
+    );
 
     result.push_str(&if enable_msrv {
         format!(

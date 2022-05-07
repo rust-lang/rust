@@ -158,9 +158,9 @@ pub(super) enum ProjectAndUnifyResult<'tcx> {
 }
 
 /// Evaluates constraints of the form:
-///
-///     for<...> <T as Trait>::U == V
-///
+/// ```ignore (not-rust)
+/// for<...> <T as Trait>::U == V
+/// ```
 /// If successful, this may result in additional obligations. Also returns
 /// the projection cache key used to track these additional obligations.
 ///
@@ -224,9 +224,9 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
 }
 
 /// Evaluates constraints of the form:
-///
-///     <T as Trait>::U == V
-///
+/// ```ignore (not-rust)
+/// <T as Trait>::U == V
+/// ```
 /// If successful, this may result in additional obligations.
 ///
 /// See [poly_project_and_unify_type] for an explanation of the return value.
@@ -1258,7 +1258,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
 /// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
 /// that the definition of `Foo` has some clues:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// trait Foo {
 ///     type FooT : Bar<BarT=i32>
 /// }

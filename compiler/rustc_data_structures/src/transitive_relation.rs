@@ -282,7 +282,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     /// (where the relation is encoding the `<=` relation for the lattice).
     /// So e.g., if the relation is `->` and we have
     ///
-    /// ```
+    /// ```text
     /// a -> b -> d -> f
     /// |              ^
     /// +--> c -> e ---+

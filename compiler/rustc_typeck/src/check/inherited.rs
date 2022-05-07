@@ -17,11 +17,11 @@ use std::cell::RefCell;
 use std::ops::Deref;
 
 /// Closures defined within the function. For example:
-///
-///     fn foo() {
-///         bar(move|| { ... })
-///     }
-///
+/// ```ignore (illustrative)
+/// fn foo() {
+///     bar(move|| { ... })
+/// }
+/// ```
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.

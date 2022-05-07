@@ -158,6 +158,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
+        let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
         let expr_span = expr.span;
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
@@ -196,7 +197,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
-                        ty: self.tcx.mk_tup(arg_tys),
+                        ty: tcx.mk_tup(arg_tys),
                         temp_lifetime,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
@@ -488,24 +489,24 @@ impl<'tcx> Cx<'tcx> {
                             out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
-                                self.tcx,
+                                tcx,
                                 anon_const_def_id,
                                 self.param_env,
                             );
-                            let span = self.tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.hir().span(anon_const.hir_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
-                                self.tcx,
+                                tcx,
                                 anon_const_def_id,
                                 self.param_env,
                             );
-                            let span = self.tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.hir().span(anon_const.hir_id);
 
                             InlineAsmOperand::SymFn { value, span }
                         }
@@ -519,21 +520,16 @@ impl<'tcx> Cx<'tcx> {
             },
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
-                let tcx = self.tcx;
-                let local_def_id = tcx.hir().local_def_id(anon_const.hir_id);
-                let anon_const_def_id = local_def_id.to_def_id();
-
-                // Need to include the parent substs
-                let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-                let ty = tcx.typeck(local_def_id).node_type(hir_id);
-                let typeck_root_def_id = tcx.typeck_root_def_id(anon_const_def_id);
+                let ty = self.typeck_results().node_type(anon_const.hir_id);
+                let did = tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
+                let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
                 let substs =
                     InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
                         .substs;
 
-                ExprKind::ConstBlock { did: anon_const_def_id, substs }
+                ExprKind::ConstBlock { did, substs }
             }
             // Now comes the rote stuff:
             hir::ExprKind::Repeat(ref v, _) => {
@@ -591,7 +587,7 @@ impl<'tcx> Cx<'tcx> {
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
-                name: Field::new(self.tcx.field_index(expr.hir_id, self.typeck_results)),
+                name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -640,7 +636,7 @@ impl<'tcx> Cx<'tcx> {
                                     let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                     use rustc_middle::ty::util::IntTypeExt;
                                     let ty = adt_def.repr().discr_type();
-                                    let ty = ty.to_ty(self.tcx());
+                                    let ty = ty.to_ty(tcx);
                                     Some((d, o, ty))
                                 }
                                 _ => None,
@@ -652,8 +648,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let source = if let Some((did, offset, var_ty)) = var {
                         let param_env_ty = self.param_env.and(var_ty);
-                        let size = self
-                            .tcx
+                        let size = tcx
                             .layout_of(param_env_ty)
                             .unwrap_or_else(|e| {
                                 panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
@@ -671,7 +666,7 @@ impl<'tcx> Cx<'tcx> {
                             Some(did) => {
                                 // in case we are offsetting from a computed discriminant
                                 // and not the beginning of discriminants (which is always `0`)
-                                let substs = InternalSubsts::identity_for_item(self.tcx(), did);
+                                let substs = InternalSubsts::identity_for_item(tcx, did);
                                 let kind =
                                     ExprKind::NamedConst { def_id: did, substs, user_ty: None };
                                 let lhs = self.thir.exprs.push(Expr {

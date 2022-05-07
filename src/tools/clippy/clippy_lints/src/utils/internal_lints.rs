@@ -292,7 +292,7 @@ declare_clippy_lint! {
     /// Checks for unnecessary conversion from Symbol to a string.
     ///
     /// ### Why is this bad?
-    /// It's faster use symbols directly intead of strings.
+    /// It's faster use symbols directly instead of strings.
     ///
     /// ### Example
     /// Bad:
@@ -823,7 +823,7 @@ fn suggest_note(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
         expr.span,
-        "this call is collspible",
+        "this call is collapsible",
         "collapse into",
         format!(
             "span_lint_and_note({}, {}, {}, {}, {}, {})",

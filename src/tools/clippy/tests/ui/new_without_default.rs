@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::missing_safety_doc)]
+#![allow(dead_code, clippy::missing_safety_doc, clippy::extra_unused_lifetimes)]
 #![warn(clippy::new_without_default)]
 
 pub struct Foo;

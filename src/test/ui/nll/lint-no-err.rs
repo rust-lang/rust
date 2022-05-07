@@ -23,6 +23,4 @@ fn main() {
     let mut conflict = Repro;
     let prev = conflict.get();
     conflict.insert(*prev + *x);
-    //~^ WARN cannot borrow `conflict` as mutable because it is also borrowed as immutable
-    //~| WARN this borrowing pattern was not meant to be accepted
 }

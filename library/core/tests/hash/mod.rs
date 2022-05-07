@@ -20,6 +20,10 @@ impl Hasher for MyHasher {
             self.hash += *byte as u64;
         }
     }
+    fn write_str(&mut self, s: &str) {
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
+    }
     fn finish(&self) -> u64 {
         self.hash
     }

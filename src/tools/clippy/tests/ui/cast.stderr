@@ -194,5 +194,17 @@ error: casting `main::E10` to `u16` may truncate the value
 LL |             let _ = self as u16;
    |                     ^^^^^^^^^^^
 
-error: aborting due to 31 previous errors
+error: casting `u32` to `u8` may truncate the value
+  --> $DIR/cast.rs:257:13
+   |
+LL |     let c = (q >> 16) as u8;
+   |             ^^^^^^^^^^^^^^^
+
+error: casting `u32` to `u8` may truncate the value
+  --> $DIR/cast.rs:260:13
+   |
+LL |     let c = (q / 1000) as u8;
+   |             ^^^^^^^^^^^^^^^^
+
+error: aborting due to 33 previous errors
 

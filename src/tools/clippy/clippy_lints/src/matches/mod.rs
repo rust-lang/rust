@@ -1,4 +1,4 @@
-use clippy_utils::source::{snippet_opt, walk_span_to_context};
+use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
@@ -7,7 +7,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
-mod infalliable_detructuring_match;
+mod infallible_destructuring_match;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -653,6 +653,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
+            if !span_starts_with(cx, expr.span, "match") {
+                return;
+            }
             if !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
                     if !(meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO)
@@ -691,7 +694,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        self.infallible_destructuring_match_linted |= infalliable_detructuring_match::check(cx, local);
+        self.infallible_destructuring_match_linted |= infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {

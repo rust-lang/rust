@@ -167,10 +167,6 @@ impl<'tcx> BorrowSet<'tcx> {
     crate fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
         self.location_map.get_index_of(location).map(BorrowIndex::from)
     }
-
-    crate fn contains(&self, location: &Location) -> bool {
-        self.location_map.contains_key(location)
-    }
 }
 
 struct GatherBorrows<'a, 'tcx> {

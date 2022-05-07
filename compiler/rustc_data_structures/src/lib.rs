@@ -17,6 +17,7 @@
 #![feature(generators)]
 #![feature(let_else)]
 #![feature(hash_raw_entry)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(never_type)]

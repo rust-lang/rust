@@ -269,7 +269,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ///
     /// Consider this silly example:
     ///
-    /// ```
+    /// ```ignore UNSOLVED (does replacing @i32 with Box<i32> preserve the desired semantics for the example?)
     /// fn borrow(x: &i32) -> &i32 {x}
     /// fn foo(x: @i32) -> i32 {  // block: B
     ///     let b = borrow(x);    // region: <R0>

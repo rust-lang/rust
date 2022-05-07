@@ -3006,9 +3006,17 @@ impl Default for DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Hasher for DefaultHasher {
+    // The underlying `SipHasher13` doesn't override the other
+    // `write_*` methods, so it's ok not to forward them here.
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.write(msg)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.0.write_str(s);
     }
 
     #[inline]

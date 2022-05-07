@@ -11,7 +11,7 @@
 
 use rustc_arena::DroplessArena;
 use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::def::DefKind;
 use rustc_hir::HirIdMap;
 use rustc_middle::ty::{self, TyCtxt};
 use std::fmt;
@@ -79,7 +79,29 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     //
     // - https://rustc-dev-guide.rust-lang.org/query.html
     // - https://rustc-dev-guide.rust-lang.org/variance.html
-    tcx.hir().visit_all_item_likes(&mut terms_cx);
+    let crate_items = tcx.hir_crate_items(());
+
+    for id in crate_items.items() {
+        terms_cx.check_item(id);
+    }
+
+    for id in crate_items.trait_items() {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
+            terms_cx.add_inferreds_for_item(id.hir_id());
+        }
+    }
+
+    for id in crate_items.impl_items() {
+        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
+            terms_cx.add_inferreds_for_item(id.hir_id());
+        }
+    }
+
+    for id in crate_items.foreign_items() {
+        if let DefKind::Fn = tcx.def_kind(id.def_id) {
+            terms_cx.add_inferreds_for_item(id.hir_id());
+        }
+    }
 
     terms_cx
 }
@@ -124,54 +146,42 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
             (start..(start + count)).map(|i| &*arena.alloc(InferredTerm(InferredIndex(i)))),
         );
     }
-}
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(item.hir_id()));
+    fn check_item(&mut self, id: hir::ItemId) {
+        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(id.hir_id()));
 
-        match item.kind {
-            hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                self.add_inferreds_for_item(item.hir_id());
+        let def_kind = self.tcx.def_kind(id.def_id);
+        match def_kind {
+            DefKind::Struct | DefKind::Union => {
+                let item = self.tcx.hir().item(id);
 
-                if let hir::VariantData::Tuple(..) = *struct_def {
-                    self.add_inferreds_for_item(struct_def.ctor_hir_id().unwrap());
-                }
-            }
+                if let hir::ItemKind::Struct(ref struct_def, _)
+                | hir::ItemKind::Union(ref struct_def, _) = item.kind
+                {
+                    self.add_inferreds_for_item(item.hir_id());
 
-            hir::ItemKind::Enum(ref enum_def, _) => {
-                self.add_inferreds_for_item(item.hir_id());
-
-                for variant in enum_def.variants {
-                    if let hir::VariantData::Tuple(..) = variant.data {
-                        self.add_inferreds_for_item(variant.data.ctor_hir_id().unwrap());
+                    if let hir::VariantData::Tuple(..) = *struct_def {
+                        self.add_inferreds_for_item(struct_def.ctor_hir_id().unwrap());
                     }
                 }
             }
+            DefKind::Enum => {
+                let item = self.tcx.hir().item(id);
 
-            hir::ItemKind::Fn(..) => {
-                self.add_inferreds_for_item(item.hir_id());
+                if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
+                    self.add_inferreds_for_item(item.hir_id());
+
+                    for variant in enum_def.variants {
+                        if let hir::VariantData::Tuple(..) = variant.data {
+                            self.add_inferreds_for_item(variant.data.ctor_hir_id().unwrap());
+                        }
+                    }
+                }
             }
-
+            DefKind::Fn => {
+                self.add_inferreds_for_item(id.hir_id());
+            }
             _ => {}
-        }
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Fn(..) = trait_item.kind {
-            self.add_inferreds_for_item(trait_item.hir_id());
-        }
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.add_inferreds_for_item(impl_item.hir_id());
-        }
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
-        if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-            self.add_inferreds_for_item(foreign_item.hir_id());
         }
     }
 }

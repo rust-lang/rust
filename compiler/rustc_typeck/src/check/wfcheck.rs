@@ -37,7 +37,7 @@ use std::ops::ControlFlow;
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
 ///
-/// ```rust
+/// ```ignore (illustrative)
 /// F: for<'b, 'tcx> where 'tcx FnOnce(FnCtxt<'b, 'tcx>)
 /// ```
 struct CheckWfFcxBuilder<'tcx> {

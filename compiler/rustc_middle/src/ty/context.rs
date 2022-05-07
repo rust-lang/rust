@@ -455,12 +455,13 @@ pub struct TypeckResults<'tcx> {
     /// # Example
     ///
     /// ```rust
+    /// # use std::fmt::Debug;
     /// fn foo(x: &u32) -> impl Debug { *x }
     /// ```
     ///
     /// The function signature here would be:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// for<'a> fn(&'a u32) -> Foo
     /// ```
     ///
@@ -469,7 +470,7 @@ pub struct TypeckResults<'tcx> {
     ///
     /// The *liberated* form of this would be
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// fn(&'a u32) -> u32
     /// ```
     ///

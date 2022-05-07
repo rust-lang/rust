@@ -696,7 +696,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the distance between two pointers. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
     /// This function is the inverse of [`offset`].
     ///

@@ -37,7 +37,7 @@ crate enum PlaceBase {
     ///
     /// Consider the following example
     /// ```rust
-    /// let t = (10, (10, (10, 10)));
+    /// let t = (((10, 10), 10), 10);
     ///
     /// let c = || {
     ///     println!("{}", t.0.0.0);
@@ -45,7 +45,7 @@ crate enum PlaceBase {
     /// ```
     /// Here the THIR expression for `t.0.0.0` will be something like
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// * Field(0)
     ///     * Field(0)
     ///         * Field(0)

@@ -3105,6 +3105,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
+    fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
+        debug!("resolve_anon_const {constant:?}");
+        self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
+            visit::walk_anon_const(this, constant);
+        });
+    }
+
     fn resolve_expr(&mut self, expr: &'ast Expr, parent: Option<&'ast Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
@@ -3261,7 +3268,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
             ExprKind::ConstBlock(ref ct) => {
-                self.resolve_anon_const(ct, IsRepeatExpr::No);
+                self.resolve_inline_const(ct);
             }
             ExprKind::Index(ref elem, ref idx) => {
                 self.resolve_expr(elem, Some(expr));

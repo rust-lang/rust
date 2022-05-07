@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// A common error is to add an extra semicolon:
     ///
-    /// ```
+    /// ```compile_fail,E0308
     /// fn foo() -> usize {
     ///     22;
     /// }

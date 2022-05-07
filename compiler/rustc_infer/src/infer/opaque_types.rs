@@ -309,14 +309,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the same as generating an outlives constraint on `Tc` itself.
     /// For example, if we had a function like this:
     ///
-    /// ```rust
+    /// ```
+    /// # #![feature(type_alias_impl_trait)]
+    /// # fn main() {}
+    /// # trait Foo<'a> {}
+    /// # impl<'a, T> Foo<'a> for (&'a u32, T) {}
     /// fn foo<'a, T>(x: &'a u32, y: T) -> impl Foo<'a> {
     ///   (x, y)
     /// }
     ///
     /// // Equivalent to:
+    /// # mod dummy { use super::*;
     /// type FooReturn<'a, T> = impl Foo<'a>;
-    /// fn foo<'a, T>(..) -> FooReturn<'a, T> { .. }
+    /// fn foo<'a, T>(x: &'a u32, y: T) -> FooReturn<'a, T> {
+    ///   (x, y)
+    /// }
+    /// # }
     /// ```
     ///
     /// then the hidden type `Tc` would be `(&'0 u32, T)` (where `'0`
@@ -602,17 +610,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 /// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `def_id`.
 ///
 /// Example:
-/// ```rust
+/// ```ignore UNSOLVED (is this a bug?)
+/// # #![feature(type_alias_impl_trait)]
 /// pub mod foo {
 ///     pub mod bar {
-///         pub trait Bar { .. }
-///
+///         pub trait Bar { /* ... */ }
 ///         pub type Baz = impl Bar;
 ///
-///         fn f1() -> Baz { .. }
+///         # impl Bar for () {}
+///         fn f1() -> Baz { /* ... */ }
 ///     }
-///
-///     fn f2() -> bar::Baz { .. }
+///     fn f2() -> bar::Baz { /* ... */ }
 /// }
 /// ```
 ///

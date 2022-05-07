@@ -2899,7 +2899,7 @@ impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
+        state.write_length_prefix(self.len());
         // It's not possible to use Hash::hash_slice on slices
         // returned by as_slices method as their length can vary
         // in otherwise identical deques.

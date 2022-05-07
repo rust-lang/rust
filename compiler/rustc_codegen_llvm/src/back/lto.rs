@@ -394,15 +394,15 @@ impl Drop for Linker<'_> {
 ///
 /// At a high level Thin LTO looks like:
 ///
-///     1. Prepare a "summary" of each LLVM module in question which describes
-///        the values inside, cost of the values, etc.
-///     2. Merge the summaries of all modules in question into one "index"
-///     3. Perform some global analysis on this index
-///     4. For each module, use the index and analysis calculated previously to
-///        perform local transformations on the module, for example inlining
-///        small functions from other modules.
-///     5. Run thin-specific optimization passes over each module, and then code
-///        generate everything at the end.
+///    1. Prepare a "summary" of each LLVM module in question which describes
+///       the values inside, cost of the values, etc.
+///    2. Merge the summaries of all modules in question into one "index"
+///    3. Perform some global analysis on this index
+///    4. For each module, use the index and analysis calculated previously to
+///       perform local transformations on the module, for example inlining
+///       small functions from other modules.
+///    5. Run thin-specific optimization passes over each module, and then code
+///       generate everything at the end.
 ///
 /// The summary for each module is intended to be quite cheap, and the global
 /// index is relatively quite cheap to create as well. As a result, the goal of

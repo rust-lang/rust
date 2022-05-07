@@ -80,9 +80,13 @@ fn run_clippy_for_package(project: &str) {
         .args(&["-D", "clippy::pedantic"])
         .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
-    // internal lints only exist if we build with the internal feature
     if cfg!(feature = "internal") {
+        // internal lints only exist if we build with the internal feature
         command.args(&["-D", "clippy::internal"]);
+    } else {
+        // running a clippy built without internal lints on the clippy source
+        // that contains e.g. `allow(clippy::invalid_paths)`
+        command.args(&["-A", "unknown_lints"]);
     }
 
     let output = command.output().unwrap();

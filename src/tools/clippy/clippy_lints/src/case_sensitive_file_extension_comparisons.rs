@@ -42,8 +42,8 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
         if let ExprKind::Lit(Spanned { node: LitKind::Str(ext_literal, ..), ..}) = extension.kind;
         if (2..=6).contains(&ext_literal.as_str().len());
         if ext_literal.as_str().starts_with('.');
-        if ext_literal.as_str().chars().skip(1).all(|c| c.is_uppercase() || c.is_digit(10))
-            || ext_literal.as_str().chars().skip(1).all(|c| c.is_lowercase() || c.is_digit(10));
+        if ext_literal.as_str().chars().skip(1).all(|c| c.is_uppercase() || c.is_ascii_digit())
+            || ext_literal.as_str().chars().skip(1).all(|c| c.is_lowercase() || c.is_ascii_digit());
         then {
             let mut ty = ctx.typeck_results().expr_ty(obj);
             ty = match ty.kind() {

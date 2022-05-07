@@ -737,9 +737,28 @@ impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
-            print_time_passes_entry(&message, start_time.elapsed(), start_rss, end_rss);
+            let dur = start_time.elapsed();
+
+            if should_print_passes(dur, start_rss, end_rss) {
+                print_time_passes_entry(&message, dur, start_rss, end_rss);
+            }
         }
     }
+}
+
+fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
+    if dur.as_millis() > 5 {
+        return true;
+    }
+
+    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+        let change_rss = end_rss.abs_diff(start_rss);
+        if change_rss > 0 {
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn print_time_passes_entry(

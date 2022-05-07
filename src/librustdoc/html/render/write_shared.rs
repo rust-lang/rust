@@ -501,10 +501,13 @@ pub(super) fn write_shared(
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
-            Some(p) => p,
+        let (remote_path, remote_item_type) = match cache.exact_paths.get(&did) {
+            Some(p) => match cache.paths.get(&did).or_else(|| cache.external_paths.get(&did)) {
+                Some((_, t)) => (p, t),
+                None => continue,
+            },
             None => match cache.external_paths.get(&did) {
-                Some(p) => p,
+                Some((p, t)) => (p, t),
                 None => continue,
             },
         };

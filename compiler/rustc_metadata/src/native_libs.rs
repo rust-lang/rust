@@ -36,7 +36,7 @@ struct Collector<'tcx> {
 
 impl<'tcx> Collector<'tcx> {
     fn process_item(&mut self, id: rustc_hir::ItemId) {
-        if !matches!(self.tcx.hir().def_kind(id.def_id), DefKind::ForeignMod) {
+        if !matches!(self.tcx.def_kind(id.def_id), DefKind::ForeignMod) {
             return;
         }
 

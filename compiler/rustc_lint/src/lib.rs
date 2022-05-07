@@ -490,6 +490,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "converted into hard error, see RFC 2972 \
          <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
     );
+    store.register_removed(
+        "mutable_borrow_reservation_conflict",
+        "now allowed, see issue #59159 \
+         <https://github.com/rust-lang/rust/issues/59159> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

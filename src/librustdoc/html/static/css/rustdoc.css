@@ -1333,6 +1333,11 @@ pre.rust {
 	border-top: 2px solid;
 }
 
+#titles > button:first-child:last-child {
+	margin-right: 1px;
+	width: calc(100% - 1px);
+}
+
 #titles > button:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
@@ -1399,6 +1404,18 @@ pre.rust {
 	border: 1px solid;
 	border-radius: 2px;
 	cursor: pointer;
+}
+
+@keyframes rotating {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+#settings-menu.rotate img {
+	animation: rotating 2s linear infinite;
 }
 
 #help-button {

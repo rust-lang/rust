@@ -122,16 +122,16 @@ rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
     /// particular, imagine a type like this:
-    ///
-    ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-    ///     ^          ^            |          |           |
-    ///     |          |            |          |           |
-    ///     |          +------------+ 0        |           |
-    ///     |                                  |           |
-    ///     +----------------------------------+ 1         |
-    ///     |                                              |
-    ///     +----------------------------------------------+ 0
-    ///
+    /// ```ignore (illustrative)
+    ///    for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
+    /// // ^          ^            |          |           |
+    /// // |          |            |          |           |
+    /// // |          +------------+ 0        |           |
+    /// // |                                  |           |
+    /// // +----------------------------------+ 1         |
+    /// // |                                              |
+    /// // +----------------------------------------------+ 0
+    /// ```
     /// In this type, there are two binders (the outer fn and the inner
     /// fn). We need to be able to determine, for any given region, which
     /// fn type it is bound by, the inner or the outer one. There are
@@ -203,7 +203,7 @@ impl DebruijnIndex {
     /// it will now be bound at INNERMOST. This is an appropriate thing to do
     /// when moving a region out from inside binders:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
     /// // Binder:  D3           D2        D1            ^^
     /// ```
@@ -471,9 +471,9 @@ impl Variance {
     /// variance with which the argument appears.
     ///
     /// Example 1:
-    ///
-    ///     *mut Vec<i32>
-    ///
+    /// ```ignore (illustrative)
+    /// *mut Vec<i32>
+    /// ```
     /// Here, the "ambient" variance starts as covariant. `*mut T` is
     /// invariant with respect to `T`, so the variance in which the
     /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
@@ -483,9 +483,9 @@ impl Variance {
     /// (again) in `Invariant`.
     ///
     /// Example 2:
-    ///
-    ///     fn(*const Vec<i32>, *mut Vec<i32)
-    ///
+    /// ```ignore (illustrative)
+    /// fn(*const Vec<i32>, *mut Vec<i32)
+    /// ```
     /// The ambient variance is covariant. A `fn` type is
     /// contravariant with respect to its parameters, so the variance
     /// within which both pointer types appear is

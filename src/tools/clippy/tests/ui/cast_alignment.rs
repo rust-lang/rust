@@ -44,8 +44,8 @@ fn main() {
         let _ = core::ptr::read_unaligned(ptr as *const u16);
         let _ = core::intrinsics::unaligned_volatile_load(ptr as *const u16);
         let ptr = &mut data as *mut [u8; 2] as *mut u8;
-        let _ = (ptr as *mut u16).write_unaligned(0);
-        let _ = core::ptr::write_unaligned(ptr as *mut u16, 0);
-        let _ = core::intrinsics::unaligned_volatile_store(ptr as *mut u16, 0);
+        (ptr as *mut u16).write_unaligned(0);
+        core::ptr::write_unaligned(ptr as *mut u16, 0);
+        core::intrinsics::unaligned_volatile_store(ptr as *mut u16, 0);
     }
 }

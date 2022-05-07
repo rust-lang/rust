@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::or_then_unwrap)]
-#![allow(clippy::map_identity)]
+#![allow(clippy::map_identity, clippy::let_unit_value)]
 
 struct SomeStruct;
 impl SomeStruct {

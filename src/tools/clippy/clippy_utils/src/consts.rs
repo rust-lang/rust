@@ -5,7 +5,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
+use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -400,6 +400,22 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         let res = self.typeck_results.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
+                // Check if this constant is based on `cfg!(..)`,
+                // which is NOT constant for our purposes.
+                if let Some(node) = self.lcx.tcx.hir().get_if_local(def_id) &&
+                let Node::Item(&Item {
+                    kind: ItemKind::Const(_, body_id),
+                    ..
+                }) = node &&
+                let Node::Expr(&Expr {
+                    kind: ExprKind::Lit(_),
+                    span,
+                    ..
+                }) = self.lcx.tcx.hir().get(body_id.hir_id) &&
+                is_direct_expn_of(span, "cfg").is_some() {
+                    return None;
+                }
+
                 let substs = self.typeck_results.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
