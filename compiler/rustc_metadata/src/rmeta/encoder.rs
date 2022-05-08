@@ -733,14 +733,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
+            self.opaque.flush().unwrap();
+
+            let pos_before_rewind = self.opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
-            self.opaque.file().seek(std::io::SeekFrom::Start(0)).unwrap();
+            self.opaque.file().rewind().unwrap();
             let file = std::io::BufReader::new(self.opaque.file());
             for e in file.bytes() {
                 if e.unwrap() == 0 {
                     zero_bytes += 1;
                 }
             }
+            assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
             let p = |label, bytes| {
