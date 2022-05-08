@@ -534,7 +534,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check => describe!(
+            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
@@ -664,7 +664,7 @@ impl<'a> Builder<'a> {
             ),
             Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
             // These commands either don't use paths, or they're special-cased in Build::build()
-            Kind::Clean | Kind::Clippy | Kind::Fix | Kind::Format | Kind::Setup => vec![],
+            Kind::Clean | Kind::Format | Kind::Setup => vec![],
         }
     }
 

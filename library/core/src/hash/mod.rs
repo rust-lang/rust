@@ -268,10 +268,29 @@ pub use macros::Hash;
 /// instance (with [`write`] and [`write_u8`] etc.). Most of the time, `Hasher`
 /// instances are used in conjunction with the [`Hash`] trait.
 ///
-/// This trait makes no assumptions about how the various `write_*` methods are
+/// This trait provides no guarantees about how the various `write_*` methods are
 /// defined and implementations of [`Hash`] should not assume that they work one
 /// way or another. You cannot assume, for example, that a [`write_u32`] call is
-/// equivalent to four calls of [`write_u8`].
+/// equivalent to four calls of [`write_u8`].  Nor can you assume that adjacent
+/// `write` calls are merged, so it's possible, for example, that
+/// ```
+/// # fn foo(hasher: &mut impl std::hash::Hasher) {
+/// hasher.write(&[1, 2]);
+/// hasher.write(&[3, 4, 5, 6]);
+/// # }
+/// ```
+/// and
+/// ```
+/// # fn foo(hasher: &mut impl std::hash::Hasher) {
+/// hasher.write(&[1, 2, 3, 4]);
+/// hasher.write(&[5, 6]);
+/// # }
+/// ```
+/// end up producing different hashes.
+///
+/// Thus to produce the same hash value, [`Hash`] implementations must ensure
+/// for equivalent items that exactly the same sequence of calls is made -- the
+/// same methods with the same parameters in the same order.
 ///
 /// # Examples
 ///

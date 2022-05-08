@@ -1085,18 +1085,28 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.in_progress_typeck_results.map(|t| t.borrow())
                             && let ty = typeck_results.expr_ty_adjusted(base)
                             && let ty::FnDef(def_id, _substs) = ty.kind()
-                            && let Some(hir::Node::Item(hir::Item { span, ident, .. })) =
+                            && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
                                 hir.get_if_local(*def_id)
                         {
-                            err.span_suggestion_verbose(
-                                span.shrink_to_lo(),
-                                &format!(
-                                    "alternatively, consider making `fn {}` asynchronous",
-                                    ident
-                                ),
-                                "async ".to_string(),
-                                Applicability::MaybeIncorrect,
+                            let msg = format!(
+                                "alternatively, consider making `fn {}` asynchronous",
+                                ident
                             );
+                            if vis_span.is_empty() {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    &msg,
+                                    "async ".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestion_verbose(
+                                    vis_span.shrink_to_hi(),
+                                    &msg,
+                                    " async".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
                     }
                 }

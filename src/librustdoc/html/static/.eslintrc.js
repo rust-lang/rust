@@ -21,6 +21,11 @@ module.exports = {
             "error",
             "double"
         ],
+        "linebreak-style": [
+            "error",
+            "unix"
+        ],
+        "no-trailing-spaces": "error",
         "no-var": ["error"],
         "prefer-const": ["error"],
         "prefer-arrow-callback": ["error"],
