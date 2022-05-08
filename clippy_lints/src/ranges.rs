@@ -193,7 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv.as_ref(), &msrvs::RANGE_CONTAINS) {
+                if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
                     check_possible_range_contains(cx, op.node, l, r, expr);
                 }
             },

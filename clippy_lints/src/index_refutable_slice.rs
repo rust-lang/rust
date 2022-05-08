@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
             if !expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some();
             if let Some(IfLet {let_pat, if_then, ..}) = IfLet::hir(cx, expr);
             if !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id);
-            if meets_msrv(self.msrv.as_ref(), &msrvs::SLICE_PATTERNS);
+            if meets_msrv(self.msrv, msrvs::SLICE_PATTERNS);
 
             let found_slices = find_slice_values(cx, let_pat);
             if !found_slices.is_empty();

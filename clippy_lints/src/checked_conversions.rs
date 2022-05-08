@@ -57,7 +57,7 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::TRY_FROM) {
+        if !meets_msrv(self.msrv, msrvs::TRY_FROM) {
             return;
         }
 

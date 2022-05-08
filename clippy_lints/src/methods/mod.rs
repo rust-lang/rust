@@ -2306,7 +2306,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        check_methods(cx, expr, self.msrv.as_ref());
+        check_methods(cx, expr, self.msrv);
 
         match expr.kind {
             hir::ExprKind::Call(func, args) => {
@@ -2322,7 +2322,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 single_char_add_str::check(cx, expr, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args, self.msrv.as_ref());
+                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args, self.msrv);
             },
             hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -2506,7 +2506,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 }
 
 #[allow(clippy::too_many_lines)]
-fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Option<&RustcVersion>) {
+fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Option<RustcVersion>) {
     if let Some((name, [recv, args @ ..], span)) = method_call(expr) {
         match (name, args) {
             ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
@@ -2534,7 +2534,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     map_collect_result_unit::check(cx, expr, m_recv, m_arg, recv);
                 },
                 Some(("take", [take_self_arg, take_arg], _)) => {
-                    if meets_msrv(msrv, &msrvs::STR_REPEAT) {
+                    if meets_msrv(msrv, msrvs::STR_REPEAT) {
                         manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                     }
                 },

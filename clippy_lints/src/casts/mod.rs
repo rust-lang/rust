@@ -532,7 +532,7 @@ impl_lint_pass!(Casts => [
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !in_external_macro(cx.sess(), expr.span) {
-            ptr_as_ptr::check(cx, expr, &self.msrv);
+            ptr_as_ptr::check(cx, expr, self.msrv);
         }
 
         if expr.span.from_expansion() {
@@ -562,9 +562,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
+                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 }
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
             }
         }
@@ -572,8 +572,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, &self.msrv);
-        cast_slice_different_sizes::check(cx, expr, &self.msrv);
+        ptr_as_ptr::check(cx, expr, self.msrv);
+        cast_slice_different_sizes::check(cx, expr, self.msrv);
     }
 
     extract_msrv_attr!(LateContext);

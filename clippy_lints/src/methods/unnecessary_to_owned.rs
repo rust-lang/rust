@@ -26,7 +26,7 @@ pub fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
     args: &'tcx [Expr<'tcx>],
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
@@ -198,7 +198,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
@@ -213,7 +213,7 @@ fn check_into_iter_call_arg(
             if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, &msrvs::ITERATOR_COPIED) {
+            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) {
                 "copied"
             } else {
                 "cloned"
