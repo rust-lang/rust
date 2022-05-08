@@ -596,6 +596,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_type_of(self, def_id: DefId) -> EarlyBinder<Ty<'tcx>> {
         EarlyBinder(self.type_of(def_id))
     }
+
+    pub fn bound_fn_sig(self, def_id: DefId) -> EarlyBinder<ty::PolyFnSig<'tcx>> {
+        EarlyBinder(self.fn_sig(def_id))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

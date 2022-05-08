@@ -2693,7 +2693,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.def_id,
         )?;
 
-        let fn_sig = EarlyBinder(tcx.fn_sig(assoc.def_id)).subst(
+        let fn_sig = tcx.bound_fn_sig(assoc.def_id).subst(
             tcx,
             trait_ref.substs.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
         );

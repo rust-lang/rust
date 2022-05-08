@@ -8,7 +8,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, ConstKind, EarlyBinder, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::spec::abi::Abi;
 
@@ -260,7 +260,7 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                let fn_sig = EarlyBinder(self.tcx.fn_sig(def_id)).subst(self.tcx, substs);
+                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
 
                 return Some(CallSite {
                     callee,

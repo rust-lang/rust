@@ -265,9 +265,8 @@ fn compare_predicate_entailment<'tcx>(
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        // First liberate late bound regions and subst placeholders
-        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
-        let trait_sig = EarlyBinder(trait_sig).subst(tcx, trait_to_placeholder_substs);
+        let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
+        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
         // Add the resulting inputs and output as well-formed.

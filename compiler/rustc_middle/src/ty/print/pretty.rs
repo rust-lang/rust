@@ -589,7 +589,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                let sig = EarlyBinder(self.tcx().fn_sig(def_id)).subst(self.tcx(), substs);
+                let sig = self.tcx().bound_fn_sig(def_id).subst(self.tcx(), substs);
                 p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),

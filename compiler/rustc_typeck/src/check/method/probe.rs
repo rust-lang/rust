@@ -901,10 +901,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> bool {
         match method.kind {
             ty::AssocKind::Fn => {
-                let fty = self.tcx.fn_sig(method.def_id);
+                let fty = self.tcx.bound_fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
-                    let fty = EarlyBinder(fty).subst(self.tcx, substs);
+                    let fty = fty.subst(self.tcx, substs);
                     let (fty, _) =
                         self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
@@ -1771,7 +1771,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
-        let fn_sig = self.tcx.fn_sig(method);
+        let fn_sig = self.tcx.bound_fn_sig(method);
         debug!(?fn_sig);
 
         assert!(!substs.has_escaping_bound_vars());
@@ -1785,7 +1785,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert_eq!(substs.len(), generics.parent_count as usize);
 
         let xform_fn_sig = if generics.params.is_empty() {
-            EarlyBinder(fn_sig).subst(self.tcx, substs)
+            fn_sig.subst(self.tcx, substs)
         } else {
             let substs = InternalSubsts::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
@@ -1803,7 +1803,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
             });
-            EarlyBinder(fn_sig).subst(self.tcx, substs)
+            fn_sig.subst(self.tcx, substs)
         };
 
         self.erase_late_bound_regions(xform_fn_sig)
