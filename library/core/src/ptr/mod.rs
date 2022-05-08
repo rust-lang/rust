@@ -679,7 +679,7 @@ where
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.61.0")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.62.0")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data.cast(), len)
 }

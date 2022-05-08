@@ -105,7 +105,7 @@ pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
 ///
 /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
 #[unstable(feature = "ptr_metadata", issue = "81513")]
-#[rustc_const_stable(feature = "ptr_metadata", since = "1.61.0")]
+#[rustc_const_stable(feature = "ptr_metadata", since = "1.62.0")]
 #[inline]
 pub const fn from_raw_parts<T: ?Sized>(
     data_address: *const (),
