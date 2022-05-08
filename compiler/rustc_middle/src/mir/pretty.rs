@@ -298,8 +298,7 @@ pub fn write_mir_pretty<'tcx>(
             // are shared between mir_for_ctfe and optimized_mir
             write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
         } else {
-            let instance_mir =
-                tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)));
+            let instance_mir = tcx.instance_mir(ty::InstanceDef::Item(def_id));
             render_body(w, instance_mir)?;
         }
     }
@@ -464,11 +463,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
-                        format!(
-                            "Unevaluated({}, {:?})",
-                            self.tcx.def_path_str(uv.def.did),
-                            uv.substs,
-                        )
+                        format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.substs,)
                     }
                     ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
@@ -481,7 +476,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstantKind::Unevaluated(uv, _) => {
                     format!(
                         "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def.did),
+                        self.tcx.def_path_str(uv.def),
                         uv.substs,
                         uv.promoted,
                     )

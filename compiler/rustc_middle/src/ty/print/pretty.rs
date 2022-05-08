@@ -1328,13 +1328,13 @@ pub trait PrettyPrinter<'tcx>:
 
         match ct.kind() {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
-                match self.tcx().def_kind(def.did) {
+                match self.tcx().def_kind(def) {
                     DefKind::Const | DefKind::AssocConst => {
-                        p!(print_value_path(def.did, substs))
+                        p!(print_value_path(def, substs))
                     }
                     DefKind::AnonConst => {
                         if def.is_local()
-                            && let span = self.tcx().def_span(def.did)
+                            && let span = self.tcx().def_span(def)
                             && let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
                         {
                             p!(write("{}", snip))
@@ -1344,7 +1344,7 @@ pub trait PrettyPrinter<'tcx>:
                             // cause printing to enter an infinite recursion if the anon const is in the self type i.e.
                             // `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {`
                             // where we would try to print `<[T; /* print `constant#0` again */] as Default>::{constant#0}`
-                            p!(write("{}::{}", self.tcx().crate_name(def.did.krate), self.tcx().def_path(def.did).to_string_no_crate_verbose()))
+                            p!(write("{}::{}", self.tcx().crate_name(def.krate), self.tcx().def_path(def).to_string_no_crate_verbose()))
                         }
                     }
                     defkind => bug!("`{:?}` has unexpected defkind {:?}", ct, defkind),

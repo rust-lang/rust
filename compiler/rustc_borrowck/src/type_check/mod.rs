@@ -394,7 +394,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     self.cx.ascribe_user_type(
                         constant.literal.ty(),
                         UserType::TypeOf(
-                            uv.def.did,
+                            uv.def,
                             UserSubsts { substs: uv.substs, user_self_ty: None },
                         ),
                         locations.span(&self.cx.body),
@@ -1766,7 +1766,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let Some(uv) = maybe_uneval {
                 if uv.promoted.is_none() {
                     let tcx = self.tcx();
-                    let def_id = uv.def.def_id_for_type_of();
+                    let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
                         let predicates =

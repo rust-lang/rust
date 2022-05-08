@@ -61,7 +61,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
-    let def = body.source.with_opt_param().as_local().unwrap();
+    let def = body.source.def_id().expect_local();
 
     debug!(?def);
 

@@ -53,19 +53,12 @@ impl<'tcx> Const<'tcx> {
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
-    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
-    }
-
     #[instrument(skip(tcx), level = "debug")]
-    pub fn from_opt_const_arg_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> Self {
-        let body_id = match tcx.hir().get_by_def_id(def.did) {
+    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
+        let body_id = match tcx.hir().get_by_def_id(def) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
+                tcx.def_span(def.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
@@ -73,17 +66,14 @@ impl<'tcx> Const<'tcx> {
         let expr = &tcx.hir().body(body_id).value;
         debug!(?expr);
 
-        let ty = tcx
-            .type_of(def.def_id_for_type_of())
-            .no_bound_vars()
-            .expect("const parameter types cannot be generic");
+        let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
                 ty::UnevaluatedConst {
-                    def: def.to_global(),
-                    substs: InternalSubsts::identity_for_item(tcx, def.did),
+                    def: def.to_def_id(),
+                    substs: InternalSubsts::identity_for_item(tcx, def.to_def_id()),
                 },
                 ty,
             ),

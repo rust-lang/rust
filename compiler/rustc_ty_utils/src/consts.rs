@@ -132,7 +132,7 @@ fn recurse_build<'tcx>(
             tcx.mk_const(val, node.ty)
         }
         &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+            let uneval = ty::UnevaluatedConst::new(def_id, substs);
             tcx.mk_const(uneval, node.ty)
         }
         ExprKind::ConstParam { param, .. } => tcx.mk_const(*param, node.ty),
@@ -391,52 +391,36 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
 pub fn thir_abstract_const(
     tcx: TyCtxt<'_>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: LocalDefId,
 ) -> Result<Option<ty::Const<'_>>, ErrorGuaranteed> {
-    if tcx.features().generic_const_exprs {
-        match tcx.def_kind(def.did) {
-            // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
-            // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
-            // we want to look into them or treat them as opaque projections.
-            //
-            // Right now we do neither of that and simply always fail to unify them.
-            DefKind::AnonConst | DefKind::InlineConst => (),
-            _ => return Ok(None),
-        }
-
-        let body = tcx.thir_body(def)?;
-        let (body, body_id) = (&*body.0.borrow(), body.1);
-
-        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
-        visit::walk_expr(&mut is_poly_vis, &body[body_id]);
-        if !is_poly_vis.is_poly {
-            return Ok(None);
-        }
-
-        let root_span = body.exprs[body_id].span;
-
-        Some(recurse_build(tcx, body, body_id, root_span)).transpose()
-    } else {
-        Ok(None)
+    if !tcx.features().generic_const_exprs {
+        return Ok(None);
     }
+
+    match tcx.def_kind(def) {
+        // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
+        // meaning that we do not look into associated constants. I(@lcnr) am not yet sure whether
+        // we want to look into them or treat them as opaque projections.
+        //
+        // Right now we do neither of that and simply always fail to unify them.
+        DefKind::AnonConst | DefKind::InlineConst => (),
+        _ => return Ok(None),
+    }
+
+    let body = tcx.thir_body(def)?;
+    let (body, body_id) = (&*body.0.borrow(), body.1);
+
+    let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
+    visit::walk_expr(&mut is_poly_vis, &body[body_id]);
+    if !is_poly_vis.is_poly {
+        return Ok(None);
+    }
+
+    let root_span = body.exprs[body_id].span;
+
+    Some(recurse_build(tcx, body, body_id, root_span)).transpose()
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
-        destructure_const,
-        thir_abstract_const: |tcx, def_id| {
-            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.thir_abstract_const_of_const_arg(def)
-            } else {
-                thir_abstract_const(tcx, ty::WithOptConstParam::unknown(def_id))
-            }
-        },
-        thir_abstract_const_of_const_arg: |tcx, (did, param_did)| {
-            thir_abstract_const(
-                tcx,
-                ty::WithOptConstParam { did, const_param_did: Some(param_did) },
-            )
-        },
-        ..*providers
-    };
+    *providers = ty::query::Providers { destructure_const, thir_abstract_const, ..*providers };
 }

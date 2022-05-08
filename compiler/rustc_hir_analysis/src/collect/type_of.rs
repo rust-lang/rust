@@ -420,7 +420,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             // for generic arguments.
             tcx.type_of(param).subst_identity()
         }
-
         Node::AnonConst(_) => {
             let parent_node = tcx.hir().get_parent(hir_id);
             match parent_node {

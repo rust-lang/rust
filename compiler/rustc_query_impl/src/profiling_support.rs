@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::ty::{TyCtxt, WithOptConstParam};
+use rustc_middle::ty::TyCtxt;
 use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
 use std::io::Write;
@@ -148,37 +148,6 @@ impl SpecIntoSelfProfilingString for DefIndex {
 impl SpecIntoSelfProfilingString for LocalDefId {
     fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: self.local_def_index })
-    }
-}
-
-impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<T> {
-    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
-        // We print `WithOptConstParam` values as tuples to make them shorter
-        // and more readable, without losing information:
-        //
-        // "WithOptConstParam { did: foo::bar, const_param_did: Some(foo::baz) }"
-        // becomes "(foo::bar, foo::baz)" and
-        // "WithOptConstParam { did: foo::bar, const_param_did: None }"
-        // becomes "(foo::bar, _)".
-
-        let did = StringComponent::Ref(self.did.to_self_profile_string(builder));
-
-        let const_param_did = if let Some(const_param_did) = self.const_param_did {
-            let const_param_did = builder.def_id_to_string_id(const_param_did);
-            StringComponent::Ref(const_param_did)
-        } else {
-            StringComponent::Value("_")
-        };
-
-        let components = [
-            StringComponent::Value("("),
-            did,
-            StringComponent::Value(", "),
-            const_param_did,
-            StringComponent::Value(")"),
-        ];
-
-        builder.profiler.alloc_string(&components[..])
     }
 }
 

@@ -156,14 +156,6 @@ fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
     tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
 }
 
-fn typeck_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did).subst_identity();
-    typeck_with_fallback(tcx, did, fallback)
-}
-
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
     typeck_with_fallback(tcx, def_id, fallback)
@@ -488,7 +480,6 @@ pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
-        typeck_const_arg,
         typeck,
         diagnostic_only_typeck,
         has_typeck_results,

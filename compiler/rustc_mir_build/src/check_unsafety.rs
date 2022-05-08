@@ -117,10 +117,10 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     }
 
     /// Handle closures/generators/inline-consts, which is unsafecked with their parent body.
-    fn visit_inner_body(&mut self, def: ty::WithOptConstParam<LocalDefId>) {
+    fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
             let inner_thir = &inner_thir.borrow();
-            let hir_context = self.tcx.hir().local_def_id_to_hir_id(def.did);
+            let hir_context = self.tcx.hir().local_def_id_to_hir_id(def);
             let mut inner_visitor = UnsafetyVisitor { thir: inner_thir, hir_context, ..*self };
             inner_visitor.visit_expr(&inner_thir[expr]);
             // Unsafe blocks can be used in the inner body, make sure to take it into account
@@ -396,18 +396,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 movability: _,
                 fake_reads: _,
             }) => {
-                let closure_def = if let Some((did, const_param_id)) =
-                    ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
-                {
-                    ty::WithOptConstParam { did, const_param_did: Some(const_param_id) }
-                } else {
-                    ty::WithOptConstParam::unknown(closure_id)
-                };
-                self.visit_inner_body(closure_def);
+                self.visit_inner_body(closure_id);
             }
             ExprKind::ConstBlock { did, substs: _ } => {
                 let def_id = did.expect_local();
-                self.visit_inner_body(ty::WithOptConstParam::unknown(def_id));
+                self.visit_inner_body(def_id);
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
@@ -706,14 +699,14 @@ impl UnsafeOpKind {
     }
 }
 
-pub fn check_unsafety(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) {
+pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // THIR unsafeck is gated under `-Z thir-unsafeck`
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         return;
     }
 
     // Closures and inline consts are handled by their owner, if it has a body
-    if tcx.is_typeck_child(def.did.to_def_id()) {
+    if tcx.is_typeck_child(def.to_def_id()) {
         return;
     }
 
@@ -726,7 +719,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) {
         return;
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             BodyUnsafety::Unsafe(fn_sig.span)
@@ -734,7 +727,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) {
             BodyUnsafety::Safe
         }
     });
-    let body_target_features = &tcx.body_codegen_attrs(def.did.to_def_id()).target_features;
+    let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
     let mut visitor = UnsafetyVisitor {
@@ -746,23 +739,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) {
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        param_env: tcx.param_env(def.did),
+        param_env: tcx.param_env(def),
         inside_adt: false,
     };
     visitor.visit_expr(&thir[expr]);
-}
-
-pub(crate) fn thir_check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-        tcx.thir_check_unsafety_for_const_arg(def)
-    } else {
-        check_unsafety(tcx, ty::WithOptConstParam::unknown(def_id))
-    }
-}
-
-pub(crate) fn thir_check_unsafety_for_const_arg(
-    tcx: TyCtxt<'_>,
-    (did, param_did): (LocalDefId, DefId),
-) {
-    check_unsafety(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
 }
