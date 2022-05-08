@@ -1,0 +1,30 @@
+error: calling `Arc::new` in `vec![elem; len]`
+  --> $DIR/arc.rs:7:13
+   |
+LL |     let v = vec![Arc::new("x".to_string()); 2];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
+   = note: each element will point to the same `Arc` instance
+   = help: if this is intentional, consider extracting the `Arc` initialization to a variable
+   = help: or if not, initialize each element individually
+
+error: calling `Arc::new` in `vec![elem; len]`
+  --> $DIR/arc.rs:11:13
+   |
+LL |       let v = vec![
+   |  _____________^
+LL | |         std::sync::Arc::new(Mutex::new({
+LL | |             let x = 1;
+LL | |             dbg!(x);
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Arc` instance
+   = help: if this is intentional, consider extracting the `Arc` initialization to a variable
+   = help: or if not, initialize each element individually
+
+error: aborting due to 2 previous errors
+

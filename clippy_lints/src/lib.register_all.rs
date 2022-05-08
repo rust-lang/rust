@@ -263,6 +263,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(ranges::MANUAL_RANGE_CONTAINS),
     LintId::of(ranges::RANGE_ZIP_WITH_LEN),
     LintId::of(ranges::REVERSED_EMPTY_RANGES),
+    LintId::of(rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT),
     LintId::of(redundant_clone::REDUNDANT_CLONE),
     LintId::of(redundant_closure_call::REDUNDANT_CLOSURE_CALL),
     LintId::of(redundant_field_names::REDUNDANT_FIELD_NAMES),
