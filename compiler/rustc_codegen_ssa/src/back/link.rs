@@ -2719,10 +2719,15 @@ fn handle_cli_linker_flavors(
     // adding an argument to the `cc` invocation to use the `use_ld` given linker.
     let use_ld = match &cg.linker_flavor {
         Some(LinkerFlavorCli::Gcc { use_ld }) => {
-            // Ensure `gcc` is the currently selected flavor. Error out cleanly, as `-Zgcc-ld` does
-            // if that happens, but this should be unreachable.
+            // Ensure `gcc` is the currently selected flavor.
+            //
+            // This should be the case as long as this piece of code stays downstream from the CLI
+            // linker-flavor lowering, and the actual `LinkerFlavor` is not changed or overriden by
+            // the time the order-independent options are added to the command args.
+            //
+            // If that changes by mistake (or intentionally) in the future, we panic.
             if LinkerFlavor::Gcc != flavor {
-                sess.fatal(
+                bug!(
                     "`-Clinker-flavor=gcc:*` flag is used even though the \
                     linker flavor is not `gcc`",
                 );
