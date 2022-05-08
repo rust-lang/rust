@@ -4,7 +4,7 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -44,7 +44,6 @@ use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
@@ -2179,19 +2178,19 @@ impl<S: Encoder> Encodable<S> for EncodedMetadata {
 
 impl<D: Decoder> Decodable<D> for EncodedMetadata {
     fn decode(d: &mut D) -> Self {
-        let temp_dir = TempFileBuilder::new().prefix("decoded").tempdir().unwrap();
-        let temp_dir = MaybeTempDir::new(temp_dir, false);
-        let filename = temp_dir.as_ref().join("decoded");
-        let file = std::fs::File::create(&filename).unwrap();
-        let mut file = std::io::BufWriter::new(file);
-
         let len = d.read_usize();
-        for _ in 0..len {
-            file.write(&[d.read_u8()]).unwrap();
-        }
-        file.flush().unwrap();
+        let mmap = if len > 0 {
+            let mut mmap = MmapMut::map_anon(len).unwrap();
+            for _ in 0..len {
+                (&mut mmap[..]).write(&[d.read_u8()]).unwrap();
+            }
+            mmap.flush().unwrap();
+            Some(mmap.make_read_only().unwrap())
+        } else {
+            None
+        };
 
-        Self::from_path(filename, Some(temp_dir)).unwrap()
+        Self { mmap, _temp_dir: None }
     }
 }
 
