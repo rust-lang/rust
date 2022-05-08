@@ -102,6 +102,8 @@ macro_rules! arena_types {
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
+
+            [] steal_typeck_generator: rustc_data_structures::steal::Steal<rustc_middle::ty::TypeckResultGenerator<'tcx>>,
         ]);
     )
 }

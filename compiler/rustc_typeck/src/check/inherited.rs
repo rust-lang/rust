@@ -3,7 +3,7 @@ use super::MaybeInProgressTables;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefIdMap, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
@@ -59,6 +59,8 @@ pub struct Inherited<'a, 'tcx> {
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+
+    pub(super) yield_handle: Option<&'a stackful::generator::YieldHandle<(LocalDefId, DefId)>>,
 }
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
@@ -95,10 +97,26 @@ impl<'tcx> InheritedBuilder<'tcx> {
         let def_id = self.def_id;
         self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
     }
+
+    pub fn enter_with_yield_handle<F, R>(
+        &mut self,
+        yield_handle: Option<&stackful::generator::YieldHandle<(LocalDefId, DefId)>>,
+        f: F,
+    ) -> R
+    where
+        F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
+    {
+        let def_id = self.def_id;
+        self.infcx.enter(|infcx| f(Inherited::new_with_yield_handle(infcx, def_id, yield_handle)))
+    }
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
-    pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
+    pub(super) fn new_with_yield_handle(
+        infcx: InferCtxt<'a, 'tcx>,
+        def_id: LocalDefId,
+        yield_handle: Option<&'a stackful::generator::YieldHandle<(LocalDefId, DefId)>>,
+    ) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
@@ -116,7 +134,12 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             body_id,
+            yield_handle,
         }
+    }
+
+    pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
+        Self::new_with_yield_handle(infcx, def_id, None)
     }
 
     #[instrument(level = "debug", skip(self))]

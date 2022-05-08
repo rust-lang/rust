@@ -537,6 +537,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             did: self.tcx.hir().local_def_id(ast_c.hir_id),
             const_param_did: Some(param_def_id),
         };
+
+        if let Some(y) = self.yield_handle {
+            y.yeet((const_def.did, param_def_id));
+        }
+
         let c = ty::Const::from_opt_const_arg_anon_const(self.tcx, const_def);
         self.register_wf_obligation(
             c.into(),

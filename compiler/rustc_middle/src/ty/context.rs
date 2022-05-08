@@ -377,6 +377,25 @@ pub struct GeneratorDiagnosticData<'tcx> {
     pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 }
 
+pub struct TypeckResultGenerator<'tcx>(
+    pub  std::mem::ManuallyDrop<
+        std::pin::Pin<
+            Box<
+                dyn std::ops::Generator<
+                        Yield = (LocalDefId, DefId),
+                        Return = &'tcx TypeckResults<'tcx>,
+                    > + 'tcx,
+            >,
+        >,
+    >,
+);
+
+impl fmt::Debug for TypeckResultGenerator<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("TypeckResultGenerator").finish()
+    }
+}
+
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.

@@ -104,6 +104,7 @@ pub use inherited::{Inherited, InheritedBuilder};
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::steal::Steal;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, DiagnosticBuilder, EmissionGuarantee, MultiSpan,
 };
@@ -132,6 +133,7 @@ use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 
 use std::cell::{Ref, RefCell, RefMut};
+use std::ops::{Generator, GeneratorState};
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
@@ -244,6 +246,7 @@ pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
+        typeck_generator,
         typeck_const_arg,
         typeck,
         diagnostic_only_typeck,
@@ -319,20 +322,57 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDe
     &*tcx.typeck(def_id).used_trait_imports
 }
 
+fn typeck_generator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (def_id, step): (LocalDefId, u32),
+) -> (
+    &'tcx Steal<ty::TypeckResultGenerator<'tcx>>,
+    GeneratorState<(LocalDefId, DefId), &'tcx ty::TypeckResults<'tcx>>,
+) {
+    use std::mem::ManuallyDrop;
+
+    let mut gen = if step == 0 {
+        ty::TypeckResultGenerator(ManuallyDrop::new(Box::pin(
+            stackful::generator::StackfulGenerator::new(move |y, ()| {
+                let fallback = move || tcx.type_of(def_id.to_def_id());
+                typeck_with_fallback(tcx, def_id, fallback, Some(y))
+            }),
+        )))
+    } else {
+        tcx.typeck_generator((def_id, step - 1)).0.steal()
+    };
+
+    let state = std::pin::Pin::new(&mut *gen.0).resume(());
+    let steal = tcx.arena.alloc(Steal::new(gen));
+    if let GeneratorState::Complete(_) = state {
+        drop(ManuallyDrop::into_inner(steal.steal().0));
+    }
+    (steal, state)
+}
+
 fn typeck_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
 ) -> &ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(param_did);
-    typeck_with_fallback(tcx, did, fallback)
+    typeck_with_fallback(tcx, did, fallback, None)
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     if let Some(param_did) = tcx.opt_const_param_of(def_id) {
         tcx.typeck_const_arg((def_id, param_did))
     } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id());
-        typeck_with_fallback(tcx, def_id, fallback)
+        let mut step = 0;
+        loop {
+            match tcx.typeck_generator((def_id, step)).1 {
+                GeneratorState::Yielded(y) => {
+                    // eprintln!(">>> {:?}", y);
+                    let _ = y;
+                }
+                GeneratorState::Complete(v) => break v,
+            }
+            step += 1;
+        }
     }
 }
 
@@ -343,14 +383,15 @@ fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::T
         let span = tcx.hir().span(tcx.hir().local_def_id_to_hir_id(def_id));
         tcx.ty_error_with_message(span, "diagnostic only typeck table used")
     };
-    typeck_with_fallback(tcx, def_id, fallback)
+    typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
-#[instrument(skip(tcx, fallback))]
+#[instrument(skip(tcx, fallback, yield_handle))]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     fallback: impl Fn() -> Ty<'tcx> + 'tcx,
+    yield_handle: Option<&stackful::generator::YieldHandle<(LocalDefId, DefId)>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
     // as they are part of the same "inference environment".
@@ -368,7 +409,7 @@ fn typeck_with_fallback<'tcx>(
     });
     let body = tcx.hir().body(body_id);
 
-    let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
+    let typeck_results = Inherited::build(tcx, def_id).enter_with_yield_handle(yield_handle, |inh| {
         let param_env = tcx.param_env(def_id);
         let (fcx, wf_tys) = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {

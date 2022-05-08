@@ -100,7 +100,21 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             ..
         }) => {
             let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
-            let tables = tcx.typeck(body_owner);
+
+            let mut step = 0;
+            let tables = loop {
+                use std::ops::GeneratorState;
+                match tcx.typeck_generator((body_owner, step)).1 {
+                    GeneratorState::Yielded((const_did, const_param)) => {
+                        if const_did == def_id {
+                            return Some(const_param);
+                        }
+                    }
+                    GeneratorState::Complete(v) => break v,
+                }
+                step += 1;
+            };
+
             // This may fail in case the method/path does not actually exist.
             // As there is no relevant param for `def_id`, we simply return
             // `None` here.
@@ -134,7 +148,21 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     ..
                 }) => {
                     let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
-                    let _tables = tcx.typeck(body_owner);
+
+                    let mut step = 0;
+                    loop {
+                        use std::ops::GeneratorState;
+                        match tcx.typeck_generator((body_owner, step)).1 {
+                            GeneratorState::Yielded((const_did, _)) => {
+                                if const_did == def_id {
+                                    break;
+                                }
+                            }
+                            GeneratorState::Complete(_) => break,
+                        }
+                        step += 1;
+                    }
+
                     &*path
                 }
                 Node::Pat(pat) => {

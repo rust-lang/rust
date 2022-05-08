@@ -808,6 +808,14 @@ rustc_queries! {
         desc { "type-checking all item bodies" }
     }
 
+    query typeck_generator(key: (LocalDefId, u32)) -> (
+        &'tcx Steal<ty::TypeckResultGenerator<'tcx>>,
+        std::ops::GeneratorState<(LocalDefId, DefId), &'tcx ty::TypeckResults<'tcx>>,
+    ) {
+        no_hash
+        desc { |tcx| "type-checking `{}`, step {}", tcx.def_path_str(key.0.to_def_id()), key.1 }
+    }
+
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }

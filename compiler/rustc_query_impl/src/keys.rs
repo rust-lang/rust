@@ -513,3 +513,16 @@ impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
         DUMMY_SP
     }
 }
+
+impl Key for (LocalDefId, u32) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.to_def_id().default_span(tcx)
+    }
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.0.to_def_id())
+    }
+}

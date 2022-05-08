@@ -2949,9 +2949,8 @@ dependencies = [
 
 [[package]]
 name = "psm"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd136ff4382c4753fc061cb9e4712ab2af263376b95bbd5bd8cd50c020b78e69"
+version = "0.1.18"
+source = "git+https://github.com/nbdd0121/stacker.git#eae7e163f2286071b4abb3c2ba85ad6632df848d"
 dependencies = [
  "cc",
 ]
@@ -4496,6 +4495,7 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_ty_utils",
  "smallvec",
+ "stackful",
  "tracing",
 ]
 
@@ -4896,14 +4896,23 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stacker"
 version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90939d5171a4420b3ff5fbc8954d641e7377335454c259dcb80786f3f21dc9b4"
+source = "git+https://github.com/nbdd0121/stacker.git#eae7e163f2286071b4abb3c2ba85ad6632df848d"
 dependencies = [
  "cc",
  "cfg-if 1.0.0",
  "libc",
  "psm",
  "winapi",
+]
+
+[[package]]
+name = "stackful"
+version = "0.1.3"
+source = "git+https://github.com/nbdd0121/stackful.git?branch=dev#5fedf72a244f7581bb10d063ae89919636b86ea1"
+dependencies = [
+ "cc",
+ "libc",
+ "stacker",
 ]
 
 [[package]]

@@ -73,6 +73,7 @@ This API is completely unstable and subject to change.
 #![feature(once_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![feature(generator_trait)]
 #![recursion_limit = "256"]
 
 #[macro_use]
