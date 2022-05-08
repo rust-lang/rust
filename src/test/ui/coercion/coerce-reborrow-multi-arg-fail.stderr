@@ -6,8 +6,8 @@ LL |     test(&mut 7, &7);
    |     |
    |     arguments to this function are incorrect
    |
-   = note:   expected type `&mut {integer}`
-           found reference `&{integer}`
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&{integer}`
 note: function defined here
   --> $DIR/coerce-reborrow-multi-arg-fail.rs:1:4
    |

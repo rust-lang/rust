@@ -25,8 +25,8 @@ error[E0308]: cannot coerce intrinsics to function pointers
 LL |         std::intrinsics::unlikely,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
    |
-   = note: expected type `extern "rust-intrinsic" fn(_) -> _ {likely}`
-           found fn item `extern "rust-intrinsic" fn(_) -> _ {unlikely}`
+   = note: expected fn item `extern "rust-intrinsic" fn(_) -> _ {likely}`
+              found fn item `extern "rust-intrinsic" fn(_) -> _ {unlikely}`
 
 error: aborting due to 3 previous errors
 

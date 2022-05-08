@@ -59,7 +59,7 @@ pub fn check_legal_trait_for_method_call(
 
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
-    DeferredClosure(ty::FnSig<'tcx>),
+    DeferredClosure(DefId, ty::FnSig<'tcx>),
     /// E.g., enum variant constructors.
     Overloaded(MethodCallee<'tcx>),
 }
@@ -107,8 +107,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.confirm_builtin_call(call_expr, callee_expr, callee_ty, arg_exprs, expected)
             }
 
-            Some(CallStep::DeferredClosure(fn_sig)) => {
-                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, fn_sig)
+            Some(CallStep::DeferredClosure(def_id, fn_sig)) => {
+                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, def_id, fn_sig)
             }
 
             Some(CallStep::Overloaded(method_callee)) => {
@@ -171,7 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             closure_substs: substs,
                         },
                     );
-                    return Some(CallStep::DeferredClosure(closure_sig));
+                    return Some(CallStep::DeferredClosure(def_id, closure_sig));
                 }
             }
 
@@ -533,6 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
+        closure_def_id: DefId,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
         // `fn_sig` is the *signature* of the closure being called. We
@@ -555,7 +556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
-            None,
+            Some(closure_def_id),
         );
 
         fn_sig.output()

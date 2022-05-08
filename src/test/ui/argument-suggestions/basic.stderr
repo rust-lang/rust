@@ -81,7 +81,23 @@ help: reorder these arguments
 LL |     permuted(X {}, Y {}, Z {});
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 5 previous errors
+error[E0057]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/basic.rs:27:5
+   |
+LL |     closure();
+   |     ^^^^^^^-- an argument is missing
+   |
+note: closure defined here
+  --> $DIR/basic.rs:26:19
+   |
+LL |     let closure = |x| x;
+   |                   ^^^
+help: provide the argument
+   |
+LL |     closure({_});
+   |     ~~~~~~~~~~~~
 
-Some errors have detailed explanations: E0061, E0308.
-For more information about an error, try `rustc --explain E0061`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0057, E0061, E0308.
+For more information about an error, try `rustc --explain E0057`.

@@ -1584,9 +1584,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Variable(ty::error::ExpectedFound<Ty<'a>>),
             Fixed(&'static str),
         }
-        let (expected_found, exp_found, is_simple_error) = match values {
-            None => (None, Mismatch::Fixed("type"), false),
+        let (expected_found, exp_found, is_simple_error, values) = match values {
+            None => (None, Mismatch::Fixed("type"), false, None),
             Some(values) => {
+                let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(infer::ExpectedFound {
                         expected: ty::Term::Ty(expected),
@@ -1614,7 +1615,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         return;
                     }
                 };
-                (vals, exp_found, is_simple_error)
+                (vals, exp_found, is_simple_error, Some(values))
             }
         };
 

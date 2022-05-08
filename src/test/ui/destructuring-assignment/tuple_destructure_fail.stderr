@@ -14,8 +14,8 @@ LL |     (a, a, b) = (1, 2);
    |     |
    |     expected a tuple with 2 elements, found one with 3 elements
    |
-   = note: expected type `({integer}, {integer})`
-             found tuple `(_, _, _)`
+   = note: expected tuple `({integer}, {integer})`
+              found tuple `(_, _, _)`
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/tuple_destructure_fail.rs:7:13
@@ -33,8 +33,8 @@ LL |     (_,) = (1, 2);
    |     |
    |     expected a tuple with 2 elements, found one with 1 element
    |
-   = note: expected type `({integer}, {integer})`
-             found tuple `(_,)`
+   = note: expected tuple `({integer}, {integer})`
+              found tuple `(_,)`
 
 error: aborting due to 4 previous errors
 

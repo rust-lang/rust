@@ -60,8 +60,13 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-   = note:   expected type `impl Future<Output = ()>`
-           found unit type `()`
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:18:18
+   |
+LL | async fn dummy() {}
+   |                  ^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
 help: consider `await`ing on the `Future`
    |
 LL |         dummy().await

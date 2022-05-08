@@ -24,7 +24,7 @@ use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
@@ -394,6 +394,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 break 'errors;
             }
 
+            self.set_tainted_by_errors();
+
             // The algorithm here is inspired by levenshtein distance and longest common subsequence.
             // We'll try to detect 4 different types of mistakes:
             // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
@@ -502,6 +504,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TupleMatchFound::Single => {
                     let expected_ty = expected_input_tys[0];
                     let provided_ty = final_arg_types[0].map(|ty| ty.0).unwrap();
+                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[0].span);
                     let compatibility = demand_compatible(0, &mut final_arg_types);
                     let type_error = match compatibility {
@@ -523,24 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("arguments to this {} are incorrect", call_name),
                     );
                     // Call out where the function is defined
-                    if let Some(def_id) = fn_def_id && let Some(def_span) = tcx.def_ident_span(def_id) {
-                        let mut spans: MultiSpan = def_span.into();
-
-                        let params = tcx
-                            .hir()
-                            .get_if_local(def_id)
-                            .and_then(|node| node.body_id())
-                            .into_iter()
-                            .map(|id| tcx.hir().body(id).params)
-                            .flatten();
-
-                        for param in params {
-                            spans.push_span_label(param.span, String::new());
-                        }
-
-                        let def_kind = tcx.def_kind(def_id);
-                        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-                    }
+                    label_fn_like(tcx, &mut err, fn_def_id);
                     err.emit();
                     break 'errors;
                 }
@@ -558,24 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         DiagnosticId::Error(err_code.to_owned()),
                     );
                     // Call out where the function is defined
-                    if let Some(def_id) = fn_def_id && let Some(def_span) = tcx.def_ident_span(def_id) {
-                        let mut spans: MultiSpan = def_span.into();
-
-                        let params = tcx
-                            .hir()
-                            .get_if_local(def_id)
-                            .and_then(|node| node.body_id())
-                            .into_iter()
-                            .map(|id| tcx.hir().body(id).params)
-                            .flatten();
-
-                        for param in params {
-                            spans.push_span_label(param.span, String::new());
-                        }
-
-                        let def_kind = tcx.def_kind(def_id);
-                        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-                    }
+                    label_fn_like(tcx, &mut err, fn_def_id);
                     err.multipart_suggestion(
                         "use parentheses to construct a tuple",
                         vec![(start, '('.to_string()), (end, ')'.to_string())],
@@ -597,13 +567,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let expected_ty = expected_input_tys[*input_idx];
                     let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
+                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[*input_idx].span);
                     let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                     let mut err = self.report_and_explain_type_error(trace, error);
                     self.emit_coerce_suggestions(
                         &mut err,
                         &provided_args[*input_idx],
-                        final_arg_types[*input_idx].map(|ty| ty.0).unwrap(),
+                        provided_ty,
                         final_arg_types[*input_idx].map(|ty| ty.1).unwrap(),
                         None,
                         None,
@@ -613,24 +585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("arguments to this {} are incorrect", call_name),
                     );
                     // Call out where the function is defined
-                    if let Some(def_id) = fn_def_id && let Some(def_span) = tcx.def_ident_span(def_id) {
-                        let mut spans: MultiSpan = def_span.into();
-
-                        let params = tcx
-                            .hir()
-                            .get_if_local(def_id)
-                            .and_then(|node| node.body_id())
-                            .into_iter()
-                            .map(|id| tcx.hir().body(id).params)
-                            .flatten();
-
-                        for param in params {
-                            spans.push_span_label(param.span, String::new());
-                        }
-
-                        let def_kind = tcx.def_kind(def_id);
-                        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-                    }
+                    label_fn_like(tcx, &mut err, fn_def_id);
                     err.emit();
                     break 'errors;
                 }
@@ -678,12 +633,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match error {
                     Error::Invalid(input_idx, compatibility) => {
                         let expected_ty = expected_input_tys[input_idx];
+                        let provided_ty = final_arg_types
+                            .get(input_idx)
+                            .and_then(|x| x.as_ref())
+                            .map(|ty| ty.0)
+                            .unwrap_or(tcx.ty_error());
+                        let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                        let provided_ty = self.resolve_vars_if_possible(provided_ty);
                         if let Compatibility::Incompatible(error) = &compatibility {
-                            let provided_ty = final_arg_types
-                                .get(input_idx)
-                                .and_then(|x| x.as_ref())
-                                .map(|ty| ty.0)
-                                .unwrap_or(tcx.ty_error());
                             let cause = &self.misc(
                                 provided_args.get(input_idx).map(|i| i.span).unwrap_or(call_span),
                             );
@@ -948,24 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // Call out where the function is defined
-            if let Some(def_id) = fn_def_id && let Some(def_span) = tcx.def_ident_span(def_id) {
-                let mut spans: MultiSpan = def_span.into();
-
-                let params = tcx
-                    .hir()
-                    .get_if_local(def_id)
-                    .and_then(|node| node.body_id())
-                    .into_iter()
-                    .flat_map(|id| tcx.hir().body(id).params)
-                    ;
-
-                for param in params {
-                    spans.push_span_label(param.span, String::new());
-                }
-
-                let def_kind = tcx.def_kind(def_id);
-                err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-            }
+            label_fn_like(tcx, &mut err, fn_def_id);
 
             // And add a suggestion block for all of the parameters
             let suggestion_text = match suggestion_text {
@@ -1787,6 +1727,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+}
+
+fn label_fn_like<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
+    def_id: Option<DefId>,
+) {
+    let Some(def_id) = def_id else {
+        return;
+    };
+
+    if let Some(def_span) = tcx.def_ident_span(def_id) {
+        let mut spans: MultiSpan = def_span.into();
+
+        let params = tcx
+            .hir()
+            .get_if_local(def_id)
+            .and_then(|node| node.body_id())
+            .into_iter()
+            .map(|id| tcx.hir().body(id).params)
+            .flatten();
+
+        for param in params {
+            spans.push_span_label(param.span, String::new());
+        }
+
+        let def_kind = tcx.def_kind(def_id);
+        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+    } else {
+        match tcx.hir().get_if_local(def_id) {
+            Some(hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure(_, _, _, span, ..),
+                ..
+            })) => {
+                let spans: MultiSpan = (*span).into();
+
+                // Note: We don't point to param spans here because they overlap
+                // with the closure span itself
+
+                err.span_note(spans, "closure defined here");
+            }
+            _ => {}
         }
     }
 }

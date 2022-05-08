@@ -9,8 +9,8 @@ LL |         builder.push(output);
    |                 |
    |                 arguments to this function are incorrect
    |
-   = note: expected type `F`
-            found struct `Class<P>`
+   = note: expected type parameter `F`
+                      found struct `Class<P>`
 note: associated function defined here
   --> $DIR/issue-52893.rs:11:8
    |

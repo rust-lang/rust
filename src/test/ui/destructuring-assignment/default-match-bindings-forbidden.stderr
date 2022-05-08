@@ -6,8 +6,8 @@ LL |     (x, y) = &(1, 2);
    |     |
    |     expected reference, found tuple
    |
-   = note: expected type `&({integer}, {integer})`
-             found tuple `(_, _)`
+   = note: expected reference `&({integer}, {integer})`
+                  found tuple `(_, _)`
 
 error: aborting due to previous error
 
