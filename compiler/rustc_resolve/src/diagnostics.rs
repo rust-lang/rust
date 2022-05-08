@@ -2059,7 +2059,13 @@ impl<'a> Resolver<'a> {
                     Applicability::MaybeIncorrect,
                 ))
             } else {
-                None
+                self.find_similarly_named_type(ident.name, ribs).map(|sugg| {
+                    (
+                        vec![(ident.span, sugg.to_string())],
+                        String::from("there is a type with a similar name"),
+                        Applicability::MaybeIncorrect,
+                    )
+                })
             };
 
             (format!("use of undeclared type `{}`", ident), suggestion)
