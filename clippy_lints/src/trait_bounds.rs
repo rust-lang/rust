@@ -8,7 +8,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, QPath, TraitItem, Ty, TyKind, WherePredicate,
+    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath, TraitItem, Ty, TyKind,
+    WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -35,7 +36,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
-    nursery,
+    pedantic,
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
@@ -65,7 +66,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.47.0"]
     pub TRAIT_DUPLICATION_IN_BOUNDS,
-    nursery,
+    pedantic,
     "Check if the same trait bounds are specified twice during a function declaration"
 }
 
@@ -95,6 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         for predicate in item.generics.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+                if bound_predicate.origin != PredicateOrigin::ImplTrait;
                 if !bound_predicate.span.from_expansion();
                 if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
                 if let Some(PathSegment {
@@ -168,6 +170,7 @@ impl TraitBounds {
         for bound in gen.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref p) = bound;
+                if p.origin != PredicateOrigin::ImplTrait;
                 if p.bounds.len() as u64 <= self.max_trait_bounds;
                 if !p.span.from_expansion();
                 if let Some(ref v) = map.insert(
@@ -223,6 +226,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     for predicate in gen.predicates {
         if_chain! {
             if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+            if bound_predicate.origin != PredicateOrigin::ImplTrait;
             if !bound_predicate.span.from_expansion();
             if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
             if let Some(segment) = segments.first();

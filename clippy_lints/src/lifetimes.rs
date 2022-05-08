@@ -9,8 +9,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier,
-    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
+    TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -145,7 +145,7 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
     for typ in types {
         for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
-            if pred.in_where_clause {
+            if pred.origin == PredicateOrigin::WhereClause {
                 // has_where_lifetimes checked that this predicate contains no lifetime.
                 continue;
             }
