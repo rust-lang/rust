@@ -426,7 +426,7 @@ rustc_queries! {
         &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
     ) {
         no_hash
-        desc { |tcx| "processing MIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "promoting constants in MIR for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     query closure_typeinfo(key: LocalDefId) -> ty::ClosureTypeInfo<'tcx> {

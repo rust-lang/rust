@@ -9,5 +9,5 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
 #0 [mir_const] preparing `multiple_storage` for borrow checking
-#1 [mir_promoted] processing MIR for `multiple_storage`
+#1 [mir_promoted] promoting constants in MIR for `multiple_storage`
 end of query stack
