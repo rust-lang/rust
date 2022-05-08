@@ -44,7 +44,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeFoldable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -2034,17 +2034,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         def_id: DefId,
     ) {
-        let local_id = def_id.expect_local();
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_id);
-        let node = self.tcx.hir().get(hir_id);
+        if let Some(local_id) = def_id.as_local() {
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_id);
+            let node = self.tcx.hir().get(hir_id);
 
-        if let Some(fields) = node.tuple_fields() {
-            let kind = match self.tcx.opt_def_kind(local_id) {
-                Some(DefKind::Ctor(of, _)) => of,
-                _ => return,
-            };
+            if let Some(fields) = node.tuple_fields() {
+                let kind = match self.tcx.opt_def_kind(local_id) {
+                    Some(DefKind::Ctor(of, _)) => of,
+                    _ => return,
+                };
 
-            suggest_call_constructor(base.span, kind, fields.len(), err);
+                suggest_call_constructor(base.span, kind, fields.len(), err);
+            }
+        } else {
+            // The logic here isn't smart but `associated_item_def_ids`
+            // doesn't work nicely on local.
+            if let DefKind::Ctor(of, _) = self.tcx.def_kind(def_id) {
+                let parent_def_id = self.tcx.parent(def_id);
+                let fields = self.tcx.associated_item_def_ids(parent_def_id);
+                suggest_call_constructor(base.span, of, fields.len(), err);
+            }
         }
     }
 

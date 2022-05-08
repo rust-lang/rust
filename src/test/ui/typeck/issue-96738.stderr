@@ -11,6 +11,20 @@ help: call the constructor
 LL |     (Some)(_).nonexistent_method();
    |     +    ++++
 
-error: aborting due to previous error
+error[E0609]: no field `nonexistent_field` on type `fn(_) -> Option<_> {Option::<_>::Some}`
+  --> $DIR/issue-96738.rs:3:10
+   |
+LL |     Some.nonexistent_field;
+   |     ---- ^^^^^^^^^^^^^^^^^
+   |     |
+   |     this is the constructor of an enum variant
+   |
+help: call the constructor
+   |
+LL |     (Some)(_).nonexistent_field;
+   |     +    ++++
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.
