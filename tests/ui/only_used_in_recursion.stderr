@@ -1,82 +1,195 @@
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:3:21
+  --> $DIR/only_used_in_recursion.rs:11:27
    |
-LL | fn simple(a: usize, b: usize) -> usize {
-   |                     ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _one_unused(flag: u32, a: usize) -> usize {
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:12:53
+   |
+LL |     if flag == 0 { 0 } else { _one_unused(flag - 1, a) }
+   |                                                     ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:7:24
+  --> $DIR/only_used_in_recursion.rs:15:27
    |
-LL | fn with_calc(a: usize, b: isize) -> usize {
-   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _two_unused(flag: u32, a: u32, b: i32) -> usize {
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:16:53
+   |
+LL |     if flag == 0 { 0 } else { _two_unused(flag - 1, a, b) }
+   |                                                     ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:11:14
+  --> $DIR/only_used_in_recursion.rs:15:35
    |
-LL | fn tuple((a, b): (usize, usize)) -> usize {
-   |              ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _two_unused(flag: u32, a: u32, b: i32) -> usize {
+   |                                   ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:16:56
+   |
+LL |     if flag == 0 { 0 } else { _two_unused(flag - 1, a, b) }
+   |                                                        ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:15:24
+  --> $DIR/only_used_in_recursion.rs:19:26
    |
-LL | fn let_tuple(a: usize, b: usize) -> usize {
-   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _with_calc(flag: u32, a: i64) -> usize {
+   |                          ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:23:32
+   |
+LL |         _with_calc(flag - 1, (-a + 10) * 5)
+   |                                ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:20:14
+  --> $DIR/only_used_in_recursion.rs:32:33
    |
-LL | fn array([a, b]: [usize; 2]) -> usize {
-   |              ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _used_with_unused(flag: u32, a: i32, b: i32) -> usize {
+   |                                 ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:36:38
+   |
+LL |         _used_with_unused(flag - 1, -a, a + b)
+   |                                      ^  ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:24:20
+  --> $DIR/only_used_in_recursion.rs:32:41
    |
-LL | fn index(a: usize, mut b: &[usize], c: usize) -> usize {
-   |                    ^^^^^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _used_with_unused(flag: u32, a: i32, b: i32) -> usize {
+   |                                         ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:36:45
+   |
+LL |         _used_with_unused(flag - 1, -a, a + b)
+   |                                             ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:24:37
+  --> $DIR/only_used_in_recursion.rs:40:35
    |
-LL | fn index(a: usize, mut b: &[usize], c: usize) -> usize {
-   |                                     ^ help: if this is intentional, prefix with an underscore: `_c`
+LL | fn _codependent_unused(flag: u32, a: i32, b: i32) -> usize {
+   |                                   ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:44:39
+   |
+LL |         _codependent_unused(flag - 1, a * b, a + b)
+   |                                       ^      ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:28:21
+  --> $DIR/only_used_in_recursion.rs:40:43
    |
-LL | fn break_(a: usize, mut b: usize, mut c: usize) -> usize {
-   |                     ^^^^^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _codependent_unused(flag: u32, a: i32, b: i32) -> usize {
+   |                                           ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:44:43
+   |
+LL |         _codependent_unused(flag - 1, a * b, a + b)
+   |                                           ^      ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:46:23
+  --> $DIR/only_used_in_recursion.rs:48:30
    |
-LL | fn mut_ref2(a: usize, b: &mut usize) -> usize {
-   |                       ^ help: if this is intentional, prefix with an underscore: `_b`
+LL | fn _not_primitive(flag: u32, b: String) -> usize {
+   |                              ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:49:56
+   |
+LL |     if flag == 0 { 0 } else { _not_primitive(flag - 1, b) }
+   |                                                        ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:51:28
+  --> $DIR/only_used_in_recursion.rs:55:29
    |
-LL | fn not_primitive(a: usize, b: String) -> usize {
-   |                            ^ help: if this is intentional, prefix with an underscore: `_b`
+LL |     fn _method(flag: usize, a: usize) -> usize {
+   |                             ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:56:59
+   |
+LL |         if flag == 0 { 0 } else { Self::_method(flag - 1, a) }
+   |                                                           ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:68:33
+  --> $DIR/only_used_in_recursion.rs:59:22
    |
-LL |     fn method2(&self, a: usize, b: usize) -> usize {
-   |                                 ^ help: if this is intentional, prefix with an underscore: `_b`
+LL |     fn _method_self(&self, flag: usize, a: usize) -> usize {
+   |                      ^^^^
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:60:35
+   |
+LL |         if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
+   |                                   ^^^^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:90:24
+  --> $DIR/only_used_in_recursion.rs:59:41
    |
-LL |     fn hello(a: usize, b: usize) -> usize {
-   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+LL |     fn _method_self(&self, flag: usize, a: usize) -> usize {
+   |                                         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:60:63
+   |
+LL |         if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
+   |                                                               ^
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:94:32
+  --> $DIR/only_used_in_recursion.rs:70:26
    |
-LL |     fn hello2(&self, a: usize, b: usize) -> usize {
-   |                                ^ help: if this is intentional, prefix with an underscore: `_b`
+LL |     fn method(flag: u32, a: usize) -> usize {
+   |                          ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:71:58
+   |
+LL |         if flag == 0 { 0 } else { Self::method(flag - 1, a) }
+   |                                                          ^
 
-error: aborting due to 13 previous errors
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:74:38
+   |
+LL |     fn method_self(&self, flag: u32, a: usize) -> usize {
+   |                                      ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:75:62
+   |
+LL |         if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
+   |                                                              ^
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:100:26
+   |
+LL |     fn method(flag: u32, a: usize) -> usize {
+   |                          ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:101:58
+   |
+LL |         if flag == 0 { 0 } else { Self::method(flag - 1, a) }
+   |                                                          ^
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:104:38
+   |
+LL |     fn method_self(&self, flag: u32, a: usize) -> usize {
+   |                                      ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: parameter used here
+  --> $DIR/only_used_in_recursion.rs:105:62
+   |
+LL |         if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
+   |                                                              ^
+
+error: aborting due to 16 previous errors
 
