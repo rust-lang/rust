@@ -23,8 +23,8 @@ use rustc_middle::ty::subst::{
     self, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
 };
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    Ty, UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
+    ToPredicate, Ty, UserType,
 };
 use rustc_session::lint;
 use rustc_span::hygiene::DesugaringKind;
@@ -347,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         debug!("instantiate_type_scheme(value={:?}, substs={:?})", value, substs);
-        let value = value.subst(self.tcx, substs);
+        let value = EarlyBinder(value).subst(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, value);
         debug!("instantiate_type_scheme = {:?}", result);
         result
@@ -843,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.type_of(def_id)
         };
         let substs = self.infcx.fresh_substs_for_item(span, def_id);
-        let ty = item_ty.subst(self.tcx, substs);
+        let ty = EarlyBinder(item_ty).subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
         self.add_required_obligations_with_code(
@@ -1044,8 +1044,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig1 = EarlyBinder(self.tcx.fn_sig(*did1)).subst(self.tcx, substs1);
+                let sig2 = EarlyBinder(self.tcx.fn_sig(*did2)).subst(self.tcx, substs2);
                 if sig1 != sig2 {
                     return;
                 }
@@ -1056,7 +1056,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (sig1, *did1, substs1)
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did).subst(self.tcx, substs);
+                let sig1 = EarlyBinder(self.tcx.fn_sig(*did)).subst(self.tcx, substs);
                 if sig1 != *sig2 {
                     return;
                 }
@@ -1403,7 +1403,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // is missing.
                             let default = tcx.type_of(param.def_id);
                             self.fcx
-                                .normalize_ty(self.span, default.subst(tcx, substs.unwrap()))
+                                .normalize_ty(
+                                    self.span,
+                                    EarlyBinder(default).subst(tcx, substs.unwrap()),
+                                )
                                 .into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
@@ -1415,7 +1418,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
+                            EarlyBinder(tcx.const_param_default(param.def_id))
+                                .subst(tcx, substs.unwrap())
+                                .into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
                         }

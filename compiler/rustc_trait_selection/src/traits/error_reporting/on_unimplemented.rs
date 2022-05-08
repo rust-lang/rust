@@ -5,7 +5,7 @@ use crate::infer::InferCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind};
+use rustc_middle::ty::{self, EarlyBinder, GenericParamDefKind};
 use rustc_span::symbol::sym;
 use std::iter;
 
@@ -45,7 +45,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
             let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
+            let impl_trait_ref =
+                EarlyBinder(tcx.impl_trait_ref(def_id).unwrap()).subst(tcx, impl_substs);
 
             let impl_self_ty = impl_trait_ref.self_ty();
 

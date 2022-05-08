@@ -21,7 +21,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Lift, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Lift, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1634,7 +1634,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .tcx
                     .explicit_item_bounds(def_id)
                     .iter()
-                    .map(|(bound, _)| bound.subst(cx.tcx, substs))
+                    .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
                     .collect::<Vec<_>>();
                 let mut regions = vec![];
                 let mut has_sized = false;

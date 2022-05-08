@@ -1,6 +1,8 @@
 use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
-use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{
+    self, ConstInt, DefIdTree, EarlyBinder, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
@@ -587,7 +589,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
+                let sig = EarlyBinder(self.tcx().fn_sig(def_id)).subst(self.tcx(), substs);
                 p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
@@ -781,7 +783,7 @@ pub trait PrettyPrinter<'tcx>:
         let mut is_sized = false;
 
         for (predicate, _) in bounds {
-            let predicate = predicate.subst(self.tcx(), substs);
+            let predicate = EarlyBinder(*predicate).subst(self.tcx(), substs);
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {

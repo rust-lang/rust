@@ -14,7 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -177,7 +177,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
                     let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
 
-                    tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
+                    EarlyBinder(tcx.type_of(va_list_did))
+                        .subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
                     fn_sig.inputs()[index]
                 };

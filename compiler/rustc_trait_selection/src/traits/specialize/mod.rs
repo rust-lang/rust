@@ -20,7 +20,7 @@ use rustc_errors::{struct_span_err, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, ImplSubject, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, ImplSubject, TyCtxt};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
@@ -84,8 +84,8 @@ pub fn translate_substs<'a, 'tcx>(
         "translate_substs({:?}, {:?}, {:?}, {:?})",
         param_env, source_impl, source_substs, target_node
     );
-    let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
+    let source_trait_ref = EarlyBinder(infcx.tcx.impl_trait_ref(source_impl).unwrap())
+        .subst(infcx.tcx, &source_substs);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls

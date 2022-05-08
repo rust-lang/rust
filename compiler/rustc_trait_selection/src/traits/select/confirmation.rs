@@ -12,7 +12,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty};
+use rustc_middle::ty::{self, EarlyBinder, GenericParamDefKind, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
@@ -174,7 +174,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
             };
 
-            let candidate_predicate = tcx.item_bounds(def_id)[idx].subst(tcx, substs);
+            let candidate_predicate = EarlyBinder(tcx.item_bounds(def_id)[idx]).subst(tcx, substs);
             let candidate = candidate_predicate
                 .to_opt_poly_trait_pred()
                 .expect("projection candidate is not a trait predicate")
@@ -501,20 +501,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type) {
-                let subst_bound =
-                    if defs.count() == 0 {
-                        bound.subst(tcx, trait_predicate.trait_ref.substs)
-                    } else {
-                        let mut substs = smallvec::SmallVec::with_capacity(defs.count());
-                        substs.extend(trait_predicate.trait_ref.substs.iter());
-                        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-                            smallvec::SmallVec::with_capacity(
-                                bound.kind().bound_vars().len() + defs.count(),
-                            );
-                        bound_vars.extend(bound.kind().bound_vars().into_iter());
-                        InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param
-                            .kind
-                        {
+                let subst_bound = if defs.count() == 0 {
+                    EarlyBinder(bound).subst(tcx, trait_predicate.trait_ref.substs)
+                } else {
+                    let mut substs = smallvec::SmallVec::with_capacity(defs.count());
+                    substs.extend(trait_predicate.trait_ref.substs.iter());
+                    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+                        smallvec::SmallVec::with_capacity(
+                            bound.kind().bound_vars().len() + defs.count(),
+                        );
+                    bound_vars.extend(bound.kind().bound_vars().into_iter());
+                    InternalSubsts::fill_single(
+                        &mut substs,
+                        defs,
+                        &mut |param, _| match param.kind {
                             GenericParamDefKind::Type { .. } => {
                                 let kind = ty::BoundTyKind::Param(param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
@@ -553,14 +553,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 })
                                 .into()
                             }
-                        });
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
-                        let assoc_ty_substs = tcx.intern_substs(&substs);
+                        },
+                    );
+                    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                    let assoc_ty_substs = tcx.intern_substs(&substs);
 
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
-                        let bound = bound.kind().skip_binder().subst(tcx, assoc_ty_substs);
-                        tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
-                    };
+                    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                    let bound = EarlyBinder(bound.kind().skip_binder()).subst(tcx, assoc_ty_substs);
+                    tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
+                };
                 let normalized_bound = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -1029,8 +1030,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`.
-                let source_tail = tail_field_ty.subst(tcx, substs_a);
-                let target_tail = tail_field_ty.subst(tcx, substs_b);
+                let source_tail = EarlyBinder(tail_field_ty).subst(tcx, substs_a);
+                let target_tail = EarlyBinder(tail_field_ty).subst(tcx, substs_b);
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.

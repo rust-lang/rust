@@ -38,11 +38,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
                     let may_apply = is_param && cx.tcx.infer_ctxt().enter(|infcx| {
                         let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
-                        let ty = ty.subst(infcx.tcx, substs);
-                        let param_env = param_env.subst(infcx.tcx, substs);
+                        let ty = EarlyBinder(ty).subst(infcx.tcx, substs);
+                        let param_env = EarlyBinder(param_env).subst(infcx.tcx, substs);
 
                         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-                        let trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
+                        let trait_ref = EarlyBinder(trait_ref).subst(infcx.tcx, impl_substs);
 
                         // Require the type the impl is implemented on to match
                         // our type, and ignore the impl if there was a mismatch.

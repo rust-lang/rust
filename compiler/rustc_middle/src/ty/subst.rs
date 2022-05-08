@@ -4,7 +4,7 @@ use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
-use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
+use crate::ty::{self, EarlyBinder, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
@@ -500,13 +500,17 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
 
 // Just call `foo.subst(tcx, substs)` to perform a substitution across `foo`.
 pub trait Subst<'tcx>: Sized {
-    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self;
+    type Inner;
+
+    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner;
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
-    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
+impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for EarlyBinder<T> {
+    type Inner = T;
+
+    fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> Self::Inner {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
-        self.fold_with(&mut folder)
+        self.0.fold_with(&mut folder)
     }
 }
 

@@ -10,7 +10,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::{self, DefIdTree, EarlyBinder};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -267,7 +267,7 @@ fn compare_predicate_entailment<'tcx>(
 
         // First liberate late bound regions and subst placeholders
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
-        let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
+        let trait_sig = EarlyBinder(trait_sig).subst(tcx, trait_to_placeholder_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
         // Add the resulting inputs and output as well-formed.
@@ -1066,7 +1066,7 @@ crate fn compare_const_impl<'tcx>(
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
-        let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
+        let trait_ty = EarlyBinder(tcx.type_of(trait_c.def_id)).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
@@ -1456,7 +1456,7 @@ pub fn check_type_bounds<'tcx>(
             .iter()
             .map(|&(bound, span)| {
                 debug!(?bound);
-                let concrete_ty_bound = bound.subst(tcx, rebased_substs);
+                let concrete_ty_bound = EarlyBinder(bound).subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
                 traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)

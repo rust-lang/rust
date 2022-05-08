@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, Subst};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, EarlyBinder, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -118,8 +118,8 @@ pub trait Printer<'tcx>: Sized {
                 let mut self_ty = self.tcx().type_of(def_id);
                 let mut impl_trait_ref = self.tcx().impl_trait_ref(def_id);
                 if substs.len() >= generics.count() {
-                    self_ty = self_ty.subst(self.tcx(), substs);
-                    impl_trait_ref = impl_trait_ref.subst(self.tcx(), substs);
+                    self_ty = EarlyBinder(self_ty).subst(self.tcx(), substs);
+                    impl_trait_ref = EarlyBinder(impl_trait_ref).subst(self.tcx(), substs);
                 }
                 self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }
@@ -203,7 +203,8 @@ pub trait Printer<'tcx>: Sized {
                     has_default
                         && substs[param.index as usize]
                             == GenericArg::from(
-                                self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
+                                EarlyBinder(self.tcx().type_of(param.def_id))
+                                    .subst(self.tcx(), substs),
                             )
                 }
                 ty::GenericParamDefKind::Const { has_default } => {

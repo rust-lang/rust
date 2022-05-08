@@ -18,7 +18,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnv, ToPredicate, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -171,7 +171,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
-        Some(tcx.type_of(va_list_did).subst(tcx, &[region.into()]))
+        Some(EarlyBinder(tcx.type_of(va_list_did)).subst(tcx, &[region.into()]))
     } else {
         None
     };
@@ -655,7 +655,7 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
+    let hidden_type = EarlyBinder(tcx.type_of(def_id)).subst(tcx, substs);
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let defining_use_anchor = match *origin {

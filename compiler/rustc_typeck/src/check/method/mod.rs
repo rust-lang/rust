@@ -21,7 +21,7 @@ use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use rustc_middle::ty::{self, EarlyBinder, ToPredicate, Ty, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -461,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
         let fn_sig = tcx.fn_sig(def_id);
-        let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = EarlyBinder(fn_sig).subst(self.tcx, substs);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
 
         let InferOk { value, obligations: o } = if is_op {

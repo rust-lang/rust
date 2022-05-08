@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -137,7 +137,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                         // `unsubstituted_predicate` is `U: 'b` in the
                         // example above.  So apply the substitution to
                         // get `T: 'a` (or `predicate`):
-                        let predicate = unsubstituted_predicate.subst(tcx, substs);
+                        let predicate = EarlyBinder(*unsubstituted_predicate).subst(tcx, substs);
                         insert_outlives_predicate(
                             tcx,
                             predicate.0,
@@ -287,7 +287,7 @@ pub fn check_explicit_predicates<'tcx>(
             continue;
         }
 
-        let predicate = outlives_predicate.subst(tcx, substs);
+        let predicate = EarlyBinder(*outlives_predicate).subst(tcx, substs);
         debug!("predicate = {:?}", &predicate);
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }

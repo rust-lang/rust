@@ -7,7 +7,7 @@
 use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, EarlyBinder, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -159,7 +159,8 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
         let variance_info = if variance == ty::Invariant {
-            let ty = *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
+            let ty = *cached_ty
+                .get_or_insert_with(|| EarlyBinder(tcx.type_of(ty_def_id)).subst(tcx, a_subst));
             ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
         } else {
             ty::VarianceDiagInfo::default()

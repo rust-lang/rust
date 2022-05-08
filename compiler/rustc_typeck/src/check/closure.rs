@@ -12,7 +12,7 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, EarlyBinder, Ty};
 use rustc_span::source_map::Span;
 use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
@@ -180,7 +180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::PredicateKind::Projection(proj_predicate) => self
                         .deduce_sig_from_projection(
                             Some(*span),
-                            pred.kind().rebind(proj_predicate.subst(self.tcx, substs)),
+                            pred.kind().rebind(EarlyBinder(proj_predicate).subst(self.tcx, substs)),
                         ),
                     _ => None,
                 });
@@ -677,7 +677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = item_bounds.iter().find_map(|&(predicate, span)| {
-            let bound_predicate = predicate.subst(self.tcx, substs).kind();
+            let bound_predicate = EarlyBinder(predicate).subst(self.tcx, substs).kind();
             if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
                 self.deduce_future_output_from_projection(
                     span,

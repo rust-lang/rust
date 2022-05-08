@@ -11,7 +11,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, Subst, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty};
+use rustc_middle::ty::{self, EarlyBinder, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
@@ -462,7 +462,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         let sig = self.tcx.fn_sig(def_id);
 
-        let sig = sig.subst(self.tcx, all_substs);
+        let sig = EarlyBinder(sig).subst(self.tcx, all_substs);
         debug!("type scheme substituted, sig={:?}", sig);
 
         let sig = self.replace_bound_vars_with_fresh_vars(sig);

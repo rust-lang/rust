@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::subst::{GenericArg, Subst};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCast, EarlyBinder, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -835,7 +835,7 @@ fn trait_method<'tcx>(
         .expect("trait method not found");
 
     let method_ty = tcx.type_of(item.def_id);
-    let method_ty = method_ty.subst(tcx, substs);
+    let method_ty = EarlyBinder(method_ty).subst(tcx, substs);
 
     ConstantKind::zero_sized(method_ty)
 }

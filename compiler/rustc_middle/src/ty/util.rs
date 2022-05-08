@@ -6,7 +6,8 @@ use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
-    self, Const, DebruijnIndex, DefIdTree, List, ReEarlyBound, Ty, TyCtxt, TyKind::*, TypeFoldable,
+    self, Const, DebruijnIndex, DefIdTree, EarlyBinder, List, ReEarlyBound, Ty, TyCtxt, TyKind::*,
+    TypeFoldable,
 };
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
@@ -623,7 +624,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.subst(self.tcx, substs);
+                    let concrete_ty = EarlyBinder(generic_ty).subst(self.tcx, substs);
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, substs), expanded_ty);
                     expanded_ty

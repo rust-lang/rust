@@ -21,7 +21,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
+            let impl_ty = EarlyBinder(impl_ty).subst(self.tcx, impl_substs);
 
             debug!("impl_ty: {:?}", impl_ty);
 
@@ -904,7 +904,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
-                    let fty = fty.subst(self.tcx, substs);
+                    let fty = EarlyBinder(fty).subst(self.tcx, substs);
                     let (fty, _) =
                         self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
@@ -1785,7 +1785,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert_eq!(substs.len(), generics.parent_count as usize);
 
         let xform_fn_sig = if generics.params.is_empty() {
-            fn_sig.subst(self.tcx, substs)
+            EarlyBinder(fn_sig).subst(self.tcx, substs)
         } else {
             let substs = InternalSubsts::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
@@ -1803,7 +1803,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
             });
-            fn_sig.subst(self.tcx, substs)
+            EarlyBinder(fn_sig).subst(self.tcx, substs)
         };
 
         self.erase_late_bound_regions(xform_fn_sig)

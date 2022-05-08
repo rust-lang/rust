@@ -19,10 +19,11 @@ use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, Substs
 use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
-    FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
-    ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, EarlyBinder, ExistentialPredicate,
+    FloatTy, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid,
+    List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
+    UintTy,
 };
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -1604,7 +1605,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn caller_location_ty(self) -> Ty<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
-            self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
+            EarlyBinder(self.type_of(self.require_lang_item(LangItem::PanicLocation, None)))
                 .subst(self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
         )
     }
@@ -2333,7 +2334,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ty_param.into()
                     } else {
                         assert!(has_default);
-                        self.type_of(param.def_id).subst(self, substs).into()
+                        EarlyBinder(self.type_of(param.def_id)).subst(self, substs).into()
                     }
                 }
             });

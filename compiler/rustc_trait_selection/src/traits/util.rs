@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, EarlyBinder, ImplSubject, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
@@ -201,7 +201,7 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     impl_substs: SubstsRef<'tcx>,
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().impl_subject(impl_def_id);
-    let subject = subject.subst(selcx.tcx(), impl_substs);
+    let subject = EarlyBinder(subject).subst(selcx.tcx(), impl_substs);
     let Normalized { value: subject, obligations: normalization_obligations1 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
 

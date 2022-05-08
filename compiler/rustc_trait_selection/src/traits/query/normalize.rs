@@ -14,7 +14,7 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitor};
 
 use std::ops::ControlFlow;
 
@@ -218,7 +218,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         }
 
                         let generic_ty = self.tcx().type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
+                        let concrete_ty = EarlyBinder(generic_ty).subst(self.tcx(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             bug!(

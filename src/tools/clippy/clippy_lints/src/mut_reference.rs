@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, EarlyBinder, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::iter;
 
@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
             ExprKind::MethodCall(path, arguments, _) => {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
-                let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
+                let method_type = EarlyBinder(cx.tcx.type_of(def_id)).subst(cx.tcx, substs);
                 check_arguments(cx, arguments, method_type, path.ident.as_str(), "method");
             },
             _ => (),

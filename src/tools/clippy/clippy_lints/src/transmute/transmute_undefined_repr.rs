@@ -4,7 +4,7 @@ use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, EarlyBinder, IntTy, Ty, TypeAndMut, UintTy};
 use rustc_span::Span;
 
 #[allow(clippy::too_many_lines)]
@@ -307,7 +307,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .non_enum_variant()
                     .fields
                     .iter()
-                    .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
+                    .map(|f| EarlyBinder(cx.tcx.type_of(f.did)).subst(cx.tcx, substs));
                 let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::TypeErasure;
                 };
