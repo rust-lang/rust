@@ -450,11 +450,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(
-                        self.param_env,
-                        mir::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs),
-                        None,
-                    )
+                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, substs), None)
                     .ok()
                     .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
                 let result = miri_to_const(self.lcx.tcx, result);
