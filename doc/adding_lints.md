@@ -432,7 +432,7 @@ The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `meets_msrv` utility function.
 
 ``` rust
-if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
+if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```

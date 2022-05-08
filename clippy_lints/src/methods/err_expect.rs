@@ -13,7 +13,7 @@ pub(super) fn check(
     cx: &LateContext<'_>,
     _expr: &rustc_hir::Expr<'_>,
     recv: &rustc_hir::Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
     expect_span: Span,
     err_span: Span,
 ) {
@@ -21,7 +21,7 @@ pub(super) fn check(
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
         // Test the version to make sure the lint can be showed (expect_err has been
         // introduced in rust 1.17.0 : https://github.com/rust-lang/rust/pull/38982)
-        if meets_msrv(msrv, &msrvs::EXPECT_ERR);
+        if meets_msrv(msrv, msrvs::EXPECT_ERR);
 
         // Grabs the `Result<T, E>` type
         let result_type = cx.typeck_results().expr_ty(recv);

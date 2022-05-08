@@ -8,9 +8,9 @@ use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Option<RustcVersion>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Option<RustcVersion>) {
     // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
-    if !meets_msrv(msrv.as_ref(), &msrvs::PTR_SLICE_RAW_PARTS) {
+    if !meets_msrv(msrv, msrvs::PTR_SLICE_RAW_PARTS) {
         return;
     }
 

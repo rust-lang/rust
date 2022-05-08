@@ -582,8 +582,17 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
 
     let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    let allow_expect_in_tests = conf.allow_expect_in_tests;
+    let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
     store.register_late_pass(move || Box::new(approx_const::ApproxConstant::new(msrv)));
-    store.register_late_pass(move || Box::new(methods::Methods::new(avoid_breaking_exported_api, msrv)));
+    store.register_late_pass(move || {
+        Box::new(methods::Methods::new(
+            avoid_breaking_exported_api,
+            msrv,
+            allow_expect_in_tests,
+            allow_unwrap_in_tests,
+        ))
+    });
     store.register_late_pass(move || Box::new(matches::Matches::new(msrv)));
     store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(msrv)));
     store.register_late_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(msrv)));

@@ -19,9 +19,9 @@ pub(super) fn check<'tcx>(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
-    if !meets_msrv(msrv, &msrvs::OPTION_AS_DEREF) {
+    if !meets_msrv(msrv, msrvs::OPTION_AS_DEREF) {
         return;
     }
 

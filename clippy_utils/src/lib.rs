@@ -117,8 +117,8 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
     None
 }
 
-pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
-    msrv.map_or(true, |msrv| msrv.meets(*lint_msrv))
+pub fn meets_msrv(msrv: Option<RustcVersion>, lint_msrv: RustcVersion) -> bool {
+    msrv.map_or(true, |msrv| msrv.meets(lint_msrv))
 }
 
 #[macro_export]

@@ -316,6 +316,14 @@ define_Conf! {
     ///
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
     (max_include_file_size: u64 = 1_000_000),
+    /// Lint: EXPECT_USED.
+    ///
+    /// Whether `expect` should be allowed in test functions
+    (allow_expect_in_tests: bool = false),
+    /// Lint: UNWRAP_USED.
+    ///
+    /// Whether `unwrap` should be allowed in test functions
+    (allow_unwrap_in_tests: bool = false),
 }
 
 /// Search for the configuration file.

@@ -98,7 +98,7 @@ impl_lint_pass!(ManualNonExhaustiveEnum => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustiveStruct {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
+        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -150,7 +150,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
+        if !meets_msrv(self.msrv, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 

@@ -57,7 +57,7 @@ impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::BOOL_THEN) {
+        if !meets_msrv(self.msrv, msrvs::BOOL_THEN) {
             return;
         }
 

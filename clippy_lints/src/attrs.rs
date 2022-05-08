@@ -613,7 +613,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
-        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
+        if meets_msrv(msrv, msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
