@@ -1,5 +1,5 @@
 error: overly complex generic constant
-  --> $DIR/issue-775377.rs:6:46
+  --> $DIR/issue-77357.rs:6:46
    |
 LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^ blocks are not supported in generic constant
