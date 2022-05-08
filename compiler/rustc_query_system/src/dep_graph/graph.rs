@@ -916,6 +916,11 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     new_node_to_index: Sharded<FxHashMap<DepNode<K>, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
+    /// This is used to verify that fingerprints do not change between the creation of a node
+    /// and its recomputation.
+    #[cfg(debug_assertions)]
+    fingerprints: Lock<FxHashMap<DepNode<K>, Fingerprint>>,
+
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
     #[cfg(debug_assertions)]
@@ -999,6 +1004,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
             anon_id_seed,
             #[cfg(debug_assertions)]
             forbidden_edge,
+            #[cfg(debug_assertions)]
+            fingerprints: Lock::new(Default::default()),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1006,9 +1013,17 @@ impl<K: DepKind> CurrentDepGraph<K> {
     }
 
     #[cfg(debug_assertions)]
-    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>) {
+    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>, fingerprint: Fingerprint) {
         if let Some(forbidden_edge) = &self.forbidden_edge {
             forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+        }
+        match self.fingerprints.lock().entry(key) {
+            Entry::Vacant(v) => {
+                v.insert(fingerprint);
+            }
+            Entry::Occupied(o) => {
+                assert_eq!(*o.get(), fingerprint, "Unstable fingerprints for {:?}", key);
+            }
         }
     }
 
@@ -1021,17 +1036,21 @@ impl<K: DepKind> CurrentDepGraph<K> {
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
+        let dep_node_index = match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key)
+        {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let dep_node_index =
                     self.encoder.borrow().send(profiler, key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
-                #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
-        }
+        };
+
+        #[cfg(debug_assertions)]
+        self.record_edge(dep_node_index, key, current_fingerprint);
+
+        dep_node_index
     }
 
     fn intern_node(
@@ -1072,7 +1091,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     };
 
                     #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key);
+                    self.record_edge(dep_node_index, key, fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
                 } else {
                     if print_status {
@@ -1094,7 +1113,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     };
 
                     #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key);
+                    self.record_edge(dep_node_index, key, fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Red)))
                 }
             } else {
@@ -1119,7 +1138,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 };
 
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
+                self.record_edge(dep_node_index, key, Fingerprint::ZERO);
                 (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
         } else {
@@ -1150,19 +1169,16 @@ impl<K: DepKind> CurrentDepGraph<K> {
             Some(dep_node_index) => dep_node_index,
             None => {
                 let key = prev_graph.index_to_node(prev_index);
-                let dep_node_index = self.encoder.borrow().send(
-                    profiler,
-                    key,
-                    prev_graph.fingerprint_by_index(prev_index),
-                    prev_graph
-                        .edge_targets_from(prev_index)
-                        .iter()
-                        .map(|i| prev_index_to_index[*i].unwrap())
-                        .collect(),
-                );
+                let edges = prev_graph
+                    .edge_targets_from(prev_index)
+                    .iter()
+                    .map(|i| prev_index_to_index[*i].unwrap())
+                    .collect();
+                let fingerprint = prev_graph.fingerprint_by_index(prev_index);
+                let dep_node_index = self.encoder.borrow().send(profiler, key, fingerprint, edges);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
+                self.record_edge(dep_node_index, key, fingerprint);
                 dep_node_index
             }
         }
