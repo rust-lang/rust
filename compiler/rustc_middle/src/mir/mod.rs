@@ -580,8 +580,8 @@ impl<'tcx> Body<'tcx> {
         self.predecessor_cache.compute(&self.basic_blocks)
     }
 
-    /// `body.switch_sources()[target][switch]` returns a list of switch values
-    /// that lead to a `target` block from a `switch` block.
+    /// `body.switch_sources()[&(target, switch)]` returns a list of switch
+    /// values that lead to a `target` block from a `switch` block.
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
         self.switch_source_cache.compute(&self.basic_blocks)
