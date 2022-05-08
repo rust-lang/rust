@@ -432,7 +432,7 @@ impl<'a, K, V, A: Allocator + Clone> RustcOccupiedEntry<'a, K, V, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, value: V) -> V {
-        mem::remove(self.get_mut(), value)
+        mem::replace(self.get_mut(), value)
     }
 
     /// Takes the value out of the entry, and returns it.
