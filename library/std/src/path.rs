@@ -725,7 +725,7 @@ impl<'a> Components<'a> {
         if self.has_root() {
             return false;
         }
-        let mut iter = self.path[self.prefix_len()..].iter();
+        let mut iter = self.path[self.prefix_remaining()..].iter();
         match (iter.next(), iter.next()) {
             (Some(&b'.'), None) => true,
             (Some(&b'.'), Some(&b)) => self.is_sep_byte(b),
