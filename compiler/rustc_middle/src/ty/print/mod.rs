@@ -115,12 +115,16 @@ pub trait Printer<'tcx>: Sized {
 
             DefPathData::Impl => {
                 let generics = self.tcx().generics_of(def_id);
-                let mut self_ty = self.tcx().type_of(def_id);
-                let mut impl_trait_ref = self.tcx().impl_trait_ref(def_id);
-                if substs.len() >= generics.count() {
-                    self_ty = EarlyBinder(self_ty).subst(self.tcx(), substs);
-                    impl_trait_ref = EarlyBinder(impl_trait_ref).subst(self.tcx(), substs);
-                }
+                let self_ty = self.tcx().bound_type_of(def_id);
+                let impl_trait_ref = self.tcx().impl_trait_ref(def_id);
+                let (self_ty, impl_trait_ref) = if substs.len() >= generics.count() {
+                    (
+                        self_ty.subst(self.tcx(), substs),
+                        EarlyBinder(impl_trait_ref).subst(self.tcx(), substs),
+                    )
+                } else {
+                    (self_ty.0, impl_trait_ref)
+                };
                 self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }
 
@@ -203,8 +207,7 @@ pub trait Printer<'tcx>: Sized {
                     has_default
                         && substs[param.index as usize]
                             == GenericArg::from(
-                                EarlyBinder(self.tcx().type_of(param.def_id))
-                                    .subst(self.tcx(), substs),
+                                self.tcx().bound_type_of(param.def_id).subst(self.tcx(), substs),
                             )
                 }
                 ty::GenericParamDefKind::Const { has_default } => {

@@ -10,7 +10,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
-use crate::ty::{self, EarlyBinder, List, Ty, TyCtxt};
+use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
 use rustc_errors::ErrorGuaranteed;
@@ -2387,7 +2387,7 @@ impl<'tcx> Operand<'tcx> {
         substs: SubstsRef<'tcx>,
         span: Span,
     ) -> Self {
-        let ty = EarlyBinder(tcx.type_of(def_id)).subst(tcx, substs);
+        let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,

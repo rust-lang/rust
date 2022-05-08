@@ -5,7 +5,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::EarlyBinder;
 use rustc_span::{Span, Symbol};
 
 use crate::interpret::{
@@ -94,10 +93,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
         // Allocate memory for `CallerLocation` struct.
-        let loc_ty = EarlyBinder(
-            self.tcx.type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None)),
-        )
-        .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
+        let loc_ty = self
+            .tcx
+            .bound_type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
+            .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
         // pointless, since that would require allocating more memory than a Location.

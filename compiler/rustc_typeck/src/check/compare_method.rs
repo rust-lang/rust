@@ -1066,7 +1066,7 @@ crate fn compare_const_impl<'tcx>(
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
-        let trait_ty = EarlyBinder(tcx.type_of(trait_c.def_id)).subst(tcx, trait_to_impl_substs);
+        let trait_ty = tcx.bound_type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,

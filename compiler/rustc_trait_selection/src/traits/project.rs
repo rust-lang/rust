@@ -515,8 +515,8 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         }
 
                         let substs = substs.super_fold_with(self);
-                        let generic_ty = self.tcx().type_of(def_id);
-                        let concrete_ty = EarlyBinder(generic_ty).subst(self.tcx(), substs);
+                        let generic_ty = self.tcx().bound_type_of(def_id);
+                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;

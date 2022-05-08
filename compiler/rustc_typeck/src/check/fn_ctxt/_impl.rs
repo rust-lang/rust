@@ -838,12 +838,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.type_of(self.tcx.parent(def_id))
+            self.tcx.bound_type_of(self.tcx.parent(def_id))
         } else {
-            self.tcx.type_of(def_id)
+            self.tcx.bound_type_of(def_id)
         };
         let substs = self.infcx.fresh_substs_for_item(span, def_id);
-        let ty = EarlyBinder(item_ty).subst(self.tcx, substs);
+        let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
         self.add_required_obligations_with_code(
@@ -1401,12 +1401,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            let default = tcx.type_of(param.def_id);
+                            let default = tcx.bound_type_of(param.def_id);
                             self.fcx
-                                .normalize_ty(
-                                    self.span,
-                                    EarlyBinder(default).subst(tcx, substs.unwrap()),
-                                )
+                                .normalize_ty(self.span, default.subst(tcx, substs.unwrap()))
                                 .into()
                         } else {
                             // If no type arguments were provided, we have to infer them.

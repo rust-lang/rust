@@ -237,7 +237,7 @@ fn drop_tys_helper<'tcx>(
             Ok(Vec::new())
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
-                let r = EarlyBinder(tcx.type_of(field.did)).subst(tcx, substs);
+                let r = tcx.bound_type_of(field.did).subst(tcx, substs);
                 debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
                 r
             });

@@ -1960,7 +1960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                t.rebind(vec![EarlyBinder(self.tcx().type_of(def_id)).subst(self.tcx(), substs)])
+                t.rebind(vec![self.tcx().bound_type_of(def_id).subst(self.tcx(), substs)])
             }
         }
     }

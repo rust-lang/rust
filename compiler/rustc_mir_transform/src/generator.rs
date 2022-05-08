@@ -62,7 +62,7 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::GeneratorSubsts;
-use rustc_middle::ty::{self, AdtDef, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
@@ -245,7 +245,9 @@ impl<'tcx> TransformVisitor<'tcx> {
     ) -> impl Iterator<Item = Statement<'tcx>> {
         let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_substs, None, None);
         assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
-        let ty = EarlyBinder(self.tcx.type_of(self.state_adt_ref.variant(idx).fields[0].did))
+        let ty = self
+            .tcx
+            .bound_type_of(self.state_adt_ref.variant(idx).fields[0].did)
             .subst(self.tcx, self.state_substs);
         expand_aggregate(
             Place::return_place(),

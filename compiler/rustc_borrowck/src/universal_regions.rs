@@ -23,9 +23,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{
-    self, EarlyBinder, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use std::iter;
 
 use crate::nll::ToRegionVid;
@@ -479,7 +477,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .infcx
                     .tcx
                     .mk_region(ty::ReVar(self.infcx.next_nll_region_var(FR).to_region_vid()));
-                let va_list_ty = EarlyBinder(self.infcx.tcx.type_of(va_list_did))
+                let va_list_ty = self
+                    .infcx
+                    .tcx
+                    .bound_type_of(va_list_did)
                     .subst(self.infcx.tcx, &[region.into()]);
 
                 unnormalized_input_tys = self.infcx.tcx.mk_type_list(

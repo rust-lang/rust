@@ -444,7 +444,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
             //     one uninhabited field.
             def.variants().iter().all(|var| {
                 var.fields.iter().any(|field| {
-                    let ty = EarlyBinder(tcx.type_of(field.did)).subst(tcx, substs);
+                    let ty = tcx.bound_type_of(field.did).subst(tcx, substs);
                     tcx.conservative_is_privately_uninhabited(param_env.and(ty))
                 })
             })

@@ -1006,10 +1006,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // The last field of the structure has to exist and contain type/const parameters.
                 let (tail_field, prefix_fields) =
                     def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
-                let tail_field_ty = tcx.type_of(tail_field.did);
+                let tail_field_ty = tcx.bound_type_of(tail_field.did);
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
-                for arg in tail_field_ty.walk() {
+                for arg in tail_field_ty.0.walk() {
                     if let Some(i) = maybe_unsizing_param_idx(arg) {
                         unsizing_params.insert(i);
                     }
@@ -1030,8 +1030,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`.
-                let source_tail = EarlyBinder(tail_field_ty).subst(tcx, substs_a);
-                let target_tail = EarlyBinder(tail_field_ty).subst(tcx, substs_b);
+                let source_tail = tail_field_ty.subst(tcx, substs_a);
+                let target_tail = tail_field_ty.subst(tcx, substs_b);
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.

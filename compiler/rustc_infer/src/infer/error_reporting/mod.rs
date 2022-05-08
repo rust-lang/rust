@@ -968,7 +968,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
                 GenericArgKind::Type(ty) => {
-                    if EarlyBinder(self.tcx.type_of(def_id)).subst(self.tcx, substs) != ty {
+                    if self.tcx.bound_type_of(def_id).subst(self.tcx, substs) != ty {
                         break;
                     }
                 }

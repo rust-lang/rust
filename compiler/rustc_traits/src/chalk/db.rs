@@ -464,7 +464,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let trait_item_id = assoc_item.trait_item_def_id.expect("assoc_ty with no trait version");
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(self.interner, bound_vars);
-        let ty = EarlyBinder(self.interner.tcx.type_of(def_id))
+        let ty = self
+            .interner
+            .tcx
+            .bound_type_of(def_id)
             .subst(self.interner.tcx, bound_vars)
             .lower_into(self.interner);
 

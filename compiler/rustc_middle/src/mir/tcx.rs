@@ -5,7 +5,7 @@
 
 use crate::mir::*;
 use crate::ty::subst::Subst;
-use crate::ty::{self, EarlyBinder, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
 
@@ -203,7 +203,7 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
                 AggregateKind::Adt(did, _, substs, _, _) => {
-                    EarlyBinder(tcx.type_of(did)).subst(tcx, substs)
+                    tcx.bound_type_of(did).subst(tcx, substs)
                 }
                 AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
