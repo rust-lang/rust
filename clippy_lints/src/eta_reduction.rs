@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, ClosureKind, Ty, TypeFoldable};
+use rustc_middle::ty::{self, ClosureKind, EarlyBinder, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if check_inputs(cx, body.params, args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
             let substs = cx.typeck_results().node_substs(body.value.hir_id);
-            let call_ty = cx.tcx.type_of(method_def_id).subst(cx.tcx, substs);
+            let call_ty = EarlyBinder(cx.tcx.type_of(method_def_id)).subst(cx.tcx, substs);
             if check_sig(cx, closure_ty, call_ty);
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure", |diag| {

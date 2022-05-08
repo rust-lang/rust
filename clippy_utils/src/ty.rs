@@ -13,7 +13,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy, VariantDiscr,
+    self, AdtDef, Binder, EarlyBinder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -520,7 +520,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
         let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
         match *ty.kind() {
             ty::Closure(_, subs) => Some(ExprFnSig::Closure(subs.as_closure().sig())),
-            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).subst(cx.tcx, subs))),
+            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(EarlyBinder(cx.tcx.fn_sig(id)).subst(cx.tcx, subs))),
             ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
             ty::Dynamic(bounds, _) => {
                 let lang_items = cx.tcx.lang_items();
