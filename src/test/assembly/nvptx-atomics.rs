@@ -1,7 +1,6 @@
 // assembly-output: ptx-linker
 // compile-flags: --crate-type cdylib
 // only-nvptx64
-// ignore-nvptx64
 
 #![feature(abi_ptx, core_intrinsics)]
 #![no_std]
@@ -23,7 +22,7 @@ extern crate breakpoint_panic_handler;
 // FIXME(denzp): add tests for `core::sync::atomic::*`.
 
 #[no_mangle]
-pub unsafe extern "ptx-kernel" fn atomics_kernel(a: *mut u32) {
+pub unsafe extern "ptx-kernel" fn atomics_kernel(a: *mut u32, out: *mut u32) {
     // CHECK: atom.global.and.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;
     // CHECK: atom.global.and.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;
     atomic_and(a, 1);
@@ -66,8 +65,8 @@ pub unsafe extern "ptx-kernel" fn atomics_kernel(a: *mut u32) {
 
     // CHECK: atom.global.exch.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;
     // CHECK: atom.global.exch.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;
-    atomic_xchg(a, 1);
-    atomic_xchg_relaxed(a, 1);
+    *out = atomic_xchg(a, 1);
+    *out = atomic_xchg_relaxed(a, 1);
 
     // CHECK: atom.global.xor.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;
     // CHECK: atom.global.xor.b32 %{{r[0-9]+}}, [%{{rd[0-9]+}}], 1;

@@ -1,7 +1,6 @@
 // assembly-output: ptx-linker
 // compile-flags: --crate-type cdylib -C target-cpu=sm_50
 // only-nvptx64
-// ignore-nvptx64
 
 #![no_std]
 
