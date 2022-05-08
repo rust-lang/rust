@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
-    /// site.
+    /// site, which can be hot.
     #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)

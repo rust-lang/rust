@@ -989,6 +989,12 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
+        self.inlined_bump()
+    }
+
+    /// This always-inlined version should only be used on hot code paths.
+    #[inline(always)]
+    pub fn inlined_bump(&mut self) {
         // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
         // than `.0`/`.1` access.
         let mut next = self.token_cursor.inlined_next(self.desugar_doc_comments);
@@ -1195,7 +1201,7 @@ impl<'a> Parser<'a> {
                 loop {
                     // Advance one token at a time, so `TokenCursor::next()`
                     // can capture these tokens if necessary.
-                    self.bump();
+                    self.inlined_bump();
                     if self.token_cursor.stack.len() == target_depth {
                         debug_assert!(matches!(self.token.kind, token::CloseDelim(_)));
                         break;
@@ -1208,7 +1214,7 @@ impl<'a> Parser<'a> {
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                self.bump();
+                self.inlined_bump();
                 TokenTree::Token(self.prev_token.clone())
             }
         }
