@@ -127,6 +127,128 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
+use crate::sys::alloc::System as Imp;
+
+// When debug assertions are not enabled, `System` just forwards down to the particular platform
+// implementation.
+#[cfg(not(debug_assertions))]
+#[stable(feature = "alloc_system_type", since = "1.28.0")]
+unsafe impl GlobalAlloc for System {
+    #[inline]
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        unsafe { Imp.alloc(layout) }
+    }
+
+    #[inline]
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        unsafe { Imp.alloc_zeroed(layout) }
+    }
+
+    #[inline]
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        unsafe { Imp.dealloc(ptr, layout) }
+    }
+
+    #[inline]
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        unsafe { Imp.realloc(ptr, layout, new_size) }
+    }
+}
+
+// Some system allocators (most notably any provided by calling malloc) will always return pointers
+// with an alignment of 8. So for any allocation with an alignment less than 8, we increase the
+// alignment to 8 and return a pointer which is offset into the allocation such that it is not
+// over-aligned.
+// We always bump up the size of an allocation by 8 when the alignment is less than 8.
+#[cfg(debug_assertions)]
+trait LayoutExt {
+    fn with_alignment_padding(self) -> Self;
+    unsafe fn add_alignment_padding(self, ptr: *mut u8) -> *mut u8;
+    unsafe fn remove_alignment_padding(self, ptr: *mut u8) -> *mut u8;
+}
+#[cfg(debug_assertions)]
+impl LayoutExt for Layout {
+    fn with_alignment_padding(self) -> Self {
+        if self.align() < 8 {
+            Layout::from_size_align(self.size() + (8 - self.align()), 8).unwrap()
+        } else {
+            self
+        }
+    }
+
+    unsafe fn add_alignment_padding(self, ptr: *mut u8) -> *mut u8 {
+        if !ptr.is_null() && self.align() < 8 {
+            // SAFETY: This must be called on a pointer previously returned by a padded Layout,
+            // which will always have space to do this offset
+            unsafe { ptr.add(8 - self.align()) }
+        } else {
+            ptr
+        }
+    }
+
+    unsafe fn remove_alignment_padding(self, ptr: *mut u8) -> *mut u8 {
+        // We cannot just do the inverse of add_alignment_padding, because if a user deallocates
+        // with the wrong Layout, we would use that wrong Layout here to deduce the wrong offset to
+        // remove from the pointer. That would turn code that works fine because the underlying
+        // allocator ignores the Layout (but is technically UB) into code which does worse UB or
+        // halts the program with an unhelpful diagnostic from the underlying allocator.
+        // So we have two reasonable options. We could detect and clearly report the error
+        // ourselves, or since we know that all our alignment adjustments involve the low 3 bits,
+        // we could clear those and make this allocator transparent.
+        // At the moment we do the latter because it is unclear how to emit an error message from
+        // inside an allocator.
+        const ALIGNMENT_MASK: usize = usize::MAX << 3;
+        ptr.map_addr(|addr| addr & ALIGNMENT_MASK)
+    }
+}
+
+// When debug assertions are enabled, we wrap the platform allocator with extra logic to help
+// expose bugs.
+#[cfg(debug_assertions)]
+#[stable(feature = "alloc_system_type", since = "1.28.0")]
+unsafe impl GlobalAlloc for System {
+    #[inline]
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if layout.size() > isize::MAX as usize - 8 {
+            return ptr::null_mut();
+        }
+        unsafe {
+            let ptr = Imp.alloc(layout.with_alignment_padding());
+            layout.add_alignment_padding(ptr)
+        }
+    }
+
+    #[inline]
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        unsafe {
+            let ptr = Imp.alloc_zeroed(layout.with_alignment_padding());
+            layout.add_alignment_padding(ptr)
+        }
+    }
+
+    #[inline]
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        unsafe {
+            let ptr = layout.remove_alignment_padding(ptr);
+            Imp.dealloc(ptr, layout.with_alignment_padding())
+        }
+    }
+
+    #[inline]
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        if new_size > isize::MAX as usize - 8 {
+            return ptr::null_mut();
+        }
+        unsafe {
+            let ptr = layout.remove_alignment_padding(ptr);
+            let new_layout =
+                Layout::from_size_align(new_size, layout.align()).unwrap().with_alignment_padding();
+            let ptr = Imp.realloc(ptr, layout.with_alignment_padding(), new_layout.size());
+            layout.add_alignment_padding(ptr)
+        }
+    }
+}
+
 impl System {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {

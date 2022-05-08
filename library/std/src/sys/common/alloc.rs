@@ -1,4 +1,4 @@
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout};
 use crate::cmp;
 use crate::ptr;
 
@@ -36,7 +36,7 @@ pub const MIN_ALIGN: usize = 16;
 pub const MIN_ALIGN: usize = 4;
 
 pub unsafe fn realloc_fallback(
-    alloc: &System,
+    alloc: &impl GlobalAlloc,
     ptr: *mut u8,
     old_layout: Layout,
     new_size: usize,

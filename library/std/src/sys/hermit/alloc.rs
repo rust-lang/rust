@@ -1,8 +1,10 @@
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout};
 use crate::ptr;
 use crate::sys::hermit::abi;
 
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
+#[derive(Debug, Default, Copy, Clone)]
+pub(crate) struct System;
+
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

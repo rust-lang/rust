@@ -16,11 +16,13 @@
 //! The crate itself provides a global allocator which on wasm has no
 //! synchronization as there are no threads!
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout};
 
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
+#[derive(Debug, Default, Copy, Clone)]
+pub(crate) struct System;
+
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

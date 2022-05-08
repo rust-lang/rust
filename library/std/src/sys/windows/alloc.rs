@@ -1,6 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout};
 use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -187,7 +187,9 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
 // the pointer will be aligned to the specified alignment and not point to the start of the allocated block.
 // Instead there will be a header readable directly before the returned pointer, containing the actual
 // location of the start of the block.
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
+#[derive(Debug, Default, Copy, Clone)]
+pub(crate) struct System;
+
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
