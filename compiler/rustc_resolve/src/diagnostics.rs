@@ -28,7 +28,7 @@ use rustc_span::{BytePos, Span};
 use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
-use crate::late::{PatternSource, Rib};
+use crate::late::{PatternSource, Rib, RibKind};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
@@ -1825,6 +1825,75 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn find_similarly_named_type(
+        &mut self,
+        ident: Symbol,
+        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
+    ) -> Option<Symbol> {
+        fn is_type_candidate(res: Res) -> bool {
+            matches!(
+                res,
+                Res::Def(
+                    DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::OpaqueTy
+                        | DefKind::ForeignTy,
+                    _
+                ) | Res::PrimTy(..)
+                    | Res::SelfTy { .. }
+            )
+        }
+
+        let mut names = Vec::new();
+        if let Some(ribs) = ribs {
+            // Search in lexical scope.
+            // Walk backwards up the ribs in scope and collect candidates.
+            for rib in ribs[TypeNS].iter().rev() {
+                for (ident, res) in &rib.bindings {
+                    if is_type_candidate(*res) {
+                        names.push(TypoSuggestion::typo_from_res(ident.name, *res));
+                    }
+                }
+                // Items in scope
+                if let RibKind::ModuleRibKind(module) = rib.kind {
+                    // Items from this module
+                    self.add_module_candidates(module, &mut names, &is_type_candidate);
+
+                    if let ModuleKind::Block(..) = module.kind {
+                        // We can through blocks
+                    } else {
+                        // Items from the prelude
+                        if !module.no_implicit_prelude {
+                            if let Some(prelude) = self.prelude {
+                                self.add_module_candidates(prelude, &mut names, &is_type_candidate);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            // Add primitive types
+            names.extend(PrimTy::ALL.iter().map(|prim_ty| {
+                TypoSuggestion::typo_from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
+            }))
+        }
+
+        let mut names = names.iter().map(|sugg| sugg.candidate).collect::<Vec<Symbol>>();
+        names.sort();
+        names.dedup();
+
+        match find_best_match_for_name(&names, ident, None) {
+            Some(sugg) if sugg == ident => None,
+            sugg => sugg,
+        }
+    }
+
     pub(crate) fn report_path_resolution_error(
         &mut self,
         path: &[Segment],
@@ -2001,16 +2070,22 @@ impl<'a> Resolver<'a> {
                     String::from("add `extern crate alloc` to use the `alloc` crate"),
                     Applicability::MaybeIncorrect,
                 ))
+            } else if let Some(sugg) =
+                self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module)
+            {
+                Some((
+                    vec![(ident.span, sugg.to_string())],
+                    String::from("there is a crate or module with a similar name"),
+                    Applicability::MaybeIncorrect,
+                ))
             } else {
-                self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module).map(
-                    |sugg| {
-                        (
-                            vec![(ident.span, sugg.to_string())],
-                            String::from("there is a crate or module with a similar name"),
-                            Applicability::MaybeIncorrect,
-                        )
-                    },
-                )
+                self.find_similarly_named_type(ident.name, ribs).map(|sugg| {
+                    (
+                        vec![(ident.span, sugg.to_string())],
+                        String::from("there is a type with a similar name"),
+                        Applicability::MaybeIncorrect,
+                    )
+                })
             };
             (format!("use of undeclared crate or module `{}`", ident), suggestion)
         }

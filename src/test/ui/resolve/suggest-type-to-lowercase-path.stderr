@@ -1,0 +1,12 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `string`
+  --> $DIR/suggest-type-to-lowercase-path.rs:7:13
+   |
+LL |     let _ = string::new();
+   |             ^^^^^^
+   |             |
+   |             use of undeclared crate or module `string`
+   |             help: there is a type with a similar name (notice the capitalization): `String`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

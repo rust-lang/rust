@@ -2,7 +2,10 @@ error[E0433]: failed to resolve: use of undeclared crate or module `m`
   --> $DIR/macro_path_as_generic_bound.rs:7:6
    |
 LL | foo!(m::m2::A);
-   |      ^ use of undeclared crate or module `m`
+   |      ^
+   |      |
+   |      use of undeclared crate or module `m`
+   |      help: there is a type with a similar name: `T`
 
 error: aborting due to previous error
 

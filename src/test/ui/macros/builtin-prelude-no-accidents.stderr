@@ -14,7 +14,10 @@ error[E0433]: failed to resolve: use of undeclared crate or module `vec`
   --> $DIR/builtin-prelude-no-accidents.rs:7:14
    |
 LL |     type B = vec::Vec<u8>;
-   |              ^^^ use of undeclared crate or module `vec`
+   |              ^^^
+   |              |
+   |              use of undeclared crate or module `vec`
+   |              help: there is a type with a similar name (notice the capitalization): `Vec`
 
 error: aborting due to 3 previous errors
 
