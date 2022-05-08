@@ -2,7 +2,7 @@
 // https://www.unicode.org/Public/security/10.0.0/confusables.txt
 
 use super::StringReader;
-use crate::token;
+use crate::token::{self, Delimiter};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
@@ -312,12 +312,12 @@ const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
     ('!', "Exclamation Mark", Some(token::Not)),
     ('?', "Question Mark", Some(token::Question)),
     ('.', "Period", Some(token::Dot)),
-    ('(', "Left Parenthesis", Some(token::OpenDelim(token::Paren))),
-    (')', "Right Parenthesis", Some(token::CloseDelim(token::Paren))),
-    ('[', "Left Square Bracket", Some(token::OpenDelim(token::Bracket))),
-    (']', "Right Square Bracket", Some(token::CloseDelim(token::Bracket))),
-    ('{', "Left Curly Brace", Some(token::OpenDelim(token::Brace))),
-    ('}', "Right Curly Brace", Some(token::CloseDelim(token::Brace))),
+    ('(', "Left Parenthesis", Some(token::OpenDelim(Delimiter::Parenthesis))),
+    (')', "Right Parenthesis", Some(token::CloseDelim(Delimiter::Parenthesis))),
+    ('[', "Left Square Bracket", Some(token::OpenDelim(Delimiter::Bracket))),
+    (']', "Right Square Bracket", Some(token::CloseDelim(Delimiter::Bracket))),
+    ('{', "Left Curly Brace", Some(token::OpenDelim(Delimiter::Brace))),
+    ('}', "Right Curly Brace", Some(token::CloseDelim(Delimiter::Brace))),
     ('*', "Asterisk", Some(token::BinOp(token::Star))),
     ('/', "Slash", Some(token::BinOp(token::Slash))),
     ('\\', "Backslash", None),
@@ -338,9 +338,7 @@ pub(super) fn check_for_substitution<'a>(
     ch: char,
     err: &mut Diagnostic,
 ) -> Option<token::TokenKind> {
-    let Some(&(_u_char, u_name, ascii_char)) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) else {
-        return None;
-    };
+    let &(_u_char, u_name, ascii_char) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch)?;
 
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 

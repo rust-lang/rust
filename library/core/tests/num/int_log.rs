@@ -22,12 +22,15 @@ fn checked_log() {
     assert_eq!(0i8.checked_log(4), None);
     assert_eq!(0i16.checked_log(4), None);
 
+    #[cfg(not(miri))] // Miri is too slow
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log(4), None);
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
         assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
         assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
     }
@@ -48,6 +51,7 @@ fn checked_log2() {
     for i in 1..=u8::MAX {
         assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
         // Guard against Android's imprecise f32::log2 implementation.
         if i != 8192 && i != 32768 {
@@ -60,9 +64,11 @@ fn checked_log2() {
     for i in 1..=i8::MAX {
         assert_eq!(i.checked_log2(), Some((i as f32).log2() as u32));
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log2(), None);
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
         // Guard against Android's imprecise f32::log2 implementation.
         if i != 8192 {
@@ -87,15 +93,19 @@ fn checked_log10() {
     assert_eq!(0i8.checked_log10(), None);
     assert_eq!(0i16.checked_log10(), None);
 
+    #[cfg(not(miri))] // Miri is too slow
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log10(), None);
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
         assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
         assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }
+    #[cfg(not(miri))] // Miri is too slow
     for i in 1..=100_000u32 {
         assert_eq!(i.checked_log10(), Some((i as f32).log10() as u32));
     }

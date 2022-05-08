@@ -58,7 +58,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             return InferOk { value: kinds, obligations };
         }
 
-        // Errors and ambiuity in dropck occur in two cases:
+        // Errors and ambiguity in dropck occur in two cases:
         // - unresolved inference variables at the end of typeck
         // - non well-formed types where projections cannot be resolved
         // Either of these should have created an error before.

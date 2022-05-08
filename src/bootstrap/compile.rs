@@ -43,7 +43,7 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let download_rustc = run.builder.config.download_rustc;
-        run.all_krates("test").default_condition(!download_rustc)
+        run.all_krates("test").path("library").default_condition(!download_rustc)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -689,6 +689,8 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     if builder.config.rustc_parallel {
+        // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
+        // `cfg` option for rustc, `features` option for cargo, for conditional compilation
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
     }
@@ -701,7 +703,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is alreay built and good to go which helps prevent
+    // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled()
         && (builder.kind != Kind::Check
@@ -735,7 +737,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             );
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
-        if builder.config.llvm_link_shared {
+        if builder.llvm_link_shared() {
             cargo.env("LLVM_LINK_SHARED", "1");
         }
         if builder.config.llvm_use_libcxx {
@@ -793,7 +795,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1045,7 +1047,7 @@ impl Step for Assemble {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc")
+        run.path("compiler/rustc").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {

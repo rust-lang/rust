@@ -1,9 +1,9 @@
 // run-rustfix
 
 #![warn(clippy::or_then_unwrap)]
-#![allow(clippy::map_identity)]
+#![allow(clippy::map_identity, clippy::let_unit_value)]
 
-struct SomeStruct {}
+struct SomeStruct;
 impl SomeStruct {
     fn or(self, _: Option<Self>) -> Self {
         self
@@ -11,7 +11,7 @@ impl SomeStruct {
     fn unwrap(&self) {}
 }
 
-struct SomeOtherStruct {}
+struct SomeOtherStruct;
 impl SomeOtherStruct {
     fn or(self) -> Self {
         self

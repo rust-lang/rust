@@ -1,8 +1,6 @@
 error[E0311]: the parameter type `T` may not live long enough
   --> $DIR/missing-lifetimes-in-signature-2.rs:20:9
    |
-LL | fn func<T: Test>(foo: &Foo, t: T) {
-   |         -- help: consider adding an explicit lifetime bound...: `T: 'a +`
 LL |     foo.bar(move |_| {
    |         ^^^
    |
@@ -21,6 +19,10 @@ note: ...that is required by this bound
    |
 LL |         F: 'a,
    |            ^^
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn func<T: Test + 'a>(foo: &Foo, t: T) {
+   |                 ++++
 
 error: aborting due to previous error
 

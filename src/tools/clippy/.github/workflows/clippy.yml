@@ -6,14 +6,14 @@ on:
     branches-ignore:
       - auto
       - try
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
     - '**.md'
     - '**.txt'
   pull_request:
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
@@ -37,7 +37,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain

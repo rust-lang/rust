@@ -24,9 +24,6 @@ crate use self::strip_private::STRIP_PRIVATE;
 mod strip_priv_imports;
 crate use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
-mod unindent_comments;
-crate use self::unindent_comments::UNINDENT_COMMENTS;
-
 mod propagate_doc_cfg;
 crate use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
@@ -81,7 +78,6 @@ crate enum Condition {
 crate const PASSES: &[Pass] = &[
     CHECK_DOC_TEST_VISIBILITY,
     STRIP_HIDDEN,
-    UNINDENT_COMMENTS,
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
@@ -96,7 +92,6 @@ crate const PASSES: &[Pass] = &[
 /// The list of passes run by default.
 crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
-    ConditionalPass::always(UNINDENT_COMMENTS),
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),

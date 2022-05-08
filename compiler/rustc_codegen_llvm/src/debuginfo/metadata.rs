@@ -437,11 +437,9 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
 
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
-            DINodeCreationResult::new(build_basic_type_di_node(cx, t), false)
+            build_basic_type_di_node(cx, t)
         }
-        ty::Tuple(elements) if elements.is_empty() => {
-            DINodeCreationResult::new(build_basic_type_di_node(cx, t), false)
-        }
+        ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
         ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t),
         ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
         ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
@@ -640,7 +638,10 @@ impl MsvcBasicName for ty::FloatTy {
     }
 }
 
-fn build_basic_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+fn build_basic_type_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    t: Ty<'tcx>,
+) -> DINodeCreationResult<'ll> {
     debug!("build_basic_type_di_node: {:?}", t);
 
     // When targeting MSVC, emit MSVC style type names for compatibility with
@@ -649,7 +650,13 @@ fn build_basic_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
-        ty::Tuple(elements) if elements.is_empty() => ("()", DW_ATE_unsigned),
+        ty::Tuple(elements) if elements.is_empty() => {
+            if cpp_like_debuginfo {
+                return build_tuple_type_di_node(cx, UniqueTypeId::for_ty(cx.tcx, t));
+            } else {
+                ("()", DW_ATE_unsigned)
+            }
+        }
         ty::Bool => ("bool", DW_ATE_boolean),
         ty::Char => ("char", DW_ATE_UTF),
         ty::Int(int_ty) if cpp_like_debuginfo => (int_ty.msvc_basic_name(), DW_ATE_signed),
@@ -672,14 +679,14 @@ fn build_basic_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -
     };
 
     if !cpp_like_debuginfo {
-        return ty_di_node;
+        return DINodeCreationResult::new(ty_di_node, false);
     }
 
     let typedef_name = match t.kind() {
         ty::Int(int_ty) => int_ty.name_str(),
         ty::Uint(uint_ty) => uint_ty.name_str(),
         ty::Float(float_ty) => float_ty.name_str(),
-        _ => return ty_di_node,
+        _ => return DINodeCreationResult::new(ty_di_node, false),
     };
 
     let typedef_di_node = unsafe {
@@ -694,7 +701,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -
         )
     };
 
-    typedef_di_node
+    DINodeCreationResult::new(typedef_di_node, false)
 }
 
 fn build_foreign_type_di_node<'ll, 'tcx>(

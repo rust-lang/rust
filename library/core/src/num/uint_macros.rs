@@ -273,7 +273,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());")]
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
-        #[rustc_const_stable(feature = "const_math", since = "1.37.0")]
+        #[rustc_const_stable(feature = "reverse_bits", since = "1.37.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -591,7 +591,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.52.0")]
+        #[rustc_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -642,7 +642,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.52.0")]
+        #[rustc_const_stable(feature = "const_checked_int_div", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -689,7 +689,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative, zero, or if the base is not at least 2;
+        /// When the number is zero, or if the base is not at least 2;
         /// it panics in debug mode and the return value is 0 in release mode.
         ///
         /// # Examples
@@ -722,7 +722,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and
+        /// When the number is zero it panics in debug mode and
         /// the return value is 0 in release mode.
         ///
         /// # Examples
@@ -755,7 +755,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the
+        /// When the number is zero it panics in debug mode and the
         /// return value is 0 in release mode.
         ///
         /// # Example
@@ -2020,7 +2020,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2034,7 +2034,6 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_inherit_overflow_checks]
         pub const fn div_floor(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -2043,7 +2042,12 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
         ///
         /// # Examples
         ///
@@ -2073,7 +2077,12 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the operation results in overflow.
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// ## Overflow behavior
+        ///
+        /// On overflow, this function will panic if overflow checks are enabled (default in debug
+        /// mode) and wrap if overflow checks are disabled (default in release mode).
         ///
         /// # Examples
         ///
@@ -2097,7 +2106,7 @@ macro_rules! uint_impl {
         }
 
         /// Calculates the smallest value greater than or equal to `self` that
-        /// is a multiple of `rhs`. Returns `None` is `rhs` is zero or the
+        /// is a multiple of `rhs`. Returns `None` if `rhs` is zero or the
         /// operation would result in overflow.
         ///
         /// # Examples
@@ -2115,7 +2124,6 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
         pub const fn checked_next_multiple_of(self, rhs: Self) -> Option<Self> {
             match try_opt!(self.checked_rem(rhs)) {
                 0 => Some(self),

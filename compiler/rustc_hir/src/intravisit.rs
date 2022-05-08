@@ -100,10 +100,10 @@ where
 #[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// `#[xxx] pub async/const/extern "Abi" fn foo()`
-    ItemFn(Ident, &'a Generics<'a>, FnHeader, &'a Visibility<'a>),
+    ItemFn(Ident, &'a Generics<'a>, FnHeader),
 
     /// `fn foo(&self)`
-    Method(Ident, &'a FnSig<'a>, Option<&'a Visibility<'a>>),
+    Method(Ident, &'a FnSig<'a>),
 
     /// `|x, y| {}`
     Closure,
@@ -112,8 +112,8 @@ pub enum FnKind<'a> {
 impl<'a> FnKind<'a> {
     pub fn header(&self) -> Option<&FnHeader> {
         match *self {
-            FnKind::ItemFn(_, _, ref header, _) => Some(header),
-            FnKind::Method(_, ref sig, _) => Some(&sig.header),
+            FnKind::ItemFn(_, _, ref header) => Some(header),
+            FnKind::Method(_, ref sig) => Some(&sig.header),
             FnKind::Closure => None,
         }
     }
@@ -163,10 +163,15 @@ impl<'hir> Map<'hir> for ! {
 pub mod nested_filter {
     use super::Map;
 
-    /// Specifies what nested things a visitor wants to visit. The most
-    /// common choice is `OnlyBodies`, which will cause the visitor to
-    /// visit fn bodies for fns that it encounters, but skip over nested
-    /// item-like things.
+    /// Specifies what nested things a visitor wants to visit. By "nested
+    /// things", we are referring to bits of HIR that are not directly embedded
+    /// within one another but rather indirectly, through a table in the crate.
+    /// This is done to control dependencies during incremental compilation: the
+    /// non-inline bits of HIR can be tracked and hashed separately.
+    ///
+    /// The most common choice is `OnlyBodies`, which will cause the visitor to
+    /// visit fn bodies for fns that it encounters, and closure bodies, but
+    /// skip over nested item-like things.
     ///
     /// See the comments on `ItemLikeVisitor` for more details on the overall
     /// visit strategy.
@@ -217,27 +222,23 @@ use nested_filter::NestedFilter;
 pub trait Visitor<'v>: Sized {
     // this type should not be overridden, it exists for convenient usage as `Self::Map`
     type Map: Map<'v> = <Self::NestedFilter as NestedFilter<'v>>::Map;
-    type NestedFilter: NestedFilter<'v> = nested_filter::None;
 
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
-    /// The default versions of the `visit_nested_XXX` routines invoke
-    /// this method to get a map to use. By selecting an enum variant,
-    /// you control which kinds of nested HIR are visited; see
-    /// `NestedVisitorMap` for details. By "nested HIR", we are
-    /// referring to bits of HIR that are not directly embedded within
-    /// one another but rather indirectly, through a table in the
-    /// crate. This is done to control dependencies during incremental
-    /// compilation: the non-inline bits of HIR can be tracked and
-    /// hashed separately.
+    /// Override this type to control which nested HIR are visited; see
+    /// [`NestedFilter`] for details. If you override this type, you
+    /// must also override [`nested_visit_map`](Self::nested_visit_map).
     ///
     /// **If for some reason you want the nested behavior, but don't
-    /// have a `Map` at your disposal:** then you should override the
-    /// `visit_nested_XXX` methods, and override this method to
-    /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
-    /// added in the future, we will see the panic in your code and
-    /// fix it appropriately.
+    /// have a `Map` at your disposal:** then override the
+    /// `visit_nested_XXX` methods. If a new `visit_nested_XXX` variant is
+    /// added in the future, it will cause a panic which can be detected
+    /// and fixed appropriately.
+    type NestedFilter: NestedFilter<'v> = nested_filter::None;
+
+    /// If `type NestedFilter` is set to visit nested items, this method
+    /// must also be overridden to provide a map to retrieve nested items.
     fn nested_visit_map(&mut self) -> Self::Map {
         panic!(
             "nested_visit_map must be implemented or consider using \
@@ -245,14 +246,14 @@ pub trait Visitor<'v>: Sized {
         );
     }
 
-    /// Invoked when a nested item is encountered. By default does
-    /// nothing unless you override `nested_visit_map` to return other than
-    /// `None`, in which case it will walk the item. **You probably
-    /// don't want to override this method** -- instead, override
-    /// `nested_visit_map` or use the "shallow" or "deep" visit
-    /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
-    /// reason to override this method is if you want a nested pattern
-    /// but cannot supply a `Map`; see `nested_visit_map` for advice.
+    /// Invoked when a nested item is encountered. By default, when
+    /// `Self::NestedFilter` is `nested_filter::None`, this method does
+    /// nothing. **You probably don't want to override this method** --
+    /// instead, override [`Self::NestedFilter`] or use the "shallow" or
+    /// "deep" visit patterns described on
+    /// `itemlikevisit::ItemLikeVisitor`. The only reason to override
+    /// this method is if you want a nested pattern but cannot supply a
+    /// [`Map`]; see `nested_visit_map` for advice.
     fn visit_nested_item(&mut self, id: ItemId) {
         if Self::NestedFilter::INTER {
             let item = self.nested_visit_map().item(id);
@@ -291,9 +292,8 @@ pub trait Visitor<'v>: Sized {
     }
 
     /// Invoked to visit the body of a function, method or closure. Like
-    /// visit_nested_item, does nothing by default unless you override
-    /// `nested_visit_map` to return other than `None`, in which case it will walk
-    /// the body.
+    /// `visit_nested_item`, does nothing by default unless you override
+    /// `Self::NestedFilter`.
     fn visit_nested_body(&mut self, id: BodyId) {
         if Self::NestedFilter::INTRA {
             let body = self.nested_visit_map().body(id);
@@ -475,14 +475,14 @@ pub trait Visitor<'v>: Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _id: HirId, _attr: &'v Attribute) {}
-    fn visit_vis(&mut self, vis: &'v Visibility<'v>) {
-        walk_vis(self, vis)
-    }
     fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
         walk_associated_item_kind(self, kind);
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
         walk_defaultness(self, defaultness);
+    }
+    fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, id: HirId) {
+        walk_inline_asm(self, asm, id);
     }
 }
 
@@ -525,7 +525,7 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         | LifetimeName::Param(ParamName::Error)
         | LifetimeName::Static
         | LifetimeName::Error
-        | LifetimeName::Implicit(_)
+        | LifetimeName::Implicit
         | LifetimeName::ImplicitObjectLifetimeDefault
         | LifetimeName::Underscore => {}
     }
@@ -551,7 +551,6 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) {
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
-    visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
     match item.kind {
         ItemKind::ExternCrate(orig_name) => {
@@ -569,7 +568,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref sig, ref generics, body_id) => visitor.visit_fn(
-            FnKind::ItemFn(item.ident, generics, sig.header, &item.vis),
+            FnKind::ItemFn(item.ident, generics, sig.header),
             &sig.decl,
             body_id,
             item.span,
@@ -588,7 +587,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         }
         ItemKind::GlobalAsm(asm) => {
             visitor.visit_id(item.hir_id());
-            walk_inline_asm(visitor, asm);
+            visitor.visit_inline_asm(asm, item.hir_id());
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
             visitor.visit_id(item.hir_id());
@@ -620,7 +619,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
-            walk_list!(visitor, visit_impl_item_ref, items);
+            walk_list!(visitor, visit_impl_item_ref, *items);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {
@@ -648,12 +647,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
     }
 }
 
-fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>) {
-    for (op, _op_sp) in asm.operands {
+pub fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>, id: HirId) {
+    for (op, op_sp) in asm.operands {
         match op {
-            InlineAsmOperand::In { expr, .. }
-            | InlineAsmOperand::InOut { expr, .. }
-            | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+            InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
+                visitor.visit_expr(expr)
+            }
             InlineAsmOperand::Out { expr, .. } => {
                 if let Some(expr) = expr {
                     visitor.visit_expr(expr);
@@ -665,7 +664,9 @@ fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>) 
                     visitor.visit_expr(out_expr);
                 }
             }
-            InlineAsmOperand::Const { anon_const } => visitor.visit_anon_const(anon_const),
+            InlineAsmOperand::Const { anon_const, .. }
+            | InlineAsmOperand::SymFn { anon_const, .. } => visitor.visit_anon_const(anon_const),
+            InlineAsmOperand::SymStatic { path, .. } => visitor.visit_qpath(path, id, *op_sp),
         }
     }
 }
@@ -854,7 +855,6 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem<'v>) {
     visitor.visit_id(foreign_item.hir_id());
-    visitor.visit_vis(&foreign_item.vis);
     visitor.visit_ident(foreign_item.ident);
 
     match foreign_item.kind {
@@ -899,7 +899,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
             }
         }
     }
-    walk_list!(visitor, visit_param_bound, param.bounds);
 }
 
 pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v AnonConst) {
@@ -908,7 +907,7 @@ pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v Ano
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {
     walk_list!(visitor, visit_generic_param, generics.params);
-    walk_list!(visitor, visit_where_predicate, generics.where_clause.predicates);
+    walk_list!(visitor, visit_where_predicate, generics.predicates);
 }
 
 pub fn walk_where_predicate<'v, V: Visitor<'v>>(
@@ -994,7 +993,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             visitor.visit_fn(
-                FnKind::Method(trait_item.ident, sig, None),
+                FnKind::Method(trait_item.ident, sig),
                 &sig.decl,
                 body_id,
                 trait_item.span,
@@ -1020,10 +1019,9 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItem { def_id: _, ident, ref vis, ref generics, ref kind, span: _ } = *impl_item;
+    let ImplItem { def_id: _, ident, ref generics, ref kind, span: _, vis_span: _ } = *impl_item;
 
     visitor.visit_ident(ident);
-    visitor.visit_vis(vis);
     visitor.visit_generics(generics);
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
@@ -1033,7 +1031,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         }
         ImplItemKind::Fn(ref sig, body_id) => {
             visitor.visit_fn(
-                FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis)),
+                FnKind::Method(impl_item.ident, sig),
                 &sig.decl,
                 body_id,
                 impl_item.span,
@@ -1077,7 +1075,6 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
 
 pub fn walk_field_def<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v FieldDef<'v>) {
     visitor.visit_id(field.hir_id);
-    visitor.visit_vis(&field.vis);
     visitor.visit_ident(field.ident);
     visitor.visit_ty(&field.ty);
 }
@@ -1221,7 +1218,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            walk_inline_asm(visitor, asm);
+            visitor.visit_inline_asm(asm, expression.hir_id);
         }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
@@ -1243,13 +1240,6 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
         }
     }
     visitor.visit_expr(&arm.body);
-}
-
-pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility<'v>) {
-    if let VisibilityKind::Restricted { ref path, hir_id } = vis.node {
-        visitor.visit_id(hir_id);
-        visitor.visit_path(path, hir_id)
-    }
 }
 
 pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssocItemKind) {

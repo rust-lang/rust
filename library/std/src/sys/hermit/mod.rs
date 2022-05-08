@@ -71,16 +71,6 @@ pub fn unsupported_err() -> crate::io::Error {
     )
 }
 
-pub unsafe fn strlen(start: *const c_char) -> usize {
-    let mut str = start;
-
-    while *str != 0 {
-        str = str.offset(1);
-    }
-
-    (str as usize) - (start as usize)
-}
-
 #[no_mangle]
 pub extern "C" fn floor(x: f64) -> f64 {
     unsafe { intrinsics::floorf64(x) }

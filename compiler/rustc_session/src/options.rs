@@ -4,6 +4,7 @@ use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
+use rustc_errors::LanguageIdentifier;
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -182,7 +183,6 @@ top_level_options!(
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT],
         externs: Externs [UNTRACKED],
-        extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
@@ -221,7 +221,7 @@ top_level_options!(
         json_artifact_notifications: bool [TRACKED],
 
         /// `true` if we're emitting a JSON blob containing the unused externs
-        json_unused_externs: bool [UNTRACKED],
+        json_unused_externs: JsonUnusedExterns [UNTRACKED],
 
         /// `true` if we're emitting a JSON job containing a future-incompat report for lints
         json_future_incompat: bool [TRACKED],
@@ -365,8 +365,11 @@ mod desc {
     pub const parse_string: &str = "a string";
     pub const parse_opt_string: &str = parse_string;
     pub const parse_string_push: &str = parse_string;
+    pub const parse_opt_langid: &str = "a language identifier";
     pub const parse_opt_pathbuf: &str = "a path";
     pub const parse_list: &str = "a space-separated list of strings";
+    pub const parse_list_with_polarity: &str =
+        "a comma-separated list of strings, with elements beginning with + or -";
     pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
     pub const parse_number: &str = "a number";
     pub const parse_opt_number: &str = parse_number;
@@ -487,6 +490,17 @@ mod parse {
         }
     }
 
+    /// Parse an optional language identifier, e.g. `en-US` or `zh-CN`.
+    crate fn parse_opt_langid(slot: &mut Option<LanguageIdentifier>, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                *slot = rustc_errors::LanguageIdentifier::from_str(s).ok();
+                true
+            }
+            None => false,
+        }
+    }
+
     crate fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -511,6 +525,19 @@ mod parse {
         match v {
             Some(s) => {
                 slot.extend(s.split_whitespace().map(|s| s.to_string()));
+                true
+            }
+            None => false,
+        }
+    }
+
+    crate fn parse_list_with_polarity(slot: &mut Vec<(String, bool)>, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                for s in s.split(",") {
+                    let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
+                    slot.push((pass_name.to_string(), &s[..1] == "+"));
+                }
                 true
             }
             None => false,
@@ -1306,6 +1333,10 @@ options! {
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
+    mir_enable_passes: Vec<(String, bool)> = (Vec::new(), parse_list_with_polarity, [TRACKED],
+        "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
+        enabled, overriding all other checks. Passes that are not specified are enabled or \
+        disabled by other flags as usual."),
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
@@ -1462,6 +1493,15 @@ options! {
         "the directory the intermediate files are written to"),
     terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current terminal width"),
+    // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
+    // alongside query results and changes to translation options can affect diagnostics - so
+    // translation options should be tracked.
+    translate_lang: Option<LanguageIdentifier> = (None, parse_opt_langid, [TRACKED],
+        "language identifier for diagnostic output"),
+    translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "additional fluent translation to preferentially use (for testing translation)"),
+    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
+        "emit directionality isolation markers in translated diagnostics"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],

@@ -12,6 +12,7 @@ use rustc_span::{
 
 use crate::config::file_lines::LineRange;
 use crate::ignore_path::IgnorePathSet;
+use crate::parse::parser::{ModError, ModulePathSuccess};
 use crate::source_map::LineRangeUtils;
 use crate::utils::starts_with_newline;
 use crate::visitor::SnippetProvider;
@@ -32,6 +33,12 @@ impl Emitter for SilentEmitter {
         None
     }
     fn emit_diagnostic(&mut self, _db: &Diagnostic) {}
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        None
+    }
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        panic!("silent emitter attempted to translate a diagnostic");
+    }
 }
 
 fn silent_emitter() -> Box<dyn Emitter + Send> {
@@ -81,6 +88,14 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         self.handle_non_ignoreable_error(db);
     }
+
+    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+        self.emitter.fluent_bundle()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+        self.emitter.fallback_fluent_bundle()
+    }
 }
 
 fn default_handler(
@@ -99,9 +114,13 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
+        let fallback_bundle =
+            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
         Box::new(EmitterWriter::stderr(
             color_cfg,
             Some(source_map.clone()),
+            None,
+            fallback_bundle,
             false,
             false,
             None,
@@ -145,13 +164,33 @@ impl ParseSess {
         })
     }
 
+    /// Determine the submodule path for the given module identifier.
+    ///
+    /// * `id` - The name of the module
+    /// * `relative` - If Some(symbol), the symbol name is a directory relative to the dir_path.
+    ///   If relative is Some, resolve the submodle at {dir_path}/{symbol}/{id}.rs
+    ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
+    /// *  `dir_path` - Module resolution will occur relative to this direcotry.
     pub(crate) fn default_submod_path(
         &self,
         id: symbol::Ident,
         relative: Option<symbol::Ident>,
         dir_path: &Path,
-    ) -> Result<rustc_expand::module::ModulePathSuccess, rustc_expand::module::ModError<'_>> {
-        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path)
+    ) -> Result<ModulePathSuccess, ModError<'_>> {
+        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path).or_else(
+            |e| {
+                // If resloving a module relative to {dir_path}/{symbol} fails because a file
+                // could not be found, then try to resolve the module relative to {dir_path}.
+                // If we still can't find the module after searching for it in {dir_path},
+                // surface the original error.
+                if matches!(e, ModError::FileNotFound(..)) && relative.is_some() {
+                    rustc_expand::module::default_submod_path(&self.parse_sess, id, None, dir_path)
+                        .map_err(|_| e)
+                } else {
+                    Err(e)
+                }
+            },
+        )
     }
 
     pub(crate) fn is_file_parsed(&self, path: &Path) -> bool {
@@ -195,6 +234,15 @@ impl ParseSess {
 
     pub(crate) fn line_of_byte_pos(&self, pos: BytePos) -> usize {
         self.parse_sess.source_map().lookup_char_pos(pos).line
+    }
+
+    // TODO(calebcartwright): Preemptive, currently unused addition
+    // that will be used to support formatting scenarios that take original
+    // positions into account
+    /// Determines whether two byte positions are in the same source line.
+    #[allow(dead_code)]
+    pub(crate) fn byte_pos_same_line(&self, a: BytePos, b: BytePos) -> bool {
+        self.line_of_byte_pos(a) == self.line_of_byte_pos(b)
     }
 
     pub(crate) fn span_to_debug_info(&self, span: Span) -> String {
@@ -283,7 +331,8 @@ mod tests {
         use super::*;
         use crate::config::IgnoreList;
         use crate::utils::mk_sp;
-        use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName};
+        use rustc_errors::MultiSpan;
+        use rustc_span::{FileName as SourceMapFileName, RealFileName};
         use std::path::PathBuf;
         use std::sync::atomic::AtomicU32;
 
@@ -297,6 +346,12 @@ mod tests {
             }
             fn emit_diagnostic(&mut self, _db: &Diagnostic) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
+            }
+            fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+                None
+            }
+            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+                panic!("test emitter attempted to translate a diagnostic");
             }
         }
 

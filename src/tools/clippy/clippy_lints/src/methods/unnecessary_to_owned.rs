@@ -5,6 +5,8 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{
     contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
 };
+use clippy_utils::{meets_msrv, msrvs};
+
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
@@ -13,12 +15,19 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
+use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
-pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
+pub fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    method_name: Symbol,
+    args: &'tcx [Expr<'tcx>],
+    msrv: Option<&RustcVersion>,
+) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let [receiver] = args;
@@ -33,7 +42,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: 
                 if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
                     return;
                 }
-                if check_into_iter_call_arg(cx, expr, method_name, receiver) {
+                if check_into_iter_call_arg(cx, expr, method_name, receiver, msrv) {
                     return;
                 }
                 check_other_call_arg(cx, expr, method_name, receiver);
@@ -178,7 +187,13 @@ fn check_addr_of_expr(
 
 /// Checks whether `expr` is an argument in an `into_iter` call and, if so, determines whether its
 /// call of a `to_owned`-like function is unnecessary.
-fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
+fn check_into_iter_call_arg(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    method_name: Symbol,
+    receiver: &Expr<'_>,
+    msrv: Option<&RustcVersion>,
+) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let Some(callee_def_id) = fn_def_id(cx, parent);
@@ -192,7 +207,7 @@ fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: 
             if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) { "copied" } else { "cloned" };
+            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, &msrvs::ITERATOR_COPIED) { "copied" } else { "cloned" };
             // The next suggestion may be incorrect because the removal of the `to_owned`-like
             // function could cause the iterator to hold a reference to a resource that is used
             // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.

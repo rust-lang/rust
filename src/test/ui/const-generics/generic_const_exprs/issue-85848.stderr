@@ -6,6 +6,7 @@ LL |     writes_to_specific_path(&cap);
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `Delegates<U>` is implemented for `T`
 note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
   --> $DIR/issue-85848.rs:21:12
    |

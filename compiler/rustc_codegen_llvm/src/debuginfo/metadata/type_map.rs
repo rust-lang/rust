@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use rustc_data_structures::{
     fingerprint::Fingerprint,
     fx::FxHashMap,
-    stable_hasher::{HashStable, NodeIdHashingMode, StableHasher},
+    stable_hasher::{HashStable, StableHasher},
 };
 use rustc_middle::{
     bug,
@@ -94,11 +94,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     pub fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
         let mut hasher = StableHasher::new();
         let mut hcx = tcx.create_stable_hashing_context();
-        hcx.while_hashing_spans(false, |hcx| {
-            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                self.hash_stable(hcx, &mut hasher);
-            });
-        });
+        hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher));
         hasher.finish::<Fingerprint>().to_hex()
     }
 

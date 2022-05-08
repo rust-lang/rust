@@ -24,7 +24,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
@@ -147,7 +146,24 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut dirty_clean_visitor = DirtyCleanVisitor { tcx, checked_attrs: Default::default() };
-        tcx.hir().visit_all_item_likes(&mut dirty_clean_visitor);
+
+        let crate_items = tcx.hir_crate_items(());
+
+        for id in crate_items.items() {
+            dirty_clean_visitor.check_item(id.def_id);
+        }
+
+        for id in crate_items.trait_items() {
+            dirty_clean_visitor.check_item(id.def_id);
+        }
+
+        for id in crate_items.impl_items() {
+            dirty_clean_visitor.check_item(id.def_id);
+        }
+
+        for id in crate_items.foreign_items() {
+            dirty_clean_visitor.check_item(id.def_id);
+        }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
         tcx.hir().walk_attributes(&mut all_attrs);
@@ -365,7 +381,8 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
+    fn check_item(&mut self, item_id: LocalDefId) {
+        let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
@@ -385,24 +402,6 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 self.assert_loaded_from_disk(item_span, dep_node);
             }
         }
-    }
-}
-
-impl<'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
-        self.check_item(item.def_id, item.span);
     }
 }
 

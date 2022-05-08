@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -105,6 +106,12 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    /// `codegen_static` will sometimes create a second global variable with a
+    /// different type and clear the symbol name of the original global.
+    /// `global_asm!` needs to be able to find this new global so that it can
+    /// compute the correct mangled symbol name to insert into the asm.
+    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
 }
 
 pub struct TypeLowering<'ll> {
@@ -134,7 +141,7 @@ pub unsafe fn create_module<'ll>(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let mut target_data_layout = sess.target.data_layout.clone();
+    let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
     if llvm_version < (13, 0, 0) {
         if sess.target.arch == "powerpc64" {
@@ -360,7 +367,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         //   feasible. The compiler may be able to get around this, but it may
         //   involve some invasive changes to deal with this.
         //
-        // The flipside of this situation is that whenever you link to a dll and
+        // The flip side of this situation is that whenever you link to a dll and
         // you import a function from it, the import should be tagged with
         // `dllimport`. At this time, however, the compiler does not emit
         // `dllimport` for any declarations other than constants (where it is
@@ -436,6 +443,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
+            renamed_statics: Default::default(),
         }
     }
 
@@ -859,7 +867,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one and we assume it exists in `core::slice::cmp`
-        ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32);
+        match self.sess().target.arch.as_ref() {
+            "avr" | "msp430" => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i16),
+            _ => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32),
+        }
 
         // variadic intrinsics
         ifn!("llvm.va_start", fn(i8p) -> void);

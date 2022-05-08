@@ -11,7 +11,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler, SuggestionStyle};
+use rustc_errors::{Applicability, Handler, MultiSpan, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
@@ -25,7 +25,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
+use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
 use std::io;
 use std::ops::Range;
@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
-            hir::ItemKind::Impl(ref impl_) => {
+            hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
             hir::ItemKind::Trait(_, unsafety, ..) => {
@@ -621,7 +621,19 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let emitter = EmitterWriter::new(Box::new(io::sink()), None, false, false, false, None, false);
+                let fallback_bundle =
+                    rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+                let emitter = EmitterWriter::new(
+                    Box::new(io::sink()),
+                    None,
+                    None,
+                    fallback_bundle,
+                    false,
+                    false,
+                    false,
+                    None,
+                    false,
+                );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));
                 let sess = ParseSess::with_span_handler(handler, sm);
 
@@ -727,7 +739,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
     /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
-        if s.starts_with(|c: char| c.is_digit(10)) {
+        if s.starts_with(|c: char| c.is_ascii_digit()) {
             return false;
         }
 

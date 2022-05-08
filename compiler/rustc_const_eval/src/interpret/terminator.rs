@@ -72,7 +72,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.memory.get_fn(fn_ptr)?;
+                        let fn_val = self.get_ptr_fn(fn_ptr)?;
                         (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
                     ty::FnDef(def_id, substs) => {
@@ -189,12 +189,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // that will take care to make it UB to leave the range, just
                 // like for transmute).
                 (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
-                    caller.value == callee.value
+                    caller.primitive() == callee.primitive()
                 }
                 (
                     abi::Abi::ScalarPair(caller1, caller2),
                     abi::Abi::ScalarPair(callee1, callee2),
-                ) => caller1.value == callee1.value && caller2.value == callee2.value,
+                ) => {
+                    caller1.primitive() == callee1.primitive()
+                        && caller2.primitive() == callee2.primitive()
+                }
                 // Be conservative
                 _ => false,
             }
@@ -329,7 +332,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Compute callee information using the `instance` returned by
                 // `find_mir_or_eval_fn`.
-                // FIXME: for variadic support, do we have to somehow determine calle's extra_args?
+                // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
                 if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
@@ -516,7 +519,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .kind(),
                     ty::Dynamic(..)
                 ));
-                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta());
+                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
                 let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we

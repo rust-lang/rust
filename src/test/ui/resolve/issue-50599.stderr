@@ -10,6 +10,11 @@ LL | use std::f32::consts::LOG10_2;
    |
 LL | use std::f64::consts::LOG10_2;
    |
+help: if you import `LOG10_2`, refer to it directly
+   |
+LL -     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
+LL +     const M: usize = (f64::from(N) * LOG10_2) as usize;
+   | 
 
 error: aborting due to previous error
 

@@ -5,7 +5,6 @@ use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
@@ -305,10 +304,10 @@ fn invert_mapping(map: &[u32]) -> Vec<u32> {
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutS<'tcx> {
         let dl = self.data_layout();
-        let b_align = b.value.align(dl);
-        let align = a.value.align(dl).max(b_align).max(dl.aggregate_align);
-        let b_offset = a.value.size(dl).align_to(b_align.abi);
-        let size = (b_offset + b.value.size(dl)).align_to(align.abi);
+        let b_align = b.align(dl);
+        let align = a.align(dl).max(b_align).max(dl.aggregate_align);
+        let b_offset = a.size(dl).align_to(b_align.abi);
+        let size = (b_offset + b.size(dl)).align_to(align.abi);
 
         // HACK(nox): We iter on `b` and then `a` because `max_by_key`
         // returns the last maximum.
@@ -503,42 +502,34 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 // Two non-ZST fields, and they're both scalars.
-                (
-                    Some((
-                        i,
-                        &TyAndLayout {
-                            layout: Layout(Interned(&LayoutS { abi: Abi::Scalar(a), .. }, _)),
-                            ..
-                        },
-                    )),
-                    Some((
-                        j,
-                        &TyAndLayout {
-                            layout: Layout(Interned(&LayoutS { abi: Abi::Scalar(b), .. }, _)),
-                            ..
-                        },
-                    )),
-                    None,
-                ) => {
-                    // Order by the memory placement, not source order.
-                    let ((i, a), (j, b)) =
-                        if offsets[i] < offsets[j] { ((i, a), (j, b)) } else { ((j, b), (i, a)) };
-                    let pair = self.scalar_pair(a, b);
-                    let pair_offsets = match pair.fields {
-                        FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                            assert_eq!(memory_index, &[0, 1]);
-                            offsets
+                (Some((i, a)), Some((j, b)), None) => {
+                    match (a.abi, b.abi) {
+                        (Abi::Scalar(a), Abi::Scalar(b)) => {
+                            // Order by the memory placement, not source order.
+                            let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
+                                ((i, a), (j, b))
+                            } else {
+                                ((j, b), (i, a))
+                            };
+                            let pair = self.scalar_pair(a, b);
+                            let pair_offsets = match pair.fields {
+                                FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                                    assert_eq!(memory_index, &[0, 1]);
+                                    offsets
+                                }
+                                _ => bug!(),
+                            };
+                            if offsets[i] == pair_offsets[0]
+                                && offsets[j] == pair_offsets[1]
+                                && align == pair.align
+                                && size == pair.size
+                            {
+                                // We can use `ScalarPair` only when it matches our
+                                // already computed layout (including `#[repr(C)]`).
+                                abi = pair.abi;
+                            }
                         }
-                        _ => bug!(),
-                    };
-                    if offsets[i] == pair_offsets[0]
-                        && offsets[j] == pair_offsets[1]
-                        && align == pair.align
-                        && size == pair.size
-                    {
-                        // We can use `ScalarPair` only when it matches our
-                        // already computed layout (including `#[repr(C)]`).
-                        abi = pair.abi;
+                        _ => {}
                     }
                 }
 
@@ -567,7 +558,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let scalar_unit = |value: Primitive| {
             let size = value.size(dl);
             assert!(size.bits() <= 128);
-            Scalar { value, valid_range: WrappingRange { start: 0, end: size.unsigned_int_max() } }
+            Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
         };
         let scalar =
             |value: Primitive| tcx.intern_layout(LayoutS::scalar(self, scalar_unit(value)));
@@ -581,11 +572,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // Basic scalars.
             ty::Bool => tcx.intern_layout(LayoutS::scalar(
                 self,
-                Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } },
+                Scalar::Initialized {
+                    value: Int(I8, false),
+                    valid_range: WrappingRange { start: 0, end: 1 },
+                },
             )),
             ty::Char => tcx.intern_layout(LayoutS::scalar(
                 self,
-                Scalar {
+                Scalar::Initialized {
                     value: Int(I32, false),
                     valid_range: WrappingRange { start: 0, end: 0x10FFFF },
                 },
@@ -598,7 +592,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
-                ptr.valid_range = ptr.valid_range.with_start(1);
+                ptr.valid_range_mut().start = 1;
                 tcx.intern_layout(LayoutS::scalar(self, ptr))
             }
 
@@ -616,7 +610,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
-                    data_ptr.valid_range = data_ptr.valid_range.with_start(1);
+                    data_ptr.valid_range_mut().start = 1;
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
@@ -632,7 +626,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
-                        vtable.valid_range = vtable.valid_range.with_start(1);
+                        vtable.valid_range_mut().start = 1;
                         vtable
                     }
                     _ => return Err(LayoutError::Unknown(unsized_part)),
@@ -788,10 +782,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
 
                     // Extract the number of elements from the layout of the array field:
-                    let Ok(TyAndLayout {
-                        layout: Layout(Interned(LayoutS { fields: FieldsShape::Array { count, .. }, .. }, _)),
-                        ..
-                    }) = self.layout_of(f0_ty) else {
+                    let FieldsShape::Array { count, .. } = self.layout_of(f0_ty)?.layout.fields() else {
                         return Err(LayoutError::Unknown(ty));
                     };
 
@@ -889,14 +880,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
-                            // Normalize scalar_unit to the maximal valid range
+                            // Discard valid range information and allow undef
                             let field_abi = match field.abi {
-                                Abi::Scalar(x) => Abi::Scalar(scalar_unit(x.value)),
+                                Abi::Scalar(x) => Abi::Scalar(x.to_union()),
                                 Abi::ScalarPair(x, y) => {
-                                    Abi::ScalarPair(scalar_unit(x.value), scalar_unit(y.value))
+                                    Abi::ScalarPair(x.to_union(), y.to_union())
                                 }
                                 Abi::Vector { element: x, count } => {
-                                    Abi::Vector { element: scalar_unit(x.value), count }
+                                    Abi::Vector { element: x.to_union(), count }
                                 }
                                 Abi::Uninhabited | Abi::Aggregate { .. } => {
                                     Abi::Aggregate { sized: true }
@@ -1000,14 +991,16 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             if let Bound::Included(start) = start {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
-                                assert!(scalar.valid_range.start <= start);
-                                scalar.valid_range.start = start;
+                                let valid_range = scalar.valid_range_mut();
+                                assert!(valid_range.start <= start);
+                                valid_range.start = start;
                             }
                             if let Bound::Included(end) = end {
                                 // FIXME(eddyb) this might be incorrect - it doesn't
                                 // account for wrap-around (end < start) ranges.
-                                assert!(scalar.valid_range.end >= end);
-                                scalar.valid_range.end = end;
+                                let valid_range = scalar.valid_range_mut();
+                                assert!(valid_range.end >= end);
+                                valid_range.end = end;
                             }
 
                             // Update `largest_niche` if we have introduced a larger niche.
@@ -1127,15 +1120,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 match st[i].abi() {
                                     Abi::Scalar(_) => Abi::Scalar(niche_scalar),
                                     Abi::ScalarPair(first, second) => {
-                                        // We need to use scalar_unit to reset the
-                                        // valid range to the maximal one for that
-                                        // primitive, because only the niche is
-                                        // guaranteed to be initialised, not the
-                                        // other primitive.
+                                        // Only the niche is guaranteed to be initialised,
+                                        // so use union layout for the other primitive.
                                         if offset.bytes() == 0 {
-                                            Abi::ScalarPair(niche_scalar, scalar_unit(second.value))
+                                            Abi::ScalarPair(niche_scalar, second.to_union())
                                         } else {
-                                            Abi::ScalarPair(scalar_unit(first.value), niche_scalar)
+                                            Abi::ScalarPair(first.to_union(), niche_scalar)
                                         }
                                     }
                                     _ => Abi::Aggregate { sized: true },
@@ -1314,7 +1304,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let tag_mask = ity.size().unsigned_int_max();
-                let tag = Scalar {
+                let tag = Scalar::Initialized {
                     value: Int(ity, signed),
                     valid_range: WrappingRange {
                         start: (min as u128 & tag_mask),
@@ -1325,11 +1315,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Without latter check aligned enums with custom discriminant values
                 // Would result in ICE see the issue #92464 for more info
-                if tag.value.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
+                if tag.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
                     abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
+                    let mut common_prim_initialized_in_all_variants = true;
                     for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
                         let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
                             bug!();
@@ -1337,7 +1328,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let mut fields =
                             iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
                         let (field, offset) = match (fields.next(), fields.next()) {
-                            (None, None) => continue,
+                            (None, None) => {
+                                common_prim_initialized_in_all_variants = false;
+                                continue;
+                            }
                             (Some(pair), None) => pair,
                             _ => {
                                 common_prim = None;
@@ -1345,7 +1339,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
                         };
                         let prim = match field.abi {
-                            Abi::Scalar(scalar) => scalar.value,
+                            Abi::Scalar(scalar) => {
+                                common_prim_initialized_in_all_variants &=
+                                    matches!(scalar, Scalar::Initialized { .. });
+                                scalar.primitive()
+                            }
                             _ => {
                                 common_prim = None;
                                 break;
@@ -1365,7 +1363,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                     }
                     if let Some((prim, offset)) = common_prim {
-                        let pair = self.scalar_pair(tag, scalar_unit(prim));
+                        let prim_scalar = if common_prim_initialized_in_all_variants {
+                            scalar_unit(prim)
+                        } else {
+                            // Common prim might be uninit.
+                            Scalar::Union { value: prim }
+                        };
+                        let pair = self.scalar_pair(tag, prim_scalar);
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index, &[0, 1]);
@@ -1599,7 +1603,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let max_discr = (info.variant_fields.len() - 1) as u128;
         let discr_int = Integer::fit_unsigned(max_discr);
         let discr_int_ty = discr_int.to_ty(tcx, false);
-        let tag = Scalar {
+        let tag = Scalar::Initialized {
             value: Primitive::Int(discr_int, false),
             valid_range: WrappingRange { start: 0, end: max_discr },
         };
@@ -1898,7 +1902,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     adt_kind.into(),
                     adt_packed,
                     match tag_encoding {
-                        TagEncoding::Direct => Some(tag.value.size(self)),
+                        TagEncoding::Direct => Some(tag.size(self)),
                         _ => None,
                     },
                     variant_infos,
@@ -2304,7 +2308,7 @@ where
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
                     layout: tcx.intern_layout(LayoutS::scalar(cx, tag)),
-                    ty: tag.value.to_ty(tcx),
+                    ty: tag.primitive().to_ty(tcx),
                 }
             };
 
@@ -2588,6 +2592,22 @@ where
 
         pointee_info
     }
+
+    fn is_adt(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(..))
+    }
+
+    fn is_never(this: TyAndLayout<'tcx>) -> bool {
+        this.ty.kind() == &ty::Never
+    }
+
+    fn is_tuple(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Tuple(..))
+    }
+
+    fn is_unit(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Tuple(list) if list.len() == 0)
+    }
 }
 
 impl<'tcx> ty::Instance<'tcx> {
@@ -2718,7 +2738,7 @@ impl<'tcx> ty::Instance<'tcx> {
 /// stack-based unwinding (the exact mechanism of which varies
 /// platform-by-platform).
 ///
-/// Rust functions are classfied whether or not they can unwind based on the
+/// Rust functions are classified whether or not they can unwind based on the
 /// active "panic strategy". In other words Rust functions are considered to
 /// unwind in `-Cpanic=unwind` mode and cannot unwind in `-Cpanic=abort` mode.
 /// Note that Rust supports intermingling panic=abort and panic=unwind code, but
@@ -2773,7 +2793,7 @@ pub fn fn_can_unwind<'tcx>(
     // To fix this UB rustc would like to change in the future to catch unwinds
     // from function calls that may unwind within a Rust-defined `extern "C"`
     // function and forcibly abort the process, thereby respecting the
-    // `nounwind` attribut emitted for `extern "C"`. This behavior change isn't
+    // `nounwind` attribute emitted for `extern "C"`. This behavior change isn't
     // ready to roll out, so determining whether or not the `C` family of ABIs
     // unwinds is conditional not only on their definition but also whether the
     // `#![feature(c_unwind)]` feature gate is active.
@@ -3079,11 +3099,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // Only pointer types handled below.
-            if scalar.value != Pointer {
-                return;
-            }
+            let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
 
-            if !scalar.valid_range.contains(0) {
+            if !valid_range.contains(0) {
                 attrs.set(ArgAttribute::NonNull);
             }
 

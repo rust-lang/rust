@@ -444,7 +444,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // we lower the guard.
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
-            // We keep a stack of all of the bindings and type asciptions
+            // We keep a stack of all of the bindings and type ascriptions
             // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
             traverse_candidate(
@@ -701,8 +701,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
-        let region_scope = self.region_scope_tree.var_scope(var.local_id);
-        if schedule_drop {
+        // Altough there is almost always scope for given variable in corner cases
+        // like #92893 we might get variable with no scope.
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) && schedule_drop{
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         }
         Place::from(local_id)
@@ -710,8 +711,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     crate fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
-        let region_scope = self.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, local_id, DropKind::Value);
+        if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) {
+            self.schedule_drop(span, region_scope, local_id, DropKind::Value);
+        }
     }
 
     /// Visit all of the primary bindings in a patterns, that is, visit the
@@ -1030,11 +1032,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// exhaustive match, consider:
     ///
     /// ```
+    /// # fn foo(x: (bool, bool)) {
     /// match x {
     ///     (true, true) => (),
     ///     (_, false) => (),
     ///     (false, true) => (),
     /// }
+    /// # }
     /// ```
     ///
     /// For this match, we check if `x.0` matches `true` (for the first
@@ -1155,7 +1159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For example, if we have something like this:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// ...
     /// Some(x) if cond1 => ...
     /// Some(x) => ...
@@ -1479,11 +1483,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     /// # let (x, y, z) = (true, true, true);
     /// match (x, y, z) {
-    ///     (true, _, true) => true,    // (0)
-    ///     (_, true, _) => true,       // (1)
-    ///     (false, false, _) => false, // (2)
-    ///     (true, _, false) => false,  // (3)
+    ///     (true , _    , true ) => true,  // (0)
+    ///     (_    , true , _    ) => true,  // (1)
+    ///     (false, false, _    ) => false, // (2)
+    ///     (true , _    , false) => false, // (3)
     /// }
+    /// # ;
     /// ```
     ///
     /// In that case, after we test on `x`, there are 2 overlapping candidate
@@ -1500,14 +1505,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// with precisely the reachable arms being reachable - but that problem
     /// is trivially NP-complete:
     ///
-    /// ```rust
-    ///     match (var0, var1, var2, var3, ...) {
-    ///         (true, _, _, false, true, ...) => false,
-    ///         (_, true, true, false, _, ...) => false,
-    ///         (false, _, false, false, _, ...) => false,
-    ///         ...
-    ///         _ => true
-    ///     }
+    /// ```ignore (illustrative)
+    /// match (var0, var1, var2, var3, ...) {
+    ///     (true , _   , _    , false, true, ...) => false,
+    ///     (_    , true, true , false, _   , ...) => false,
+    ///     (false, _   , false, false, _   , ...) => false,
+    ///     ...
+    ///     _ => true
+    /// }
     /// ```
     ///
     /// Here the last arm is reachable only if there is an assignment to
@@ -1518,7 +1523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// our simplistic treatment of constants and guards would make it occur
     /// in very common situations - for example [#29740]:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// match x {
     ///     "foo" if foo_guard => ...,
     ///     "bar" if bar_guard => ...,

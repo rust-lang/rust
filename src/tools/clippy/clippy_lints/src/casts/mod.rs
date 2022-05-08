@@ -1,3 +1,4 @@
+mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
 mod cast_possible_truncation;
@@ -269,7 +270,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Casting a function pointer to an integer can have surprising results and can occur
-    /// accidentally if parantheses are omitted from a function call. If you aren't doing anything
+    /// accidentally if parentheses are omitted from a function call. If you aren't doing anything
     /// low-level with function pointers then you can opt-out of casting functions to integers in
     /// order to avoid mistakes. Alternatively, you can use this lint to audit all uses of function
     /// pointer casts in your code.
@@ -473,6 +474,29 @@ declare_clippy_lint! {
     "casts from an enum tuple constructor to an integer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for uses of the `abs()` method that cast the result to unsigned.
+    ///
+    /// ### Why is this bad?
+    /// The `unsigned_abs()` method avoids panic when called on the MIN value.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x: i32 = -42;
+    /// let y: u32 = x.abs() as u32;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x: i32 = -42;
+    /// let y: u32 = x.unsigned_abs();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub CAST_ABS_TO_UNSIGNED,
+    suspicious,
+    "casting the result of `abs()` to an unsigned integer can panic"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -500,7 +524,8 @@ impl_lint_pass!(Casts => [
     CHAR_LIT_AS_U8,
     PTR_AS_PTR,
     CAST_ENUM_TRUNCATION,
-    CAST_ENUM_CONSTRUCTOR
+    CAST_ENUM_CONSTRUCTOR,
+    CAST_ABS_TO_UNSIGNED
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -536,6 +561,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
+                    cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
                 }
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);

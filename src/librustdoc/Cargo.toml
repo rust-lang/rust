@@ -22,6 +22,7 @@ regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
 tracing = "0.1"
 tracing-tree = "0.2.0"
+once_cell = "1.10.0"
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"

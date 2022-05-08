@@ -156,7 +156,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -310,6 +310,12 @@ define_Conf! {
     /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
+    /// Lint: AWAIT_HOLDING_INVALID_TYPE
+    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    /// Lint: LARGE_INCLUDE_FILE.
+    ///
+    /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
+    (max_include_file_size: u64 = 1_000_000),
 }
 
 /// Search for the configuration file.

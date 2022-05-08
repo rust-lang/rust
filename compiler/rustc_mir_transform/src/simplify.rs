@@ -498,7 +498,8 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.visit_rvalue(rvalue, location);
             }
 
-            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+            StatementKind::SetDiscriminant { ref place, variant_index: _ }
+            | StatementKind::Deinit(ref place) => {
                 self.visit_lhs(place, location);
             }
         }
@@ -534,9 +535,8 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. } => {
-                        used_locals.is_used(place.local)
-                    }
+                    StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
                     _ => true,
                 };
 

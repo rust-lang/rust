@@ -448,6 +448,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
 
+            let fmt_val = |val: &ConstValue<'tcx>| match val {
+                ConstValue::Scalar(s) => format!("Scalar({:?})", s),
+                ConstValue::Slice { .. } => format!("Slice(..)"),
+                ConstValue::ByRef { .. } => format!("ByRef(..)"),
+            };
+
             let val = match literal {
                 ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
@@ -457,7 +463,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         uv.substs,
                         uv.promoted,
                     ),
-                    ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                    ty::ConstKind::Value(val) => format!("Value({})", fmt_val(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
@@ -467,7 +473,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 // To keep the diffs small, we render this like we render `ty::Const::Value`.
                 //
                 // This changes once `ty::Const::Value` is represented using valtrees.
-                ConstantKind::Val(val, _) => format!("Value({:?})", val),
+                ConstantKind::Val(val, _) => format!("Value({})", fmt_val(&val)),
             };
 
             self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
@@ -561,8 +567,7 @@ fn write_scope_tree(
         }
         indented_decl.push(';');
 
-        let local_name =
-            if local == RETURN_PLACE { " return place".to_string() } else { String::new() };
+        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
         writeln!(
             w,
@@ -852,6 +857,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         }
         if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
+            assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
@@ -950,9 +956,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static, _) => {
-            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?
-        }
+        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
+        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
         (_, _) if is_function => write!(w, "fn ")?,
         (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),

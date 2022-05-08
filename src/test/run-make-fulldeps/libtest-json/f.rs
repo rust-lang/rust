@@ -16,7 +16,7 @@ fn c() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "msg"]
 fn d() {
     assert!(false);
 }

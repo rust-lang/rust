@@ -8,7 +8,7 @@ LL | struct Value(u32);
    | doesn't satisfy `Value: Hash`
 ...
 LL |     hs.insert(Value(0));
-   |        ^^^^^^ method cannot be called on `HashSet<Value>` due to unsatisfied trait bounds
+   |        ^^^^^^
    |
    = note: the following trait bounds were not satisfied:
            `Value: Eq`

@@ -1,13 +1,13 @@
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/issue-43733.rs:19:5
+error[E0133]: call to unsafe function `$LOCALKEYINNER::<T>::get` is unsafe and requires unsafe function or block
+  --> $DIR/issue-43733.rs:21:5
    |
 LL |     __KEY.get(Default::default)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/issue-43733.rs:22:42
+error[E0133]: call to unsafe function `LocalKey::<T>::new` is unsafe and requires unsafe function or block
+  --> $DIR/issue-43733.rs:26:42
    |
 LL | static FOO: std::thread::LocalKey<Foo> = std::thread::LocalKey::new(__getit);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function

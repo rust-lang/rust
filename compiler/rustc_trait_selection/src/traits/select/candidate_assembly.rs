@@ -175,9 +175,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
 
-        let sized_predicate = self.tcx().lang_items().sized_trait()
-            == Some(stack.obligation.predicate.skip_binder().def_id());
-
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
@@ -186,7 +183,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             while i < candidates.len() {
                 let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
                     self.candidate_should_be_dropped_in_favor_of(
-                        sized_predicate,
                         &candidates[i],
                         &candidates[j],
                         needs_infer,
@@ -231,8 +227,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
             // emitting additional spurious errors, since we're guaranteed
             // to have emitted at least one.
-            if stack.obligation.references_error() {
-                debug!("no results for error type, treating as ambiguous");
+            if stack.obligation.predicate.references_error() {
+                debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
                 return Ok(None);
             }
             return Err(Unimplemented);
@@ -256,6 +252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
+            debug!(ty = ?obligation.predicate.skip_binder().self_ty(), "ambiguous inference var or opaque type");
             // Self is a type variable (e.g., `_: AsRef<str>`).
             //
             // This is somewhat problematic, as the current scheme can't really
@@ -306,17 +303,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-            } else if lang_items.drop_trait() == Some(def_id)
-                && obligation.predicate.is_const_if_const()
-            {
-                // holds to make it easier to transition
-                // FIXME(fee1-dead): add a note for selection error of `~const Drop`
-                // when beta is bumped
-                // FIXME: remove this when beta is bumped
-                #[cfg(bootstrap)]
-                {}
-
-                candidates.vec.push(SelectionCandidate::ConstDestructCandidate(None))
             } else if lang_items.destruct_trait() == Some(def_id) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
             } else {

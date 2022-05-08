@@ -37,13 +37,13 @@ LL |     opts.get(opt.as_ref());
 help: use the fully qualified path for the potential candidates
    |
 LL |     opts.get(<String as AsRef<OsStr>>::as_ref(opt));
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |              +++++++++++++++++++++++++++++++++   ~
 LL |     opts.get(<String as AsRef<Path>>::as_ref(opt));
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |              ++++++++++++++++++++++++++++++++   ~
 LL |     opts.get(<String as AsRef<[u8]>>::as_ref(opt));
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |              ++++++++++++++++++++++++++++++++   ~
 LL |     opts.get(<String as AsRef<str>>::as_ref(opt));
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |              +++++++++++++++++++++++++++++++   ~
      and 4 other candidates
 
 error[E0283]: type annotations needed

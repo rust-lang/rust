@@ -12,6 +12,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
+          Deinit(_1);                      // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
           (_1.0: u32) = const 1_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
           (_1.1: u32) = const 2_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
           StorageLive(_2);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15

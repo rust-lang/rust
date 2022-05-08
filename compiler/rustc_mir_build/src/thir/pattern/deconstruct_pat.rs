@@ -13,7 +13,7 @@
 //! Instead of listing all those constructors (which is intractable), we group those value
 //! constructors together as much as possible. Example:
 //!
-//! ```
+//! ```compile_fail,E0004
 //! match (0, false) {
 //!     (0 ..=100, true) => {} // `p_1`
 //!     (50..=150, false) => {} // `p_2`
@@ -55,7 +55,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_middle::{middle::stability::EvalResult, mir::interpret::ConstValue};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
@@ -136,7 +136,7 @@ impl IntRange {
     fn from_const<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: Const<'tcx>,
+        value: ty::Const<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
@@ -146,7 +146,7 @@ impl IntRange {
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
                     // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size) {
+                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size).unwrap() {
                         return Some(bits);
                     }
                 }
@@ -344,13 +344,13 @@ enum IntBorder {
 /// straddles the boundary of one of the inputs.
 ///
 /// The following input:
-/// ```
+/// ```text
 ///   |-------------------------| // `self`
 /// |------|  |----------|   |----|
 ///    |-------| |-------|
 /// ```
 /// would be iterated over as follows:
-/// ```
+/// ```text
 ///   ||---|--||-|---|---|---|--|
 /// ```
 #[derive(Debug, Clone)]
@@ -492,14 +492,17 @@ impl Slice {
 ///
 /// Let's look at an example, where we are trying to split the last pattern:
 /// ```
+/// # fn foo(x: &[bool]) {
 /// match x {
 ///     [true, true, ..] => {}
 ///     [.., false, false] => {}
 ///     [..] => {}
 /// }
+/// # }
 /// ```
 /// Here are the results of specialization for the first few lengths:
 /// ```
+/// # fn foo(x: &[bool]) { match x {
 /// // length 0
 /// [] => {}
 /// // length 1
@@ -520,6 +523,8 @@ impl Slice {
 /// [true, true, _, _,     _    ] => {}
 /// [_,    _,    _, false, false] => {}
 /// [_,    _,    _, _,     _    ] => {}
+/// # _ => {}
+/// # }}
 /// ```
 ///
 /// If we went above length 5, we would simply be inserting more columns full of wildcards in the
@@ -829,7 +834,8 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             (Str(self_val), Str(other_val)) => {
-                // FIXME: there's probably a more direct way of comparing for equality
+                // FIXME Once valtrees are available we can directly use the bytes
+                // in the `Str` variant of the valtree for the comparison here.
                 match compare_const_vals(
                     pcx.cx.tcx,
                     *self_val,
@@ -1007,7 +1013,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
                 smallvec![NonExhaustive]
             }
             &ty::Int(ity) => {
@@ -1127,7 +1133,8 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// In the following example `Fields::wildcards` returns `[_, _, _, _]`. Then in
 /// `extract_pattern_arguments` we fill some of the entries, and the result is
 /// `[Some(0), _, _, _]`.
-/// ```rust
+/// ```compile_fail,E0004
+/// # fn foo() -> [Option<u8>; 4] { [None; 4] }
 /// let x: [Option<u8>; 4] = foo();
 /// match x {
 ///     [Some(0), ..] => {}
@@ -1650,7 +1657,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     }
 
                     // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a suple
+                    // get the names of the fields. Instead we just display everything as a tuple
                     // struct, which should be good enough.
                     write!(f, "(")?;
                     for p in self.iter_fields() {

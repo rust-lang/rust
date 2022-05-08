@@ -1,0 +1,22 @@
+error: `str` is both a builtin type and a macro
+  --> $DIR/macro-rules-error.rs:17:6
+   |
+LL | /// [str] FIXME: This error shouldn not be reported
+   |      ^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/macro-rules-error.rs:5:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the builtin type, prefix with `prim@`
+   |
+LL | /// [prim@str] FIXME: This error shouldn not be reported
+   |      +++++
+help: to link to the macro, add an exclamation mark
+   |
+LL | /// [str!] FIXME: This error shouldn not be reported
+   |         +
+
+error: aborting due to previous error
+

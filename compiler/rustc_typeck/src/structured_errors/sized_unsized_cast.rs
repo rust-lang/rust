@@ -21,7 +21,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = self.sess.struct_span_fatal_with_code(
+        let mut err = self.sess.struct_span_err_with_code(
             self.span,
             &format!(
                 "cannot cast thin pointer `{}` to fat pointer `{}`",

@@ -126,7 +126,8 @@ impl<'tcx> ConstKind<'tcx> {
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
     /// return `None`.
-    pub(super) fn try_eval(
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,

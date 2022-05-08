@@ -1,22 +1,15 @@
 //! `bless` updates the reference files in the repo with changed output files
 //! from the last test run.
 
+use crate::cargo_clippy_path;
 use std::ffi::OsStr;
 use std::fs;
 use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
-#[cfg(not(windows))]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
-#[cfg(windows)]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
-
-static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::new(|| {
-    let mut path = std::env::current_exe().unwrap();
-    path.set_file_name(CARGO_CLIPPY_EXE);
-    fs::metadata(path).ok()?.modified().ok()
-});
+static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> =
+    SyncLazy::new(|| cargo_clippy_path().metadata().ok()?.modified().ok());
 
 /// # Panics
 ///

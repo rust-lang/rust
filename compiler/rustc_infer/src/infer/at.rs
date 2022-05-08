@@ -6,7 +6,7 @@
 //! is always the "expected" output from the POV of diagnostics.
 //!
 //! Examples:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(cause, param_env).sub(a, b)
 //!     // requires that `a <: b`, with `a` considered the "expected" type
 //!
@@ -15,11 +15,11 @@
 //!
 //!     infcx.at(cause, param_env).eq(a, b)
 //!     // requires that `a == b`, with `a` considered the "expected" type
-//!
+//! ```
 //! For finer-grained control, you can also do use `trace`:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(...).trace(a, b).sub(&c, &d)
-//!
+//! ```
 //! This will set `a` and `b` as the "root" values for
 //! error-reporting, but actually operate on `c` and `d`. This is
 //! sometimes useful when the types of `c` and `d` are not traceable
@@ -34,6 +34,12 @@ pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
+    /// Whether we should define opaque types
+    /// or just treat them opaquely.
+    /// Currently only used to prevent predicate
+    /// matching from matching anything against opaque
+    /// types.
+    pub define_opaque_types: bool,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -49,7 +55,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env }
+        At { infcx: self, cause, param_env, define_opaque_types: true }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -57,9 +63,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// common state. Used in coherence.
     pub fn fork(&self) -> Self {
         Self {
-            tcx: self.tcx.clone(),
-            defining_use_anchor: self.defining_use_anchor.clone(),
-            in_progress_typeck_results: self.in_progress_typeck_results.clone(),
+            tcx: self.tcx,
+            defining_use_anchor: self.defining_use_anchor,
+            in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
@@ -86,6 +92,10 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
+    pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
+        Self { define_opaque_types, ..self }
+    }
+
     /// Hacky routine for equating two impl headers in coherence.
     pub fn eq_impl_headers(
         self,
@@ -216,7 +226,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .sub(a_is_expected)
                 .relate(a, b)
@@ -233,7 +243,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .equate(a_is_expected)
                 .relate(a, b)
@@ -248,7 +258,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .lub(a_is_expected)
                 .relate(a, b)
@@ -263,7 +273,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
+            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
             fields
                 .glb(a_is_expected)
                 .relate(a, b)

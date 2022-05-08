@@ -358,6 +358,8 @@ declare_features! (
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
     (active, custom_test_frameworks, "1.30.0", Some(50297), None),
+    /// Allows using `#[debugger_visualizer]`.
+    (active, debugger_visualizer, "1.62.0", Some(95939), None),
     /// Allows declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
     /// Allows rustc to inject a default alloc_error_handler
@@ -368,8 +370,6 @@ declare_features! (
     (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
-    /// Allows `#[derive(Default)]` and `#[default]` on enums.
-    (active, derive_default_enum, "1.56.0", Some(86985), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.
@@ -400,6 +400,8 @@ declare_features! (
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
     (active, generic_associated_types, "1.23.0", Some(44265), None),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
@@ -446,16 +448,12 @@ declare_features! (
     (active, must_not_suspend, "1.57.0", Some(83310), None),
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
-    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
-    (active, native_link_modifiers, "1.53.0", Some(81490), None),
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (active, native_link_modifiers_bundle, "1.53.0", Some(81490), None),
     /// Allows specifying the verbatim link modifier
     (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
-    /// Allows specifying the whole-archive link modifier
-    (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
@@ -507,6 +505,8 @@ declare_features! (
     (active, static_nobundle, "1.16.0", Some(37403), None),
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
+    /// Allows lints part of the strict provenance effort.
+    (active, strict_provenance, "1.61.0", Some(95228), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.
@@ -546,6 +546,8 @@ declare_features! (
     (active, used_with_arg, "1.60.0", Some(93798), None),
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
+    /// Allows `do yeet` expressions
+    (active, yeet_expr, "1.62.0", Some(96373), None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

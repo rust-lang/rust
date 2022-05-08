@@ -5,7 +5,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
@@ -237,7 +237,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
             }
-            && let (ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
+            && let (&ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
         {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
@@ -245,7 +245,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let mut v = TraitObjectVisitor(FxHashSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
-                self.get_impl_ident_and_self_ty_from_trait(*item_def_id, &v.0)
+                self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
                 && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
             {
                 override_error_code = Some(ident.name);

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 cd $(dirname "$0")/../
@@ -11,7 +11,7 @@ pushd rust
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r src/test/ui/{extern/,unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "asm!|lto|// needs-asm-support|// needs-unwind" src/test/{ui,incremental}); do
+for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" src/test/{ui,incremental}); do
   rm $test
 done
 
@@ -25,14 +25,8 @@ git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR
 # ================
 
 # requires stack unwinding
-rm src/test/ui/backtrace.rs
-rm src/test/ui/process/multi-panic.rs
-rm src/test/ui/numbers-arithmetic/issue-8460.rs
 rm src/test/incremental/change_crate_dep_kind.rs
 rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
-rm src/test/ui/panic-while-printing.rs
-rm src/test/ui/test-attrs/test-panic-while-printing.rs
-rm src/test/ui/test-attrs/test-type.rs
 
 # requires compiling with -Cpanic=unwind
 rm src/test/ui/test-attrs/test-fn-signature-verification-for-explicit-return-type.rs # "Cannot run dynamic test fn out-of-process"
@@ -85,8 +79,6 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 
 # giving different but possibly correct results
 # =============================================
-rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
-rm src/test/ui/simd/intrinsic/float-minmax-pass.rs # same
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
 rm src/test/ui/consts/issue-33537.rs # same
@@ -112,9 +104,14 @@ rm src/test/ui/mir/ssa-analysis-regression-50041.rs # produces ICE
 
 rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
+rm src/test/ui/rfc-2091-track-caller/intrinsic-wrapper.rs # wrong result from `Location::caller()`
+
 # bugs in the test suite
 # ======================
-rm src/test/ui/unsafe/union.rs # has UB caught by cg_clif. see rust-lang/rust#95075
+rm src/test/ui/backtrace.rs # TODO warning
+rm src/test/ui/empty_global_asm.rs # TODO add needs-asm-support
+rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
+rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
 
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}

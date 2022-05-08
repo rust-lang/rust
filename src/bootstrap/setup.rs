@@ -342,7 +342,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
                 dst.display(),
                 e
             ),
-            Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-push`"),
+            Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
         };
     } else {
         println!("Ok, skipping installation!");

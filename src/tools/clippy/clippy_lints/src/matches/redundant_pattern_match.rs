@@ -2,17 +2,16 @@ use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, is_type_lang_item, match_type};
+use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::{higher, match_def_path};
 use clippy_utils::{is_lang_ctor, is_trait_method, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, PollPending};
 use rustc_hir::{
     intravisit::{walk_expr, Visitor},
-    Arm, Block, Expr, ExprKind, LangItem, Node, Pat, PatKind, QPath, UnOp,
+    Arm, Block, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
@@ -29,59 +28,6 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some());
     } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
         find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
-    }
-}
-
-/// Checks if the drop order for a type matters. Some std types implement drop solely to
-/// deallocate memory. For these types, and composites containing them, changing the drop order
-/// won't result in any observable side effects.
-fn type_needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
-}
-
-fn type_needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
-    if !seen.insert(ty) {
-        return false;
-    }
-    if !ty.needs_drop(cx.tcx, cx.param_env) {
-        false
-    } else if !cx
-        .tcx
-        .lang_items()
-        .drop_trait()
-        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
-    {
-        // This type doesn't implement drop, so no side effects here.
-        // Check if any component type has any.
-        match ty.kind() {
-            ty::Tuple(fields) => fields.iter().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
-            ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, *ty, seen),
-            ty::Adt(adt, subs) => adt
-                .all_fields()
-                .map(|f| f.ty(cx.tcx, subs))
-                .any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
-            _ => true,
-        }
-    }
-    // Check for std types which implement drop, but only for memory allocation.
-    else if is_type_diagnostic_item(cx, ty, sym::Vec)
-        || is_type_lang_item(cx, ty, LangItem::OwnedBox)
-        || is_type_diagnostic_item(cx, ty, sym::Rc)
-        || is_type_diagnostic_item(cx, ty, sym::Arc)
-        || is_type_diagnostic_item(cx, ty, sym::cstring_type)
-        || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
-        || is_type_diagnostic_item(cx, ty, sym::LinkedList)
-        || match_type(cx, ty, &paths::WEAK_RC)
-        || match_type(cx, ty, &paths::WEAK_ARC)
-    {
-        // Check all of the generic arguments.
-        if let ty::Adt(_, subs) = ty.kind() {
-            subs.types().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen))
-        } else {
-            true
-        }
-    } else {
-        true
     }
 }
 
@@ -115,7 +61,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                 // e.g. In `(String::new(), 0).1` the string is a temporary value.
                 ExprKind::AddrOf(_, _, expr) | ExprKind::Field(expr, _) => {
                     if !matches!(expr.kind, ExprKind::Path(_)) {
-                        if type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(expr)) {
+                        if needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(expr)) {
                             self.res = true;
                         } else {
                             self.visit_expr(expr);
@@ -126,7 +72,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                 // e.g. In `(vec![0])[0]` the vector is a temporary value.
                 ExprKind::Index(base, index) => {
                     if !matches!(base.kind, ExprKind::Path(_)) {
-                        if type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(base)) {
+                        if needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(base)) {
                             self.res = true;
                         } else {
                             self.visit_expr(base);
@@ -143,7 +89,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                             .typeck_results()
                             .type_dependent_def_id(expr.hir_id)
                             .map_or(false, |id| self.cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref());
-                        if self_by_ref && type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(self_arg)) {
+                        if self_by_ref && needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(self_arg)) {
                             self.res = true;
                         } else {
                             self.visit_expr(self_arg);
@@ -193,7 +139,7 @@ fn find_sugg_for_if_let<'tcx>(
         PatKind::TupleStruct(ref qpath, [sub_pat], _) => {
             if let PatKind::Wild = sub_pat.kind {
                 let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
-                let Some(id) = res.opt_def_id().and_then(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
+                let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
                 let lang_items = cx.tcx.lang_items();
                 if Some(id) == lang_items.result_ok_variant() {
                     ("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty))
@@ -243,7 +189,7 @@ fn find_sugg_for_if_let<'tcx>(
     // scrutinee would be, so they have to be considered as well.
     // e.g. in `if let Some(x) = foo.lock().unwrap().baz.as_ref() { .. }` the lock will be held
     // for the duration if body.
-    let needs_drop = type_needs_ordered_drop(cx, check_ty) || temporaries_need_ordered_drop(cx, let_expr);
+    let needs_drop = needs_ordered_drop(cx, check_ty) || temporaries_need_ordered_drop(cx, let_expr);
 
     // check that `while_let_on_iterator` lint does not trigger
     if_chain! {

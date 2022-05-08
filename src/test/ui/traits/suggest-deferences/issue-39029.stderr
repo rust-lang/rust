@@ -5,7 +5,7 @@ LL |     let _errors = TcpListener::bind(&bad);
    |                   ----------------- ^^^^
    |                   |                 |
    |                   |                 the trait `ToSocketAddrs` is not implemented for `NoToSocketAddrs`
-   |                   |                 help: consider adding dereference here: `&*bad`
+   |                   |                 help: consider dereferencing here: `&*bad`
    |                   required by a bound introduced by this call
    |
    = note: required because of the requirements on the impl of `ToSocketAddrs` for `&NoToSocketAddrs`

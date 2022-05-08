@@ -3,7 +3,6 @@
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]
@@ -40,6 +39,7 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
@@ -215,6 +215,7 @@ where
     }
 }
 
+#[allow(dead_code)] // Not used on all platforms.
 pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }

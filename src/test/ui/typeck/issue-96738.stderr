@@ -1,0 +1,16 @@
+error[E0599]: no method named `nonexistent_method` found for fn item `fn(_) -> Option<_> {Option::<_>::Some}` in the current scope
+  --> $DIR/issue-96738.rs:2:10
+   |
+LL |     Some.nonexistent_method();
+   |     ---- ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
+   |     |
+   |     this is the constructor of an enum variant
+   |
+help: call the constructor
+   |
+LL |     (Some)(_).nonexistent_method();
+   |     +    ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,13 @@
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:3:26
+   |
+LL |   for _i in 0..arr.len().rev() {
+   |                          ^^^ `usize` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `usize: Iterator`
+           which is required by `&mut usize: Iterator`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

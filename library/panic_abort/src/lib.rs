@@ -65,6 +65,7 @@ pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMe
             //
             // Note: this is the same implementation as in libstd's `abort_internal`
             unsafe fn abort() -> ! {
+                #[allow(unused)]
                 const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
                 cfg_if::cfg_if! {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

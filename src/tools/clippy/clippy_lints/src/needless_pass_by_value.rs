@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 let attrs = cx.tcx.hir().attrs(hir_id);
                 if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
@@ -235,12 +235,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        &snippet_opt(cx, span)
+                                        snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x)),
-                                            ),
-                                        suggestion.into(),
+                                            )
+                                            .as_ref(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }
@@ -264,12 +265,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        &snippet_opt(cx, span)
+                                        snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x))
-                                            ),
-                                        suggestion.into(),
+                                            )
+                                            .as_ref(),
+                                        suggestion,
                                         Applicability::Unspecified,
                                     );
                                 }

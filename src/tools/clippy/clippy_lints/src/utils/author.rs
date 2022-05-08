@@ -70,7 +70,7 @@ macro_rules! bind {
     };
 }
 
-/// Transforms the given `Option<T>` varibles into `OptionPat<Binding<T>>`.
+/// Transforms the given `Option<T>` variables into `OptionPat<Binding<T>>`.
 /// This displays as `Some($name)` or `None` when printed. The name of the inner binding
 /// is set to the name of the variable passed to the macro.
 macro_rules! opt_bind {

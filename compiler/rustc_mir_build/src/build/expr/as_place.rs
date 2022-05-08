@@ -37,7 +37,7 @@ crate enum PlaceBase {
     ///
     /// Consider the following example
     /// ```rust
-    /// let t = (10, (10, (10, 10)));
+    /// let t = (((10, 10), 10), 10);
     ///
     /// let c = || {
     ///     println!("{}", t.0.0.0);
@@ -45,7 +45,7 @@ crate enum PlaceBase {
     /// ```
     /// Here the THIR expression for `t.0.0.0` will be something like
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// * Field(0)
     ///     * Field(0)
     ///         * Field(0)
@@ -192,7 +192,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
         is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
     })?;
 
-    // Convert index to be from the presepective of the entire closure_min_captures map
+    // Convert index to be from the perspective of the entire closure_min_captures map
     // instead of just the root variable capture list
     Some((compute_capture_idx(closure_min_captures, var_hir_id, idx), capture))
 }

@@ -8,7 +8,7 @@ use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -30,7 +30,7 @@ use rustc_session::lint;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{self, BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -370,23 +370,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bounds, substs, result, spans,
         );
         (result, spans)
-    }
-
-    /// Replaces the opaque types from the given value with type variables,
-    /// and records the `OpaqueTypeMap` for later use during writeback. See
-    /// `InferCtxt::instantiate_opaque_types` for more details.
-    #[instrument(skip(self, value_span), level = "debug")]
-    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
-        &self,
-        value: T,
-        value_span: Span,
-    ) -> T {
-        self.register_infer_ok_obligations(self.instantiate_opaque_types(
-            self.body_id,
-            self.param_env,
-            value,
-            value_span,
-        ))
     }
 
     /// Convenience method which tracks extra diagnostic information for normalization
@@ -772,9 +755,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ret: Expectation<'tcx>,
         formal_ret: Ty<'tcx>,
         formal_args: &[Ty<'tcx>],
-    ) -> Vec<Ty<'tcx>> {
+    ) -> Option<Vec<Ty<'tcx>>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
+        let ret_ty = expected_ret.only_has_type(self)?;
+
+        // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
+        // Without it, the inference
+        // variable will get instantiated with the opaque type. The inference variable often
+        // has various helpful obligations registered for it that help closures figure out their
+        // signature. If we infer the inference var to the opaque type, the closure won't be able
+        // to find those obligations anymore, and it can't necessarily find them from the opaque
+        // type itself. We could be more powerful with inference if we *combined* the obligations
+        // so that we got both the obligations from the opaque type and the ones from the inference
+        // variable. That will accept more code than we do right now, so we need to carefully consider
+        // the implications.
+        // Note: this check is pessimistic, as the inference type could be matched with something other
+        // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
+        // can't re-use `sup` below.
+        // See src/test/ui/impl-trait/hidden-type-is-opaque.rs and
+        // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
+        if formal_ret.has_infer_types() {
+            for ty in ret_ty.walk() {
+                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
+                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                        if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
+
         let expect_args = self
             .fudge_inference_if_ok(|| {
                 // Attempt to apply a subtyping relationship between the formal
@@ -809,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Record all the argument types, with the substitutions
                 // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect())
+                Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
             })
             .unwrap_or_default();
         debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
@@ -827,7 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.type_of(self.tcx.parent(def_id).expect("variant w/out parent"))
+            self.tcx.type_of(self.tcx.parent(def_id))
         } else {
             self.tcx.type_of(def_id)
         };

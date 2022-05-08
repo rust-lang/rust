@@ -588,8 +588,12 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to read rlink file: {}", err));
             });
-            let mut decoder = rustc_serialize::opaque::Decoder::new(&rlink_data, 0);
-            let codegen_results: CodegenResults = rustc_serialize::Decodable::decode(&mut decoder);
+            let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
+                Ok(codegen) => codegen,
+                Err(error) => {
+                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                }
+            };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
@@ -1168,9 +1172,13 @@ static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
+        None,
+        fallback_bundle,
         false,
         false,
         None,
@@ -1205,7 +1213,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     for note in &xs {
-        handler.note_without_error(note);
+        handler.note_without_error(note.as_ref());
     }
 
     // If backtraces are enabled, also print the query stack

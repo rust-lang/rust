@@ -1,3 +1,8 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
+
 struct Foo<'a, 'b> {
     x: &'a u32,
     y: &'b u32,

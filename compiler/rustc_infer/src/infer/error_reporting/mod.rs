@@ -59,19 +59,20 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self,
     error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
     Binder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -333,6 +334,9 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         )
         | (&ty::Infer(ty::InferTy::TyVar(_)), _)
         | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
+        (&ty::Ref(reg_a, ty_a, mut_a), &ty::Ref(reg_b, ty_b, mut_b)) => {
+            reg_a == reg_b && mut_a == mut_b && same_type_modulo_infer(*ty_a, *ty_b)
+        }
         _ => a == b,
     }
 }
@@ -602,7 +606,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match *cause.code() {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
                 let ty = self.resolve_vars_if_possible(root_ty);
-                if ty.is_suggestable() {
+                if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
+                {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
@@ -884,7 +889,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// For the following code:
     ///
-    /// ```no_run
+    /// ```ignore (illustrative)
     /// let x: Foo<Bar<Qux>> = foo::<Bar<Qux>>();
     /// ```
     ///
@@ -1086,7 +1091,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
+    pub fn cmp(
+        &self,
+        t1: Ty<'tcx>,
+        t2: Ty<'tcx>,
+    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions
@@ -1159,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let len = sub1.len() - common_default_params;
                     let consts_offset = len - sub1.consts().count();
 
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal("<");
                         values.1.push_normal("<");
@@ -1240,7 +1249,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     // Close the type argument bracket.
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal(">");
                         values.1.push_normal(">");
@@ -1439,6 +1448,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
         swap_secondary_and_primary: bool,
+        force_label: bool,
     ) {
         let span = cause.span(self.tcx);
         debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
@@ -1614,7 +1624,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
                 let mut label_or_note = |span: Span, msg: &str| {
-                    if &[span] == diag.span.primary_spans() {
+                    if force_label || &[span] == diag.span.primary_spans() {
                         diag.span_label(span, msg);
                     } else {
                         diag.span_note(span, msg);
@@ -1732,6 +1742,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             if should_suggest_fixes {
+                self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
@@ -1762,6 +1773,73 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_error_origin(diag, cause, exp_found, terr);
     }
 
+    fn suggest_tuple_pattern(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
+        // some modifications due to that being in typeck and this being in infer.
+        if let ObligationCauseCode::Pattern { .. } = cause.code() {
+            if let ty::Adt(expected_adt, substs) = exp_found.expected.kind() {
+                let compatible_variants: Vec<_> = expected_adt
+                    .variants()
+                    .iter()
+                    .filter(|variant| {
+                        variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                    })
+                    .filter_map(|variant| {
+                        let sole_field = &variant.fields[0];
+                        let sole_field_ty = sole_field.ty(self.tcx, substs);
+                        if same_type_modulo_infer(sole_field_ty, exp_found.found) {
+                            let variant_path =
+                                with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                            // FIXME #56861: DRYer prelude filtering
+                            if let Some(path) = variant_path.strip_prefix("std::prelude::") {
+                                if let Some((_, path)) = path.split_once("::") {
+                                    return Some(path.to_string());
+                                }
+                            }
+                            Some(variant_path)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                match &compatible_variants[..] {
+                    [] => {}
+                    [variant] => {
+                        diag.multipart_suggestion_verbose(
+                            &format!("try wrapping the pattern in `{}`", variant),
+                            vec![
+                                (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                (cause.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {
+                        // More than one matching variant.
+                        diag.multipart_suggestions(
+                            &format!(
+                                "try wrapping the pattern in a variant of `{}`",
+                                self.tcx.def_path_str(expected_adt.did())
+                            ),
+                            compatible_variants.into_iter().map(|variant| {
+                                vec![
+                                    (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                    (cause.span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
@@ -1784,7 +1862,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     })
                     .transpose();
                 if output.is_some() {
-                    // We don't account for multiple `Future::Output = Ty` contraints.
+                    // We don't account for multiple `Future::Output = Ty` constraints.
                     return output;
                 }
             }
@@ -1794,7 +1872,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// A possible error is to forget to add `.await` when using futures:
     ///
-    /// ```
+    /// ```compile_fail,E0308
     /// async fn make_u32() -> u32 {
     ///     22
     /// }
@@ -1998,7 +2076,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         {
                             diag.span_suggestion(
                                 span,
-                                msg,
+                                *msg,
                                 format!("{}.as_ref()", snippet),
                                 Applicability::MachineApplicable,
                             );
@@ -2094,7 +2172,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
         diag
     }
 
@@ -2120,7 +2198,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_suggestion(
                 span.with_hi(before_close).shrink_to_hi(),
                 msg,
-                ",".into(),
+                ",",
                 Applicability::MachineApplicable,
             );
         } else {
@@ -2207,7 +2285,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
-        self.construct_generic_bound_failure(span, origin, bound_kind, sub).emit();
+        let owner =
+            self.in_progress_typeck_results.map(|typeck_results| typeck_results.borrow().hir_owner);
+        self.construct_generic_bound_failure(span, origin, bound_kind, sub, owner).emit();
     }
 
     pub fn construct_generic_bound_failure(
@@ -2216,31 +2296,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
+        owner: Option<LocalDefId>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let hir = self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let generics = self
-            .in_progress_typeck_results
-            .map(|typeck_results| typeck_results.borrow().hir_owner)
-            .map(|owner| {
-                let hir_id = hir.local_def_id_to_hir_id(owner);
-                let parent_id = hir.get_parent_item(hir_id);
-                (
-                    // Parent item could be a `mod`, so we check the HIR before calling:
-                    if let Some(Node::Item(Item {
-                        kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
-                        ..
-                    })) = hir.find_by_def_id(parent_id)
-                    {
-                        Some(self.tcx.generics_of(parent_id))
-                    } else {
-                        None
-                    },
-                    self.tcx.generics_of(owner.to_def_id()),
-                    hir.span(hir_id),
-                )
-            });
+        let generics = owner.map(|owner| {
+            let hir_id = hir.local_def_id_to_hir_id(owner);
+            let parent_id = hir.get_parent_item(hir_id);
+            (
+                // Parent item could be a `mod`, so we check the HIR before calling:
+                if let Some(Node::Item(Item {
+                    kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
+                    ..
+                })) = hir.find_by_def_id(parent_id)
+                {
+                    Some(self.tcx.generics_of(parent_id))
+                } else {
+                    None
+                },
+                self.tcx.generics_of(owner.to_def_id()),
+                hir.span(hir_id),
+            )
+        });
 
         let span = match generics {
             // This is to get around the trait identity obligation, that has a `DUMMY_SP` as signal
@@ -2249,6 +2327,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => span,
         };
 
+        // type_param_span is (span, has_bounds)
         let type_param_span = match (generics, bound_kind) {
             (Some((_, ref generics, _)), GenericKind::Param(ref param)) => {
                 // Account for the case where `param` corresponds to `Self`,
@@ -2259,25 +2338,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                         // instead we suggest `T: 'a + 'b` in that case.
-                        let id = hir.local_def_id_to_hir_id(def_id);
-                        let mut has_bounds = false;
-                        if let Node::GenericParam(param) = hir.get(id) {
-                            has_bounds = !param.bounds.is_empty();
-                        }
-                        let sp = self.tcx.def_span(def_id);
+                        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner);
+                        let bounds =
+                            ast_generics.and_then(|g| g.bounds_span_for_suggestions(def_id));
                         // `sp` only covers `T`, change it so that it covers
                         // `T:` when appropriate
-                        let is_impl_trait = bound_kind.to_string().starts_with("impl ");
-                        let sp = if has_bounds && !is_impl_trait {
-                            sp.to(self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        if let Some(span) = bounds {
+                            (span, true)
                         } else {
-                            sp
-                        };
-                        (sp, has_bounds, is_impl_trait)
+                            let sp = self.tcx.def_span(def_id);
+                            (sp.shrink_to_hi(), false)
+                        }
                     })
                 } else {
                     None
@@ -2333,52 +2405,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
             err: &mut Diagnostic,
-            type_param_span: Option<(Span, bool, bool)>,
+            type_param_span: Option<(Span, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
         ) {
             let msg = "consider adding an explicit lifetime bound";
-            if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
-                let suggestion = if is_impl_trait {
-                    format!("{} + {}", bound_kind, sub)
-                } else {
-                    let tail = if has_lifetimes { " + " } else { "" };
-                    format!("{}: {}{}", bound_kind, sub, tail)
-                };
-                err.span_suggestion(
+            if let Some((sp, has_lifetimes)) = type_param_span {
+                let suggestion =
+                    if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
+                err.span_suggestion_verbose(
                     sp,
                     &format!("{}...", msg),
                     suggestion,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                let consider = format!(
-                    "{} {}...",
-                    msg,
-                    if type_param_span.map_or(false, |(_, _, is_impl_trait)| is_impl_trait) {
-                        format!(" `{}` to `{}`", sub, bound_kind)
-                    } else {
-                        format!("`{}: {}`", bound_kind, sub)
-                    },
-                );
+                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub,);
                 err.help(&consider);
             }
         }
 
         let new_binding_suggestion =
-            |err: &mut Diagnostic,
-             type_param_span: Option<(Span, bool, bool)>,
-             bound_kind: GenericKind<'tcx>| {
+            |err: &mut Diagnostic, type_param_span: Option<(Span, bool)>| {
                 let msg = "consider introducing an explicit lifetime bound";
-                if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
-                    let suggestion = if is_impl_trait {
-                        (sp.shrink_to_hi(), format!(" + {}", new_lt))
+                if let Some((sp, has_lifetimes)) = type_param_span {
+                    let suggestion = if has_lifetimes {
+                        format!(" + {}", new_lt)
                     } else {
-                        let tail = if has_lifetimes { " +" } else { "" };
-                        (sp, format!("{}: {}{}", bound_kind, new_lt, tail))
+                        format!(": {}", new_lt)
                     };
                     let mut sugg =
-                        vec![suggestion, (span.shrink_to_hi(), format!(" + {}", new_lt))];
+                        vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
                     if let Some(lt) = add_lt_sugg {
                         sugg.push(lt);
                         sugg.rotate_right(1);
@@ -2465,11 +2522,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let pred = format!("{}: {}", bound_kind, sub);
                 let suggestion = format!(
                     "{} {}",
-                    if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
+                    if !generics.predicates.is_empty() { "," } else { " where" },
                     pred,
                 );
                 err.span_suggestion(
-                    generics.where_clause.tail_span_for_suggestion(),
+                    generics.tail_span_for_predicate_suggestion(),
                     "consider adding a where clause",
                     suggestion,
                     Applicability::MaybeIncorrect,
@@ -2528,11 +2585,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     None,
                 );
                 if let Some(infer::RelateParamBound(_, t, _)) = origin {
-                    let return_impl_trait = self
-                        .in_progress_typeck_results
-                        .map(|typeck_results| typeck_results.borrow().hir_owner)
-                        .and_then(|owner| self.tcx.return_type_impl_trait(owner))
-                        .is_some();
+                    let return_impl_trait =
+                        owner.and_then(|owner| self.tcx.return_type_impl_trait(owner)).is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
@@ -2540,7 +2594,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
                         ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
-                            new_binding_suggestion(&mut err, type_param_span, bound_kind);
+                            new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
                             binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
@@ -2688,7 +2742,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-enum FailureCode {
+pub enum FailureCode {
     Error0038(DefId),
     Error0317(&'static str),
     Error0580(&'static str),
@@ -2696,7 +2750,7 @@ enum FailureCode {
     Error0644(&'static str),
 }
 
-trait ObligationCauseExt<'tcx> {
+pub trait ObligationCauseExt<'tcx> {
     fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode;
     fn as_requirement_str(&self) -> &'static str;
 }

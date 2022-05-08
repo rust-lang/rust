@@ -65,10 +65,10 @@ LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting type parameter `X`
+help: consider further restricting this bound
    |
-LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: std::fmt::Debug {
-   |                                                            ++++++++++++++++++++
+LL | fn test_many_bounds_where<X>(x: X) where X: Sized + std::fmt::Debug, X: Sized {
+   |                                                   +++++++++++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:44:46

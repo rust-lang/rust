@@ -15,7 +15,7 @@ LL | fn bar() -> String {
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     "foobar".to_string()
 LL |     ;
-   |     - help: consider removing this semicolon
+   |     - help: remove this semicolon
 
 error: aborting due to 2 previous errors
 

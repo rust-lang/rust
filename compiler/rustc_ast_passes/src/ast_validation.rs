@@ -8,7 +8,7 @@
 
 use itertools::{Either, Itertools};
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -91,16 +91,18 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
-    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_tilde_const_allowed, true);
+    fn with_tilde_const(&mut self, allowed: bool, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_tilde_const_allowed, allowed);
         f(self);
         self.is_tilde_const_allowed = old;
     }
 
+    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
+        self.with_tilde_const(true, f)
+    }
+
     fn with_banned_tilde_const(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_tilde_const_allowed, false);
-        f(self);
-        self.is_tilde_const_allowed = old;
+        self.with_tilde_const(false, f)
     }
 
     fn with_let_management(
@@ -120,9 +122,21 @@ impl<'a> AstValidator<'a> {
             let err = "`let` expressions are not supported here";
             let mut diag = sess.struct_span_err(expr.span, err);
             diag.note("only supported directly in conditions of `if` and `while` expressions");
-            diag.note("as well as when nested within `&&` and parentheses in those conditions");
-            if let ForbiddenLetReason::ForbiddenWithOr(span) = forbidden_let_reason {
-                diag.span_note(span, "`||` operators are not allowed in let chain expressions");
+            match forbidden_let_reason {
+                ForbiddenLetReason::GenericForbidden => {}
+                ForbiddenLetReason::NotSupportedOr(span) => {
+                    diag.span_note(
+                        span,
+                        "`||` operators are not supported in let chain expressions",
+                    );
+                }
+                ForbiddenLetReason::NotSupportedParentheses(span) => {
+                    diag.span_note(
+                        span,
+                        "`let`s wrapped in parentheses are not supported in a context with let \
+                        chains",
+                    );
+                }
             }
             diag.emit();
         } else {
@@ -328,23 +342,6 @@ impl<'a> AstValidator<'a> {
             )
             .span_label(span, "functions in traits cannot be const")
             .emit();
-        }
-    }
-
-    // FIXME(ecstaticmorse): Instead, use `bound_context` to check this in `visit_param_bound`.
-    fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
-        for bound in bounds {
-            if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
-                let mut err = self.err_handler().struct_span_err(
-                    poly.span,
-                    &format!("`?Trait` is not permitted in {}", where_),
-                );
-                if is_trait {
-                    let path_str = pprust::path_to_string(&poly.trait_ref.path);
-                    err.note(&format!("traits are `?{}` by default", path_str));
-                }
-                err.emit();
-            }
         }
     }
 
@@ -619,9 +616,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-varadic type unless the function is foreign,
+    /// Reject C-variadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
-    fn check_c_varadic_type(&self, fk: FnKind<'a>) {
+    fn check_c_variadic_type(&self, fk: FnKind<'a>) {
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
@@ -859,7 +856,6 @@ impl<'a> AstValidator<'a> {
                         any_lifetime_bounds = true;
                     }
                 }
-                self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(_, ref bounds) => {
                 if self.is_impl_trait_banned {
@@ -1006,9 +1002,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
             match &expr.kind {
                 ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
-                    let forbidden_let_reason = Some(ForbiddenLetReason::ForbiddenWithOr(*span));
-                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(lhs));
-                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(rhs));
+                    let local_reason = Some(ForbiddenLetReason::NotSupportedOr(*span));
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(lhs));
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(rhs));
                 }
                 ExprKind::If(cond, then, opt_else) => {
                     this.visit_block(then);
@@ -1033,7 +1029,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
-                ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
+                ExprKind::Paren(local_expr) => {
+                    fn has_let_expr(expr: &Expr) -> bool {
+                        match expr.kind {
+                            ExprKind::Binary(_, ref lhs, ref rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                            ExprKind::Let(..) => true,
+                            _ => false,
+                        }
+                    }
+                    let local_reason = if has_let_expr(local_expr) {
+                        Some(ForbiddenLetReason::NotSupportedParentheses(local_expr.span))
+                    }
+                    else {
+                        forbidden_let_reason
+                    };
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(local_expr));
+                }
+                ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
                     this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
                     return;
                 }
@@ -1174,12 +1186,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
-                if let Const::Yes(_) = sig.header.constness {
-                    self.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                } else {
-                    self.visit_generics(generics);
-                }
-                let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
+                let kind =
+                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
@@ -1216,14 +1224,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.deny_where_clause(&generics.where_clause, item.ident.span);
                     self.deny_items(items, item.ident.span);
                 }
-                self.no_questions_in_bounds(bounds, "supertraits", true);
 
                 // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                 // context for the supertraits.
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
-                self.with_banned_tilde_const(|this| walk_list!(this, visit_param_bound, bounds));
+                self.with_banned_tilde_const(|this| {
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
@@ -1450,23 +1459,39 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_param_bound(&mut self, bound: &'a GenericBound) {
-        match bound {
-            GenericBound::Trait(_, TraitBoundModifier::MaybeConst) => {
-                if !self.is_tilde_const_allowed {
-                    self.err_handler()
-                        .struct_span_err(bound.span(), "`~const` is not allowed here")
-                        .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
-                        .emit();
+    fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
+        if let GenericBound::Trait(ref poly, modify) = *bound {
+            match (ctxt, modify) {
+                (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
+                    let mut err = self.err_handler().struct_span_err(
+                        poly.span,
+                        &format!("`?Trait` is not permitted in supertraits"),
+                    );
+                    let path_str = pprust::path_to_string(&poly.trait_ref.path);
+                    err.note(&format!("traits are `?{}` by default", path_str));
+                    err.emit();
                 }
+                (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
+                    let mut err = self.err_handler().struct_span_err(
+                        poly.span,
+                        &format!("`?Trait` is not permitted in trait object types"),
+                    );
+                    err.emit();
+                }
+                (_, TraitBoundModifier::MaybeConst) => {
+                    if !self.is_tilde_const_allowed {
+                        self.err_handler()
+                            .struct_span_err(bound.span(), "`~const` is not allowed here")
+                            .note("only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions")
+                            .emit();
+                    }
+                }
+                (_, TraitBoundModifier::MaybeConstMaybe) => {
+                    self.err_handler()
+                        .span_err(bound.span(), "`~const` and `?` are mutually exclusive");
+                }
+                _ => {}
             }
-
-            GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
-                self.err_handler()
-                    .span_err(bound.span(), "`~const` and `?` are mutually exclusive");
-            }
-
-            _ => {}
         }
 
         visit::walk_param_bound(self, bound)
@@ -1501,7 +1526,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         };
         self.check_fn_decl(fk.decl(), self_semantic);
 
-        self.check_c_varadic_type(fk);
+        self.check_c_variadic_type(fk);
 
         // Functions cannot both be `const async`
         if let Some(FnHeader {
@@ -1527,13 +1552,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit, .. }, .. },
             _,
             _,
+            _,
         ) = fk
         {
             self.maybe_lint_missing_abi(*sig_span, id);
         }
 
         // Functions without bodies cannot have patterns.
-        if let FnKind::Fn(ctxt, _, sig, _, None) = fk {
+        if let FnKind::Fn(ctxt, _, sig, _, _, None) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 let (code, msg, label) = match ctxt {
                     FnCtxt::Foreign => (
@@ -1568,7 +1594,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        visit::walk_fn(self, fk, span);
+        let tilde_const_allowed =
+            matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
+                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+
+        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk, span));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
@@ -1631,7 +1661,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.with_tilde_const_allowed(|this| {
                     this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
                 });
                 walk_list!(self, visit_ty, ty);
             }
@@ -1642,9 +1672,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
-                self.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), item.ident, sig, &item.vis, body.as_deref());
+                let kind = FnKind::Fn(
+                    FnCtxt::Assoc(ctxt),
+                    item.ident,
+                    sig,
+                    &item.vis,
+                    generics,
+                    body.as_deref(),
+                );
                 self.visit_fn(kind, item.span, item.id);
             }
             _ => self
@@ -1807,8 +1842,13 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
 /// Used to forbid `let` expressions in certain syntactic locations.
 #[derive(Clone, Copy)]
 enum ForbiddenLetReason {
-    /// A let chain with the `||` operator
-    ForbiddenWithOr(Span),
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
+    /// A let chain with the `||` operator
+    NotSupportedOr(Span),
+    /// A let chain with invalid parentheses
+    ///
+    /// For exemple, `let 1 = 1 && (expr && expr)` is allowed
+    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
+    NotSupportedParentheses(Span),
 }

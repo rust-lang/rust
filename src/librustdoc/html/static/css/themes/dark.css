@@ -478,6 +478,17 @@ div.files > .selected {
 	border-bottom-color: #ddd;
 }
 
+.scraped-example-list .scrape-help {
+	border-color: #aaa;
+	color: #eee;
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: white;
+	color: white;
+}
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: #999;
+}
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);
 }
@@ -491,8 +502,8 @@ div.files > .selected {
 	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }
 .toggle-line-inner {
-	background: #616161;
+	background: #999;
 }
 .toggle-line:hover .toggle-line-inner {
-	background: #898989;
+	background: #c5c5c5;
 }

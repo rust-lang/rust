@@ -1,0 +1,39 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:10:46
+   |
+LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
+   |                              ----     ----   ^ ...but data from `f` is returned here
+   |                              |
+   |                              this parameter and the return type are declared with different lifetimes...
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn a<'a>(self: Pin<&'a Foo>, f: &'a Foo) -> &Foo { f }
+   |         ++++            ++           ++
+
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:14:76
+   |
+LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |                               ----              -----------------          ^ ...but data from `f` is returned here
+   |                               |
+   |                               this parameter and the return type are declared with different lifetimes...
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     fn c<'a>(self: Pin<&'a Self>, f: &'a Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |         ++++            ++            ++
+
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:21:58
+   |
+LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+   |                                         ------     ---   ^^^ ...but data from `arg` is returned here
+   |                                         |
+   |                                         this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

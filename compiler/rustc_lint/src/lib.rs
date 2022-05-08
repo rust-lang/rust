@@ -28,7 +28,6 @@
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
@@ -490,6 +489,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "unsupported_naked_functions",
         "converted into hard error, see RFC 2972 \
          <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+    );
+    store.register_removed(
+        "mutable_borrow_reservation_conflict",
+        "now allowed, see issue #59159 \
+         <https://github.com/rust-lang/rust/issues/59159> for more information",
     );
 }
 

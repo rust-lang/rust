@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-infer-covariance-due-to-decl.rs:22:12
+  --> $DIR/regions-infer-covariance-due-to-decl.rs:26:12
    |
 LL | fn use_<'short,'long>(c: Covariant<'long>,
    |         ------ ----- lifetime `'long` defined here

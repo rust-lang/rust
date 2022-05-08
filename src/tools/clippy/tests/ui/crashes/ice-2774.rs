@@ -8,7 +8,7 @@ pub struct Bar {
 }
 
 #[derive(Eq, PartialEq, Debug, Hash)]
-pub struct Foo {}
+pub struct Foo;
 
 #[allow(clippy::implicit_hasher)]
 // This should not cause a "cannot relate bound region" ICE.

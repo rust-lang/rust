@@ -130,10 +130,9 @@ pub trait Clone: Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[default_method_body_is_const]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     fn clone_from(&mut self, source: &Self)
     where
-        Self: ~const Drop + ~const Destruct,
+        Self: ~const Destruct,
     {
         *self = source.clone()
     }

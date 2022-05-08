@@ -55,18 +55,32 @@ where
 fn duplicate_custom_3<T>(t: S<T>) -> (S<T>, S<T>)
 where
     T: A,
+    //~^ HELP consider further restricting this bound
     T: B,
-    //~^ HELP consider further restricting type parameter `T`
 {
     (t, t) //~ use of moved value: `t`
 }
 
 fn duplicate_custom_4<T: A>(t: S<T>) -> (S<T>, S<T>)
+//~^ HELP consider further restricting this bound
 where
     T: B,
-    //~^ HELP consider further restricting this bound
 {
     (t, t) //~ use of moved value: `t`
+}
+
+#[rustfmt::skip]
+fn existing_colon<T:>(t: T) {
+    //~^ HELP consider restricting type parameter `T`
+    [t, t]; //~ use of moved value: `t`
+}
+
+fn existing_colon_in_where<T>(t: T)
+where
+    T:,
+    //~^ HELP consider further restricting type parameter `T`
+{
+    [t, t]; //~ use of moved value: `t`
 }
 
 fn main() {}

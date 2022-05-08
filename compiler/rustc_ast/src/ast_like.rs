@@ -51,7 +51,6 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtMeta(_)
             | Nonterminal::NtPath(_)
             | Nonterminal::NtVis(_)
-            | Nonterminal::NtTT(_)
             | Nonterminal::NtBlock(_)
             | Nonterminal::NtIdent(..)
             | Nonterminal::NtLifetime(_) => &[],
@@ -67,7 +66,6 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtMeta(_)
             | Nonterminal::NtPath(_)
             | Nonterminal::NtVis(_)
-            | Nonterminal::NtTT(_)
             | Nonterminal::NtBlock(_)
             | Nonterminal::NtIdent(..)
             | Nonterminal::NtLifetime(_) => {}
@@ -84,7 +82,7 @@ impl AstLike for crate::token::Nonterminal {
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) | Nonterminal::NtTT(..) => None,
+            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) => None,
         }
     }
 }

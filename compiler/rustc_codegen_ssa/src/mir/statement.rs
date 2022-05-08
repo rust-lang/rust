@@ -48,6 +48,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
+            mir::StatementKind::Deinit(..) => {
+                // For now, don't codegen this to anything. In the future it may be worth
+                // experimenting with what kind of information we can emit to LLVM without hurting
+                // perf here
+                bx
+            }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(&mut bx);

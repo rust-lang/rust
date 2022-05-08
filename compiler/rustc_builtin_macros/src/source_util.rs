@@ -102,7 +102,7 @@ pub fn expand_include<'cx>(
         return DummyResult::any(sp);
     };
     // The file will be added to the code map by the parser
-    let file = match cx.resolve_path(file, sp) {
+    let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
@@ -139,7 +139,7 @@ pub fn expand_include<'cx>(
 
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
             let mut ret = SmallVec::new();
-            while self.p.token != token::Eof {
+            loop {
                 match self.p.parse_item(ForceCollect::No) {
                     Err(mut err) => {
                         err.emit();
@@ -147,9 +147,12 @@ pub fn expand_include<'cx>(
                     }
                     Ok(Some(item)) => ret.push(item),
                     Ok(None) => {
-                        let token = pprust::token_to_string(&self.p.token);
-                        let msg = format!("expected item, found `{}`", token);
-                        self.p.struct_span_err(self.p.token.span, &msg).emit();
+                        if self.p.token != token::Eof {
+                            let token = pprust::token_to_string(&self.p.token);
+                            let msg = format!("expected item, found `{}`", token);
+                            self.p.struct_span_err(self.p.token.span, &msg).emit();
+                        }
+
                         break;
                     }
                 }
@@ -171,7 +174,7 @@ pub fn expand_include_str(
     let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_str!") else {
         return DummyResult::any(sp);
     };
-    let file = match cx.resolve_path(file, sp) {
+    let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
@@ -205,7 +208,7 @@ pub fn expand_include_bytes(
     let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_bytes!") else {
         return DummyResult::any(sp);
     };
-    let file = match cx.resolve_path(file, sp) {
+    let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();

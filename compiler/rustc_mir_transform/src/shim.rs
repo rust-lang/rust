@@ -725,9 +725,6 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let span =
-        tcx.hir().span_if_local(ctor_id).unwrap_or_else(|| bug!("no span for ctor {:?}", ctor_id));
-
     let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
@@ -739,6 +736,8 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
+
+    let span = tcx.def_span(ctor_id);
 
     let local_decls = local_decls_for_sig(&sig, span);
 

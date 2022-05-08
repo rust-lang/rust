@@ -77,17 +77,30 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
     let mut cnt = 0;
 
     let validate = tcx.sess.opts.debugging_opts.validate_mir;
+    let overridden_passes = &tcx.sess.opts.debugging_opts.mir_enable_passes;
+    trace!(?overridden_passes);
 
     if validate {
         validate_body(tcx, body, format!("start of phase transition from {:?}", start_phase));
     }
 
     for pass in passes {
-        if !pass.is_enabled(&tcx.sess) {
-            continue;
-        }
-
         let name = pass.name();
+
+        if let Some((_, polarity)) = overridden_passes.iter().rev().find(|(s, _)| s == &*name) {
+            trace!(
+                pass = %name,
+                "{} as requested by flag",
+                if *polarity { "Running" } else { "Not running" },
+            );
+            if !polarity {
+                continue;
+            }
+        } else {
+            if !pass.is_enabled(&tcx.sess) {
+                continue;
+            }
+        }
         let dump_enabled = pass.is_mir_dump_enabled();
 
         if dump_enabled {

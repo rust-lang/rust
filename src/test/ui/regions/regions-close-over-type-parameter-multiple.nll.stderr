@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
+  --> $DIR/regions-close-over-type-parameter-multiple.rs:23:5
    |
 LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
    |                    --    -- lifetime `'c` defined here

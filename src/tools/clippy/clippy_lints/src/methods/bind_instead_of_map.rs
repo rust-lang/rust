@@ -42,7 +42,7 @@ pub(crate) trait BindInsteadOfMap {
 
     fn no_op_msg(cx: &LateContext<'_>) -> Option<String> {
         let variant_id = cx.tcx.lang_items().require(Self::VARIANT_LANG_ITEM).ok()?;
-        let item_id = cx.tcx.parent(variant_id)?;
+        let item_id = cx.tcx.parent(variant_id);
         Some(format!(
             "using `{}.{}({})`, which is a no-op",
             cx.tcx.item_name(item_id),
@@ -53,7 +53,7 @@ pub(crate) trait BindInsteadOfMap {
 
     fn lint_msg(cx: &LateContext<'_>) -> Option<String> {
         let variant_id = cx.tcx.lang_items().require(Self::VARIANT_LANG_ITEM).ok()?;
-        let item_id = cx.tcx.parent(variant_id)?;
+        let item_id = cx.tcx.parent(variant_id);
         Some(format!(
             "using `{}.{}(|x| {}(y))`, which is more succinctly expressed as `{}(|x| y)`",
             cx.tcx.item_name(item_id),
@@ -145,7 +145,7 @@ pub(crate) trait BindInsteadOfMap {
         if_chain! {
             if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def();
             if let Ok(vid) = cx.tcx.lang_items().require(Self::VARIANT_LANG_ITEM);
-            if Some(adt.did()) == cx.tcx.parent(vid);
+            if adt.did() == cx.tcx.parent(vid);
             then {} else { return false; }
         }
 
@@ -182,7 +182,7 @@ pub(crate) trait BindInsteadOfMap {
     fn is_variant(cx: &LateContext<'_>, res: Res) -> bool {
         if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
             if let Ok(variant_id) = cx.tcx.lang_items().require(Self::VARIANT_LANG_ITEM) {
-                return cx.tcx.parent(id) == Some(variant_id);
+                return cx.tcx.parent(id) == variant_id;
             }
         }
         false

@@ -157,14 +157,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // Error with the match place
             LookupResult::Parent(_) => {
                 for ge in &mut *grouped_errors {
-                    if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge {
-                        if match_span == *span {
-                            debug!("appending local({:?}) to list", bind_to);
-                            if !binds_to.is_empty() {
-                                binds_to.push(bind_to);
-                            }
-                            return;
+                    if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge
+                        && match_span == *span
+                    {
+                        debug!("appending local({:?}) to list", bind_to);
+                        if !binds_to.is_empty() {
+                            binds_to.push(bind_to);
                         }
+                        return;
                     }
                 }
                 debug!("found a new move error location");
@@ -353,7 +353,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     None => bug!("closure kind not inferred by borrowck"),
                 };
                 let capture_description =
-                    format!("captured variable in an `{}` closure", closure_kind);
+                    format!("captured variable in an `{closure_kind}` closure");
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
                 let upvar_hir_id = upvar.place.get_root_variable();
@@ -364,9 +364,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let place_description =
                     if self.is_upvar_field_projection(move_place.as_ref()).is_some() {
-                        format!("{}, a {}", place_name, capture_description)
+                        format!("{place_name}, a {capture_description}")
                     } else {
-                        format!("{}, as `{}` is a {}", place_name, upvar_name, capture_description)
+                        format!("{place_name}, as `{upvar_name}` is a {capture_description}")
                     };
 
                 debug!(
@@ -379,7 +379,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 diag.span_label(upvar_span, "captured outer variable");
                 diag.span_label(
                     self.body.span,
-                    format!("captured by this `{}` closure", closure_kind),
+                    format!("captured by this `{closure_kind}` closure"),
                 );
 
                 diag
@@ -390,7 +390,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     (Some(place_desc), Some(source_desc)) => self.cannot_move_out_of(
                         span,
-                        &format!("`{}` which is behind a {}", place_desc, source_desc),
+                        &format!("`{place_desc}` which is behind a {source_desc}"),
                     ),
                     (_, _) => self.cannot_move_out_of(
                         span,
@@ -435,7 +435,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion(
                         span,
                         "consider borrowing here",
-                        format!("&{}", snippet),
+                        format!("&{snippet}"),
                         Applicability::Unspecified,
                     );
                 }
@@ -443,7 +443,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
-                        Some(desc) => format!("`{}`", desc),
+                        Some(desc) => format!("`{desc}`"),
                         None => "value".to_string(),
                     };
 
@@ -472,12 +472,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
-                    Some(desc) => format!("`{}`", desc),
+                    Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
                 self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
 
-                use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
+                use_spans.args_span_label(err, format!("move out of {place_desc} occurs here"));
             }
         }
     }
@@ -511,7 +511,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         for (span, to_remove, suggestion) in suggestions {
             err.span_suggestion(
                 span,
-                &format!("consider removing the `{}`", to_remove),
+                &format!("consider removing the `{to_remove}`"),
                 suggestion,
                 Applicability::MachineApplicable,
             );

@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{get_iterator_item_ty, is_copy};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy};
 use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_span::sym;
 use std::ops::Not;
 
 use super::ITER_OVEREAGER_CLONED;
@@ -20,9 +21,16 @@ pub(super) fn check<'tcx>(
     map_arg: &[hir::Expr<'_>],
 ) {
     // Check if it's iterator and get type associated with `Item`.
-    let inner_ty = match get_iterator_item_ty(cx, cx.typeck_results().expr_ty_adjusted(recv)) {
-        Some(ty) => ty,
-        _ => return,
+    let inner_ty = if_chain! {
+        if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
+        let recv_ty = cx.typeck_results().expr_ty(recv);
+        if implements_trait(cx, recv_ty, iterator_trait_id, &[]);
+        if let Some(inner_ty) = get_iterator_item_ty(cx, cx.typeck_results().expr_ty_adjusted(recv));
+        then {
+            inner_ty
+        } else {
+            return;
+        }
     };
 
     match inner_ty.kind() {

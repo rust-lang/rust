@@ -394,7 +394,6 @@ impl Stdin {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(stdin_forwarders)]
     /// use std::io;
     ///
     /// let lines = io::stdin().lines();
@@ -403,7 +402,7 @@ impl Stdin {
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "stdin_forwarders", issue = "87096")]
+    #[stable(feature = "stdin_forwarders", since = "1.62.0")]
     pub fn lines(self) -> Lines<StdinLock<'static>> {
         self.lock().lines()
     }

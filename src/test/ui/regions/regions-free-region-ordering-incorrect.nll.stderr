@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-incorrect.rs:15:9
+  --> $DIR/regions-free-region-ordering-incorrect.rs:19:9
    |
 LL |   impl<'b, T> Node<'b, T> {
    |        -- lifetime `'b` defined here

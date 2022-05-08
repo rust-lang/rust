@@ -30,11 +30,11 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
-    /// - False positive with assotiated types in traits (#4140)
+    /// - False positive with associated types in traits (#4140)
     ///
     /// ### Example
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Foo {
     ///         Foo {}
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     /// could be
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Self {
     ///         Self {}

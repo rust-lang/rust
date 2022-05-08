@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::marker::PhantomData;
 use crate::mem;
@@ -352,6 +352,10 @@ impl<'a> ArgumentV1<'a> {
     }
 
     fn as_usize(&self) -> Option<usize> {
+        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
+        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
+        // the function pointers if they don't have the same signature, so we cast to
+        // usizes to tell it that we just want to compare addresses.
         if self.formatter as usize == USIZE_MARKER as usize {
             // SAFETY: The `formatter` field is only set to USIZE_MARKER if
             // the value is a usize, so this is safe
@@ -596,7 +600,7 @@ impl Display for Arguments<'_> {
 ///
 /// Types that do not wish to use the standard suite of debug representations
 /// provided by the `Formatter` trait (`debug_struct`, `debug_tuple`,
-/// `debut_list`, `debug_set`, `debug_map`) can do something totally custom by
+/// `debug_list`, `debug_set`, `debug_map`) can do something totally custom by
 /// manually writing an arbitrary representation to the `Formatter`.
 ///
 /// ```
@@ -2246,7 +2250,7 @@ impl<T: ?Sized> Pointer for *const T {
             }
             f.flags |= 1 << (FlagV1::Alternate as u32);
 
-            let ret = LowerHex::fmt(&(ptr as usize), f);
+            let ret = LowerHex::fmt(&(ptr.addr()), f);
 
             f.width = old_width;
             f.flags = old_flags;
@@ -2393,6 +2397,13 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.debug_struct("UnsafeCell").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: ?Sized> Debug for SyncUnsafeCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("SyncUnsafeCell").finish_non_exhaustive()
     }
 }
 

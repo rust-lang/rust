@@ -9,12 +9,12 @@
 //! expressions of the following forms (the actual enum has many more
 //! possibilities, naturally, but they are all variants of these base
 //! forms):
-//!
-//!     E = rvalue    // some computed rvalue
-//!       | x         // address of a local variable or argument
-//!       | *E        // deref of a ptr
-//!       | E.comp    // access to an interior component
-//!
+//! ```ignore (not-rust)
+//! E = rvalue    // some computed rvalue
+//!   | x         // address of a local variable or argument
+//!   | *E        // deref of a ptr
+//!   | E.comp    // access to an interior component
+//! ```
 //! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
 //! address where the result is to be found. If Expr is a place, then this
 //! is the address of the place. If `Expr` is an rvalue, this is the address of
@@ -404,7 +404,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
-            Res::Def(DefKind::Static, _) => {
+            Res::Def(DefKind::Static(_), _) => {
                 Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::StaticItem, Vec::new()))
             }
 

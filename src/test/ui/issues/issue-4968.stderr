@@ -5,11 +5,12 @@ LL | const A: (isize,isize) = (4,2);
    | ------------------------------- constant defined here
 LL | fn main() {
 LL |     match 42 { A => () }
-   |                ^
-   |                |
-   |                expected integer, found tuple
-   |                `A` is interpreted as a constant, not a new binding
-   |                help: introduce a new binding instead: `other_a`
+   |           --   ^
+   |           |    |
+   |           |    expected integer, found tuple
+   |           |    `A` is interpreted as a constant, not a new binding
+   |           |    help: introduce a new binding instead: `other_a`
+   |           this expression has type `{integer}`
    |
    = note: expected type `{integer}`
              found tuple `(isize, isize)`

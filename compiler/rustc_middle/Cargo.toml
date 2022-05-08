@@ -12,8 +12,8 @@ bitflags = "1.2.1"
 either = "1.5.0"
 gsgdt = "0.1.2"
 tracing = "0.1"
-rustc-rayon = "0.3.2"
-rustc-rayon-core = "0.3.2"
+rustc-rayon = { version = "0.3.2", optional = true }
+rustc-rayon-core = { version = "0.3.2", optional = true }
 polonius-engine = "0.13.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }
@@ -35,3 +35,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rand = "0.8.4"
 rand_xoshiro = "0.6.0"
+
+[features]
+rustc_use_parallel_compiler = ["rustc-rayon", "rustc-rayon-core"]

@@ -341,7 +341,7 @@ impl InferenceDiagnosticsData {
 
 impl InferenceDiagnosticsParentData {
     fn for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<InferenceDiagnosticsParentData> {
-        let parent_def_id = tcx.parent(def_id)?;
+        let parent_def_id = tcx.parent(def_id);
 
         let parent_name =
             tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
@@ -731,25 +731,52 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
                 //    |
                 //    = note: cannot satisfy `Impl: Into<_>`
+                debug!(?segment);
                 if !impl_candidates.is_empty() && e.span.contains(span)
                     && let Some(expr) = exprs.first()
                     && let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
-                    && let [path_segment] = path.segments
+                    && let [_] = path.segments
                 {
+                    let mut eraser = TypeParamEraser(self.tcx);
                     let candidate_len = impl_candidates.len();
-                    let suggestions = impl_candidates.iter().map(|candidate| {
-                        format!(
-                            "{}::{}({})",
-                            candidate, segment.ident, path_segment.ident
-                        )
-                    });
-                    err.span_suggestions(
-                        e.span,
+                    let mut suggestions: Vec<_> = impl_candidates.iter().map(|candidate| {
+                        let trait_item = self.tcx
+                            .associated_items(candidate.def_id)
+                            .find_by_name_and_kind(
+                                self.tcx,
+                                segment.ident,
+                                ty::AssocKind::Fn,
+                                candidate.def_id
+                            );
+                        let prefix = if let Some(trait_item) = trait_item
+                            && let Some(trait_m) = trait_item.def_id.as_local()
+                            && let hir::TraitItemKind::Fn(fn_, _) = &self.tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m }).kind
+                        {
+                            match fn_.decl.implicit_self {
+                                hir::ImplicitSelfKind::ImmRef => "&",
+                                hir::ImplicitSelfKind::MutRef => "&mut ",
+                                _ => "",
+                            }
+                        } else {
+                            ""
+                        };
+                        let candidate = candidate.super_fold_with(&mut eraser);
+                        vec![
+                            (expr.span.shrink_to_lo(), format!("{}::{}({}", candidate, segment.ident, prefix)),
+                            if exprs.len() == 1 {
+                                (expr.span.shrink_to_hi().with_hi(e.span.hi()), ")".to_string())
+                            } else {
+                                (expr.span.shrink_to_hi().with_hi(exprs[1].span.lo()), ", ".to_string())
+                            },
+                        ]
+                    }).collect();
+                    suggestions.sort_by(|a, b| a[0].1.cmp(&b[0].1));
+                    err.multipart_suggestions(
                         &format!(
                             "use the fully qualified path for the potential candidate{}",
                             pluralize!(candidate_len),
                         ),
-                        suggestions,
+                        suggestions.into_iter(),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -848,10 +875,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some((DefKind::AssocFn, def_id)) =
             self.in_progress_typeck_results?.borrow().type_dependent_def(hir_id)
         {
-            return self
-                .tcx
-                .parent(def_id)
-                .filter(|&parent_def_id| self.tcx.is_trait(parent_def_id));
+            let parent_def_id = self.tcx.parent(def_id);
+            return self.tcx.is_trait(parent_def_id).then_some(parent_def_id);
         }
 
         None
@@ -1033,6 +1058,21 @@ impl<'tcx> TypeFolder<'tcx> for ErrTypeParamEraser<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.kind() {
             ty::Error(_) => self.tcx().mk_ty_var(ty::TyVid::from_u32(0)),
+            _ => t.super_fold_with(self),
+        }
+    }
+}
+
+/// Replace type parameters with `ty::Infer(ty::Var)` to display `_`.
+struct TypeParamEraser<'tcx>(TyCtxt<'tcx>);
+
+impl<'tcx> TypeFolder<'tcx> for TypeParamEraser<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.0
+    }
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match t.kind() {
+            ty::Param(_) | ty::Error(_) => self.tcx().mk_ty_var(ty::TyVid::from_u32(0)),
             _ => t.super_fold_with(self),
         }
     }

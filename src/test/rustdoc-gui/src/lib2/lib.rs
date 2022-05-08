@@ -43,6 +43,13 @@ impl implementors::Whatever for Foo {
     type Foo = u32;
 }
 
+#[doc(inline)]
+pub use implementors::TraitToReexport;
+
+pub struct StructToImplOnReexport;
+
+impl TraitToReexport for StructToImplOnReexport {}
+
 pub mod sub_mod {
     /// ```txt
     /// aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -120,3 +127,13 @@ pub struct HasALongTraitWithParams {}
 pub trait LongTraitWithParamsBananaBananaBanana<T> {}
 
 impl LongTraitWithParamsBananaBananaBanana<usize> for HasALongTraitWithParams {}
+
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+pub struct LongItemInfo;
+
+pub trait SimpleTrait {}
+pub struct LongItemInfo2;
+
+/// Some docs.
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+impl SimpleTrait for LongItemInfo2 {}

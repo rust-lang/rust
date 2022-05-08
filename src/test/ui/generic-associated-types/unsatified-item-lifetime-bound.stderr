@@ -2,7 +2,7 @@ warning: unnecessary lifetime parameter `'a`
   --> $DIR/unsatified-item-lifetime-bound.rs:4:12
    |
 LL |     type Y<'a: 'static>;
-   |            ^^^^^^^^^^^
+   |            ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
 

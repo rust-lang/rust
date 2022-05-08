@@ -5,7 +5,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 
-use self::opaque_types::OpaqueTypeMap;
+use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
@@ -69,8 +69,6 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 mod undo_log;
-
-pub use rustc_middle::infer::unify_key;
 
 #[must_use]
 #[derive(Debug)]
@@ -161,9 +159,9 @@ pub struct InferCtxtInner<'tcx> {
     /// outlive the lifetime 'a". These constraints derive from
     /// instantiated type parameters. So if you had a struct defined
     /// like
-    ///
+    /// ```ignore (illustrative)
     ///     struct Foo<T:'static> { ... }
-    ///
+    /// ```
     /// then in some expression `let x = Foo { ... }` it will
     /// instantiate the type parameter `T` with a fresh type `$0`. At
     /// the same time, it will record a region obligation of
@@ -191,18 +189,8 @@ pub struct InferCtxtInner<'tcx> {
 
     undo_log: InferCtxtUndoLogs<'tcx>,
 
-    // Opaque types found in explicit return types and their
-    // associated fresh inference variable. Writeback resolves these
-    // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl outside of type inference.
-    pub opaque_types: OpaqueTypeMap<'tcx>,
-
-    /// A map from inference variables created from opaque
-    /// type instantiations (`ty::Infer`) to the actual opaque
-    /// type (`ty::Opaque`). Used during fallback to map unconstrained
-    /// opaque type inference variables to their corresponding
-    /// opaque type.
-    pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
+    /// Caches for opaque type inference.
+    pub opaque_type_storage: OpaqueTypeStorage<'tcx>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -216,8 +204,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
-            opaque_types: Default::default(),
-            opaque_types_vars: Default::default(),
+            opaque_type_storage: Default::default(),
         }
     }
 
@@ -234,6 +221,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+        self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
@@ -345,7 +337,7 @@ pub struct InferCtxt<'a, 'tcx> {
 
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
-    /// `tained_by_errors`) to avoid reporting certain kinds of errors.
+    /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
     // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
     err_count_on_creation: usize,
 
@@ -393,8 +385,8 @@ impl<'tcx> ValuePairs<'tcx> {
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Debug)]
 pub struct TypeTrace<'tcx> {
-    cause: ObligationCause<'tcx>,
-    values: ValuePairs<'tcx>,
+    pub cause: ObligationCause<'tcx>,
+    pub values: ValuePairs<'tcx>,
 }
 
 /// The origin of a `r1 <= r2` constraint.
@@ -431,16 +423,20 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplMethodObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplMethodObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Comparing the signature and requirements of an impl associated type
     /// against the containing trait
-    CompareImplTypeObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplTypeObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
         parent: Box<SubregionOrigin<'tcx>>,
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 }
@@ -564,9 +560,9 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by `tcx.infer_ctxt()`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
+/// A temporary returned by `tcx.infer_ctxt()`. This is necessary
+/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// without using `Rc` or something similar.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
@@ -766,6 +762,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: bool,
     ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
@@ -773,6 +770,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             cause: None,
             param_env,
             obligations: PredicateObligations::new(),
+            define_opaque_types,
         }
     }
 
@@ -1088,12 +1086,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.mk_ty_var(self.next_ty_var_id(origin))
     }
 
+    pub fn next_ty_var_id_in_universe(
+        &self,
+        origin: TypeVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> TyVid {
+        self.inner.borrow_mut().type_variables().new_var(universe, origin)
+    }
+
     pub fn next_ty_var_in_universe(
         &self,
         origin: TypeVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables().new_var(universe, origin);
+        let vid = self.next_ty_var_id_in_universe(origin, universe);
         self.tcx.mk_ty_var(vid)
     }
 
@@ -1434,6 +1440,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value.fold_with(&mut r)
     }
 
+    pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        if !value.needs_infer() {
+            return value; // Avoid duplicated subst-folding.
+        }
+        let mut r = InferenceLiteralEraser { tcx: self.tcx };
+        value.fold_with(&mut r)
+    }
+
     /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
@@ -1642,49 +1659,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.const_eval_resolve(param_env_erased, unevaluated, span)
     }
 
-    /// If `typ` is a type variable of some kind, resolve it one level
-    /// (but do not resolve types found in the result). If `typ` is
-    /// not a type variable, just return it unmodified.
-    // FIXME(eddyb) inline into `ShallowResolver::visit_ty`.
-    fn shallow_resolve_ty(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match *typ.kind() {
-            ty::Infer(ty::TyVar(v)) => {
-                // Not entirely obvious: if `typ` is a type variable,
-                // it can be resolved to an int/float variable, which
-                // can then be recursively resolved, hence the
-                // recursion. Note though that we prevent type
-                // variables from unifying to other type variables
-                // directly (though they may be embedded
-                // structurally), and we prevent cycles in any case,
-                // so this recursion should always be of very limited
-                // depth.
-                //
-                // Note: if these two lines are combined into one we get
-                // dynamic borrow errors on `self.inner`.
-                let known = self.inner.borrow_mut().type_variables().probe(v).known();
-                known.map_or(typ, |t| self.shallow_resolve_ty(t))
-            }
-
-            ty::Infer(ty::IntVar(v)) => self
-                .inner
-                .borrow_mut()
-                .int_unification_table()
-                .probe_value(v)
-                .map(|v| v.to_type(self.tcx))
-                .unwrap_or(typ),
-
-            ty::Infer(ty::FloatVar(v)) => self
-                .inner
-                .borrow_mut()
-                .float_unification_table()
-                .probe_value(v)
-                .map(|v| v.to_type(self.tcx))
-                .unwrap_or(typ),
-
-            _ => typ,
-        }
-    }
-
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
     ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
     ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
@@ -1785,6 +1759,26 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
     }
 }
 
+/// Replace `{integer}` with `i32` and `{float}` with `f64`.
+/// Used only for diagnostics.
+struct InferenceLiteralEraser<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types.i32,
+            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types.f64,
+            _ => ty.super_fold_with(self),
+        }
+    }
+}
+
 struct ShallowResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
@@ -1794,8 +1788,46 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
         self.infcx.tcx
     }
 
+    /// If `ty` is a type variable of some kind, resolve it one level
+    /// (but do not resolve types found in the result). If `typ` is
+    /// not a type variable, just return it unmodified.
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.shallow_resolve_ty(ty)
+        match *ty.kind() {
+            ty::Infer(ty::TyVar(v)) => {
+                // Not entirely obvious: if `typ` is a type variable,
+                // it can be resolved to an int/float variable, which
+                // can then be recursively resolved, hence the
+                // recursion. Note though that we prevent type
+                // variables from unifying to other type variables
+                // directly (though they may be embedded
+                // structurally), and we prevent cycles in any case,
+                // so this recursion should always be of very limited
+                // depth.
+                //
+                // Note: if these two lines are combined into one we get
+                // dynamic borrow errors on `self.inner`.
+                let known = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
+                known.map_or(ty, |t| self.fold_ty(t))
+            }
+
+            ty::Infer(ty::IntVar(v)) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .int_unification_table()
+                .probe_value(v)
+                .map_or(ty, |v| v.to_type(self.infcx.tcx)),
+
+            ty::Infer(ty::FloatVar(v)) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .float_unification_table()
+                .probe_value(v)
+                .map_or(ty, |v| v.to_type(self.infcx.tcx)),
+
+            _ => ty,
+        }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {

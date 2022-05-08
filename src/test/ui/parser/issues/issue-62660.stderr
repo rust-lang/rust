@@ -3,6 +3,11 @@ error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `)
    |
 LL |     pub fn foo(_: i32, self: Box<Self) {}
    |                                      ^ expected one of 9 possible tokens
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     pub fn foo(_: i32, self: Box<Self>) {}
+   |                                      +
 
 error: aborting due to previous error
 

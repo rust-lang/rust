@@ -1,11 +1,11 @@
-use crate::spec::{RelroLevel, TargetOptions};
+use crate::spec::{cvs, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        os: "haiku".to_string(),
+        os: "haiku".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".to_string()],
+        families: cvs!["unix"],
         relro_level: RelroLevel::Full,
         ..Default::default()
     }

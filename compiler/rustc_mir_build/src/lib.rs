@@ -2,10 +2,10 @@
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
 #![allow(rustc::potential_query_instability)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]

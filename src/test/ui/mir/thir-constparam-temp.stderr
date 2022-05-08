@@ -13,10 +13,10 @@ note: mutable reference created due to call to this method
 LL |     fn mut_self(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
 note: `const` item defined here
-  --> $DIR/thir-constparam-temp.rs:13:14
+  --> $DIR/thir-constparam-temp.rs:13:8
    |
 LL | fn foo<const YIKES: Yikes>() {
-   |              ^^^^^
+   |        ^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

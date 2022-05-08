@@ -1,6 +1,7 @@
 //! Comparison traits for `[T]`.
 
 use crate::cmp::{self, Ordering};
+use crate::ffi;
 use crate::mem;
 
 use super::from_raw_parts;
@@ -13,8 +14,7 @@ extern "C" {
     ///
     /// Returns 0 for equal, < 0 for less than and > 0 for greater
     /// than.
-    // FIXME(#32610): Return type should be c_int
-    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
+    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> ffi::c_int;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

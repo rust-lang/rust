@@ -108,11 +108,11 @@ pub const fn identity<T>(x: T) -> T {
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
-/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in a few aspects:
 ///
 /// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
-/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for borrowed value are
+/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for a borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
 ///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
 ///

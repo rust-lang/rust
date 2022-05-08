@@ -1,3 +1,4 @@
+#![feature(associated_type_defaults)]
 #![crate_name = "foo"]
 
 // @has foo/trait.Foo.html
@@ -5,12 +6,18 @@
 // @has - '//*[@class="sidebar-elems"]//section//a' 'bar'
 // @has - '//*[@class="sidebar-title"]/a[@href="#provided-methods"]' 'Provided Methods'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'foo'
-// @has - '//*[@class="sidebar-title"]/a[@href="#associated-const"]' 'Associated Constants'
+// @has - '//*[@class="sidebar-title"]/a[@href="#required-associated-consts"]' 'Required Associated Constants'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'FOO'
+// @has - '//*[@class="sidebar-title"]/a[@href="#provided-associated-consts"]' 'Provided Associated Constants'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'BAR'
-// @has - '//*[@class="sidebar-title"]/a[@href="#associated-types"]' 'Associated Types'
+// @has - '//*[@class="sidebar-title"]/a[@href="#required-associated-types"]' 'Required Associated Types'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Output'
+// @has - '//*[@class="sidebar-title"]/a[@href="#provided-associated-types"]' 'Provided Associated Types'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'Extra'
 pub trait Foo {
+    const FOO: usize;
     const BAR: u32 = 0;
+    type Extra: Copy = ();
     type Output: ?Sized;
 
     fn foo() {}

@@ -64,7 +64,10 @@ impl<'a> State<'a> {
     // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
     pub(super) fn cond_needs_par(expr: &ast::Expr) -> bool {
         match expr.kind {
-            ast::ExprKind::Break(..) | ast::ExprKind::Closure(..) | ast::ExprKind::Ret(..) => true,
+            ast::ExprKind::Break(..)
+            | ast::ExprKind::Closure(..)
+            | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Yeet(..) => true,
             _ => parser::contains_exterior_struct_lit(expr),
         }
     }
@@ -88,10 +91,21 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    pub(super) fn print_expr_anon_const(&mut self, expr: &ast::AnonConst) {
+    pub(super) fn print_expr_anon_const(
+        &mut self,
+        expr: &ast::AnonConst,
+        attrs: &[ast::Attribute],
+    ) {
         self.ibox(INDENT_UNIT);
         self.word("const");
-        self.print_expr(&expr.value);
+        self.nbsp();
+        if let ast::ExprKind::Block(block, None) = &expr.value.kind {
+            self.cbox(0);
+            self.ibox(0);
+            self.print_block_with_attrs(block, attrs);
+        } else {
+            self.print_expr(&expr.value);
+        }
         self.end();
     }
 
@@ -275,7 +289,7 @@ impl<'a> State<'a> {
                 self.print_expr_vec(exprs);
             }
             ast::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const);
+                self.print_expr_anon_const(anon_const, attrs);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count);
@@ -486,6 +500,15 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Ret(ref result) => {
                 self.word("return");
+                if let Some(ref expr) = *result {
+                    self.word(" ");
+                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
+                }
+            }
+            ast::ExprKind::Yeet(ref result) => {
+                self.word("do");
+                self.word(" ");
+                self.word("yeet");
                 if let Some(ref expr) = *result {
                     self.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);

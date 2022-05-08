@@ -11,8 +11,9 @@ use crate::{
     types::TestDesc,
 };
 
-// insert a '\n' after 100 tests in quiet mode
-const QUIET_MODE_MAX_COLUMN: usize = 100;
+// We insert a '\n' when the output hits 100 columns in quiet mode. 88 test
+// result chars leaves 12 chars for a progress count like " 11704/12853".
+const QUIET_MODE_MAX_COLUMN: usize = 88;
 
 pub(crate) struct TerseFormatter<T> {
     out: OutputLocation<T>,
@@ -65,7 +66,7 @@ impl<T: Write> TerseFormatter<T> {
     ) -> io::Result<()> {
         self.write_pretty(result, color)?;
         if self.test_count % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
-            // we insert a new line every 100 dots in order to flush the
+            // We insert a new line regularly in order to flush the
             // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
             let out = format!(" {}/{}\n", self.test_count + 1, self.total_test_count);

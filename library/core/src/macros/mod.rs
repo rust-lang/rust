@@ -640,6 +640,8 @@ macro_rules! unreachable {
 ///
 /// Like `panic!`, this macro has a second form for displaying custom values.
 ///
+/// [`todo!`]: crate::todo
+///
 /// # Examples
 ///
 /// Say we have a trait `Foo`:
@@ -909,7 +911,10 @@ pub(crate) mod builtin {
     /// Inspects an environment variable at compile time.
     ///
     /// This macro will expand to the value of the named environment variable at
-    /// compile time, yielding an expression of type `&'static str`.
+    /// compile time, yielding an expression of type `&'static str`. Use
+    /// [`std::env::var`] instead if you want to read the value at runtime.
+    ///
+    /// [`std::env::var`]: ../std/env/fn.var.html
     ///
     /// If the environment variable is not defined, then a compilation error
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
@@ -950,7 +955,10 @@ pub(crate) mod builtin {
     /// expand into an expression of type `Option<&'static str>` whose value is
     /// `Some` of the value of the environment variable. If the environment
     /// variable is not present, then this will expand to `None`. See
-    /// [`Option<T>`][Option] for more information on this type.
+    /// [`Option<T>`][Option] for more information on this type.  Use
+    /// [`std::env::var`] instead if you want to read the value at runtime.
+    ///
+    /// [`std::env::var`]: ../std/env/fn.var.html
     ///
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.

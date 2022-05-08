@@ -419,6 +419,17 @@ impl Socket {
         Ok(passcred != 0)
     }
 
+    #[cfg(target_os = "netbsd")]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, passcred as libc::c_int)
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
+        Ok(passcred != 0)
+    }
+
     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;

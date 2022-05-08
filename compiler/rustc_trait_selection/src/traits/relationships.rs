@@ -23,7 +23,7 @@ pub(crate) fn update<'tcx, T>(
             ..tpred.trait_ref
         };
 
-        // Then contstruct a new obligation with Self = () added
+        // Then construct a new obligation with Self = () added
         // to the ParamEnv, and see if it holds.
         let o = rustc_infer::traits::Obligation::new(
             ObligationCause::dummy(),

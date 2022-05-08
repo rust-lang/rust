@@ -276,33 +276,26 @@ impl ToJson for Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
-    // The top 3 bits are ALWAYS zero.
     raw: u64,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Size({} bytes)", self.bytes())
+    }
 }
 
 impl Size {
     pub const ZERO: Size = Size { raw: 0 };
 
     /// Rounds `bits` up to the next-higher byte boundary, if `bits` is
-    /// is not aligned.
+    /// not a multiple of 8.
     pub fn from_bits(bits: impl TryInto<u64>) -> Size {
         let bits = bits.try_into().ok().unwrap();
-
-        #[cold]
-        fn overflow(bits: u64) -> ! {
-            panic!("Size::from_bits({}) has overflowed", bits);
-        }
-
-        // This is the largest value of `bits` that does not cause overflow
-        // during rounding, and guarantees that the resulting number of bytes
-        // cannot cause overflow when multiplied by 8.
-        if bits > 0xffff_ffff_ffff_fff8 {
-            overflow(bits);
-        }
-
         // Avoid potential overflow from `bits + 7`.
         Size { raw: bits / 8 + ((bits % 8) + 7) / 8 }
     }
@@ -325,7 +318,12 @@ impl Size {
 
     #[inline]
     pub fn bits(self) -> u64 {
-        self.raw << 3
+        #[cold]
+        fn overflow(bytes: u64) -> ! {
+            panic!("Size::bits: {} bytes in bits doesn't fit in u64", bytes)
+        }
+
+        self.bytes().checked_mul(8).unwrap_or_else(|| overflow(self.bytes()))
     }
 
     #[inline]
@@ -494,10 +492,17 @@ impl Step for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Align {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Align({} bytes)", self.bytes())
+    }
 }
 
 impl Align {
@@ -761,6 +766,10 @@ pub struct WrappingRange {
 }
 
 impl WrappingRange {
+    pub fn full(size: Size) -> Self {
+        Self { start: 0, end: size.unsigned_int_max() }
+    }
+
     /// Returns `true` if `v` is contained in the range.
     #[inline(always)]
     pub fn contains(&self, v: u128) -> bool {
@@ -808,13 +817,23 @@ impl fmt::Debug for WrappingRange {
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
-pub struct Scalar {
-    pub value: Primitive,
+pub enum Scalar {
+    Initialized {
+        value: Primitive,
 
-    // FIXME(eddyb) always use the shortest range, e.g., by finding
-    // the largest space between two consecutive valid values and
-    // taking everything else as the (shortest) valid range.
-    pub valid_range: WrappingRange,
+        // FIXME(eddyb) always use the shortest range, e.g., by finding
+        // the largest space between two consecutive valid values and
+        // taking everything else as the (shortest) valid range.
+        valid_range: WrappingRange,
+    },
+    Union {
+        /// Even for unions, we need to use the correct registers for the kind of
+        /// values inside the union, so we keep the `Primitive` type around. We
+        /// also use it to compute the size of the scalar.
+        /// However, unions never have niches and even allow undef,
+        /// so there is no `valid_range`.
+        value: Primitive,
+    },
 }
 
 impl Scalar {
@@ -822,14 +841,58 @@ impl Scalar {
     pub fn is_bool(&self) -> bool {
         matches!(
             self,
-            Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } }
+            Scalar::Initialized {
+                value: Int(I8, false),
+                valid_range: WrappingRange { start: 0, end: 1 }
+            }
         )
+    }
+
+    /// Get the primitive representation of this type, ignoring the valid range and whether the
+    /// value is allowed to be undefined (due to being a union).
+    pub fn primitive(&self) -> Primitive {
+        match *self {
+            Scalar::Initialized { value, .. } | Scalar::Union { value } => value,
+        }
+    }
+
+    pub fn align(self, cx: &impl HasDataLayout) -> AbiAndPrefAlign {
+        self.primitive().align(cx)
+    }
+
+    pub fn size(self, cx: &impl HasDataLayout) -> Size {
+        self.primitive().size(cx)
+    }
+
+    #[inline]
+    pub fn to_union(&self) -> Self {
+        Self::Union { value: self.primitive() }
+    }
+
+    #[inline]
+    pub fn valid_range(&self, cx: &impl HasDataLayout) -> WrappingRange {
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { value } => WrappingRange::full(value.size(cx)),
+        }
+    }
+
+    #[inline]
+    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a union.
+    pub fn valid_range_mut(&mut self) -> &mut WrappingRange {
+        match self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { .. } => panic!("cannot change the valid range of a union"),
+        }
     }
 
     /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
     #[inline]
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
-        self.valid_range.is_full_for(self.value.size(cx))
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range.is_full_for(self.size(cx)),
+            Scalar::Union { .. } => true,
+        }
     }
 }
 
@@ -997,7 +1060,7 @@ impl Abi {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            Abi::Scalar(scal) => match scal.value {
+            Abi::Scalar(scal) => match scal.primitive() {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1069,17 +1132,19 @@ pub enum TagEncoding {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
-    pub scalar: Scalar,
+    pub value: Primitive,
+    pub valid_range: WrappingRange,
 }
 
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
-        let niche = Niche { offset, scalar };
+        let Scalar::Initialized { value, valid_range } = scalar else { return None };
+        let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1092,7 +1157,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1116,12 +1181,12 @@ impl Niche {
         // If niche zero is already reserved, the selection of bounds are of little interest.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_start(start) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
         };
         let move_end = |v: WrappingRange| {
             let start = v.end.wrapping_add(1) & max_value;
             let end = v.end.wrapping_add(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_end(end) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
         };
         let distance_end_zero = max_value - v.end;
         if v.start > v.end {
@@ -1181,8 +1246,8 @@ pub struct LayoutS<'a> {
 impl<'a> LayoutS<'a> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
-        let size = scalar.value.size(cx);
-        let align = scalar.value.align(cx);
+        let size = scalar.size(cx);
+        let align = scalar.align(cx);
         LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
@@ -1211,7 +1276,7 @@ impl<'a> fmt::Debug for LayoutS<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutS<'a>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
@@ -1304,6 +1369,10 @@ pub trait TyAbiInterface<'a, C>: Sized {
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo>;
+    fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_never(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -1334,7 +1403,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.abi {
-            Abi::Scalar(scalar) => scalar.value.is_float(),
+            Abi::Scalar(scalar) => scalar.primitive().is_float(),
             Abi::Aggregate { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
@@ -1344,6 +1413,34 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
             _ => false,
         }
+    }
+
+    pub fn is_adt<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_adt(self)
+    }
+
+    pub fn is_never<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_never(self)
+    }
+
+    pub fn is_tuple<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_tuple(self)
+    }
+
+    pub fn is_unit<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_unit(self)
     }
 }
 
@@ -1380,7 +1477,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         let scalar_allows_raw_init = move |s: Scalar| -> bool {
             if zero {
                 // The range must contain 0.
-                s.valid_range.contains(0)
+                s.valid_range(cx).contains(0)
             } else {
                 // The range must include all values.
                 s.is_always_valid(cx)

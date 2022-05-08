@@ -47,7 +47,8 @@ pub enum Reveal {
     /// impl. Concretely, that means that the following example will
     /// fail to compile:
     ///
-    /// ```
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
     /// trait Assoc {
     ///     type Output;
     /// }
@@ -57,7 +58,7 @@ pub enum Reveal {
     /// }
     ///
     /// fn main() {
-    ///     let <() as Assoc>::Output = true;
+    ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
     UserFacing,
@@ -236,11 +237,12 @@ pub enum ObligationCauseCode<'tcx> {
     SizedBoxType,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
-    /// `[T, ..n]` implies that `T` must be `Copy`.
-    /// If the function in the array repeat expression is a `const fn`,
-    /// display a help message suggesting to move the function call to a
-    /// new `const` item while saying that `T` doesn't implement `Copy`.
-    RepeatVec(bool),
+    /// `[expr; N]` requires `type_of(expr): Copy`.
+    RepeatElementCopy {
+        /// If element is a `const fn` we display a help message suggesting to move the
+        /// function call to a new `const` item while saying that `T` doesn't implement `Copy`.
+        is_const_fn: bool,
+    },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized {
@@ -275,24 +277,23 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
-    /// Checking that this expression can be assigned where it needs to be
-    // FIXME(eddyb) #11161 is the original Expr required?
+    /// Checking that this expression can be assigned to its target.
     ExprAssignable,
 
     /// Computing common supertype in the arms of a match expression
@@ -515,7 +516,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// For example, the obligation may be satisfied by a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
-/// ```
+/// ```ignore (illustrative)
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
 /// impl Clone for i32 { ... }                   // Impl_3
@@ -524,7 +525,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
 ///     // type parameters, ImplSource will carry resolutions for those as well:
-///     concrete.clone(); // ImpleSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
+///     concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded

@@ -2,43 +2,51 @@ error[E0308]: mismatched types
   --> $DIR/overloaded-calls-bad.rs:28:17
    |
 LL |     let ans = s("what");
-   |                 ^^^^^^ expected `isize`, found `&str`
+   |               - ^^^^^^ expected `isize`, found `&str`
+   |               |
+   |               arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+   |                           ^^^^^^^^
 
 error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:29:15
    |
 LL |     let ans = s();
-   |               ^-- supplied 0 arguments
-   |               |
-   |               expected 1 argument
+   |               ^-- an argument of type `isize` is missing
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
    |                           ^^^^^^^^
-
-error[E0308]: mismatched types
-  --> $DIR/overloaded-calls-bad.rs:31:17
+help: provide the argument
    |
-LL |     let ans = s("burma", "shave");
-   |                 ^^^^^^^ expected `isize`, found `&str`
+LL |     let ans = s({isize});
+   |               ~~~~~~~~~~
 
 error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:31:15
    |
 LL |     let ans = s("burma", "shave");
-   |               ^ -------  ------- supplied 2 arguments
-   |               |
-   |               expected 1 argument
+   |               ^ -------  ------- argument unexpected
+   |                 |
+   |                 expected `isize`, found `&str`
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
    |                           ^^^^^^^^
+help: remove the extra argument
+   |
+LL |     let ans = s({isize});
+   |               ~~~~~~~~~~
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0057, E0308.
 For more information about an error, try `rustc --explain E0057`.

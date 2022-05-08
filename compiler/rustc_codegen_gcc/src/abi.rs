@@ -1,5 +1,6 @@
-use gccjit::{ToRValue, Type};
+use gccjit::{ToLValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::{CastTarget, FnAbi, PassMode, Reg, RegKind};
@@ -15,9 +16,21 @@ impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn get_param(&mut self, index: usize) -> Self::Value {
-        self.cx.current_func.borrow().expect("current func")
-            .get_param(index as i32)
-            .to_rvalue()
+        let func = self.current_func();
+        let param = func.get_param(index as i32);
+        let on_stack =
+            if let Some(on_stack_param_indices) = self.on_stack_function_params.borrow().get(&func) {
+                on_stack_param_indices.contains(&index)
+            }
+            else {
+                false
+            };
+        if on_stack {
+            param.to_lvalue().get_address(None)
+        }
+        else {
+            param.to_rvalue()
+        }
     }
 }
 
@@ -87,12 +100,13 @@ impl GccType for Reg {
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
     // TODO(antoyo): return a function pointer type instead?
-    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool);
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>);
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
 }
 
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool) {
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>) {
+        let mut on_stack_param_indices = FxHashSet::default();
         let args_capacity: usize = self.args.iter().map(|arg|
             if arg.pad.is_some() {
                 1
@@ -144,17 +158,22 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     unimplemented!();
                 }
                 PassMode::Cast(cast) => cast.gcc_type(cx),
-                PassMode::Indirect { extra_attrs: None, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
+                PassMode::Indirect { extra_attrs: None, on_stack: true, .. } => {
+                    on_stack_param_indices.insert(argument_tys.len());
+                    arg.memory_ty(cx)
+                },
+                PassMode::Indirect { extra_attrs: None, on_stack: false, .. } => cx.type_ptr_to(arg.memory_ty(cx)),
             };
             argument_tys.push(arg_ty);
         }
 
-        (return_ty, argument_tys, self.c_variadic)
+        (return_ty, argument_tys, self.c_variadic, on_stack_param_indices)
     }
 
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        let (return_type, params, variadic) = self.gcc_type(cx);
+        let (return_type, params, variadic, on_stack_param_indices) = self.gcc_type(cx);
         let pointer_type = cx.context.new_function_pointer_type(None, return_type, &params, variadic);
+        cx.on_stack_params.borrow_mut().insert(pointer_type.dyncast_function_ptr_type().expect("function ptr type"), on_stack_param_indices);
         pointer_type
     }
 }

@@ -115,6 +115,12 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     }
 }
 
+impl<'tcx, Tag: Provenance> std::ops::DerefMut for MPlaceTy<'tcx, Tag> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mplace
+    }
+}
+
 impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
@@ -191,7 +197,7 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub(super) fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
+    pub(crate) fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind() {
@@ -281,7 +287,7 @@ where
         };
 
         let mplace = MemPlace {
-            ptr: self.scalar_to_ptr(ptr.check_init()?),
+            ptr: self.scalar_to_ptr(ptr.check_init()?)?,
             // We could use the run-time alignment here. For now, we do not, because
             // the point of tracking the alignment here is to make sure that the *static*
             // alignment information emitted with the loads is correct. The run-time
@@ -294,6 +300,7 @@ where
 
     /// Take an operand, representing a pointer, and dereference it to a place -- that
     /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -306,25 +313,25 @@ where
     }
 
     #[inline]
-    pub(super) fn get_alloc(
+    pub(super) fn get_place_alloc(
         &self,
         place: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::PointerTag, M::AllocExtra>>> {
         assert!(!place.layout.is_unsized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
-        self.memory.get(place.ptr, size, place.align)
+        self.get_ptr_alloc(place.ptr, size, place.align)
     }
 
     #[inline]
-    pub(super) fn get_alloc_mut(
+    pub(super) fn get_place_alloc_mut(
         &mut self,
         place: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::PointerTag, M::AllocExtra>>> {
         assert!(!place.layout.is_unsized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
-        self.memory.get_mut(place.ptr, size, place.align)
+        self.get_ptr_alloc_mut(place.ptr, size, place.align)
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
@@ -337,8 +344,8 @@ where
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         assert!(mplace.mplace.align <= align, "dynamic alignment less strict than static one?");
-        let align = M::enforce_alignment(&self.memory.extra).then_some(align);
-        self.memory.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
+        let align = M::enforce_alignment(self).then_some(align);
+        self.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
         Ok(())
     }
 
@@ -487,7 +494,8 @@ where
     }
 
     /// Project into an mplace
-    pub(super) fn mplace_projection(
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn mplace_projection(
         &self,
         base: &MPlaceTy<'tcx, M::PointerTag>,
         proj_elem: mir::PlaceElem<'tcx>,
@@ -548,6 +556,7 @@ where
     /// Just a convenience function, but used quite a bit.
     /// This is the only projection that might have a side-effect: We cannot project
     /// into the field of a local `ScalarPair`, we have to first allocate it.
+    #[instrument(skip(self), level = "debug")]
     pub fn place_field(
         &mut self,
         base: &PlaceTy<'tcx, M::PointerTag>,
@@ -617,6 +626,7 @@ where
 
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
+    #[instrument(skip(self), level = "debug")]
     pub fn eval_place(
         &mut self,
         place: mir::Place<'tcx>,
@@ -646,6 +656,7 @@ where
 
     /// Write an immediate to a place
     #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
     pub fn write_immediate(
         &mut self,
         src: Immediate<M::PointerTag>,
@@ -709,7 +720,7 @@ where
         }
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        // See if we can avoid an allocation. This is the counterpart to `try_read_immediate`,
+        // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
@@ -748,7 +759,7 @@ where
 
         // Invalid places are a thing: the return place of a diverging function
         let tcx = *self.tcx;
-        let Some(mut alloc) = self.get_alloc_mut(dest)? else {
+        let Some(mut alloc) = self.get_place_alloc_mut(dest)? else {
             // zero-sized access
             return Ok(());
         };
@@ -772,13 +783,11 @@ where
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let (a, b) = match dest.layout.abi {
-                    Abi::ScalarPair(a, b) => (a.value, b.value),
-                    _ => span_bug!(
+                let Abi::ScalarPair(a, b) = dest.layout.abi else { span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                         dest.layout
-                    ),
+                    )
                 };
                 let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
                 let b_offset = a_size.align_to(b.align(&tcx).abi);
@@ -793,9 +802,46 @@ where
         }
     }
 
+    pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        let mplace = match dest.place {
+            Place::Ptr(mplace) => MPlaceTy { mplace, layout: dest.layout },
+            Place::Local { frame, local } => {
+                match M::access_local_mut(self, frame, local)? {
+                    Ok(local) => match dest.layout.abi {
+                        Abi::Scalar(_) => {
+                            *local = LocalValue::Live(Operand::Immediate(Immediate::Scalar(
+                                ScalarMaybeUninit::Uninit,
+                            )));
+                            return Ok(());
+                        }
+                        Abi::ScalarPair(..) => {
+                            *local = LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(
+                                ScalarMaybeUninit::Uninit,
+                                ScalarMaybeUninit::Uninit,
+                            )));
+                            return Ok(());
+                        }
+                        _ => self.force_allocation(dest)?,
+                    },
+                    Err(mplace) => {
+                        // The local is in memory, go on below.
+                        MPlaceTy { mplace, layout: dest.layout }
+                    }
+                }
+            }
+        };
+        let Some(mut alloc) = self.get_place_alloc_mut(&mplace)? else {
+            // Zero-sized access
+            return Ok(());
+        };
+        alloc.write_uninit()?;
+        Ok(())
+    }
+
     /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
     pub fn copy_op(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -815,6 +861,7 @@ where
     /// Use `copy_op_transmute` if the layouts could disagree.
     /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
+    #[instrument(skip(self), level = "debug")]
     fn copy_op_no_validate(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -832,7 +879,7 @@ where
         }
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
-        let src = match self.try_read_immediate(src)? {
+        let src = match self.read_immediate_raw(src, /*force*/ false)? {
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
@@ -857,8 +904,7 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        self.memory
-            .copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ true)
+        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ true)
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must
@@ -876,7 +922,7 @@ where
         if src.layout.size != dest.layout.size {
             // FIXME: This should be an assert instead of an error, but if we transmute within an
             // array length computation, `typeck` may not have yet been run and errored out. In fact
-            // most likey we *are* running `typeck` right now. Investigate whether we can bail out
+            // most likely we *are* running `typeck` right now. Investigate whether we can bail out
             // on `typeck_results().has_errors` at all const eval entry points.
             debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
             self.tcx.sess.delay_span_bug(
@@ -922,6 +968,7 @@ where
     /// This supports unsized types and returns the computed size to avoid some
     /// redundant computation when copying; use `force_allocation` for a simpler, sized-only
     /// version.
+    #[instrument(skip(self), level = "debug")]
     pub fn force_allocation_maybe_sized(
         &mut self,
         place: &PlaceTy<'tcx, M::PointerTag>,
@@ -942,7 +989,7 @@ where
                         let (size, align) = self
                             .size_and_align_of(&meta, &local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
-                        let ptr = self.memory.allocate(size, align, MemoryKind::Stack)?;
+                        let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let LocalValue::Live(Operand::Immediate(value)) = local_val {
                             // Preserve old value.
@@ -979,7 +1026,7 @@ where
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'static, MPlaceTy<'tcx, M::PointerTag>> {
-        let ptr = self.memory.allocate(layout.size, layout.align.abi, kind)?;
+        let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }
 
@@ -990,7 +1037,7 @@ where
         kind: MemoryKind<M::MemoryKind>,
         mutbl: Mutability,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate_bytes(str.as_bytes(), Align::ONE, kind, mutbl);
+        let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl);
         let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace =
             MemPlace { ptr: ptr.into(), align: Align::ONE, meta: MemPlaceMeta::Meta(meta) };
@@ -1004,6 +1051,7 @@ where
     }
 
     /// Writes the discriminant of the given variant.
+    #[instrument(skip(self), level = "debug")]
     pub fn write_discriminant(
         &mut self,
         variant_index: VariantIdx,
@@ -1047,7 +1095,7 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = tag_layout.value.size(self);
+                let size = tag_layout.size(self);
                 let tag_val = size.truncate(discr_val);
 
                 let tag_dest = self.place_field(dest, tag_field)?;
@@ -1071,7 +1119,7 @@ where
                         .expect("overflow computing relative variant idx");
                     // We need to use machine arithmetic when taking into account `niche_start`:
                     // tag_val = variant_index_relative + niche_start_val
-                    let tag_layout = self.layout_of(tag_layout.value.to_int_ty(*self.tcx))?;
+                    let tag_layout = self.layout_of(tag_layout.primitive().to_int_ty(*self.tcx))?;
                     let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                     let variant_index_relative_val =
                         ImmTy::from_uint(variant_index_relative, tag_layout);
@@ -1107,7 +1155,7 @@ where
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, MPlaceTy<'tcx, M::PointerTag>)> {
-        let vtable = self.scalar_to_ptr(mplace.vtable()); // also sanity checks the type
+        let vtable = self.scalar_to_ptr(mplace.vtable())?; // also sanity checks the type
         let (instance, ty) = self.read_drop_type_from_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
 

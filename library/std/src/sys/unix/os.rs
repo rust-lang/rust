@@ -20,7 +20,7 @@ use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
-use crate::sys_common::rwlock::{StaticRWLock, StaticRWLockReadGuard};
+use crate::sys_common::rwlock::{StaticRwLock, StaticRwLockReadGuard};
 use crate::vec;
 
 #[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
@@ -427,7 +427,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
 
-#[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
+#[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
     Err(io::const_io_error!(ErrorKind::Unsupported, "Not yet implemented!"))
@@ -449,6 +449,26 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "espidf")]
 pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use crate::io::ErrorKind;
+
+    #[cfg(test)]
+    use realstd::env;
+
+    #[cfg(not(test))]
+    use crate::env;
+
+    let exe_path = env::args().next().ok_or(io::const_io_error!(
+        ErrorKind::Uncategorized,
+        "an executable path was not found because no arguments were provided through argv"
+    ))?;
+    let path = PathBuf::from(exe_path);
+
+    // Prepend the current working directory to the path if it's not absolute.
+    if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
 }
 
 pub struct Env {
@@ -481,9 +501,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     ptr::addr_of_mut!(environ)
 }
 
-static ENV_LOCK: StaticRWLock = StaticRWLock::new();
+static ENV_LOCK: StaticRwLock = StaticRwLock::new();
 
-pub fn env_read_lock() -> StaticRWLockReadGuard {
+pub fn env_read_lock() -> StaticRwLockReadGuard {
     ENV_LOCK.read()
 }
 

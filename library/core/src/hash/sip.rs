@@ -234,6 +234,11 @@ impl super::Hasher for SipHasher {
     }
 
     #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.0.hasher.write_str(s);
+    }
+
+    #[inline]
     fn finish(&self) -> u64 {
         self.0.hasher.finish()
     }
@@ -244,6 +249,11 @@ impl super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.hasher.write_str(s);
     }
 
     #[inline]
@@ -305,6 +315,14 @@ impl<S: Sip> super::Hasher for Hasher<S> {
         // definition equal to `msg.len()`.
         self.tail = unsafe { u8to64_le(msg, i, left) };
         self.ntail = left;
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        // This hasher works byte-wise, and `0xFF` cannot show up in a `str`,
+        // so just hashing the one extra byte is enough to be prefix-free.
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
     }
 
     #[inline]

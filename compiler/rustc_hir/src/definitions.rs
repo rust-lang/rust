@@ -56,7 +56,7 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collsion between {:?} and {:?}. \
+                "found DefPathHash collision between {:?} and {:?}. \
                     Compilation cannot continue.",
                 def_path1, def_path2
             );
@@ -99,6 +99,7 @@ impl DefPathTable {
 #[derive(Clone, Debug)]
 pub struct Definitions {
     table: DefPathTable,
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
@@ -145,6 +146,11 @@ impl DefKey {
         // `crate_id` part will be recursively propagated from the root to all
         // DefPathHashes in this DefPathTable.
         DefPathHash::new(parent.stable_crate_id(), local_hash)
+    }
+
+    #[inline]
+    pub fn get_opt_name(&self) -> Option<Symbol> {
+        self.disambiguated_data.data.get_opt_name()
     }
 }
 
@@ -340,15 +346,11 @@ impl Definitions {
 
         Definitions {
             table,
+            next_disambiguator: Default::default(),
             expansions_that_defined: Default::default(),
             def_id_to_span,
             stable_crate_id,
         }
-    }
-
-    /// Retrieves the root definition.
-    pub fn get_root_def(&self) -> LocalDefId {
-        LocalDefId { local_def_index: CRATE_DEF_INDEX }
     }
 
     /// Adds a definition with a parent definition.
@@ -357,7 +359,6 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         expn_id: ExpnId,
-        mut next_disambiguator: impl FnMut(LocalDefId, DefPathData) -> u32,
         span: Span,
     ) -> LocalDefId {
         debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
@@ -365,7 +366,13 @@ impl Definitions {
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
 
-        let disambiguator = next_disambiguator(parent, data);
+        // Find the next free disambiguator for this key.
+        let disambiguator = {
+            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
+        };
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },

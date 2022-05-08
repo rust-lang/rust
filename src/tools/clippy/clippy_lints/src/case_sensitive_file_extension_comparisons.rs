@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::intern::Interned;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -43,8 +42,8 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
         if let ExprKind::Lit(Spanned { node: LitKind::Str(ext_literal, ..), ..}) = extension.kind;
         if (2..=6).contains(&ext_literal.as_str().len());
         if ext_literal.as_str().starts_with('.');
-        if ext_literal.as_str().chars().skip(1).all(|c| c.is_uppercase() || c.is_digit(10))
-            || ext_literal.as_str().chars().skip(1).all(|c| c.is_lowercase() || c.is_digit(10));
+        if ext_literal.as_str().chars().skip(1).all(|c| c.is_uppercase() || c.is_ascii_digit())
+            || ext_literal.as_str().chars().skip(1).all(|c| c.is_lowercase() || c.is_ascii_digit());
         then {
             let mut ty = ctx.typeck_results().expr_ty(obj);
             ty = match ty.kind() {
@@ -56,8 +55,8 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
                 ty::Str => {
                     return Some(span);
                 },
-                ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) => {
-                    if ctx.tcx.is_diagnostic_item(sym::String, did) {
+                ty::Adt(def, _) => {
+                    if ctx.tcx.is_diagnostic_item(sym::String, def.did()) {
                         return Some(span);
                     }
                 },

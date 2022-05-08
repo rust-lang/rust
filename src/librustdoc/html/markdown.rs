@@ -32,6 +32,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 
+use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -251,7 +252,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
+        let text = lines.intersperse("\n".into()).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -291,14 +292,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             let test = origtext
                 .lines()
                 .map(|l| map_line(l).for_code())
-                .collect::<Vec<Cow<'_, str>>>()
-                .join("\n");
+                .intersperse("\n".into())
+                .collect::<String>();
             let krate = krate.as_ref().map(|s| &**s);
             let (test, _, _) =
                 doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
-
-            let edition_string = format!("&amp;edition={}", edition);
 
             // These characters don't need to be escaped in a URI.
             // FIXME: use a library function for percent encoding.
@@ -325,8 +324,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 }
             }
             Some(format!(
-                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
-                url, test_escaped, channel, edition_string
+                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}&amp;edition={}">Run</a>"#,
+                url, test_escaped, channel, edition,
             ))
         });
 
@@ -1257,7 +1256,7 @@ crate struct MarkdownLink {
     pub range: Range<usize>,
 }
 
-crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
+crate fn markdown_links<R>(md: &str, filter_map: impl Fn(MarkdownLink) -> Option<R>) -> Vec<R> {
     if md.is_empty() {
         return vec![];
     }
@@ -1297,11 +1296,12 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
 
     let mut push = |link: BrokenLink<'_>| {
         let span = span_for_link(&link.reference, link.span);
-        links.borrow_mut().push(MarkdownLink {
+        filter_map(MarkdownLink {
             kind: LinkType::ShortcutUnknown,
             link: link.reference.to_string(),
             range: span,
-        });
+        })
+        .map(|link| links.borrow_mut().push(link));
         None
     };
     let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
@@ -1313,10 +1313,23 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
 
     for ev in iter {
-        if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
+        if let Event::Start(Tag::Link(
+            // `<>` links cannot be intra-doc links so we skip them.
+            kind @ (LinkType::Inline
+            | LinkType::Reference
+            | LinkType::ReferenceUnknown
+            | LinkType::Collapsed
+            | LinkType::CollapsedUnknown
+            | LinkType::Shortcut
+            | LinkType::ShortcutUnknown),
+            dest,
+            _,
+        )) = ev.0
+        {
             debug!("found link: {dest}");
             let span = span_for_link(&dest, ev.1);
-            links.borrow_mut().push(MarkdownLink { kind, link: dest.into_string(), range: span });
+            filter_map(MarkdownLink { kind, link: dest.into_string(), range: span })
+                .map(|link| links.borrow_mut().push(link));
         }
     }
 
@@ -1417,60 +1430,68 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
 
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
-    map: FxHashMap<String, usize>,
+    map: FxHashMap<Cow<'static, str>, usize>,
 }
 
-fn init_id_map() -> FxHashMap<String, usize> {
+// The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
+static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| init_id_map());
+
+fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used in Javascript.
-    map.insert("help".to_owned(), 1);
+    map.insert("help".into(), 1);
+    map.insert("settings".into(), 1);
+    map.insert("not-displayed".into(), 1);
+    map.insert("alternative-display".into(), 1);
+    map.insert("search".into(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
-    map.insert("mainThemeStyle".to_owned(), 1);
-    map.insert("themeStyle".to_owned(), 1);
-    map.insert("theme-picker".to_owned(), 1);
-    map.insert("theme-choices".to_owned(), 1);
-    map.insert("settings-menu".to_owned(), 1);
-    map.insert("help-button".to_owned(), 1);
-    map.insert("main-content".to_owned(), 1);
-    map.insert("search".to_owned(), 1);
-    map.insert("crate-search".to_owned(), 1);
-    map.insert("render-detail".to_owned(), 1);
-    map.insert("toggle-all-docs".to_owned(), 1);
-    map.insert("all-types".to_owned(), 1);
-    map.insert("default-settings".to_owned(), 1);
-    map.insert("rustdoc-vars".to_owned(), 1);
-    map.insert("sidebar-vars".to_owned(), 1);
-    map.insert("copy-path".to_owned(), 1);
-    map.insert("TOC".to_owned(), 1);
+    map.insert("mainThemeStyle".into(), 1);
+    map.insert("themeStyle".into(), 1);
+    map.insert("theme-picker".into(), 1);
+    map.insert("theme-choices".into(), 1);
+    map.insert("settings-menu".into(), 1);
+    map.insert("help-button".into(), 1);
+    map.insert("main-content".into(), 1);
+    map.insert("crate-search".into(), 1);
+    map.insert("render-detail".into(), 1);
+    map.insert("toggle-all-docs".into(), 1);
+    map.insert("all-types".into(), 1);
+    map.insert("default-settings".into(), 1);
+    map.insert("rustdoc-vars".into(), 1);
+    map.insert("sidebar-vars".into(), 1);
+    map.insert("copy-path".into(), 1);
+    map.insert("TOC".into(), 1);
     // This is the list of IDs used by rustdoc sections (but still generated by
     // rustdoc).
-    map.insert("fields".to_owned(), 1);
-    map.insert("variants".to_owned(), 1);
-    map.insert("implementors-list".to_owned(), 1);
-    map.insert("synthetic-implementors-list".to_owned(), 1);
-    map.insert("foreign-impls".to_owned(), 1);
-    map.insert("implementations".to_owned(), 1);
-    map.insert("trait-implementations".to_owned(), 1);
-    map.insert("synthetic-implementations".to_owned(), 1);
-    map.insert("blanket-implementations".to_owned(), 1);
-    map.insert("associated-types".to_owned(), 1);
-    map.insert("associated-const".to_owned(), 1);
-    map.insert("required-methods".to_owned(), 1);
-    map.insert("provided-methods".to_owned(), 1);
-    map.insert("implementors".to_owned(), 1);
-    map.insert("synthetic-implementors".to_owned(), 1);
-    map.insert("implementations-list".to_owned(), 1);
-    map.insert("trait-implementations-list".to_owned(), 1);
-    map.insert("synthetic-implementations-list".to_owned(), 1);
-    map.insert("blanket-implementations-list".to_owned(), 1);
-    map.insert("deref-methods".to_owned(), 1);
+    map.insert("fields".into(), 1);
+    map.insert("variants".into(), 1);
+    map.insert("implementors-list".into(), 1);
+    map.insert("synthetic-implementors-list".into(), 1);
+    map.insert("foreign-impls".into(), 1);
+    map.insert("implementations".into(), 1);
+    map.insert("trait-implementations".into(), 1);
+    map.insert("synthetic-implementations".into(), 1);
+    map.insert("blanket-implementations".into(), 1);
+    map.insert("required-associated-types".into(), 1);
+    map.insert("provided-associated-types".into(), 1);
+    map.insert("provided-associated-consts".into(), 1);
+    map.insert("required-associated-consts".into(), 1);
+    map.insert("required-methods".into(), 1);
+    map.insert("provided-methods".into(), 1);
+    map.insert("implementors".into(), 1);
+    map.insert("synthetic-implementors".into(), 1);
+    map.insert("implementations-list".into(), 1);
+    map.insert("trait-implementations-list".into(), 1);
+    map.insert("synthetic-implementations-list".into(), 1);
+    map.insert("blanket-implementations-list".into(), 1);
+    map.insert("deref-methods".into(), 1);
     map
 }
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: init_id_map() }
+        IdMap { map: DEFAULT_ID_MAP.clone() }
     }
 
     crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
@@ -1483,7 +1504,7 @@ impl IdMap {
             }
         };
 
-        self.map.insert(id.clone(), 1);
+        self.map.insert(id.clone().into(), 1);
         id
     }
 }

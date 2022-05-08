@@ -74,10 +74,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
-        let _prof_timer = tcx.prof.generic_activity_with_args(
-            "codegen_module",
-            &[cgu_name.to_string(), cgu.size_estimate().to_string()],
-        );
+        let _prof_timer =
+            tcx.prof.generic_activity_with_arg_recorder("codegen_module", |recorder| {
+                recorder.record_arg(cgu_name.to_string());
+                recorder.record_arg(cgu.size_estimate().to_string());
+            });
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
@@ -99,15 +100,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
-            // Run replace-all-uses-with for statics that need it
-            for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
-                unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
-                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
-                    llvm::LLVMDeleteGlobal(old_g);
-                }
-            }
-
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
             // also be added to the `llvm.compiler.used` variable, created next.
             if cx.sess().instrument_coverage() {
@@ -120,6 +112,16 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             }
             if !cx.compiler_used_statics().borrow().is_empty() {
                 cx.create_compiler_used_variable()
+            }
+
+            // Run replace-all-uses-with for statics that need it. This must
+            // happen after the llvm.used variables are created.
+            for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
+                unsafe {
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
+                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                    llvm::LLVMDeleteGlobal(old_g);
+                }
             }
 
             // Finalize debuginfo

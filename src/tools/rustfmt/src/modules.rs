@@ -81,6 +81,7 @@ pub struct ModuleResolutionError {
     pub(crate) kind: ModuleResolutionErrorKind,
 }
 
+/// Defines variants similar to those of [rustc_expand::module::ModError]
 #[derive(Debug, Error)]
 pub(crate) enum ModuleResolutionErrorKind {
     /// Find a file that cannot be parsed.
@@ -89,6 +90,12 @@ pub(crate) enum ModuleResolutionErrorKind {
     /// File cannot be found.
     #[error("{file} does not exist")]
     NotFound { file: PathBuf },
+    /// File a.rs and a/mod.rs both exist
+    #[error("file for module found at both {default_path:?} and {secondary_path:?}")]
+    MultipleCandidates {
+        default_path: PathBuf,
+        secondary_path: PathBuf,
+    },
 }
 
 #[derive(Clone)]
@@ -444,12 +451,31 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 }
                 Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
             }
-            Err(_) => Err(ModuleResolutionError {
-                module: mod_name.to_string(),
-                kind: ModuleResolutionErrorKind::NotFound {
-                    file: self.directory.path.clone(),
-                },
-            }),
+            Err(e) => match e {
+                ModError::FileNotFound(_, default_path, _secondary_path) => {
+                    Err(ModuleResolutionError {
+                        module: mod_name.to_string(),
+                        kind: ModuleResolutionErrorKind::NotFound { file: default_path },
+                    })
+                }
+                ModError::MultipleCandidates(_, default_path, secondary_path) => {
+                    Err(ModuleResolutionError {
+                        module: mod_name.to_string(),
+                        kind: ModuleResolutionErrorKind::MultipleCandidates {
+                            default_path,
+                            secondary_path,
+                        },
+                    })
+                }
+                ModError::ParserError(_)
+                | ModError::CircularInclusion(_)
+                | ModError::ModInBlock(_) => Err(ModuleResolutionError {
+                    module: mod_name.to_string(),
+                    kind: ModuleResolutionErrorKind::ParseError {
+                        file: self.directory.path.clone(),
+                    },
+                }),
+            },
         }
     }
 
@@ -458,6 +484,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.directory.path.push(path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
+            let id = id.as_str();
             // We have to push on the current module name in the case of relative
             // paths in order to ensure that any additional module paths from inline
             // `mod x { ... }` come after the relative extension.
@@ -468,9 +495,15 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
                     self.directory.path.push(ident.as_str());
+
+                    // In the case where there is an x.rs and an ./x directory we want
+                    // to prevent adding x twice. For example, ./x/x
+                    if self.directory.path.exists() && !self.directory.path.join(id).exists() {
+                        return;
+                    }
                 }
             }
-            self.directory.path.push(id.as_str());
+            self.directory.path.push(id);
         }
     }
 

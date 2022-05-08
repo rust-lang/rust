@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.61"
+version = "0.1.62"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -21,13 +21,12 @@ name = "clippy-driver"
 path = "src/driver.rs"
 
 [dependencies]
-clippy_lints = { version = "0.1", path = "clippy_lints" }
+clippy_lints = { path = "clippy_lints" }
 semver = "1.0"
-rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
+rustc_tools_util = { path = "rustc_tools_util" }
 tempfile = { version = "3.2", optional = true }
 
 [dev-dependencies]
-cargo_metadata = "0.14"
 compiletest_rs = { version = "0.7.1", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
@@ -45,7 +44,7 @@ derive-new = "0.5"
 if_chain = "1.0"
 itertools = "0.10.1"
 quote = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.125", features = ["derive"] }
 syn = { version = "1.0", features = ["full"] }
 futures = "0.3"
 parking_lot = "0.11.2"

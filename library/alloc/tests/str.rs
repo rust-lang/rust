@@ -1116,7 +1116,7 @@ fn test_escape_debug() {
     assert_eq!("abc".escape_debug().to_string(), "abc");
     assert_eq!("a c".escape_debug().to_string(), "a c");
     assert_eq!("éèê".escape_debug().to_string(), "éèê");
-    assert_eq!("\r\n\t".escape_debug().to_string(), "\\r\\n\\t");
+    assert_eq!("\0\r\n\t".escape_debug().to_string(), "\\0\\r\\n\\t");
     assert_eq!("'\"\\".escape_debug().to_string(), "\\'\\\"\\\\");
     assert_eq!("\u{7f}\u{ff}".escape_debug().to_string(), "\\u{7f}\u{ff}");
     assert_eq!("\u{100}\u{ffff}".escape_debug().to_string(), "\u{100}\\u{ffff}");
@@ -2234,11 +2234,14 @@ fn utf8_chars() {
 #[test]
 fn utf8_char_counts() {
     let strs = [("e", 1), ("é", 1), ("€", 1), ("\u{10000}", 1), ("eé€\u{10000}", 4)];
-    let mut reps =
-        [8, 64, 256, 512, 1024].iter().copied().flat_map(|n| n - 8..=n + 8).collect::<Vec<usize>>();
+    let spread = if cfg!(miri) { 4 } else { 8 };
+    let mut reps = [8, 64, 256, 512]
+        .iter()
+        .copied()
+        .flat_map(|n| n - spread..=n + spread)
+        .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
-        let big = 1 << 16;
-        reps.extend(big - 8..=big + 8);
+        reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };
     let padding = counts.map(|len| " ".repeat(len)).collect::<Vec<String>>();

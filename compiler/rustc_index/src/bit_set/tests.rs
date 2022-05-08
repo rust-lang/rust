@@ -343,6 +343,40 @@ fn chunked_bitset() {
 }
 
 #[test]
+fn chunked_bitset_iter() {
+    fn with_elements(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
+        let mut s = ChunkedBitSet::new_empty(domain_size);
+        for &e in elements {
+            s.insert(e);
+        }
+        s
+    }
+
+    // Empty
+    let vec: Vec<usize> = Vec::new();
+    let bit = with_elements(&vec, 9000);
+    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+
+    // Filled
+    let n = 10000;
+    let vec: Vec<usize> = (0..n).collect();
+    let bit = with_elements(&vec, n);
+    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+
+    // Filled with trailing zeros
+    let n = 10000;
+    let vec: Vec<usize> = (0..n).collect();
+    let bit = with_elements(&vec, 2 * n);
+    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+
+    // Mixed
+    let n = 12345;
+    let vec: Vec<usize> = vec![0, 1, 2, 2010, 2047, 2099, 6000, 6002, 6004];
+    let bit = with_elements(&vec, n);
+    assert_eq!(vec, bit.iter().collect::<Vec<_>>());
+}
+
+#[test]
 fn grow() {
     let mut set: GrowableBitSet<usize> = GrowableBitSet::with_capacity(65);
     for index in 0..65 {

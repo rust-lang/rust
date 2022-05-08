@@ -79,7 +79,7 @@ crate fn try_inline(
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::Typedef);
             build_impls(cx, Some(parent_module), did, attrs, &mut ret);
-            clean::TypedefItem(build_type_alias(cx, did), false)
+            clean::TypedefItem(build_type_alias(cx, did))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
@@ -100,7 +100,7 @@ crate fn try_inline(
             record_extern_fqn(cx, did, ItemType::Module);
             clean::ModuleItem(build_module(cx, did, visited))
         }
-        Res::Def(DefKind::Static, did) => {
+        Res::Def(DefKind::Static(_), did) => {
             record_extern_fqn(cx, did, ItemType::Static);
             clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
         }
@@ -221,9 +221,6 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
 fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
-    let constness =
-        if cx.tcx.is_const_fn_raw(did) { hir::Constness::Const } else { hir::Constness::NotConst };
-    let asyncness = cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
@@ -231,11 +228,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
-    clean::Function {
-        decl,
-        generics,
-        header: hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness },
-    }
+    clean::Function { decl, generics }
 }
 
 fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
@@ -432,13 +425,26 @@ crate fn build_impl(
         None => (
             tcx.associated_items(did)
                 .in_definition_order()
-                .filter_map(|item| {
-                    if associated_trait.is_some() || item.vis.is_public() {
-                        Some(item.clean(cx))
+                .filter(|item| {
+                    // If this is a trait impl, filter out associated items whose corresponding item
+                    // in the associated trait is marked `doc(hidden)`.
+                    // If this is an inherent impl, filter out private associated items.
+                    if let Some(associated_trait) = associated_trait {
+                        let trait_item = tcx
+                            .associated_items(associated_trait.def_id)
+                            .find_by_name_and_kind(
+                                tcx,
+                                item.ident(tcx),
+                                item.kind,
+                                associated_trait.def_id,
+                            )
+                            .unwrap(); // corresponding associated item has to exist
+                        !tcx.is_doc_hidden(trait_item.def_id)
                     } else {
-                        None
+                        item.vis.is_public()
                     }
                 })
+                .map(|item| item.clean(cx))
                 .collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, |cx| {
                 clean_ty_generics(cx, tcx.generics_of(did), predicates)
@@ -528,7 +534,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: ItemId::Primitive(prim_ty, did.krate),
+                    item_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,

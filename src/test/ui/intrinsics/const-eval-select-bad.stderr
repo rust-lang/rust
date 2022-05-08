@@ -48,7 +48,7 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     G: FnOnce<ARG, Output = RET> + ~const Drop + ~const Destruct,
+LL |     G: FnOnce<ARG, Output = RET> + ~const Destruct,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0271]: type mismatch resolving `<fn(i32) -> bool {bar} as FnOnce<(i32,)>>::Output == i32`
@@ -60,7 +60,7 @@ LL |     const_eval_select((1,), foo, bar);
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     G: FnOnce<ARG, Output = RET> + ~const Drop + ~const Destruct,
+LL |     G: FnOnce<ARG, Output = RET> + ~const Destruct,
    |                    ^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0631]: type mismatch in function arguments

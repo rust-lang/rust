@@ -5,10 +5,17 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 LL |     fn ts_variant() {
 LL |         Self::TSVariant(());
-   |                         ^^ expected type parameter `T`, found `()`
+   |         --------------- ^^ expected type parameter `T`, found `()`
+   |         |
+   |         arguments to this function are incorrect
    |
    = note: expected type parameter `T`
                    found unit type `()`
+note: tuple variant defined here
+  --> $DIR/enum-variant-generic-args.rs:7:16
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |                ^^^^^^^^^
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:15:27
@@ -29,10 +36,17 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::TSVariant(());
-   |                               ^^ expected type parameter `T`, found `()`
+   |         --------------------- ^^ expected type parameter `T`, found `()`
+   |         |
+   |         arguments to this function are incorrect
    |
    = note: expected type parameter `T`
                    found unit type `()`
+note: tuple variant defined here
+  --> $DIR/enum-variant-generic-args.rs:7:16
+   |
+LL | enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+   |                ^^^^^^^^^
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:20:16

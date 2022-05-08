@@ -279,12 +279,29 @@ impl DefId {
     }
 
     #[inline]
+    #[track_caller]
     pub fn expect_local(self) -> LocalDefId {
-        self.as_local().unwrap_or_else(|| panic!("DefId::expect_local: `{:?}` isn't local", self))
+        // NOTE: `match` below is required to apply `#[track_caller]`,
+        // i.e. don't use closures.
+        match self.as_local() {
+            Some(local_def_id) => local_def_id,
+            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+        }
     }
 
+    #[inline]
+    pub fn is_crate_root(self) -> bool {
+        self.index == CRATE_DEF_INDEX
+    }
+
+    #[inline]
+    pub fn as_crate_root(self) -> Option<CrateNum> {
+        if self.is_crate_root() { Some(self.krate) } else { None }
+    }
+
+    #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.is_local() && self.index == CRATE_DEF_INDEX
+        self.is_local() && self.is_crate_root()
     }
 }
 
@@ -357,7 +374,7 @@ impl LocalDefId {
 
     #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.local_def_index == CRATE_DEF_INDEX
+        self == CRATE_DEF_ID
     }
 }
 

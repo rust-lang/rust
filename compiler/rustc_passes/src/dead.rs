@@ -45,8 +45,6 @@ struct MarkSymbolVisitor<'tcx> {
     live_symbols: FxHashSet<LocalDefId>,
     repr_has_repr_c: bool,
     in_pat: bool,
-    inherited_pub_visibility: bool,
-    pub_visibility: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from tuple struct constructors to tuple struct items
     struct_constructors: FxHashMap<LocalDefId, LocalDefId>,
@@ -90,15 +88,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ if self.in_pat => {}
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
-                let variant_id = self.tcx.parent(ctor_def_id).unwrap();
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let variant_id = self.tcx.parent(ctor_def_id);
+                let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&ctor_def_id) {
                     self.check_def_id(variant_id);
                 }
             }
             Res::Def(DefKind::Variant, variant_id) => {
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
@@ -158,7 +156,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
-            tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
             lhs: &'tcx hir::Expr<'tcx>,
             rhs: &'tcx hir::Expr<'tcx>,
@@ -177,7 +174,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 (hir::ExprKind::Field(lhs_l, ident_l), hir::ExprKind::Field(lhs_r, ident_r)) => {
                     if ident_l == ident_r {
-                        return check_for_self_assign_helper(tcx, typeck_results, lhs_l, lhs_r);
+                        return check_for_self_assign_helper(typeck_results, lhs_l, lhs_r);
                     }
                     return false;
                 }
@@ -188,7 +185,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind {
-            if check_for_self_assign_helper(self.tcx, self.typeck_results(), lhs, rhs)
+            if check_for_self_assign_helper(self.typeck_results(), lhs, rhs)
                 && !assign.span.from_expansion()
             {
                 let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
@@ -285,33 +282,23 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         let had_repr_c = self.repr_has_repr_c;
-        let had_inherited_pub_visibility = self.inherited_pub_visibility;
-        let had_pub_visibility = self.pub_visibility;
         self.repr_has_repr_c = false;
-        self.inherited_pub_visibility = false;
-        self.pub_visibility = false;
         match node {
-            Node::Item(item) => {
-                self.pub_visibility = item.vis.node.is_pub();
+            Node::Item(item) => match item.kind {
+                hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
+                    let def = self.tcx.adt_def(item.def_id);
+                    self.repr_has_repr_c = def.repr().c();
 
-                match item.kind {
-                    hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                        let def = self.tcx.adt_def(item.def_id);
-                        self.repr_has_repr_c = def.repr().c();
-
-                        intravisit::walk_item(self, &item);
-                    }
-                    hir::ItemKind::Enum(..) => {
-                        self.inherited_pub_visibility = self.pub_visibility;
-
-                        intravisit::walk_item(self, &item);
-                    }
-                    hir::ItemKind::ForeignMod { .. } => {}
-                    _ => {
-                        intravisit::walk_item(self, &item);
-                    }
+                    intravisit::walk_item(self, &item);
                 }
-            }
+                hir::ItemKind::Enum(..) => {
+                    intravisit::walk_item(self, &item);
+                }
+                hir::ItemKind::ForeignMod { .. } => {}
+                _ => {
+                    intravisit::walk_item(self, &item);
+                }
+            },
             Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
             }
@@ -323,8 +310,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             _ => {}
         }
-        self.pub_visibility = had_pub_visibility;
-        self.inherited_pub_visibility = had_inherited_pub_visibility;
         self.repr_has_repr_c = had_repr_c;
     }
 
@@ -355,14 +340,19 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         _: hir::HirId,
         _: rustc_span::Span,
     ) {
+        let tcx = self.tcx;
         let has_repr_c = self.repr_has_repr_c;
-        let inherited_pub_visibility = self.inherited_pub_visibility;
-        let pub_visibility = self.pub_visibility;
-        let live_fields = def.fields().iter().filter(|f| {
-            has_repr_c || (pub_visibility && (inherited_pub_visibility || f.vis.node.is_pub()))
+        let live_fields = def.fields().iter().filter_map(|f| {
+            let def_id = tcx.hir().local_def_id(f.hir_id);
+            if has_repr_c {
+                return Some(def_id);
+            }
+            if !tcx.visibility(f.hir_id.owner).is_public() {
+                return None;
+            }
+            if tcx.visibility(def_id).is_public() { Some(def_id) } else { None }
         });
-        let hir = self.tcx.hir();
-        self.live_symbols.extend(live_fields.map(|f| hir.local_def_id(f.hir_id)));
+        self.live_symbols.extend(live_fields);
 
         intravisit::walk_struct_def(self, def);
     }
@@ -522,7 +512,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
                 if of_trait.is_some() {
                     self.worklist.push(item.def_id);
                 }
-                for impl_item_ref in items {
+                for impl_item_ref in *items {
                     let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                     if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(self.tcx, impl_item.hir_id())
@@ -536,6 +526,10 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
                     self.struct_constructors
                         .insert(self.tcx.hir().local_def_id(ctor_hir_id), item.def_id);
                 }
+            }
+            hir::ItemKind::GlobalAsm(_) => {
+                // global_asm! is always live.
+                self.worklist.push(item.def_id);
             }
             _ => (),
         }
@@ -599,8 +593,6 @@ fn live_symbols_and_ignored_derived_traits<'tcx>(
         live_symbols: Default::default(),
         repr_has_repr_c: false,
         in_pat: false,
-        inherited_pub_visibility: false,
-        pub_visibility: false,
         ignore_variant_stack: vec![],
         struct_constructors,
         ignored_derived_traits: FxHashMap::default(),

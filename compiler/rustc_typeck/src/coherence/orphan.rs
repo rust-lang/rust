@@ -7,6 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_session::lint;
@@ -43,12 +44,66 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
     };
     let sp = tcx.sess.source_map().guess_head_span(item.span);
     let tr = impl_.of_trait.as_ref().unwrap();
+
+    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
+    // and #84660 where it would otherwise allow unsoundness.
+    if trait_ref.has_opaque_types() {
+        trace!("{:#?}", item);
+        // First we find the opaque type in question.
+        for ty in trait_ref.substs {
+            for ty in ty.walk() {
+                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
+                let ty::Opaque(def_id, _) = *ty.kind() else { continue };
+                trace!(?def_id);
+
+                // Then we search for mentions of the opaque type's type alias in the HIR
+                struct SpanFinder<'tcx> {
+                    sp: Span,
+                    def_id: DefId,
+                    tcx: TyCtxt<'tcx>,
+                }
+                impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
+                    #[instrument(level = "trace", skip(self, _id))]
+                    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+                        // You can't mention an opaque type directly, so we look for type aliases
+                        if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
+                            // And check if that type alias's type contains the opaque type we're looking for
+                            for arg in self.tcx.type_of(def_id).walk() {
+                                if let GenericArgKind::Type(ty) = arg.unpack() {
+                                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                                        if def_id == self.def_id {
+                                            // Finally we update the span to the mention of the type alias
+                                            self.sp = path.span;
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        hir::intravisit::walk_path(self, path)
+                    }
+                }
+
+                let mut visitor = SpanFinder { sp, def_id, tcx };
+                hir::intravisit::walk_item(&mut visitor, item);
+                let reported = tcx
+                    .sess
+                    .struct_span_err(visitor.sp, "cannot implement trait on type alias impl trait")
+                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
+                    .emit();
+                return Err(reported);
+            }
+        }
+        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
+    }
+
     match traits::orphan_check(tcx, item.def_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
             tcx,
             sp,
             tr.path.span,
+            trait_ref.self_ty(),
             impl_.self_ty.span,
             &impl_.generics,
             err,
@@ -141,15 +196,6 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         }
     }
 
-    if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
-        let reported = tcx
-            .sess
-            .struct_span_err(sp, "cannot implement trait on type alias impl trait")
-            .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
-            .emit();
-        return Err(reported);
-    }
-
     Ok(())
 }
 
@@ -157,18 +203,23 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     trait_span: Span,
+    self_ty: Ty<'tcx>,
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
+            let msg = match self_ty.kind() {
+                ty::Adt(..) => "can be implemented for types defined outside of the crate",
+                _ if self_ty.is_primitive() => "can be implemented for primitive types",
+                _ => "can be implemented for arbitrary types",
+            };
             let mut err = struct_span_err!(
                 tcx.sess,
                 sp,
                 E0117,
-                "only traits defined in the current crate can be implemented for \
-                        arbitrary types"
+                "only traits defined in the current crate {msg}"
             );
             err.span_label(sp, "impl doesn't use only types from inside the current crate");
             for (ty, is_target_ty) in &tys {

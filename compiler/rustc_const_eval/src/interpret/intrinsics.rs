@@ -188,7 +188,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_scalar(&args[0])?.check_init()?;
                 let bits = val.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
-                    Abi::Scalar(scalar) => scalar.value,
+                    Abi::Scalar(scalar) => scalar.primitive(),
                     _ => span_bug!(
                         self.cur_span(),
                         "{} called on invalid type {:?}",
@@ -318,7 +318,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see `ptr_offset_inbounds` below).
-                match (self.memory.ptr_try_get_alloc(a), self.memory.ptr_try_get_alloc(b)) {
+                match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                     (Err(a), Err(b)) if a == b && a != 0 => {
                         // Both are the same non-null integer.
                         self.write_scalar(Scalar::from_machine_isize(0, self), dest)?;
@@ -335,13 +335,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             );
                         }
                         // And they must both be valid for zero-sized accesses ("in-bounds or one past the end").
-                        self.memory.check_ptr_access_align(
+                        self.check_ptr_access_align(
                             a,
                             Size::ZERO,
                             Align::ONE,
                             CheckInAllocMsg::OffsetFromTest,
                         )?;
-                        self.memory.check_ptr_access_align(
+                        self.check_ptr_access_align(
                             b,
                             Size::ZERO,
                             Align::ONE,
@@ -531,7 +531,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
         // We cannot overflow i64 as a type's size must be <= isize::MAX.
         let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
-        // The computed offset, in bytes, cannot overflow an isize.
+        // The computed offset, in bytes, must not overflow an isize.
+        // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
+        // the difference to be noticeable.
         let offset_bytes =
             offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
         // The offset being in bounds cannot rely on "wrapping around" the address space.
@@ -543,7 +545,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
         let size = offset_bytes.unsigned_abs();
         // This call handles checking for integer/null pointers.
-        self.memory.check_ptr_access_align(
+        self.check_ptr_access_align(
             min_ptr,
             Size::from_bytes(size),
             Align::ONE,
@@ -563,6 +565,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
+        // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
+        // but no actual allocation can be big enough for the difference to be noticeable.
         let size = size.checked_mul(count, self).ok_or_else(|| {
             err_ub_format!(
                 "overflow computing total size of `{}`",
@@ -573,7 +577,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let src = self.read_pointer(&src)?;
         let dst = self.read_pointer(&dst)?;
 
-        self.memory.copy(src, align, dst, align, size, nonoverlapping)
+        self.mem_copy(src, align, dst, align, size, nonoverlapping)
     }
 
     pub(crate) fn write_bytes_intrinsic(
@@ -588,13 +592,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let byte = self.read_scalar(&byte)?.to_u8()?;
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
 
+        // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
+        // but no actual allocation can be big enough for the difference to be noticeable.
         let len = layout
             .size
             .checked_mul(count, self)
             .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
-        self.memory.write_bytes(dst, bytes)
+        self.write_bytes_ptr(dst, bytes)
     }
 
     pub(crate) fn raw_eq_intrinsic(
@@ -607,8 +613,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let lhs = self.read_pointer(lhs)?;
         let rhs = self.read_pointer(rhs)?;
-        let lhs_bytes = self.memory.read_bytes(lhs, layout.size)?;
-        let rhs_bytes = self.memory.read_bytes(rhs, layout.size)?;
+        let lhs_bytes = self.read_bytes_ptr(lhs, layout.size)?;
+        let rhs_bytes = self.read_bytes_ptr(rhs, layout.size)?;
         Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/region-invariant-static-error-reporting.rs:15:9
+  --> $DIR/region-invariant-static-error-reporting.rs:19:9
    |
 LL | fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
    |          --  - `x` is a reference that is only valid in the function body
@@ -12,8 +12,8 @@ LL |         x.unwrap()
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
    |
-   = note: requirement occurs because of the type Invariant<'_>, which makes the generic argument '_ invariant
-   = note: the struct Invariant<'a> is invariant over the parameter 'a
+   = note: requirement occurs because of the type `Invariant<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Invariant<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error

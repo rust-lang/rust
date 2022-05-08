@@ -3,12 +3,15 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
    |
 LL |       (|| {})(|| {
    |  _____^^^^^^^_-
-   | |     |
-   | |     expected 0 arguments
 LL | |
 LL | |         let b = 1;
 LL | |     });
-   | |_____- supplied 1 argument
+   | |_____- argument unexpected
+   |
+help: remove the extra argument
+   |
+LL |     (|| {})();
+   |     ~~~~~~~~~
 
 error: aborting due to previous error
 

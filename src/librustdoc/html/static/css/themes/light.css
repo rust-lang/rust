@@ -462,3 +462,33 @@ div.files > .selected {
 .setting-line > .title {
 	border-bottom-color: #D5D5D5;
 }
+
+.scraped-example-list .scrape-help {
+	border-color: #555;
+	color: #333;
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: black;
+	color: black;
+}
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: #999;
+}
+.scraped-example .example-wrap .rust span.highlight {
+	background: #fcffd6;
+}
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: #f6fdb0;
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
+	background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+}
+.toggle-line-inner {
+	background: #ccc;
+}
+.toggle-line:hover .toggle-line-inner {
+	background: #999;
+}

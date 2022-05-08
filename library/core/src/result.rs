@@ -536,7 +536,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_ok(), false);
     /// ```
     #[must_use = "if you intended to assert that this is ok, consider `.unwrap()` instead"]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_ok(&self) -> bool {
@@ -580,7 +580,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_err(), true);
     /// ```
     #[must_use = "if you intended to assert that this is err, consider `.unwrap_err()` instead"]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_err(&self) -> bool {
@@ -636,7 +636,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn ok(self) -> Option<T>
     where
-        E: ~const Drop + ~const Destruct,
+        E: ~const Destruct,
     {
         match self {
             Ok(x) => Some(x),
@@ -667,7 +667,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn err(self) -> Option<E>
     where
-        T: ~const Drop + ~const Destruct,
+        T: ~const Destruct,
     {
         match self {
             // FIXME: ~const Drop doesn't quite work right yet
@@ -698,7 +698,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_ref(), Err(&"Error"));
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Result<&T, &E> {
         match *self {
@@ -1283,9 +1283,9 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
     where
-        T: ~const Drop + ~const Destruct,
-        U: ~const Drop + ~const Destruct,
-        E: ~const Drop + ~const Destruct,
+        T: ~const Destruct,
+        U: ~const Destruct,
+        E: ~const Destruct,
     {
         match self {
             // FIXME: ~const Drop doesn't quite work right yet
@@ -1368,9 +1368,9 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
     where
-        T: ~const Drop + ~const Destruct,
-        E: ~const Drop + ~const Destruct,
-        F: ~const Drop + ~const Destruct,
+        T: ~const Destruct,
+        E: ~const Destruct,
+        F: ~const Destruct,
     {
         match self {
             Ok(v) => Ok(v),
@@ -1432,8 +1432,8 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn unwrap_or(self, default: T) -> T
     where
-        T: ~const Drop + ~const Destruct,
-        E: ~const Drop + ~const Destruct,
+        T: ~const Destruct,
+        E: ~const Destruct,
     {
         match self {
             Ok(t) => t,
@@ -1803,11 +1803,10 @@ fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 impl<T, E> const Clone for Result<T, E>
 where
-    T: ~const Clone + ~const Drop + ~const Destruct,
-    E: ~const Clone + ~const Drop + ~const Destruct,
+    T: ~const Clone + ~const Destruct,
+    E: ~const Clone + ~const Destruct,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -2105,6 +2104,14 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible
         match residual {
             Err(e) => Err(From::from(e)),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
+        Err(From::from(e))
     }
 }
 

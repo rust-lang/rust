@@ -20,6 +20,16 @@ LL |     a = c + b * 5;
    |           ^ no implementation for `usize + u16`
    |
    = help: the trait `Add<u16>` is not implemented for `usize`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
 
 error: aborting due to 3 previous errors
 

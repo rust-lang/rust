@@ -1,3 +1,4 @@
+use crate::creader::CrateMetadataRef;
 use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use table::{Table, TableBuilder};
@@ -8,16 +9,17 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, StableCrateId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir;
 use rustc_middle::thir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::GeneratorDiagnosticData;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
@@ -212,12 +214,14 @@ crate struct CrateRoot<'tcx> {
     foreign_modules: Lazy<[ForeignModule]>,
     traits: Lazy<[DefIndex]>,
     impls: Lazy<[TraitImpls]>,
+    incoherent_impls: Lazy<[IncoherentImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
     proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables<'tcx>,
+    debugger_visualizers: Lazy<[rustc_span::DebuggerVisualizerFile]>,
 
-    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
+    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportInfo)]),
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
@@ -236,6 +240,29 @@ crate struct CrateRoot<'tcx> {
     symbol_mangling_version: SymbolManglingVersion,
 }
 
+/// On-disk representation of `DefId`.
+/// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
+/// representation and the compilation session.
+#[derive(Copy, Clone)]
+crate struct RawDefId {
+    krate: u32,
+    index: u32,
+}
+
+impl Into<RawDefId> for DefId {
+    fn into(self) -> RawDefId {
+        RawDefId { krate: self.krate.as_u32(), index: self.index.as_u32() }
+    }
+}
+
+impl RawDefId {
+    fn decode(self, cdata: CrateMetadataRef<'_>) -> DefId {
+        let krate = CrateNum::from_u32(self.krate);
+        let krate = cdata.map_encoded_cnum_to_current(krate);
+        DefId { krate, index: DefIndex::from_u32(self.index) }
+    }
+}
+
 #[derive(Encodable, Decodable)]
 crate struct CrateDep {
     pub name: Symbol,
@@ -249,6 +276,12 @@ crate struct CrateDep {
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: Lazy<[(DefIndex, Option<SimplifiedType>)]>,
+}
+
+#[derive(MetadataEncodable, MetadataDecodable)]
+crate struct IncoherentImpls {
+    self_ty: SimplifiedType,
+    impls: Lazy<[DefIndex]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
@@ -279,7 +312,7 @@ define_tables! {
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
     children: Table<DefIndex, Lazy<[DefIndex]>>,
 
-    opt_def_kind: Table<DefIndex, Lazy<DefKind>>,
+    opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, Lazy<ty::Visibility>>,
     def_span: Table<DefIndex, Lazy<Span>>,
     def_ident_span: Table<DefIndex, Lazy<Span>>,
@@ -302,39 +335,41 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     thir_abstract_const: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
-    impl_parent: Table<DefIndex, Lazy!(DefId)>,
-    impl_polarity: Table<DefIndex, Lazy!(ty::ImplPolarity)>,
-    impl_constness: Table<DefIndex, Lazy!(hir::Constness)>,
-    impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
+    impl_parent: Table<DefIndex, RawDefId>,
+    impl_polarity: Table<DefIndex, ty::ImplPolarity>,
+    impl_constness: Table<DefIndex, hir::Constness>,
+    impl_defaultness: Table<DefIndex, hir::Defaultness>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
     mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
     rendered_const: Table<DefIndex, Lazy!(String)>,
-    asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
+    asyncness: Table<DefIndex, hir::IsAsync>,
     fn_arg_names: Table<DefIndex, Lazy!([Ident])>,
     generator_kind: Table<DefIndex, Lazy!(hir::GeneratorKind)>,
+    trait_def: Table<DefIndex, Lazy!(ty::TraitDef)>,
 
-    trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
+    trait_item_def_id: Table<DefIndex, RawDefId>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
     expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
+    repr_options: Table<DefIndex, Lazy<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, Lazy<DefKey>>,
-    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>,
+    def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
+    generator_diagnostic_data: Table<DefIndex, Lazy<GeneratorDiagnosticData<'tcx>>>,
+    may_have_doc_links: Table<DefIndex, ()>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 enum EntryKind {
     AnonConst,
     Const,
-    ImmStatic,
-    MutStatic,
-    ForeignImmStatic,
-    ForeignMutStatic,
+    Static,
+    ForeignStatic,
     ForeignMod,
     ForeignType,
     GlobalAsm,
@@ -342,29 +377,24 @@ enum EntryKind {
     TypeParam,
     ConstParam,
     OpaqueTy,
-    Enum(ReprOptions),
+    Enum,
     Field,
     Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>, ReprOptions),
-    Union(Lazy<VariantData>, ReprOptions),
-    Fn(Lazy<FnData>),
-    ForeignFn(Lazy<FnData>),
+    Struct(Lazy<VariantData>),
+    Union(Lazy<VariantData>),
+    Fn,
+    ForeignFn,
     Mod(Lazy<[ModChild]>),
     MacroDef(Lazy<ast::MacArgs>, /*macro_rules*/ bool),
     ProcMacro(MacroKind),
     Closure,
     Generator,
-    Trait(Lazy<TraitData>),
+    Trait,
     Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
     AssocConst(AssocContainer),
     TraitAlias,
-}
-
-#[derive(MetadataEncodable, MetadataDecodable)]
-struct FnData {
-    constness: hir::Constness,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -374,17 +404,6 @@ struct VariantData {
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<DefIndex>,
     is_non_exhaustive: bool,
-}
-
-#[derive(TyEncodable, TyDecodable)]
-struct TraitData {
-    unsafety: hir::Unsafety,
-    paren_sugar: bool,
-    has_auto_impl: bool,
-    is_marker: bool,
-    skip_array_during_method_dispatch: bool,
-    specialization_kind: ty::trait_def::TraitSpecializationKind,
-    must_implement_one_of: Option<Box<[Ident]>>,
 }
 
 /// Describes whether the container of an associated item
@@ -424,7 +443,6 @@ impl AssocContainer {
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct AssocFnData {
-    fn_data: FnData,
     container: AssocContainer,
     has_self: bool,
 }

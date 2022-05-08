@@ -125,6 +125,7 @@ where
     }
 
     #[doc(hidden)]
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccessNoCoerce,

@@ -1,4 +1,4 @@
-use rustc_ast::token;
+use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
@@ -35,7 +35,7 @@ impl MetaVarExpr {
     ) -> PResult<'sess, MetaVarExpr> {
         let mut tts = input.trees();
         let ident = parse_ident(&mut tts, sess, outer_span)?;
-        let Some(TokenTree::Delimited(_, token::Paren, args)) = tts.next() else {
+        let Some(TokenTree::Delimited(_, Delimiter::Parenthesis, args)) = tts.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
             return Err(sess.span_diagnostic.struct_span_err(ident.span, msg));
         };
@@ -128,13 +128,15 @@ fn parse_ident<'sess>(
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, Ident> {
-    let err_fn = |msg| sess.span_diagnostic.struct_span_err(span, msg);
     if let Some(tt) = iter.next() && let TokenTree::Token(token) = tt {
         if let Some((elem, false)) = token.ident() {
             return Ok(elem);
         }
         let token_str = pprust::token_to_string(&token);
-        let mut err = err_fn(&format!("expected identifier, found `{}`", &token_str));
+        let mut err = sess.span_diagnostic.struct_span_err(
+            span,
+            &format!("expected identifier, found `{}`", &token_str)
+        );
         err.span_suggestion(
             token.span,
             &format!("try removing `{}`", &token_str),
@@ -143,7 +145,7 @@ fn parse_ident<'sess>(
         );
         return Err(err);
     }
-    Err(err_fn("expected identifier"))
+    Err(sess.span_diagnostic.struct_span_err(span, "expected identifier"))
 }
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the

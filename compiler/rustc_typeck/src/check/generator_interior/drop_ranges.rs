@@ -206,7 +206,7 @@ struct DropRangesBuilder {
     /// NodeInfo struct for more details, but this information includes things
     /// such as the set of control-flow successors, which variables are dropped
     /// or reinitialized, and whether each variable has been inferred to be
-    /// known-dropped or potentially reintiialized at each point.
+    /// known-dropped or potentially reinitialized at each point.
     nodes: IndexVec<PostOrderId, NodeInfo>,
     /// We refer to values whose drop state we are tracking by the HirId of
     /// where they are defined. Within a NodeInfo, however, we store the

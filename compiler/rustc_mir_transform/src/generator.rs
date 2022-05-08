@@ -18,13 +18,13 @@
 //!     First upvars are stored
 //!     It is followed by the generator state field.
 //!     Then finally the MIR locals which are live across a suspension point are stored.
-//!
+//!     ```ignore (illustrative)
 //!     struct Generator {
 //!         upvars...,
 //!         state: u32,
 //!         mir_locals...,
 //!     }
-//!
+//!     ```
 //! This pass computes the meaning of the state field and the MIR locals which are live
 //! across a suspension point. There are however three hardcoded generator states:
 //!     0 - Generator have not been resumed yet
@@ -500,7 +500,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
-                // borrows, so we conseratively assume that all borrowed locals are live until
+                // borrows, so we conservatively assume that all borrowed locals are live until
                 // we find a StorageDead statement referencing the locals.
                 // To do this we just union our `liveness` result with `borrowed_locals`, which
                 // contains all the locals which has been borrowed before this suspension point.
@@ -1441,6 +1441,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)

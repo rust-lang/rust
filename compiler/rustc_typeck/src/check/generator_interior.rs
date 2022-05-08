@@ -319,7 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         self.expr_count += 1;
 
         if let PatKind::Binding(..) = pat.kind {
-            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
+            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
             self.record(ty, pat.hir_id, Some(scope), None, pat.span, false);
         }
@@ -567,7 +567,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
                 _ => None,
             };
             for (i, ty) in fields.iter().enumerate() {
-                let descr_post = &format!(" in tuple element {}", i);
+                let descr_post = &format!(" in tuple element {i}");
                 let span = comps.and_then(|c| c.get(i)).map(|e| e.span).unwrap_or(data.source_span);
                 if check_must_not_suspend_ty(
                     fcx,

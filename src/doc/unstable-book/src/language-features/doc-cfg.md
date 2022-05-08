@@ -7,7 +7,7 @@ The tracking issue for this feature is: [#43781]
 The `doc_cfg` feature allows an API be documented as only available in some specific platforms.
 This attribute has two effects:
 
-1. In the annotated item's documentation, there will be a message saying "This is supported on
+1. In the annotated item's documentation, there will be a message saying "Available on
     (platform) only".
 
 2. The item's doc-tests will only run on the specific platform.

@@ -14,6 +14,8 @@ use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCode
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
+
+#[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -573,15 +575,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     } else if let Some(kind) = tcx.allocator_kind(()) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let mut module_llvm = backend.new_metadata(tcx, &llmod_id);
-        tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(
-                tcx,
-                &mut module_llvm,
-                &llmod_id,
-                kind,
-                tcx.lang_items().oom().is_some(),
-            )
+        let module_llvm = tcx.sess.time("write_allocator_module", || {
+            backend.codegen_allocator(tcx, &llmod_id, kind, tcx.lang_items().oom().is_some())
         });
 
         Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
@@ -622,33 +617,33 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
+    #[cfg(parallel_compiler)]
     let pre_compile_cgus = |cgu_reuse: &[CguReuse]| {
-        if cfg!(parallel_compiler) {
-            tcx.sess.time("compile_first_CGU_batch", || {
-                // Try to find one CGU to compile per thread.
-                let cgus: Vec<_> = cgu_reuse
-                    .iter()
-                    .enumerate()
-                    .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                    .take(tcx.sess.threads())
-                    .collect();
+        tcx.sess.time("compile_first_CGU_batch", || {
+            // Try to find one CGU to compile per thread.
+            let cgus: Vec<_> = cgu_reuse
+                .iter()
+                .enumerate()
+                .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                .take(tcx.sess.threads())
+                .collect();
 
-                // Compile the found CGUs in parallel.
-                let start_time = Instant::now();
+            // Compile the found CGUs in parallel.
+            let start_time = Instant::now();
 
-                let pre_compiled_cgus = par_iter(cgus)
-                    .map(|(i, _)| {
-                        let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                        (i, module)
-                    })
-                    .collect();
+            let pre_compiled_cgus = par_iter(cgus)
+                .map(|(i, _)| {
+                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                    (i, module)
+                })
+                .collect();
 
-                (pre_compiled_cgus, start_time.elapsed())
-            })
-        } else {
-            (FxHashMap::default(), Duration::new(0, 0))
-        }
+            (pre_compiled_cgus, start_time.elapsed())
+        })
     };
+
+    #[cfg(not(parallel_compiler))]
+    let pre_compile_cgus = |_: &[CguReuse]| (FxHashMap::default(), Duration::new(0, 0));
 
     let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
@@ -799,6 +794,12 @@ impl CrateInfo {
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
             .collect();
+        let linked_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::linked_symbols(tcx, c)))
+            .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -832,6 +833,7 @@ impl CrateInfo {
         let mut info = CrateInfo {
             target_cpu,
             exported_symbols,
+            linked_symbols,
             local_crate_name,
             compiler_builtins: None,
             profiler_runtime: None,
@@ -845,7 +847,13 @@ impl CrateInfo {
             missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
+            debugger_visualizers: Default::default(),
         };
+        let debugger_visualizers = tcx.debugger_visualizers(LOCAL_CRATE).clone();
+        if !debugger_visualizers.is_empty() {
+            info.debugger_visualizers.insert(LOCAL_CRATE, debugger_visualizers);
+        }
+
         let lang_items = tcx.lang_items();
 
         let crates = tcx.crates(());
@@ -859,8 +867,10 @@ impl CrateInfo {
         for &cnum in crates.iter() {
             info.native_libraries
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
-            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum).clone());
+            info.crate_name.insert(cnum, tcx.crate_name(cnum));
+
+            let used_crate_source = tcx.used_crate_source(cnum);
+            info.used_crate_source.insert(cnum, used_crate_source.clone());
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }
@@ -881,6 +891,14 @@ impl CrateInfo {
             let missing =
                 missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
+
+            // Only include debugger visualizer files from crates that will be statically linked.
+            if used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some() {
+                let debugger_visualizers = tcx.debugger_visualizers(cnum).clone();
+                if !debugger_visualizers.is_empty() {
+                    info.debugger_visualizers.insert(cnum, debugger_visualizers);
+                }
+            }
         }
 
         info

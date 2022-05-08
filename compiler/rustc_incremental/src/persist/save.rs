@@ -146,7 +146,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeR
 
 /// Builds the dependency graph.
 ///
-/// This function breates the *staging dep-graph*. When the dep-graph is modified by a query
+/// This function creates the *staging dep-graph*. When the dep-graph is modified by a query
 /// execution, the new dependency information is not kept in memory but directly
 /// output to this file. `save_dep_graph` then finalizes the staging dep-graph
 /// and moves it to the permanent dep-graph path

@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{Applicability, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
@@ -30,12 +30,11 @@ use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
-use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{FileName, MultiSpan};
+use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tempfile::Builder as TempFileBuilder;
@@ -349,23 +348,8 @@ pub fn configure_and_expand(
             ecx.check_unused_macros();
         });
 
-        let mut missing_fragment_specifiers: Vec<_> = ecx
-            .sess
-            .parse_sess
-            .missing_fragment_specifiers
-            .borrow()
-            .iter()
-            .map(|(span, node_id)| (*span, *node_id))
-            .collect();
-        missing_fragment_specifiers.sort_unstable_by_key(|(span, _)| *span);
-
         let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
 
-        for (span, node_id) in missing_fragment_specifiers {
-            let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
-            let msg = "missing fragment specifier";
-            resolver.lint_buffer().buffer_lint(lint, node_id, span, msg);
-        }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
@@ -487,12 +471,24 @@ pub fn configure_and_expand(
         }
     });
 
+    sess.time("early_lint_checks", || {
+        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
+        rustc_lint::check_ast_node(
+            sess,
+            false,
+            lint_store,
+            resolver.registered_tools(),
+            lint_buffer,
+            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            &krate,
+        )
+    });
+
     Ok(krate)
 }
 
 pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
-    lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
     krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
@@ -505,19 +501,6 @@ pub fn lower_to_hir<'res, 'tcx>(
         rustc_parse::nt_to_tokenstream,
         arena,
     );
-
-    sess.time("early_lint_checks", || {
-        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
-        rustc_lint::check_ast_node(
-            sess,
-            false,
-            lint_store,
-            resolver.registered_tools(),
-            lint_buffer,
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-            &*krate,
-        )
-    });
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -646,11 +629,15 @@ fn write_out_deps(
         });
         files.extend(extra_tracked_files);
 
-        if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
-            files.push(backend.to_string());
-        }
-
         if sess.binary_dep_depinfo() {
+            if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
+                if backend.contains('.') {
+                    // If the backend name contain a `.`, it is the path to an external dynamic
+                    // library. If not, it is not a path.
+                    files.push(backend.to_string());
+                }
+            }
+
             boxed_resolver.borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
@@ -852,9 +839,8 @@ pub fn create_global_ctxt<'tcx>(
     dep_graph.assert_ignored();
 
     let sess = &compiler.session();
-    let krate = resolver
-        .borrow_mut()
-        .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
+    let krate =
+        resolver.borrow_mut().access(|resolver| lower_to_hir(sess, resolver, krate, hir_arena));
     let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -929,7 +915,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
-                // We force these querie to run,
+                // We force these queries to run,
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.

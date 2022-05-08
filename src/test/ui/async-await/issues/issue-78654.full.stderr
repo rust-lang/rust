@@ -5,10 +5,10 @@ LL | impl<const H: feature> Foo {
    |               ^^^^^^^ not a type
 
 error[E0207]: the const parameter `H` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-78654.rs:9:12
+  --> $DIR/issue-78654.rs:9:6
    |
 LL | impl<const H: feature> Foo {
-   |            ^ unconstrained const parameter
+   |      ^^^^^^^^^^^^^^^^ unconstrained const parameter
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

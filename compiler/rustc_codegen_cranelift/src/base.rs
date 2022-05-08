@@ -772,6 +772,7 @@ fn codegen_stmt<'tcx>(
         }
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
+        | StatementKind::Deinit(_)
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
@@ -820,7 +821,8 @@ pub(crate) fn codegen_place<'tcx>(
                 if cplace.layout().ty.is_box() {
                     cplace = cplace
                         .place_field(fx, Field::new(0)) // Box<T> -> Unique<T>
-                        .place_field(fx, Field::new(0)) // Unique<T> -> *const T
+                        .place_field(fx, Field::new(0)) // Unique<T> -> NonNull<T>
+                        .place_field(fx, Field::new(0)) // NonNull<T> -> *mut T
                         .place_deref(fx);
                 } else {
                     cplace = cplace.place_deref(fx);

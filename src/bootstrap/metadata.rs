@@ -49,7 +49,11 @@ pub fn build(build: &mut Build) {
                 .filter(|dep| dep.source.is_none())
                 .map(|dep| INTERNER.intern_string(dep.name))
                 .collect();
-            build.crates.insert(name, Crate { name, deps, path });
+            let krate = Crate { name, deps, path };
+            let relative_path = krate.local_path(build);
+            build.crates.insert(name, krate);
+            let existing_path = build.crate_paths.insert(relative_path, name);
+            assert!(existing_path.is_none(), "multiple crates with the same path");
         }
     }
 }

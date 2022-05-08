@@ -72,5 +72,9 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
+
+        PlaceContext::MutatingUse(MutatingUseContext::Deinit | MutatingUseContext::SetDiscriminant) => {
+            bug!("These statements are not allowed in this MIR phase")
+        }
     }
 }

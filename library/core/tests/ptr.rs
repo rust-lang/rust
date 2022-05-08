@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::num::NonZeroUsize;
 use core::ptr;
 use core::ptr::*;
 use std::fmt::{Debug, Display};
@@ -490,11 +491,11 @@ fn ptr_metadata() {
     let vtable_5: DynMetadata<dyn Display> =
         metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
-        let address_1: usize = std::mem::transmute(vtable_1);
-        let address_2: usize = std::mem::transmute(vtable_2);
-        let address_3: usize = std::mem::transmute(vtable_3);
-        let address_4: usize = std::mem::transmute(vtable_4);
-        let address_5: usize = std::mem::transmute(vtable_5);
+        let address_1: *const () = std::mem::transmute(vtable_1);
+        let address_2: *const () = std::mem::transmute(vtable_2);
+        let address_3: *const () = std::mem::transmute(vtable_3);
+        let address_4: *const () = std::mem::transmute(vtable_4);
+        let address_5: *const () = std::mem::transmute(vtable_5);
         // Different trait => different vtable pointer
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
@@ -688,6 +689,83 @@ fn thin_box() {
                 drop_in_place::<T>(&mut **self);
                 dealloc(self.ptr.cast().as_ptr(), layout);
             }
+        }
+    }
+}
+
+#[test]
+fn nonnull_tagged_pointer_with_provenance() {
+    let raw_pointer = Box::into_raw(Box::new(10));
+
+    let mut p = TaggedPointer::new(raw_pointer).unwrap();
+    assert_eq!(p.tag(), 0);
+
+    p.set_tag(1);
+    assert_eq!(p.tag(), 1);
+    assert_eq!(unsafe { *p.pointer().as_ptr() }, 10);
+
+    p.set_tag(3);
+    assert_eq!(p.tag(), 3);
+    assert_eq!(unsafe { *p.pointer().as_ptr() }, 10);
+
+    unsafe { Box::from_raw(p.pointer().as_ptr()) };
+
+    /// A non-null pointer type which carries several bits of metadata and maintains provenance.
+    #[repr(transparent)]
+    pub struct TaggedPointer<T>(NonNull<T>);
+
+    impl<T> Clone for TaggedPointer<T> {
+        fn clone(&self) -> Self {
+            Self(self.0)
+        }
+    }
+
+    impl<T> Copy for TaggedPointer<T> {}
+
+    impl<T> TaggedPointer<T> {
+        /// The ABI-required minimum alignment of the `P` type.
+        pub const ALIGNMENT: usize = core::mem::align_of::<T>();
+        /// A mask for data-carrying bits of the address.
+        pub const DATA_MASK: usize = !Self::ADDRESS_MASK;
+        /// Number of available bits of storage in the address.
+        pub const NUM_BITS: u32 = Self::ALIGNMENT.trailing_zeros();
+        /// A mask for the non-data-carrying bits of the address.
+        pub const ADDRESS_MASK: usize = usize::MAX << Self::NUM_BITS;
+
+        /// Create a new tagged pointer from a possibly null pointer.
+        pub fn new(pointer: *mut T) -> Option<TaggedPointer<T>> {
+            Some(TaggedPointer(NonNull::new(pointer)?))
+        }
+
+        /// Consume this tagged pointer and produce a raw mutable pointer to the
+        /// memory location.
+        pub fn pointer(self) -> NonNull<T> {
+            // SAFETY: The `addr` guaranteed to have bits set in the Self::ADDRESS_MASK, so the result will be non-null.
+            self.0.map_addr(|addr| unsafe {
+                NonZeroUsize::new_unchecked(addr.get() & Self::ADDRESS_MASK)
+            })
+        }
+
+        /// Consume this tagged pointer and produce the data it carries.
+        pub fn tag(&self) -> usize {
+            self.0.addr().get() & Self::DATA_MASK
+        }
+
+        /// Update the data this tagged pointer carries to a new value.
+        pub fn set_tag(&mut self, data: usize) {
+            assert_eq!(
+                data & Self::ADDRESS_MASK,
+                0,
+                "cannot set more data beyond the lowest NUM_BITS"
+            );
+            let data = data & Self::DATA_MASK;
+
+            // SAFETY: This value will always be non-zero because the upper bits (from
+            // ADDRESS_MASK) will always be non-zero. This a property of the type and its
+            // construction.
+            self.0 = self.0.map_addr(|addr| unsafe {
+                NonZeroUsize::new_unchecked((addr.get() & Self::ADDRESS_MASK) | data)
+            })
         }
     }
 }

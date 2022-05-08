@@ -18,19 +18,55 @@ use crate::sys_common::IntoInner;
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct AnonPipe {
-    inner: Handle,
+// A 64kb pipe capacity is the same as a typical Linux default.
+const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
+
+pub enum AnonPipe {
+    Sync(Handle),
+    Async(Handle),
 }
 
 impl IntoInner<Handle> for AnonPipe {
     fn into_inner(self) -> Handle {
-        self.inner
+        match self {
+            Self::Sync(handle) => handle,
+            Self::Async(handle) => handle,
+        }
     }
 }
 
 pub struct Pipes {
     pub ours: AnonPipe,
     pub theirs: AnonPipe,
+}
+impl Pipes {
+    /// Create a new pair of pipes where both pipes are synchronous.
+    ///
+    /// These must not be used asynchronously.
+    pub fn new_synchronous(
+        ours_readable: bool,
+        their_handle_inheritable: bool,
+    ) -> io::Result<Self> {
+        unsafe {
+            // If `CreatePipe` succeeds, these will be our pipes.
+            let mut read = ptr::null_mut();
+            let mut write = ptr::null_mut();
+
+            if c::CreatePipe(&mut read, &mut write, ptr::null(), PIPE_BUFFER_CAPACITY) == 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                let (ours, theirs) = if ours_readable { (read, write) } else { (write, read) };
+                let ours = Handle::from_raw_handle(ours);
+                let theirs = Handle::from_raw_handle(theirs);
+
+                if their_handle_inheritable {
+                    theirs.set_inheritable()?;
+                }
+
+                Ok(Pipes { ours: AnonPipe::Sync(ours), theirs: AnonPipe::Sync(theirs) })
+            }
+        }
+    }
 }
 
 /// Although this looks similar to `anon_pipe` in the Unix module it's actually
@@ -91,8 +127,8 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                     | c::PIPE_WAIT
                     | reject_remote_clients_flag,
                 1,
-                4096,
-                4096,
+                PIPE_BUFFER_CAPACITY,
+                PIPE_BUFFER_CAPACITY,
                 0,
                 ptr::null_mut(),
             );
@@ -153,13 +189,50 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         };
         opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
-        let theirs = AnonPipe { inner: theirs.into_inner() };
+        let theirs = AnonPipe::Sync(theirs.into_inner());
 
-        Ok(Pipes {
-            ours: AnonPipe { inner: ours },
-            theirs: AnonPipe { inner: theirs.into_inner() },
-        })
+        Ok(Pipes { ours: AnonPipe::Async(ours), theirs })
     }
+}
+
+/// Takes an asynchronous source pipe and returns a synchronous pipe suitable
+/// for sending to a child process.
+///
+/// This is achieved by creating a new set of pipes and spawning a thread that
+/// relays messages between the source and the synchronous pipe.
+pub fn spawn_pipe_relay(
+    source: &Handle,
+    ours_readable: bool,
+    their_handle_inheritable: bool,
+) -> io::Result<AnonPipe> {
+    // We need this handle to live for the lifetime of the thread spawned below.
+    let source = AnonPipe::Async(source.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)?);
+
+    // create a new pair of anon pipes.
+    let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
+
+    // Spawn a thread that passes messages from one pipe to the other.
+    // Any errors will simply cause the thread to exit.
+    let (reader, writer) = if ours_readable { (ours, source) } else { (source, ours) };
+    crate::thread::spawn(move || {
+        let mut buf = [0_u8; 4096];
+        'reader: while let Ok(len) = reader.read(&mut buf) {
+            if len == 0 {
+                break;
+            }
+            let mut start = 0;
+            while let Ok(written) = writer.write(&buf[start..len]) {
+                start += written;
+                if start == len {
+                    continue 'reader;
+                }
+            }
+            break;
+        }
+    });
+
+    // Return the pipe that should be sent to the child process.
+    Ok(theirs)
 }
 
 fn random_number() -> usize {
@@ -173,38 +246,168 @@ fn random_number() -> usize {
     }
 }
 
+// Abstracts over `ReadFileEx` and `WriteFileEx`
+type AlertableIoFn = unsafe extern "system" fn(
+    BorrowedHandle<'_>,
+    c::LPVOID,
+    c::DWORD,
+    c::LPOVERLAPPED,
+    c::LPOVERLAPPED_COMPLETION_ROUTINE,
+) -> c::BOOL;
+
 impl AnonPipe {
     pub fn handle(&self) -> &Handle {
-        &self.inner
+        match self {
+            Self::Async(ref handle) => handle,
+            Self::Sync(ref handle) => handle,
+        }
     }
     pub fn into_handle(self) -> Handle {
-        self.inner
+        self.into_inner()
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
+        let result = unsafe {
+            let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+            match self {
+                Self::Sync(ref handle) => handle.read(buf),
+                Self::Async(_) => {
+                    self.alertable_io_internal(c::ReadFileEx, buf.as_mut_ptr() as _, len)
+                }
+            }
+        };
+
+        match result {
+            // The special treatment of BrokenPipe is to deal with Windows
+            // pipe semantics, which yields this error when *reading* from
+            // a pipe after the other end has closed; we interpret that as
+            // EOF on the pipe.
+            Err(ref e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(0),
+            _ => result,
+        }
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.inner.read_vectored(bufs)
+        io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        self.inner.is_read_vectored()
+        false
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(buf)
+        unsafe {
+            let len = crate::cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+            match self {
+                Self::Sync(ref handle) => handle.write(buf),
+                Self::Async(_) => {
+                    self.alertable_io_internal(c::WriteFileEx, buf.as_ptr() as _, len)
+                }
+            }
+        }
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.inner.write_vectored(bufs)
+        io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        self.inner.is_write_vectored()
+        false
+    }
+
+    /// Synchronizes asynchronous reads or writes using our anonymous pipe.
+    ///
+    /// This is a wrapper around [`ReadFileEx`] or [`WriteFileEx`] that uses
+    /// [Asynchronous Procedure Call] (APC) to synchronize reads or writes.
+    ///
+    /// Note: This should not be used for handles we don't create.
+    ///
+    /// # Safety
+    ///
+    /// `buf` must be a pointer to a buffer that's valid for reads or writes
+    /// up to `len` bytes. The `AlertableIoFn` must be either `ReadFileEx` or `WriteFileEx`
+    ///
+    /// [`ReadFileEx`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfileex
+    /// [`WriteFileEx`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefileex
+    /// [Asynchronous Procedure Call]: https://docs.microsoft.com/en-us/windows/win32/sync/asynchronous-procedure-calls
+    unsafe fn alertable_io_internal(
+        &self,
+        io: AlertableIoFn,
+        buf: c::LPVOID,
+        len: c::DWORD,
+    ) -> io::Result<usize> {
+        // Use "alertable I/O" to synchronize the pipe I/O.
+        // This has four steps.
+        //
+        // STEP 1: Start the asynchronous I/O operation.
+        //         This simply calls either `ReadFileEx` or `WriteFileEx`,
+        //         giving it a pointer to the buffer and callback function.
+        //
+        // STEP 2: Enter an alertable state.
+        //         The callback set in step 1 will not be called until the thread
+        //         enters an "alertable" state. This can be done using `SleepEx`.
+        //
+        // STEP 3: The callback
+        //         Once the I/O is complete and the thread is in an alertable state,
+        //         the callback will be run on the same thread as the call to
+        //         `ReadFileEx` or `WriteFileEx` done in step 1.
+        //         In the callback we simply set the result of the async operation.
+        //
+        // STEP 4: Return the result.
+        //         At this point we'll have a result from the callback function
+        //         and can simply return it. Note that we must not return earlier,
+        //         while the I/O is still in progress.
+
+        // The result that will be set from the asynchronous callback.
+        let mut async_result: Option<AsyncResult> = None;
+        struct AsyncResult {
+            error: u32,
+            transfered: u32,
+        }
+
+        // STEP 3: The callback.
+        unsafe extern "system" fn callback(
+            dwErrorCode: u32,
+            dwNumberOfBytesTransfered: u32,
+            lpOverlapped: *mut c::OVERLAPPED,
+        ) {
+            // Set `async_result` using a pointer smuggled through `hEvent`.
+            let result = AsyncResult { error: dwErrorCode, transfered: dwNumberOfBytesTransfered };
+            *(*lpOverlapped).hEvent.cast::<Option<AsyncResult>>() = Some(result);
+        }
+
+        // STEP 1: Start the I/O operation.
+        let mut overlapped: c::OVERLAPPED = crate::mem::zeroed();
+        // `hEvent` is unused by `ReadFileEx` and `WriteFileEx`.
+        // Therefore the documentation suggests using it to smuggle a pointer to the callback.
+        overlapped.hEvent = &mut async_result as *mut _ as *mut _;
+
+        // Asynchronous read of the pipe.
+        // If successful, `callback` will be called once it completes.
+        let result = io(self.handle().as_handle(), buf, len, &mut overlapped, callback);
+        if result == c::FALSE {
+            // We can return here because the call failed.
+            // After this we must not return until the I/O completes.
+            return Err(io::Error::last_os_error());
+        }
+
+        // Wait indefinitely for the result.
+        let result = loop {
+            // STEP 2: Enter an alertable state.
+            // The second parameter of `SleepEx` is used to make this sleep alertable.
+            c::SleepEx(c::INFINITE, c::TRUE);
+            if let Some(result) = async_result {
+                break result;
+            }
+        };
+        // STEP 4: Return the result.
+        // `async_result` is always `Some` at this point
+        match result.error {
+            c::ERROR_SUCCESS => Ok(result.transfered as usize),
+            error => Err(io::Error::from_raw_os_error(error as _)),
+        }
     }
 }
 

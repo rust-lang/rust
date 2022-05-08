@@ -290,3 +290,33 @@ fn get_code_blocks() -> Vec<ConfigCodeBlock> {
 
     code_blocks
 }
+
+#[test]
+fn check_unstable_option_tracking_issue_numbers() {
+    // Ensure that tracking issue links point to the correct issue number
+    let tracking_issue =
+        regex::Regex::new(r"\(tracking issue: \[#(?P<number>\d+)\]\((?P<link>\S+)\)\)")
+            .expect("failed creating configuration pattern");
+
+    let lines = BufReader::new(
+        fs::File::open(Path::new(CONFIGURATIONS_FILE_NAME))
+            .unwrap_or_else(|_| panic!("couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
+    )
+    .lines()
+    .map(Result::unwrap)
+    .enumerate();
+
+    for (idx, line) in lines {
+        if let Some(capture) = tracking_issue.captures(&line) {
+            let number = capture.name("number").unwrap().as_str();
+            let link = capture.name("link").unwrap().as_str();
+            assert!(
+                link.ends_with(number),
+                "{} on line {} does not point to issue #{}",
+                link,
+                idx + 1,
+                number,
+            );
+        }
+    }
+}

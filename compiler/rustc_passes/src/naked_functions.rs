@@ -1,7 +1,7 @@
 //! Checks validity of naked functions.
 
 use rustc_ast::{Attribute, InlineAsmOptions};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
@@ -147,7 +147,7 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
-    if let [(ItemKind::Asm, _)] = this.items[..] {
+    if let [(ItemKind::Asm | ItemKind::Err, _)] = this.items[..] {
         // Ok.
     } else {
         let mut diag = struct_span_err!(
@@ -156,19 +156,33 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>, fn_span: Span
             E0787,
             "naked functions must contain a single asm block"
         );
+
+        let mut must_show_error = false;
         let mut has_asm = false;
+        let mut has_err = false;
         for &(kind, span) in &this.items {
             match kind {
                 ItemKind::Asm if has_asm => {
+                    must_show_error = true;
                     diag.span_label(span, "multiple asm blocks are unsupported in naked functions");
                 }
                 ItemKind::Asm => has_asm = true,
                 ItemKind::NonAsm => {
+                    must_show_error = true;
                     diag.span_label(span, "non-asm is unsupported in naked functions");
                 }
+                ItemKind::Err => has_err = true,
             }
         }
-        diag.emit();
+
+        // If the naked function only contains a single asm block and a non-zero number of
+        // errors, then don't show an additional error. This allows for appending/prepending
+        // `compile_error!("...")` statements and reduces error noise.
+        if must_show_error || !has_err {
+            diag.emit();
+        } else {
+            diag.cancel();
+        }
     }
 }
 
@@ -181,6 +195,7 @@ struct CheckInlineAssembly<'tcx> {
 enum ItemKind {
     Asm,
     NonAsm,
+    Err,
 }
 
 impl<'tcx> CheckInlineAssembly<'tcx> {
@@ -222,8 +237,12 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                 self.check_inline_asm(asm, span);
             }
 
-            ExprKind::DropTemps(..) | ExprKind::Block(..) | ExprKind::Err => {
+            ExprKind::DropTemps(..) | ExprKind::Block(..) => {
                 hir::intravisit::walk_expr(self, expr);
+            }
+
+            ExprKind::Err => {
+                self.items.push((ItemKind::Err, span));
             }
         }
     }
@@ -233,7 +252,9 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             .operands
             .iter()
             .filter_map(|&(ref op, op_sp)| match op {
-                InlineAsmOperand::Const { .. } | InlineAsmOperand::Sym { .. } => None,
+                InlineAsmOperand::Const { .. }
+                | InlineAsmOperand::SymFn { .. }
+                | InlineAsmOperand::SymStatic { .. } => None,
                 InlineAsmOperand::In { .. }
                 | InlineAsmOperand::Out { .. }
                 | InlineAsmOperand::InOut { .. }
@@ -274,11 +295,24 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         }
 
         if !asm.options.contains(InlineAsmOptions::NORETURN) {
+            let last_span = asm
+                .operands
+                .last()
+                .map_or_else(|| asm.template_strs.last().unwrap().2, |op| op.1)
+                .shrink_to_hi();
+
             struct_span_err!(
                 self.tcx.sess,
                 span,
                 E0787,
                 "asm in naked functions must use `noreturn` option"
+            )
+            .span_suggestion(
+                last_span,
+                "consider specifying that the asm block is responsible \
+                for returning from the function",
+                String::from(", options(noreturn)"),
+                Applicability::MachineApplicable,
             )
             .emit();
         }

@@ -1879,6 +1879,96 @@ fn test_first_last_entry() {
 }
 
 #[test]
+fn test_pop_first_last() {
+    let mut map = BTreeMap::new();
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
+
+    map.insert(1, 10);
+    map.insert(2, 20);
+    map.insert(3, 30);
+    map.insert(4, 40);
+
+    assert_eq!(map.len(), 4);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 1);
+    assert_eq!(val, 10);
+    assert_eq!(map.len(), 3);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 2);
+    assert_eq!(val, 20);
+    assert_eq!(map.len(), 2);
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 4);
+    assert_eq!(val, 40);
+    assert_eq!(map.len(), 1);
+
+    map.insert(5, 50);
+    map.insert(6, 60);
+    assert_eq!(map.len(), 3);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 3);
+    assert_eq!(val, 30);
+    assert_eq!(map.len(), 2);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 6);
+    assert_eq!(val, 60);
+    assert_eq!(map.len(), 1);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 5);
+    assert_eq!(val, 50);
+    assert_eq!(map.len(), 0);
+
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
+
+    map.insert(7, 70);
+    map.insert(8, 80);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 8);
+    assert_eq!(val, 80);
+    assert_eq!(map.len(), 1);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 7);
+    assert_eq!(val, 70);
+    assert_eq!(map.len(), 0);
+
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
+}
+
+#[test]
+fn test_get_key_value() {
+    let mut map = BTreeMap::new();
+
+    assert!(map.is_empty());
+    assert_eq!(map.get_key_value(&1), None);
+    assert_eq!(map.get_key_value(&2), None);
+
+    map.insert(1, 10);
+    map.insert(2, 20);
+    map.insert(3, 30);
+
+    assert_eq!(map.len(), 3);
+    assert_eq!(map.get_key_value(&1), Some((&1, &10)));
+    assert_eq!(map.get_key_value(&3), Some((&3, &30)));
+    assert_eq!(map.get_key_value(&4), None);
+
+    map.remove(&3);
+
+    assert_eq!(map.len(), 2);
+    assert_eq!(map.get_key_value(&3), None);
+    assert_eq!(map.get_key_value(&2), Some((&2, &20)));
+}
+
+#[test]
 fn test_insert_into_full_height_0() {
     let size = node::CAPACITY;
     for pos in 0..=size {
@@ -1902,6 +1992,21 @@ fn test_insert_into_full_height_1() {
         assert!(map.insert(pos * 2, ()).is_none());
         map.check();
     }
+}
+
+#[test]
+fn test_try_insert() {
+    let mut map = BTreeMap::new();
+
+    assert!(map.is_empty());
+
+    assert_eq!(map.try_insert(1, 10).unwrap(), &10);
+    assert_eq!(map.try_insert(2, 20).unwrap(), &20);
+
+    let err = map.try_insert(2, 200).unwrap_err();
+    assert_eq!(err.entry.key(), &2);
+    assert_eq!(err.entry.get(), &20);
+    assert_eq!(err.value, 200);
 }
 
 macro_rules! create_append_test {

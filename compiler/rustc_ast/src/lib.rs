@@ -9,6 +9,8 @@
     test(attr(deny(warnings)))
 )]
 #![feature(box_patterns)]
+#![feature(const_default_impls)]
+#![feature(const_trait_impl)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(label_break_value)]

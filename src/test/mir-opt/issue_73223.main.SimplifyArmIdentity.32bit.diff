@@ -51,6 +51,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/issue-73223.rs:2:9: 2:14
           StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
+          Deinit(_2);                      // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           discriminant(_2) = 1;            // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
@@ -73,6 +74,7 @@
           StorageLive(_6);                 // scope 1 at $DIR/issue-73223.rs:7:9: 7:14
           StorageLive(_7);                 // scope 1 at $DIR/issue-73223.rs:7:22: 7:27
           _7 = _1;                         // scope 1 at $DIR/issue-73223.rs:7:22: 7:27
+          Deinit(_6);                      // scope 1 at $DIR/issue-73223.rs:7:17: 7:28
           ((_6 as Some).0: i32) = move _7; // scope 1 at $DIR/issue-73223.rs:7:17: 7:28
           discriminant(_6) = 1;            // scope 1 at $DIR/issue-73223.rs:7:17: 7:28
           StorageDead(_7);                 // scope 1 at $DIR/issue-73223.rs:7:27: 7:28
@@ -86,6 +88,7 @@
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
           _11 = _28;                       // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_9);                      // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_9.0: &i32) = move _10;         // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_9.1: &i32) = move _11;         // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_11);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -110,6 +113,7 @@
   
       bb3: {
           StorageLive(_20);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_20);                     // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           discriminant(_20) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_21);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_22);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -126,6 +130,7 @@
           _26 = _14;                       // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _25 = _26;                       // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_27);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_27);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           discriminant(_27) = 0;           // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           core::panicking::assert_failed::<i32, i32>(const core::panicking::AssertKind::Eq, move _23, move _25, move _27); // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant

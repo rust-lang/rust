@@ -234,7 +234,7 @@ impl Step for ToolStateCheck {
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("check-tools")
+        run.alias("check-tools")
     }
 
     fn make_run(run: RunConfig<'_>) {

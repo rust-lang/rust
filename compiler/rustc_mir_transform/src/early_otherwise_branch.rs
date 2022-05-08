@@ -260,7 +260,7 @@ fn may_hoist<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place: Place<'tcx>) -> 
     for (place, proj) in place.iter_projections() {
         match proj {
             // Dereferencing in the computation of `place` might cause issues from one of two
-            // cateogires. First, the referrent might be invalid. We protect against this by
+            // categories. First, the referent might be invalid. We protect against this by
             // dereferencing references only (not pointers). Second, the use of a reference may
             // invalidate other references that are used later (for aliasing reasons). Consider
             // where such an invalidated reference may appear:
@@ -336,9 +336,7 @@ fn evaluate_candidate<'tcx>(
             Some(poss)
         }
     };
-    let Some((_, child)) = targets.iter().next() else {
-        return None
-    };
+    let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
     let TerminatorKind::SwitchInt {
         switch_ty: child_ty,

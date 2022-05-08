@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -255,10 +255,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         func: fun,
                         args,
                         cleanup: None,
-                        // FIXME(varkor): replace this with an uninhabitedness-based check.
-                        // This requires getting access to the current module to call
-                        // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
-                        destination: if expr.ty.is_never() {
+                        // The presence or absence of a return edge affects control-flow sensitive
+                        // MIR checks and ultimately whether code is accepted or not. We can only
+                        // omit the return edge if a return type is visibly uninhabited to a module
+                        // that makes the call.
+                        destination: if this.tcx.is_ty_uninhabited_from(
+                            this.parent_module,
+                            expr.ty,
+                            this.param_env,
+                        ) {
                             None
                         } else {
                             Some((destination, success))
@@ -324,7 +329,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     block,
                                     Some(scope),
                                     &this.thir[f.expr],
-                                    Some(local_info)
+                                    Some(local_info),
+                                    NeedsTemporary::Maybe,
                                 )
                             ),
                         )
@@ -423,6 +429,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         thir::InlineAsmOperand::Const { value, span } => {
                             mir::InlineAsmOperand::Const {
+                                value: Box::new(Constant { span, user_ty: None, literal: value }),
+                            }
+                        }
+                        thir::InlineAsmOperand::SymFn { value, span } => {
+                            mir::InlineAsmOperand::SymFn {
                                 value: Box::new(Constant {
                                     span,
                                     user_ty: None,
@@ -430,9 +441,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }),
                             }
                         }
-                        thir::InlineAsmOperand::SymFn { expr } => mir::InlineAsmOperand::SymFn {
-                            value: Box::new(this.as_constant(&this.thir[expr])),
-                        },
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
@@ -509,8 +517,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value =
-                    unpack!(block = this.as_operand(block, Some(scope), &this.thir[value], None));
+                let value = unpack!(
+                    block = this.as_operand(
+                        block,
+                        Some(scope),
+                        &this.thir[value],
+                        None,
+                        NeedsTemporary::No
+                    )
+                );
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,

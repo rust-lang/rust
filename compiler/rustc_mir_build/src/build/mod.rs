@@ -41,7 +41,7 @@ crate fn mir_built<'tcx>(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let body_owner_kind = tcx.hir().body_owner_kind(def.did);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
@@ -350,6 +350,7 @@ struct Builder<'a, 'tcx> {
 
     def_id: DefId,
     hir_id: hir::HirId,
+    parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
@@ -546,6 +547,18 @@ struct CFG<'tcx> {
 
 rustc_index::newtype_index! {
     struct ScopeId { .. }
+}
+
+#[derive(Debug)]
+enum NeedsTemporary {
+    /// Use this variant when whatever you are converting with `as_operand`
+    /// is the last thing you are converting. This means that if we introduced
+    /// an intermediate temporary, we'd only read it immediately after, so we can
+    /// also avoid it.
+    No,
+    /// For all cases where you aren't sure or that are too expensive to compute
+    /// for now. It is always safe to fall back to this.
+    Maybe,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -802,20 +815,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(hir_id),
+            tcx.hir().body_owner_kind(def.did),
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
         );
 
         let lint_level = LintLevel::Explicit(hir_id);
+        let param_env = tcx.param_env(def.did);
         let mut builder = Builder {
             thir,
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
             region_scope_tree: tcx.region_scope_tree(def.did),
-            param_env: tcx.param_env(def.did),
+            param_env,
             def_id: def.did.to_def_id(),
             hir_id,
+            parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,

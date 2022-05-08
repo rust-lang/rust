@@ -154,7 +154,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name, id, m.inner);
+        let mut om = Module::new(name, id, m.spans.inner_span);
         let def_id = self.cx.tcx.hir().local_def_id(id).to_def_id();
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;

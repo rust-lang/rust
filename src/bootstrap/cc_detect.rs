@@ -149,6 +149,10 @@ pub fn find(build: &mut Build) {
             build.verbose(&format!("AR_{} = {:?}", &target.triple, ar));
             build.ar.insert(target, ar);
         }
+
+        if let Some(ranlib) = config.and_then(|c| c.ranlib.clone()) {
+            build.ranlib.insert(target, ranlib);
+        }
     }
 }
 

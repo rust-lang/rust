@@ -1,4 +1,4 @@
-use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use crate::def_id::{LocalDefId, CRATE_DEF_ID};
 use std::fmt;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
@@ -12,7 +12,7 @@ use std::fmt;
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: LocalDefId,
@@ -76,16 +76,14 @@ rustc_index::newtype_index! {
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
+    #[derive(HashStable_Generic)]
     pub struct ItemLocalId { .. }
 }
-rustc_data_structures::impl_stable_hash_via_hash!(ItemLocalId);
+
 impl ItemLocalId {
     /// Signal local id which should never be used.
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
-pub const CRATE_HIR_ID: HirId = HirId {
-    owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
-    local_id: ItemLocalId::from_u32(0),
-};
+/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
+pub const CRATE_HIR_ID: HirId = HirId { owner: CRATE_DEF_ID, local_id: ItemLocalId::from_u32(0) };

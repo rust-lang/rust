@@ -1,18 +1,18 @@
 use crate::cell::UnsafeCell;
 use crate::sys::c;
 
-pub struct RWLock {
+pub struct RwLock {
     inner: UnsafeCell<c::SRWLOCK>,
 }
 
-pub type MovableRWLock = RWLock;
+pub type MovableRwLock = RwLock;
 
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {}
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {}
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock { inner: UnsafeCell::new(c::SRWLOCK_INIT) }
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock { inner: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
     #[inline]
     pub unsafe fn read(&self) {

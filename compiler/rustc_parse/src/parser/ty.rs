@@ -3,7 +3,7 @@ use super::{Parser, PathStyle, TokenType};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::{
     self as ast, BareFnTy, FnRetTy, GenericBound, GenericBounds, GenericParam, Generics, Lifetime,
     MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
@@ -52,7 +52,7 @@ pub(super) enum RecoverQuestionMark {
 /// Signals whether parsing a type should recover `->`.
 ///
 /// More specifically, when parsing a function like:
-/// ```rust
+/// ```compile_fail
 /// fn foo() => u8 { 0 }
 /// fn bar(): u8 { 0 }
 /// ```
@@ -249,14 +249,14 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
-        let kind = if self.check(&token::OpenDelim(token::Paren)) {
+        let kind = if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
         } else if self.eat(&token::Not) {
             // Never type `!`
             TyKind::Never
         } else if self.eat(&token::BinOp(token::Star)) {
             self.parse_ty_ptr()?
-        } else if self.eat(&token::OpenDelim(token::Bracket)) {
+        } else if self.eat(&token::OpenDelim(Delimiter::Bracket)) {
             self.parse_array_or_slice_ty()?
         } else if self.check(&token::BinOp(token::And)) || self.check(&token::AndAnd) {
             // Reference
@@ -409,7 +409,7 @@ impl<'a> Parser<'a> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
             Err(mut err)
-                if self.look_ahead(1, |t| t.kind == token::CloseDelim(token::Bracket))
+                if self.look_ahead(1, |t| t.kind == token::CloseDelim(Delimiter::Bracket))
                     | self.look_ahead(1, |t| t.kind == token::Semi) =>
             {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
@@ -422,14 +422,14 @@ impl<'a> Parser<'a> {
 
         let ty = if self.eat(&token::Semi) {
             let mut length = self.parse_anon_const_expr()?;
-            if let Err(e) = self.expect(&token::CloseDelim(token::Bracket)) {
+            if let Err(e) = self.expect(&token::CloseDelim(Delimiter::Bracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
-                self.expect(&token::CloseDelim(token::Bracket))?;
+                self.expect(&token::CloseDelim(Delimiter::Bracket))?;
             }
             TyKind::Array(elt_ty, length)
         } else {
-            self.expect(&token::CloseDelim(token::Bracket))?;
+            self.expect(&token::CloseDelim(Delimiter::Bracket))?;
             TyKind::Slice(elt_ty)
         };
 
@@ -492,19 +492,19 @@ impl<'a> Parser<'a> {
     // Parses the `typeof(EXPR)`.
     // To avoid ambiguity, the type is surrounded by parentheses.
     fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
-        self.expect(&token::OpenDelim(token::Paren))?;
+        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
         let expr = self.parse_anon_const_expr()?;
-        self.expect(&token::CloseDelim(token::Paren))?;
+        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
         Ok(TyKind::Typeof(expr))
     }
 
     /// Parses a function pointer type (`TyKind::BareFn`).
-    /// ```
-    /// [unsafe] [extern "ABI"] fn (S) -> T
-    ///  ^~~~~^          ^~~~^     ^~^    ^
-    ///    |               |        |     |
-    ///    |               |        |   Return type
-    /// Function Style    ABI  Parameter types
+    /// ```ignore (illustrative)
+    ///    [unsafe] [extern "ABI"] fn (S) -> T
+    /// //  ^~~~~^          ^~~~^     ^~^    ^
+    /// //    |               |        |     |
+    /// //    |               |        |   Return type
+    /// // Function Style    ABI  Parameter types
     /// ```
     /// We actually parse `FnHeader FnDecl`, but we error on `const` and `async` qualifiers.
     fn parse_ty_bare_fn(
@@ -523,6 +523,9 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
+            // If we ever start to allow `const fn()`, then update
+            // feature gating for `#![feature(const_extern_fn)]` to
+            // cover it.
             self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
         }
         if let ast::Async::Yes { span, .. } = asyncness {
@@ -669,7 +672,7 @@ impl<'a> Parser<'a> {
         || self.check(&token::Question)
         || self.check(&token::Tilde)
         || self.check_keyword(kw::For)
-        || self.check(&token::OpenDelim(token::Paren))
+        || self.check(&token::OpenDelim(Delimiter::Parenthesis))
     }
 
     fn error_negative_bounds(
@@ -704,13 +707,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a bound according to the grammar:
-    /// ```
+    /// ```ebnf
     /// BOUND = TY_BOUND | LT_BOUND
     /// ```
     fn parse_generic_bound(&mut self) -> PResult<'a, Result<GenericBound, Span>> {
         let anchor_lo = self.prev_token.span;
         let lo = self.token.span;
-        let has_parens = self.eat(&token::OpenDelim(token::Paren));
+        let has_parens = self.eat(&token::OpenDelim(Delimiter::Parenthesis));
         let inner_lo = self.token.span;
         let is_negative = self.eat(&token::Not);
 
@@ -726,7 +729,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
-    /// ```
+    /// ```ebnf
     /// LT_BOUND = LIFETIME
     /// ```
     fn parse_generic_lt_bound(
@@ -763,7 +766,7 @@ impl<'a> Parser<'a> {
     /// Recover on `('lifetime)` with `(` already eaten.
     fn recover_paren_lifetime(&mut self, lo: Span, inner_lo: Span) -> PResult<'a, ()> {
         let inner_span = inner_lo.to(self.prev_token.span);
-        self.expect(&token::CloseDelim(token::Paren))?;
+        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
         let mut err = self.struct_span_err(
             lo.to(self.prev_token.span),
             "parenthesized lifetime bounds are not supported",
@@ -784,7 +787,7 @@ impl<'a> Parser<'a> {
     ///
     /// If no modifiers are present, this does not consume any tokens.
     ///
-    /// ```
+    /// ```ebnf
     /// TY_BOUND_MODIFIERS = ["~const"] ["?"]
     /// ```
     fn parse_ty_bound_modifiers(&mut self) -> PResult<'a, BoundModifiers> {
@@ -804,7 +807,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a type bound according to:
-    /// ```
+    /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     /// TY_BOUND_NOPAREN = [TY_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
     /// ```
@@ -826,7 +829,7 @@ impl<'a> Parser<'a> {
                 // suggestion is given.
                 let bounds = vec![];
                 self.parse_remaining_bounds(bounds, true)?;
-                self.expect(&token::CloseDelim(token::Paren))?;
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
                 let sp = vec![lo, self.prev_token.span];
                 let sugg: Vec<_> = sp.iter().map(|sp| (*sp, String::new())).collect();
                 self.struct_span_err(sp, "incorrect braces around trait bounds")
@@ -837,7 +840,7 @@ impl<'a> Parser<'a> {
                     )
                     .emit();
             } else {
-                self.expect(&token::CloseDelim(token::Paren))?;
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
         }
 

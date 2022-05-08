@@ -6,7 +6,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor}
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::intern::Interned;
+use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -85,7 +85,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const ty::TyS<'tcx> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -154,7 +154,7 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::TyS<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
@@ -687,17 +687,17 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     ///
     /// ```
     /// type Func<A> = fn(A);
-    /// type MetaFunc = for<'a> fn(Func<&'a i32>)
+    /// type MetaFunc = for<'a> fn(Func<&'a i32>);
     /// ```
     ///
     /// The type `MetaFunc`, when fully expanded, will be
-    ///
-    ///     for<'a> fn(fn(&'a i32))
-    ///             ^~ ^~ ^~~
-    ///             |  |  |
-    ///             |  |  DebruijnIndex of 2
-    ///             Binders
-    ///
+    /// ```ignore (illustrative)
+    /// for<'a> fn(fn(&'a i32))
+    /// //      ^~ ^~ ^~~
+    /// //      |  |  |
+    /// //      |  |  DebruijnIndex of 2
+    /// //      Binders
+    /// ```
     /// Here the `'a` lifetime is bound in the outer function, but appears as an argument of the
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
     /// over the inner binder (remember that we count De Bruijn indices from 1). However, in the
@@ -709,17 +709,17 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     ///
     /// ```
     /// type FuncTuple<A> = (A,fn(A));
-    /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a i32>)
+    /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a i32>);
     /// ```
     ///
     /// Here the final type will be:
-    ///
-    ///     for<'a> fn((&'a i32, fn(&'a i32)))
-    ///                 ^~~         ^~~
-    ///                 |           |
-    ///          DebruijnIndex of 1 |
-    ///                      DebruijnIndex of 2
-    ///
+    /// ```ignore (illustrative)
+    /// for<'a> fn((&'a i32, fn(&'a i32)))
+    /// //          ^~~         ^~~
+    /// //          |           |
+    /// //   DebruijnIndex of 1 |
+    /// //               DebruijnIndex of 2
+    /// ```
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
@@ -767,7 +767,7 @@ pub struct UserSubsts<'tcx> {
 /// sometimes needed to constrain the type parameters on the impl. For
 /// example, in this code:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// struct Foo<T> { }
 /// impl<A> Foo<A> { fn method() { } }
 /// ```

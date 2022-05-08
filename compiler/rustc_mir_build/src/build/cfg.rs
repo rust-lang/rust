@@ -73,7 +73,7 @@ impl<'tcx> CFG<'tcx> {
             Rvalue::Use(Operand::Constant(Box::new(Constant {
                 span: source_info.span,
                 user_ty: None,
-                literal: ConstantKind::from_zero_sized(tcx.types.unit),
+                literal: ConstantKind::zero_sized(tcx.types.unit),
             }))),
         );
     }

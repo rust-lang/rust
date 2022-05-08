@@ -70,7 +70,11 @@ def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error
     try:
         if do_verify:
             if url not in checksums:
-                raise RuntimeError("src/stage0.json doesn't contain a checksum for {}".format(url))
+                raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
+                                    "Pre-built artifacts might not available for this "
+                                    "target at this time, see https://doc.rust-lang.org/nightly"
+                                    "/rustc/platform-support.html for more information.")
+                                   .format(url))
             sha256 = checksums[url]
             if os.path.exists(path):
                 if verify(path, sha256, False):
@@ -122,6 +126,7 @@ def _download(path, url, probably_big, verbose, exception, help_on_error=None):
             option = "-s"
         require(["curl", "--version"])
         run(["curl", option,
+             "-L", # Follow redirect.
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
@@ -495,81 +500,6 @@ class RustBuild(object):
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
                     rustfmt_stamp.write(self.stage0_rustfmt.channel())
 
-        # Avoid downloading LLVM twice (once for stage0 and once for the master rustc)
-        if self.downloading_llvm() and stage0:
-            # We want the most recent LLVM submodule update to avoid downloading
-            # LLVM more often than necessary.
-            #
-            # This git command finds that commit SHA, looking for bors-authored
-            # commits that modified src/llvm-project or other relevant version
-            # stamp files.
-            #
-            # This works even in a repository that has not yet initialized
-            # submodules.
-            top_level = subprocess.check_output([
-                "git", "rev-parse", "--show-toplevel",
-            ]).decode(sys.getdefaultencoding()).strip()
-            llvm_sha = subprocess.check_output([
-                "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-                "--first-parent", "HEAD",
-                "--",
-                "{}/src/llvm-project".format(top_level),
-                "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
-                # the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-                "{}/src/version".format(top_level)
-            ]).decode(sys.getdefaultencoding()).strip()
-            llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
-            llvm_root = self.llvm_root()
-            llvm_lib = os.path.join(llvm_root, "lib")
-            if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
-                self._download_ci_llvm(llvm_sha, llvm_assertions)
-                for binary in ["llvm-config", "FileCheck"]:
-                    self.fix_bin_or_dylib(os.path.join(llvm_root, "bin", binary))
-                for lib in os.listdir(llvm_lib):
-                    if lib.endswith(".so"):
-                        self.fix_bin_or_dylib(os.path.join(llvm_lib, lib))
-                with output(self.llvm_stamp()) as llvm_stamp:
-                    llvm_stamp.write(llvm_sha + str(llvm_assertions))
-
-    def downloading_llvm(self):
-        opt = self.get_toml('download-ci-llvm', 'llvm')
-        # This is currently all tier 1 targets and tier 2 targets with host tools
-        # (since others may not have CI artifacts)
-        # https://doc.rust-lang.org/rustc/platform-support.html#tier-1
-        supported_platforms = [
-            # tier 1
-            "aarch64-unknown-linux-gnu",
-            "i686-pc-windows-gnu",
-            "i686-pc-windows-msvc",
-            "i686-unknown-linux-gnu",
-            "x86_64-unknown-linux-gnu",
-            "x86_64-apple-darwin",
-            "x86_64-pc-windows-gnu",
-            "x86_64-pc-windows-msvc",
-            # tier 2 with host tools
-            "aarch64-apple-darwin",
-            "aarch64-pc-windows-msvc",
-            "aarch64-unknown-linux-musl",
-            "arm-unknown-linux-gnueabi",
-            "arm-unknown-linux-gnueabihf",
-            "armv7-unknown-linux-gnueabihf",
-            "mips-unknown-linux-gnu",
-            "mips64-unknown-linux-gnuabi64",
-            "mips64el-unknown-linux-gnuabi64",
-            "mipsel-unknown-linux-gnu",
-            "powerpc-unknown-linux-gnu",
-            "powerpc64-unknown-linux-gnu",
-            "powerpc64le-unknown-linux-gnu",
-            "riscv64gc-unknown-linux-gnu",
-            "s390x-unknown-linux-gnu",
-            "x86_64-unknown-freebsd",
-            "x86_64-unknown-illumos",
-            "x86_64-unknown-linux-musl",
-            "x86_64-unknown-netbsd",
-        ]
-        return opt == "true" \
-            or (opt == "if-available" and self.build in supported_platforms)
-
     def _download_component_helper(
         self, filename, pattern, tarball_suffix, stage0=True, key=None
     ):
@@ -601,53 +531,6 @@ class RustBuild(object):
             )
         unpack(tarball, tarball_suffix, self.bin_root(stage0), match=pattern, verbose=self.verbose)
 
-    def _download_ci_llvm(self, llvm_sha, llvm_assertions):
-        if not llvm_sha:
-            print("error: could not find commit hash for downloading LLVM")
-            print("help: maybe your repository history is too shallow?")
-            print("help: consider disabling `download-ci-llvm`")
-            print("help: or fetch enough history to include one upstream commit")
-            exit(1)
-        cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
-        cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, cache_prefix)
-        if not os.path.exists(rustc_cache):
-            os.makedirs(rustc_cache)
-
-        base = "https://ci-artifacts.rust-lang.org"
-        url = "rustc-builds/{}".format(llvm_sha)
-        if llvm_assertions:
-            url = url.replace('rustc-builds', 'rustc-builds-alt')
-        # ci-artifacts are only stored as .xz, not .gz
-        if not support_xz():
-            print("error: XZ support is required to download LLVM")
-            print("help: consider disabling `download-ci-llvm` or using python3")
-            exit(1)
-        tarball_suffix = '.tar.xz'
-        filename = "rust-dev-nightly-" + self.build + tarball_suffix
-        tarball = os.path.join(rustc_cache, filename)
-        if not os.path.exists(tarball):
-            help_on_error = "error: failed to download llvm from ci"
-            help_on_error += "\nhelp: old builds get deleted after a certain time"
-            help_on_error += "\nhelp: if trying to compile an old commit of rustc,"
-            help_on_error += " disable `download-ci-llvm` in config.toml:"
-            help_on_error += "\n"
-            help_on_error += "\n[llvm]"
-            help_on_error += "\ndownload-ci-llvm = false"
-            help_on_error += "\n"
-            get(
-                base,
-                "{}/{}".format(url, filename),
-                tarball,
-                self.checksums_sha256,
-                verbose=self.verbose,
-                do_verify=False,
-                help_on_error=help_on_error,
-            )
-        unpack(tarball, tarball_suffix, self.llvm_root(),
-                match="rust-dev",
-                verbose=self.verbose)
-
     def fix_bin_or_dylib(self, fname):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
         or the RPATH section, to fix the dynamic library search path
@@ -678,7 +561,7 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(line.strip() == "ID=nixos" for line in f):
+                    if not any(l.strip() in ["ID=nixos", "ID='nixos'", 'ID="nixos"'] for l in f):
                         return
             except FileNotFoundError:
                 return
@@ -811,17 +694,6 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(True), '.rustfmt-stamp')
 
-    def llvm_stamp(self):
-        """Return the path for .rustfmt-stamp
-
-        >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.llvm_stamp() == os.path.join("build", "ci-llvm", ".llvm-stamp")
-        True
-        """
-        return os.path.join(self.llvm_root(), '.llvm-stamp')
-
-
     def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
@@ -850,22 +722,6 @@ class RustBuild(object):
         else:
             subdir = "ci-rustc"
         return os.path.join(self.build_dir, self.build, subdir)
-
-    def llvm_root(self):
-        """Return the CI LLVM root directory
-
-        >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.llvm_root() == os.path.join("build", "ci-llvm")
-        True
-
-        When the 'build' property is given should be a nested directory:
-
-        >>> rb.build = "devel"
-        >>> rb.llvm_root() == os.path.join("build", "devel", "ci-llvm")
-        True
-        """
-        return os.path.join(self.build_dir, self.build, "ci-llvm")
 
     def get_toml(self, key, section=None):
         """Returns the value of the given key in config.toml, otherwise returns None
@@ -1097,8 +953,19 @@ class RustBuild(object):
 
     def update_submodules(self):
         """Update submodules"""
-        if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
-                self.get_toml('submodules') == "false":
+        has_git = os.path.exists(os.path.join(self.rust_root, ".git"))
+        # This just arbitrarily checks for cargo, but any workspace member in
+        # a submodule would work.
+        has_submodules = os.path.exists(os.path.join(self.rust_root, "src/tools/cargo/Cargo.toml"))
+        if not has_git and not has_submodules:
+            print("This is not a git repository, and the requisite git submodules were not found.")
+            print("If you downloaded the source from https://github.com/rust-lang/rust/releases,")
+            print("those sources will not work. Instead, consider downloading from the source")
+            print("releases linked at")
+            print("https://forge.rust-lang.org/infra/other-installation-methods.html#source-code")
+            print("or clone the repository at https://github.com/rust-lang/rust/.")
+            raise SystemExit(1)
+        if not has_git or self.get_toml('submodules') == "false":
             return
 
         default_encoding = sys.getdefaultencoding()
@@ -1161,9 +1028,9 @@ class RustBuild(object):
         """Check that vendoring is configured properly"""
         vendor_dir = os.path.join(self.rust_root, 'vendor')
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
-            if os.environ.get('USER') != os.environ['SUDO_USER']:
+            if os.getuid() == 0:
                 self.use_vendored_sources = True
-                print('info: looks like you are running this command under `sudo`')
+                print('info: looks like you\'re trying to run this command as root')
                 print('      and so in order to preserve your $HOME this will now')
                 print('      use vendored sources by default.')
                 if not os.path.exists(vendor_dir):

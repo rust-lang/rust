@@ -6,6 +6,7 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/Mangler.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
@@ -1216,6 +1217,11 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMBFloatTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
+#if LLVM_VERSION_GE(15, 0)
+  case Type::DXILPointerTyID:
+    report_fatal_error("Rust does not support DirectX typed pointers.");
+    break;
+#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
@@ -1834,4 +1840,10 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
       DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses, Passes));
+}
+
+extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
+  RawRustStringOstream OS(Str);
+  GlobalValue *GV = unwrap<GlobalValue>(V);
+  Mangler().getNameWithPrefix(OS, GV, true);
 }

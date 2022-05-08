@@ -112,7 +112,7 @@ fn do_count_chars(s: &str) -> usize {
 // true)
 #[inline]
 fn contains_non_continuation_byte(w: usize) -> usize {
-    const LSB: usize = 0x0101_0101_0101_0101u64 as usize;
+    const LSB: usize = usize::repeat_u8(0x01);
     ((!w >> 7) | (w >> 6)) & LSB
 }
 
@@ -120,8 +120,8 @@ fn contains_non_continuation_byte(w: usize) -> usize {
 // more efficient.
 #[inline]
 fn sum_bytes_in_usize(values: usize) -> usize {
-    const LSB_SHORTS: usize = 0x0001_0001_0001_0001_u64 as usize;
-    const SKIP_BYTES: usize = 0x00ff_00ff_00ff_00ff_u64 as usize;
+    const LSB_SHORTS: usize = usize::repeat_u16(0x0001);
+    const SKIP_BYTES: usize = usize::repeat_u16(0x00ff);
 
     let pair_sum: usize = (values & SKIP_BYTES) + ((values >> 8) & SKIP_BYTES);
     pair_sum.wrapping_mul(LSB_SHORTS) >> ((USIZE_SIZE - 2) * 8)

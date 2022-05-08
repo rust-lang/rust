@@ -103,21 +103,11 @@ impl !PartialOrd for LocalExpnId {}
 /// of `HashingControls` settings.
 fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
     match ctx.hashing_controls() {
-        // Ideally, we would also check that `node_id_hashing_mode` was always
-        // `NodeIdHashingMode::HashDefPath`. However, we currently end up hashing
-        // `Span`s in this mode, and there's not an easy way to change that.
-        // All of the span-related data that we hash is pretty self-contained
-        // (in particular, we don't hash any `HirId`s), so this shouldn't result
-        // in any caching problems.
-        // FIXME: Enforce that we don't end up transitively hashing any `HirId`s,
-        // or ensure that this method is always invoked with the same
-        // `NodeIdHashingMode`
-        //
         // Note that we require that `hash_spans` be set according to the global
         // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
         // which will cause us to require that this method always be called with `Span` hashing
         // enabled.
-        HashingControls { hash_spans, node_id_hashing_mode: _ }
+        HashingControls { hash_spans }
             if hash_spans == !ctx.debug_opts_incremental_ignore_spans() => {}
         other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
     }
@@ -696,7 +686,7 @@ impl SyntaxContext {
     /// context up one macro definition level. That is, if we have a nested macro
     /// definition as follows:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// macro_rules! f {
     ///    macro_rules! g {
     ///        ...
@@ -720,6 +710,7 @@ impl SyntaxContext {
     /// For example, consider the following three resolutions of `f`:
     ///
     /// ```rust
+    /// #![feature(decl_macro)]
     /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
     /// m!(f);
     /// macro m($f:ident) {
@@ -756,7 +747,8 @@ impl SyntaxContext {
     /// via a glob import with the given `SyntaxContext`.
     /// For example:
     ///
-    /// ```rust
+    /// ```compile_fail,E0425
+    /// #![feature(decl_macro)]
     /// m!(f);
     /// macro m($i:ident) {
     ///     mod foo {
@@ -796,7 +788,7 @@ impl SyntaxContext {
 
     /// Undo `glob_adjust` if possible:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// if let Some(privacy_checking_scope) = self.reverse_glob_adjust(expansion, glob_ctxt) {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
@@ -1142,6 +1134,7 @@ pub enum DesugaringKind {
     CondTemporary,
     QuestionMark,
     TryBlock,
+    YeetExpr,
     /// Desugaring of an `impl Trait` in return type position
     /// to an `type Foo = impl Trait;` and replacing the
     /// `impl Trait` with `Foo`.
@@ -1162,6 +1155,7 @@ impl DesugaringKind {
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
+            DesugaringKind::YeetExpr => "`do yeet` expression",
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::LetElse => "`let...else`",
@@ -1177,7 +1171,7 @@ pub struct HygieneEncodeContext {
     /// that we don't accidentally try to encode any more `SyntaxContexts`
     serialized_ctxts: Lock<FxHashSet<SyntaxContext>>,
     /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
-    /// in the most recent 'round' of serializnig. Serializing `SyntaxContextData`
+    /// in the most recent 'round' of serializing. Serializing `SyntaxContextData`
     /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
     /// until we reach a fixed point.
     latest_ctxts: Lock<FxHashSet<SyntaxContext>>,

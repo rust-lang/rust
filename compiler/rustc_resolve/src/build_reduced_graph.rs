@@ -23,7 +23,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::bug;
 use rustc_middle::metadata::ModChild;
@@ -140,8 +140,8 @@ impl<'a> Resolver<'a> {
                     let parent = def_key.parent.map(|index| {
                         self.get_nearest_non_block_module(DefId { index, krate: def_id.krate })
                     });
-                    let name = if def_id.index == CRATE_DEF_INDEX {
-                        self.cstore().crate_name(def_id.krate)
+                    let name = if let Some(cnum) = def_id.as_crate_root() {
+                        self.cstore().crate_name(cnum)
                     } else {
                         def_key.disambiguated_data.data.get_opt_name().expect("module without name")
                     };
@@ -250,7 +250,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         match vis.kind {
             ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
             ast::VisibilityKind::Crate(..) => {
-                Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
+                Ok(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id()))
             }
             ast::VisibilityKind::Inherited => {
                 Ok(match self.parent_scope.module.kind {
@@ -265,6 +265,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
+                // Make `PRIVATE_IN_PUBLIC` lint a hard error.
+                self.r.has_pub_restricted = true;
                 // For visibilities we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
                 // On 2015 edition visibilities are resolved as crate-relative by default,
@@ -296,7 +298,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    if finalize { Finalize::SimplePath(id, path.span) } else { Finalize::No },
+                    finalize.then(|| Finalize::new(id, path.span)),
+                    None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -457,6 +460,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
+                if id1 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id1), vis);
+                }
+                if id2 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id2), vis);
+                }
+
                 if nested {
                     // Correctly handle `self`
                     if source.ident.name == kw::SelfLower {
@@ -520,11 +531,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != kw::Empty {
                             // `crate_name` should not be interpreted as relative.
-                            module_path.push(Segment {
-                                ident: Ident { name: kw::PathRoot, span: source.ident.span },
-                                id: Some(self.r.next_node_id()),
-                                has_generic_args: false,
-                            });
+                            module_path.push(Segment::from_ident_and_id(
+                                Ident { name: kw::PathRoot, span: source.ident.span },
+                                self.r.next_node_id(),
+                            ));
                             source.ident.name = crate_name;
                         }
                         if rename.is_none() {
@@ -580,6 +590,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -701,8 +712,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(..) => {
-                let res = Res::Def(DefKind::Static, def_id);
+            ItemKind::Static(_, mt, _) => {
+                let res = Res::Def(DefKind::Static(mt), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -758,7 +769,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let mut ctor_vis = if vis == ty::Visibility::Public
                         && self.r.session.contains_name(&item.attrs, sym::non_exhaustive)
                     {
-                        ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+                        ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
                     } else {
                         vis
                     };
@@ -840,7 +851,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 .span_suggestion(
                     item.span,
                     "rename the `self` crate to be able to import it",
-                    "extern crate self as name;".into(),
+                    "extern crate self as name;",
                     Applicability::HasPlaceholders,
                 )
                 .emit();
@@ -907,7 +918,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let def_id = local_def_id.to_def_id();
         let (def_kind, ns) = match item.kind {
             ForeignItemKind::Fn(..) => (DefKind::Fn, ValueNS),
-            ForeignItemKind::Static(..) => (DefKind::Static, ValueNS),
+            ForeignItemKind::Static(_, mt, _) => (DefKind::Static(mt), ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(_) => unreachable!(),
         };
@@ -963,7 +974,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Static
+                | DefKind::Static(_)
                 | DefKind::Const
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
@@ -1107,7 +1118,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
+                vis: Cell::new(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())),
                 used: Cell::new(false),
             })
         };
@@ -1124,12 +1135,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.resolve_ident_in_module(
+                let result = self.r.maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
                     &self.parent_scope,
-                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span);
@@ -1244,11 +1254,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
-                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+                ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
-            self.r.all_macros.insert(ident.name, res);
+            self.r.all_macro_rules.insert(ident.name, res);
             if is_macro_export {
                 let module = self.r.graph_root;
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
@@ -1257,13 +1267,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.visibilities.insert(def_id, vis);
-            self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
+            let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
                 self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
                     parent_macro_rules_scope: parent_scope.macro_rules,
                     binding,
                     ident,
                 }),
-            ))
+            ));
+            self.r.macro_rules_scopes.insert(def_id, scope);
+            scope
         } else {
             let module = parent_scope.module;
             let vis = match item.kind {
@@ -1378,7 +1390,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             && self
                 .r
                 .trait_impl_items
-                .contains(&ty::DefIdTree::parent(&*self.r, def_id).unwrap().expect_local()))
+                .contains(&ty::DefIdTree::local_parent(&*self.r, local_def_id)))
         {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,
@@ -1490,7 +1502,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let ctor_vis = if vis == ty::Visibility::Public
             && self.r.session.contains_name(&variant.attrs, sym::non_exhaustive)
         {
-            ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
         } else {
             vis
         };

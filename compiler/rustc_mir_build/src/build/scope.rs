@@ -567,7 +567,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
             // Use `maybe_lint_level_root_bounded` with `root_lint_level` as a bound
-            // to avoid adding Hir dependences on our parents.
+            // to avoid adding Hir dependencies on our parents.
             // We estimate the true lint roots here to avoid creating a lot of source scopes.
 
             let parent_root = tcx.maybe_lint_level_root_bounded(
@@ -803,16 +803,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope (which can be larger or smaller).
     ///
     /// Consider:
-    ///
-    ///     let x = foo(bar(X, Y));
-    ///
+    /// ```ignore (illustrative)
+    /// let x = foo(bar(X, Y));
+    /// ```
     /// We wish to pop the storage for X and Y after `bar()` is
     /// called, not after the whole `let` is completed.
     ///
     /// As another example, if the second argument diverges:
-    ///
-    ///     foo(Box::new(2), panic!())
-    ///
+    /// ```ignore (illustrative)
+    /// foo(Box::new(2), panic!())
+    /// ```
     /// We would allocate the box but then free it on the unwinding
     /// path; we would also emit a free on the 'success' path from
     /// panic, but that will turn out to be removed as dead-code.
@@ -944,7 +944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Example: when compiling the call to `foo` here:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// foo(bar(), ...)
     /// ```
     ///
@@ -955,7 +955,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// dropped). However, if no unwind occurs, then `_X` will be
     /// unconditionally consumed by the `call`:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// bb {
     ///   ...
     ///   _R = CALL(foo, _X, ...)
@@ -965,7 +965,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// However, `_X` is still registered to be dropped, and so if we
     /// do nothing else, we would generate a `DROP(_X)` that occurs
     /// after the call. This will later be optimized out by the
-    /// drop-elaboation code, but in the meantime it can lead to
+    /// drop-elaboration code, but in the meantime it can lead to
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.

@@ -59,7 +59,7 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Projection(..) | ty::Opaque(..) if !self.include_nonconstraining => {
+            ty::Projection(..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return ControlFlow::CONTINUE;
             }
@@ -109,9 +109,9 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// constrained before it is used, if that is possible, and add the
 /// parameters so constrained to `input_parameters`. For example,
 /// imagine the following impl:
-///
-///     impl<T: Debug, U: Iterator<Item = T>> Trait for U
-///
+/// ```ignore (illustrative)
+/// impl<T: Debug, U: Iterator<Item = T>> Trait for U
+/// ```
 /// The impl's predicates are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
 ///   * T: Debug

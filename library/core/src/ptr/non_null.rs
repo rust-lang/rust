@@ -4,6 +4,7 @@ use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
+use crate::num::NonZeroUsize;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
@@ -90,7 +91,7 @@ impl<T: Sized> NonNull<T> {
         // to a *mut T. Therefore, `ptr` is not null and the conditions for
         // calling new_unchecked() are respected.
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
+            let ptr = crate::ptr::invalid_mut::<T>(mem::align_of::<T>());
             NonNull::new_unchecked(ptr)
         }
     }
@@ -113,7 +114,7 @@ impl<T: Sized> NonNull<T> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -147,7 +148,7 @@ impl<T: Sized> NonNull<T> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -253,6 +254,57 @@ impl<T: ?Sized> NonNull<T> {
         (self.cast(), super::metadata(self.as_ptr()))
     }
 
+    /// Gets the "address" portion of the pointer.
+    ///
+    /// For more details see the equivalent method on a raw pointer, [`pointer::addr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [`ptr` module documentation][crate::ptr].
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn addr(self) -> NonZeroUsize
+    where
+        T: Sized,
+    {
+        // SAFETY: The pointer is guaranteed by the type to be non-null,
+        // meaning that the address will be non-zero.
+        unsafe { NonZeroUsize::new_unchecked(self.pointer.addr()) }
+    }
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// For more details see the equivalent method on a raw pointer, [`pointer::with_addr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [`ptr` module documentation][crate::ptr].
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn with_addr(self, addr: NonZeroUsize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
+        unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
+    }
+
+    /// Creates a new pointer by mapping `self`'s address to a new one.
+    ///
+    /// For more details see the equivalent method on a raw pointer, [`pointer::map_addr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [`ptr` module documentation][crate::ptr].
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn map_addr(self, f: impl FnOnce(NonZeroUsize) -> NonZeroUsize) -> Self
+    where
+        T: Sized,
+    {
+        self.with_addr(f(self.addr()))
+    }
+
     /// Acquires the underlying `*mut` pointer.
     ///
     /// # Examples
@@ -298,7 +350,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -348,7 +400,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
@@ -469,7 +521,7 @@ impl<T> NonNull<[T]> {
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
-    /// assert_eq!(slice.as_non_null_ptr(), NonNull::new(1 as *mut i8).unwrap());
+    /// assert_eq!(slice.as_non_null_ptr(), NonNull::<i8>::dangling());
     /// ```
     #[inline]
     #[must_use]
@@ -489,7 +541,7 @@ impl<T> NonNull<[T]> {
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
-    /// assert_eq!(slice.as_mut_ptr(), 1 as *mut i8);
+    /// assert_eq!(slice.as_mut_ptr(), NonNull::<i8>::dangling().as_ptr());
     /// ```
     #[inline]
     #[must_use]
@@ -528,7 +580,7 @@ impl<T> NonNull<[T]> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get mutated (except inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
@@ -574,7 +626,7 @@ impl<T> NonNull<[T]> {
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
     ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, for the duration of this lifetime, the memory the pointer points to must
+    ///   In particular, while this reference exists, the memory the pointer points to must
     ///   not get accessed (read or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!

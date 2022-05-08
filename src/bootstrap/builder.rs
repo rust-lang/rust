@@ -1,9 +1,9 @@
-use std::any::Any;
+use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
 use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -12,9 +12,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::check;
 use crate::compile;
-use crate::config::TargetSelection;
+use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
 use crate::flags::{Color, Subcommand};
@@ -25,6 +24,7 @@ use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
+use crate::{check, Config};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -125,7 +125,8 @@ impl TaskPath {
                     if found_kind.is_empty() {
                         panic!("empty kind in task path {}", path.display());
                     }
-                    kind = Some(Kind::parse(found_kind));
+                    kind = Kind::parse(found_kind);
+                    assert!(kind.is_some());
                     path = Path::new(found_prefix).join(components.as_path());
                 }
             }
@@ -231,10 +232,10 @@ impl StepDescription {
         }
 
         if !builder.config.exclude.is_empty() {
-            eprintln!(
+            builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
-            );
+            ));
         }
         false
     }
@@ -283,7 +284,19 @@ impl StepDescription {
             }
 
             if !attempted_run {
-                panic!("error: no rules matched {}", path.display());
+                eprintln!(
+                    "error: no `{}` rules matched '{}'",
+                    builder.kind.as_str(),
+                    path.display()
+                );
+                eprintln!(
+                    "help: run `x.py {} --help --verbose` to show a list of available paths",
+                    builder.kind.as_str()
+                );
+                eprintln!(
+                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                );
+                std::process::exit(1);
             }
         }
     }
@@ -364,6 +377,19 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    // single alias, which does not correspond to any on-disk path
+    pub fn alias(mut self, alias: &str) -> Self {
+        assert!(
+            !self.builder.src.join(alias).exists(),
+            "use `builder.path()` for real paths: {}",
+            alias
+        );
+        self.paths.insert(PathSet::Set(
+            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
+        ));
+        self
+    }
+
     // single, non-aliased path
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
@@ -372,7 +398,19 @@ impl<'a> ShouldRun<'a> {
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
         self.paths.insert(PathSet::Set(
-            paths.iter().map(|p| TaskPath { path: p.into(), kind: Some(self.kind) }).collect(),
+            paths
+                .iter()
+                .map(|p| {
+                    // FIXME(#96188): make sure this is actually a path.
+                    // This currently breaks for paths within submodules.
+                    //assert!(
+                    //    self.builder.src.join(p).exists(),
+                    //    "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
+                    //    p
+                    //);
+                    TaskPath { path: p.into(), kind: Some(self.kind) }
+                })
+                .collect(),
         ));
         self
     }
@@ -406,43 +444,53 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
+    Format,
     Test,
     Bench,
-    Dist,
     Doc,
+    Clean,
+    Dist,
     Install,
     Run,
+    Setup,
 }
 
 impl Kind {
-    fn parse(string: &str) -> Kind {
-        match string {
-            "build" => Kind::Build,
-            "check" => Kind::Check,
+    pub fn parse(string: &str) -> Option<Kind> {
+        // these strings, including the one-letter aliases, must match the x.py help text
+        Some(match string {
+            "build" | "b" => Kind::Build,
+            "check" | "c" => Kind::Check,
             "clippy" => Kind::Clippy,
             "fix" => Kind::Fix,
-            "test" => Kind::Test,
+            "fmt" => Kind::Format,
+            "test" | "t" => Kind::Test,
             "bench" => Kind::Bench,
+            "doc" | "d" => Kind::Doc,
+            "clean" => Kind::Clean,
             "dist" => Kind::Dist,
-            "doc" => Kind::Doc,
             "install" => Kind::Install,
-            "run" => Kind::Run,
-            other => panic!("unknown kind: {}", other),
-        }
+            "run" | "r" => Kind::Run,
+            "setup" => Kind::Setup,
+            _ => return None,
+        })
     }
 
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Kind::Build => "build",
             Kind::Check => "check",
             Kind::Clippy => "clippy",
             Kind::Fix => "fix",
+            Kind::Format => "fmt",
             Kind::Test => "test",
             Kind::Bench => "bench",
-            Kind::Dist => "dist",
             Kind::Doc => "doc",
+            Kind::Clean => "clean",
+            Kind::Dist => "dist",
             Kind::Install => "install",
             Kind::Run => "run",
+            Kind::Setup => "setup",
         }
     }
 }
@@ -486,7 +534,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
+            Kind::Check => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
@@ -578,7 +626,6 @@ impl<'a> Builder<'a> {
                 dist::RustcDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::DebuggerScripts,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -594,7 +641,7 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
-                // perceive their dependencies (see #93033) which would invaliate fingerprints
+                // perceive their dependencies (see #93033) which would invalidate fingerprints
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
@@ -616,32 +663,29 @@ impl<'a> Builder<'a> {
                 install::Rustc
             ),
             Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            // These commands either don't use paths, or they're special-cased in Build::build()
+            Kind::Clean | Kind::Clippy | Kind::Fix | Kind::Format | Kind::Setup => vec![],
         }
     }
 
-    pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
-        let kind = match subcommand {
-            "build" => Kind::Build,
-            "doc" => Kind::Doc,
-            "test" => Kind::Test,
-            "bench" => Kind::Bench,
-            "dist" => Kind::Dist,
-            "install" => Kind::Install,
-            _ => return None,
-        };
+    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
+        let step_descriptions = Builder::get_step_descriptions(kind);
+        if step_descriptions.is_empty() {
+            return None;
+        }
 
         let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
         // The "build" kind here is just a placeholder, it will be replaced with something else in
         // the following statement.
         let mut should_run = ShouldRun::new(builder, Kind::Build);
-        for desc in Builder::get_step_descriptions(builder.kind) {
+        for desc in step_descriptions {
             should_run.kind = desc.kind;
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
         let mut add_path = |path: &Path| {
-            help.push_str(&format!("    ./x.py {} {}\n", subcommand, path.display()));
+            t!(write!(help, "    ./x.py {} {}\n", kind.as_str(), path.display()));
         };
         for pathset in should_run.paths {
             match pathset {
@@ -835,6 +879,18 @@ impl<'a> Builder<'a> {
         }
     }
 
+    pub fn rustc_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
+        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
+
+        // Ensure that the downloaded LLVM libraries can be found.
+        if self.config.llvm_from_ci {
+            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
+            dylib_dirs.push(ci_llvm_lib);
+        }
+
+        dylib_dirs
+    }
+
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
     pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
@@ -845,15 +901,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
-
-        // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_from_ci {
-            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
-            dylib_dirs.push(ci_llvm_lib);
-        }
-
-        add_dylib_path(dylib_dirs, cmd);
+        add_dylib_path(self.rustc_lib_paths(compiler), cmd);
     }
 
     /// Gets a path to the compiler specified.
@@ -921,6 +969,11 @@ impl<'a> Builder<'a> {
             }
         }
         None
+    }
+
+    /// Convenience wrapper to allow `builder.llvm_link_shared()` instead of `builder.config.llvm_link_shared(&builder)`.
+    pub(crate) fn llvm_link_shared(&self) -> bool {
+        Config::llvm_link_shared(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.
@@ -1090,13 +1143,22 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // #[cfg(not(bootstrap)]
+        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
+        // is made to work with `--check-cfg` which is currently not easly possible until cargo
+        // get some support for setting `--check-cfg` within build script, it's the least invasive
+        // hack that still let's us have cfg checking for the vast majority of the codebase.
         if stage != 0 {
-            // Enable cfg checking of cargo features
-            // FIXME: De-comment this when cargo beta get support for it
-            // cargo.arg("-Zcheck-cfg-features");
+            // Enable cfg checking of cargo features for everything but std.
+            //
+            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+            // backtrace, core_simd, std_float, ...), those dependencies have their own features
+            // but cargo isn't involved in the #[path] and so cannot pass the complete list of
+            // features, so for that reason we don't enable checking of features for std.
+            if mode != Mode::Std {
+                cargo.arg("-Zcheck-cfg-features");
+            }
 
-            // Enable cfg checking of rustc well-known names
+            // Enable cfg checking of well known names/values
             rustflags
                 .arg("-Zunstable-options")
                 // Enable checking of well known names
@@ -1361,17 +1423,22 @@ impl<'a> Builder<'a> {
             },
         );
 
-        // `dsymutil` adds time to builds on Apple platforms for no clear benefit, and also makes
-        // it more difficult for debuggers to find debug info. The compiler currently defaults to
-        // running `dsymutil` to preserve its historical default, but when compiling the compiler
-        // itself, we skip it by default since we know it's safe to do so in that case.
-        // See https://github.com/rust-lang/rust/issues/79361 for more info on this flag.
-        if target.contains("apple") {
-            if self.config.rust_run_dsymutil {
-                rustflags.arg("-Csplit-debuginfo=packed");
-            } else {
-                rustflags.arg("-Csplit-debuginfo=unpacked");
+        // FIXME(davidtwco): #[cfg(not(bootstrap))] - #95612 needs to be in the bootstrap compiler
+        // for this conditional to be removed.
+        if !target.contains("windows") || compiler.stage >= 1 {
+            let needs_unstable_opts = target.contains("linux")
+                || target.contains("windows")
+                || target.contains("bsd")
+                || target.contains("dragonfly");
+
+            if needs_unstable_opts {
+                rustflags.arg("-Zunstable-options");
             }
+            match self.config.rust_split_debuginfo {
+                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+            };
         }
 
         if self.config.cmd.bless() {
@@ -1726,7 +1793,16 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && !self.config.dry_run {
-            println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
+            let step_string = format!("{:?}", step);
+            let brace_index = step_string.find("{").unwrap_or(0);
+            let type_string = type_name::<S>();
+            println!(
+                "[TIMING] {} {} -- {}.{:03}",
+                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
+                &step_string[brace_index..],
+                dur.as_secs(),
+                dur.subsec_millis()
+            );
         }
 
         {

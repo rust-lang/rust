@@ -136,6 +136,10 @@ pub trait Printer<'tcx>: Sized {
                     match key.disambiguated_data.data {
                         // Closures' own generics are only captures, don't print them.
                         DefPathData::ClosureExpr => {}
+                        // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
+                        // Anon consts doesn't have their own generics, and inline consts' own
+                        // generics are their inferred types, so don't print them.
+                        DefPathData::AnonConst => {}
 
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.
@@ -235,11 +239,11 @@ pub trait Printer<'tcx>: Sized {
         // as the trait.
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
-            Some(ty_def_id) => self.tcx().parent(ty_def_id) == Some(parent_def_id),
+            Some(ty_def_id) => self.tcx().parent(ty_def_id) == parent_def_id,
         };
         let in_trait_mod = match impl_trait_ref {
             None => false,
-            Some(trait_ref) => self.tcx().parent(trait_ref.def_id) == Some(parent_def_id),
+            Some(trait_ref) => self.tcx().parent(trait_ref.def_id) == parent_def_id,
         };
 
         if !in_self_mod && !in_trait_mod {

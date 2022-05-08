@@ -299,7 +299,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         let mut signed = false;
                         if let Abi::Scalar(scalar) = operand.layout.abi {
-                            if let Int(_, s) = scalar.value {
+                            if let Int(_, s) = scalar.primitive() {
                                 // We use `i1` for bytes that are always `0` or `1`,
                                 // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                                 // let LLVM interpret the `i1` as signed, because
@@ -307,15 +307,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 signed = !scalar.is_bool() && s;
 
                                 if !scalar.is_always_valid(bx.cx())
-                                    && scalar.valid_range.end >= scalar.valid_range.start
+                                    && scalar.valid_range(bx.cx()).end
+                                        >= scalar.valid_range(bx.cx()).start
                                 {
                                     // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`s.
-                                    if scalar.valid_range.start > 0 {
-                                        let enum_value_lower_bound = bx
-                                            .cx()
-                                            .const_uint_big(ll_t_in, scalar.valid_range.start);
+                                    if scalar.valid_range(bx.cx()).start > 0 {
+                                        let enum_value_lower_bound = bx.cx().const_uint_big(
+                                            ll_t_in,
+                                            scalar.valid_range(bx.cx()).start,
+                                        );
                                         let cmp_start = bx.icmp(
                                             IntPredicate::IntUGE,
                                             llval,
@@ -324,8 +326,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                         bx.assume(cmp_start);
                                     }
 
-                                    let enum_value_upper_bound =
-                                        bx.cx().const_uint_big(ll_t_in, scalar.valid_range.end);
+                                    let enum_value_upper_bound = bx
+                                        .cx()
+                                        .const_uint_big(ll_t_in, scalar.valid_range(bx.cx()).end);
                                     let cmp_end = bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,

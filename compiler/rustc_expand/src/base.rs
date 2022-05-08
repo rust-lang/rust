@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
@@ -20,7 +20,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::default::Default;
@@ -118,7 +118,7 @@ impl Annotatable {
             Annotatable::ForeignItem(item) => {
                 token::NtItem(P(item.and_then(ast::ForeignItem::into_item)))
             }
-            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+            Annotatable::Stmt(stmt) => token::NtStmt(stmt),
             Annotatable::Expr(expr) => token::NtExpr(expr),
             Annotatable::Arm(..)
             | Annotatable::ExprField(..)
@@ -1047,6 +1047,12 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expn_data().call_site
     }
 
+    /// Returns the current expansion kind's description.
+    pub(crate) fn expansion_descr(&self) -> String {
+        let expn_data = self.current_expansion.id.expn_data();
+        expn_data.kind.descr()
+    }
+
     /// Equivalent of `Span::def_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_def_site_ctxt(&self, span: Span) -> Span {
@@ -1128,40 +1134,42 @@ impl<'a> ExtCtxt<'a> {
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
     }
+}
 
-    /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
-    ///
-    /// This unifies the logic used for resolving `include_X!`.
-    ///
-    /// FIXME: move this to `rustc_builtin_macros` and make it private.
-    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'a, PathBuf> {
-        let path = path.into();
+/// Resolves a `path` mentioned inside Rust code, returning an absolute path.
+///
+/// This unifies the logic used for resolving `include_X!`.
+pub fn resolve_path(
+    parse_sess: &ParseSess,
+    path: impl Into<PathBuf>,
+    span: Span,
+) -> PResult<'_, PathBuf> {
+    let path = path.into();
 
-        // Relative paths are resolved relative to the file in which they are found
-        // after macro expansion (that is, they are unhygienic).
-        if !path.is_absolute() {
-            let callsite = span.source_callsite();
-            let mut result = match self.source_map().span_to_filename(callsite) {
-                FileName::Real(name) => name
-                    .into_local_path()
-                    .expect("attempting to resolve a file path in an external file"),
-                FileName::DocTest(path, _) => path,
-                other => {
-                    return Err(self.struct_span_err(
-                        span,
-                        &format!(
-                            "cannot resolve relative path in non-file source `{}`",
-                            self.source_map().filename_for_diagnostics(&other)
-                        ),
-                    ));
-                }
-            };
-            result.pop();
-            result.push(path);
-            Ok(result)
-        } else {
-            Ok(path)
-        }
+    // Relative paths are resolved relative to the file in which they are found
+    // after macro expansion (that is, they are unhygienic).
+    if !path.is_absolute() {
+        let callsite = span.source_callsite();
+        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
+            FileName::Real(name) => name
+                .into_local_path()
+                .expect("attempting to resolve a file path in an external file"),
+            FileName::DocTest(path, _) => path,
+            other => {
+                return Err(parse_sess.span_diagnostic.struct_span_err(
+                    span,
+                    &format!(
+                        "cannot resolve relative path in non-file source `{}`",
+                        parse_sess.source_map().filename_for_diagnostics(&other)
+                    ),
+                ));
+            }
+        };
+        result.pop();
+        result.push(path);
+        Ok(result)
+    } else {
+        Ok(path)
     }
 }
 
@@ -1250,7 +1258,7 @@ pub fn get_single_str_from_tts(
     sp: Span,
     tts: TokenStream,
     name: &str,
-) -> Option<String> {
+) -> Option<Symbol> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
@@ -1262,7 +1270,7 @@ pub fn get_single_str_from_tts(
     if p.token != token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s.to_string())
+    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
 }
 
 /// Extracts comma-separated expressions from `tts`.
@@ -1301,9 +1309,7 @@ pub fn parse_macro_name_and_helper_attrs(
     // Once we've located the `#[proc_macro_derive]` attribute, verify
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-    let Some(list) = attr.meta_item_list() else {
-        return None;
-    };
+    let list = attr.meta_item_list()?;
     if list.len() != 1 && list.len() != 2 {
         diag.span_err(attr.span, "attribute must have either one or two arguments");
         return None;

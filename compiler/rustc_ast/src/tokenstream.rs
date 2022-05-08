@@ -13,7 +13,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::token::{self, DelimToken, Token, TokenKind};
+use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -42,7 +42,7 @@ pub enum TokenTree {
     /// A single token.
     Token(Token),
     /// A delimited sequence of token trees.
-    Delimited(DelimSpan, DelimToken, TokenStream),
+    Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
 #[derive(Copy, Clone)]
@@ -57,7 +57,7 @@ fn _dummy()
 where
     Token: Send + Sync,
     DelimSpan: Send + Sync,
-    DelimToken: Send + Sync,
+    Delimiter: Send + Sync,
     TokenStream: Send + Sync,
 {
 }
@@ -92,16 +92,6 @@ impl TokenTree {
 
     pub fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
-    }
-
-    /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::OpenDelim(delim), span.open)
-    }
-
-    /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::CloseDelim(delim), span.close)
     }
 
     pub fn uninterpolate(self) -> TokenTree {
@@ -185,7 +175,7 @@ pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrAnnotatedTokenTree {
     Token(Token),
-    Delimited(DelimSpan, DelimToken, AttrAnnotatedTokenStream),
+    Delimited(DelimSpan, Delimiter, AttrAnnotatedTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
     /// See `AttributesData` for more information
@@ -295,7 +285,7 @@ impl AttrAnnotatedTokenStream {
 ///
 /// For example, `#[cfg(FALSE)] struct Foo {}` would
 /// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
-/// and a `tokens` field storing the (unparesd) tokens `struct Foo {}`
+/// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct AttributesData {
     /// Attributes, both outer and inner.
@@ -585,13 +575,20 @@ impl Cursor {
         Cursor { stream, index: 0 }
     }
 
+    #[inline]
     pub fn next_with_spacing(&mut self) -> Option<TreeAndSpacing> {
-        if self.index < self.stream.len() {
+        self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
-            Some(self.stream.0[self.index - 1].clone())
-        } else {
-            None
-        }
+            tree.clone()
+        })
+    }
+
+    #[inline]
+    pub fn next_with_spacing_ref(&mut self) -> Option<&TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
     }
 
     pub fn index(&self) -> usize {

@@ -31,6 +31,8 @@ macro_rules! panic {
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [flush]: crate::io::Write::flush
+/// [`println!`]: crate::println
+/// [`eprint!`]: crate::eprint
 ///
 /// # Panics
 ///
@@ -77,6 +79,7 @@ macro_rules! print {
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`std::fmt`]: crate::fmt
+/// [`eprintln!`]: crate::eprintln
 ///
 /// # Panics
 ///
@@ -99,9 +102,9 @@ macro_rules! println {
     () => {
         $crate::print!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_print($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error.
@@ -146,6 +149,7 @@ macro_rules! eprint {
 ///
 /// [`io::stderr`]: crate::io::stderr
 /// [`io::stdout`]: crate::io::stdout
+/// [`println!`]: crate::println
 ///
 /// # Panics
 ///
@@ -164,9 +168,9 @@ macro_rules! eprintln {
     () => {
         $crate::eprint!("\n")
     };
-    ($($arg:tt)*) => {
-        $crate::io::_eprint($crate::format_args_nl!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args_nl!($($arg)*));
+    }};
 }
 
 /// Prints and returns the value of a given expression for quick and dirty

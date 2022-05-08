@@ -1,0 +1,32 @@
+error[E0107]: missing generics for struct `Vec`
+  --> $DIR/issue-92305.rs:5:45
+   |
+LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec> {
+   |                                             ^^^ expected at least 1 generic argument
+   |
+note: struct defined here, with at least 1 generic parameter: `T`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+   |            ^^^ -
+help: add missing generic argument
+   |
+LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec<T>> {
+   |                                             ~~~~~~
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-92305.rs:7:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type for type parameter `T` declared on the function `empty`
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-92305.rs:10:35
+   |
+LL | fn g<T>(data: &[T], target: T) -> impl Iterator<Item = Vec<T>> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0282.
+For more information about an error, try `rustc --explain E0107`.

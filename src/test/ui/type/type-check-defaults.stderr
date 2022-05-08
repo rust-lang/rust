@@ -2,7 +2,7 @@ error[E0277]: a value of type `i32` cannot be built from an iterator over elemen
   --> $DIR/type-check-defaults.rs:6:19
    |
 LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
-   |                   ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                   ^^^^^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `FromIterator<i32>` is not implemented for `i32`
 note: required by a bound in `Foo`
@@ -15,7 +15,7 @@ error[E0277]: a value of type `i32` cannot be built from an iterator over elemen
   --> $DIR/type-check-defaults.rs:8:27
    |
 LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
-   |                           ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `FromIterator<i32>` is not implemented for `i32`
 note: required by a bound in `Foo`
@@ -65,6 +65,16 @@ LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    |                                                                  ^^^^^^^ no implementation for `i32 + u8`
    |
    = help: the trait `Add<u8>` is not implemented for `i32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
+           and 48 others
 
 error: aborting due to 7 previous errors
 

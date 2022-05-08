@@ -12,7 +12,7 @@ use rustc_target::abi::VariantIdx;
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
-    /// Downcast to a particular variant of an enum, if included.
+    /// Downcast to a particular variant of an enum or a generator, if included.
     pub variant_index: Option<VariantIdx>,
 }
 
@@ -76,6 +76,9 @@ impl<'tcx> PlaceTy<'tcx> {
         V: ::std::fmt::Debug,
         T: ::std::fmt::Debug + Copy,
     {
+        if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
+            bug!("cannot use non field projection on downcasted place")
+        }
         let answer = match *elem {
             ProjectionElem::Deref => {
                 let ty = self

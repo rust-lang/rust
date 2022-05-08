@@ -356,7 +356,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     generator_type_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } = generator_type_and_layout.variants else {
-        bug!("This function only supports layouts with direcly encoded tags.")
+        bug!("This function only supports layouts with directly encoded tags.")
     };
 
     let (generator_def_id, generator_substs) = match generator_type_and_layout.ty.kind() {
@@ -372,7 +372,6 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
 
     // Build the type node for each field.
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_range
-        .clone()
         .map(|variant_index| {
             let variant_struct_type_di_node = super::build_generator_variant_struct_type_di_node(
                 cx,

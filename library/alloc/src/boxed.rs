@@ -163,6 +163,11 @@ use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
+#[unstable(feature = "thin_box", issue = "92791")]
+pub use thin::ThinBox;
+
+mod thin;
+
 /// A pointer type for heap allocation.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
@@ -349,10 +354,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_in(x: T, alloc: A) -> Self
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let mut boxed = Self::new_uninit_in(alloc);
         unsafe {
@@ -379,11 +383,10 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
     where
-        T: ~const Drop + ~const Destruct,
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        T: ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
         unsafe {
@@ -417,10 +420,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -456,10 +458,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate(layout)?.cast();
@@ -491,10 +492,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -530,10 +530,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate_zeroed(layout)?.cast();
@@ -547,10 +546,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: 'static + ~const Allocator + ~const Drop + ~const Destruct,
+        A: 'static + ~const Allocator + ~const Destruct,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }
@@ -579,10 +577,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "box_into_inner", issue = "80437")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn into_inner(boxed: Self) -> T
     where
-        Self: ~const Drop + ~const Destruct,
+        Self: ~const Destruct,
     {
         *boxed
     }
@@ -1195,17 +1192,25 @@ impl<T: Default> Default for Box<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Box<[T]> {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl<T> const Default for Box<[T]> {
     fn default() -> Self {
-        Box::<[T; 0]>::new([])
+        let ptr: Unique<[T]> = Unique::<[T; 0]>::dangling();
+        Box(ptr, Global)
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "default_box_extra", since = "1.17.0")]
-impl Default for Box<str> {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl const Default for Box<str> {
     fn default() -> Self {
-        unsafe { from_boxed_utf8_unchecked(Default::default()) }
+        // SAFETY: This is the same as `Unique::cast<U>` but with an unsized `U = str`.
+        let ptr: Unique<str> = unsafe {
+            let bytes: Unique<[u8]> = Unique::<[u8; 0]>::dangling();
+            Unique::new_unchecked(bytes.as_ptr() as *mut str)
+        };
+        Box(ptr, Global)
     }
 }
 
@@ -1363,6 +1368,12 @@ impl<T: ?Sized + Hasher, A: Allocator> Hasher for Box<T, A> {
     }
     fn write_isize(&mut self, i: isize) {
         (**self).write_isize(i)
+    }
+    fn write_length_prefix(&mut self, len: usize) {
+        (**self).write_length_prefix(len)
+    }
+    fn write_str(&mut self, s: &str) {
+        (**self).write_str(s)
     }
 }
 

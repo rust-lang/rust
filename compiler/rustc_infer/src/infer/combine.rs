@@ -27,15 +27,12 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::unify_key::replace_if_possible;
-use super::unify_key::{ConstVarValue, ConstVariableValue};
-use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use super::{InferCtxt, MiscVariable, TypeTrace};
-
 use crate::traits::{Obligation, PredicateObligations};
-
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -51,6 +48,12 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub cause: Option<ty::relate::Cause>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub obligations: PredicateObligations<'tcx>,
+    /// Whether we should define opaque types
+    /// or just treat them opaquely.
+    /// Currently only used to prevent predicate
+    /// matching from matching anything against opaque
+    /// types.
+    pub define_opaque_types: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -134,8 +137,8 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             return Ok(a);
         }
 
-        let a = replace_if_possible(&mut self.inner.borrow_mut().const_unification_table(), a);
-        let b = replace_if_possible(&mut self.inner.borrow_mut().const_unification_table(), b);
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
 
         let a_is_expected = relation.a_is_expected();
 
@@ -199,7 +202,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     ///
     /// A good example of this is the following:
     ///
-    /// ```rust
+    /// ```compile_fail,E0308
     /// #![feature(generic_const_exprs)]
     ///
     /// fn bind<const N: usize>(value: [u8; N]) -> [u8; 3 + 4] {
@@ -322,6 +325,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     /// will first instantiate `b_vid` with a *generalized* version
     /// of `a_ty`. Generalization introduces other inference
     /// variables wherever subtyping could occur.
+    #[instrument(skip(self), level = "debug")]
     pub fn instantiate(
         &mut self,
         a_ty: Ty<'tcx>,
@@ -333,8 +337,6 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
         // Get the actual variable that b_vid has been inferred to
         debug_assert!(self.infcx.inner.borrow_mut().type_variables().probe(b_vid).is_unknown());
-
-        debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
         // Generalize type of `a_ty` appropriately depending on the
         // direction.  As an example, assume:
@@ -348,10 +350,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
         let Generalization { ty: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
-        debug!(
-            "instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
-            a_ty, dir, b_vid, b_ty
-        );
+        debug!(?b_ty);
         self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
 
         if needs_wf {
@@ -392,13 +391,13 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     /// Preconditions:
     ///
     /// - `for_vid` is a "root vid"
+    #[instrument(skip(self), level = "trace")]
     fn generalize(
         &self,
         ty: Ty<'tcx>,
         for_vid: ty::TyVid,
         dir: RelationDir,
     ) -> RelateResult<'tcx, Generalization<'tcx>> {
-        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?}", ty, for_vid, dir);
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
         //
@@ -412,7 +411,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             RelationDir::SupertypeOf => ty::Contravariant,
         };
 
-        debug!("generalize: ambient_variance = {:?}", ambient_variance);
+        trace!(?ambient_variance);
 
         let for_universe = match self.infcx.inner.borrow_mut().type_variables().probe(for_vid) {
             v @ TypeVariableValue::Known { .. } => {
@@ -421,8 +420,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             TypeVariableValue::Unknown { universe } => universe,
         };
 
-        debug!("generalize: for_universe = {:?}", for_universe);
-        debug!("generalize: trace = {:?}", self.trace);
+        trace!(?for_universe);
+        trace!(?self.trace);
 
         let mut generalize = Generalizer {
             infcx: self.infcx,
@@ -439,12 +438,12 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         let ty = match generalize.relate(ty, ty) {
             Ok(ty) => ty,
             Err(e) => {
-                debug!("generalize: failure {:?}", e);
+                debug!(?e, "failure");
                 return Err(e);
             }
         };
         let needs_wf = generalize.needs_wf;
-        debug!("generalize: success {{ {:?}, {:?} }}", ty, needs_wf);
+        trace!(?ty, ?needs_wf, "success");
         Ok(Generalization { ty, needs_wf })
     }
 
@@ -568,11 +567,17 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_substs(self, None, a_subst, b_subst)
+            relate::relate_substs(self, a_subst, b_subst)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_substs(self, Some((item_def_id, &opt_variances)), a_subst, b_subst)
+            relate::relate_substs_with_variances(
+                self,
+                item_def_id,
+                &opt_variances,
+                a_subst,
+                b_subst,
+            )
         }
     }
 

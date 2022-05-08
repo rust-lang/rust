@@ -17,8 +17,8 @@ pub(super) fn check_fn<'tcx>(
     hir_id: hir::HirId,
 ) {
     let unsafety = match kind {
-        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
-        intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
+        intravisit::FnKind::Method(_, sig) => sig.header.unsafety,
         intravisit::FnKind::Closure => return,
     };
 

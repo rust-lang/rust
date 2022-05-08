@@ -57,6 +57,9 @@ pub struct DirEntry {
     data: c::WIN32_FIND_DATAW,
 }
 
+unsafe impl Send for OpenOptions {}
+unsafe impl Sync for OpenOptions {}
+
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
@@ -72,7 +75,7 @@ pub struct OpenOptions {
     attributes: c::DWORD,
     share_mode: c::DWORD,
     security_qos_flags: c::DWORD,
-    security_attributes: usize, // FIXME: should be a reference
+    security_attributes: c::LPSECURITY_ATTRIBUTES,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -187,7 +190,7 @@ impl OpenOptions {
             share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
             attributes: 0,
             security_qos_flags: 0,
-            security_attributes: 0,
+            security_attributes: ptr::null_mut(),
         }
     }
 
@@ -228,7 +231,7 @@ impl OpenOptions {
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
     pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
-        self.security_attributes = attrs as usize;
+        self.security_attributes = attrs;
     }
 
     fn get_access_mode(&self) -> io::Result<c::DWORD> {
@@ -289,7 +292,7 @@ impl File {
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
-                opts.security_attributes as *mut _,
+                opts.security_attributes,
                 opts.get_creation_mode()?,
                 opts.get_flags_and_attributes(),
                 ptr::null_mut(),

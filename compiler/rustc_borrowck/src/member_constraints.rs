@@ -169,7 +169,7 @@ where
     /// Returns the "choice regions" for a given member
     /// constraint. This is the `R1..Rn` from a constraint like:
     ///
-    /// ```
+    /// ```text
     /// R0 member of [R1..Rn]
     /// ```
     crate fn choice_regions(&self, pci: NllMemberConstraintIndex) -> &[ty::RegionVid] {
@@ -195,14 +195,14 @@ where
 ///
 /// Before:
 ///
-/// ```
+/// ```text
 /// target_list: A -> B -> C -> (None)
 /// source_list: D -> E -> F -> (None)
 /// ```
 ///
 /// After:
 ///
-/// ```
+/// ```text
 /// target_list: A -> B -> C -> D -> E -> F -> (None)
 /// ```
 fn append_list(

@@ -1,8 +1,8 @@
 error: cannot implement trait on type alias impl trait
-  --> $DIR/issue-65384.rs:10:1
+  --> $DIR/issue-65384.rs:10:18
    |
 LL | impl MyTrait for Bar {}
-   | ^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^
    |
 note: type alias impl trait defined here
   --> $DIR/issue-65384.rs:8:12

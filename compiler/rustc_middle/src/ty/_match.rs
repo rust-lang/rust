@@ -53,17 +53,17 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         self.relate(a, b)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
         Ok(a)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);
         }

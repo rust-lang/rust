@@ -6,10 +6,10 @@ LL |     a.iter().map(|a| a*a)
    |                      |
    |                      &T
    |
-help: consider restricting type parameter `T`
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
-LL | fn func<'a, T: std::ops::Mul<Output = &T>>(a: &'a [T]) -> impl Iterator<Item=&'a T> {
-   |              ++++++++++++++++++++++++++++
+LL | fn func<'a, T>(a: &'a [T]) -> impl Iterator<Item=&'a T> where &T: Mul<&T> {
+   |                                                         +++++++++++++++++
 
 error: aborting due to previous error
 

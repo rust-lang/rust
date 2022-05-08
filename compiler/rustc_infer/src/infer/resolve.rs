@@ -55,7 +55,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
 
 /// The opportunistic region resolver opportunistically resolves regions
 /// variables to the variable with the least variable id. It is used when
-/// normlizing projections to avoid hitting the recursion limit by creating
+/// normalizing projections to avoid hitting the recursion limit by creating
 /// many versions of a predicate for types that in the end have to unify.
 ///
 /// If you want to resolve type and const variables as well, call

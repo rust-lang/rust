@@ -27,9 +27,9 @@ The module is thus driven from an outside client with functions like
 Internally the module will try to reuse already created metadata by
 utilizing a cache. The way to get a shared metadata node when needed is
 thus to just call the corresponding function in this module:
-
-    let file_metadata = file_metadata(cx, file);
-
+```ignore (illustrative)
+let file_metadata = file_metadata(cx, file);
+```
 The function will take care of probing the cache for an existing node for
 that exact file path.
 
@@ -63,7 +63,7 @@ struct List {
 
 will generate the following callstack with a naive DFS algorithm:
 
-```
+```ignore (illustrative)
 describe(t = List)
   describe(t = i32)
   describe(t = Option<Box<List>>)

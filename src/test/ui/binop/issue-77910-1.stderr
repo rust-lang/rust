@@ -16,6 +16,16 @@ LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
+   = help: the following other types implement trait `Debug`:
+             extern "C" fn() -> Ret
+             extern "C" fn(A) -> Ret
+             extern "C" fn(A, ...) -> Ret
+             extern "C" fn(A, B) -> Ret
+             extern "C" fn(A, B, ...) -> Ret
+             extern "C" fn(A, B, C) -> Ret
+             extern "C" fn(A, B, C, ...) -> Ret
+             extern "C" fn(A, B, C, D) -> Ret
+           and 68 others
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

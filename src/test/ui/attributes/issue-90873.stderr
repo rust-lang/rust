@@ -1,4 +1,4 @@
-error: unexpected token: `||
+error: unexpected expression: `||
            {
                static d: _ = || 1;
            }`
@@ -7,7 +7,7 @@ error: unexpected token: `||
 LL | #![u=||{static d=||1;}]
    |      ^^^^^^^^^^^^^^^^^
 
-error: unexpected token: `{
+error: unexpected expression: `{
            impl std::ops::Neg for i8 {}
        }`
   --> $DIR/issue-90873.rs:6:6

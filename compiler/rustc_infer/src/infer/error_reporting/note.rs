@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Region};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
-        let mut label_or_note = |span, msg| {
+        let mut label_or_note = |span, msg: &str| {
             let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);
@@ -348,7 +348,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = self.report_concrete_failure(*parent, sub, sup);
 
                 let trait_item_span = self.tcx.def_span(trait_item_def_id);
-                let item_name = self.tcx.item_name(impl_item_def_id);
+                let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
                 err.span_label(
                     trait_item_span,
                     format!("definition of `{}` from trait", item_name),
@@ -370,10 +370,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let where_clause_span = self
                         .tcx
                         .hir()
-                        .get_generics(impl_item_def_id.expect_local())
+                        .get_generics(impl_item_def_id)
                         .unwrap()
-                        .where_clause
-                        .tail_span_for_suggestion();
+                        .where_clause_span
+                        .shrink_to_hi();
 
                     let suggestion = format!(
                         "{} {}",

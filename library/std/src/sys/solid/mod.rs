@@ -99,5 +99,3 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         (x1, x2)
     }
 }
-
-pub use libc::strlen;

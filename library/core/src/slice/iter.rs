@@ -358,6 +358,20 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
     pub(super) fn new(slice: &'a [T], pred: P) -> Self {
         Self { v: slice, pred, finished: false }
     }
+    /// Returns a slice which contains items not yet handled by split.
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_as_slice)]
+    /// let slice = [1,2,3,4,5];
+    /// let mut split = slice.split(|v| v % 2 == 0);
+    /// assert!(split.next().is_some());
+    /// assert_eq!(split.as_slice(), &[3,4,5]);
+    /// ```
+    #[unstable(feature = "split_as_slice", issue = "96137")]
+    pub fn as_slice(&self) -> &'a [T] {
+        if self.finished { &[] } else { &self.v }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]

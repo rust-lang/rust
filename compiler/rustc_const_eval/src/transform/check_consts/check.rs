@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -47,7 +47,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let ty = ccx.body.local_decls[local].ty;
-        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
+        // Peeking into opaque types causes cycles if the current function declares said opaque
+        // type. Thus we avoid short circuiting on the type and instead run the more expensive
+        // analysis that looks at the actual usage within this function
+        if !ty.has_opaque_types() && !NeedsDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
@@ -101,7 +104,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let ty = ccx.body.local_decls[local].ty;
-        if !HasMutInterior::in_any_value_of_ty(ccx, ty) {
+        // Peeking into opaque types causes cycles if the current function declares said opaque
+        // type. Thus we avoid short circuiting on the type and instead run the more expensive
+        // analysis that looks at the actual usage within this function
+        if !ty.has_opaque_types() && !HasMutInterior::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
@@ -148,7 +154,12 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             // If we know that all values of the return type are structurally matchable, there's no
             // need to run dataflow.
-            _ if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) => false,
+            // Opaque types do not participate in const generics or pattern matching, so we can safely count them out.
+            _ if ccx.body.return_ty().has_opaque_types()
+                || !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
+            {
+                false
+            }
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
@@ -211,7 +222,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator.is_some() {
+        if self.ccx.is_async() || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -681,6 +692,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
@@ -942,7 +954,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` funtions, and these have no way to get marked `const`. So instead we
+                    // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
                     if self.ccx.is_const_stable_const_fn() || is_intrinsic {
                         self.check_op(ops::FnCallUnstable(callee, None));
@@ -1045,12 +1057,8 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
 }
 
-fn is_async_fn(ccx: &ConstCx<'_, '_>) -> bool {
-    ccx.fn_sig().map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
-}
-
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
-    let attr_span = ccx.fn_sig().map_or(ccx.body.span, |sig| sig.span.shrink_to_lo());
+    let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
     ccx.tcx
         .sess

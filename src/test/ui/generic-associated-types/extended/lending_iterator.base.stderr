@@ -1,0 +1,26 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/lending_iterator.rs:14:45
+   |
+LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self;
+   |     ------------------------------------------------------------------------ definition of `from_iter` from trait
+...
+LL |     fn from_iter<I: for<'x> LendingIterator<Item<'x> = A>>(mut iter: I) -> Self {
+   |                                             ^^^^^^^^^^^^ impl has extra requirement `I: 'x`
+
+error[E0311]: the parameter type `Self` may not live long enough
+  --> $DIR/lending_iterator.rs:35:9
+   |
+LL |         <B as FromLendingIterator<A>>::from_iter(self)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+   = note: ...so that the type `Self` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/lending_iterator.rs:10:45
+   |
+LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self;
+   |                                             ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0276`.

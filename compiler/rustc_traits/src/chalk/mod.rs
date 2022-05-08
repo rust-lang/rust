@@ -134,6 +134,7 @@ crate fn evaluate_goal<'tcx>(
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),
                 certainty: Certainty::Proven,
+                opaque_types: vec![],
                 value: (),
             },
         };
@@ -162,6 +163,7 @@ crate fn evaluate_goal<'tcx>(
                                     .make_identity(tcx),
                                 region_constraints: QueryRegionConstraints::default(),
                                 certainty: Certainty::Ambiguous,
+                                opaque_types: vec![],
                                 value: (),
                             },
                         };

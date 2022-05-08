@@ -8,8 +8,8 @@ LL |     let z = x + y;
    |
 help: consider restricting type parameter `T`
    |
-LL | fn foo<T: std::ops::Add<Output = T>>(x: T, y: T) {
-   |         +++++++++++++++++++++++++++
+LL | fn foo<T: std::ops::Add>(x: T, y: T) {
+   |         +++++++++++++++
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
   --> $DIR/missing_trait_impl.rs:9:5
@@ -32,8 +32,8 @@ LL |     let y = -x;
    |
 help: consider restricting type parameter `T`
    |
-LL | fn baz<T: std::ops::Neg<Output = T>>(x: T) {
-   |         +++++++++++++++++++++++++++
+LL | fn baz<T: std::ops::Neg>(x: T) {
+   |         +++++++++++++++
 
 error[E0600]: cannot apply unary operator `!` to type `T`
   --> $DIR/missing_trait_impl.rs:14:13
@@ -43,8 +43,8 @@ LL |     let y = !x;
    |
 help: consider restricting type parameter `T`
    |
-LL | fn baz<T: std::ops::Not<Output = T>>(x: T) {
-   |         +++++++++++++++++++++++++++
+LL | fn baz<T: std::ops::Not>(x: T) {
+   |         +++++++++++++++
 
 error[E0614]: type `T` cannot be dereferenced
   --> $DIR/missing_trait_impl.rs:15:13

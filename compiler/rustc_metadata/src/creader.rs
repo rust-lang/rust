@@ -13,11 +13,10 @@ use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::json::ToJson;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_session::cstore::{ExternCrateSource, MetadataLoaderDyn};
-use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
+use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
@@ -27,7 +26,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::collections::BTreeMap;
 use std::ops::Fn;
 use std::path::Path;
 use std::{cmp, env};
@@ -197,10 +195,12 @@ impl CStore {
     }
 
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        let json_unused_externs = tcx.sess.opts.json_unused_externs;
+
         // We put the check for the option before the lint_level_at_node call
         // because the call mutates internal state and introducing it
         // leads to some ui tests failing.
-        if !tcx.sess.opts.json_unused_externs {
+        if !json_unused_externs.is_enabled() {
             return;
         }
         let level = tcx
@@ -210,10 +210,11 @@ impl CStore {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_unused_externs(level.as_str(), &unused_externs);
+            tcx.sess.parse_sess.span_diagnostic.emit_unused_externs(
+                level,
+                json_unused_externs.is_loud(),
+                &unused_externs,
+            );
         }
     }
 }
@@ -417,6 +418,7 @@ impl<'a> CrateLoader<'a> {
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
+            &self.cstore,
             metadata,
             crate_root,
             raw_proc_macros,
@@ -908,31 +910,22 @@ impl<'a> CrateLoader<'a> {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
+            if entry.nounused_dep {
+                // We're not worried about this one
+                continue;
+            }
             let name_interned = Symbol::intern(name);
             if self.used_extern_options.contains(&name_interned) {
                 continue;
             }
 
             // Got a real unused --extern
-            if self.sess.opts.json_unused_externs {
+            if self.sess.opts.json_unused_externs.is_enabled() {
                 self.cstore.unused_externs.push(name_interned);
                 continue;
             }
 
-            let diag = match self.sess.opts.extern_dep_specs.get(name) {
-                Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
-                None => {
-                    // If we don't have a specific location, provide a json encoding of the `--extern`
-                    // option.
-                    let meta: BTreeMap<String, String> =
-                        std::iter::once(("name".to_string(), name.to_string())).collect();
-                    BuiltinLintDiagnostics::ExternDepSpec(
-                        name.clone(),
-                        ExternDepSpec::Json(meta.to_json()),
-                    )
-                }
-            };
-            self.sess.parse_sess.buffer_lint_with_diagnostic(
+            self.sess.parse_sess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -941,7 +934,6 @@ impl<'a> CrateLoader<'a> {
                         name,
                         self.local_crate_name,
                         name),
-                    diag,
                 );
         }
     }

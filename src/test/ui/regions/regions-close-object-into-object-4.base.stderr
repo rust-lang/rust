@@ -1,0 +1,27 @@
+error[E0759]: `v` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/regions-close-object-into-object-4.rs:13:16
+   |
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |                   ---------------- this data with lifetime `'a`...
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |                ^^^ ...is used and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/regions-close-object-into-object-4.rs:12:52
+   |
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |                                                    ^^^^^^^ `'static` requirement introduced here
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ------------------------------ because of this returned expression
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'a> {
+   |                                                    ~~
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn i<'a, T, U>(v: Box<(dyn A<U> + 'static)>) -> Box<dyn X + 'static> {
+   |                   ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0759`.

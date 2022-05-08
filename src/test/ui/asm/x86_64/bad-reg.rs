@@ -29,13 +29,13 @@ fn main() {
         //~^ ERROR invalid register `rsp`: the stack pointer cannot be used as an operand
         asm!("", in("ip") foo);
         //~^ ERROR invalid register `ip`: the instruction pointer cannot be used as an operand
-        asm!("", in("k0") foo);
-        //~^ ERROR invalid register `k0`: the k0 AVX mask register cannot be used as an operand
 
         asm!("", in("st(2)") foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
         asm!("", in("mm0") foo);
         //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
+        asm!("", in("k0") foo);
+        //~^ ERROR register class `kreg0` can only be used as a clobber, not as an input or output
         asm!("", out("st(2)") _);
         asm!("", out("mm0") _);
         asm!("{}", in(x87_reg) foo);

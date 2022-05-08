@@ -13,6 +13,10 @@ note: required by a bound in `AssertParamIsEq`
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
    |                               ^^ required by this bound in `AssertParamIsEq`
    = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL | #[derive(Eq)]
+   |
 
 error: aborting due to previous error
 

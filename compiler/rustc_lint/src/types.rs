@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::Abi;
+use rustc_target::abi::{Abi, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
@@ -154,7 +154,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                     err.span_suggestion(
                         parent_expr.span,
-                        &"use an inclusive range instead",
+                        "use an inclusive range instead",
                         suggestion,
                         Applicability::MachineApplicable,
                     );
@@ -399,7 +399,7 @@ fn lint_uint_literal<'tcx>(
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
                                     par_e.span,
-                                    &"use a `char` literal instead",
+                                    "use a `char` literal instead",
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
                                 )
@@ -796,14 +796,18 @@ crate fn repr_nullable_ptr<'tcx>(
         // Return the nullable type this Option-like enum can be safely represented with.
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
-            match (field_ty_scalar.valid_range.start, field_ty_scalar.valid_range.end) {
-                (0, x) if x == field_ty_scalar.value.size(&cx.tcx).unsigned_int_max() - 1 => {
+            match field_ty_scalar.valid_range(cx) {
+                WrappingRange { start: 0, end }
+                    if end == field_ty_scalar.size(&cx.tcx).unsigned_int_max() - 1 =>
+                {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
-                (1, _) => {
+                WrappingRange { start: 1, .. } => {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
-                (start, end) => unreachable!("Unhandled start and end range: ({}, {})", start, end),
+                WrappingRange { start, end } => {
+                    unreachable!("Unhandled start and end range: ({}, {})", start, end)
+                }
             };
         }
     }
@@ -1342,7 +1346,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 return
             };
 
-            let tag_size = tag.value.size(&cx.tcx).bytes();
+            let tag_size = tag.size(&cx.tcx).bytes();
 
             debug!(
                 "enum `{}` is {} bytes large with layout:\n{:#?}",
@@ -1467,7 +1471,7 @@ impl InvalidAtomicOrdering {
             && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
-            && let Some(parent) = cx.tcx.parent(adt.did())
+            && let parent = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
             && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
         {
@@ -1482,9 +1486,9 @@ impl InvalidAtomicOrdering {
         orderings.iter().any(|ordering| {
             tcx.item_name(did) == *ordering && {
                 let parent = tcx.parent(did);
-                parent == atomic_ordering
+                Some(parent) == atomic_ordering
                     // needed in case this is a ctor, not a variant
-                    || parent.map_or(false, |parent| tcx.parent(parent) == atomic_ordering)
+                    || tcx.opt_parent(parent) == atomic_ordering
             }
         })
     }

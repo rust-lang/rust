@@ -6,7 +6,7 @@
 
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability};
+use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -20,8 +20,8 @@ use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 
 pub(crate) fn target_from_impl_item<'tcx>(
@@ -80,6 +80,7 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_must_implement_one_of(attr, span, target)
                 }
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
+                sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, attr.span, attrs, span, target)
                 }
@@ -99,6 +100,7 @@ impl CheckAttrVisitor<'_> {
                 sym::allow_internal_unstable => {
                     self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
                 }
+                sym::debugger_visualizer => self.check_debugger_visualizer(&attr, target),
                 sym::rustc_allow_const_fn_unstable => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
                 }
@@ -120,6 +122,12 @@ impl CheckAttrVisitor<'_> {
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
                 sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
+                sym::rustc_allow_incoherent_impl => {
+                    self.check_allow_incoherent_impl(&attr, span, target)
+                }
+                sym::rustc_has_incoherent_inherent_impls => {
+                    self.check_has_incoherent_inherent_impls(&attr, span, target)
+                }
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -520,6 +528,21 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    /// Checks if the `#[thread_local]` attribute on `item` is valid. Returns `true` if valid.
+    fn check_thread_local(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::ForeignStatic | Target::Static => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a static")
+                    .span_label(span, "not a static")
+                    .emit();
+                false
+            }
+        }
+    }
+
     fn doc_attr_str_error(&self, meta: &NestedMetaItem, attr_name: &str) {
         self.tcx
             .sess
@@ -533,7 +556,7 @@ impl CheckAttrVisitor<'_> {
     fn check_doc_alias_value(
         &self,
         meta: &NestedMetaItem,
-        doc_alias: &str,
+        doc_alias: Symbol,
         hir_id: HirId,
         target: Target,
         is_list: bool,
@@ -551,14 +574,17 @@ impl CheckAttrVisitor<'_> {
             );
             false
         };
-        if doc_alias.is_empty() {
+        if doc_alias == kw::Empty {
             return err_fn(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                 "attribute cannot have empty value",
             );
         }
-        if let Some(c) =
-            doc_alias.chars().find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
+
+        let doc_alias_str = doc_alias.as_str();
+        if let Some(c) = doc_alias_str
+            .chars()
+            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
         {
             self.tcx.sess.span_err(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
@@ -570,7 +596,7 @@ impl CheckAttrVisitor<'_> {
             );
             return false;
         }
-        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+        if doc_alias_str.starts_with(' ') || doc_alias_str.ends_with(' ') {
             return err_fn(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                 "cannot start or end with ' '",
@@ -605,11 +631,11 @@ impl CheckAttrVisitor<'_> {
             return err_fn(meta.span(), &format!("isn't allowed on {}", err));
         }
         let item_name = self.tcx.hir().name(hir_id);
-        if item_name.as_str() == doc_alias {
+        if item_name == doc_alias {
             return err_fn(meta.span(), "is the same as the item's name");
         }
         let span = meta.span();
-        if let Err(entry) = aliases.try_insert(doc_alias.to_owned(), span) {
+        if let Err(entry) = aliases.try_insert(doc_alias_str.to_owned(), span) {
             self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, span, |lint| {
                 lint.build("doc alias is duplicated")
                     .span_label(*entry.entry.get(), "first defined here")
@@ -632,14 +658,7 @@ impl CheckAttrVisitor<'_> {
                 match v.literal() {
                     Some(l) => match l.kind {
                         LitKind::Str(s, _) => {
-                            if !self.check_doc_alias_value(
-                                v,
-                                s.as_str(),
-                                hir_id,
-                                target,
-                                true,
-                                aliases,
-                            ) {
+                            if !self.check_doc_alias_value(v, s, hir_id, target, true, aliases) {
                                 errors += 1;
                             }
                         }
@@ -667,8 +686,8 @@ impl CheckAttrVisitor<'_> {
                 }
             }
             errors == 0
-        } else if let Some(doc_alias) = meta.value_str().map(|s| s.to_string()) {
-            self.check_doc_alias_value(meta, &doc_alias, hir_id, target, false, aliases)
+        } else if let Some(doc_alias) = meta.value_str() {
+            self.check_doc_alias_value(meta, doc_alias, hir_id, target, false, aliases)
         } else {
             self.tcx
                 .sess
@@ -683,8 +702,8 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        let doc_keyword = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
-        if doc_keyword.is_empty() {
+        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
+        if doc_keyword == kw::Empty {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
@@ -715,7 +734,7 @@ impl CheckAttrVisitor<'_> {
                 return false;
             }
         }
-        if !rustc_lexer::is_ident(&doc_keyword) {
+        if !rustc_lexer::is_ident(doc_keyword.as_str()) {
             self.tcx
                 .sess
                 .struct_span_err(
@@ -908,20 +927,20 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         let mut is_valid = true;
 
-        if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
-            for meta in &list {
+        if let Some(mi) = attr.meta() && let Some(list) = mi.meta_item_list() {
+            for meta in list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
-                            if !self.check_attr_not_crate_level(&meta, hir_id, "alias")
-                                || !self.check_doc_alias(&meta, hir_id, target, aliases) =>
+                            if !self.check_attr_not_crate_level(meta, hir_id, "alias")
+                                || !self.check_doc_alias(meta, hir_id, target, aliases) =>
                         {
                             is_valid = false
                         }
 
                         sym::keyword
-                            if !self.check_attr_not_crate_level(&meta, hir_id, "keyword")
-                                || !self.check_doc_keyword(&meta, hir_id) =>
+                            if !self.check_attr_not_crate_level(meta, hir_id, "keyword")
+                                || !self.check_doc_keyword(meta, hir_id) =>
                         {
                             is_valid = false
                         }
@@ -933,15 +952,15 @@ impl CheckAttrVisitor<'_> {
                         | sym::html_root_url
                         | sym::html_no_source
                         | sym::test
-                            if !self.check_attr_crate_level(&attr, &meta, hir_id) =>
+                            if !self.check_attr_crate_level(attr, meta, hir_id) =>
                         {
                             is_valid = false;
                         }
 
                         sym::inline | sym::no_inline
                             if !self.check_doc_inline(
-                                &attr,
-                                &meta,
+                                attr,
+                                meta,
                                 hir_id,
                                 target,
                                 specified_inline,
@@ -973,7 +992,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::plugins => {}
 
                         sym::test => {
-                            if !self.check_test_attr(&meta, hir_id) {
+                            if !self.check_test_attr(meta, hir_id) {
                                 is_valid = false;
                             }
                         }
@@ -1074,6 +1093,47 @@ impl CheckAttrVisitor<'_> {
                         "`pass_by_value` attribute should be applied to a struct, enum or type alias.",
                     )
                     .span_label(span, "is not a struct, enum or type alias")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    fn check_allow_incoherent_impl(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::Method(MethodKind::Inherent) => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`rustc_allow_incoherent_impl` attribute should be applied to impl items.",
+                    )
+                    .span_label(span, "the only currently supported targets are inherent methods")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    fn check_has_incoherent_inherent_impls(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Trait | Target::Struct | Target::Enum | Target::Union | Target::ForeignTy => {
+                true
+            }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.",
+                    )
+                    .span_label(span, "only adts, extern types and traits are supported")
                     .emit();
                 false
             }
@@ -1827,6 +1887,65 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
+    fn check_debugger_visualizer(&self, attr: &Attribute, target: Target) -> bool {
+        match target {
+            Target::Mod => {}
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a module")
+                    .emit();
+                return false;
+            }
+        }
+
+        let hints = match attr.meta_item_list() {
+            Some(meta_item_list) => meta_item_list,
+            None => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        let hint = match hints.len() {
+            1 => &hints[0],
+            _ => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        if !hint.has_name(sym::natvis_file) {
+            self.emit_debugger_visualizer_err(attr);
+            return false;
+        }
+
+        let meta_item = match hint.meta_item() {
+            Some(meta_item) => meta_item,
+            None => {
+                self.emit_debugger_visualizer_err(attr);
+                return false;
+            }
+        };
+
+        match (meta_item.name_or_empty(), meta_item.value_str()) {
+            (sym::natvis_file, Some(_)) => true,
+            (_, _) => {
+                self.emit_debugger_visualizer_err(attr);
+                false
+            }
+        }
+    }
+
+    fn emit_debugger_visualizer_err(&self, attr: &Attribute) {
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "invalid argument")
+            .note(r#"expected: `natvis_file = "..."`"#)
+            .emit();
+    }
+
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
@@ -1838,7 +1957,7 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         match target {
             Target::Fn | Target::Method(_)
-                if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id)) =>
+                if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id).to_def_id()) =>
             {
                 true
             }

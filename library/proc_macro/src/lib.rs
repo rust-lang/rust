@@ -17,20 +17,18 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
+// This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
+// Please avoid unstable features where possible to minimize the amount of changes necessary
+// to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
-#![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(extern_types)]
 #![feature(negative_impls)]
-#![feature(auto_traits)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
-#![feature(panic_update_hook)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -705,11 +703,12 @@ pub enum Delimiter {
     /// `[ ... ]`
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Bracket,
-    /// `Ø ... Ø`
-    /// An implicit delimiter, that may, for example, appear around tokens coming from a
+    /// `/*«*/ ... /*»*/`
+    /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
-    /// Implicit delimiters might not survive roundtrip of a token stream through a string.
+    /// Invisible delimiters are not directly writable in normal Rust code except as comments.
+    /// Therefore, they might not survive a roundtrip of a token stream through a string.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     None,
 }

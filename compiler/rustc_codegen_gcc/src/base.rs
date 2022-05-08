@@ -52,7 +52,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     }
 }
 
-pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (ModuleCodegen<GccContext>, u64) {
+pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_128bit_integers: bool) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -60,7 +60,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        cgu_name,
+        (cgu_name, supports_128bit_integers),
         module_codegen,
         Some(dep_graph::hash_result),
     );
@@ -71,7 +71,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<GccContext> {
+    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, supports_128bit_integers): (Symbol, bool)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
@@ -85,6 +85,12 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
         context.add_command_line_option("-fno-semantic-interposition");
         // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
         context.add_command_line_option("-fno-strict-aliasing");
+
+        if tcx.sess.opts.debugging_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
+            context.add_command_line_option("-ffunction-sections");
+            context.add_command_line_option("-fdata-sections");
+        }
+
         if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
             context.set_dump_code_on_compile(true);
         }
@@ -99,8 +105,11 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol) -> (Modul
             context.set_keep_intermediates(true);
         }
 
+        // TODO(bjorn3): Remove once unwinding is properly implemented
+        context.set_allow_unreachable_blocks(true);
+
         {
-            let cx = CodegenCx::new(&context, cgu, tcx);
+            let cx = CodegenCx::new(&context, cgu, tcx, supports_128bit_integers);
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {

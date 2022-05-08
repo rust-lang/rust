@@ -198,7 +198,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
-            hir::PatKind::Lit(ref value) => self.lower_lit(value),
+            hir::PatKind::Lit(value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -377,7 +377,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
-                let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
+                let variant_id = self.tcx.parent(variant_ctor_id);
                 Res::Def(DefKind::Variant, variant_id)
             }
             res => res,
@@ -385,7 +385,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let mut kind = match res {
             Res::Def(DefKind::Variant, variant_id) => {
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id);
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let substs = match ty.kind() {
@@ -420,7 +420,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => {
                 let pattern_error = match res {
                     Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
-                    Res::Def(DefKind::Static, _) => PatternError::StaticInPattern(span),
+                    Res::Def(DefKind::Static(_), _) => PatternError::StaticInPattern(span),
                     _ => PatternError::NonConstPath(span),
                 };
                 self.errors.push(pattern_error);
@@ -488,9 +488,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
             Ok(value) => {
-                let const_ =
-                    ty::Const::from_value(self.tcx, value, self.typeck_results.node_type(id));
-
+                let const_ = ty::Const::from_value(self.tcx, value, ty);
                 let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);
 
                 if !is_associated_const {
@@ -585,7 +583,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
+            Ok(constant) => *self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
             Err(LitToConstError::Reported) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
@@ -739,6 +737,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 crate fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: ty::Const<'tcx>,
@@ -746,8 +745,6 @@ crate fn compare_const_vals<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    trace!("compare_const_vals: {:?}, {:?}", a, b);
-
     let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);

@@ -24,10 +24,10 @@
 
 // Change static visibility
 #[cfg(any(cfail1,cfail4))]
-static STATIC_VISIBILITY: u8 = 0;
+static     STATIC_VISIBILITY: u8 = 0;
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]

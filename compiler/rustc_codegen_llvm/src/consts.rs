@@ -109,7 +109,10 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
+            Scalar::Initialized {
+                value: Primitive::Pointer,
+                valid_range: WrappingRange::full(dl.pointer_size),
+            },
             cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;
@@ -408,6 +411,13 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
+
+                // The old global has had its name removed but is returned by
+                // get_static since it is in the instance cache. Provide an
+                // alternative lookup that points to the new global so that
+                // global_asm! can compute the correct mangled symbol name
+                // for the global.
+                self.renamed_statics.borrow_mut().insert(def_id, new_g);
 
                 // To avoid breaking any invariants, we leave around the old
                 // global for the moment; we'll replace all references to it

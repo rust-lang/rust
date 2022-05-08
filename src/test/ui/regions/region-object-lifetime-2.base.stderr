@@ -1,0 +1,30 @@
+error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
+  --> $DIR/region-object-lifetime-2.rs:14:7
+   |
+LL |     x.borrowed()
+   |       ^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/region-object-lifetime-2.rs:13:42
+   |
+LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
+   |                                          ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/region-object-lifetime-2.rs:14:5
+   |
+LL |     x.borrowed()
+   |     ^
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
+  --> $DIR/region-object-lifetime-2.rs:13:45
+   |
+LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
+   |                                             ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/region-object-lifetime-2.rs:14:5
+   |
+LL |     x.borrowed()
+   |     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

@@ -15,8 +15,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
 
@@ -58,7 +58,7 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct ConstAllocation<'tcx, Tag = AllocId, Extra = ()>(
     pub Interned<'tcx, Allocation<Tag, Extra>>,
 );
@@ -81,6 +81,8 @@ impl<'tcx, Tag, Extra> ConstAllocation<'tcx, Tag, Extra> {
 /// is added when converting to `InterpError`.
 #[derive(Debug)]
 pub enum AllocError {
+    /// A scalar had the wrong size.
+    ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Partially overwriting a pointer.
@@ -90,10 +92,19 @@ pub enum AllocError {
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
+impl From<ScalarSizeMismatch> for AllocError {
+    fn from(s: ScalarSizeMismatch) -> Self {
+        AllocError::ScalarSizeMismatch(s)
+    }
+}
+
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
         use AllocError::*;
         match self {
+            ScalarSizeMismatch(s) => {
+                InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
+            }
             ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
             PartialPointerOverwrite(offset) => InterpError::Unsupported(
                 UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
@@ -164,14 +175,14 @@ impl<Tag> Allocation<Tag> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-determinstic here because all uses of const
+            // deterministic. However, we can be non-deterministic here because all uses of const
             // evaluation (including ConstProp!) will make compilation fail (via hard error
             // or ICE) upon encountering a `MemoryExhausted` error.
             if panic_on_fail {
                 panic!("Allocation::uninit called with panic_on_fail had allocation failure")
             }
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
@@ -258,7 +269,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// `get_bytes_with_uninit_and_ptr` instead,
     ///
     /// This function also guarantees that the resulting pointer will remain stable
-    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
+    /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
@@ -407,6 +418,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     /// Most likely, you want to call `InterpCx::write_scalar` instead of this method.
+    #[instrument(skip(self, cx), level = "debug")]
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
@@ -418,14 +430,13 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         let val = match val {
             ScalarMaybeUninit::Scalar(scalar) => scalar,
             ScalarMaybeUninit::Uninit => {
-                self.mark_init(range, false);
-                return Ok(());
+                return self.write_uninit(cx, range);
             }
         };
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.
-        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Err(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))
@@ -443,6 +454,13 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         }
 
         Ok(())
+    }
+
+    /// Write "uninit" to the given memory range.
+    pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+        self.mark_init(range, false);
+        self.clear_relocations(cx, range)?;
+        return Ok(());
     }
 }
 
@@ -498,6 +516,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
                 return Err(AllocError::PartialPointerOverwrite(first));
             }
+            warn!(
+                "Partial pointer overwrite! De-initializing memory at offsets {first:?}..{start:?}."
+            );
             self.init_mask.set_range(first, start, false);
         }
         if last > end {
@@ -506,10 +527,15 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
                     last - cx.data_layout().pointer_size,
                 ));
             }
+            warn!(
+                "Partial pointer overwrite! De-initializing memory at offsets {end:?}..{last:?}."
+            );
             self.init_mask.set_range(end, last, false);
         }
 
         // Forget all the relocations.
+        // Since relocations do not overlap, we know that removing until `last` (exclusive) is fine,
+        // i.e., this will not remove any other relocations just after the ones we care about.
         self.relocations.0.remove_range(first..last);
 
         Ok(())
@@ -550,8 +576,10 @@ impl<Tag> Deref for Relocations<Tag> {
 }
 
 /// A partial, owned list of relocations to transfer into another allocation.
+///
+/// Offsets are already adjusted to the destination allocation.
 pub struct AllocationRelocations<Tag> {
-    relative_relocations: Vec<(Size, Tag)>,
+    dest_relocations: Vec<(Size, Tag)>,
 }
 
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
@@ -564,12 +592,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     ) -> AllocationRelocations<Tag> {
         let relocations = self.get_relocations(cx, src);
         if relocations.is_empty() {
-            return AllocationRelocations { relative_relocations: Vec::new() };
+            return AllocationRelocations { dest_relocations: Vec::new() };
         }
 
         let size = src.size;
         let mut new_relocations = Vec::with_capacity(relocations.len() * (count as usize));
 
+        // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
+        // is mostly filled with redundant information since it's just N copies of the same `Tag`s
+        // at slightly adjusted offsets. The reason we do this is so that in `mark_relocation_range`
+        // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
+        // the right sequence of relocations for all N copies.
         for i in 0..count {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
@@ -582,14 +615,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }));
         }
 
-        AllocationRelocations { relative_relocations: new_relocations }
+        AllocationRelocations { dest_relocations: new_relocations }
     }
 
     /// Applies a relocation copy.
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
-        self.relocations.0.insert_presorted(relocations.relative_relocations);
+        self.relocations.0.insert_presorted(relocations.dest_relocations);
     }
 }
 
@@ -734,11 +770,11 @@ impl InitMask {
         ///
         /// Note that all examples below are written with 8 (instead of 64) bit blocks for simplicity,
         /// and with the least significant bit (and lowest block) first:
-        ///
-        ///          00000000|00000000
-        ///          ^      ^ ^      ^
-        ///   index: 0      7 8      15
-        ///
+        /// ```text
+        ///        00000000|00000000
+        ///        ^      ^ ^      ^
+        /// index: 0      7 8      15
+        /// ```
         /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the first 1 bit.
         fn find_bit_fast(
             init_mask: &InitMask,
@@ -1045,7 +1081,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         })
     }
 
-    pub fn mark_init(&mut self, range: AllocRange, is_init: bool) {
+    fn mark_init(&mut self, range: AllocRange, is_init: bool) {
         if range.size.bytes() == 0 {
             return;
         }
@@ -1107,6 +1143,9 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Applies multiple instances of the run-length encoding to the initialization mask.
+    ///
+    /// This is dangerous to use as it can violate internal `Allocation` invariants!
+    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn mark_compressed_init_range(
         &mut self,
         defined: &InitMaskCompressed,

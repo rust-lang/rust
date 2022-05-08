@@ -9,10 +9,13 @@
   
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
+-         Deinit(_1);                      // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
 -         discriminant(_1) = 1;            // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:5: 28:17
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
+-         Deinit(_3);                      // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
 -         discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
+-         Deinit(_2);                      // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -         (_2.0: i32) = const 10_i32;      // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -         (_2.1: E) = const E::A;          // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
 -                                          // mir::Constant

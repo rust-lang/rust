@@ -1,4 +1,4 @@
-use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, MemoryExtra};
+use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
-use rustc_target::abi::Abi;
+use rustc_target::abi::{self, Abi};
 use std::borrow::Cow;
 use std::convert::TryInto;
 
@@ -38,7 +38,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
                 DefKind::Const
-                    | DefKind::Static
+                    | DefKind::Static(_)
                     | DefKind::ConstParam
                     | DefKind::AnonConst
                     | DefKind::InlineConst
@@ -100,13 +100,13 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(tcx.const_eval_limit()),
-        MemoryExtra { can_access_statics },
+        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics),
     )
 }
 
 /// This function converts an interpreter value into a constant that is meant for use in the
 /// type system.
+#[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
@@ -119,7 +119,7 @@ pub(super) fn op_to_const<'tcx>(
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
-        Abi::Scalar(..) => true,
+        Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
         Abi::ScalarPair(..) => match op.layout.ty.kind() {
             ty::Ref(_, inner, _) => match *inner.kind() {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
@@ -141,21 +141,26 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace()
     };
 
+    debug!(?immediate);
+
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
-    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr.into_parts() {
-        (Some(alloc_id), offset) => {
-            let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
-            ConstValue::ByRef { alloc, offset }
-        }
-        (None, offset) => {
-            assert!(mplace.layout.is_zst());
-            assert_eq!(
-                offset.bytes() % mplace.layout.align.abi.bytes(),
-                0,
-                "this MPlaceTy must come from a validated constant, thus we can assume the \
+    let to_const_value = |mplace: &MPlaceTy<'_>| {
+        debug!("to_const_value(mplace: {:?})", mplace);
+        match mplace.ptr.into_parts() {
+            (Some(alloc_id), offset) => {
+                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
+                ConstValue::ByRef { alloc, offset }
+            }
+            (None, offset) => {
+                assert!(mplace.layout.is_zst());
+                assert_eq!(
+                    offset.bytes() % mplace.layout.align.abi.bytes(),
+                    0,
+                    "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
-            );
-            ConstValue::Scalar(Scalar::ZST)
+                );
+                ConstValue::Scalar(Scalar::ZST)
+            }
         }
     };
     match immediate {
@@ -167,18 +172,20 @@ pub(super) fn op_to_const<'tcx>(
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
             },
             Immediate::ScalarPair(a, b) => {
+                debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (data, start) = match ecx.scalar_to_ptr(a.check_init().unwrap()).into_parts() {
-                    (Some(alloc_id), offset) => {
-                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
-                    }
-                    (None, _offset) => (
-                        ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
-                            b"" as &[u8],
-                        )),
-                        0,
-                    ),
-                };
+                let (data, start) =
+                    match ecx.scalar_to_ptr(a.check_init().unwrap()).unwrap().into_parts() {
+                        (Some(alloc_id), offset) => {
+                            (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
+                        }
+                        (None, _offset) => (
+                            ecx.tcx.intern_const_alloc(
+                                Allocation::from_bytes_byte_aligned_immutable(b"" as &[u8]),
+                            ),
+                            0,
+                        ),
+                    };
                 let len = b.to_machine_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
@@ -188,6 +195,7 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
@@ -206,8 +214,12 @@ fn turn_into_const_value<'tcx>(
         !is_static || cid.promoted.is_some(),
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
+
     // Turn this into a proper constant.
-    op_to_const(&ecx, &mplace.into())
+    let const_val = op_to_const(&ecx, &mplace.into());
+    debug!(?const_val);
+
+    const_val
 }
 
 pub fn eval_to_const_value_raw_provider<'tcx>(
@@ -285,10 +297,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         tcx,
         tcx.def_span(def.did),
         key.param_env,
-        CompileTimeInterpreter::new(tcx.const_eval_limit()),
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
-        MemoryExtra { can_access_statics: is_static },
+        CompileTimeInterpreter::new(tcx.const_eval_limit(), /*can_access_statics:*/ is_static),
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);

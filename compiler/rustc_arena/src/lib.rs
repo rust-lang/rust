@@ -18,6 +18,7 @@
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
+#![feature(strict_provenance)]
 
 use smallvec::SmallVec;
 
@@ -87,7 +88,7 @@ impl<T> ArenaChunk<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 // A pointer as large as possible for zero-sized elements.
-                !0 as *mut T
+                ptr::invalid_mut(!0)
             } else {
                 self.start().add(self.storage.len())
             }
@@ -199,7 +200,7 @@ impl<T> TypedArena<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 self.ptr.set((self.ptr.get() as *mut u8).wrapping_offset(1) as *mut T);
-                let ptr = mem::align_of::<T>() as *mut T;
+                let ptr = ptr::NonNull::<T>::dangling().as_ptr();
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
                 &mut *ptr
@@ -216,7 +217,9 @@ impl<T> TypedArena<T> {
 
     #[inline]
     fn can_allocate(&self, additional: usize) -> bool {
-        let available_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        // FIXME: this should *likely* use `offset_from`, but more
+        // investigation is needed (including running tests in miri).
+        let available_bytes = self.end.get().addr() - self.ptr.get().addr();
         let additional_bytes = additional.checked_mul(mem::size_of::<T>()).unwrap();
         available_bytes >= additional_bytes
     }
@@ -262,7 +265,9 @@ impl<T> TypedArena<T> {
                 // If a type is `!needs_drop`, we don't need to keep track of how many elements
                 // the chunk stores - the field will be ignored anyway.
                 if mem::needs_drop::<T>() {
-                    let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
+                    // FIXME: this should *likely* use `offset_from`, but more
+                    // investigation is needed (including running tests in miri).
+                    let used_bytes = self.ptr.get().addr() - last_chunk.start().addr();
                     last_chunk.entries = used_bytes / mem::size_of::<T>();
                 }
 
@@ -288,9 +293,9 @@ impl<T> TypedArena<T> {
     // chunks.
     fn clear_last_chunk(&self, last_chunk: &mut ArenaChunk<T>) {
         // Determine how much was filled.
-        let start = last_chunk.start() as usize;
+        let start = last_chunk.start().addr();
         // We obtain the value of the pointer to the first uninitialized element.
-        let end = self.ptr.get() as usize;
+        let end = self.ptr.get().addr();
         // We then calculate the number of elements to be dropped in the last chunk,
         // which is the filled area's length.
         let diff = if mem::size_of::<T>() == 0 {
@@ -299,6 +304,8 @@ impl<T> TypedArena<T> {
             // Recall that `end` was incremented for each allocated value.
             end - start
         } else {
+            // FIXME: this should *likely* use `offset_from`, but more
+            // investigation is needed (including running tests in miri).
             (end - start) / mem::size_of::<T>()
         };
         // Pass that to the `destroy` method.
@@ -395,15 +402,16 @@ impl DroplessArena {
     /// request.
     #[inline]
     fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
-        let start = self.start.get() as usize;
-        let end = self.end.get() as usize;
+        let start = self.start.get().addr();
+        let old_end = self.end.get();
+        let end = old_end.addr();
 
         let align = layout.align();
         let bytes = layout.size();
 
         let new_end = end.checked_sub(bytes)? & !(align - 1);
         if start <= new_end {
-            let new_end = new_end as *mut u8;
+            let new_end = old_end.with_addr(new_end);
             self.end.set(new_end);
             Some(new_end)
         } else {

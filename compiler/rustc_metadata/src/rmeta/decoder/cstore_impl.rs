@@ -5,7 +5,7 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
@@ -81,30 +81,42 @@ macro_rules! provide {
 // small trait to work around different signature queries all being defined via
 // the macro above.
 trait IntoArgs {
-    fn into_args(self) -> (DefId, DefId);
+    type Other;
+    fn into_args(self) -> (DefId, Self::Other);
 }
 
 impl IntoArgs for DefId {
-    fn into_args(self) -> (DefId, DefId) {
-        (self, self)
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self, ())
     }
 }
 
 impl IntoArgs for CrateNum {
-    fn into_args(self) -> (DefId, DefId) {
-        (self.as_def_id(), self.as_def_id())
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self.as_def_id(), ())
     }
 }
 
 impl IntoArgs for (CrateNum, DefId) {
+    type Other = DefId;
     fn into_args(self) -> (DefId, DefId) {
         (self.0.as_def_id(), self.1)
     }
 }
 
 impl<'tcx> IntoArgs for ty::InstanceDef<'tcx> {
-    fn into_args(self) -> (DefId, DefId) {
-        (self.def_id(), self.def_id())
+    type Other = ();
+    fn into_args(self) -> (DefId, ()) {
+        (self.def_id(), ())
+    }
+}
+
+impl IntoArgs for (CrateNum, SimplifiedType) {
+    type Other = SimplifiedType;
+    fn into_args(self) -> (DefId, SimplifiedType) {
+        (self.0.as_def_id(), self.1)
     }
 }
 
@@ -141,19 +153,19 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     asyncness => { table }
     fn_arg_names => { table }
     generator_kind => { table }
+    trait_def => { table }
 
-    trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
         tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
-    associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
+    associated_item_def_ids => {
+        tcx.arena.alloc_from_iter(cdata.get_associated_item_def_ids(def_id.index, tcx.sess))
+    }
     associated_item => { cdata.get_associated_item(def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    static_mutability => { cdata.static_mutability(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
@@ -178,9 +190,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)
             .iter()
-            .filter_map(|&(exported_symbol, export_level)| {
+            .filter_map(|&(exported_symbol, export_info)| {
                 if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
-                    Some((def_id, export_level))
+                    Some((def_id, export_info))
                 } else {
                     None
                 }
@@ -199,6 +211,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
+    crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
     dep_kind => {
         let r = *cdata.dep_kind.lock();
@@ -210,7 +223,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
-    defined_lang_items => { tcx.arena.alloc_from_iter(cdata.get_lang_items()) }
+    defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
@@ -220,6 +233,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Lrc::clone(&cdata.source) }
+    debugger_visualizers => { cdata.get_debugger_visualizers() }
 
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);
@@ -233,6 +247,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -311,7 +326,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     continue;
                 }
 
-                bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
+                bfs_queue.push_back(cnum.as_def_id());
             }
 
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
@@ -371,7 +386,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
         crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
-
         ..*providers
     };
 }
@@ -511,9 +525,24 @@ impl CStore {
         self.get_crate_data(cnum).get_inherent_impls()
     }
 
-    /// Decodes all lang items in the crate (for rustdoc).
-    pub fn lang_items_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_lang_items().map(|(def_id, _)| def_id)
+    /// Decodes all incoherent inherent impls in the crate (for rustdoc).
+    pub fn incoherent_impls_in_crate_untracked(
+        &self,
+        cnum: CrateNum,
+    ) -> impl Iterator<Item = DefId> + '_ {
+        self.get_crate_data(cnum).get_all_incoherent_impls()
+    }
+
+    pub fn associated_item_def_ids_untracked<'a>(
+        &'a self,
+        def_id: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = DefId> + 'a {
+        self.get_crate_data(def_id.krate).get_associated_item_def_ids(def_id.index, sess)
+    }
+
+    pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
     }
 }
 

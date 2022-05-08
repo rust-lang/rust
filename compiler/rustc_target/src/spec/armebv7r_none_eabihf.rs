@@ -6,19 +6,19 @@ use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
-        llvm_target: "armebv7r-unknown-none-eabihf".to_string(),
+        llvm_target: "armebv7r-unknown-none-eabihf".into(),
         pointer_width: 32,
-        data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
-        arch: "arm".to_string(),
+        data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+        arch: "arm".into(),
         options: TargetOptions {
-            abi: "eabihf".to_string(),
+            abi: "eabihf".into(),
             endian: Endian::Big,
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             executables: true,
-            linker: Some("rust-lld".to_owned()),
+            linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
-            features: "+vfp3,-d32,-fp16".to_string(),
+            features: "+vfp3,-d32,-fp16".into(),
             max_atomic_width: Some(32),
             emit_debug_gdb_scripts: false,
             // GCC and Clang default to 8 for arm-none here

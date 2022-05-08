@@ -5,7 +5,7 @@ LL | fn test() -> Pointer<_> {
    |              --------^-
    |              |       |
    |              |       not allowed in type signatures
-   |              help: replace with the correct return type: `Box<i32>`
+   |              help: replace with the correct return type: `Pointer<i32>`
 
 error: aborting due to previous error
 

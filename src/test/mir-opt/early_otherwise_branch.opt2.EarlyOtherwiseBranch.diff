@@ -26,12 +26,13 @@
           _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch.rs:12:12: 12:13
           StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:12:15: 12:16
           _5 = _2;                         // scope 0 at $DIR/early_otherwise_branch.rs:12:15: 12:16
+          Deinit(_3);                      // scope 0 at $DIR/early_otherwise_branch.rs:12:11: 12:17
           (_3.0: std::option::Option<u32>) = move _4; // scope 0 at $DIR/early_otherwise_branch.rs:12:11: 12:17
           (_3.1: std::option::Option<u32>) = move _5; // scope 0 at $DIR/early_otherwise_branch.rs:12:11: 12:17
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:12:16: 12:17
           StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch.rs:12:16: 12:17
           _8 = discriminant((_3.0: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:12:11: 12:17
--         switchInt(move _8) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb7]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
+-         switchInt(move _8) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         _11 = discriminant((_3.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageLive(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
@@ -81,10 +82,8 @@
 +     bb4: {
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:17:1: 17:2
           return;                          // scope 0 at $DIR/early_otherwise_branch.rs:17:2: 17:2
-      }
-  
--     bb7: {
--         unreachable;                     // scope 0 at $DIR/early_otherwise_branch.rs:15:14: 15:15
++     }
++ 
 +     bb5: {
 +         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         switchInt(_8) -> [0_isize: bb3, 1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17

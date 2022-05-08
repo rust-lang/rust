@@ -1,0 +1,51 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `not_good`...
+  --> $DIR/reveal_local.rs:11:1
+   |
+LL | fn not_good() {
+   | ^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal_local.rs:1:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | use std::fmt::Debug;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `not_gooder`...
+  --> $DIR/reveal_local.rs:17:1
+   |
+LL | fn not_gooder() {
+   | ^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal_local.rs:1:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | use std::fmt::Debug;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-use-contravariant-struct-1.rs:12:5
+  --> $DIR/variance-use-contravariant-struct-1.rs:14:5
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        ---- ---- lifetime `'max` defined here

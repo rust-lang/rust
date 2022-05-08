@@ -310,7 +310,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Crate properties:
     ungated!(crate_name, CrateLevel, template!(NameValueStr: "name"), FutureWarnFollowing),
-    ungated!(crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), FutureWarnFollowing),
+    ungated!(crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk),
     // crate_id is deprecated
     ungated!(crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing),
 
@@ -378,6 +378,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
+
+    // RFC #3191: #[debugger_visualizer] support
+    gated!(
+        debugger_visualizer, Normal, template!(List: r#"natvis_file = "...""#),
+        DuplicatesOk, experimental!(debugger_visualizer)
+    ),
 
     // Linking:
     gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
@@ -635,6 +641,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_pass_by_value, Normal,
         template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+    ),
+    rustc_attr!(
+        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing,
+        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+    ),
+    rustc_attr!(
+        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
+    ),
+    rustc_attr!(
+        rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
+         the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
     ),
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,

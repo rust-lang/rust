@@ -170,6 +170,7 @@ use self::JsonEvent::*;
 use self::ParserError::*;
 use self::ParserState::*;
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::mem::swap;
 use std::num::FpCategory as Fp;
@@ -2196,6 +2197,12 @@ impl ToJson for string::String {
     }
 }
 
+impl<'a> ToJson for Cow<'a, str> {
+    fn to_json(&self) -> Json {
+        Json::String(self.to_string())
+    }
+}
+
 macro_rules! tuple_impl {
     // use variables to indicate the arity of the tuple
     ($($tyvar:ident),* ) => {
@@ -2235,6 +2242,15 @@ impl<A: ToJson> ToJson for [A] {
 }
 
 impl<A: ToJson> ToJson for Vec<A> {
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
+}
+
+impl<'a, A: ToJson> ToJson for Cow<'a, [A]>
+where
+    [A]: ToOwned,
+{
     fn to_json(&self) -> Json {
         Json::Array(self.iter().map(|elt| elt.to_json()).collect())
     }

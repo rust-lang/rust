@@ -330,6 +330,22 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     fn from_residual(residual: R) -> Self;
 }
 
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "yeet_desugar_details",
+    issue = "none",
+    reason = "just here to simplify the desugaring; will never be stabilized"
+)]
+#[inline]
+#[track_caller] // because `Result::from_residual` has it
+#[lang = "from_yeet"]
+pub fn from_yeet<T, Y>(yeeted: Y) -> T
+where
+    T: FromResidual<Yeet<Y>>,
+{
+    FromResidual::from_residual(Yeet(yeeted))
+}
+
 /// Allows retrieving the canonical type implementing [`Try`] that has this type
 /// as its residual and allows it to hold an `O` as its output.
 ///
@@ -395,3 +411,9 @@ impl<T> FromResidual for NeverShortCircuit<T> {
 impl<T> Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
+
+/// Implement `FromResidual<Yeet<T>>` on your type to enable
+/// `do yeet expr` syntax in functions returning your type.
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+#[derive(Debug)]
+pub struct Yeet<T>(pub T);

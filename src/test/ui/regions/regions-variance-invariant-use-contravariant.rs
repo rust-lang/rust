@@ -4,6 +4,10 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 struct Invariant<'a> {
     f: &'a mut &'a isize
 }
@@ -17,7 +21,9 @@ fn use_<'short,'long>(c: Invariant<'long>,
     // 'short <= 'long, this would be true if the Invariant type were
     // contravariant with respect to its parameter 'a.
 
-    let _: Invariant<'short> = c; //~ ERROR E0623
+    let _: Invariant<'short> = c;
+    //[base]~^ ERROR E0623
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

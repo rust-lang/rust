@@ -12,6 +12,7 @@
 // @has foo/index.html '//a/@href' '../foo/index.html'
 // @!has foo/foo/index.html
 // @!has-dir foo/foo
+// @!has foo/index.html '//span' '🔒'
 #[doc(keyword = "match")]
 /// this is a test!
 mod foo{}

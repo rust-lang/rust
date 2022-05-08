@@ -1,6 +1,6 @@
 use crate::parse::ParseSess;
 use crate::session::Session;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Token};
 use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -18,6 +18,7 @@ impl Session {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub enum NativeLibKind {
     /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)
     Static {
@@ -43,9 +44,22 @@ pub enum NativeLibKind {
     Unspecified,
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);
+impl NativeLibKind {
+    pub fn has_modifiers(&self) -> bool {
+        match self {
+            NativeLibKind::Static { bundle, whole_archive } => {
+                bundle.is_some() || whole_archive.is_some()
+            }
+            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
+                as_needed.is_some()
+            }
+            NativeLibKind::RawDylib | NativeLibKind::Unspecified => false,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub struct NativeLib {
     pub name: String,
     pub new_name: Option<String>,
@@ -53,7 +67,11 @@ pub struct NativeLib {
     pub verbatim: Option<bool>,
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(NativeLib);
+impl NativeLib {
+    pub fn has_modifiers(&self) -> bool {
+        self.verbatim.is_some() || self.kind.has_modifiers()
+    }
+}
 
 /// A path that has been canonicalized along with its original, non-canonicalized form
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -112,11 +130,14 @@ impl<'a> FlattenNonterminals<'a> {
 
     pub fn process_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
+            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = *nt => {
+                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span)).into()
+            }
             token::Interpolated(nt) => {
                 let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
                 TokenTree::Delimited(
                     DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
+                    Delimiter::Invisible,
                     self.process_token_stream(tts),
                 )
                 .into()

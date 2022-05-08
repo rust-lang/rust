@@ -1,0 +1,103 @@
+- // MIR for `match_nested_if` before ConstGoto
++ // MIR for `match_nested_if` after ConstGoto
+  
+  fn match_nested_if() -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/const_goto_storage.rs:2:25: 2:29
+      let _1: bool;                        // in scope 0 at $DIR/const_goto_storage.rs:3:9: 3:12
+-     let mut _2: ();                      // in scope 0 at $DIR/const_goto_storage.rs:3:21: 3:23
+-     let mut _3: bool;                    // in scope 0 at $DIR/const_goto_storage.rs:4:15: 8:10
+-     let mut _4: bool;                    // in scope 0 at $DIR/const_goto_storage.rs:4:18: 4:76
+-     let mut _5: bool;                    // in scope 0 at $DIR/const_goto_storage.rs:4:21: 4:52
+-     let mut _6: bool;                    // in scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
++     let mut _2: bool;                    // in scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
+      scope 1 {
+          debug val => _1;                 // in scope 1 at $DIR/const_goto_storage.rs:3:9: 3:12
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/const_goto_storage.rs:3:9: 3:12
+-         StorageLive(_2);                 // scope 0 at $DIR/const_goto_storage.rs:3:21: 3:23
+-         nop;                             // scope 0 at $DIR/const_goto_storage.rs:3:21: 3:23
+-         StorageLive(_3);                 // scope 0 at $DIR/const_goto_storage.rs:4:15: 8:10
+-         StorageLive(_4);                 // scope 0 at $DIR/const_goto_storage.rs:4:18: 4:76
+-         StorageLive(_5);                 // scope 0 at $DIR/const_goto_storage.rs:4:21: 4:52
+-         StorageLive(_6);                 // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
+-         _6 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
+-         switchInt(move _6) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
++         StorageLive(_2);                 // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
++         _2 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
++         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:4:24: 4:28
+      }
+  
+      bb1: {
+-         _5 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:4:31: 4:35
+-         goto -> bb3;                     // scope 0 at $DIR/const_goto_storage.rs:4:21: 4:52
+-     }
+- 
+-     bb2: {
+-         _5 = const false;                // scope 0 at $DIR/const_goto_storage.rs:4:45: 4:50
+-         goto -> bb3;                     // scope 0 at $DIR/const_goto_storage.rs:4:21: 4:52
+-     }
+- 
+-     bb3: {
+-         StorageDead(_6);                 // scope 0 at $DIR/const_goto_storage.rs:4:51: 4:52
+-         switchInt(move _5) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_storage.rs:4:21: 4:52
+-     }
+- 
+-     bb4: {
+-         _4 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:4:55: 4:59
+-         goto -> bb6;                     // scope 0 at $DIR/const_goto_storage.rs:4:18: 4:76
+-     }
+- 
+-     bb5: {
+-         _4 = const false;                // scope 0 at $DIR/const_goto_storage.rs:4:69: 4:74
+-         goto -> bb6;                     // scope 0 at $DIR/const_goto_storage.rs:4:18: 4:76
+-     }
+- 
+-     bb6: {
+-         StorageDead(_5);                 // scope 0 at $DIR/const_goto_storage.rs:4:75: 4:76
+-         switchInt(move _4) -> [false: bb8, otherwise: bb7]; // scope 0 at $DIR/const_goto_storage.rs:4:18: 4:76
+-     }
+- 
+-     bb7: {
+-         _3 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:5:13: 5:17
+-         goto -> bb9;                     // scope 0 at $DIR/const_goto_storage.rs:4:15: 8:10
+-     }
+- 
+-     bb8: {
+-         _3 = const false;                // scope 0 at $DIR/const_goto_storage.rs:7:13: 7:18
+-         goto -> bb9;                     // scope 0 at $DIR/const_goto_storage.rs:4:15: 8:10
+-     }
+- 
+-     bb9: {
+-         switchInt(move _3) -> [false: bb11, otherwise: bb10]; // scope 0 at $DIR/const_goto_storage.rs:4:15: 8:10
+-     }
+- 
+-     bb10: {
+-         StorageDead(_4);                 // scope 0 at $DIR/const_goto_storage.rs:8:9: 8:10
+-         StorageDead(_3);                 // scope 0 at $DIR/const_goto_storage.rs:8:9: 8:10
++         StorageDead(_2);                 // scope 0 at $DIR/const_goto_storage.rs:4:51: 4:52
+          _1 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:10:17: 10:21
+-         goto -> bb12;                    // scope 0 at $DIR/const_goto_storage.rs:10:17: 10:21
++         goto -> bb3;                     // scope 0 at $DIR/const_goto_storage.rs:10:17: 10:21
+      }
+  
+-     bb11: {
+-         StorageDead(_4);                 // scope 0 at $DIR/const_goto_storage.rs:8:9: 8:10
+-         StorageDead(_3);                 // scope 0 at $DIR/const_goto_storage.rs:8:9: 8:10
++     bb2: {
++         StorageDead(_2);                 // scope 0 at $DIR/const_goto_storage.rs:4:51: 4:52
+          _1 = const false;                // scope 0 at $DIR/const_goto_storage.rs:12:14: 12:19
+-         goto -> bb12;                    // scope 0 at $DIR/const_goto_storage.rs:12:14: 12:19
++         goto -> bb3;                     // scope 0 at $DIR/const_goto_storage.rs:12:14: 12:19
+      }
+  
+-     bb12: {
+-         StorageDead(_2);                 // scope 0 at $DIR/const_goto_storage.rs:13:6: 13:7
++     bb3: {
+          _0 = _1;                         // scope 1 at $DIR/const_goto_storage.rs:14:5: 14:8
+          StorageDead(_1);                 // scope 0 at $DIR/const_goto_storage.rs:15:1: 15:2
+          return;                          // scope 0 at $DIR/const_goto_storage.rs:15:2: 15:2
+      }
+  }
+  

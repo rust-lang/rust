@@ -479,20 +479,26 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
-    /// * `T` needs to have the same size and alignment as what `ptr` was allocated with.
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    ///   to be the same size as the pointer was allocated with. (Because similar to
+    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
-    /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal data structures. For example it is **not** safe
-    /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
+    /// internal data structures. For example it is normally **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length
+    /// `size_t`, doing so is only safe if the array was initially allocated by
+    /// a `Vec` or `String`.
     /// It's also not safe to build one from a `Vec<u16>` and its length, because
     /// the allocator cares about the alignment, and these two types have different
     /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
-    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1.
+    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1. To avoid
+    /// these issues, it is often preferable to do casting/transmuting using
+    /// [`slice::from_raw_parts`] instead.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `Vec<T>` which may then deallocate, reallocate or change the
@@ -1463,8 +1469,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_retain_mut)]
-    ///
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.retain_mut(|x| if *x > 3 {
     ///     false
@@ -1474,7 +1478,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// });
     /// assert_eq!(vec, [2, 3, 4]);
     /// ```
-    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    #[stable(feature = "vec_retain_mut", since = "1.61.0")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
@@ -1879,7 +1883,18 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        self.truncate(0)
+        let elems: *mut [T] = self.as_mut_slice();
+
+        // SAFETY:
+        // - `elems` comes directly from `as_mut_slice` and is therefore valid.
+        // - Setting `self.len` before calling `drop_in_place` means that,
+        //   if an element's `Drop` impl panics, the vector's `Drop` impl will
+        //   do nothing (leaking the rest of the elements) instead of dropping
+        //   some twice.
+        unsafe {
+            self.len = 0;
+            ptr::drop_in_place(elems);
+        }
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -2272,6 +2287,51 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     }
 }
 
+impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
+    /// Takes a `Vec<[T; N]>` and flattens it into a `Vec<T>`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the length of the resulting vector would overflow a `usize`.
+    ///
+    /// This is only possible when flattening a vector of arrays of zero-sized
+    /// types, and thus tends to be irrelevant in practice. If
+    /// `size_of::<T>() > 0`, this will never panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_flatten)]
+    ///
+    /// let mut vec = vec![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+    /// assert_eq!(vec.pop(), Some([7, 8, 9]));
+    ///
+    /// let mut flattened = vec.into_flattened();
+    /// assert_eq!(flattened.pop(), Some(6));
+    /// ```
+    #[unstable(feature = "slice_flatten", issue = "95629")]
+    pub fn into_flattened(self) -> Vec<T, A> {
+        let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
+        let (new_len, new_cap) = if mem::size_of::<T>() == 0 {
+            (len.checked_mul(N).expect("vec len overflow"), usize::MAX)
+        } else {
+            // SAFETY:
+            // - `cap * N` cannot overflow because the allocation is already in
+            // the address space.
+            // - Each `[T; N]` has `N` valid elements, so there are `len * N`
+            // valid elements in the allocation.
+            unsafe { (len.unchecked_mul(N), cap.unchecked_mul(N)) }
+        };
+        // SAFETY:
+        // - `ptr` was allocated by `self`
+        // - `ptr` is well-aligned because `[T; N]` has the same alignment as `T`.
+        // - `new_cap` refers to the same sized allocation as `cap` because
+        // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
+        // - `len` <= `cap`, so `len * N` <= `cap * N`.
+        unsafe { Vec::<T, A>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
+    }
+}
+
 // This code generalizes `extend_with_{element,default}`.
 trait ExtendWith<T> {
     fn next(&mut self) -> T;
@@ -2575,7 +2635,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     fn into_iter(self) -> IntoIter<T, A> {
         unsafe {
             let mut me = ManuallyDrop::new(self);
-            let alloc = ptr::read(me.allocator());
+            let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let begin = me.as_mut_ptr();
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, me.len() as isize) as *const T

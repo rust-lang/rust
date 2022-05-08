@@ -3,19 +3,23 @@ use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::AssocTypeBindingNotAllowed;
+use crate::errors::{
+    AssocTypeBindingNotAllowed, ExplicitGenericArgsWithImplTrait,
+    ExplicitGenericArgsWithImplTraitFeature,
+};
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{
     self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::{symbol::kw, MultiSpan, Span};
+use rustc_span::{symbol::kw, Span};
 use smallvec::SmallVec;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
@@ -81,10 +85,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 Res::Def(DefKind::TyParam, src_def_id) => {
                     if let Some(param_local_id) = param.def_id.as_local() {
-                        let param_hir_id = tcx.hir().local_def_id_to_hir_id(param_local_id);
-                        let param_name = tcx.hir().ty_param_name(param_hir_id);
-                        let param_type = tcx.type_of(param.def_id);
-                        if param_type.is_suggestable() {
+                        let param_name = tcx.hir().ty_param_name(param_local_id);
+                        let param_type = tcx.infer_ctxt().enter(|infcx| {
+                            infcx.resolve_numeric_literals_with_default(tcx.type_of(param.def_id))
+                        });
+                        if param_type.is_suggestable(tcx) {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
                                 "consider changing this type parameter to be a `const` generic",
@@ -634,29 +639,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
                 .collect::<Vec<_>>();
 
-            let mut err = struct_span_err! {
-                tcx.sess,
-                spans.clone(),
-                E0632,
-                "cannot provide explicit generic arguments when `impl Trait` is \
-                used in argument position"
-            };
-
-            for span in spans {
-                err.span_label(span, "explicit generic argument not allowed");
-            }
-
-            err.note(
-                "see issue #83701 <https://github.com/rust-lang/rust/issues/83701> \
-                 for more information",
-            );
+            let mut err = tcx.sess.create_err(ExplicitGenericArgsWithImplTrait { spans });
             if tcx.sess.is_nightly_build() {
-                err.help(
-                    "add `#![feature(explicit_generic_args_with_impl_trait)]` \
-                     to the crate attributes to enable",
-                );
+                err.subdiagnostic(ExplicitGenericArgsWithImplTraitFeature);
             }
-
             err.emit();
         }
 

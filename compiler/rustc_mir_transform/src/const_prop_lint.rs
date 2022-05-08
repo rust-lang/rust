@@ -67,7 +67,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let is_fn_like = tcx.hir().get_by_def_id(def_id).fn_kind().is_some();
+        let is_fn_like = tcx.def_kind(def_id).is_fn_like();
         let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
@@ -180,8 +180,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     type MemoryKind = !;
 
-    type MemoryExtra = ();
-
     fn load_mir(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _instance: ty::InstanceDef<'tcx>,
@@ -263,7 +261,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn before_access_global(
-        _memory_extra: &(),
+        _tcx: TyCtxt<'tcx>,
+        _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
@@ -309,10 +308,8 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    // FIXME(eddyb) avoid cloning these two fields more than once,
-    // by accessing them through `ecx` instead.
-    source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
-    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    source_scopes: &'mir IndexVec<SourceScope, SourceScopeData<'tcx>>,
+    local_decls: &'mir IndexVec<Local, LocalDecl<'tcx>>,
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
@@ -358,10 +355,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-        let span = tcx.def_span(def_id);
-        // FIXME: `CanConstProp::check` computes the layout of all locals, return those layouts
-        // so we can write them to `ecx.frame_mut().locals.layout, reducing the duplication in
-        // `layout_of` query invocations.
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
@@ -371,10 +364,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         let mut ecx = InterpCx::new(
             tcx,
-            span,
+            tcx.def_span(def_id),
             param_env,
             ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
-            (),
         );
 
         let ret = ecx
@@ -403,11 +395,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ecx,
             tcx,
             param_env,
-            // FIXME(eddyb) avoid cloning these two fields more than once,
-            // by accessing them through `ecx` instead.
-            source_scopes: body.source_scopes.clone(),
-            //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
-            local_decls: body.local_decls.clone(),
+            source_scopes: &dummy_body.source_scopes,
+            local_decls: &dummy_body.local_decls,
             source_info: None,
         }
     }
@@ -423,7 +412,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.try_read_immediate(&op) {
+        Some(match self.ecx.read_immediate_raw(&op, /*force*/ false) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -437,7 +426,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
-        source_info.scope.lint_root(&self.source_scopes)
+        source_info.scope.lint_root(self.source_scopes)
     }
 
     fn use_ecx<F, T>(&mut self, f: F) -> Option<T>
@@ -574,7 +563,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r = r?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(&self.local_decls, self.tcx);
+            let left_ty = left.ty(self.local_decls, self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().ok();
@@ -780,7 +769,9 @@ impl Visitor<'_> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
+            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
+            | MutatingUse(MutatingUseContext::SetDiscriminant)
             | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
                     match &mut self.can_const_prop[local] {

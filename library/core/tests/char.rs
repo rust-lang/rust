@@ -197,7 +197,7 @@ fn test_escape_debug() {
     assert_eq!(string('~'), "~");
     assert_eq!(string('é'), "é");
     assert_eq!(string('文'), "文");
-    assert_eq!(string('\x00'), "\\u{0}");
+    assert_eq!(string('\x00'), "\\0");
     assert_eq!(string('\x1f'), "\\u{1f}");
     assert_eq!(string('\x7f'), "\\u{7f}");
     assert_eq!(string('\u{80}'), "\\u{80}");

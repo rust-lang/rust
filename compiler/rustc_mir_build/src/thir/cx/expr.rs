@@ -8,7 +8,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, Field, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -158,6 +158,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
+        let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
         let expr_span = expr.span;
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
@@ -196,7 +197,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
-                        ty: self.tcx.mk_tup(arg_tys),
+                        ty: tcx.mk_tup(arg_tys),
                         temp_lifetime,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
@@ -462,90 +463,55 @@ impl<'tcx> Cx<'tcx> {
                 operands: asm
                     .operands
                     .iter()
-                    .map(|(op, _op_sp)| {
-                        match *op {
-                            hir::InlineAsmOperand::In { reg, ref expr } => {
-                                InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::Out { reg, late, ref expr } => {
-                                InlineAsmOperand::Out {
-                                    reg,
-                                    late,
-                                    expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
-                                }
-                            }
-                            hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
-                                InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::SplitInOut {
+                    .map(|(op, _op_sp)| match *op {
+                        hir::InlineAsmOperand::In { reg, ref expr } => {
+                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                            InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                ref in_expr,
-                                ref out_expr,
-                            } => InlineAsmOperand::SplitInOut {
-                                reg,
-                                late,
-                                in_expr: self.mirror_expr(in_expr),
-                                out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
-                            },
-                            hir::InlineAsmOperand::Const { ref anon_const } => {
-                                let anon_const_def_id =
-                                    self.tcx.hir().local_def_id(anon_const.hir_id);
-                                let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
-                                let span = self.tcx.hir().span(anon_const.hir_id);
-
-                                InlineAsmOperand::Const { value, span }
+                                expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
                             }
-                            hir::InlineAsmOperand::Sym { ref expr } => {
-                                let hir::ExprKind::Path(ref qpath) = expr.kind else {
-                                    span_bug!(
-                                        expr.span,
-                                        "asm `sym` operand should be a path, found {:?}",
-                                        expr.kind
-                                    );
-                                };
-                                let temp_lifetime =
-                                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-                                let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
-                                let ty;
-                                match res {
-                                    Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
-                                        ty = self.typeck_results().node_type(expr.hir_id);
-                                        let user_ty =
-                                            self.user_substs_applied_to_res(expr.hir_id, res);
-                                        InlineAsmOperand::SymFn {
-                                            expr: self.thir.exprs.push(Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::zero_sized_literal(user_ty),
-                                            }),
-                                        }
-                                    }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            ref in_expr,
+                            ref out_expr,
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: self.mirror_expr(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                        },
+                        hir::InlineAsmOperand::Const { ref anon_const } => {
+                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
+                            let value = mir::ConstantKind::from_anon_const(
+                                tcx,
+                                anon_const_def_id,
+                                self.param_env,
+                            );
+                            let span = tcx.hir().span(anon_const.hir_id);
 
-                                    Res::Def(DefKind::Static, def_id) => {
-                                        InlineAsmOperand::SymStatic { def_id }
-                                    }
+                            InlineAsmOperand::Const { value, span }
+                        }
+                        hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
+                            let value = mir::ConstantKind::from_anon_const(
+                                tcx,
+                                anon_const_def_id,
+                                self.param_env,
+                            );
+                            let span = tcx.hir().span(anon_const.hir_id);
 
-                                    _ => {
-                                        self.tcx.sess.span_err(
-                                            expr.span,
-                                            "asm `sym` operand must point to a fn or static",
-                                        );
-
-                                        // Not a real fn, but we're not reaching codegen anyways...
-                                        ty = self.tcx.ty_error();
-                                        InlineAsmOperand::SymFn {
-                                            expr: self.thir.exprs.push(Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::zero_sized_literal(None),
-                                            }),
-                                        }
-                                    }
-                                }
-                            }
+                            InlineAsmOperand::SymFn { value, span }
+                        }
+                        hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            InlineAsmOperand::SymStatic { def_id }
                         }
                     })
                     .collect(),
@@ -554,21 +520,16 @@ impl<'tcx> Cx<'tcx> {
             },
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
-                let tcx = self.tcx;
-                let local_def_id = tcx.hir().local_def_id(anon_const.hir_id);
-                let anon_const_def_id = local_def_id.to_def_id();
-
-                // Need to include the parent substs
-                let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-                let ty = tcx.typeck(local_def_id).node_type(hir_id);
-                let typeck_root_def_id = tcx.typeck_root_def_id(anon_const_def_id);
+                let ty = self.typeck_results().node_type(anon_const.hir_id);
+                let did = tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
+                let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
                 let substs =
                     InlineConstSubsts::new(tcx, InlineConstSubstsParts { parent_substs, ty })
                         .substs;
 
-                ExprKind::ConstBlock { did: anon_const_def_id, substs }
+                ExprKind::ConstBlock { did, substs }
             }
             // Now comes the rote stuff:
             hir::ExprKind::Repeat(ref v, _) => {
@@ -626,7 +587,7 @@ impl<'tcx> Cx<'tcx> {
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
-                name: Field::new(self.tcx.field_index(expr.hir_id, self.typeck_results)),
+                name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -675,7 +636,7 @@ impl<'tcx> Cx<'tcx> {
                                     let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                     use rustc_middle::ty::util::IntTypeExt;
                                     let ty = adt_def.repr().discr_type();
-                                    let ty = ty.to_ty(self.tcx());
+                                    let ty = ty.to_ty(tcx);
                                     Some((d, o, ty))
                                 }
                                 _ => None,
@@ -687,8 +648,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let source = if let Some((did, offset, var_ty)) = var {
                         let param_env_ty = self.param_env.and(var_ty);
-                        let size = self
-                            .tcx
+                        let size = tcx
                             .layout_of(param_env_ty)
                             .unwrap_or_else(|e| {
                                 panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
@@ -706,7 +666,7 @@ impl<'tcx> Cx<'tcx> {
                             Some(did) => {
                                 // in case we are offsetting from a computed discriminant
                                 // and not the beginning of discriminants (which is always `0`)
-                                let substs = InternalSubsts::identity_for_item(self.tcx(), did);
+                                let substs = InternalSubsts::identity_for_item(tcx, did);
                                 let kind =
                                     ExprKind::NamedConst { def_id: did, substs, user_ty: None };
                                 let lhs = self.thir.exprs.push(Expr {
@@ -901,7 +861,7 @@ impl<'tcx> Cx<'tcx> {
 
             // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
             // a constant reference (or constant raw pointer for `static mut`) in MIR
-            Res::Def(DefKind::Static, id) => {
+            Res::Def(DefKind::Static(_), id) => {
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {

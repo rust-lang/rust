@@ -66,7 +66,7 @@ impl CoverageVisitor {
                 // The operand ID is outside the known range of counter IDs and also outside the
                 // known range of expression IDs. In either case, the result of a missing operand
                 // (if and when used in an expression) will be zero, so from a computation
-                // perspective, it doesn't matter whether it is interepretted as a counter or an
+                // perspective, it doesn't matter whether it is interpreted as a counter or an
                 // expression.
                 //
                 // However, the `num_counters` and `num_expressions` query results are used to

@@ -61,7 +61,7 @@ impl Step for Docs {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = run.builder.config.docs;
-        run.path("rust-docs").default_condition(default)
+        run.alias("rust-docs").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -94,7 +94,7 @@ impl Step for RustcDocs {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("rustc-docs").default_condition(builder.config.compiler_docs)
+        run.alias("rustc-docs").default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -272,7 +272,7 @@ impl Step for Mingw {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rust-mingw")
+        run.alias("rust-mingw")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -313,7 +313,7 @@ impl Step for Rustc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rustc")
+        run.alias("rustc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -456,16 +456,7 @@ impl Step for DebuggerScripts {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/lldb_batchmode.py")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(DebuggerScripts {
-            sysroot: run
-                .builder
-                .sysroot(run.builder.compiler(run.builder.top_stage, run.build_triple())),
-            host: run.target,
-        });
+        run.never()
     }
 
     /// Copies debugger scripts for `target` into the `sysroot` specified.
@@ -547,7 +538,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rust-std")
+        run.alias("rust-std")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -594,7 +585,7 @@ impl Step for RustcDev {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rustc-dev")
+        run.alias("rustc-dev")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -653,7 +644,7 @@ impl Step for Analysis {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "analysis");
-        run.path("rust-analysis").default_condition(default)
+        run.alias("rust-analysis").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -790,7 +781,7 @@ impl Step for Src {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rust-src")
+        run.alias("rust-src")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -848,7 +839,7 @@ impl Step for PlainSourceTarball {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("rustc-src").default_condition(builder.config.rust_dist_src)
+        run.alias("rustc-src").default_condition(builder.config.rust_dist_src)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -896,6 +887,7 @@ impl Step for PlainSourceTarball {
             cmd.arg("vendor")
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
+                .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .current_dir(&plain_dst_src);
             builder.run(&mut cmd);
@@ -941,7 +933,7 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "cargo");
-        run.path("cargo").default_condition(default)
+        run.alias("cargo").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -997,7 +989,7 @@ impl Step for Rls {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "rls");
-        run.path("rls").default_condition(default)
+        run.alias("rls").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1044,7 +1036,7 @@ impl Step for RustAnalyzer {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "rust-analyzer");
-        run.path("rust-analyzer").default_condition(default)
+        run.alias("rust-analyzer").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1100,7 +1092,7 @@ impl Step for Clippy {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "clippy");
-        run.path("clippy").default_condition(default)
+        run.alias("clippy").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1151,7 +1143,7 @@ impl Step for Miri {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "miri");
-        run.path("miri").default_condition(default)
+        run.alias("miri").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1211,7 +1203,7 @@ impl Step for Rustfmt {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "rustfmt");
-        run.path("rustfmt").default_condition(default)
+        run.alias("rustfmt").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1270,7 +1262,7 @@ impl Step for RustDemangler {
         // we run the step by default when only `extended = true`, and decide whether to actually
         // run it or not later.
         let default = run.builder.config.extended;
-        run.path("rust-demangler").default_condition(default)
+        run.alias("rust-demangler").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1323,7 +1315,7 @@ impl Step for Extended {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("extended").default_condition(builder.config.extended)
+        run.alias("extended").default_condition(builder.config.extended)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1903,7 +1895,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
-    if target.contains("apple-darwin") && builder.config.llvm_link_shared {
+    if target.contains("apple-darwin") && builder.llvm_link_shared() {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
@@ -1938,7 +1930,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.config.llvm_link_shared {
+    if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir);
     }
 }
@@ -1950,7 +1942,7 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
-    if builder.config.llvm_link_shared {
+    if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir);
     }
 }
@@ -1967,7 +1959,8 @@ impl Step for LlvmTools {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "llvm-tools");
-        run.path("llvm-tools").default_condition(default)
+        // FIXME: allow using the names of the tools themselves?
+        run.alias("llvm-tools").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2021,7 +2014,7 @@ impl Step for RustDev {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rust-dev")
+        run.alias("rust-dev")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2075,7 +2068,7 @@ impl Step for RustDev {
         // compiler libraries.
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir);
-        let link_type = if builder.config.llvm_link_shared { "dynamic" } else { "static" };
+        let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
         Some(tarball.generate())
@@ -2097,7 +2090,7 @@ impl Step for BuildManifest {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("build-manifest")
+        run.alias("build-manifest")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2129,7 +2122,7 @@ impl Step for ReproducibleArtifacts {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("reproducible-artifacts")
+        run.alias("reproducible-artifacts")
     }
 
     fn make_run(run: RunConfig<'_>) {

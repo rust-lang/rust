@@ -630,31 +630,6 @@ impl<'hir> Sig for hir::Generics<'hir> {
                     param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
                 }
             }
-            if !param.bounds.is_empty() {
-                param_text.push_str(": ");
-                match param.kind {
-                    hir::GenericParamKind::Lifetime { .. } => {
-                        let bounds = param
-                            .bounds
-                            .iter()
-                            .map(|bound| match bound {
-                                hir::GenericBound::Outlives(lt) => lt.name.ident().to_string(),
-                                _ => panic!(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" + ");
-                        param_text.push_str(&bounds);
-                        // FIXME add lifetime bounds refs.
-                    }
-                    hir::GenericParamKind::Type { .. } => {
-                        param_text.push_str(&bounds_to_string(param.bounds));
-                        // FIXME descend properly into bounds.
-                    }
-                    hir::GenericParamKind::Const { .. } => {
-                        // Const generics cannot contain bounds.
-                    }
-                }
-            }
             text.push_str(&param_text);
             text.push(',');
         }

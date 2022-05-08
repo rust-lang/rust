@@ -197,7 +197,7 @@ fn extract_tags(
 impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.def_id)
+        let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
         // If non-local, no need to check anything.
         else { return };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
@@ -215,7 +215,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                     // and we don't try to detect stuff `<like this>` because that's not valid Rust.
                     if let Some(Some(generics_start)) = (is_open_tag
-                        && dox[..range.end].ends_with(">"))
+                        && dox[..range.end].ends_with('>'))
                     .then(|| extract_path_backwards(&dox, range.start))
                     {
                         let generics_sp = match super::source_span_for_markdown_range(

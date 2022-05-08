@@ -179,7 +179,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         }
 
         Some(Debugger::Lldb) => {
-            config.lldb_python.hash(&mut hash);
+            config.python.hash(&mut hash);
             config.lldb_python_dir.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
             env::var_os("PYTHONPATH").hash(&mut hash);
@@ -1141,7 +1141,7 @@ impl<'test> TestCx<'test> {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
         self.cmd2procres(
-            Command::new(&self.config.lldb_python)
+            Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
@@ -1856,10 +1856,14 @@ impl<'test> TestCx<'test> {
                 rustc.args(&[
                     "-Copt-level=1",
                     "-Zdump-mir=all",
-                    "-Zmir-opt-level=4",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
+                if let Some(pass) = &self.props.mir_unit_test {
+                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                } else {
+                    rustc.arg("-Zmir-opt-level=4");
+                }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
@@ -2256,7 +2260,7 @@ impl<'test> TestCx<'test> {
             self.check_rustdoc_test_option(proc_res);
         } else {
             let root = self.config.find_rust_src_root().unwrap();
-            let mut cmd = Command::new(&self.config.docck_python);
+            let mut cmd = Command::new(&self.config.python);
             cmd.arg(root.join("src/etc/htmldocck.py")).arg(&out_dir).arg(&self.testpaths.file);
             if self.config.bless {
                 cmd.arg("--bless");
@@ -2457,7 +2461,7 @@ impl<'test> TestCx<'test> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
-            Command::new(&self.config.docck_python)
+            Command::new(&self.config.python)
                 .arg(root.join("src/etc/check_missing_items.py"))
                 .arg(&json_out),
         );
@@ -2852,7 +2856,7 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.docck_python)
+            .env("PYTHON", &self.config.python)
             .env("S", src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))

@@ -2,7 +2,7 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:7:36
    |
 LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
-   |                                    ^^ -  - supplied 2 arguments
+   |                                    ^^
    |
 help: use parentheses to construct a tuple
    |
@@ -13,7 +13,7 @@ error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:9:46
    |
 LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
-   |                                              ^^^^ -  -  ---- supplied 3 arguments
+   |                                              ^^^^
    |
 help: use parentheses to construct a tuple
    |
@@ -24,18 +24,20 @@ error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:11:25
    |
 LL |     let _: Option<()> = Some();
-   |                         ^^^^-- supplied 0 arguments
+   |                         ^^^^-- an argument of type `()` is missing
    |
-help: expected the unit value `()`; create it with empty parentheses
+help: provide the argument
    |
 LL |     let _: Option<()> = Some(());
-   |                              ++
+   |                         ~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple.rs:14:34
    |
 LL |     let _: Option<(i32,)> = Some(3);
-   |                                  ^ expected tuple, found integer
+   |                             ---- ^ expected tuple, found integer
+   |                             |
+   |                             arguments to this enum variant are incorrect
    |
    = note: expected tuple `(i32,)`
                found type `{integer}`
@@ -48,7 +50,9 @@ error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple.rs:17:34
    |
 LL |     let _: Option<(i32,)> = Some((3));
-   |                                  ^^^ expected tuple, found integer
+   |                             ---- ^^^ expected tuple, found integer
+   |                             |
+   |                             arguments to this enum variant are incorrect
    |
    = note: expected tuple `(i32,)`
                found type `{integer}`
@@ -61,7 +65,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:20:5
    |
 LL |     two_ints(1, 2);
-   |     ^^^^^^^^ -  - supplied 2 arguments
+   |     ^^^^^^^^
    |
 note: function defined here
   --> $DIR/args-instead-of-tuple.rs:25:4
@@ -77,7 +81,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:22:5
    |
 LL |     with_generic(3, 4);
-   |     ^^^^^^^^^^^^ -  - supplied 2 arguments
+   |     ^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/args-instead-of-tuple.rs:28:4
@@ -93,7 +97,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:31:9
    |
 LL |         with_generic(a, b);
-   |         ^^^^^^^^^^^^ -  - supplied 2 arguments
+   |         ^^^^^^^^^^^^
    |
 note: function defined here
   --> $DIR/args-instead-of-tuple.rs:28:4

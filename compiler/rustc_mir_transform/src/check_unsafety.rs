@@ -70,6 +70,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
             TerminatorKind::Call { ref func, .. } => {
                 let func_ty = func.ty(self.body, self.tcx);
+                let func_id =
+                    if let ty::FnDef(func_id, _) = func_ty.kind() { Some(func_id) } else { None };
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe(
@@ -78,7 +80,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     )
                 }
 
-                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                if let Some(func_id) = func_id {
                     self.check_target_features(*func_id);
                 }
             }
@@ -97,6 +99,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
@@ -149,7 +152,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
-        // Some checks below need the extra metainfo of the local declaration.
+        // Some checks below need the extra meta info of the local declaration.
         let decl = &self.body.local_decls[place.local];
 
         // Check the base local: it might be an unsafe-to-access static. We only check derefs of the
@@ -538,13 +541,13 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
             UnusedUnsafe::InUnsafeBlock(id) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` block"),
+                    "because it's nested under this `unsafe` block",
                 );
             }
             UnusedUnsafe::InUnsafeFn(id, usage_lint_root) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` fn"),
+                    "because it's nested under this `unsafe` fn",
                 )
                 .note(
                     "this `unsafe` block does contain unsafe operations, \

@@ -61,8 +61,8 @@ unsafe fn configure_llvm(sess: &Session) {
         full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")
     }
 
-    let cg_opts = sess.opts.cg.llvm_args.iter();
-    let tg_opts = sess.target.llvm_args.iter();
+    let cg_opts = sess.opts.cg.llvm_args.iter().map(AsRef::as_ref);
+    let tg_opts = sess.target.llvm_args.iter().map(AsRef::as_ref);
     let sess_args = cg_opts.chain(tg_opts);
 
     let user_specified_args: FxHashSet<_> =
@@ -375,8 +375,10 @@ fn handle_native(name: &str) -> &str {
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
-    let name = sess.opts.cg.target_cpu.as_ref().unwrap_or(&sess.target.cpu);
-    handle_native(name)
+    match sess.opts.cg.target_cpu {
+        Some(ref name) => handle_native(name),
+        None => handle_native(sess.target.cpu.as_ref()),
+    }
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -539,6 +541,11 @@ pub fn tune_cpu(sess: &Session) -> Option<&str> {
 pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_arch: &str) -> bool {
     // The new pass manager is enabled by default for LLVM >= 13.
     // This matches Clang, which also enables it since Clang 13.
+
+    // Since LLVM 15, the legacy pass manager is no longer supported.
+    if llvm_util::get_version() >= (15, 0, 0) {
+        return true;
+    }
 
     // There are some perf issues with the new pass manager when targeting
     // s390x with LLVM 13, so enable the new pass manager only with LLVM 14.

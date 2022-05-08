@@ -221,6 +221,13 @@ pub struct UninitBytesAccess {
     pub uninit_size: Size,
 }
 
+/// Information about a size mismatch.
+#[derive(Debug)]
+pub struct ScalarSizeMismatch {
+    pub target_size: u64,
+    pub data_size: u64,
+}
+
 /// Error information for when the program caused Undefined Behavior.
 pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
@@ -298,10 +305,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
-    ScalarSizeMismatch {
-        target_size: u64,
-        data_size: u64,
-    },
+    ScalarSizeMismatch(ScalarSizeMismatch),
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten,
 }
@@ -408,7 +412,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 "using uninitialized data, but this operation requires initialized memory"
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ScalarSizeMismatch { target_size, data_size } => write!(
+            ScalarSizeMismatch(self::ScalarSizeMismatch { target_size, data_size }) => write!(
                 f,
                 "scalar size mismatch: expected {} bytes but got {} bytes instead",
                 target_size, data_size

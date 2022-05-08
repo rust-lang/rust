@@ -510,9 +510,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             // If the value is a boolean, the range is 0..2 and that ultimately
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
-            if let Int(..) = scalar.value {
+            if let Int(..) = scalar.primitive() {
                 if !scalar.is_bool() && !scalar.is_always_valid(bx) {
-                    bx.range_metadata(callsite, scalar.valid_range);
+                    bx.range_metadata(callsite, scalar.valid_range(bx));
                 }
             }
         }

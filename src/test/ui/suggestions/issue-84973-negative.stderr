@@ -6,8 +6,7 @@ LL |     bar(a);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following implementations were found:
-             <&f32 as Tr>
+   = help: the trait `Tr` is implemented for `&f32`
 note: required by a bound in `bar`
   --> $DIR/issue-84973-negative.rs:5:11
    |

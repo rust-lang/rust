@@ -5,11 +5,11 @@
 #![feature(rustc_private)]
 #![feature(array_methods)]
 #![feature(assert_matches)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
@@ -95,7 +95,7 @@ use crate::passes::collect_intra_doc_links;
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// let letters = map!{"a" => "b", "c" => "d"};
 /// ```
 ///
@@ -771,6 +771,7 @@ fn main_options(options: config::Options) -> MainResult {
     let externs = options.externs.clone();
     let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let document_private = options.render_options.document_private;
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -791,7 +792,13 @@ fn main_options(options: config::Options) -> MainResult {
             let (resolver, resolver_caches) = {
                 let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
-                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate, externs)
+                    collect_intra_doc_links::early_resolve_intra_doc_links(
+                        resolver,
+                        sess,
+                        krate,
+                        externs,
+                        document_private,
+                    )
                 });
                 (resolver.clone(), resolver_caches)
             };

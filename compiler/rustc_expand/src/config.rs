@@ -1,7 +1,7 @@
 //! Conditional compilation stripping.
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
@@ -414,11 +414,11 @@ impl<'a> StripUnconfigured<'a> {
             };
             trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
         }
-        // We don't really have a good span to use for the syntheized `[]`
+        // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
         let bracket_group = AttrAnnotatedTokenTree::Delimited(
             DelimSpan::from_single(pound_span),
-            DelimToken::Bracket,
+            Delimiter::Bracket,
             item.tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
@@ -511,7 +511,7 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
             err.span_suggestion(
                 span,
                 "expected syntax is",
-                suggestion.into(),
+                suggestion,
                 Applicability::HasPlaceholders,
             );
         }

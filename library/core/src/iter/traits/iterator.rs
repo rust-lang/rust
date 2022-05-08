@@ -470,6 +470,10 @@ pub trait Iterator {
     /// it will first try to advance the first iterator at most one time and if it still yielded an item
     /// try to advance the second iterator at most one time.
     ///
+    /// To 'undo' the result of zipping up two iterators, see [`unzip`].
+    ///
+    /// [`unzip`]: Iterator::unzip
+    ///
     /// # Examples
     ///
     /// Basic usage:

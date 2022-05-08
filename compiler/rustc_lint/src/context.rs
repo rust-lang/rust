@@ -21,7 +21,8 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{struct_span_err, Applicability, SuggestionStyle};
+use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err};
+use rustc_errors::{Applicability, MultiSpan, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -32,13 +33,12 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_serialize::json::Json;
-use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 use rustc_target::abi;
 use tracing::debug;
 
@@ -665,6 +665,21 @@ pub trait LintContext: Sized {
                 ) => {
                     db.span_note(span_def, "the macro is defined here");
                 }
+                BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                    n,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_span,
+                ) => {
+                    add_elided_lifetime_in_path_suggestion(
+                        sess.source_map(),
+                        &mut db,
+                        n,
+                        path_span,
+                        incl_angl_brckt,
+                        insertion_span,
+                    );
+                }
                 BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
                     db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
                 }
@@ -712,30 +727,6 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
                     db.span_label(span, "the attribute is introduced here");
                 }
-                BuiltinLintDiagnostics::ExternDepSpec(krate, loc) => {
-                    let json = match loc {
-                        ExternDepSpec::Json(json) => {
-                            db.help(&format!("remove unnecessary dependency `{}`", krate));
-                            json
-                        }
-                        ExternDepSpec::Raw(raw) => {
-                            db.help(&format!("remove unnecessary dependency `{}` at `{}`", krate, raw));
-                            db.span_suggestion_with_style(
-                                DUMMY_SP,
-                                "raw extern location",
-                                raw.clone(),
-                                Applicability::Unspecified,
-                                SuggestionStyle::CompletelyHidden,
-                            );
-                            Json::String(raw)
-                        }
-                    };
-                    db.tool_only_suggestion_with_metadata(
-                        "json extern location",
-                        Applicability::Unspecified,
-                        json
-                    );
-                }
                 BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
                     db.note(&note);
                 }
@@ -747,7 +738,7 @@ pub trait LintContext: Sized {
                     db.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-                        " ".into(),
+                        " ",
                         Applicability::MachineApplicable,
                     );
                 }

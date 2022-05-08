@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/type-alias-free-regions.rs:17:9
+  --> $DIR/type-alias-free-regions.rs:21:9
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
    |      -- lifetime `'a` defined here
@@ -9,7 +9,7 @@ LL |         C { f: b }
    |         ^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/type-alias-free-regions.rs:27:9
+  --> $DIR/type-alias-free-regions.rs:31:9
    |
 LL | impl<'a> FromTuple<'a> for C<'a> {
    |      -- lifetime `'a` defined here

@@ -30,7 +30,7 @@ where
 }
 
 #[derive(Copy, Clone)]
-struct Kitten {}
+struct Kitten;
 impl Kitten {
     // badly named method
     fn to_vec(self) -> Kitten {
@@ -44,7 +44,7 @@ impl Borrow<BorrowedKitten> for Kitten {
     }
 }
 
-struct BorrowedKitten {}
+struct BorrowedKitten;
 impl ToOwned for BorrowedKitten {
     type Owned = Kitten;
     fn to_owned(&self) -> Kitten {

@@ -54,6 +54,10 @@ use self::ring_slices::RingSlices;
 
 mod ring_slices;
 
+use self::spec_extend::SpecExtend;
+
+mod spec_extend;
+
 #[cfg(test)]
 mod tests;
 
@@ -1342,6 +1346,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Returns `true` if the deque contains an element equal to the
     /// given value.
     ///
+    /// This operation is *O*(*n*).
+    ///
+    /// Note that if you have a sorted `VecDeque`, [`binary_search`] may be faster.
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    ///
     /// # Examples
     ///
     /// ```
@@ -2185,8 +2195,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_retain_mut)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -2199,7 +2207,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// });
     /// assert_eq!(buf, [3, 5]);
     /// ```
-    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    #[stable(feature = "vec_retain_mut", since = "1.61.0")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
@@ -2562,7 +2570,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque for a given element.
+    /// Binary searches this `VecDeque` for a given element.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2572,6 +2581,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search_by`]: VecDeque::binary_search_by
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2595,14 +2605,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     ///
     /// If you want to insert an item to a sorted deque, while maintaining
-    /// sort order:
+    /// sort order, consider using [`partition_point`]:
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.binary_search(&num).unwrap_or_else(|x| x);
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
@@ -2615,7 +2626,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.binary_search_by(|e| e.cmp(x))
     }
 
-    /// Binary searches the sorted deque with a comparator function.
+    /// Binary searches this `VecDeque` with a comparator function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the deque, returning an order code that
@@ -2630,6 +2642,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2668,7 +2681,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque with a key extraction function.
+    /// Binary searches this `VecDeque` with a key extraction function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// Assumes that the deque is sorted by the key, for instance with
     /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
@@ -2681,6 +2695,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by`]: VecDeque::binary_search_by
@@ -2745,6 +2760,19 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(i, 4);
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If you want to insert an item to a sorted deque, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let num = 42;
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// deque.insert(idx, num);
+    /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
@@ -2871,7 +2899,7 @@ impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
+        state.write_length_prefix(self.len());
         // It's not possible to use Hash::hash_slice on slices
         // returned by as_slices method as their length can vary
         // in otherwise identical deques.
@@ -2946,24 +2974,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iter.into_iter() {
-        //          self.push_back(item);
-        //      }
-        let mut iter = iter.into_iter();
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
-            unsafe {
-                self.buffer_write(head, element);
-            }
-        }
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
@@ -2980,7 +2991,7 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+        self.spec_extend(iter.into_iter());
     }
 
     #[inline]

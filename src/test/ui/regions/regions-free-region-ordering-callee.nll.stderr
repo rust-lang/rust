@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-callee.rs:13:5
+  --> $DIR/regions-free-region-ordering-callee.rs:17:5
    |
 LL | fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
    |              --  -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |     &*y
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-callee.rs:18:12
+  --> $DIR/regions-free-region-ordering-callee.rs:24:12
    |
 LL | fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
    |              --  -- lifetime `'b` defined here

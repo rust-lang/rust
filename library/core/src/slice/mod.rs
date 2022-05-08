@@ -7,6 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Greater, Less};
+use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -109,7 +110,6 @@ enum Direction {
     Back,
 }
 
-#[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
@@ -499,7 +499,8 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
@@ -535,7 +536,7 @@ impl<T> [T] {
     ///
     /// [`as_ptr`]: slice::as_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
     #[must_use]
     pub const fn as_ptr_range(&self) -> Range<*const T> {
@@ -578,7 +579,8 @@ impl<T> [T] {
     ///
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
@@ -654,15 +656,10 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        #[cfg(debug_assertions)]
-        {
-            let _ = &self[a];
-            let _ = &self[b];
-        }
-
         let ptr = self.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
+            assert_unsafe_precondition!(a < self.len() && b < self.len());
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -816,7 +813,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         Chunks::new(self, chunk_size)
     }
 
@@ -854,7 +851,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         ChunksMut::new(self, chunk_size)
     }
 
@@ -968,11 +965,11 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
+        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        let new_len = unsafe {
+            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            exact_div(self.len(), N)
+        };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts(self.as_ptr().cast(), new_len) }
@@ -1107,11 +1104,11 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
+        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        let new_len = unsafe {
+            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            exact_div(self.len(), N)
+        };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), new_len) }
@@ -1673,7 +1670,10 @@ impl<T> [T] {
         //
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
-        unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
+        unsafe {
+            assert_unsafe_precondition!(mid <= len);
+            (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
+        }
     }
 
     /// Divides one slice into an array and a remainder slice at an index.
@@ -2139,6 +2139,12 @@ impl<T> [T] {
 
     /// Returns `true` if the slice contains an element with the given value.
     ///
+    /// This operation is *O*(*n*).
+    ///
+    /// Note that if you have a sorted slice, [`binary_search`] may be faster.
+    ///
+    /// [`binary_search`]: slice::binary_search
+    ///
     /// # Examples
     ///
     /// ```
@@ -2298,7 +2304,8 @@ impl<T> [T] {
         None
     }
 
-    /// Binary searches this sorted slice for a given element.
+    /// Binary searches this slice for a given element.
+    /// This behaves similary to [`contains`] if this slice is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2310,6 +2317,7 @@ impl<T> [T] {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: slice::contains
     /// [`binary_search_by`]: slice::binary_search_by
     /// [`binary_search_by_key`]: slice::binary_search_by_key
     /// [`partition_point`]: slice::partition_point
@@ -2331,12 +2339,13 @@ impl<T> [T] {
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
-    /// sort order:
+    /// sort order, consider using [`partition_point`]:
     ///
     /// ```
     /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let num = 42;
-    /// let idx = s.binary_search(&num).unwrap_or_else(|x| x);
+    /// let idx = s.partition_point(|&x| x < num);
+    /// // The above is equivalent to `let idx = s.binary_search(&num).unwrap_or_else(|x| x);`
     /// s.insert(idx, num);
     /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
@@ -2348,7 +2357,8 @@ impl<T> [T] {
         self.binary_search_by(|p| p.cmp(x))
     }
 
-    /// Binary searches this sorted slice with a comparator function.
+    /// Binary searches this slice with a comparator function.
+    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the underlying slice, returning an
@@ -2365,6 +2375,7 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: slice::contains
     /// [`binary_search`]: slice::binary_search
     /// [`binary_search_by_key`]: slice::binary_search_by_key
     /// [`partition_point`]: slice::partition_point
@@ -2423,7 +2434,8 @@ impl<T> [T] {
         Err(left)
     }
 
-    /// Binary searches this sorted slice with a key extraction function.
+    /// Binary searches this slice with a key extraction function.
+    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
@@ -2438,6 +2450,7 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`contains`]: slice::contains
     /// [`sort_by_key`]: slice::sort_by_key
     /// [`binary_search`]: slice::binary_search
     /// [`binary_search_by`]: slice::binary_search_by
@@ -3743,6 +3756,17 @@ impl<T> [T] {
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
     /// ```
+    ///
+    /// If you want to insert an item to a sorted vector, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let num = 42;
+    /// let idx = s.partition_point(|&x| x < num);
+    /// s.insert(idx, num);
+    /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
+    /// ```
     #[stable(feature = "partition_point", since = "1.52.0")]
     #[must_use]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
@@ -3989,6 +4013,88 @@ impl<T> [T] {
         let (last, rem) = mem::take(self).split_last_mut()?;
         *self = rem;
         Some(last)
+    }
+}
+
+#[cfg(not(bootstrap))]
+impl<T, const N: usize> [[T; N]] {
+    /// Takes a `&[[T; N]]`, and flattens it to a `&[T]`.
+    ///
+    /// # Panics
+    ///
+    /// This panics if the length of the resulting slice would overflow a `usize`.
+    ///
+    /// This is only possible when flattening a slice of arrays of zero-sized
+    /// types, and thus tends to be irrelevant in practice. If
+    /// `size_of::<T>() > 0`, this will never panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_flatten)]
+    ///
+    /// assert_eq!([[1, 2, 3], [4, 5, 6]].flatten(), &[1, 2, 3, 4, 5, 6]);
+    ///
+    /// assert_eq!(
+    ///     [[1, 2, 3], [4, 5, 6]].flatten(),
+    ///     [[1, 2], [3, 4], [5, 6]].flatten(),
+    /// );
+    ///
+    /// let slice_of_empty_arrays: &[[i32; 0]] = &[[], [], [], [], []];
+    /// assert!(slice_of_empty_arrays.flatten().is_empty());
+    ///
+    /// let empty_slice_of_arrays: &[[u32; 10]] = &[];
+    /// assert!(empty_slice_of_arrays.flatten().is_empty());
+    /// ```
+    #[unstable(feature = "slice_flatten", issue = "95629")]
+    pub fn flatten(&self) -> &[T] {
+        let len = if crate::mem::size_of::<T>() == 0 {
+            self.len().checked_mul(N).expect("slice len overflow")
+        } else {
+            // SAFETY: `self.len() * N` cannot overflow because `self` is
+            // already in the address space.
+            unsafe { self.len().unchecked_mul(N) }
+        };
+        // SAFETY: `[T]` is layout-identical to `[T; N]`
+        unsafe { from_raw_parts(self.as_ptr().cast(), len) }
+    }
+
+    /// Takes a `&mut [[T; N]]`, and flattens it to a `&mut [T]`.
+    ///
+    /// # Panics
+    ///
+    /// This panics if the length of the resulting slice would overflow a `usize`.
+    ///
+    /// This is only possible when flattening a slice of arrays of zero-sized
+    /// types, and thus tends to be irrelevant in practice. If
+    /// `size_of::<T>() > 0`, this will never panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_flatten)]
+    ///
+    /// fn add_5_to_all(slice: &mut [i32]) {
+    ///     for i in slice {
+    ///         *i += 5;
+    ///     }
+    /// }
+    ///
+    /// let mut array = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+    /// add_5_to_all(array.flatten_mut());
+    /// assert_eq!(array, [[6, 7, 8], [9, 10, 11], [12, 13, 14]]);
+    /// ```
+    #[unstable(feature = "slice_flatten", issue = "95629")]
+    pub fn flatten_mut(&mut self) -> &mut [T] {
+        let len = if crate::mem::size_of::<T>() == 0 {
+            self.len().checked_mul(N).expect("slice len overflow")
+        } else {
+            // SAFETY: `self.len() * N` cannot overflow because `self` is
+            // already in the address space.
+            unsafe { self.len().unchecked_mul(N) }
+        };
+        // SAFETY: `[T]` is layout-identical to `[T; N]`
+        unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), len) }
     }
 }
 

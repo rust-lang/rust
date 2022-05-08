@@ -22,7 +22,7 @@ fn main() {
                                     crate::Span::recover_proc_macro_span(0)))),
                         crate::TokenStream::from(crate::TokenTree::Ident(crate::Ident::new("hello",
                                     crate::Span::recover_proc_macro_span(1)))),
-                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('\u{3d}',
+                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('=',
                                     crate::Spacing::Alone))),
                         crate::TokenStream::from(crate::TokenTree::Literal({
                                     let mut iter =
@@ -35,7 +35,7 @@ fn main() {
                                            ::core::panicking::panic("internal error: entered unreachable code")
                                        }
                                 })),
-                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('\u{3b}',
+                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new(';',
                                     crate::Spacing::Alone)))].iter().cloned().collect::<crate::TokenStream>()
 }
 const _: () =

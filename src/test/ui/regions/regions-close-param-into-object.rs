@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 trait X { fn foo(&self) {} }
 
 fn p1<T>(v: T) -> Box<dyn X + 'static>

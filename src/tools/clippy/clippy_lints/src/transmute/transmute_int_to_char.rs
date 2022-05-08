@@ -15,9 +15,10 @@ pub(super) fn check<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
+    const_context: bool,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) => {
+        (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) if !const_context => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_INT_TO_CHAR,

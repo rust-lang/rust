@@ -1,10 +1,10 @@
-error: unexpected token: `(7u32)`
+error: unexpected expression: `(7u32)`
   --> $DIR/key-value-expansion.rs:21:6
    |
 LL | bug!((column!()));
    |      ^^^^^^^^^^^
 
-error: unexpected token: `"bug" + "found"`
+error: unexpected expression: `"bug" + "found"`
   --> $DIR/key-value-expansion.rs:27:14
    |
 LL |         bug!("bug" + stringify!(found));
@@ -15,7 +15,7 @@ LL | bug!();
    |
    = note: this error originates in the macro `bug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: unexpected token: `{
+error: unexpected expression: `{
                let res =
                    ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
                            &[::core::fmt::ArgumentV1::new_display(&"u8")]));

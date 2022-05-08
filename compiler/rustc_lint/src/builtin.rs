@@ -31,13 +31,12 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
-use rustc_hir::{HirId, Node};
+use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -49,7 +48,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
+use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
@@ -441,6 +440,7 @@ impl EarlyLintPass for UnsafeCode {
             _,
             ast::FnSig { header: ast::FnHeader { unsafety: ast::Unsafe::Yes(_), .. }, .. },
             _,
+            _,
             body,
         ) = fk
         {
@@ -486,9 +486,6 @@ declare_lint! {
 pub struct MissingDoc {
     /// Stack of whether `#[doc(hidden)]` is set at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
-
-    /// Private traits or trait items that leaked through. Don't check their methods.
-    private_traits: FxHashSet<hir::HirId>,
 }
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
@@ -519,7 +516,7 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 
 impl MissingDoc {
     pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false], private_traits: FxHashSet::default() }
+        MissingDoc { doc_hidden_stack: vec![false] }
     }
 
     fn doc_hidden(&self) -> bool {
@@ -597,30 +594,16 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         match it.kind {
-            hir::ItemKind::Trait(.., trait_item_refs) => {
+            hir::ItemKind::Trait(..) => {
                 // Issue #11592: traits are always considered exported, even when private.
-                if let hir::VisibilityKind::Inherited = it.vis.node {
-                    self.private_traits.insert(it.hir_id());
-                    for trait_item_ref in trait_item_refs {
-                        self.private_traits.insert(trait_item_ref.id.hir_id());
-                    }
+                if cx.tcx.visibility(it.def_id)
+                    == ty::Visibility::Restricted(
+                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                    )
+                {
                     return;
                 }
             }
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), items, .. }) => {
-                // If the trait is private, add the impl items to `private_traits` so they don't get
-                // reported for missing docs.
-                let real_trait = trait_ref.path.res.def_id();
-                let Some(def_id) = real_trait.as_local() else { return };
-                let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(def_id) else { return };
-                if let hir::VisibilityKind::Inherited = item.vis.node {
-                    for impl_item_ref in items {
-                        self.private_traits.insert(impl_item_ref.id.hir_id());
-                    }
-                }
-                return;
-            }
-
             hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Macro(..)
@@ -640,10 +623,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
-        if self.private_traits.contains(&trait_item.hir_id()) {
-            return;
-        }
-
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, trait_item.def_id, trait_item.span, article, desc);
@@ -1220,8 +1199,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     });
                 }
             }
-            hir::ItemKind::Impl(hir::Impl { ref generics, items, .. }) => {
-                for it in items {
+            hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
+                for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         if let Some(no_mangle_attr) = cx
                             .sess()
@@ -1383,46 +1362,47 @@ impl UnreachablePub {
         cx: &LateContext<'_>,
         what: &str,
         def_id: LocalDefId,
-        vis: &hir::Visibility<'_>,
         span: Span,
+        vis_span: Span,
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        match vis.node {
-            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(def_id) => {
-                if span.from_expansion() {
-                    applicability = Applicability::MaybeIncorrect;
-                }
-                let def_span = cx.tcx.sess.source_map().guess_head_span(span);
-                cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
-                    let mut err = lint.build(&format!("unreachable `pub` {}", what));
-                    let replacement = if cx.tcx.features().crate_visibility_modifier {
-                        "crate"
-                    } else {
-                        "pub(crate)"
-                    }
-                    .to_owned();
-
-                    err.span_suggestion(
-                        vis.span,
-                        "consider restricting its visibility",
-                        replacement,
-                        applicability,
-                    );
-                    if exportable {
-                        err.help("or consider exporting it for use by other crates");
-                    }
-                    err.emit();
-                });
+        if cx.tcx.visibility(def_id).is_public() && !cx.access_levels.is_reachable(def_id) {
+            if vis_span.from_expansion() {
+                applicability = Applicability::MaybeIncorrect;
             }
-            _ => {}
+            let def_span = cx.tcx.sess.source_map().guess_head_span(span);
+            cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
+                let mut err = lint.build(&format!("unreachable `pub` {}", what));
+                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                    "crate"
+                } else {
+                    "pub(crate)"
+                }
+                .to_owned();
+
+                err.span_suggestion(
+                    vis_span,
+                    "consider restricting its visibility",
+                    replacement,
+                    applicability,
+                );
+                if exportable {
+                    err.help("or consider exporting it for use by other crates");
+                }
+                err.emit();
+            });
         }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        self.perform_lint(cx, "item", item.def_id, &item.vis, item.span, true);
+        // Do not warn for fake `use` statements.
+        if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
+            return;
+        }
+        self.perform_lint(cx, "item", item.def_id, item.span, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
@@ -1430,19 +1410,29 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
             cx,
             "item",
             foreign_item.def_id,
-            &foreign_item.vis,
             foreign_item.span,
+            foreign_item.vis_span,
             true,
         );
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let def_id = cx.tcx.hir().local_def_id(field.hir_id);
-        self.perform_lint(cx, "field", def_id, &field.vis, field.span, false);
+        self.perform_lint(cx, "field", def_id, field.span, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        self.perform_lint(cx, "item", impl_item.def_id, &impl_item.vis, impl_item.span, false);
+        // Only lint inherent impl items.
+        if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
+            self.perform_lint(
+                cx,
+                "item",
+                impl_item.def_id,
+                impl_item.span,
+                impl_item.vis_span,
+                false,
+            );
+        }
     }
 }
 
@@ -1527,58 +1517,60 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             // Bounds are respected for `type X = impl Trait`
             return;
         }
-        let mut suggested_changing_assoc_types = false;
         // There must not be a where clause
-        if !type_alias_generics.where_clause.predicates.is_empty() {
-            cx.lint(
-                TYPE_ALIAS_BOUNDS,
-                |lint| {
-                    let mut err = lint.build("where clauses are not enforced in type aliases");
-                    let spans: Vec<_> = type_alias_generics
-                        .where_clause
-                        .predicates
-                        .iter()
-                        .map(|pred| pred.span())
-                        .collect();
-                    err.set_span(spans);
-                    err.span_suggestion(
-                        type_alias_generics.where_clause.span_for_predicates_or_empty_place(),
-                        "the clause will not be checked when the type alias is used, and should be removed",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                    if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
-                        suggested_changing_assoc_types = true;
-                    }
-                    err.emit();
-                },
-            );
+        if type_alias_generics.predicates.is_empty() {
+            return;
         }
-        // The parameters must not have bounds
-        for param in type_alias_generics.params.iter() {
-            let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-            let suggestion = spans
-                .iter()
-                .map(|sp| {
-                    let start = param.span.between(*sp); // Include the `:` in `T: Bound`.
-                    (start.to(*sp), String::new())
-                })
-                .collect();
-            if !spans.is_empty() {
-                cx.struct_span_lint(TYPE_ALIAS_BOUNDS, spans, |lint| {
-                    let mut err =
-                        lint.build("bounds on generic parameters are not enforced in type aliases");
-                    let msg = "the bound will not be checked when the type alias is used, \
-                                   and should be removed";
-                    err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
-                    if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
-                        suggested_changing_assoc_types = true;
-                    }
-                    err.emit();
-                });
+
+        let mut where_spans = Vec::new();
+        let mut inline_spans = Vec::new();
+        let mut inline_sugg = Vec::new();
+        for p in type_alias_generics.predicates {
+            let span = p.span();
+            if p.in_where_clause() {
+                where_spans.push(span);
+            } else {
+                for b in p.bounds() {
+                    inline_spans.push(b.span());
+                }
+                inline_sugg.push((span, String::new()));
             }
+        }
+
+        let mut suggested_changing_assoc_types = false;
+        if !where_spans.is_empty() {
+            cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
+                let mut err = lint.build("where clauses are not enforced in type aliases");
+                err.set_span(where_spans);
+                err.span_suggestion(
+                    type_alias_generics.where_clause_span,
+                    "the clause will not be checked when the type alias is used, and should be removed",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+                if !suggested_changing_assoc_types {
+                    TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                    suggested_changing_assoc_types = true;
+                }
+                err.emit();
+            });
+        }
+
+        if !inline_spans.is_empty() {
+            cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
+                let mut err =
+                    lint.build("bounds on generic parameters are not enforced in type aliases");
+                err.set_span(inline_spans);
+                err.multipart_suggestion(
+                    "the bound will not be checked when the type alias is used, and should be removed",
+                    inline_sugg,
+                    Applicability::MachineApplicable,
+                );
+                if !suggested_changing_assoc_types {
+                    TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                }
+                err.emit();
+            });
         }
     }
 }
@@ -2095,27 +2087,6 @@ impl ExplicitOutlivesRequirements {
             .collect()
     }
 
-    fn collect_outlived_lifetimes<'tcx>(
-        &self,
-        param: &'tcx hir::GenericParam<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
-        ty_generics: &'tcx ty::Generics,
-    ) -> Vec<ty::Region<'tcx>> {
-        let index =
-            ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id).to_def_id()];
-
-        match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
-                Self::lifetimes_outliving_lifetime(inferred_outlives, index)
-            }
-            hir::GenericParamKind::Type { .. } => {
-                Self::lifetimes_outliving_type(inferred_outlives, index)
-            }
-            hir::GenericParamKind::Const { .. } => Vec::new(),
-        }
-    }
-
     fn collect_outlives_bound_spans<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2223,41 +2194,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();
-
-            for param in hir_generics.params {
-                let has_lifetime_bounds = param
-                    .bounds
-                    .iter()
-                    .any(|bound| matches!(bound, hir::GenericBound::Outlives(_)));
-                if !has_lifetime_bounds {
-                    continue;
-                }
-
-                let relevant_lifetimes =
-                    self.collect_outlived_lifetimes(param, cx.tcx, inferred_outlives, ty_generics);
-                if relevant_lifetimes.is_empty() {
-                    continue;
-                }
-
-                let bound_spans = self.collect_outlives_bound_spans(
-                    cx.tcx,
-                    &param.bounds,
-                    &relevant_lifetimes,
-                    infer_static,
-                );
-                bound_count += bound_spans.len();
-                lint_spans.extend(self.consolidate_outlives_bound_spans(
-                    param.span.shrink_to_hi(),
-                    &param.bounds,
-                    bound_spans,
-                ));
-            }
-
             let mut where_lint_spans = Vec::new();
             let mut dropped_predicate_count = 0;
-            let num_predicates = hir_generics.where_clause.predicates.len();
-            for (i, where_predicate) in hir_generics.where_clause.predicates.iter().enumerate() {
-                let (relevant_lifetimes, bounds, span) = match where_predicate {
+            let num_predicates = hir_generics.predicates.len();
+            for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
+                let (relevant_lifetimes, bounds, span, in_where_clause) = match where_predicate {
                     hir::WherePredicate::RegionPredicate(predicate) => {
                         if let Some(Region::EarlyBound(index, ..)) =
                             cx.tcx.named_region(predicate.lifetime.hir_id)
@@ -2266,6 +2207,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 Self::lifetimes_outliving_lifetime(inferred_outlives, index),
                                 &predicate.bounds,
                                 predicate.span,
+                                predicate.in_where_clause,
                             )
                         } else {
                             continue;
@@ -2284,6 +2226,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     Self::lifetimes_outliving_type(inferred_outlives, index),
                                     &predicate.bounds,
                                     predicate.span,
+                                    predicate.in_where_clause,
                                 )
                             }
                             _ => {
@@ -2310,10 +2253,12 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     dropped_predicate_count += 1;
                 }
 
-                // If all the bounds on a predicate were inferable and there are
-                // further predicates, we want to eat the trailing comma.
-                if drop_predicate && i + 1 < num_predicates {
-                    let next_predicate_span = hir_generics.where_clause.predicates[i + 1].span();
+                if drop_predicate && !in_where_clause {
+                    lint_spans.push(span);
+                } else if drop_predicate && i + 1 < num_predicates {
+                    // If all the bounds on a predicate were inferable and there are
+                    // further predicates, we want to eat the trailing comma.
+                    let next_predicate_span = hir_generics.predicates[i + 1].span();
                     where_lint_spans.push(span.to(next_predicate_span.shrink_to_lo()));
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
@@ -2326,10 +2271,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             // If all predicates are inferable, drop the entire clause
             // (including the `where`)
-            if num_predicates > 0 && dropped_predicate_count == num_predicates {
+            if hir_generics.has_where_clause && dropped_predicate_count == num_predicates {
                 let where_span = hir_generics
-                    .where_clause
-                    .span()
+                    .where_clause_span()
                     .expect("span of (nonempty) where clause should exist");
                 // Extend the where clause back to the closing `>` of the
                 // generics, except for tuple struct, which have the `where`
@@ -2356,7 +2300,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             },
                             lint_spans
                                 .into_iter()
-                                .map(|span| (span, "".to_owned()))
+                                .map(|span| (span, String::new()))
                                 .collect::<Vec<_>>(),
                             Applicability::MachineApplicable,
                         )
@@ -2548,7 +2492,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
         fn ty_find_init_error<'tcx>(
-            tcx: TyCtxt<'tcx>,
+            cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
@@ -2575,7 +2519,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     // First check if this ADT has a layout attribute (like `NonNull` and friends).
                     use std::ops::Bound;
-                    match tcx.layout_scalar_valid_range(adt_def.did()) {
+                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
                         // We exploit here that `layout_scalar_valid_range` will never
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
@@ -2603,12 +2547,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             // Proceed recursively, check all fields.
                             let variant = &adt_def.variant(VariantIdx::from_u32(0));
                             variant.fields.iter().find_map(|field| {
-                                ty_find_init_error(tcx, field.ty(tcx, substs), init).map(
+                                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(
                                     |(mut msg, span)| {
                                         if span.is_none() {
                                             // Point to this field, should be helpful for figuring
                                             // out where the source of the error is.
-                                            let span = tcx.def_span(field.did);
+                                            let span = cx.tcx.def_span(field.did);
                                             write!(
                                                 &mut msg,
                                                 " (in this {} field)",
@@ -2627,7 +2571,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         // Multi-variant enum.
                         _ => {
                             if init == InitKind::Uninit && is_multi_variant(*adt_def) {
-                                let span = tcx.def_span(adt_def.did());
+                                let span = cx.tcx.def_span(adt_def.did());
                                 Some((
                                     "enums have to be initialized to a variant".to_string(),
                                     Some(span),
@@ -2642,7 +2586,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().iter().find_map(|field| ty_find_init_error(tcx, field, init))
+                    ty.tuple_fields().iter().find_map(|field| ty_find_init_error(cx, field, init))
+                }
+                Array(ty, len) => {
+                    if matches!(len.try_eval_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
+                        // Array length known at array non-empty -- recurse.
+                        ty_find_init_error(cx, *ty, init)
+                    } else {
+                        // Empty array or size unknown.
+                        None
+                    }
                 }
                 // Conservative fallback.
                 _ => None,
@@ -2655,7 +2608,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some((msg, span)) =
-                with_no_trimmed_paths!(ty_find_init_error(cx.tcx, conjured_ty, init))
+                with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(

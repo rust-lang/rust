@@ -8,10 +8,10 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{emitter::MAX_SUGGESTION_HIGHLIGHT_LINES, Applicability, Diagnostic};
+use rustc_errors::{emitter::MAX_SUGGESTION_HIGHLIGHT_LINES, Applicability, Diagnostic, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::source_map::{MultiSpan, Span};
+use rustc_span::source_map::Span;
 use std::env;
 
 fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
@@ -155,7 +155,13 @@ where
     });
 }
 
-pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+pub fn span_lint_hir(
+    cx: &LateContext<'_>,
+    lint: &'static Lint,
+    hir_id: HirId,
+    sp: Span,
+    msg: &str,
+) {
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |diag| {
         let mut diag = diag.build(msg);
         docs_link(&mut diag, lint);
@@ -272,9 +278,14 @@ pub fn span_lint_and_sugg_for_edges(
         let sugg_lines_count = sugg.lines().count();
         if sugg_lines_count > MAX_SUGGESTION_HIGHLIGHT_LINES {
             let sm = cx.sess().source_map();
-            if let (Ok(line_upper), Ok(line_bottom)) = (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi())) {
+            if let (Ok(line_upper), Ok(line_bottom)) =
+                (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi()))
+            {
                 let split_idx = MAX_SUGGESTION_HIGHLIGHT_LINES / 2;
-                let span_upper = sm.span_until_char(sp.with_hi(line_upper.sf.lines[line_upper.line + split_idx]), '\n');
+                let span_upper = sm.span_until_char(
+                    sp.with_hi(line_upper.sf.lines[line_upper.line + split_idx]),
+                    '\n',
+                );
                 let span_bottom = sp.with_lo(line_bottom.sf.lines[line_bottom.line - split_idx]);
 
                 let sugg_lines_vec = sugg.lines().collect::<Vec<&str>>();

@@ -187,12 +187,14 @@ pub enum TyKind<'tcx> {
     /// Looking at the following example, the witness for this generator
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
-    /// ```rust
+    /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
+    /// #![feature(generators)]
     /// |a| {
     ///     let x = &vec![3];
     ///     yield a;
     ///     yield x[0];
     /// }
+    /// # ;
     /// ```
     GeneratorWitness(Binder<'tcx, &'tcx List<Ty<'tcx>>>),
 
@@ -276,9 +278,9 @@ impl<'tcx> TyKind<'tcx> {
 static_assert_size!(TyKind<'_>, 32);
 
 /// A closure can be modeled as a struct that looks like:
-///
-///     struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
-///
+/// ```ignore (illustrative)
+/// struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
+/// ```
 /// where:
 ///
 /// - 'l0...'li and T0...Tj are the generic parameters
@@ -295,25 +297,25 @@ static_assert_size!(TyKind<'_>, 32);
 ///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
 ///
 /// So, for example, given this function:
-///
-///     fn foo<'a, T>(data: &'a mut T) {
-///          do(|| data.count += 1)
-///     }
-///
+/// ```ignore (illustrative)
+/// fn foo<'a, T>(data: &'a mut T) {
+///      do(|| data.count += 1)
+/// }
+/// ```
 /// the type of the closure would be something like:
-///
-///     struct Closure<'a, T, U>(...U);
-///
+/// ```ignore (illustrative)
+/// struct Closure<'a, T, U>(...U);
+/// ```
 /// Note that the type of the upvar is not specified in the struct.
 /// You may wonder how the impl would then be able to use the upvar,
 /// if it doesn't know it's type? The answer is that the impl is
 /// (conceptually) not fully generic over Closure but rather tied to
 /// instances with the expected upvar types:
-///
-///     impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
-///         ...
-///     }
-///
+/// ```ignore (illustrative)
+/// impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
+///     ...
+/// }
+/// ```
 /// You can see that the *impl* fully specified the type of the upvar
 /// and thus knows full well that `data` has type `&'b mut &'a mut T`.
 /// (Here, I am assuming that `data` is mut-borrowed.)
@@ -760,9 +762,9 @@ impl<'tcx> UpvarSubsts<'tcx> {
 }
 
 /// An inline const is modeled like
-///
-///     const InlineConst<'l0...'li, T0...Tj, R>: R;
-///
+/// ```ignore (illustrative)
+/// const InlineConst<'l0...'li, T0...Tj, R>: R;
+/// ```
 /// where:
 ///
 /// - 'l0...'li and T0...Tj are the generic parameters
@@ -936,9 +938,9 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
 
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:
-///
-///     T: Foo<U>
-///
+/// ```ignore (illustrative)
+/// T: Foo<U>
+/// ```
 /// This would be represented by a trait-reference where the `DefId` is the
 /// `DefId` for the trait `Foo` and the substs define `T` as parameter 0,
 /// and `U` as parameter 1.
@@ -999,13 +1001,22 @@ impl<'tcx> PolyTraitRef<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         })
     }
+
+    /// Same as [`PolyTraitRef::to_poly_trait_predicate`] but sets a negative polarity instead.
+    pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Negative,
+        })
+    }
 }
 
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
-///
-///     exists T. T: Trait<'a, 'b, X, Y>
-///
+/// ```ignore (illustrative)
+/// exists T. T: Trait<'a, 'b, X, Y>
+/// ```
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
@@ -1425,7 +1436,7 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 ///
 /// In general, the region lattice looks like
 ///
-/// ```
+/// ```text
 /// static ----------+-----...------+       (greatest)
 /// |                |              |
 /// early-bound and  |              |
@@ -1771,14 +1782,14 @@ impl<'tcx> Region<'tcx> {
     /// Given an early-bound or free region, returns the `DefId` where it was bound.
     /// For example, consider the regions in this snippet of code:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// impl<'a> Foo {
-    ///      ^^ -- early bound, declared on an impl
+    /// //   ^^ -- early bound, declared on an impl
     ///
     ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
-    ///            ^^  ^^     ^ anonymous, late-bound
-    ///            |   early-bound, appears in where-clauses
-    ///            late-bound, appears only in fn args
+    /// //         ^^  ^^     ^ anonymous, late-bound
+    /// //         |   early-bound, appears in where-clauses
+    /// //         late-bound, appears only in fn args
     ///     {..}
     /// }
     /// ```
@@ -1789,7 +1800,7 @@ impl<'tcx> Region<'tcx> {
     /// function might return the `DefId` of a closure.
     pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
         match *self {
-            ty::ReEarlyBound(br) => tcx.parent(br.def_id).unwrap(),
+            ty::ReEarlyBound(br) => tcx.parent(br.def_id),
             ty::ReFree(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }
@@ -1880,10 +1891,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_slice(self) -> bool {
-        match self.kind() {
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_) | Str),
-            _ => false,
-        }
+        matches!(self.kind(), Slice(_))
     }
 
     #[inline]
@@ -1913,6 +1921,13 @@ impl<'tcx> Ty<'tcx> {
             Array(ty, _) | Slice(ty) => *ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
+        }
+    }
+
+    pub fn expect_opaque_type(self) -> ty::OpaqueTypeKey<'tcx> {
+        match *self.kind() {
+            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
+            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
         }
     }
 
@@ -2260,7 +2275,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> (Ty<'tcx>, bool) {
-        let tail = tcx.struct_tail_with_normalize(self, normalize);
+        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))

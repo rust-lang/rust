@@ -7,10 +7,11 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_error_messages::MultiSpan;
+use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
-use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
+use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 pub mod builtin;
@@ -146,7 +147,7 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable_Generic)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -173,8 +174,6 @@ pub enum Level {
     /// levels.
     Forbid,
 }
-
-rustc_data_structures::impl_stable_hash_via_hash!(Level);
 
 impl Level {
     /// Converts a level to a lower-case string.
@@ -213,6 +212,13 @@ impl Level {
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),
             _ => None,
+        }
+    }
+
+    pub fn is_error(self) -> bool {
+        match self {
+            Level::Allow | Level::Expect(_) | Level::Warn | Level::ForceWarn => false,
+            Level::Deny | Level::Forbid => true,
         }
     }
 }
@@ -402,13 +408,6 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     }
 }
 
-// Duplicated from rustc_session::config::ExternDepSpec to avoid cyclic dependency
-#[derive(PartialEq, Debug)]
-pub enum ExternDepSpec {
-    Json(Json),
-    Raw(String),
-}
-
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(Debug)]
@@ -417,6 +416,7 @@ pub enum BuiltinLintDiagnostics {
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
+    ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>, Option<Span>),
     RedundantImport(Vec<(Span, bool)>, Ident),
@@ -426,7 +426,6 @@ pub enum BuiltinLintDiagnostics {
     UnusedBuiltinAttribute { attr_name: Symbol, macro_name: String, invoc_span: Span },
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
-    ExternDepSpec(String, ExternDepSpec),
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span),

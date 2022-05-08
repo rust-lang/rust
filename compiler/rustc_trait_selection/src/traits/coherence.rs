@@ -114,7 +114,7 @@ where
     }
 
     // In the case where we detect an error, run the check again, but
-    // this time tracking intercrate ambuiguity causes for better
+    // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
     tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx);
@@ -547,7 +547,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 /// 2. They ground negative reasoning for coherence. If a user wants to
 ///    write both a conditional blanket impl and a specific impl, we need to
 ///    make sure they do not overlap. For example, if we write
-///    ```
+///    ```ignore (illustrative)
 ///    impl<T> IntoIterator for Vec<T>
 ///    impl<T: Iterator> IntoIterator for T
 ///    ```
@@ -762,7 +762,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
         ty::Foreign(did) => def_id_is_local(did, in_crate),
         ty::Opaque(..) => {
             // This merits some explanation.
-            // Normally, opaque types are not involed when performing
+            // Normally, opaque types are not involved when performing
             // coherence checking, since it is illegal to directly
             // implement a trait on an opaque type. However, we might
             // end up looking at an opaque type during coherence checking

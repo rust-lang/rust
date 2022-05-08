@@ -291,7 +291,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // like AddAssign is implemented).
 
     // For primitive types (which, despite having a trait impl, don't actually
-    // end up calling it), the evluation order is right-to-left. For example,
+    // end up calling it), the evaluation order is right-to-left. For example,
     // the following code snippet:
     //
     //    let y = &mut 0;
@@ -734,7 +734,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let body_id = body.id();
-        let owner_id = self.tcx.hir().body_owner(body_id);
+        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 
         debug!(
             "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",

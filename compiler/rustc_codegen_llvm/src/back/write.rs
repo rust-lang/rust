@@ -523,6 +523,12 @@ pub(crate) unsafe fn optimize(
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
 
+    if let Some(false) = config.new_llvm_pass_manager && llvm_util::get_version() >= (15, 0, 0) {
+        diag_handler.warn(
+            "ignoring `-Z new-llvm-pass-manager=no`, which is no longer supported with LLVM 15",
+        );
+    }
+
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
         let out = path_to_c_string(&out);
@@ -628,8 +634,8 @@ pub(crate) unsafe fn optimize(
                         extra_passes.as_ptr(),
                         extra_passes.len() as size_t,
                     );
-                    llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
-                    llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
+                    llvm::LLVMRustPassManagerBuilderPopulateFunctionPassManager(b, fpm);
+                    llvm::LLVMRustPassManagerBuilderPopulateModulePassManager(b, mpm);
                 });
 
                 have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
@@ -721,8 +727,7 @@ pub(crate) fn link(
 
     let mut linker = Linker::new(first.module_llvm.llmod());
     for module in elements {
-        let _timer =
-            cgcx.prof.generic_activity_with_arg("LLVM_link_module", format!("{:?}", module.name));
+        let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
         linker.add(buffer.data()).map_err(|()| {
             let msg = format!("failed to serialize module {:?}", module.name);
@@ -1086,7 +1091,7 @@ pub unsafe fn with_llvm_pmb(
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
-    let builder = llvm::LLVMPassManagerBuilderCreate();
+    let builder = llvm::LLVMRustPassManagerBuilderCreate();
     let opt_size = config.opt_size.map_or(llvm::CodeGenOptSizeNone, |x| to_llvm_opt_settings(x).1);
     let inline_threshold = config.inline_threshold;
     let pgo_gen_path = get_pgo_gen_path(config);
@@ -1103,13 +1108,8 @@ pub unsafe fn with_llvm_pmb(
         pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
         pgo_sample_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+        opt_size as c_int,
     );
-
-    llvm::LLVMPassManagerBuilderSetSizeLevel(builder, opt_size as u32);
-
-    if opt_size != llvm::CodeGenOptSizeNone {
-        llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(builder, 1);
-    }
 
     llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, config.no_builtins);
 
@@ -1119,16 +1119,16 @@ pub unsafe fn with_llvm_pmb(
     // thresholds copied from clang.
     match (opt_level, opt_size, inline_threshold) {
         (.., Some(t)) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t);
+            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, t);
         }
         (llvm::CodeGenOptLevel::Aggressive, ..) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
+            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
         (_, llvm::CodeGenOptSizeDefault, _) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 75);
+            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 75);
         }
         (_, llvm::CodeGenOptSizeAggressive, _) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
+            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 25);
         }
         (llvm::CodeGenOptLevel::None, ..) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
@@ -1137,12 +1137,12 @@ pub unsafe fn with_llvm_pmb(
             llvm::LLVMRustAddAlwaysInlinePass(builder, config.emit_lifetime_markers);
         }
         (llvm::CodeGenOptLevel::Default, ..) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
+            llvm::LLVMRustPassManagerBuilderUseInlinerWithThreshold(builder, 225);
         }
     }
 
     f(builder);
-    llvm::LLVMPassManagerBuilderDispose(builder);
+    llvm::LLVMRustPassManagerBuilderDispose(builder);
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.

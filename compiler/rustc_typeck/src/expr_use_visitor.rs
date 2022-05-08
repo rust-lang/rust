@@ -358,8 +358,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             hir::ExprKind::InlineAsm(asm) => {
                 for (op, _op_sp) in asm.operands {
                     match op {
-                        hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
+                        hir::InlineAsmOperand::In { expr, .. } => self.consume_expr(expr),
                         hir::InlineAsmOperand::Out { expr: Some(expr), .. }
                         | hir::InlineAsmOperand::InOut { expr, .. } => {
                             self.mutate_expr(expr);
@@ -371,7 +370,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Out { expr: None, .. }
-                        | hir::InlineAsmOperand::Const { .. } => {}
+                        | hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }
             }
@@ -697,12 +698,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// In the following example the closures `c` only captures `p.x` even though `incr`
     /// is a capture of the nested closure
     ///
-    /// ```rust,ignore(cannot-test-this-because-pseudo-code)
-    /// let p = ..;
+    /// ```
+    /// struct P { x: i32 }
+    /// let mut p = P { x: 4 };
     /// let c = || {
     ///    let incr = 10;
     ///    let nested = || p.x += incr;
-    /// }
+    /// };
     /// ```
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
@@ -723,10 +725,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
-        let body_owner_is_closure = matches!(
-            tcx.hir().body_owner_kind(tcx.hir().local_def_id_to_hir_id(self.body_owner)),
-            hir::BodyOwnerKind::Closure,
-        );
+        let body_owner_is_closure =
+            matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
         if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {

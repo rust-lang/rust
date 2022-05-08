@@ -41,10 +41,12 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
             | clean::AssocConstItem(..)
+            | clean::AssocTypeItem(..)
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
-                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id.expect_def_id())
+                if i.item_id.is_local()
+                    && !self.access_levels.is_exported(i.item_id.expect_def_id())
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -58,7 +60,7 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && !i.visibility.is_public() {
+                if i.item_id.is_local() && !i.visibility.is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));
@@ -72,17 +74,14 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
-            clean::TyMethodItem(..) => {}
+            // tymethods etc. have no control over privacy
+            clean::TyMethodItem(..) | clean::TyAssocConstItem(..) | clean::TyAssocTypeItem(..) => {}
 
             // Proc-macros are always public
             clean::ProcMacroItem(..) => {}
 
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
-
-            // Associated types are never stripped
-            clean::AssocTypeItem(..) => {}
 
             // Keywords are never stripped
             clean::KeywordItem(..) => {}
@@ -102,7 +101,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
         let i = if fastreturn {
             if self.update_retained {
-                self.retained.insert(i.def_id);
+                self.retained.insert(i.item_id);
             }
             return Some(i);
         } else {
@@ -110,7 +109,7 @@ impl<'a> DocFolder for Stripper<'a> {
         };
 
         if self.update_retained {
-            self.retained.insert(i.def_id);
+            self.retained.insert(i.item_id);
         }
         Some(i)
     }

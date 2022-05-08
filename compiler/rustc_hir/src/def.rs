@@ -1,4 +1,4 @@
-use crate::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::DefId;
 use crate::hir;
 
 use rustc_ast as ast;
@@ -78,7 +78,7 @@ pub enum DefKind {
     Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
-    Static,
+    Static(ast::Mutability),
     /// Refers to the struct or enum variant's constructor.
     ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
@@ -124,11 +124,9 @@ impl DefKind {
     pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
-            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE => {
-                "crate"
-            }
+            DefKind::Mod if def_id.is_crate_root() && !def_id.is_local() => "crate",
             DefKind::Mod => "module",
-            DefKind::Static => "static",
+            DefKind::Static(..) => "static",
             DefKind::Enum => "enum",
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
@@ -202,7 +200,7 @@ impl DefKind {
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
-            | DefKind::Static
+            | DefKind::Static(..)
             | DefKind::Ctor(..)
             | DefKind::AssocFn
             | DefKind::AssocConst => Some(Namespace::ValueNS),
@@ -221,6 +219,14 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl => None,
+        }
+    }
+
+    #[inline]
+    pub fn is_fn_like(self) -> bool {
+        match self {
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator => true,
+            _ => false,
         }
     }
 }
@@ -306,6 +312,7 @@ pub enum Res<Id = hir::HirId> {
     /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
+    /// # struct Foo;
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
     ///
     /// struct Bar([u8; baz::<Self>()]);
@@ -656,5 +663,10 @@ impl<Id> Res<Id> {
     /// Returns whether such a resolved path can occur in a tuple struct/variant pattern
     pub fn expected_in_tuple_struct_pat(&self) -> bool {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
+    }
+
+    /// Returns whether such a resolved path can occur in a unit struct/variant pattern
+    pub fn expected_in_unit_struct_pat(&self) -> bool {
+        matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
 }

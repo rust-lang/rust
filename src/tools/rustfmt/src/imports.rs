@@ -190,13 +190,17 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -
             continue;
         }
 
-        for flattened in use_tree.flatten() {
+        for mut flattened in use_tree.flatten() {
             if let Some(tree) = result
                 .iter_mut()
                 .find(|tree| tree.share_prefix(&flattened, merge_by))
             {
                 tree.merge(&flattened, merge_by);
             } else {
+                // If this is the first tree with this prefix, handle potential trailing ::self
+                if merge_by == SharedPrefix::Module {
+                    flattened = flattened.nest_trailing_self();
+                }
                 result.push(flattened);
             }
         }
@@ -208,17 +212,7 @@ pub(crate) fn flatten_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
     use_trees
         .into_iter()
         .flat_map(UseTree::flatten)
-        .map(|mut tree| {
-            // If a path ends in `::self`, rewrite it to `::{self}`.
-            if let Some(UseSegment::Slf(..)) = tree.path.last() {
-                let self_segment = tree.path.pop().unwrap();
-                tree.path.push(UseSegment::List(vec![UseTree::from_path(
-                    vec![self_segment],
-                    DUMMY_SP,
-                )]));
-            }
-            tree
-        })
+        .map(UseTree::nest_trailing_self)
         .collect()
 }
 
@@ -238,7 +232,8 @@ impl fmt::Display for UseSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             UseSegment::Glob => write!(f, "*"),
-            UseSegment::Ident(ref s, _) => write!(f, "{}", s),
+            UseSegment::Ident(ref s, Some(ref alias)) => write!(f, "{} as {}", s, alias),
+            UseSegment::Ident(ref s, None) => write!(f, "{}", s),
             UseSegment::Slf(..) => write!(f, "self"),
             UseSegment::Super(..) => write!(f, "super"),
             UseSegment::Crate(..) => write!(f, "crate"),
@@ -622,7 +617,8 @@ impl UseTree {
     fn merge(&mut self, other: &UseTree, merge_by: SharedPrefix) {
         let mut prefix = 0;
         for (a, b) in self.path.iter().zip(other.path.iter()) {
-            if a.equal_except_alias(b) {
+            // only discard the alias at the root of the tree
+            if (prefix == 0 && a.equal_except_alias(b)) || a == b {
                 prefix += 1;
             } else {
                 break;
@@ -632,6 +628,18 @@ impl UseTree {
             self.path = new_path;
             self.span = self.span.to(other.span);
         }
+    }
+
+    /// If this tree ends in `::self`, rewrite it to `::{self}`.
+    fn nest_trailing_self(mut self) -> UseTree {
+        if let Some(UseSegment::Slf(..)) = self.path.last() {
+            let self_segment = self.path.pop().unwrap();
+            self.path.push(UseSegment::List(vec![UseTree::from_path(
+                vec![self_segment],
+                DUMMY_SP,
+            )]));
+        }
+        self
     }
 }
 
@@ -1307,6 +1315,26 @@ mod test {
         assert!(
             parse_use_tree("std::cmp::{d, c, b, a}").normalize()
                 < parse_use_tree("std::cmp::{b, e, g, f}").normalize()
+        );
+    }
+
+    #[test]
+    fn test_use_tree_nest_trailing_self() {
+        assert_eq!(
+            parse_use_tree("a::b::self").nest_trailing_self(),
+            parse_use_tree("a::b::{self}")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::c").nest_trailing_self(),
+            parse_use_tree("a::b::c")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::{c, d}").nest_trailing_self(),
+            parse_use_tree("a::b::{c, d}")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::{self, c}").nest_trailing_self(),
+            parse_use_tree("a::b::{self, c}")
         );
     }
 }

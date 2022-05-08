@@ -50,7 +50,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
 ///
 /// 1. Moving a variable `a` counts as a move of the whole variable.
 /// 2. Moving a partial path like `a.b.c` is ignored.
-/// 3. Reinitializing through a field (e.g. `a.b.c = 5`) counds as a reinitialization of all of
+/// 3. Reinitializing through a field (e.g. `a.b.c = 5`) counts as a reinitialization of all of
 ///    `a`.
 ///
 /// Some examples:
@@ -71,7 +71,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// ```
 ///
 /// Rule 3:
-/// ```rust
+/// ```compile_fail,E0382
 /// let mut a = (vec![0], vec![0]);
 /// drop(a);
 /// a.1 = vec![1];
@@ -257,7 +257,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::Ctor(..)
                 | hir::Node::Lifetime(..)
                 | hir::Node::GenericParam(..)
-                | hir::Node::Visibility(..)
                 | hir::Node::Crate(..)
                 | hir::Node::Infer(..) => bug!("Unsupported branch target: {:?}", node),
             }

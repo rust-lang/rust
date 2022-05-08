@@ -168,7 +168,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     #[cfg(not(no_global_oom_handling))]
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
-        if mem::size_of::<T>() == 0 {
+        // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
+        if mem::size_of::<T>() == 0 || capacity == 0 {
             Self::new_in(alloc)
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of

@@ -644,9 +644,9 @@ fn recursive_rmdir_toctou() {
     // Test for time-of-check to time-of-use issues.
     //
     // Scenario:
-    // The attacker wants to get directory contents deleted, to which he does not have access.
-    // He has a way to get a privileged Rust binary call `std::fs::remove_dir_all()` on a
-    // directory he controls, e.g. in his home directory.
+    // The attacker wants to get directory contents deleted, to which they do not have access.
+    // They have a way to get a privileged Rust binary call `std::fs::remove_dir_all()` on a
+    // directory they control, e.g. in their home directory.
     //
     // The POC sets up the `attack_dest/attack_file` which the attacker wants to have deleted.
     // The attacker repeatedly creates a directory and replaces it with a symlink from

@@ -9,6 +9,7 @@ click: "#theme-choices > button:last-child"
 wait-for-css: ("body", { "background-color": "rgb(255, 255, 255)" })
 
 goto: file://|DOC_PATH|/settings.html
+wait-for: "#settings"
 click: "#theme-light"
 wait-for-css: ("body", { "background-color": "rgb(255, 255, 255)" })
 assert-local-storage: { "rustdoc-theme": "light" }

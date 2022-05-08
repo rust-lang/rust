@@ -1,4 +1,4 @@
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function `test::free` is unsafe and requires unsafe function or block
   --> $DIR/foreign-unsafe-fn-called.rs:11:5
    |
 LL |     test::free();

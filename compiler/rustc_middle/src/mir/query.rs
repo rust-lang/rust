@@ -1,7 +1,7 @@
 //! Values computed by queries that use MIR.
 
 use crate::mir::{Body, Promoted};
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
@@ -9,7 +9,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::OpaqueTypeKey;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
@@ -126,7 +125,7 @@ pub enum UnusedUnsafe {
     /// > ``… because it's nested under this `unsafe fn` ``
     ///
     /// the second HirId here indicates the first usage of the `unsafe` block,
-    /// which allows retrival of the LintLevelSource for why that operation would
+    /// which allows retrieval of the LintLevelSource for why that operation would
     /// have been permitted without the block
     InUnsafeFn(hir::HirId, hir::HirId),
 }
@@ -242,7 +241,7 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
+    pub concrete_opaque_types: VecMap<DefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,

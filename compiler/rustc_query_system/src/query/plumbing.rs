@@ -620,8 +620,8 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     } else {
         sess.struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
                 .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
-                .note(&"Please follow the instructions below to create a bug report with the provided information")
-                .note(&"See <https://github.com/rust-lang/rust/issues/84970> for more information")
+                .note("Please follow the instructions below to create a bug report with the provided information")
+                .note("See <https://github.com/rust-lang/rust/issues/84970> for more information")
                 .emit();
         panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
     }
@@ -675,6 +675,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub enum QueryMode {
     Get,
     Ensure,
@@ -697,7 +698,6 @@ where
         None
     };
 
-    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
     let (result, dep_node_index) = try_execute_query(
         tcx,
         Q::query_state(tcx),

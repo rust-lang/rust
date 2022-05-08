@@ -87,7 +87,7 @@ macro_rules! arena_types {
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_middle::ty::TyS<'tcx>,
+            [] tys: rustc_data_structures::intern::WithStableHash<rustc_middle::ty::TyS<'tcx>>,
             [] predicates: rustc_middle::ty::PredicateS<'tcx>,
             [] consts: rustc_middle::ty::ConstS<'tcx>,
 

@@ -128,14 +128,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
 
 impl<T> P<[T]> {
     pub const fn new() -> P<[T]> {
-        // HACK(eddyb) bypass the lack of a `const fn` to create an empty `Box<[T]>`
-        // (as trait methods, `default` in this case, can't be `const fn` yet).
-        P {
-            ptr: unsafe {
-                use std::ptr::NonNull;
-                std::mem::transmute(NonNull::<[T; 0]>::dangling() as NonNull<[T]>)
-            },
-        }
+        P { ptr: Box::default() }
     }
 
     #[inline(never)]

@@ -4,17 +4,16 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedNtTt, MatchedSeq};
+use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, NonterminalKind, Token, TokenKind::*};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
@@ -68,17 +67,18 @@ fn emit_frag_parse_err(
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
-    if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+    // FIXME(davidtwco): avoid depending on the error message text
+    if parser.token == token::Eof && e.message[0].0.expect_str().ends_with(", found `<eof>`") {
         if !e.span.is_dummy() {
             // early end of macro arm (#52866)
             e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
         }
         let msg = &e.message[0];
         e.message[0] = (
-            format!(
+            rustc_errors::DiagnosticMessage::Str(format!(
                 "macro expansion ends with an incomplete expression: {}",
-                msg.0.replace(", found `<eof>`", ""),
-            ),
+                msg.0.expect_str().replace(", found `<eof>`", ""),
+            )),
             msg.1,
         );
     }
@@ -159,7 +159,7 @@ struct MacroRulesMacroExpander {
     name: Ident,
     span: Span,
     transparency: Transparency,
-    lhses: Vec<mbe::TokenTree>,
+    lhses: Vec<Vec<MatcherLoc>>,
     rhses: Vec<mbe::TokenTree>,
     valid: bool,
     is_local: bool,
@@ -210,7 +210,7 @@ fn generic_extension<'cx, 'tt>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    lhses: &'tt [mbe::TokenTree],
+    lhses: &'tt [Vec<MatcherLoc>],
     rhses: &'tt [mbe::TokenTree],
     is_local: bool,
 ) -> Box<dyn MacResult + 'cx> {
@@ -245,14 +245,6 @@ fn generic_extension<'cx, 'tt>(
     // this situation.)
     let parser = parser_from_cx(sess, arg.clone());
 
-    // A matcher is always delimited, but the delimiters are ignored.
-    let delimited_inner_tts = |tt: &'tt mbe::TokenTree| -> &'tt [mbe::TokenTree] {
-        match tt {
-            mbe::TokenTree::Delimited(_, delimited) => delimited.inner_tts(),
-            _ => cx.span_bug(sp, "malformed macro lhs"),
-        }
-    };
-
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
@@ -262,18 +254,21 @@ fn generic_extension<'cx, 'tt>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), delimited_inner_tts(lhs)) {
+        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
-                let rhs = delimited_inner_tts(&rhses[i]).to_vec().clone();
+                let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
+                    mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
+                    _ => cx.span_bug(sp, "malformed macro rhs"),
+                };
                 let arm_span = rhses[i].span();
 
-                let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
+                let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = match transcribe(cx, &named_matches, rhs, transparency) {
+                let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
                     Ok(tts) => tts,
                     Err(mut err) => {
                         err.emit();
@@ -346,10 +341,8 @@ fn generic_extension<'cx, 'tt>(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
-            if let Success(_) = tt_parser.parse_tt(
-                &mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())),
-                delimited_inner_tts(lhs),
-            ) {
+            let parser = parser_from_cx(sess, arg.clone());
+            if let Success(_) = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
@@ -412,7 +405,7 @@ pub fn compile_declarative_macro(
     let argument_gram = vec![
         mbe::TokenTree::Sequence(
             DelimSpan::dummy(),
-            Lrc::new(mbe::SequenceRepetition {
+            mbe::SequenceRepetition {
                 tts: vec![
                     mbe::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
                     mbe::TokenTree::token(token::FatArrow, def.span),
@@ -424,12 +417,12 @@ pub fn compile_declarative_macro(
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
                 num_captures: 2,
-            }),
+            },
         ),
         // to phase into semicolon-termination instead of semicolon-separation
         mbe::TokenTree::Sequence(
             DelimSpan::dummy(),
-            Lrc::new(mbe::SequenceRepetition {
+            mbe::SequenceRepetition {
                 tts: vec![mbe::TokenTree::token(
                     if macro_rules { token::Semi } else { token::Comma },
                     def.span,
@@ -437,12 +430,15 @@ pub fn compile_declarative_macro(
                 separator: None,
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, def.span),
                 num_captures: 0,
-            }),
+            },
         ),
     ];
+    // Convert it into `MatcherLoc` form.
+    let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let mut tt_parser = TtParser::new(def.ident);
+    let mut tt_parser =
+        TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
     let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
@@ -470,19 +466,18 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNtTt(ref tt) = *m {
-                    let mut tts = vec![];
-                    mbe::quoted::parse(
+                if let MatchedTokenTree(ref tt) = *m {
+                    let tt = mbe::quoted::parse(
                         tt.clone().into(),
                         true,
                         &sess.parse_sess,
                         def.id,
                         features,
                         edition,
-                        &mut tts,
-                    );
-                    let tt = tts.pop().unwrap();
-                    valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
+                    )
+                    .pop()
+                    .unwrap();
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, &def, &tt);
                     return tt;
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -495,18 +490,17 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNtTt(ref tt) = *m {
-                    let mut tts = vec![];
-                    mbe::quoted::parse(
+                if let MatchedTokenTree(ref tt) = *m {
+                    return mbe::quoted::parse(
                         tt.clone().into(),
                         false,
                         &sess.parse_sess,
                         def.id,
                         features,
                         edition,
-                        &mut tts,
-                    );
-                    return tts.pop().unwrap();
+                    )
+                    .pop()
+                    .unwrap();
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
@@ -536,6 +530,25 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
+    // Convert the lhses into `MatcherLoc` form, which is better for doing the
+    // actual matching. Unless the matcher is invalid.
+    let lhses = if valid {
+        lhses
+            .iter()
+            .map(|lhs| {
+                // Ignore the delimiters around the matcher.
+                match lhs {
+                    mbe::TokenTree::Delimited(_, delimited) => {
+                        mbe::macro_parser::compute_locs(&delimited.tts)
+                    }
+                    _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "malformed macro lhs"),
+                }
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
     mk_syn_ext(Box::new(MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
@@ -549,16 +562,11 @@ pub fn compile_declarative_macro(
     }))
 }
 
-fn check_lhs_nt_follows(
-    sess: &ParseSess,
-    features: &Features,
-    def: &ast::Item,
-    lhs: &mbe::TokenTree,
-) -> bool {
+fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(_, delimited) = lhs {
-        check_matcher(sess, features, def, delimited.inner_tts())
+        check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         sess.span_diagnostic.span_err(lhs.span(), msg);
@@ -579,7 +587,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(_, ref del) => {
-                if !check_lhs_no_empty_seq(sess, del.inner_tts()) {
+                if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
             }
@@ -618,16 +626,11 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     false
 }
 
-fn check_matcher(
-    sess: &ParseSess,
-    features: &Features,
-    def: &ast::Item,
-    matcher: &[mbe::TokenTree],
-) -> bool {
+fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
     let err = sess.span_diagnostic.err_count();
-    check_matcher_core(sess, features, def, &first_sets, matcher, &empty_suffix);
+    check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
     err == sess.span_diagnostic.err_count()
 }
 
@@ -643,18 +646,18 @@ fn check_matcher(
 // that do not try to inject artificial span information. My plan is
 // to try to catch such cases ahead of time and not include them in
 // the precomputed mapping.)
-struct FirstSets {
+struct FirstSets<'tt> {
     // this maps each TokenTree::Sequence `$(tt ...) SEP OP` that is uniquely identified by its
     // span in the original matcher to the First set for the inner sequence `tt ...`.
     //
     // If two sequences have the same span in a matcher, then map that
     // span to None (invalidating the mapping here and forcing the code to
     // use a slow path).
-    first: FxHashMap<Span, Option<TokenSet>>,
+    first: FxHashMap<Span, Option<TokenSet<'tt>>>,
 }
 
-impl FirstSets {
-    fn new(tts: &[mbe::TokenTree]) -> FirstSets {
+impl<'tt> FirstSets<'tt> {
+    fn new(tts: &'tt [mbe::TokenTree]) -> FirstSets<'tt> {
         use mbe::TokenTree;
 
         let mut sets = FirstSets { first: FxHashMap::default() };
@@ -664,7 +667,7 @@ impl FirstSets {
         // walks backward over `tts`, returning the FIRST for `tts`
         // and updating `sets` at the same time for all sequence
         // substructure we find within `tts`.
-        fn build_recur(sets: &mut FirstSets, tts: &[TokenTree]) -> TokenSet {
+        fn build_recur<'tt>(sets: &mut FirstSets<'tt>, tts: &'tt [TokenTree]) -> TokenSet<'tt> {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
                 match *tt {
@@ -672,11 +675,14 @@ impl FirstSets {
                     | TokenTree::MetaVar(..)
                     | TokenTree::MetaVarDecl(..)
                     | TokenTree::MetaVarExpr(..) => {
-                        first.replace_with(tt.clone());
+                        first.replace_with(TtHandle::TtRef(tt));
                     }
-                    TokenTree::Delimited(_span, ref delimited) => {
-                        build_recur(sets, delimited.inner_tts());
-                        first.replace_with(delimited.open_tt().clone());
+                    TokenTree::Delimited(span, ref delimited) => {
+                        build_recur(sets, &delimited.tts);
+                        first.replace_with(TtHandle::from_token_kind(
+                            token::OpenDelim(delimited.delim),
+                            span.open,
+                        ));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts);
@@ -700,7 +706,7 @@ impl FirstSets {
                         // token could be the separator token itself.
 
                         if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::Token(sep.clone()));
+                            first.add_one_maybe(TtHandle::from_token(sep.clone()));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -726,7 +732,7 @@ impl FirstSets {
 
     // walks forward over `tts` until all potential FIRST tokens are
     // identified.
-    fn first(&self, tts: &[mbe::TokenTree]) -> TokenSet {
+    fn first(&self, tts: &'tt [mbe::TokenTree]) -> TokenSet<'tt> {
         use mbe::TokenTree;
 
         let mut first = TokenSet::empty();
@@ -737,11 +743,14 @@ impl FirstSets {
                 | TokenTree::MetaVar(..)
                 | TokenTree::MetaVarDecl(..)
                 | TokenTree::MetaVarExpr(..) => {
-                    first.add_one(tt.clone());
+                    first.add_one(TtHandle::TtRef(tt));
                     return first;
                 }
-                TokenTree::Delimited(_span, ref delimited) => {
-                    first.add_one(delimited.open_tt().clone());
+                TokenTree::Delimited(span, ref delimited) => {
+                    first.add_one(TtHandle::from_token_kind(
+                        token::OpenDelim(delimited.delim),
+                        span.open,
+                    ));
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
@@ -760,7 +769,7 @@ impl FirstSets {
                     // If the sequence contents can be empty, then the first
                     // token could be the separator token itself.
                     if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
-                        first.add_one_maybe(TokenTree::Token(sep.clone()));
+                        first.add_one_maybe(TtHandle::from_token(sep.clone()));
                     }
 
                     assert!(first.maybe_empty);
@@ -788,6 +797,62 @@ impl FirstSets {
     }
 }
 
+// Most `mbe::TokenTree`s are pre-existing in the matcher, but some are defined
+// implicitly, such as opening/closing delimiters and sequence repetition ops.
+// This type encapsulates both kinds. It implements `Clone` while avoiding the
+// need for `mbe::TokenTree` to implement `Clone`.
+#[derive(Debug)]
+enum TtHandle<'tt> {
+    /// This is used in most cases.
+    TtRef(&'tt mbe::TokenTree),
+
+    /// This is only used for implicit token trees. The `mbe::TokenTree` *must*
+    /// be `mbe::TokenTree::Token`. No other variants are allowed. We store an
+    /// `mbe::TokenTree` rather than a `Token` so that `get()` can return a
+    /// `&mbe::TokenTree`.
+    Token(mbe::TokenTree),
+}
+
+impl<'tt> TtHandle<'tt> {
+    fn from_token(tok: Token) -> Self {
+        TtHandle::Token(mbe::TokenTree::Token(tok))
+    }
+
+    fn from_token_kind(kind: TokenKind, span: Span) -> Self {
+        TtHandle::from_token(Token::new(kind, span))
+    }
+
+    // Get a reference to a token tree.
+    fn get(&'tt self) -> &'tt mbe::TokenTree {
+        match self {
+            TtHandle::TtRef(tt) => tt,
+            TtHandle::Token(token_tt) => &token_tt,
+        }
+    }
+}
+
+impl<'tt> PartialEq for TtHandle<'tt> {
+    fn eq(&self, other: &TtHandle<'tt>) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl<'tt> Clone for TtHandle<'tt> {
+    fn clone(&self) -> Self {
+        match self {
+            TtHandle::TtRef(tt) => TtHandle::TtRef(tt),
+
+            // This variant *must* contain a `mbe::TokenTree::Token`, and not
+            // any other variant of `mbe::TokenTree`.
+            TtHandle::Token(mbe::TokenTree::Token(tok)) => {
+                TtHandle::Token(mbe::TokenTree::Token(tok.clone()))
+            }
+
+            _ => unreachable!(),
+        }
+    }
+}
+
 // A set of `mbe::TokenTree`s, which may include `TokenTree::Match`s
 // (for macro-by-example syntactic variables). It also carries the
 // `maybe_empty` flag; that is true if and only if the matcher can
@@ -799,12 +864,12 @@ impl FirstSets {
 //
 // (Notably, we must allow for *-op to occur zero times.)
 #[derive(Clone, Debug)]
-struct TokenSet {
-    tokens: Vec<mbe::TokenTree>,
+struct TokenSet<'tt> {
+    tokens: Vec<TtHandle<'tt>>,
     maybe_empty: bool,
 }
 
-impl TokenSet {
+impl<'tt> TokenSet<'tt> {
     // Returns a set for the empty sequence.
     fn empty() -> Self {
         TokenSet { tokens: Vec::new(), maybe_empty: true }
@@ -812,15 +877,15 @@ impl TokenSet {
 
     // Returns the set `{ tok }` for the single-token (and thus
     // non-empty) sequence [tok].
-    fn singleton(tok: mbe::TokenTree) -> Self {
-        TokenSet { tokens: vec![tok], maybe_empty: false }
+    fn singleton(tt: TtHandle<'tt>) -> Self {
+        TokenSet { tokens: vec![tt], maybe_empty: false }
     }
 
     // Changes self to be the set `{ tok }`.
     // Since `tok` is always present, marks self as non-empty.
-    fn replace_with(&mut self, tok: mbe::TokenTree) {
+    fn replace_with(&mut self, tt: TtHandle<'tt>) {
         self.tokens.clear();
-        self.tokens.push(tok);
+        self.tokens.push(tt);
         self.maybe_empty = false;
     }
 
@@ -833,17 +898,17 @@ impl TokenSet {
     }
 
     // Adds `tok` to the set for `self`, marking sequence as non-empy.
-    fn add_one(&mut self, tok: mbe::TokenTree) {
-        if !self.tokens.contains(&tok) {
-            self.tokens.push(tok);
+    fn add_one(&mut self, tt: TtHandle<'tt>) {
+        if !self.tokens.contains(&tt) {
+            self.tokens.push(tt);
         }
         self.maybe_empty = false;
     }
 
     // Adds `tok` to the set for `self`. (Leaves `maybe_empty` flag alone.)
-    fn add_one_maybe(&mut self, tok: mbe::TokenTree) {
-        if !self.tokens.contains(&tok) {
-            self.tokens.push(tok);
+    fn add_one_maybe(&mut self, tt: TtHandle<'tt>) {
+        if !self.tokens.contains(&tt) {
+            self.tokens.push(tt);
         }
     }
 
@@ -855,9 +920,9 @@ impl TokenSet {
     // setting of the empty flag of `self`. If `other` is guaranteed
     // non-empty, then `self` is marked non-empty.
     fn add_all(&mut self, other: &Self) {
-        for tok in &other.tokens {
-            if !self.tokens.contains(tok) {
-                self.tokens.push(tok.clone());
+        for tt in &other.tokens {
+            if !self.tokens.contains(tt) {
+                self.tokens.push(tt.clone());
             }
         }
         if !other.maybe_empty {
@@ -877,14 +942,13 @@ impl TokenSet {
 //
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
-fn check_matcher_core(
+fn check_matcher_core<'tt>(
     sess: &ParseSess,
-    features: &Features,
     def: &ast::Item,
-    first_sets: &FirstSets,
-    matcher: &[mbe::TokenTree],
-    follow: &TokenSet,
-) -> TokenSet {
+    first_sets: &FirstSets<'tt>,
+    matcher: &'tt [mbe::TokenTree],
+    follow: &TokenSet<'tt>,
+) -> TokenSet<'tt> {
     use mbe::TokenTree;
 
     let mut last = TokenSet::empty();
@@ -923,13 +987,16 @@ fn check_matcher_core(
                     // followed by anything against SUFFIX.
                     continue 'each_token;
                 } else {
-                    last.replace_with(token.clone());
+                    last.replace_with(TtHandle::TtRef(token));
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(_span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt().clone());
-                check_matcher_core(sess, features, def, first_sets, d.inner_tts(), &my_suffix);
+            TokenTree::Delimited(span, ref d) => {
+                let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
+                    token::CloseDelim(d.delim),
+                    span.close,
+                ));
+                check_matcher_core(sess, def, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 
@@ -952,7 +1019,7 @@ fn check_matcher_core(
                 let mut new;
                 let my_suffix = if let Some(sep) = &seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::Token(sep.clone()));
+                    new.add_one_maybe(TtHandle::from_token(sep.clone()));
                     &new
                 } else {
                     &suffix_first
@@ -961,8 +1028,7 @@ fn check_matcher_core(
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next =
-                    check_matcher_core(sess, features, def, first_sets, &seq_rep.tts, my_suffix);
+                let next = check_matcher_core(sess, def, first_sets, &seq_rep.tts, my_suffix);
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
@@ -979,9 +1045,11 @@ fn check_matcher_core(
 
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
-        for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(span, name, Some(kind)) = *token {
+        for tt in &last.tokens {
+            if let &TokenTree::MetaVarDecl(span, name, Some(kind)) = tt.get() {
                 for next_token in &suffix_first.tokens {
+                    let next_token = next_token.get();
+
                     // Check if the old pat is used and the next token is `|`
                     // to warn about incompatibility with Rust 2021.
                     // We only emit this lint if we're parsing the original
@@ -1033,7 +1101,7 @@ fn check_matcher_core(
                             err.span_label(sp, format!("not allowed after `{}` fragments", kind));
 
                             if kind == NonterminalKind::PatWithOr
-                                && sess.edition == Edition::Edition2021
+                                && sess.edition.rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
@@ -1182,8 +1250,8 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 ];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        OpenDelim(token::DelimToken::Brace)
-                        | OpenDelim(token::DelimToken::Bracket)
+                        OpenDelim(Delimiter::Brace)
+                        | OpenDelim(Delimiter::Bracket)
                         | Comma
                         | FatArrow
                         | Colon

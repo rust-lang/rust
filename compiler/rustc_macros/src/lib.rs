@@ -1,5 +1,6 @@
-#![feature(proc_macro_diagnostic)]
 #![feature(allow_internal_unstable)]
+#![feature(let_else)]
+#![feature(proc_macro_diagnostic)]
 #![allow(rustc::default_hash_types)]
 #![recursion_limit = "128"]
 
@@ -7,12 +8,12 @@ use synstructure::decl_derive;
 
 use proc_macro::TokenStream;
 
+mod diagnostics;
 mod hash_stable;
 mod lift;
 mod newtype;
 mod query;
 mod serialize;
-mod session_diagnostic;
 mod symbols;
 mod type_foldable;
 
@@ -44,7 +45,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 #[proc_macro]
 #[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
 pub fn newtype_index(input: TokenStream) -> TokenStream {
-    newtype::newtype(input).into()
+    newtype::newtype(input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
@@ -63,12 +64,33 @@ decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_fo
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(
-        message,
-        lint,
+        // struct attributes
+        warning,
         error,
+        note,
+        help,
+        // field attributes
+        skip_arg,
+        primary_span,
         label,
+        subdiagnostic,
         suggestion,
         suggestion_short,
         suggestion_hidden,
-        suggestion_verbose)] => session_diagnostic::session_diagnostic_derive
+        suggestion_verbose)] => diagnostics::session_diagnostic_derive
+);
+decl_derive!(
+    [SessionSubdiagnostic, attributes(
+        // struct/variant attributes
+        label,
+        help,
+        note,
+        suggestion,
+        suggestion_short,
+        suggestion_hidden,
+        suggestion_verbose,
+        // field attributes
+        skip_arg,
+        primary_span,
+        applicability)] => diagnostics::session_subdiagnostic_derive
 );

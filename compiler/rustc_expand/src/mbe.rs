@@ -11,58 +11,21 @@ crate mod quoted;
 crate mod transcribe;
 
 use metavar_expr::MetaVarExpr;
-use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiter itself
-/// might be `NoDelim`.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`.
+/// The delimiters are not represented explicitly in the `tts` vector.
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
-    delim: token::DelimToken,
-    /// Note: This contains the opening and closing delimiters tokens (e.g. `(` and `)`). Note that
-    /// these could be `NoDelim`. These token kinds must match `delim`, and the methods below
-    /// debug_assert this.
-    all_tts: Vec<TokenTree>,
-}
-
-impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter. Panics if
-    /// the delimiter is `NoDelim`.
-    fn open_tt(&self) -> &TokenTree {
-        let tt = self.all_tts.first().unwrap();
-        debug_assert!(matches!(
-            tt,
-            &TokenTree::Token(token::Token { kind: token::OpenDelim(d), .. }) if d == self.delim
-        ));
-        tt
-    }
-
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter. Panics if
-    /// the delimeter is `NoDelim`.
-    fn close_tt(&self) -> &TokenTree {
-        let tt = self.all_tts.last().unwrap();
-        debug_assert!(matches!(
-            tt,
-            &TokenTree::Token(token::Token { kind: token::CloseDelim(d), .. }) if d == self.delim
-        ));
-        tt
-    }
-
-    /// Returns the tts excluding the outer delimiters.
-    ///
+    delim: Delimiter,
     /// FIXME: #67062 has details about why this is sub-optimal.
-    fn inner_tts(&self) -> &[TokenTree] {
-        // These functions are called for the assertions within them.
-        let _open_tt = self.open_tt();
-        let _close_tt = self.close_tt();
-        &self.all_tts[1..self.all_tts.len() - 1]
-    }
+    tts: Vec<TokenTree>,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
@@ -100,13 +63,13 @@ enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
 /// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
-    Delimited(DelimSpan, Lrc<Delimited>),
+    Delimited(DelimSpan, Delimited),
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
-    Sequence(DelimSpan, Lrc<SequenceRepetition>),
+    Sequence(DelimSpan, SequenceRepetition),
     /// e.g., `$var`.
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. Only appears on the LHS.

@@ -46,7 +46,7 @@ pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
 }
 
 pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
+    item_namespace(cx, cx.tcx.parent(def_id))
 }
 
 #[derive(Debug, PartialEq, Eq)]

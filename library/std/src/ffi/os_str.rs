@@ -1222,6 +1222,23 @@ impl OsStr {
     }
 }
 
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<OsStr>> alloc::slice::Join<&OsStr> for [S] {
+    type Output = OsString;
+
+    fn join(slice: &Self, sep: &OsStr) -> OsString {
+        let Some(first) = slice.first() else {
+            return OsString::new();
+        };
+        let first = first.borrow().to_owned();
+        slice[1..].iter().fold(first, |mut a, b| {
+            a.push(sep);
+            a.push(b.borrow());
+            a
+        })
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<OsStr> for OsString {
     #[inline]

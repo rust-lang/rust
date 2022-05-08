@@ -2,9 +2,13 @@ error[E0726]: implicit elided lifetime not allowed here
   --> $DIR/path-elided.rs:7:18
    |
 LL | impl MyTrait for Foo {
-   |                  ^^^- help: indicate the anonymous lifetime: `<'_>`
+   |                  ^^^ expected lifetime parameter
    |
    = note: assuming a `'static` lifetime...
+help: indicate the anonymous lifetime
+   |
+LL | impl MyTrait for Foo<'_> {
+   |                     ++++
 
 error: aborting due to previous error
 

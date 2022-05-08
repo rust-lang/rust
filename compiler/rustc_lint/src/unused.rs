@@ -3,7 +3,7 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
-use rustc_errors::{pluralize, Applicability};
+use rustc_errors::{pluralize, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -11,7 +11,7 @@ use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as

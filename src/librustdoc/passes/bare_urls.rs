@@ -61,7 +61,7 @@ crate fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
 impl<'a, 'tcx> DocVisitor for BareUrlsLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.def_id)
+        let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.item_id)
         else {
             // If non-local, no need to check anything.
             return;

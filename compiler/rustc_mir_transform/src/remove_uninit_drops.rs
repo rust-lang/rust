@@ -12,7 +12,7 @@ use crate::MirPass;
 /// that point.
 ///
 /// This is redundant with drop elaboration, but we need to do it prior to const-checking, and
-/// running const-checking after drop elaboration makes it opimization dependent, causing issues
+/// running const-checking after drop elaboration makes it optimization dependent, causing issues
 /// like [#90770].
 ///
 /// [#90770]: https://github.com/rust-lang/rust/issues/90770

@@ -44,9 +44,9 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                 if it.is_extern_crate()
                     && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.def_id.krate()))
+                        || cx.tcx.is_compiler_builtins(it.item_id.krate()))
                 {
-                    cx.cache.masked_crates.insert(it.def_id.krate());
+                    cx.cache.masked_crates.insert(it.item_id.krate());
                 }
             }
         }
@@ -178,13 +178,13 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
 
     for item in items {
         let target = match *item.kind {
-            ItemKind::TypedefItem(ref t, true) => &t.type_,
+            ItemKind::AssocTypeItem(ref t, _) => &t.type_,
             _ => continue,
         };
 
         if let Some(prim) = target.primitive_type() {
             let _prof_timer = cx.tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
-            for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
+            for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
             }
         } else if let Type::Path { path } = target {
@@ -397,7 +397,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         // These should be added to the cache using `record_extern_fqn`.
         Res::Def(
             kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
-            | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
+            | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
         // This is part of a trait definition or trait impl; document the trait.
@@ -455,7 +455,7 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
         let mut current = def_id;
         // The immediate parent might not always be a module.
         // Find the first parent which is.
-        while let Some(parent) = tcx.parent(current) {
+        while let Some(parent) = tcx.opt_parent(current) {
             if tcx.def_kind(parent) == DefKind::Mod {
                 return Some(parent);
             }

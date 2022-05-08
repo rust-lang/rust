@@ -2,7 +2,7 @@ use super::*;
 
 use expect_test::{expect, Expect};
 
-fn check_raw_str(s: &str, expected_hashes: u16, expected_err: Option<RawStrError>) {
+fn check_raw_str(s: &str, expected_hashes: u8, expected_err: Option<RawStrError>) {
     let s = &format!("r{}", s);
     let mut cursor = Cursor::new(s);
     cursor.bump();
@@ -68,13 +68,13 @@ fn test_unterminated_no_pound() {
 
 #[test]
 fn test_too_many_hashes() {
-    let max_count = u16::MAX;
+    let max_count = u8::MAX;
     let mut hashes: String = "#".repeat(max_count.into());
 
-    // Valid number of hashes (65535 = 2^16 - 1), but invalid string.
+    // Valid number of hashes (255 = 2^8 - 1 = u8::MAX), but invalid string.
     check_raw_str(&hashes, max_count, Some(RawStrError::InvalidStarter { bad_char: '\u{0}' }));
 
-    // One more hash sign (65536 = 2^16) becomes too many.
+    // One more hash sign (256 = 2^8) becomes too many.
     hashes.push('#');
     check_raw_str(
         &hashes,
