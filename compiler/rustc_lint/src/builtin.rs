@@ -36,7 +36,7 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind};
+use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -2226,7 +2226,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     Self::lifetimes_outliving_type(inferred_outlives, index),
                                     &predicate.bounds,
                                     predicate.span,
-                                    predicate.in_where_clause,
+                                    predicate.origin == PredicateOrigin::WhereClause,
                                 )
                             }
                             _ => {

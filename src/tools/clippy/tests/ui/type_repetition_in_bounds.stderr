@@ -19,13 +19,5 @@ LL |     Self: Copy + Default + Ord,
    |
    = help: consider combining the bounds: `Self: Clone + Copy + Default + Ord`
 
-error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:83:43
-   |
-LL | fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
-   |                                           ^^^^^^^^^^
-   |
-   = help: consider combining the bounds: `impl AsRef<str>: AsRef<str> + AsRef<str>`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
