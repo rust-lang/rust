@@ -998,6 +998,10 @@ class RustBuild(object):
             "library/backtrace",
             "library/stdarch"
         ]
+        # If build.vendor is set in config.toml, we must update rust-analyzer also.
+        # Otherwise, the bootstrap will fail (#96456).
+        if self.use_vendored_sources:
+            submodules.append("src/tools/rust-analyzer")
         filtered_submodules = []
         submodules_names = []
         for module in submodules:
