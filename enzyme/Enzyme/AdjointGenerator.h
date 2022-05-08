@@ -8275,8 +8275,7 @@ public:
           assert(normalReturn->getType() == newCall->getType());
           gutils->replaceAWithB(newCall, normalReturn);
           gutils->erase(newCall);
-        } else
-          eraseIfUnused(*orig);
+        }
         return;
       }
     }
