@@ -134,7 +134,7 @@
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
-#![feature(const_slice_from_raw_parts)]
+#![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
