@@ -2350,7 +2350,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     issue = "none",
     reason = "const_eval_select will never be stable"
 )]
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+#[rustc_const_stable(feature = "const_eval_select", since = "1.61.0")]
 #[lang = "const_eval_select"]
 #[rustc_do_not_const_check]
 #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
