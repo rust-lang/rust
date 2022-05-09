@@ -995,7 +995,6 @@ where
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// use hashbrown::TryReserveError;
     ///
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// // Map is empty and doesn't allocate memory
@@ -1005,7 +1004,13 @@ where
     ///
     /// // And now map can hold at least 10 elements
     /// assert!(map.capacity() >= 10);
-    ///
+    /// ```
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned:
+    /// ```
+    /// # fn test() {
+    /// use hashbrown::HashMap;
+    /// use hashbrown::TryReserveError;
     /// let mut map: HashMap<i32, i32> = HashMap::new();
     ///
     /// match map.try_reserve(usize::MAX) {
@@ -1016,13 +1021,18 @@ where
     ///     _ => panic!(),
     /// }
     ///
-    /// match map.try_reserve(usize::MAX / 32) {
+    /// match map.try_reserve(usize::MAX / 64) {
     ///     Err(error) => match error {
     ///         TryReserveError::AllocError { .. } => {}
     ///         _ => panic!("TryReserveError::CapacityOverflow ?"),
     ///     },
     ///     _ => panic!(),
     /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(not(miri))]
+    /// #     test()
+    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
