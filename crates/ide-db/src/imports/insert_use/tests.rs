@@ -6,6 +6,24 @@ use test_utils::{assert_eq_text, CURSOR_MARKER};
 use super::*;
 
 #[test]
+fn trailing_comment_in_empty_file() {
+    check(
+        "foo::bar",
+        r#"
+struct Struct;
+// 0 = 1
+"#,
+        r#"
+use foo::bar;
+
+struct Struct;
+// 0 = 1
+"#,
+        ImportGranularity::Crate,
+    );
+}
+
+#[test]
 fn respects_cfg_attr_fn() {
     check(
         r"bar::Bar",

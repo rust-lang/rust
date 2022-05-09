@@ -8,7 +8,7 @@ use hir::Semantics;
 use syntax::{
     algo,
     ast::{self, make, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind},
-    ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
+    ted, Direction, NodeOrToken, SyntaxKind, SyntaxNode,
 };
 
 use crate::{
@@ -397,12 +397,16 @@ fn insert_use_(
     }
 
     // there are no imports in this file at all
+    // so put the import after all inner module attributes and possible license header comments
     if let Some(last_inner_element) = scope_syntax
         .children_with_tokens()
-        .filter(|child| match child {
+        .take_while(|child| match child {
             NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
-            NodeOrToken::Token(token) => is_comment(token.clone()),
+            NodeOrToken::Token(token) => {
+                [SyntaxKind::WHITESPACE, SyntaxKind::COMMENT].contains(&token.kind())
+            }
         })
+        .filter(|child| child.as_token().map_or(true, |t| t.kind() != SyntaxKind::WHITESPACE))
         .last()
     {
         cov_mark::hit!(insert_empty_inner_attr);
@@ -438,8 +442,4 @@ fn insert_use_(
 
 fn is_inner_attribute(node: SyntaxNode) -> bool {
     ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
-}
-
-fn is_comment(token: SyntaxToken) -> bool {
-    ast::Comment::cast(token).is_some()
 }
