@@ -248,16 +248,36 @@ fn sanity_check_layout<'tcx>(
                         "size mismatch between ABI and layout in {layout:#?}"
                     );*/
                 }
-                Abi::ScalarPair(scalar1, scalar2) => {
-                    // Sanity-check scalar pair size.
-                    let field2_offset = scalar1.size(&tcx).align_to(scalar2.align(&tcx).abi);
-                    let total = field2_offset + scalar2.size(&tcx);
+                Abi::Vector { count, element } => {
+                    // No padding in vectors. Alignment can be strengthened, though.
                     assert!(
-                        layout.size() >= total,
+                        layout.align().abi >= element.align(&tcx).abi,
+                        "alignment mismatch between ABI and layout in {layout:#?}"
+                    );
+                    let size = element.size(&tcx) * count;
+                    assert_eq!(
+                        layout.size(),
+                        size.align_to(tcx.data_layout().vector_align(size).abi),
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
                 }
-                _ => {}
+                Abi::ScalarPair(scalar1, scalar2) => {
+                    // Sanity-check scalar pairs. These are a bit more flexible and support
+                    // padding, but we can at least ensure both fields actually fit into the layout
+                    // and the alignment requirement has not been weakened.
+                    let align1 = scalar1.align(&tcx).abi;
+                    let align2 = scalar2.align(&tcx).abi;
+                    assert!(
+                        layout.align().abi >= cmp::max(align1, align2),
+                        "alignment mismatch between ABI and layout in {layout:#?}",
+                    );
+                    let field2_offset = scalar1.size(&tcx).align_to(align2);
+                    assert!(
+                        layout.size() >= field2_offset + scalar2.size(&tcx),
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );
+                }
+                Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
             }
         }
 
@@ -1401,16 +1421,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // Without latter check aligned enums with custom discriminant values
                     // Would result in ICE see the issue #92464 for more info
                     abi = Abi::Scalar(tag);
-                    // Make sure the variants with fields have the same ABI as the enum itself
-                    // (since downcasting to them is a NOP).
-                    for variant in &mut layout_variants {
-                        if variant.fields.count() > 0
-                            && matches!(variant.abi, Abi::Aggregate { .. })
-                        {
-                            assert_eq!(variant.size, size);
-                            variant.abi = abi;
-                        }
-                    }
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
@@ -1479,17 +1489,24 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             // We can use `ScalarPair` only when it matches our
                             // already computed layout (including `#[repr(C)]`).
                             abi = pair.abi;
-                            // Make sure the variants with fields have the same ABI as the enum itself
-                            // (since downcasting to them is a NOP).
-                            for variant in &mut layout_variants {
-                                if variant.fields.count() > 0
-                                    && matches!(variant.abi, Abi::Aggregate { .. })
-                                {
-                                    variant.abi = abi;
-                                    // Also need to bump up the size, so that the pair fits inside.
-                                    variant.size = size;
-                                }
-                            }
+                        }
+                    }
+                }
+
+                // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
+                // variants to ensure they are consistent. This is because a downcast is
+                // semantically a NOP, and thus should not affect layout.
+                if matches!(abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+                    for variant in &mut layout_variants {
+                        // We only do this for variants with fields; the others are not accessed anyway.
+                        // Also do not overwrite any already existing "clever" ABIs.
+                        if variant.fields.count() > 0
+                            && matches!(variant.abi, Abi::Aggregate { .. })
+                        {
+                            variant.abi = abi;
+                            // Also need to bump up the size and alignment, so that the entire value fits in here.
+                            variant.size = cmp::max(variant.size, size);
+                            variant.align.abi = cmp::max(variant.align.abi, align.abi);
                         }
                     }
                 }
