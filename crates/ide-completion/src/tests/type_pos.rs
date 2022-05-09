@@ -336,9 +336,13 @@ fn foo<'lt, T, const C: usize>() {
 
 #[test]
 fn completes_types_and_const_in_arg_list() {
+    cov_mark::check!(complete_assoc_type_in_generics_list);
     check(
         r#"
-trait Trait2 {
+trait Trait1 {
+    type Super;
+}
+trait Trait2: Trait1 {
     type Foo;
 }
 
@@ -348,14 +352,16 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             ct CONST
             cp CONST_PARAM
             en Enum
-            ma makro!(…)          macro_rules! makro
+            ma makro!(…)            macro_rules! makro
             md module
             st Record
             st Tuple
             st Unit
             tt Trait
+            tt Trait1
             tt Trait2
-            ta Foo =  (as Trait2) type Foo
+            ta Foo =  (as Trait2)   type Foo
+            ta Super =  (as Trait1) type Super
             tp T
             un Union
             bt u32
