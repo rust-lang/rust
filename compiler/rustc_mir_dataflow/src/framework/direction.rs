@@ -269,9 +269,9 @@ impl Direction for Backward {
 
                 mir::TerminatorKind::SwitchInt { targets: _, ref discr, switch_ty: _ } => {
                     let mut applier = BackwardSwitchIntEdgeEffectsApplier {
+                        body,
                         pred,
                         exit_state,
-                        values: &body.switch_sources()[bb][pred],
                         bb,
                         propagate: &mut propagate,
                         effects_applied: false,
@@ -305,9 +305,9 @@ impl Direction for Backward {
 }
 
 struct BackwardSwitchIntEdgeEffectsApplier<'a, D, F> {
+    body: &'a mir::Body<'a>,
     pred: BasicBlock,
     exit_state: &'a mut D,
-    values: &'a [Option<u128>],
     bb: BasicBlock,
     propagate: &'a mut F,
 
@@ -322,7 +322,8 @@ where
     fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
         assert!(!self.effects_applied);
 
-        let targets = self.values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
+        let values = &self.body.switch_sources()[&(self.bb, self.pred)];
+        let targets = values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
 
         let mut tmp = None;
         for target in targets {

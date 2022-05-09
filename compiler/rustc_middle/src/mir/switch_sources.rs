@@ -2,6 +2,7 @@
 //! `Predecessors`/`PredecessorCache`.
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
 use rustc_serialize as serialize;
@@ -9,7 +10,7 @@ use smallvec::SmallVec;
 
 use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
-pub type SwitchSources = IndexVec<BasicBlock, IndexVec<BasicBlock, SmallVec<[Option<u128>; 1]>>>;
+pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
 
 #[derive(Clone, Debug)]
 pub(super) struct SwitchSourceCache {
@@ -35,19 +36,16 @@ impl SwitchSourceCache {
         basic_blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>,
     ) -> &SwitchSources {
         self.cache.get_or_init(|| {
-            let mut switch_sources = IndexVec::from_elem(
-                IndexVec::from_elem(SmallVec::new(), basic_blocks),
-                basic_blocks,
-            );
+            let mut switch_sources: SwitchSources = FxHashMap::default();
             for (bb, data) in basic_blocks.iter_enumerated() {
                 if let Some(Terminator {
                     kind: TerminatorKind::SwitchInt { targets, .. }, ..
                 }) = &data.terminator
                 {
                     for (value, target) in targets.iter() {
-                        switch_sources[target][bb].push(Some(value));
+                        switch_sources.entry((target, bb)).or_default().push(Some(value));
                     }
-                    switch_sources[targets.otherwise()][bb].push(None);
+                    switch_sources.entry((targets.otherwise(), bb)).or_default().push(None);
                 }
             }
 
