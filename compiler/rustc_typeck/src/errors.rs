@@ -241,17 +241,6 @@ pub struct UnconstrainedOpaqueType {
     pub name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
-#[error(code = "E0632", slug = "typeck-explicit-generic-args-with-impl-trait")]
-#[note]
-pub struct ExplicitGenericArgsWithImplTrait {
-    #[primary_span]
-    #[label]
-    pub spans: Vec<Span>,
-    #[help]
-    pub is_nightly_build: Option<()>,
-}
-
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
