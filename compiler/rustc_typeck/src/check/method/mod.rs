@@ -461,8 +461,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
         let fn_sig = tcx.fn_sig(def_id);
-        let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
         let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
 
         let InferOk { value, obligations: o } = if is_op {
             self.normalize_op_associated_types_in_as_infer_ok(span, fn_sig, opt_input_expr)

@@ -462,19 +462,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         let sig = self.tcx.fn_sig(def_id);
 
-        // Instantiate late-bound regions and substitute the trait
-        // parameters into the method type to get the actual method type.
-        //
-        // N.B., instantiate late-bound regions first so that
-        // `instantiate_type_scheme` can normalize associated types that
-        // may reference those regions.
-        let method_sig = self.replace_bound_vars_with_fresh_vars(sig);
-        debug!("late-bound lifetimes from method instantiated, method_sig={:?}", method_sig);
+        let sig = sig.subst(self.tcx, all_substs);
+        debug!("type scheme substituted, sig={:?}", sig);
 
-        let method_sig = method_sig.subst(self.tcx, all_substs);
-        debug!("type scheme substituted, method_sig={:?}", method_sig);
+        let sig = self.replace_bound_vars_with_fresh_vars(sig);
+        debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
-        (method_sig, method_predicates)
+        (sig, method_predicates)
     }
 
     fn add_obligations(

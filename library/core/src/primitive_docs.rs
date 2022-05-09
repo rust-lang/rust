@@ -977,10 +977,22 @@ mod prim_tuple {}
 ///   like `1.0 / 0.0`.
 /// - [NaN (not a number)](#associatedconstant.NAN): this value results from
 ///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
-///   behavior: it is unequal to any float, including itself! It is also neither
-///   smaller nor greater than any float, making it impossible to sort. Lastly,
-///   it is considered infectious as almost all calculations where one of the
-///   operands is NaN will also result in NaN.
+///   behavior:
+///   - It is unequal to any float, including itself! This is the reason `f32`
+///     doesn't implement the `Eq` trait.
+///   - It is also neither smaller nor greater than any float, making it
+///     impossible to sort by the default comparison operation, which is the
+///     reason `f32` doesn't implement the `Ord` trait.
+///   - It is also considered *infectious* as almost all calculations where one
+///     of the operands is NaN will also result in NaN. The explanations on this
+///     page only explicitly document behavior on NaN operands if this default
+///     is deviated from.
+///   - Lastly, there are multiple bit patterns that are considered NaN.
+///     Rust does not currently guarantee that the bit patterns of NaN are
+///     preserved over arithmetic operations, and they are not guaranteed to be
+///     portable or even fully deterministic! This means that there may be some
+///     surprising results upon inspecting the bit patterns,
+///     as the same calculations might produce NaNs with different bit patterns.
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///

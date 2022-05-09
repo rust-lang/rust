@@ -1,0 +1,67 @@
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:16:5
+   |
+LL |     #[doc(hidden)]
+   |     ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: the lint level is defined here
+  --> $DIR/unused-attr-doc-hidden.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:21:5
+   |
+LL |     #[doc(hidden)]
+   |     ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:26:11
+   |
+LL |     #[doc(hidden, alias = "aka")]
+   |           ^^^^^^--
+   |           |
+   |           help: remove this attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:31:27
+   |
+LL |     #[doc(alias = "this", hidden,)]
+   |                           ^^^^^^-
+   |                           |
+   |                           help: remove this attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:36:11
+   |
+LL |     #[doc(hidden, hidden)]
+   |           ^^^^^^--
+   |           |
+   |           help: remove this attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: `#[doc(hidden)]` is ignored on trait impl items
+  --> $DIR/unused-attr-doc-hidden.rs:36:19
+   |
+LL |     #[doc(hidden, hidden)]
+   |                   ^^^^^^ help: remove this attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: whether the impl item is `doc(hidden)` or not entirely depends on the corresponding trait item
+
+error: aborting due to 6 previous errors
+
