@@ -1741,6 +1741,20 @@ where
     A: Default + Allocator + Clone,
 {
     /// Creates an empty `HashMap<K, V, S, A>`, with the `Default` value for the hasher and allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// // You can specify all types of HashMap, including hasher and allocator.
+    /// // Created map is empty and don't allocate memory
+    /// let map: HashMap<u32, String> = Default::default();
+    /// assert_eq!(map.capacity(), 0);
+    /// let map: HashMap<u32, String, RandomState> = HashMap::default();
+    /// assert_eq!(map.capacity(), 0);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self::with_hasher_in(Default::default(), Default::default())
@@ -1761,6 +1775,17 @@ where
     /// # Panics
     ///
     /// Panics if the key is not present in the `HashMap`.
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let map: HashMap<_, _> = [("a", "One"), ("b", "Two")].into();
+    ///
+    /// assert_eq!(map[&"a"], "One");
+    /// assert_eq!(map[&"b"], "Two");
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
@@ -1788,13 +1813,34 @@ where
     }
 }
 
-/// An iterator over the entries of a `HashMap`.
-///
+/// An iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(&'a K, &'a V)`.
+/// 
 /// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`iter`]: struct.HashMap.html#method.iter
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut iter = map.iter();
+/// let mut vec = vec![iter.next(), iter.next(), iter.next()];
+///
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((&1, &"a")), Some((&2, &"b")), Some((&3, &"c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct Iter<'a, K, V> {
     inner: RawIter<(K, V)>,
     marker: PhantomData<(&'a K, &'a V)>,
@@ -1817,13 +1863,33 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     }
 }
 
-/// A mutable iterator over the entries of a `HashMap`.
+/// A mutable iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(&'a K, &'a mut V)`.
 ///
 /// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`iter_mut`]: struct.HashMap.html#method.iter_mut
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "One".to_owned()), (2, "Two".into())].into();
+///
+/// let mut iter = map.iter_mut();
+/// iter.next().map(|(_, v)| v.push_str(" Mississippi"));
+/// iter.next().map(|(_, v)| v.push_str(" Mississippi"));
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+///
+/// assert_eq!(map.get(&1).unwrap(), &"One Mississippi".to_owned());
+/// assert_eq!(map.get(&2).unwrap(), &"Two Mississippi".to_owned());
+/// ```
 pub struct IterMut<'a, K, V> {
     inner: RawIter<(K, V)>,
     // To ensure invariance with respect to V
@@ -1846,13 +1912,35 @@ impl<K, V> IterMut<'_, K, V> {
     }
 }
 
-/// An owning iterator over the entries of a `HashMap`.
+/// An owning iterator over the entries of a `HashMap` in arbitrary order.
+/// The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
+/// The map cannot be used after calling that method.
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut iter = map.into_iter();
+/// let mut vec = vec![iter.next(), iter.next(), iter.next()];
+///
+/// // The `IntoIter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")), Some((2, "b")), Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(iter.next(), None);
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct IntoIter<K, V, A: Allocator + Clone = Global> {
     inner: RawIntoIter<(K, V), A>,
 }
@@ -1868,13 +1956,35 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
     }
 }
 
-/// An owning iterator over the keys of a `HashMap`.
+/// An owning iterator over the keys of a `HashMap` in arbitrary order.
+/// The iterator element type is `K`.
 ///
 /// This `struct` is created by the [`into_keys`] method on [`HashMap`].
 /// See its documentation for more.
-///
+/// The map cannot be used after calling that method.
+/// 
 /// [`into_keys`]: struct.HashMap.html#method.into_keys
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut keys = map.into_keys();
+/// let mut vec = vec![keys.next(), keys.next(), keys.next()];
+///
+/// // The `IntoKeys` iterator produces keys in arbitrary order, so the
+/// // keys must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(1), Some(2), Some(3)]);
+///
+/// // It is fused iterator
+/// assert_eq!(keys.next(), None);
+/// assert_eq!(keys.next(), None);
+/// ```
 pub struct IntoKeys<K, V, A: Allocator + Clone = Global> {
     inner: IntoIter<K, V, A>,
 }
@@ -1909,13 +2019,34 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> 
     }
 }
 
-/// An owning iterator over the values of a `HashMap`.
+/// An owning iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `V`.
 ///
 /// This `struct` is created by the [`into_values`] method on [`HashMap`].
-/// See its documentation for more.
+/// See its documentation for more. The map cannot be used after calling that method.
 ///
 /// [`into_values`]: struct.HashMap.html#method.into_values
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut values = map.into_values();
+/// let mut vec = vec![values.next(), values.next(), values.next()];
+///
+/// // The `IntoValues` iterator produces values in arbitrary order, so
+/// // the values must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some("a"), Some("b"), Some("c")]);
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+/// ```
 pub struct IntoValues<K, V, A: Allocator + Clone = Global> {
     inner: IntoIter<K, V, A>,
 }
@@ -1950,13 +2081,34 @@ impl<K, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
     }
 }
 
-/// An iterator over the keys of a `HashMap`.
-///
+/// An iterator over the keys of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a K`.
+/// 
 /// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut keys = map.keys();
+/// let mut vec = vec![keys.next(), keys.next(), keys.next()];
+///
+/// // The `Keys` iterator produces keys in arbitrary order, so the
+/// // keys must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(&1), Some(&2), Some(&3)]);
+///
+/// // It is fused iterator
+/// assert_eq!(keys.next(), None);
+/// assert_eq!(keys.next(), None);
+/// ```
 pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
@@ -1977,13 +2129,34 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
     }
 }
 
-/// An iterator over the values of a `HashMap`.
+/// An iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a V`.
 ///
 /// This `struct` is created by the [`values`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`values`]: struct.HashMap.html#method.values
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Example
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut values = map.values();
+/// let mut vec = vec![values.next(), values.next(), values.next()];
+///
+/// // The `Values` iterator produces values in arbitrary order, so the
+/// // values must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some(&"a"), Some(&"b"), Some(&"c")]);
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+/// ```
 pub struct Values<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
