@@ -248,16 +248,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Index this method for searching later on.
-        if let Some(ref s) = item.name.or_else(|| {
-            if item.is_stripped() {
-                None
-            } else if let clean::ImportItem(ref i) = *item.kind &&
-                let clean::ImportKind::Simple(s) = i.kind {
-                Some(s)
-            } else {
-                None
-            }
-        }) {
+        if let Some(ref s) = item.full_name() && !item.is_stripped() {
             let (parent, is_inherent_impl_item) = match *item.kind {
                 clean::StrippedItem(..) => ((None, None), false),
                 clean::AssocConstItem(..) | clean::AssocTypeItem(..)

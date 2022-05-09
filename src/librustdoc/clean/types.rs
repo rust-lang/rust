@@ -404,6 +404,16 @@ pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 }
 
 impl Item {
+    /// If `item.name` is `None` and `self` is an `ImportItem`, it'll look for it.
+    ///
+    /// It's especially usefully to get the name of `pub use x;` or `pub use x as y;`.
+    pub(crate) fn full_name(&self) -> Option<Symbol> {
+        self.name.or_else(|| {
+            if let ImportItem(ref i) = *self.kind &&
+            let ImportKind::Simple(s) = i.kind { Some(s) } else { None }
+        })
+    }
+
     pub(crate) fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
         self.item_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
