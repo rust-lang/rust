@@ -798,8 +798,8 @@ impl<'tcx> Cx<'tcx> {
             pattern: self.pattern_from_hir(&arm.pat),
             guard: arm.guard.as_ref().map(|g| match g {
                 hir::Guard::If(ref e) => Guard::If(self.mirror_expr(e)),
-                hir::Guard::IfLet(ref pat, ref e) => {
-                    Guard::IfLet(self.pattern_from_hir(pat), self.mirror_expr(e))
+                hir::Guard::IfLet(ref l) => {
+                    Guard::IfLet(self.pattern_from_hir(l.pat), self.mirror_expr(l.init))
                 }
             }),
             body: self.mirror_expr(arm.body),

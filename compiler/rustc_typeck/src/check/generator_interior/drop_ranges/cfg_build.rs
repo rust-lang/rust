@@ -344,9 +344,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                         // B -> C and E -> F are added implicitly due to the traversal order.
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
-                            Some(Guard::IfLet(pat, expr)) => {
-                                self.visit_pat(pat);
-                                self.visit_expr(expr);
+                            Some(Guard::IfLet(let_expr)) => {
+                                self.visit_let_expr(let_expr);
                             }
                             None => (),
                         }

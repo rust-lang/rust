@@ -1915,14 +1915,9 @@ impl<'a> State<'a> {
                     self.print_expr(&e);
                     self.space();
                 }
-                hir::Guard::IfLet(pat, e) => {
+                hir::Guard::IfLet(hir::Let { pat, ty, init, .. }) => {
                     self.word_nbsp("if");
-                    self.word_nbsp("let");
-                    self.print_pat(&pat);
-                    self.space();
-                    self.word_space("=");
-                    self.print_expr(&e);
-                    self.space();
+                    self.print_let(pat, *ty, init);
                 }
             }
         }

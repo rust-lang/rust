@@ -298,9 +298,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 Guard::If(ref e) => {
                     self.visit_expr(e);
                 }
-                Guard::IfLet(ref pat, ref e) => {
-                    self.visit_pat(pat);
-                    self.visit_expr(e);
+                Guard::IfLet(ref l) => {
+                    self.visit_let_expr(l);
                 }
             }
 
