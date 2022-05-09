@@ -359,7 +359,7 @@ The following tables indicate the outputs of various stage actions:
 | `stage0` builds `test`/`std`                              | `build/HOST/stage0-std/TARGET`               |
 | copy `stage0-std` (HOST only)                             | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
 | `stage0` builds `rustc` with `stage0-sysroot`             | `build/HOST/stage0-rustc/HOST`               |
-| copy `stage0-rustc (except executable)`                   | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
+| copy `stage0-rustc` (except executable)                   | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
 | build `llvm`                                              | `build/HOST/llvm`                            |
 | `stage0` builds `codegen` with `stage0-sysroot`           | `build/HOST/stage0-codegen/HOST`             |
 | `stage0` builds `rustdoc`, `clippy`, `miri`, with `stage0-sysroot` | `build/HOST/stage0-tools/HOST`      |
