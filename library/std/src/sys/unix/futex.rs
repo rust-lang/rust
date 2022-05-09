@@ -136,7 +136,6 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 
 #[cfg(target_os = "openbsd")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
-    use crate::convert::TryInto;
     use crate::ptr::{null, null_mut};
     let timespec = timeout.and_then(|d| {
         Some(libc::timespec {
@@ -185,8 +184,6 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 
 #[cfg(target_os = "dragonfly")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
-    use crate::convert::TryFrom;
-
     // A timeout of 0 means infinite.
     // We round smaller timeouts up to 1 millisecond.
     // Overflows are rounded up to an infinite timeout.

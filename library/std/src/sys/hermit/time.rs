@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::cmp::Ordering;
-use crate::convert::TryInto;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::timespec;
 use crate::sys::hermit::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};

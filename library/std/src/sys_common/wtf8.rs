@@ -25,7 +25,7 @@ use crate::char;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::{FromIterator, FusedIterator};
+use crate::iter::FusedIterator;
 use crate::mem;
 use crate::ops;
 use crate::rc::Rc;

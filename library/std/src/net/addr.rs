@@ -2,7 +2,6 @@
 mod tests;
 
 use crate::cmp::Ordering;
-use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
 use crate::io::{self, Write};

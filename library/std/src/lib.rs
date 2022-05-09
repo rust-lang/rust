@@ -345,7 +345,7 @@
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]
 #[allow(unused)]
-use prelude::v1::*;
+use prelude::rust_2021::*;
 
 // Access to Bencher, etc.
 #[cfg(test)]
