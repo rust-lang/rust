@@ -77,19 +77,12 @@ pub enum TempState {
     /// One direct assignment and any number of direct uses.
     /// A borrow of this temp is promotable if the assigned
     /// value is qualified as constant.
-    Defined { location: Location, uses: usize, valid: Valid },
+    Defined { location: Location, uses: usize, valid: Result<(), ()> },
     /// Any other combination of assignments/uses.
     Unpromotable,
     /// This temp was part of an rvalue which got extracted
     /// during promotion and needs cleanup.
     PromotedOut,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Valid {
-    Unknown,
-    InValid,
-    Validated,
 }
 
 impl TempState {
@@ -140,7 +133,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             match context {
                 PlaceContext::MutatingUse(MutatingUseContext::Store)
                 | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
-                    *temp = TempState::Defined { location, uses: 0, valid: Valid::Unknown };
+                    *temp = TempState::Defined { location, uses: 0, valid: Err(()) };
                     return;
                 }
                 _ => { /* mark as unpromotable below */ }
@@ -281,54 +274,42 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_local(&mut self, local: Local) -> Result<(), Unpromotable> {
         if let TempState::Defined { location: loc, uses, valid } = self.temps[local] {
-            match valid {
-                Valid::InValid => Err(Unpromotable),
-                Valid::Validated => Ok(()),
-                Valid::Unknown => {
-                    let ok = {
-                        let block = &self.body[loc.block];
-                        let num_stmts = block.statements.len();
+            valid.or_else(|_| {
+                let ok = {
+                    let block = &self.body[loc.block];
+                    let num_stmts = block.statements.len();
 
-                        if loc.statement_index < num_stmts {
-                            let statement = &block.statements[loc.statement_index];
-                            match &statement.kind {
-                                StatementKind::Assign(box (_, rhs)) => self.validate_rvalue(rhs),
-                                _ => {
-                                    span_bug!(
-                                        statement.source_info.span,
-                                        "{:?} is not an assignment",
-                                        statement
-                                    );
-                                }
-                            }
-                        } else {
-                            let terminator = block.terminator();
-                            match &terminator.kind {
-                                TerminatorKind::Call { func, args, .. } => {
-                                    self.validate_call(func, args)
-                                }
-                                TerminatorKind::Yield { .. } => Err(Unpromotable),
-                                kind => {
-                                    span_bug!(
-                                        terminator.source_info.span,
-                                        "{:?} not promotable",
-                                        kind
-                                    );
-                                }
+                    if loc.statement_index < num_stmts {
+                        let statement = &block.statements[loc.statement_index];
+                        match &statement.kind {
+                            StatementKind::Assign(box (_, rhs)) => self.validate_rvalue(rhs),
+                            _ => {
+                                span_bug!(
+                                    statement.source_info.span,
+                                    "{:?} is not an assignment",
+                                    statement
+                                );
                             }
                         }
-                    };
-                    self.temps[local] = TempState::Defined {
-                        location: loc,
-                        uses,
-                        valid: match ok {
-                            Ok(()) => Valid::Validated,
-                            Err(_) => Valid::InValid,
-                        },
-                    };
-                    ok
-                }
-            }
+                    } else {
+                        let terminator = block.terminator();
+                        match &terminator.kind {
+                            TerminatorKind::Call { func, args, .. } => {
+                                self.validate_call(func, args)
+                            }
+                            TerminatorKind::Yield { .. } => Err(Unpromotable),
+                            kind => {
+                                span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
+                            }
+                        }
+                    }
+                };
+                self.temps[local] = match ok {
+                    Ok(()) => TempState::Defined { location: loc, uses, valid: Ok(()) },
+                    Err(_) => TempState::Unpromotable,
+                };
+                ok
+            })
         } else {
             Err(Unpromotable)
         }
