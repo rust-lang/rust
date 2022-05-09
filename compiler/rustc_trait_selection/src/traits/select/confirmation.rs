@@ -42,7 +42,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
-        let mut obligation = obligation;
         // let new_obligation;
 
         // HACK(const_trait_impl): the surrounding environment is remapped to a non-const context

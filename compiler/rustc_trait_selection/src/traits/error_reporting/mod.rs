@@ -325,7 +325,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Trait(trait_predicate) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
-                        let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
                         let predicate_is_const =
                             ty::ConstnessArg::Required == trait_predicate.skip_binder().constness();
