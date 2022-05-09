@@ -426,6 +426,13 @@ struct HandlerInner {
 
     future_breakage_diagnostics: Vec<Diagnostic>,
 
+    /// The [`Self::unstable_expect_diagnostics`] should be empty when this struct is
+    /// dropped. However, it can have values if the compilation is stopped early
+    /// or is only partially executed. To avoid ICEs, like in rust#94953 we only
+    /// check if [`Self::unstable_expect_diagnostics`] is empty, if the expectation ids
+    /// have been converted.
+    check_unstable_expect_diagnostics: bool,
+
     /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
     /// the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
@@ -497,10 +504,12 @@ impl Drop for HandlerInner {
             );
         }
 
-        assert!(
-            self.unstable_expect_diagnostics.is_empty(),
-            "all diagnostics with unstable expectations should have been converted",
-        );
+        if self.check_unstable_expect_diagnostics {
+            assert!(
+                self.unstable_expect_diagnostics.is_empty(),
+                "all diagnostics with unstable expectations should have been converted",
+            );
+        }
     }
 }
 
@@ -574,6 +583,7 @@ impl Handler {
                 emitted_diagnostics: Default::default(),
                 stashed_diagnostics: Default::default(),
                 future_breakage_diagnostics: Vec::new(),
+                check_unstable_expect_diagnostics: false,
                 unstable_expect_diagnostics: Vec::new(),
                 fulfilled_expectations: Default::default(),
             }),
@@ -988,12 +998,13 @@ impl Handler {
         &self,
         unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
     ) {
-        let diags = std::mem::take(&mut self.inner.borrow_mut().unstable_expect_diagnostics);
+        let mut inner = self.inner.borrow_mut();
+        let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);
+        inner.check_unstable_expect_diagnostics = true;
         if diags.is_empty() {
             return;
         }
 
-        let mut inner = self.inner.borrow_mut();
         for mut diag in diags.into_iter() {
             diag.update_unstable_expectation_id(unstable_to_stable);
 

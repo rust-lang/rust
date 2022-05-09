@@ -1009,6 +1009,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             }
         );
+
+        // This check has to be run after all lints are done processing. We don't
+        // define a lint filter, as all lint checks should have finished at this point.
+        sess.time("check_lint_expectations", || tcx.check_expectations(None));
     });
 
     Ok(())
