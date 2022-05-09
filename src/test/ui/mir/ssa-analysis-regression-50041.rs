@@ -5,7 +5,7 @@
 #![feature(lang_items)]
 #![no_std]
 
-struct NonNull<T: ?Sized>(*mut T);
+struct NonNull<T: ?Sized>(*const T);
 
 struct Unique<T: ?Sized>(NonNull<T>);
 
@@ -23,7 +23,7 @@ unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 }
 
 #[inline(never)]
-fn dealloc<T: ?Sized>(_: *mut T) {}
+fn dealloc<T: ?Sized>(_: *const T) {}
 
 pub struct Foo<T>(T);
 
