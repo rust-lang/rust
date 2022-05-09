@@ -394,6 +394,38 @@ fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
 }
 
 #[test]
+fn no_assoc_completion_outside_type_bounds() {
+    check(
+        r#"
+struct S;
+trait Tr<T> {
+    type Ty;
+}
+
+impl Tr<$0
+    "#,
+        expect![[r#"
+            ct CONST
+            en Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            sp Self
+            st Record
+            st S
+            st Tuple
+            st Unit
+            tt Tr
+            tt Trait
+            un Union
+            bt u32
+            kw crate::
+            kw self::
+            kw super::
+        "#]],
+    );
+}
+
+#[test]
 fn enum_qualified() {
     check(
         r#"
