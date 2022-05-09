@@ -2608,7 +2608,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 (outlives_requirements.category, outlives_requirements.blame_span),
                             ))
                         }
-                        GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
+                        GenericArgKind::Type(_)
+                        | GenericArgKind::Const(_)
+                        | GenericArgKind::Constness(_) => None,
                     }
                 })
                 .collect();

@@ -413,8 +413,7 @@ fn trait_predicate_kind<'tcx>(
             trait_ref, // TODO review specialization check
             polarity: _,
         }) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
-        ty::PredicateKind::Trait(_)
-        | ty::PredicateKind::RegionOutlives(_)
+        ty::PredicateKind::RegionOutlives(_)
         | ty::PredicateKind::TypeOutlives(_)
         | ty::PredicateKind::Projection(_)
         | ty::PredicateKind::WellFormed(_)

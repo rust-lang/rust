@@ -132,11 +132,9 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ty::TraitPredicate {
-                trait_ref,
-                constness: _,
-                polarity: _,
-            }) => self.visit_trait(trait_ref),
+            ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+                self.visit_trait(trait_ref)
+            }
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
                 term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
@@ -1167,7 +1165,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (trait_predicate, _, _) in bounds.trait_bounds {
+            for (trait_predicate, _) in bounds.trait_bounds {
                 if self.visit_trait(trait_predicate.skip_binder()).is_break() {
                     return;
                 }

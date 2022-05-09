@@ -1013,7 +1013,9 @@ fn compare_generic_param_kinds<'tcx>(
             // this is exhaustive so that anyone adding new generic param kinds knows
             // to make sure this error is reported for them.
             (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
-            (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
+            (Constness, _) | (_, Constness) | (Lifetime { .. }, _) | (_, Lifetime { .. }) => {
+                unreachable!()
+            }
         } {
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
@@ -1033,7 +1035,7 @@ fn compare_generic_param_kinds<'tcx>(
                     format!("{} const parameter of type `{}`", prefix, tcx.type_of(param.def_id))
                 }
                 Type { .. } => format!("{} type parameter", prefix),
-                Lifetime { .. } => unreachable!(),
+                Constness | Lifetime { .. } => unreachable!(),
             };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
@@ -1376,6 +1378,7 @@ pub fn check_type_bounds<'tcx>(
             })
             .into()
         }
+        GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
     });
     let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
     let impl_ty_substs = tcx.intern_substs(&substs);

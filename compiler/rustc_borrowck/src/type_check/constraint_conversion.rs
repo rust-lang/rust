@@ -126,7 +126,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 .type_must_outlive(origin, t1, r2);
             }
 
-            GenericArgKind::Const(_) => {
+            GenericArgKind::Constness(_) | GenericArgKind::Const(_) => {
                 // Consts cannot outlive one another, so we
                 // don't need to handle any relations here.
             }
