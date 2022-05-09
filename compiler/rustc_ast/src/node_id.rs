@@ -8,6 +8,7 @@ rustc_index::newtype_index! {
     /// This is later turned into [`DefId`] and `HirId` for the HIR.
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
+    #[derive(HashStable_Generic)]
     pub struct NodeId {
         DEBUG_FORMAT = "NodeId({})"
     }

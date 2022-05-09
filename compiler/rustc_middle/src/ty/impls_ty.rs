@@ -1,14 +1,12 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
-use crate::middle::region;
 use crate::mir;
 use crate::ty;
-use crate::ty::fast_reject::SimplifiedType;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
 use std::mem;
@@ -38,33 +36,6 @@ where
         });
 
         hash.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'tcx, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::List<T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    type KeyType = Fingerprint;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
-        let mut hasher = StableHasher::new();
-        let mut hcx: StableHashingContext<'a> = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
-        hasher.finish()
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
-    type KeyType = Fingerprint;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
-        let mut hasher = StableHasher::new();
-        let mut hcx: StableHashingContext<'a> = hcx.clone();
-        self.hash_stable(&mut hcx, &mut hasher);
-        hasher.finish()
     }
 }
 
@@ -194,14 +165,5 @@ where
         for reloc in self.iter() {
             reloc.hash_stable(hcx, hasher);
         }
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
-    type KeyType = region::Scope;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> region::Scope {
-        *self
     }
 }

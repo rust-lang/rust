@@ -1,11 +1,5 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-
-use crate::hir::{
-    AttributeMap, BodyId, Crate, Expr, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
-    Ty,
-};
-use crate::hir_id::{HirId, ItemLocalId};
-use rustc_span::def_id::DefPathHash;
+use crate::hir::{AttributeMap, BodyId, Crate, Expr, OwnerNodes, Ty};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -16,71 +10,6 @@ pub trait HashStableContext:
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
     fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = self.owner.to_stable_hash_key(hcx);
-        (def_path_hash, self.local_id)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemLocalId {
-    type KeyType = ItemLocalId;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HirCtx) -> ItemLocalId {
-        *self
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for BodyId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        let BodyId { hir_id } = *self;
-        hir_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.to_stable_hash_key(hcx)
-    }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {

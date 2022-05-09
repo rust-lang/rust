@@ -3,14 +3,13 @@
 
 pub use crate::options::*;
 
+use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{early_error, early_warn, Session};
-use crate::{lint, HashStableContext};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_target::abi::{Align, TargetDataLayout};
 use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
 use rustc_target::spec::{PanicStrategy, SanitizerSet, TARGETS};
@@ -284,14 +283,6 @@ pub enum OutputType {
     Object,
     Exe,
     DepInfo,
-}
-
-impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
-    type KeyType = Self;
-
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
-        *self
-    }
 }
 
 impl OutputType {

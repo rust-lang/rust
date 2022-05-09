@@ -1,8 +1,7 @@
 use crate::ich;
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -170,13 +169,6 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn hashing_controls(&self) -> HashingControls {
         self.hashing_controls.clone()
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    #[inline]
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
-        panic!("Node IDs should not appear in incremental state");
     }
 }
 

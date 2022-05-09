@@ -6,7 +6,7 @@ extern crate rustc_macros;
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_error_messages::MultiSpan;
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
@@ -123,22 +123,6 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
                 unreachable!(
                     "HashStable should only be called for filled and stable `LintExpectationId`"
                 )
-            }
-        }
-    }
-}
-
-impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (HirId, u16, u16);
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                (*hir_id, *attr_index, *lint_index)
-            }
-            _ => {
-                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
             }
         }
     }
@@ -396,15 +380,6 @@ impl<HCX> HashStable<HCX> for LintId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
-    }
-}
-
-impl<HCX> ToStableHashKey<HCX> for LintId {
-    type KeyType = &'static str;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
-        self.lint_name_raw()
     }
 }
 
