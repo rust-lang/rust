@@ -501,7 +501,10 @@ mod dist {
                 std!(A => C, stage = 2),
             ]
         );
-        assert_eq!(builder.cache.all::<compile::Assemble>().len(), 5);
+        // Theoretically this should be 5, the same as `compile::Rustc`.
+        // Unfortunately, the sysroot for the stage 3 compiler is broken; see #90244.
+        // Instead we only generate the sysroot for non-stage2 build compilers.
+        assert_eq!(builder.cache.all::<compile::Assemble>().len(), 3);
         assert_eq!(
             first(builder.cache.all::<compile::Rustc>()),
             &[

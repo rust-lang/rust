@@ -1104,9 +1104,30 @@ impl Step for Assemble {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Assemble {
-            target_compiler: run.builder.compiler(run.builder.top_stage + 1, run.target),
-        });
+        // Trying to actually create the sysroot for stage 2 is tricky, because everywhere in
+        // bootstrap that touches self.rustc or self.cargo_out suddenly needs to know whether those
+        // artifacts actually exist or whether we're reusing the ones from stage 1.  Instead, just
+        // build the artifacts, like we used to do before `compiler/rustc` implied assembling the
+        // compiler.
+        //
+        // When using full-bootstrap, we never reuse the artifacts from stage 1, so we don't have
+        // any issues.
+        //
+        // NOTE: Anywhere in bootstrap that calls `builder.compiler` has the side effect of running
+        // `Assemble`. In those cases, this workaround in `make_run` doesn't help, we'll still hit a
+        // panic (see #90224). In practice, that's probably ok: nothing currently uses the stage 2
+        // sysroot.
+        if run.builder.top_stage >= 2 && !run.builder.config.full_bootstrap {
+            let build_compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
+            run.builder.ensure(Rustc {
+                compiler: build_compiler,
+                target: run.target,
+                crates: Default::default(),
+            });
+            return;
+        }
+        let target_compiler = Compiler { stage: run.builder.top_stage + 1, host: run.target };
+        run.builder.ensure(Assemble { target_compiler });
     }
 
     /// Prepare a new compiler from the artifacts in `stage`
