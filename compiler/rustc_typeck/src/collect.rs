@@ -45,7 +45,7 @@ use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::spec::{abi, PanicStrategy, SanitizerSet};
+use rustc_target::spec::{abi, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use std::iter;
 
@@ -2610,7 +2610,6 @@ fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> 
 
 fn from_target_feature(
     tcx: TyCtxt<'_>,
-    id: DefId,
     attr: &ast::Attribute,
     supported_target_features: &FxHashMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
@@ -2679,7 +2678,7 @@ fn from_target_feature(
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
-            if !allowed && id.is_local() {
+            if !allowed {
                 feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
@@ -2693,7 +2692,7 @@ fn from_target_feature(
     }
 }
 
-fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
+fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
@@ -2716,36 +2715,30 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
         "private" => Private,
         "weak" => WeakAny,
         "weak_odr" => WeakODR,
-        _ => {
-            let span = tcx.hir().span_if_local(def_id);
-            if let Some(span) = span {
-                tcx.sess.span_fatal(span, "invalid linkage specified")
-            } else {
-                tcx.sess.fatal(&format!("invalid linkage specified: {}", name))
-            }
-        }
+        _ => tcx.sess.span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
     }
 }
 
-fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
-    let attrs = tcx.get_attrs(id);
-
-    let mut codegen_fn_attrs = CodegenFnAttrs::new();
-    if tcx.should_inherit_track_caller(id) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
+    if cfg!(debug_assertions) {
+        let def_kind = tcx.def_kind(did);
+        assert!(
+            def_kind.has_codegen_attrs(),
+            "unexpected `def_kind` in `codegen_fn_attrs`: {def_kind:?}",
+        );
     }
 
-    // With -Z panic-in-drop=abort, drop_in_place never unwinds.
-    if tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Abort {
-        if Some(id) == tcx.lang_items().drop_in_place_fn() {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        }
+    let did = did.expect_local();
+    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
+    let mut codegen_fn_attrs = CodegenFnAttrs::new();
+    if tcx.should_inherit_track_caller(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
     }
 
     // The panic_no_unwind function called by TerminatorKind::Abort will never
     // unwind. If the panic handler that it invokes unwind then it will simply
     // call the panic handler again.
-    if Some(id) == tcx.lang_items().panic_no_unwind() {
+    if Some(did.to_def_id()) == tcx.lang_items().panic_no_unwind() {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
     }
 
@@ -2760,7 +2753,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.has_name(sym::ffi_returns_twice) {
-            if tcx.is_foreign_item(id) {
+            if tcx.is_foreign_item(did) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
             } else {
                 // `#[ffi_returns_twice]` is only allowed `extern fn`s.
@@ -2773,7 +2766,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 .emit();
             }
         } else if attr.has_name(sym::ffi_pure) {
-            if tcx.is_foreign_item(id) {
+            if tcx.is_foreign_item(did) {
                 if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
                     // `#[ffi_const]` functions cannot be `#[ffi_pure]`
                     struct_span_err!(
@@ -2797,7 +2790,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 .emit();
             }
         } else if attr.has_name(sym::ffi_const) {
-            if tcx.is_foreign_item(id) {
+            if tcx.is_foreign_item(did) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
             } else {
                 // `#[ffi_const]` is only allowed on foreign functions
@@ -2857,7 +2850,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 None => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED,
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if !matches!(tcx.fn_sig(id).abi(), abi::Abi::C { .. }) {
+            if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
@@ -2874,11 +2867,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
-            if !tcx.is_closure(id) && tcx.fn_sig(id).abi() != abi::Abi::Rust {
+            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi() != abi::Abi::Rust {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
             }
-            if tcx.is_closure(id) && !tcx.features().closure_track_caller {
+            if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
                 feature_err(
                     &tcx.sess.parse_sess,
                     sym::closure_track_caller,
@@ -2904,7 +2897,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if attr.has_name(sym::target_feature) {
-            if !tcx.is_closure(id) && tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+            if !tcx.is_closure(did.to_def_id())
+                && tcx.fn_sig(did).unsafety() == hir::Unsafety::Normal
+            {
                 if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                     // The `#[target_feature]` attribute is allowed on
                     // WebAssembly targets on all functions, including safe
@@ -2930,22 +2925,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                         attr.span,
                         "`#[target_feature(..)]` can only be applied to `unsafe` functions",
                     );
-                    err.span_label(tcx.def_span(id), "not an `unsafe` function");
+                    err.span_label(tcx.def_span(did), "not an `unsafe` function");
                     err.emit();
-                } else if let Some(local_id) = id.as_local() {
-                    check_target_feature_trait_unsafe(tcx, local_id, attr.span);
+                } else {
+                    check_target_feature_trait_unsafe(tcx, did, attr.span);
                 }
             }
             from_target_feature(
                 tcx,
-                id,
                 attr,
                 supported_target_features,
                 &mut codegen_fn_attrs.target_features,
             );
         } else if attr.has_name(sym::linkage) {
             if let Some(val) = attr.value_str() {
-                codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, val.as_str()));
+                codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, did, val.as_str()));
             }
         } else if attr.has_name(sym::link_section) {
             if let Some(val) = attr.value_str() {
@@ -3161,8 +3155,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     });
 
     // #73631: closures inherit `#[target_feature]` annotations
-    if tcx.features().target_feature_11 && tcx.is_closure(id) {
-        let owner_id = tcx.parent(id);
+    if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
+        let owner_id = tcx.parent(did.to_def_id());
         codegen_fn_attrs
             .target_features
             .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied())
@@ -3187,7 +3181,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     if !codegen_fn_attrs.no_sanitize.is_empty() {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
+                let hir_id = tcx.hir().local_def_id_to_hir_id(did);
                 tcx.struct_span_lint_hir(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
@@ -3207,7 +3201,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if tcx.is_weak_lang_item(id) {
+    if tcx.is_weak_lang_item(did.to_def_id()) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
     }
     if let Some(name) = weak_lang_items::link_name(attrs) {
@@ -3237,19 +3231,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, id: DefId) -> &'tcx FxHashSet<Symbol> {
+fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
     let mut target_features = tcx.sess.target_features.clone();
-    let attrs = tcx.codegen_fn_attrs(id);
-    target_features.extend(&attrs.target_features);
-    match attrs.instruction_set {
-        None => {}
-        Some(InstructionSetAttr::ArmA32) => {
-            target_features.remove(&sym::thumb_mode);
-        }
-        Some(InstructionSetAttr::ArmT32) => {
-            target_features.insert(sym::thumb_mode);
+    if tcx.def_kind(did).has_codegen_attrs() {
+        let attrs = tcx.codegen_fn_attrs(did);
+        target_features.extend(&attrs.target_features);
+        match attrs.instruction_set {
+            None => {}
+            Some(InstructionSetAttr::ArmA32) => {
+                target_features.remove(&sym::thumb_mode);
+            }
+            Some(InstructionSetAttr::ArmT32) => {
+                target_features.insert(sym::thumb_mode);
+            }
         }
     }
+
     tcx.arena.alloc(target_features)
 }
 

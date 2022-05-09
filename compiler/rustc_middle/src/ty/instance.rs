@@ -246,7 +246,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::Item(ty::WithOptConstParam { did: def_id, .. })
             | InstanceDef::Virtual(def_id, _) => {
-                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+                tcx.body_codegen_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             InstanceDef::ClosureOnceShim { call_once: _, track_caller } => track_caller,
             _ => false,

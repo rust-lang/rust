@@ -105,6 +105,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_allow_const_fn_unstable => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
                 }
+                sym::rustc_std_internal_symbol => {
+                    self.check_rustc_std_internal_symbol(&attr, span, target)
+                }
                 sym::naked => self.check_naked(hir_id, attr, span, target),
                 sym::rustc_legacy_const_generics => {
                     self.check_rustc_legacy_const_generics(&attr, span, target, item)
@@ -194,6 +197,7 @@ impl CheckAttrVisitor<'_> {
             return;
         }
 
+        // FIXME(@lcnr): this doesn't belong here.
         if matches!(target, Target::Closure | Target::Fn | Target::Method(_) | Target::ForeignFn) {
             self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
@@ -1731,7 +1735,7 @@ impl CheckAttrVisitor<'_> {
                     }
                 }
                 sym::align => {
-                    if let (Target::Fn, true) = (target, !self.tcx.features().fn_align) {
+                    if let (Target::Fn, false) = (target, self.tcx.features().fn_align) {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::fn_align,
@@ -2046,6 +2050,25 @@ impl CheckAttrVisitor<'_> {
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to `const fn`")
                     .span_label(span, "not a `const fn`")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    fn check_rustc_std_internal_symbol(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Fn | Target::Static => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied functions or statics")
+                    .span_label(span, "not a function or static")
                     .emit();
                 false
             }

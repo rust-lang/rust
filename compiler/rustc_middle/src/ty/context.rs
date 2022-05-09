@@ -5,6 +5,7 @@ use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstValue, Scalar};
@@ -1066,6 +1067,28 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Expects a body and returns its codegen attributes.
+    ///
+    /// Unlike `codegen_fn_attrs`, this returns `CodegenFnAttrs::EMPTY` for
+    /// constants.
+    pub fn body_codegen_attrs(self, def_id: DefId) -> &'tcx CodegenFnAttrs {
+        let def_kind = self.def_kind(def_id);
+        if def_kind.has_codegen_attrs() {
+            self.codegen_fn_attrs(def_id)
+        } else if matches!(
+            def_kind,
+            DefKind::AnonConst | DefKind::AssocConst | DefKind::Const | DefKind::InlineConst
+        ) {
+            CodegenFnAttrs::EMPTY
+        } else {
+            bug!(
+                "body_codegen_fn_attrs called on unexpected definition: {:?} {:?}",
+                def_id,
+                def_kind
+            )
+        }
+    }
+
     pub fn typeck_opt_const_arg(
         self,
         def: ty::WithOptConstParam<LocalDefId>,

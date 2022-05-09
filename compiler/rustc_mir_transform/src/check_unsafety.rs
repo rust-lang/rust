@@ -375,7 +375,8 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         }
 
         let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
-        let self_features = &self.tcx.codegen_fn_attrs(self.body_did).target_features;
+        // The body might be a constant, so it doesn't have codegen attributes.
+        let self_features = &self.tcx.body_codegen_attrs(self.body_did.to_def_id()).target_features;
 
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {

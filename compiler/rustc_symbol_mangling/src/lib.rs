@@ -96,8 +96,10 @@
 #[macro_use]
 extern crate rustc_middle;
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
@@ -175,7 +177,11 @@ fn compute_symbol_name<'tcx>(
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let attrs = tcx.codegen_fn_attrs(def_id);
+    let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
+        tcx.codegen_fn_attrs(def_id)
+    } else {
+        CodegenFnAttrs::EMPTY
+    };
 
     // Foreign items by default use no mangling for their symbol name. There's a
     // few exceptions to this rule though:
@@ -213,20 +219,25 @@ fn compute_symbol_name<'tcx>(
         return tcx.item_name(def_id).to_string();
     }
 
-    let avoid_cross_crate_conflicts =
-        // If this is an instance of a generic function, we also hash in
-        // the ID of the instantiating crate. This avoids symbol conflicts
-        // in case the same instances is emitted in two crates of the same
-        // project.
-        is_generic(substs) ||
+    // If we're dealing with an instance of a function that's inlined from
+    // another crate but we're marking it as globally shared to our
+    // compilation (aka we're not making an internal copy in each of our
+    // codegen units) then this symbol may become an exported (but hidden
+    // visibility) symbol. This means that multiple crates may do the same
+    // and we want to be sure to avoid any symbol conflicts here.
+    let is_globally_shared_function = matches!(
+        tcx.def_kind(instance.def_id()),
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator | DefKind::Ctor(..)
+    ) && matches!(
+        MonoItem::Fn(instance).instantiation_mode(tcx),
+        InstantiationMode::GloballyShared { may_conflict: true }
+    );
 
-        // If we're dealing with an instance of a function that's inlined from
-        // another crate but we're marking it as globally shared to our
-        // compilation (aka we're not making an internal copy in each of our
-        // codegen units) then this symbol may become an exported (but hidden
-        // visibility) symbol. This means that multiple crates may do the same
-        // and we want to be sure to avoid any symbol conflicts here.
-        matches!(MonoItem::Fn(instance).instantiation_mode(tcx), InstantiationMode::GloballyShared { may_conflict: true });
+    // If this is an instance of a generic function, we also hash in
+    // the ID of the instantiating crate. This avoids symbol conflicts
+    // in case the same instances is emitted in two crates of the same
+    // project.
+    let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
 
     let instantiating_crate =
         if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };
