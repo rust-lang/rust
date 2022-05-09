@@ -2723,7 +2723,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     if cfg!(debug_assertions) {
         let def_kind = tcx.def_kind(did);
         assert!(
-            tcx.has_codegen_attrs(def_kind),
+            def_kind.has_codegen_attrs(),
             "unexpected `def_kind` in `codegen_fn_attrs`: {def_kind:?}",
         );
     }
@@ -3233,7 +3233,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 /// inline assembly.
 fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
     let mut target_features = tcx.sess.target_features.clone();
-    if tcx.has_codegen_attrs(tcx.def_kind(did)) {
+    if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
         target_features.extend(&attrs.target_features);
         match attrs.instruction_set {

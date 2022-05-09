@@ -643,9 +643,8 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    let (thir, expr) = match tcx.thir_body(def) {
-        Ok(body) => body,
-        Err(_) => return,
+    let Ok((thir, expr)) = tcx.thir_body(def) else {
+        return
     };
     let thir = &thir.borrow();
     // If `thir` is empty, a type error occurred, skip this body.
@@ -661,11 +660,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
             BodyUnsafety::Safe
         }
     });
-    let body_target_features: &[_] = if tcx.has_codegen_attrs(tcx.def_kind(def.did)) {
-        &tcx.codegen_fn_attrs(def.did).target_features
-    } else {
-        &[]
-    };
+    let body_target_features = &tcx.body_codegen_attrs(def.did.to_def_id()).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
     let mut visitor = UnsafetyVisitor {

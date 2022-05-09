@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
             self.encode_attrs(def_id);
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
-            if tcx.has_codegen_attrs(def_kind) {
+            if def_kind.has_codegen_attrs() {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
             }
             if should_encode_visibility(def_kind) {

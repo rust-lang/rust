@@ -208,7 +208,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 } else {
                     false
                 };
-            let codegen_attrs = if self.tcx.has_codegen_attrs(self.tcx.def_kind(search_item)) {
+            let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
                 self.tcx.codegen_fn_attrs(search_item)
             } else {
                 CodegenFnAttrs::EMPTY
@@ -333,7 +333,7 @@ impl CollectPrivateImplItemsVisitor<'_, '_> {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.
-        if self.tcx.has_codegen_attrs(self.tcx.def_kind(def_id)) {
+        if self.tcx.def_kind(def_id).has_codegen_attrs() {
             let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
             if codegen_attrs.contains_extern_indicator()
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)

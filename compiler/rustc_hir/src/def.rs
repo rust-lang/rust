@@ -229,6 +229,43 @@ impl DefKind {
             _ => false,
         }
     }
+
+    /// Whether `query get_codegen_attrs` should be used with this definition.
+    pub fn has_codegen_attrs(self) -> bool {
+        match self {
+            DefKind::Fn
+            | DefKind::AssocFn
+            | DefKind::Ctor(..)
+            | DefKind::Closure
+            | DefKind::Generator
+            | DefKind::Static(_) => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::Const
+            | DefKind::AssocConst
+            | DefKind::Macro(..)
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::OpaqueTy
+            | DefKind::Impl
+            | DefKind::Field
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::LifetimeParam
+            | DefKind::AnonConst
+            | DefKind::InlineConst
+            | DefKind::GlobalAsm
+            | DefKind::ExternCrate => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.

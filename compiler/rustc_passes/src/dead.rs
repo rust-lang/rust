@@ -452,7 +452,7 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
 
     let def_id = tcx.hir().local_def_id(id);
-    if tcx.has_codegen_attrs(tcx.def_kind(def_id)) {
+    if tcx.def_kind(def_id).has_codegen_attrs() {
         let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
         // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
