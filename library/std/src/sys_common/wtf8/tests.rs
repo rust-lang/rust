@@ -635,12 +635,10 @@ fn wtf8_make_ascii_lowercase() {
     let mut lowercase = Wtf8Buf::from_str("");
     lowercase.make_ascii_lowercase();
     assert_eq!(lowercase.bytes, b"");
-    assert!(lowercase.is_known_utf8);
 
     let mut lowercase = Wtf8Buf::from_str("GrEeN gRaPeS! 🍇");
     lowercase.make_ascii_lowercase();
     assert_eq!(lowercase.bytes, b"green grapes! \xf0\x9f\x8d\x87");
-    assert!(lowercase.is_known_utf8);
 
     let mut lowercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
     lowercase.make_ascii_lowercase();
@@ -653,12 +651,10 @@ fn wtf8_make_ascii_uppercase() {
     let mut uppercase = Wtf8Buf::from_str("");
     uppercase.make_ascii_uppercase();
     assert_eq!(uppercase.bytes, b"");
-    assert!(uppercase.is_known_utf8);
 
     let mut uppercase = Wtf8Buf::from_str("GrEeN gRaPeS! 🍇");
     uppercase.make_ascii_uppercase();
     assert_eq!(uppercase.bytes, b"GREEN GRAPES! \xf0\x9f\x8d\x87");
-    assert!(uppercase.is_known_utf8);
 
     let mut uppercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_owned() };
     uppercase.make_ascii_uppercase();

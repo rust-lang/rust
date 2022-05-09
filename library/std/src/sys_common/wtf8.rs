@@ -762,18 +762,12 @@ impl Wtf8 {
 
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
-        Wtf8Buf {
-            bytes: self.bytes.to_ascii_lowercase(),
-            is_known_utf8: self.next_surrogate(0).is_none(),
-        }
+        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase(), is_known_utf8: false }
     }
 
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
-        Wtf8Buf {
-            bytes: self.bytes.to_ascii_uppercase(),
-            is_known_utf8: self.next_surrogate(0).is_none(),
-        }
+        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase(), is_known_utf8: false }
     }
 
     #[inline]
