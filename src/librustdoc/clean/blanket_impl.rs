@@ -34,15 +34,15 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         trait_def_id,
                         impl_def_id
                     );
-                    let trait_ref = cx.tcx.impl_trait_ref(impl_def_id).unwrap();
-                    let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
+                    let trait_ref = cx.tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+                    let is_param = matches!(trait_ref.0.self_ty().kind(), ty::Param(_));
                     let may_apply = is_param && cx.tcx.infer_ctxt().enter(|infcx| {
                         let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                         let ty = ty.subst(infcx.tcx, substs);
                         let param_env = EarlyBinder(param_env).subst(infcx.tcx, substs);
 
                         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-                        let trait_ref = EarlyBinder(trait_ref).subst(infcx.tcx, impl_substs);
+                        let trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
 
                         // Require the type the impl is implemented on to match
                         // our type, and ignore the impl if there was a mismatch.
@@ -115,7 +115,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ),
                             // FIXME(eddyb) compute both `trait_` and `for_` from
                             // the post-inference `trait_ref`, as it's more accurate.
-                            trait_: Some(trait_ref.clean(cx)),
+                            trait_: Some(trait_ref.0.clean(cx)),
                             for_: ty.0.clean(cx),
                             items: cx.tcx
                                 .associated_items(impl_def_id)
@@ -123,7 +123,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                                 .map(|x| x.clean(cx))
                                 .collect::<Vec<_>>(),
                             polarity: ty::ImplPolarity::Positive,
-                            kind: ImplKind::Blanket(box trait_ref.self_ty().clean(cx)),
+                            kind: ImplKind::Blanket(box trait_ref.0.self_ty().clean(cx)),
                         }),
                         cfg: None,
                     });

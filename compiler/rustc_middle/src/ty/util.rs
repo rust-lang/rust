@@ -600,6 +600,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_fn_sig(self, def_id: DefId) -> EarlyBinder<ty::PolyFnSig<'tcx>> {
         EarlyBinder(self.fn_sig(def_id))
     }
+
+    pub fn bound_impl_trait_ref(self, def_id: DefId) -> Option<EarlyBinder<ty::TraitRef<'tcx>>> {
+        self.impl_trait_ref(def_id).map(|i| EarlyBinder(i))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

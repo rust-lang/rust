@@ -2066,12 +2066,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
-        let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
+        let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
 
         // Before we create the substitutions and everything, first
         // consider a "quick reject". This avoids creating more types
         // and so forth that we need to.
-        if self.fast_reject_trait_refs(obligation, &impl_trait_ref) {
+        if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
             return Err(());
         }
 
@@ -2081,7 +2081,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_ref = EarlyBinder(impl_trait_ref).subst(self.tcx(), impl_substs);
+        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
 
         debug!(?impl_trait_ref);
 
