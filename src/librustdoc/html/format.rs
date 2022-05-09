@@ -190,6 +190,7 @@ impl clean::GenericParamDef {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.kind {
+            clean::GenericParamDefKind::Constness => Ok(()),
             clean::GenericParamDefKind::Lifetime { outlives } => {
                 write!(f, "{}", self.name)?;
 

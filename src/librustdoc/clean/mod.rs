@@ -308,7 +308,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
 impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::PolyTraitPredicate<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
         // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-        if self.skip_binder().constness == ty::BoundConstness::ConstIfConst
+        if self.skip_binder().constness() != ty::ConstnessArg::Not
             && Some(self.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
         {
             return None;
@@ -439,6 +439,7 @@ fn projection_to_path_segment<'tcx>(
 impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericParamDef {
         let (name, kind) = match self.kind {
+            ty::GenericParamDefKind::Constness => (self.name, GenericParamDefKind::Constness),
             ty::GenericParamDefKind::Lifetime => {
                 (self.name, GenericParamDefKind::Lifetime { outlives: vec![] })
             }
@@ -561,6 +562,7 @@ impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
             .map(|param| {
                 let param = clean_generic_param(cx, Some(self), param);
                 match param.kind {
+                    GenericParamDefKind::Constness => unreachable!(),
                     GenericParamDefKind::Lifetime { .. } => unreachable!(),
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
                         cx.impl_trait_bounds.insert(did.into(), bounds.clone());
@@ -594,6 +596,7 @@ impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
                     if bounds.is_empty() {
                         for param in &mut generics.params {
                             match param.kind {
+                                GenericParamDefKind::Constness => {}
                                 GenericParamDefKind::Lifetime { .. } => {}
                                 GenericParamDefKind::Type { bounds: ref mut ty_bounds, .. } => {
                                     if &param.name == name {
@@ -642,6 +645,7 @@ fn clean_ty_generics<'tcx>(
                 }
                 Some(param.clean(cx))
             }
+            ty::GenericParamDefKind::Constness => None,
             ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
         })
         .collect::<Vec<GenericParamDef>>();

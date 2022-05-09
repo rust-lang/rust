@@ -84,6 +84,7 @@ pub(crate) fn substs_to_args<'tcx>(
     let mut ret_val =
         Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
     ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
+        GenericArgKind::Constness(_) => None,
         GenericArgKind::Lifetime(lt) => {
             Some(GenericArg::Lifetime(lt.clean(cx).unwrap_or(Lifetime::elided())))
         }

@@ -40,7 +40,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         discard_positive_impl: bool,
     ) -> Option<Item> {
         let tcx = self.cx.tcx;
-        let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, &[]) };
+        let trait_ref = ty::TraitRef {
+            def_id: trait_def_id,
+            substs: tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
+        };
         if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
             debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
             return None;
@@ -625,6 +628,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 GenericParamDefKind::Lifetime { .. } => {}
+                GenericParamDefKind::Constness => {}
                 GenericParamDefKind::Const { ref mut default, .. } => {
                     // We never want something like `impl<const N: usize = 10>`
                     default.take();

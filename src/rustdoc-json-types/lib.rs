@@ -382,6 +382,7 @@ pub enum GenericParamDefKind {
         type_: Type,
         default: Option<String>,
     },
+    Constness,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

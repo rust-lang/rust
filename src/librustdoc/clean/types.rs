@@ -1362,6 +1362,7 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
+    Constness,
     Lifetime { outlives: Vec<Lifetime> },
     Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     Const { did: DefId, ty: Box<Type>, default: Option<Box<String>> },
@@ -1386,7 +1387,9 @@ rustc_data_structures::static_assert_size!(GenericParamDef, 56);
 impl GenericParamDef {
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
+            GenericParamDefKind::Constness
+            | GenericParamDefKind::Lifetime { .. }
+            | GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }
