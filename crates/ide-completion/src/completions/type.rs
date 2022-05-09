@@ -168,8 +168,9 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
                     if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(trait_))) =
                         ctx.sema.resolve_path(&path_seg.parent_path())
                     {
-                        trait_.items(ctx.sema.db).into_iter().for_each(|it| {
+                        trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
                             if let hir::AssocItem::TypeAlias(alias) = it {
+                                cov_mark::hit!(complete_assoc_type_in_generics_list);
                                 acc.add_type_alias_with_eq(ctx, alias)
                             }
                         });
