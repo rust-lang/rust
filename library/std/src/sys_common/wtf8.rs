@@ -220,11 +220,11 @@ impl Wtf8Buf {
                     let surrogate = surrogate.unpaired_surrogate();
                     // Surrogates are known to be in the code point range.
                     let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
+                    // The string will now contain an unpaired surrogate.
+                    string.is_known_utf8 = false;
                     // Skip the WTF-8 concatenation check,
                     // surrogate pairs are already decoded by decode_utf16
                     string.push_code_point_unchecked(code_point);
-                    // The string now contains an unpaired surrogate.
-                    string.is_known_utf8 = false;
                 }
             }
         }
@@ -346,13 +346,13 @@ impl Wtf8Buf {
                 self.bytes.extend_from_slice(other_without_trail_surrogate);
             }
             _ => {
-                self.bytes.extend_from_slice(&other.bytes);
-
-                // If we're pushing a string containing a surrogate, we may no
-                // longer have UTF-8.
+                // If we'll be pushing a string containing a surrogate, we may
+                // no longer have UTF-8.
                 if other.next_surrogate(0).is_some() {
                     self.is_known_utf8 = false;
                 }
+
+                self.bytes.extend_from_slice(&other.bytes);
             }
         }
     }
@@ -721,8 +721,8 @@ impl Wtf8 {
     }
 
     pub fn clone_into(&self, buf: &mut Wtf8Buf) {
-        self.bytes.clone_into(&mut buf.bytes);
         buf.is_known_utf8 = false;
+        self.bytes.clone_into(&mut buf.bytes);
     }
 
     /// Boxes this `Wtf8`.
