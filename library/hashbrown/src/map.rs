@@ -1775,7 +1775,7 @@ where
     /// # Panics
     ///
     /// Panics if the key is not present in the `HashMap`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```
@@ -1815,7 +1815,7 @@ where
 
 /// An iterator over the entries of a `HashMap` in arbitrary order.
 /// The iterator element type is `(&'a K, &'a V)`.
-/// 
+///
 /// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
@@ -1962,7 +1962,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 /// This `struct` is created by the [`into_keys`] method on [`HashMap`].
 /// See its documentation for more.
 /// The map cannot be used after calling that method.
-/// 
+///
 /// [`into_keys`]: struct.HashMap.html#method.into_keys
 /// [`HashMap`]: struct.HashMap.html
 ///
@@ -2083,7 +2083,7 @@ impl<K, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
 
 /// An iterator over the keys of a `HashMap` in arbitrary order.
 /// The iterator element type is `&'a K`.
-/// 
+///
 /// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
