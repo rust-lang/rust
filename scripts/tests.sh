@@ -9,7 +9,16 @@ export HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
 export TARGET_TRIPLE=${TARGET_TRIPLE:-$HOST_TRIPLE}
 
 export RUN_WRAPPER=''
-export JIT_SUPPORTED=1
+
+case "$TARGET_TRIPLE" in
+   x86_64*)
+      export JIT_SUPPORTED=1
+      ;;
+   *)
+      export JIT_SUPPORTED=0
+      ;;
+esac
+
 if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
    export JIT_SUPPORTED=0
    if [[ "$TARGET_TRIPLE" == "aarch64-unknown-linux-gnu" ]]; then
