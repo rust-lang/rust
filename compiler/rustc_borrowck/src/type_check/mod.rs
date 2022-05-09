@@ -572,7 +572,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             let tcx = self.tcx();
             let trait_ref = ty::TraitRef {
                 def_id: tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+                substs: tcx.mk_substs_trait(place_ty.ty, &[], ty::ConstnessArg::Not),
             };
 
             // To have a `Copy` operand, the type `T` of the
@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if !self.unsized_feature_enabled() {
                     let trait_ref = ty::TraitRef {
                         def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                        substs: tcx.mk_substs_trait(place_ty, &[]),
+                        substs: tcx.mk_substs_trait(place_ty, &[], ty::ConstnessArg::Not),
                     };
                     self.prove_trait_ref(
                         trait_ref,
@@ -1894,7 +1894,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             let ty = place.ty(body, tcx).ty;
                             let trait_ref = ty::TraitRef::new(
                                 tcx.require_lang_item(LangItem::Copy, Some(span)),
-                                tcx.mk_substs_trait(ty, &[]),
+                                tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
                             );
 
                             self.prove_trait_ref(
@@ -1910,7 +1910,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             &Rvalue::NullaryOp(_, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(ty, &[]),
+                    substs: tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
                 };
 
                 self.prove_trait_ref(
@@ -1925,7 +1925,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(*ty, &[]),
+                    substs: tcx.mk_substs_trait(*ty, &[], ty::ConstnessArg::Not),
                 };
 
                 self.prove_trait_ref(
@@ -2026,7 +2026,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let trait_ref = ty::TraitRef {
                             def_id: tcx
                                 .require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
+                            // TODO: pick constness arg from context
+                            substs: tcx.mk_substs_trait(
+                                op.ty(body, tcx),
+                                &[ty.into()],
+                                ty::ConstnessArg::Not,
+                            ),
                         };
 
                         self.prove_trait_ref(
