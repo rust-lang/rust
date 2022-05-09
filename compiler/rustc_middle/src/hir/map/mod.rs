@@ -672,7 +672,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn for_each_module(self, f: impl Fn(LocalDefId)) {
+    pub fn for_each_module(self, mut f: impl FnMut(LocalDefId)) {
         let crate_items = self.tcx.hir_crate_items(());
         for module in crate_items.submodules.iter() {
             f(*module)
