@@ -139,6 +139,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_const_stable
                 | sym::unstable
                 | sym::stable
+                | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 _ => true,
             };

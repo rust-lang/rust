@@ -1,6 +1,7 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+use attr::StabilityLevel;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::struct_span_err;
@@ -224,7 +225,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
-            if let (&Some(dep_since), &attr::Stable { since: stab_since }) =
+            if let (&Some(dep_since), &attr::Stable { since: stab_since, .. }) =
                 (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
@@ -819,7 +820,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 },
             );
 
-            if item_is_allowed {
+            let is_allowed_through_unstable_modules = |def_id| {
+                self.tcx
+                    .lookup_stability(def_id)
+                    .map(|stab| match stab.level {
+                        StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
+                            allowed_through_unstable_modules
+                        }
+                        _ => false,
+                    })
+                    .unwrap_or(false)
+            };
+
+            if item_is_allowed && !is_allowed_through_unstable_modules(def_id) {
                 // Check parent modules stability as well if the item the path refers to is itself
                 // stable. We only emit warnings for unstable path segments if the item is stable
                 // or allowed because stability is often inherited, so the most common case is that
@@ -827,6 +840,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 //
                 // We check here rather than in `visit_path_segment` to prevent visiting the last
                 // path segment twice
+                //
+                // We include special cases via #[rustc_allowed_through_unstable_modules] for items
+                // that were accidentally stabilized through unstable paths before this check was
+                // added, such as `core::intrinsics::transmute`
                 let parents = path.segments.iter().rev().skip(1);
                 for path_segment in parents {
                     if let Some(def_id) = path_segment.res.as_ref().and_then(Res::opt_def_id) {
