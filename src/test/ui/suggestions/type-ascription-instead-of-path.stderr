@@ -5,7 +5,7 @@ LL |     std:io::stdin();
    |         ^^
    |         |
    |         use of undeclared crate or module `io`
-   |         help: there is a type with a similar name: `i8`
+   |         help: there is a builtin type with a similar name: `i8`
 
 error[E0423]: expected value, found crate `std`
   --> $DIR/type-ascription-instead-of-path.rs:2:5

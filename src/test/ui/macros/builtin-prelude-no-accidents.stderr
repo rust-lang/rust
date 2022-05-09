@@ -17,7 +17,7 @@ LL |     type B = vec::Vec<u8>;
    |              ^^^
    |              |
    |              use of undeclared crate or module `vec`
-   |              help: there is a type with a similar name (notice the capitalization): `Vec`
+   |              help: there is a struct with a similar name (notice the capitalization): `Vec`
 
 error: aborting due to 3 previous errors
 

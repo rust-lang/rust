@@ -5,7 +5,7 @@ LL |     let _ = string::new();
    |             ^^^^^^
    |             |
    |             use of undeclared crate or module `string`
-   |             help: there is a type with a similar name (notice the capitalization): `String`
+   |             help: there is a struct with a similar name (notice the capitalization): `String`
 
 error: aborting due to previous error
 

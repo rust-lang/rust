@@ -4,7 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -48,6 +48,7 @@ pub(crate) type Suggestion = (Vec<(Span, String)>, String, Applicability);
 /// similarly named label and whether or not it is reachable.
 pub(crate) type LabelSuggestion = (Ident, bool);
 
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) enum SuggestionTarget {
     /// The target has a similar name as the name used by the programmer (probably a typo)
     SimilarlyNamed,
@@ -55,6 +56,7 @@ pub(crate) enum SuggestionTarget {
     SingleItem,
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct TypoSuggestion {
     pub candidate: Symbol,
     pub res: Res,
@@ -1829,7 +1831,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         ident: Symbol,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
-    ) -> Option<Symbol> {
+    ) -> Option<TypoSuggestion> {
         fn is_type_candidate(res: Res) -> bool {
             matches!(
                 res,
@@ -1884,14 +1886,20 @@ impl<'a> Resolver<'a> {
             }))
         }
 
-        let mut names = names.iter().map(|sugg| sugg.candidate).collect::<Vec<Symbol>>();
-        names.sort();
+        // We sort names here to ensure that the suggestion is deterministic.
+        // (Notice that there may be a pair of TypoSuggestions whose Symbols
+        // are same but Res are different.)
+        names.sort_by_key(|name| (name.candidate, name.res));
         names.dedup();
+        let symbols = names.iter().map(|sugg| sugg.candidate).collect::<Vec<Symbol>>();
+        let typo_suggestions: FxHashMap<Symbol, TypoSuggestion> =
+            names.into_iter().map(|typo_sugg| (typo_sugg.candidate, typo_sugg)).collect();
 
-        match find_best_match_for_name(&names, ident, None) {
+        match find_best_match_for_name(&symbols, ident, None) {
             Some(sugg) if sugg == ident => None,
             sugg => sugg,
         }
+        .map(|sugg| typo_suggestions.get(&sugg).unwrap().clone())
     }
 
     pub(crate) fn report_path_resolution_error(
@@ -2061,8 +2069,12 @@ impl<'a> Resolver<'a> {
             } else {
                 self.find_similarly_named_type(ident.name, ribs).map(|sugg| {
                     (
-                        vec![(ident.span, sugg.to_string())],
-                        String::from("there is a type with a similar name"),
+                        vec![(ident.span, sugg.candidate.to_string())],
+                        format!(
+                            "there is {} {} with a similar name",
+                            sugg.res.article(),
+                            sugg.res.descr(),
+                        ),
                         Applicability::MaybeIncorrect,
                     )
                 })
@@ -2087,8 +2099,12 @@ impl<'a> Resolver<'a> {
             } else {
                 self.find_similarly_named_type(ident.name, ribs).map(|sugg| {
                     (
-                        vec![(ident.span, sugg.to_string())],
-                        String::from("there is a type with a similar name"),
+                        vec![(ident.span, sugg.candidate.to_string())],
+                        format!(
+                            "there is {} {} with a similar name",
+                            sugg.res.article(),
+                            sugg.res.descr()
+                        ),
                         Applicability::MaybeIncorrect,
                     )
                 })

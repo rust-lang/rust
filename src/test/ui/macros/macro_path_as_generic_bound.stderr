@@ -5,7 +5,7 @@ LL | foo!(m::m2::A);
    |      ^
    |      |
    |      use of undeclared crate or module `m`
-   |      help: there is a type with a similar name: `T`
+   |      help: there is a type parameter with a similar name: `T`
 
 error: aborting due to previous error
 

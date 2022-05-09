@@ -5,7 +5,7 @@ LL |     FooTyp::bar()
    |     ^^^^^^
    |     |
    |     use of undeclared type `FooTyp`
-   |     help: there is a type with a similar name: `FooType`
+   |     help: there is a struct with a similar name: `FooType`
 
 error: aborting due to previous error
 
