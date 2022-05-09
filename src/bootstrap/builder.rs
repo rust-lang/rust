@@ -873,15 +873,15 @@ impl<'a> Builder<'a> {
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // FIXME: support `do_verify` (only really needed for nightly rustfmt)
-        // FIXME: support non-utf8 paths?
-        self.download_with_retries(tempfile.to_str().unwrap(), &format!("{}/{}", base, url));
+        self.download_with_retries(&tempfile, &format!("{}/{}", base, url));
         t!(std::fs::rename(&tempfile, dest_path));
     }
 
-    fn download_with_retries(&self, tempfile: &str, url: &str) {
+    fn download_with_retries(&self, tempfile: &Path, url: &str) {
         println!("downloading {}", url);
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
-        if !self.check_run(Command::new("curl").args(&[
+        let mut curl = Command::new("curl");
+        curl.args(&[
             "-#",
             "-y",
             "30",
@@ -893,9 +893,10 @@ impl<'a> Builder<'a> {
             "3",
             "-Sf",
             "-o",
-            tempfile,
-            url,
-        ])) {
+        ]);
+        curl.arg(tempfile);
+        curl.arg(url);
+        if !self.check_run(&mut curl) {
             if self.build.build.contains("windows-msvc") {
                 println!("Fallback to PowerShell");
                 for _ in 0..3 {
@@ -905,7 +906,7 @@ impl<'a> Builder<'a> {
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                         &format!(
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                            url, tempfile
+                            url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
                     ])) {
                         return;
