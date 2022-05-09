@@ -93,7 +93,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id.to_def_id()));
+            ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
         }
         EntryPointType::MainAttr => {
             if ctxt.attr_main_fn.is_none() {
