@@ -93,7 +93,7 @@ macro_rules! types {
     )*)
 }
 
-#[allow(unused_macros)]
+#[allow(unused)]
 macro_rules! simd_shuffle2 {
     ($x:expr, $y:expr, <$(const $imm:ident : $ty:ty),+ $(,)?> $idx:expr $(,)?) => {{
         struct ConstParam<$(const $imm: $ty),+>;

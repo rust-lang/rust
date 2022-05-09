@@ -356,6 +356,7 @@ mod sealed {
 
     }
 
+    #[allow(unknown_lints, unused_macro_rules)]
     macro_rules! impl_vec_trait {
         ([$Trait:ident $m:ident] $fun:ident ($a:ty)) => {
             impl $Trait for $a {
