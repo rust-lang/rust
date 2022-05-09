@@ -604,11 +604,9 @@ fn wtf8_clone_into() {
 fn wtf8_to_ascii_lowercase() {
     let lowercase = Wtf8::from_str("").to_ascii_lowercase();
     assert_eq!(lowercase.bytes, b"");
-    assert!(lowercase.is_known_utf8);
 
     let lowercase = Wtf8::from_str("GrEeN gRaPeS! 🍇").to_ascii_lowercase();
     assert_eq!(lowercase.bytes, b"green grapes! \xf0\x9f\x8d\x87");
-    assert!(lowercase.is_known_utf8);
 
     let lowercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_ascii_lowercase() };
     assert_eq!(lowercase.bytes, b"\xED\xA0\x80");
@@ -619,11 +617,9 @@ fn wtf8_to_ascii_lowercase() {
 fn wtf8_to_ascii_uppercase() {
     let uppercase = Wtf8::from_str("").to_ascii_uppercase();
     assert_eq!(uppercase.bytes, b"");
-    assert!(uppercase.is_known_utf8);
 
     let uppercase = Wtf8::from_str("GrEeN gRaPeS! 🍇").to_ascii_uppercase();
     assert_eq!(uppercase.bytes, b"GREEN GRAPES! \xf0\x9f\x8d\x87");
-    assert!(uppercase.is_known_utf8);
 
     let uppercase = unsafe { Wtf8::from_bytes_unchecked(b"\xED\xA0\x80").to_ascii_uppercase() };
     assert_eq!(uppercase.bytes, b"\xED\xA0\x80");
