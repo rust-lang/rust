@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{implements_trait, is_copy};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -584,7 +584,11 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         ExprKind::Call(path, [arg])
             if path_def_id(cx, path)
                 .and_then(|id| match_any_def_paths(cx, id, &[&paths::FROM_STR_METHOD, &paths::FROM_FROM]))
-                .is_some() =>
+                .map_or(false, |idx| match idx {
+                    0 => true,
+                    1 => !is_copy(cx, typeck.expr_ty(expr)),
+                    _ => false,
+                }) =>
         {
             (arg, arg.span)
         },
