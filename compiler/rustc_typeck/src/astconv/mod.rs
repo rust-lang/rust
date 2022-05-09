@@ -573,9 +573,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // TODO: fall back to `Not`?
                             None => ty::ConstnessArg::Param,
                             Some(context) => {
-                                if tcx.hir().body_const_context(context.expect_local()).is_some() {
-                                    ty::ConstnessArg::Required
+                                if tcx.generics_of(context).has_constness_param() {
+                                    ty::ConstnessArg::Param
                                 } else {
+                                    // TODO: should use `Required` if we're in a const context
+                                    // like `const`/`static` item initializers.
                                     ty::ConstnessArg::Not
                                 }
                             }

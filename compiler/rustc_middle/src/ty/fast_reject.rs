@@ -221,6 +221,9 @@ impl DeepRejectCtxt {
             (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
                 self.consts_may_unify(obl, imp)
             }
+            (GenericArgKind::Constness(obl), GenericArgKind::Constness(imp)) => {
+                self.constness_may_unify(obl, imp)
+            }
             _ => bug!("kind mismatch: {obligation_arg} {impl_arg}"),
         }
     }
@@ -400,6 +403,21 @@ impl DeepRejectCtxt {
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected obl const: {:?}", obligation_ct)
             }
+        }
+    }
+
+    pub fn constness_may_unify(
+        self,
+        obligation_ct: ty::ConstnessArg,
+        impl_ct: ty::ConstnessArg,
+    ) -> bool {
+        match (obligation_ct, impl_ct) {
+            (_, ty::ConstnessArg::Param) => true,
+            (ty::ConstnessArg::Param, _) => match self.treat_obligation_params {
+                TreatParams::AsPlaceholder => false,
+                TreatParams::AsInfer => true,
+            },
+            _ => obligation_ct == impl_ct,
         }
     }
 }
