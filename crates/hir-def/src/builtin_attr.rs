@@ -274,6 +274,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(feature, CrateLevel, template!(List: "name1, name1, ...")),
     // FIXME(#14407) -- only looked at on-demand so we can't
     // guarantee they'll have already been checked.
+    // FIXME(jhpratt) remove this when #[rustc_deprecated] is fully removed from the compiler
     ungated!(
         rustc_deprecated, AssumedUsed,
         template!(List: r#"since = "version", reason = "...""#)
