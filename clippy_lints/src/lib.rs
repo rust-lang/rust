@@ -8,6 +8,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(let_else)]
+#![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
@@ -472,7 +473,7 @@ pub fn read_conf(sess: &Session) -> Conf {
 /// Register all lints and lint groups with the rustc plugin registry
 ///
 /// Used in `./src/driver.rs`.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
     register_removed_non_tool_lints(store);
 

@@ -63,7 +63,7 @@ declare_clippy_lint! {
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (cond_expr, then_expr, else_expr) = match higher::If::hir(expr) {
             Some(higher::If { cond, then, r#else }) => (cond, then, r#else),
@@ -319,7 +319,7 @@ struct Insertion<'tcx> {
 ///   `or_insert_with`.
 /// * Determine if there's any sub-expression that can't be placed in a closure.
 /// * Determine if there's only a single insert statement. `or_insert` can be used in this case.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct InsertSearcher<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     /// The map expression used in the contains call.

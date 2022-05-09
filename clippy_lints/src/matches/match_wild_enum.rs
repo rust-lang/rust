@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use super::{MATCH_WILDCARD_FOR_SINGLE_VARIANTS, WILDCARD_ENUM_MATCH_ARM};
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.typeck_results().expr_ty(ex).peel_refs();
     let adt_def = match ty.kind() {
@@ -56,7 +56,6 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
         recurse_or_patterns(arm.pat, |pat| {
             let path = match &peel_hir_pat_refs(pat).0.kind {
                 PatKind::Path(path) => {
-                    #[allow(clippy::match_same_arms)]
                     let id = match cx.qpath_res(path, pat.hir_id) {
                         Res::Def(
                             DefKind::Const | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,

@@ -2,6 +2,7 @@
 #![feature(control_flow_enum)]
 #![feature(let_else)]
 #![feature(let_chains)]
+#![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
@@ -35,7 +36,6 @@ extern crate rustc_typeck;
 #[macro_use]
 pub mod sym_helper;
 
-#[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
 pub mod comparisons;
@@ -1561,14 +1561,14 @@ pub fn int_bits(tcx: TyCtxt<'_>, ity: rustc_ty::IntTy) -> u64 {
     Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
-#[allow(clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
 pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
-#[allow(clippy::cast_sign_loss)]
+#[expect(clippy::cast_sign_loss)]
 /// clip unused bytes
 pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: rustc_ty::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);

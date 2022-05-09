@@ -79,7 +79,6 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
     }
 }
 
-#[allow(clippy::cast_possible_truncation)] // truncation very unlikely here
 #[must_use]
 fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u8) -> Span {
     let offset = u32::from(offset);
