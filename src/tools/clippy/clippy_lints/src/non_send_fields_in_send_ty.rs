@@ -212,6 +212,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
                 substs.iter().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
                     // Lifetimes and const generics are not solid part of ADT and ignored
+                    GenericArgKind::Constness(_) |
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => true,
                 })
             } else {

@@ -124,6 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
                     },
 
+                    GenericArgKind::Constness(_) |
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
                 });
                 if contains_sync_guard {

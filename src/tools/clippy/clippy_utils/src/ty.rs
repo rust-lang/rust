@@ -47,7 +47,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => other_ty == inner_ty,
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        GenericArgKind::Lifetime(_) | GenericArgKind::Constness(_) | GenericArgKind::Const(_) => false,
     })
 }
 
@@ -56,7 +56,7 @@ pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        GenericArgKind::Lifetime(_) | GenericArgKind::Constness(_) | GenericArgKind::Const(_) => false,
     })
 }
 
@@ -80,7 +80,7 @@ pub fn get_associated_type<'tcx>(
         .associated_items(trait_id)
         .find_by_name_and_kind(cx.tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
         .and_then(|assoc| {
-            let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
+            let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not));
             cx.tcx.try_normalize_erasing_regions(cx.param_env, proj).ok()
         })
 }
