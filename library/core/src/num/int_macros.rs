@@ -2717,7 +2717,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
         pub const fn min_value() -> Self {
             Self::MIN
         }
@@ -2730,7 +2730,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
         pub const fn max_value() -> Self {
             Self::MAX
         }

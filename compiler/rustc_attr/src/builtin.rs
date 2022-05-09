@@ -679,12 +679,12 @@ where
             continue;
         }
 
-        if let Some((_, span)) = &depr {
-            struct_span_err!(diagnostic, attr.span, E0550, "multiple deprecated attributes")
-                .span_label(attr.span, "repeated deprecation attribute")
-                .span_label(*span, "first deprecation attribute")
+        // FIXME(jhpratt) remove this eventually
+        if attr.has_name(sym::rustc_deprecated) {
+            diagnostic
+                .struct_span_err(attr.span, "`#[rustc_deprecated]` has been removed")
+                .help("use `#[deprecated]` instead")
                 .emit();
-            break;
         }
 
         let Some(meta) = attr.meta() else {
@@ -742,12 +742,24 @@ where
                                     continue 'outer;
                                 }
                             }
-                            // FIXME(jhpratt) remove this after a bootstrap occurs. Emitting an
-                            // error specific to the renaming would be a good idea as well.
+                            // FIXME(jhpratt) remove this eventually
                             sym::reason if attr.has_name(sym::rustc_deprecated) => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
+
+                                let mut diag = diagnostic
+                                    .struct_span_err(mi.span, "`reason` has been renamed");
+                                match note {
+                                    Some(note) => diag.span_suggestion(
+                                        mi.span,
+                                        "use `note` instead",
+                                        format!("note = \"{note}\""),
+                                        Applicability::MachineApplicable,
+                                    ),
+                                    None => diag.span_help(mi.span, "use `note` instead"),
+                                };
+                                diag.emit();
                             }
                             sym::suggestion => {
                                 if !sess.features_untracked().deprecated_suggestion {

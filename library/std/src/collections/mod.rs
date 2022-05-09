@@ -402,7 +402,7 @@
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
-#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
+#[deprecated(note = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
 pub use crate::ops::Bound;
 

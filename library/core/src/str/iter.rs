@@ -1129,7 +1129,7 @@ impl FusedIterator for Lines<'_> {}
 ///
 /// [`lines_any`]: str::lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
+#[deprecated(since = "1.4.0", note = "use lines()/Lines instead now")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 #[allow(deprecated)]

@@ -789,7 +789,7 @@ pub fn panicking() -> bool {
 /// thread::sleep_ms(2000);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
@@ -943,7 +943,7 @@ pub fn park() {
 ///
 /// See the [park documentation][`park`] for more detail.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
     park_timeout(Duration::from_millis(ms as u64))
 }

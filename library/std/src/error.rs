@@ -145,15 +145,15 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.42.0", reason = "use the Display impl or to_string()")]
+    #[deprecated(since = "1.42.0", note = "use the Display impl or to_string()")]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.33.0",
-        reason = "replaced by Error::source, which can support downcasting"
+        note = "replaced by Error::source, which can support downcasting"
     )]
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {

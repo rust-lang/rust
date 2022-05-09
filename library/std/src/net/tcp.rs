@@ -915,20 +915,14 @@ impl TcpListener {
     }
 
     #[stable(feature = "net2_mutators", since = "1.9.0")]
-    #[rustc_deprecated(
-        since = "1.16.0",
-        reason = "this option can only be set before the socket is bound"
-    )]
+    #[deprecated(since = "1.16.0", note = "this option can only be set before the socket is bound")]
     #[allow(missing_docs)]
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         self.0.set_only_v6(only_v6)
     }
 
     #[stable(feature = "net2_mutators", since = "1.9.0")]
-    #[rustc_deprecated(
-        since = "1.16.0",
-        reason = "this option can only be set before the socket is bound"
-    )]
+    #[deprecated(since = "1.16.0", note = "this option can only be set before the socket is bound")]
     #[allow(missing_docs)]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()

@@ -31,7 +31,7 @@ use crate::num::FpCategory;
 /// let r = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `RADIX` associated constant on `f32`")]
+#[deprecated(since = "TBD", note = "replaced by the `RADIX` associated constant on `f32`")]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
@@ -48,9 +48,9 @@ pub const RADIX: u32 = f32::RADIX;
 /// let d = f32::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "TBD",
-    reason = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
+    note = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
 )]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
@@ -68,7 +68,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// let d = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `DIGITS` associated constant on `f32`")]
+#[deprecated(since = "TBD", note = "replaced by the `DIGITS` associated constant on `f32`")]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
@@ -89,10 +89,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// let e = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `EPSILON` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `EPSILON` associated constant on `f32`")]
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
@@ -109,7 +106,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// let min = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on `f32`")]
+#[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on `f32`")]
 pub const MIN: f32 = f32::MIN;
 
 /// Smallest positive normal `f32` value.
@@ -126,10 +123,7 @@ pub const MIN: f32 = f32::MIN;
 /// let min = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_POSITIVE` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_POSITIVE` associated constant on `f32`")]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
 /// Largest finite `f32` value.
@@ -146,7 +140,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// let max = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on `f32`")]
+#[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on `f32`")]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
@@ -163,10 +157,7 @@ pub const MAX: f32 = f32::MAX;
 /// let min = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_EXP` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_EXP` associated constant on `f32`")]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
@@ -183,10 +174,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// let max = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_EXP` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MAX_EXP` associated constant on `f32`")]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
@@ -203,10 +191,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// let min = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_10_EXP` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_10_EXP` associated constant on `f32`")]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
@@ -223,10 +208,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// let max = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_10_EXP` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MAX_10_EXP` associated constant on `f32`")]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
@@ -243,7 +225,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// let nan = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `NAN` associated constant on `f32`")]
+#[deprecated(since = "TBD", note = "replaced by the `NAN` associated constant on `f32`")]
 pub const NAN: f32 = f32::NAN;
 
 /// Infinity (∞).
@@ -260,10 +242,7 @@ pub const NAN: f32 = f32::NAN;
 /// let inf = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `INFINITY` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `INFINITY` associated constant on `f32`")]
 pub const INFINITY: f32 = f32::INFINITY;
 
 /// Negative infinity (−∞).
@@ -280,10 +259,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// let ninf = f32::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `NEG_INFINITY` associated constant on `f32`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `NEG_INFINITY` associated constant on `f32`")]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.

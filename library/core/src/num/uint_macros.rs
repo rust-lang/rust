@@ -2431,7 +2431,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
         pub const fn min_value() -> Self { Self::MIN }
 
         /// New code should prefer to use
@@ -2442,7 +2442,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
         pub const fn max_value() -> Self { Self::MAX }
     }
 }

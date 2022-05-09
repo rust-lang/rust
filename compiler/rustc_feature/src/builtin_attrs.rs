@@ -304,8 +304,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
             NameValueStr: "reason"
         ),
-        // This has special duplicate handling in E0550 to handle duplicates with rustc_deprecated
-        DuplicatesOk
+        ErrorFollowing
     ),
 
     // Crate properties:
@@ -469,10 +468,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     ungated!(feature, CrateLevel, template!(List: "name1, name2, ..."), DuplicatesOk),
-    // DuplicatesOk since it has its own validation
+    // FIXME(jhpratt) remove this eventually
     ungated!(
         rustc_deprecated, Normal,
-        template!(List: r#"since = "version", note = "...""#), DuplicatesOk // See E0550
+        template!(List: r#"since = "version", note = "...""#), ErrorFollowing
     ),
     // DuplicatesOk since it has its own validation
     ungated!(

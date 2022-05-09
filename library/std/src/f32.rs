@@ -511,15 +511,15 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.10.0",
-        reason = "you probably meant `(self - other).abs()`: \
-                  this operation is `(self - other).max(0.0)` \
-                  except that `abs_sub` also propagates NaNs (also \
-                  known as `fdimf` in C). If you truly need the positive \
-                  difference, consider using that expression or the C function \
-                  `fdimf`, depending on how you wish to handle NaN (please consider \
-                  filing an issue describing your use-case too)."
+        note = "you probably meant `(self - other).abs()`: \
+                this operation is `(self - other).max(0.0)` \
+                except that `abs_sub` also propagates NaNs (also \
+                known as `fdimf` in C). If you truly need the positive \
+                difference, consider using that expression or the C function \
+                `fdimf`, depending on how you wish to handle NaN (please consider \
+                filing an issue describing your use-case too)."
     )]
     pub fn abs_sub(self, other: f32) -> f32 {
         unsafe { cmath::fdimf(self, other) }

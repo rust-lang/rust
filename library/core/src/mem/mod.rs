@@ -408,7 +408,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of` instead", since = "1.2.0")]
 pub fn min_align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
@@ -431,7 +431,7 @@ pub fn min_align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
@@ -673,7 +673,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
 #[must_use]
-#[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
+#[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]

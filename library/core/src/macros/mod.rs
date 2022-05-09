@@ -410,7 +410,7 @@ macro_rules! matches {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.39.0", reason = "use the `?` operator instead")]
+#[deprecated(since = "1.39.0", note = "use the `?` operator instead")]
 #[doc(alias = "?")]
 macro_rules! r#try {
     ($expr:expr $(,)?) => {
@@ -1536,10 +1536,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
-    #[rustc_deprecated(
-        since = "1.52.0",
-        reason = "rustc-serialize is deprecated and no longer supported"
-    )]
+    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcDecodable($item:item) {
         /* compiler built-in */
@@ -1549,10 +1546,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics)]
-    #[rustc_deprecated(
-        since = "1.52.0",
-        reason = "rustc-serialize is deprecated and no longer supported"
-    )]
+    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcEncodable($item:item) {
         /* compiler built-in */
