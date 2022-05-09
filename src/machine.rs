@@ -380,7 +380,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                 // Most of them are for weak symbols, which we all set to null (indicating that the
                 // symbol is not supported, and triggering fallback code which ends up calling a
                 // syscall that we do support).
-                for name in &["__cxa_thread_atexit_impl", "getrandom", "statx"] {
+                for name in &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"] {
                     let layout = this.machine.layouts.usize;
                     let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
                     this.write_scalar(Scalar::from_machine_usize(0, this), &place.into())?;
