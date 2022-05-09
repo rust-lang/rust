@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::resolve_path;
 use rustc_hir as hir;
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::{HirId, Target};
+use rustc_hir::HirId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -86,12 +86,13 @@ fn debugger_visualizers<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Vec<Debugger
     let mut debugger_visualizers = FxHashSet::default();
 
     // Collect debugger visualizers in this crate.
-    for id in tcx.hir().items() {
-        let target = Target::from_def_kind(tcx.def_kind(id.def_id));
-        if let Target::Mod = target {
-            check_for_debugger_visualizer(tcx, id.hir_id(), &mut debugger_visualizers);
-        }
-    }
+    tcx.hir().for_each_module(
+        |id| check_for_debugger_visualizer(
+            tcx,
+            tcx.hir().local_def_id_to_hir_id(id),
+            &mut debugger_visualizers
+        )
+    );
 
     // Collect debugger visualizers on the crate attributes.
     check_for_debugger_visualizer(tcx, CRATE_HIR_ID, &mut debugger_visualizers);
