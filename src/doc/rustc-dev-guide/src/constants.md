@@ -4,6 +4,14 @@ Constants used in the type system are represented as [`ty::Const`].
 The variants of their [`ty::ConstKind`] mostly mirror the variants of [`ty::TyKind`]
 with the two *additional* variants being `ConstKind::Value` and `ConstKind::Unevaluated`.
 
+## `WithOptConstParam` and dealing with the query system
+
+To typecheck constants used in the type system, we have to know their expected type.
+For const arguments in type dependent paths, e.g. `x.foo::<{ 3 + 4 }>()`, we don't know
+the expected type for `{ 3 + 4 }` until we are typechecking the containing function.
+
+As we may however have to evaluate that constant during this typecheck, we would get a cycle error.
+For more details, you can look at [this document](https://hackmd.io/@rust-const-generics/Bk5GHW-Iq).
 
 ## Unevaluated constants
 
