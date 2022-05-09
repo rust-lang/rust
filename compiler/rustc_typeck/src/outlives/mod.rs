@@ -119,6 +119,10 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                             // Generic consts don't impose any constraints.
                             None
                         }
+                        GenericArgKind::Constness(_) => {
+                            // Constness effect doesn't impose any constraints.
+                            None
+                        }
                     }
                 },
             ));

@@ -189,6 +189,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 GenericArgKind::Const(val) => {
                     self.add_constraints_from_const(current, val, variance_i)
                 }
+                // Does not contain anything with constraints
+                GenericArgKind::Constness(_) => {}
             }
         }
     }
@@ -354,6 +356,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 GenericArgKind::Const(val) => {
                     self.add_constraints_from_const(current, val, variance)
                 }
+                GenericArgKind::Constness(_) => {}
             }
         }
     }

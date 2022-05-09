@@ -284,7 +284,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
+                GenericParamDefKind::Constness
+                | GenericParamDefKind::Lifetime
+                | GenericParamDefKind::Const { .. } => {}
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
@@ -323,7 +325,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
+                GenericParamDefKind::Constness
+                | GenericParamDefKind::Lifetime
+                | GenericParamDefKind::Const { .. } => {}
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();

@@ -1281,7 +1281,7 @@ fn check_where_clauses<'tcx, 'fcx>(
         | GenericParamDefKind::Const { has_default } => {
             has_default && def.index >= generics.parent_count as u32
         }
-        GenericParamDefKind::Lifetime => unreachable!(),
+        GenericParamDefKind::Constness | GenericParamDefKind::Lifetime => unreachable!(),
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -1323,8 +1323,8 @@ fn check_where_clauses<'tcx, 'fcx>(
                     }
                 }
             }
-            // Doesn't have defaults.
-            GenericParamDefKind::Lifetime => {}
+            // Don't have defaults.
+            GenericParamDefKind::Constness | GenericParamDefKind::Lifetime => {}
         }
     }
 
@@ -1338,7 +1338,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     // First we build the defaulted substitution.
     let substs = InternalSubsts::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
-            GenericParamDefKind::Lifetime => {
+            GenericParamDefKind::Constness | GenericParamDefKind::Lifetime => {
                 // All regions are identity.
                 tcx.mk_param_from_def(param)
             }

@@ -155,6 +155,9 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     );
                 }
             }
+            ty::GenericParamDefKind::Constness => {
+                // TODO: users can't write these, do we have to do anything here?
+            }
         }
     }
 

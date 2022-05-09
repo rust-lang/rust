@@ -1433,6 +1433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
+                    GenericParamDefKind::Constness => self.fcx.var_for_def(self.span, param),
                 }
             }
         }
