@@ -1370,7 +1370,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span });
+            let trait_alias_span = bounds
+                .trait_bounds
+                .iter()
+                .map(|&(trait_ref, _, _)| trait_ref.def_id())
+                .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
+                .map(|trait_ref| tcx.def_span(trait_ref));
+            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
             return tcx.ty_error();
         }
 

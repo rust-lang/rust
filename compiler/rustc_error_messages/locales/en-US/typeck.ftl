@@ -45,6 +45,7 @@ typeck-copy-impl-on-non-adt =
 
 typeck-trait-object-declared-with-no-traits =
     at least one trait is required for an object type
+    .alias-span = this alias does not contain a trait
 
 typeck-ambiguous-lifetime-bound =
     ambiguous lifetime bound, explicit lifetime bound required
