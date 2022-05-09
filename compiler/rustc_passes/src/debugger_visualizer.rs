@@ -86,13 +86,13 @@ fn debugger_visualizers<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Vec<Debugger
     let mut debugger_visualizers = FxHashSet::default();
 
     // Collect debugger visualizers in this crate.
-    tcx.hir().for_each_module(
-        |id| check_for_debugger_visualizer(
+    tcx.hir().for_each_module(|id| {
+        check_for_debugger_visualizer(
             tcx,
             tcx.hir().local_def_id_to_hir_id(id),
-            &mut debugger_visualizers
+            &mut debugger_visualizers,
         )
-    );
+    });
 
     // Collect debugger visualizers on the crate attributes.
     check_for_debugger_visualizer(tcx, CRATE_HIR_ID, &mut debugger_visualizers);

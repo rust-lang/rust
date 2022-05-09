@@ -1847,17 +1847,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
         let item_visibility = tcx.visibility(id.def_id);
         let def_kind = tcx.def_kind(id.def_id);
 
-        if matches!(
-            def_kind,
-            DefKind::ExternCrate
-                | DefKind::Mod
-                | DefKind::Use
-                | DefKind::Macro(_)
-                | DefKind::GlobalAsm
-        ) {
-            return;
-        }
-
         match def_kind {
             DefKind::Const | DefKind::Static(_) | DefKind::Fn | DefKind::TyAlias => {
                 self.check(id.def_id, item_visibility).generics().predicates().ty();
