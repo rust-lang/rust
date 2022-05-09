@@ -158,18 +158,4 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         let mut inner_visitor = self.new_visitor(self.hir_map);
         inner_visitor.check(i.def_id, |this| intravisit::walk_impl_item(this, i));
     }
-
-    fn visit_foreign_item_ref(&mut self, _: &'hir hir::ForeignItemRef) {
-        // Explicitly do nothing here. ForeignItemRefs contain hir::Visibility
-        // values that actually belong to an ForeignItem instead of the ItemKind::ForeignMod
-        // we are currently in. So for those it's correct that they have a
-        // different owner.
-    }
-
-    fn visit_impl_item_ref(&mut self, _: &'hir hir::ImplItemRef) {
-        // Explicitly do nothing here. ImplItemRefs contain hir::Visibility
-        // values that actually belong to an ImplItem instead of the ItemKind::Impl
-        // we are currently in. So for those it's correct that they have a
-        // different owner.
-    }
 }
