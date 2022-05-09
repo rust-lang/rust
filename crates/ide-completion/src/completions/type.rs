@@ -165,15 +165,17 @@ pub(crate) fn complete_type_path(acc: &mut Completions, ctx: &CompletionContext)
             if let Some(ImmediateLocation::GenericArgList(arg_list)) = &ctx.completion_location {
                 if let Some(path_seg) = arg_list.syntax().parent().and_then(ast::PathSegment::cast)
                 {
-                    if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(trait_))) =
-                        ctx.sema.resolve_path(&path_seg.parent_path())
-                    {
-                        trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
-                            if let hir::AssocItem::TypeAlias(alias) = it {
-                                cov_mark::hit!(complete_assoc_type_in_generics_list);
-                                acc.add_type_alias_with_eq(ctx, alias)
-                            }
-                        });
+                    if path_seg.syntax().ancestors().find_map(ast::TypeBound::cast).is_some() {
+                        if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(trait_))) =
+                            ctx.sema.resolve_path(&path_seg.parent_path())
+                        {
+                            trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
+                                if let hir::AssocItem::TypeAlias(alias) = it {
+                                    cov_mark::hit!(complete_assoc_type_in_generics_list);
+                                    acc.add_type_alias_with_eq(ctx, alias)
+                                }
+                            });
+                        }
                     }
                 }
             }
