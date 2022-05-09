@@ -1784,12 +1784,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(method);
         assert_eq!(substs.len(), generics.parent_count as usize);
 
-        // Erase any late-bound regions from the method and substitute
-        // in the values from the substitution.
-        let xform_fn_sig = self.erase_late_bound_regions(fn_sig);
-
-        if generics.params.is_empty() {
-            xform_fn_sig.subst(self.tcx, substs)
+        let xform_fn_sig = if generics.params.is_empty() {
+            fn_sig.subst(self.tcx, substs)
         } else {
             let substs = InternalSubsts::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
@@ -1807,8 +1803,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
             });
-            xform_fn_sig.subst(self.tcx, substs)
-        }
+            fn_sig.subst(self.tcx, substs)
+        };
+
+        self.erase_late_bound_regions(xform_fn_sig)
     }
 
     /// Gets the type of an impl and generate substitutions with placeholders.
