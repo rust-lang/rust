@@ -386,9 +386,8 @@ impl NameRefClass {
                     let containing_path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
                     let resolved = sema.resolve_path(&containing_path)?;
                     if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
-                        // FIXME: resolve in supertraits
                         if let Some(ty) = tr
-                            .items(sema.db)
+                            .items_with_supertraits(sema.db)
                             .iter()
                             .filter_map(|&assoc| match assoc {
                                 hir::AssocItem::TypeAlias(it) => Some(it),

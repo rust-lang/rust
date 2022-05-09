@@ -1013,6 +1013,22 @@ fn f() -> impl Iterator<Item$0 = u8> {}
     }
 
     #[test]
+    fn goto_def_for_super_assoc_ty_in_path() {
+        check(
+            r#"
+trait Super {
+    type Item;
+       //^^^^
+}
+
+trait Sub: Super {}
+
+fn f() -> impl Sub<Item$0 = u8> {}
+"#,
+        );
+    }
+
+    #[test]
     fn unknown_assoc_ty() {
         check_unresolved(
             r#"

@@ -54,7 +54,7 @@ use hir_def::{
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
-    autoderef,
+    all_super_traits, autoderef,
     consteval::{unknown_const_as_generic, ComputedExpr, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
@@ -1674,6 +1674,11 @@ impl Trait {
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
+    }
+
+    pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
+        let traits = all_super_traits(db.upcast(), self.into());
+        traits.iter().flat_map(|tr| Trait::from(*tr).items(db)).collect()
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
