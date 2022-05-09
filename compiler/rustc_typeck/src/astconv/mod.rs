@@ -567,6 +567,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             }
                         }
                     }
+                    GenericParamDefKind::Constness => {
+                        match self.astconv.item_def_id() {
+                            // no information available
+                            // TODO: fall back to `Not`?
+                            None => ty::ConstnessArg::Param,
+                            Some(context) => {
+                                if tcx.hir().body_const_context(context.expect_local()).is_some() {
+                                    ty::ConstnessArg::Required
+                                } else {
+                                    ty::ConstnessArg::Not
+                                }
+                            }
+                        }
+                        .into()
+                    }
                 }
             }
         }
