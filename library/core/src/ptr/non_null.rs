@@ -9,7 +9,7 @@ use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 
-/// `*mut T` but non-zero and covariant.
+/// `*mut T` but non-zero and [covariant].
 ///
 /// This is often the correct thing to use when building data structures using
 /// raw pointers, but is ultimately more dangerous to use because of its additional
@@ -42,6 +42,7 @@ use crate::slice::{self, SliceIndex};
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
+/// [covariant]: https://doc.rust-lang.org/reference/subtyping.html
 /// [`PhantomData`]: crate::marker::PhantomData
 /// [`UnsafeCell<T>`]: crate::cell::UnsafeCell
 #[stable(feature = "nonnull", since = "1.25.0")]
