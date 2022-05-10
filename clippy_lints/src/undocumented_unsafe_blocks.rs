@@ -219,7 +219,7 @@ fn comment_start_before_impl_in_mod(
             if idx == 0 {
                 // mod A { /* comment */ unsafe impl T {} ... }
                 // ^------------------------------------------^ returns the start of this span
-                //       ^---------------^ finally checks comments in this range
+                // ^---------------------^ finally checks comments in this range
                 if let Some(sp) = walk_span_to_context(parent_mod_span, SyntaxContext::root()) {
                     return Some(sp.lo());
                 }
