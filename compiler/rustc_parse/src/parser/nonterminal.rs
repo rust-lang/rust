@@ -101,15 +101,14 @@ impl<'a> Parser<'a> {
     /// site.
     #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
-        // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
-        // needs to have them force-captured here.
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
-        // we always capture tokens for any `Nonterminal` which needs them.
+        // we always capture tokens for all non-trivial `Nonterminal`s.
         let mut nt = match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => return Ok(NtOrTt::Tt(self.parse_token_tree())),
+            NonterminalKind::Expr => return Ok(NtOrTt::Expr(self.parse_expr_force_collect()?)),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
@@ -140,7 +139,6 @@ impl<'a> Parser<'a> {
                 })?)
             }
 
-            NonterminalKind::Expr => token::NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
                 token::NtLiteral(

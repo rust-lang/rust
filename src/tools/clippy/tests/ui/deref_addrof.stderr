@@ -52,23 +52,12 @@ error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:47:9
    |
 LL |         *& $visitor
-   |         ^^^^^^^^^^^ help: try this: `$visitor`
+   |         ^^ help: try this
 ...
 LL |         m!(self)
    |         -------- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:54:9
-   |
-LL |         *& mut $visitor
-   |         ^^^^^^^^^^^^^^^ help: try this: `$visitor`
-...
-LL |         m_mut!(self)
-   |         ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `m_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 

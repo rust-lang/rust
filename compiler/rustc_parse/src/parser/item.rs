@@ -1075,6 +1075,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Unsafe)
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
+                // njn: likely that an invisible delim could mess this up
                 2 + self.look_ahead(2, |t| t.can_begin_literal_maybe_minus() as usize),
                 |t| t.kind == token::OpenDelim(Delimiter::Brace),
             )
@@ -1991,6 +1992,8 @@ impl<'a> Parser<'a> {
                         && !self.is_unsafe_foreign_mod())
                 })
             // `extern ABI fn`
+            // njn: invisible delim messes this up:
+            // src/test/ui/parser/extern-abi-from-mac-literal-frag.rs
             || self.check_keyword(kw::Extern)
                 && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
                 && self.look_ahead(2, |t| t.is_keyword(kw::Fn))

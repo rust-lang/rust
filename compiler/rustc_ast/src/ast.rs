@@ -1629,7 +1629,7 @@ impl MacDelimiter {
             Delimiter::Parenthesis => Some(MacDelimiter::Parenthesis),
             Delimiter::Bracket => Some(MacDelimiter::Bracket),
             Delimiter::Brace => Some(MacDelimiter::Brace),
-            Delimiter::Invisible => None,
+            Delimiter::Invisible(_) => None,
         }
     }
 }

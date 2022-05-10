@@ -16,7 +16,7 @@ error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:19:9
    |
 LL |         &mut $p
-   |         ^^^^^^^
+   |         ^
 ...
 LL |     let mut z = mut_ptr!(&mut 3u32);
    |                 ------------------- in this macro invocation

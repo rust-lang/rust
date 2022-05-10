@@ -66,3 +66,5 @@ impl S {
         m_mut!(self)
     }
 }
+
+// njn: one span got worse, and one error disappeared

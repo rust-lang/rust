@@ -806,7 +806,6 @@ impl<'a> Parser<'a> {
                 t.is_path_start() // e.g. `MY_CONST`;
                 || t.kind == token::Dot // e.g. `.5` for recovery;
                 || t.can_begin_literal_maybe_minus() // e.g. `42`.
-                || t.is_whole_expr()
             })
     }
 

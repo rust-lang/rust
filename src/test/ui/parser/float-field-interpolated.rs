@@ -7,8 +7,8 @@ macro_rules! generate_field_accesses {
         s.$a; // OK
         { s.$b; } //~ ERROR unexpected token: `1.1`
                   //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
-        { s.$c; } //~ ERROR unexpected token: `1.1`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1.1`
+        { s.$c; } //~ ERROR unexpected token: `/*start of expr expansion*/`
+                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `/*start of expr expansion*/`
     };
 }
 

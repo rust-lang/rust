@@ -21,10 +21,10 @@ LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
    |                   +                             +++++++++++++++++++++
 
 error[E0605]: non-primitive cast: `{integer}` as `()`
-  --> $DIR/issue-26480.rs:22:19
+  --> $DIR/issue-26480.rs:22:25
    |
 LL |     ($x:expr) => ($x as ())
-   |                   ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |                         ^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 ...
 LL |     cast!(2);
    |     -------- in this macro invocation

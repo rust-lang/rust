@@ -75,6 +75,8 @@ pub(crate) use ParseResult::*;
 
 use crate::mbe::{KleeneOp, TokenTree};
 
+use rustc_ast as ast;
+use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{NtOrTt, Parser};
@@ -346,7 +348,10 @@ pub(crate) enum NamedMatch {
     // A metavar match of type `tt`.
     MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
 
-    // A metavar match of any type other than `tt`.
+    // A metavar match of type `expr`.
+    MatchedExpr(P<ast::Expr>),
+
+    // A metavar match of any type other than those above.
     MatchedNonterminal(Lrc<Nonterminal>),
 }
 
@@ -626,6 +631,7 @@ impl TtParser {
                         let m = match nt {
                             NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
                             NtOrTt::Tt(tt) => MatchedTokenTree(tt),
+                            NtOrTt::Expr(e) => MatchedExpr(e),
                         };
                         mp.push_match(next_metavar, seq_depth, m);
                         mp.idx += 1;

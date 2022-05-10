@@ -233,7 +233,7 @@ impl HasTokens for Nonterminal {
         match self {
             Nonterminal::NtItem(item) => item.tokens(),
             Nonterminal::NtStmt(stmt) => stmt.tokens(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
+            Nonterminal::NtLiteral(expr) => expr.tokens(),
             Nonterminal::NtPat(pat) => pat.tokens(),
             Nonterminal::NtTy(ty) => ty.tokens(),
             Nonterminal::NtMeta(attr_item) => attr_item.tokens(),
@@ -247,7 +247,7 @@ impl HasTokens for Nonterminal {
         match self {
             Nonterminal::NtItem(item) => item.tokens_mut(),
             Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
+            Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
             Nonterminal::NtPat(pat) => pat.tokens_mut(),
             Nonterminal::NtTy(ty) => ty.tokens_mut(),
             Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),

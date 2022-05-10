@@ -1,7 +1,7 @@
 macro_rules! bah {
     ($a:expr) => {
         $a
-    }; //~^ ERROR macro expansion ignores token `2` and any following
+    }; //~^ ERROR macro expansion ignores token `/*start of expr expansion*/` and any following
 }
 
 trait Bar {

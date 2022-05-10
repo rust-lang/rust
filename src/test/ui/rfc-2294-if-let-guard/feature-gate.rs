@@ -1,4 +1,4 @@
-// gate-test-if_let_guard
+// gate-test-if_let_guard // njn: two errors were duplicated
 
 use std::ops::Range;
 
@@ -58,8 +58,10 @@ fn _macros() {
     }
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are unstable
+    //~| ERROR `let` expressions in this position are unstable
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are unstable
+    //~| ERROR `let` expressions in this position are unstable
     match () {
         #[cfg(FALSE)]
         () if let 0 = 1 => {}

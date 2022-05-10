@@ -7,5 +7,5 @@ fn main() {
 }
 
 #[deprecated(note = test)]
-//~^ ERROR expected unsuffixed literal or identifier, found `test`
+//~^ ERROR unexpected token: `test`
 fn foo() {}

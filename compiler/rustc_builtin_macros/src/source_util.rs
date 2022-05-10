@@ -74,7 +74,7 @@ pub fn expand_stringify(
     // `stringify!` is nearly always called on `macro_rules` meta-variables and the intent is to
     // stringify the underlying tokens without meta-variable's own invisible delimiters, so we
     // are stripping such delimiters here (possibly multiple layers of them).
-    while let [TokenTree::Delimited(_, Delimiter::Invisible, inner_tts)] =
+    while let [TokenTree::Delimited(_, Delimiter::Invisible(_), inner_tts)] =
         &mut tts.clone().into_trees().collect::<Vec<_>>()[..]
     {
         tts = inner_tts.clone();

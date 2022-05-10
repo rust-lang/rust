@@ -8,7 +8,7 @@ use super::{
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleSource, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
@@ -34,7 +34,7 @@ macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
             match &**nt {
-                token::NtExpr(e) | token::NtLiteral(e) => {
+                token::NtLiteral(e) => {
                     let e = e.clone();
                     $p.bump();
                     return Ok(e);
@@ -652,7 +652,7 @@ impl<'a> Parser<'a> {
             // can't continue an expression after an ident
             token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
             token::Literal(..) | token::Pound => true,
-            _ => t.is_whole_expr(),
+            _ => false,
         };
         self.token.is_ident_named(sym::not) && self.look_ahead(1, token_cannot_continue_expr)
     }
@@ -951,9 +951,9 @@ impl<'a> Parser<'a> {
     fn parse_dot_or_call_expr(&mut self, attrs: Option<AttrWrapper>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
-            let base = this.parse_bottom_expr();
-            let (span, base) = this.interpolated_or_expr_span(base)?;
-            this.parse_dot_or_call_expr_with(base, span, attrs)
+            let lo = this.token.span;
+            let base = this.parse_bottom_expr()?;
+            this.parse_dot_or_call_expr_with(base, lo, attrs)
         })
     }
 
@@ -1305,6 +1305,8 @@ impl<'a> Parser<'a> {
             self.parse_lit_expr(attrs)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             self.parse_tuple_parens_expr(attrs)
+        } else if self.check(&token::OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv))) {
+            self.parse_invisibles_expr()
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
             self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
         } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
@@ -1444,6 +1446,13 @@ impl<'a> Parser<'a> {
             ExprKind::Tup(es)
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    pub fn parse_invisibles_expr(&mut self) -> PResult<'a, P<Expr>> {
+        self.expect(&token::OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv)))?;
+        let expr = self.parse_expr()?;
+        self.expect(&token::CloseDelim(Delimiter::Invisible(InvisibleSource::ExprMv)))?;
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
@@ -1711,11 +1720,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
+    pub(super) fn parse_lit(&mut self, lo: Span) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
             if let token::Interpolated(inner) = &self.token.kind {
                 let expr = match inner.as_ref() {
-                    token::NtExpr(expr) => Some(expr),
                     token::NtLiteral(expr) => Some(expr),
                     _ => None,
                 };
@@ -1730,13 +1738,21 @@ impl<'a> Parser<'a> {
                 }
             }
             let msg = format!("unexpected token: {}", super::token_descr(&self.token));
-            self.struct_span_err(self.token.span, &msg)
+            self.struct_span_err(lo.to(self.token.span), &msg)
         })
     }
 
     /// Matches `lit = true | false | token_lit`.
     /// Returns `None` if the next token is not a literal.
     pub(super) fn parse_opt_lit(&mut self) -> Option<Lit> {
+        let span = self.token.span;
+        let mut num_invisibles = 0;
+        while let token::OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv)) = self.token.kind
+        {
+            num_invisibles += 1;
+            self.bump();
+        }
+
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`. We don't currently have any syntax where
@@ -1760,9 +1776,15 @@ impl<'a> Parser<'a> {
         }
 
         let token = recovered.as_ref().unwrap_or(&self.token);
-        match Lit::from_token(token) {
+        let mut lit = match Lit::from_token(token) {
             Ok(lit) => {
                 self.bump();
+                for _ in 0..num_invisibles {
+                    // njn: unwrap!
+                    self.expect(&token::CloseDelim(Delimiter::Invisible(InvisibleSource::ExprMv)))
+                        .unwrap();
+                }
+
                 Some(lit)
             }
             Err(LitError::NotLiteral) => None,
@@ -1780,7 +1802,13 @@ impl<'a> Parser<'a> {
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
                 Some(Lit::from_lit_token(lit, span).unwrap_or_else(|_| unreachable!()))
             }
+        };
+
+        if num_invisibles > 0 && let Some(lit) = &mut lit {
+            lit.span = span.to(self.token.span);
         }
+
+        lit
     }
 
     fn error_float_lits_must_have_int_part(&self, token: &Token) {
@@ -1929,9 +1957,15 @@ impl<'a> Parser<'a> {
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
+        if self.check(&token::OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv))) {
+            // There are checks later that will fail if this expr is not a
+            // literal.
+            return self.parse_invisibles_expr();
+        }
+
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
-        let lit = self.parse_lit()?;
+        let lit = self.parse_lit(self.token.span)?;
         let expr = self.mk_expr(lit.span, ExprKind::Lit(lit), AttrVec::new());
 
         if minus_present {

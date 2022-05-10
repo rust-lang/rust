@@ -57,3 +57,5 @@ fn issue6922() {
     // do not lint from an external macro
     mut_mut!();
 }
+
+// njn: one span got worse here

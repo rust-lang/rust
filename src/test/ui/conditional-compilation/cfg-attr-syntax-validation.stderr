@@ -52,7 +52,7 @@ error[E0565]: literal in `cfg` predicate value must be a string
 LL | #[cfg(a = b"hi")]
    |           ^^^^^ help: consider removing the prefix: `"hi"`
 
-error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
+error: unexpected token: `concat`
   --> $DIR/cfg-attr-syntax-validation.rs:30:25
    |
 LL |         #[cfg(feature = $expr)]
@@ -63,7 +63,7 @@ LL | generate_s10!(concat!("nonexistent"));
    |
    = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
+error: unexpected token: `concat`
   --> $DIR/cfg-attr-syntax-validation.rs:30:25
    |
 LL |         #[cfg(feature = $expr)]

@@ -41,8 +41,7 @@ pub enum BinOpToken {
 /// structure should implement some additional traits.
 /// The `None` variant is also renamed to `Invisible` to be
 /// less confusing and better convey the semantics.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(Encodable, Decodable, Hash, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum Delimiter {
     /// `( ... )`
     Parenthesis,
@@ -56,7 +55,36 @@ pub enum Delimiter {
     /// `$var * 3` where `$var` is `1 + 2`.
     /// Invisible delimiters are not directly writable in normal Rust code except as comments.
     /// Therefore, they might not survive a roundtrip of a token stream through a string.
-    Invisible,
+    Invisible(InvisibleSource),
+}
+
+// We are in the process of migrating interpolated nonterminals to
+// invisible-delimited token sequences. This enum will grow as `Nonterminal`
+// shrinks.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
+pub enum InvisibleSource {
+    // From the expansion of a `expr` metavar in a declarative macro.
+    ExprMv,
+    // Converted from `proc_macro::Delimiter`, i.e. returned by a proc macro.
+    ProcMacro,
+    // Converted from `TokenKind::Interpolated` in `flatten_token`. Treated
+    // similarly to `ProcMacro`.
+    FlattenToken,
+}
+
+impl Delimiter {
+    // Should the parser skip these delimeters? Only happens for certain kinds
+    // of invisible delimiters. Eventually the answer should be `false` for all
+    // kinds, whereupon this function can be removed.
+    pub fn skip(&self) -> bool {
+        match self {
+            Delimiter::Invisible(src) => match src {
+                InvisibleSource::FlattenToken | InvisibleSource::ProcMacro => true,
+                InvisibleSource::ExprMv => false,
+            },
+            Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -246,7 +274,9 @@ pub enum TokenKind {
     /// - It requires special handling in a bunch of places in the parser.
     /// - It prevents `Token` from implementing `Copy`.
     /// It adds complexity and likely slows things down. Please don't add new
-    /// occurrences of this token kind!
+    /// occurrences of this token kind! See `InvisibleSource` for details on
+    /// how it will be removed, and #96764 for potential speed benefits of
+    /// making `Token` implement `Copy`.
     Interpolated(Lrc<Nonterminal>),
 
     /// A doc comment token.
@@ -377,7 +407,7 @@ impl Token {
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            OpenDelim(..)                     | // tuple, array or block
+            OpenDelim(..)                     | // tuple, array, block, or macro output
             Literal(..)                       | // literal
             Not                               | // operator not
             BinOp(Minus)                      | // unary minus
@@ -392,7 +422,6 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
-                NtExpr(..)    |
                 NtBlock(..)   |
                 NtPath(..)),
             _ => false,
@@ -422,8 +451,8 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a const param.
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
-            OpenDelim(Delimiter::Brace) => true,
-            Interpolated(ref nt) => matches!(**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
+            OpenDelim(Delimiter::Brace | Delimiter::Invisible(InvisibleSource::ExprMv)) => true,
+            Interpolated(ref nt) => matches!(**nt, NtBlock(..) | NtLiteral(..)),
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -448,21 +477,25 @@ impl Token {
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
     /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    // njn: ugh to that comment
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
-                        matches!(&e.kind, ast::ExprKind::Lit(_))
-                    }
-                    _ => false,
-                },
-                _ => false,
-            },
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv)) => true,
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(_)),
+            _ => false,
+        }
+    }
+
+    // Can this token be a valid start of `parse_unsuffixed_literal`?
+    pub fn can_begin_unsuffixed_literal(&self) -> bool {
+        match self.uninterpolate().kind {
+            Literal(..) => true,
+            Ident(name, false) if name.is_bool_lit() => true,
+            OpenDelim(Delimiter::Invisible(InvisibleSource::ExprMv)) => true,
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(_)),
+            Dot => true, // not valid, but accepted for recovery
             _ => false,
         }
     }
@@ -533,19 +566,6 @@ impl Token {
         if let Interpolated(ref nt) = self.kind && let NtPath(..) = **nt {
             return true;
         }
-        false
-    }
-
-    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
-    /// That is, is this a pre-parsed expression dropped into the token stream
-    /// (which happens while parsing the result of macro expansion)?
-    pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
-        {
-            return true;
-        }
-
         false
     }
 
@@ -690,6 +710,9 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
+// We are in the process of migrating interpolated nonterminals to
+// invisible-delimited token sequences (e.g. #96724). This enum will shrink as
+// `InvisibleSource` grows.
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
@@ -697,7 +720,6 @@ pub enum Nonterminal {
     NtBlock(P<ast::Block>),
     NtStmt(P<ast::Stmt>),
     NtPat(P<ast::Pat>),
-    NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
@@ -797,7 +819,7 @@ impl Nonterminal {
             NtBlock(block) => block.span,
             NtStmt(stmt) => stmt.span,
             NtPat(pat) => pat.span,
-            NtExpr(expr) | NtLiteral(expr) => expr.span,
+            NtLiteral(expr) => expr.span,
             NtTy(ty) => ty.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
             NtMeta(attr_item) => attr_item.span(),
@@ -830,7 +852,6 @@ impl fmt::Debug for Nonterminal {
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtStmt(..) => f.pad("NtStmt(..)"),
             NtPat(..) => f.pad("NtPat(..)"),
-            NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),

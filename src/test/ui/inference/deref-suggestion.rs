@@ -1,4 +1,4 @@
-macro_rules! borrow {
+macro_rules! borrow { // njn: error message span got worse
     ($x:expr) => { &$x } //~ ERROR mismatched types
 }
 

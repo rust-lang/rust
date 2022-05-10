@@ -337,6 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+        //eprintln!("AA0 {:?}", call_expr);
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, subst) => {
                 let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, subst);
@@ -443,6 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
+                    //eprintln!("AAA {:?}", call_expr);
                     err.span_label(call_expr.span, "call expression requires function");
                 }
 

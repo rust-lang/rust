@@ -21,11 +21,11 @@ LL |     ...=.
    |
    = note: inclusive ranges end with a single equals sign (`..=`)
 
-error: expected one of `-`, `;`, `}`, or path, found `.`
+error: expected one of `-`, `/*start of expr expansion*/`, `;`, `}`, or path, found `.`
   --> $DIR/issue-90993.rs:2:9
    |
 LL |     ...=.
-   |         ^ expected one of `-`, `;`, `}`, or path
+   |         ^ expected one of `-`, `/*start of expr expansion*/`, `;`, `}`, or path
 
 error: aborting due to 3 previous errors
 

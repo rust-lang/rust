@@ -44,14 +44,14 @@ fn main() {
 #[rustfmt::skip]
 macro_rules! m {
     ($visitor: expr) => {
-        $visitor
+         $visitor
     };
 }
 
 #[rustfmt::skip]
 macro_rules! m_mut {
     ($visitor: expr) => {
-        $visitor
+        *& mut $visitor
     };
 }
 
@@ -66,3 +66,5 @@ impl S {
         m_mut!(self)
     }
 }
+
+// njn: one span got worse, and one error disappeared

@@ -215,6 +215,10 @@ impl Lit {
     /// Converts arbitrary token into an AST literal.
     ///
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    // njn: need to do something here? It's hard to keep in sync with
+    // can_begin_literal_or_bool when a literal can span 3 tokens: `«`, `lit`, `»`
+    // petrochenkov: Some use sites of Lit::from_token may need an adjustment,
+    // it's better to keep this function for 1-to-1 correspondence.
     pub fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {
@@ -222,12 +226,15 @@ impl Lit {
             }
             token::Literal(lit) => lit,
             token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
-                    && let ast::ExprKind::Lit(lit) = &expr.kind
-                {
-                    return Ok(lit.clone());
-                }
-                return Err(LitError::NotLiteral);
+                return if let token::NtLiteral(expr) = &**nt {
+                    if let ast::ExprKind::Lit(lit) = &expr.kind {
+                        Ok(lit.clone())
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    Err(LitError::NotLiteral)
+                };
             }
             _ => return Err(LitError::NotLiteral),
         };

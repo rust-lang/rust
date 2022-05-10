@@ -11,4 +11,4 @@
 
 fn f() { |[](* }
 //~^ ERROR expected one of `,` or `:`, found `(`
-//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
+//~| ERROR expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `/*start of expr expansion*/`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`

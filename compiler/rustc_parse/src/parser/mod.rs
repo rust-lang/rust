@@ -262,9 +262,9 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next(&mut self, desugar_doc_comments: bool) -> (Token, Spacing) {
         loop {
-            // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
-            // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
-            // removed.
+            // FIXME: we currently don't return invisible delimeters. To fix #67062 we will need
+            // to, whereupon the conditions can be removed in this function, as well as in
+            // `Parser::bump` and `Parser::look_ahead`.
             if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing_ref() {
                 match tree {
                     &TokenTree::Token(ref token) => match (desugar_doc_comments, token) {
@@ -277,14 +277,14 @@ impl TokenCursor {
                         // Set `open_delim` to true here because we deal with it immediately.
                         let frame = TokenCursorFrame::new(Some((delim, sp)), tts.clone());
                         self.stack.push(mem::replace(&mut self.frame, frame));
-                        if delim != Delimiter::Invisible {
+                        if !delim.skip() {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
                         // No open delimeter to return; continue on to the next iteration.
                     }
                 };
             } else if let Some(frame) = self.stack.pop() {
-                if let Some((delim, span)) = self.frame.delim_sp && delim != Delimiter::Invisible {
+                if let Some((delim, span)) = self.frame.delim_sp && !delim.skip() {
                     self.frame = frame;
                     return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
                 }
@@ -1004,7 +1004,8 @@ impl<'a> Parser<'a> {
         }
         debug_assert!(!matches!(
             next.0.kind,
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+            token::OpenDelim(delim)
+                | token::CloseDelim(delim) if delim.skip()
         ));
         self.inlined_bump_with(next)
     }
@@ -1017,12 +1018,12 @@ impl<'a> Parser<'a> {
         }
 
         let frame = &self.token_cursor.frame;
-        if let Some((delim, span)) = frame.delim_sp && delim != Delimiter::Invisible {
-            let all_normal = (0..dist).all(|i| {
+        if let Some((delim, span)) = frame.delim_sp && !delim.skip() {
+            let any_skip = (0..dist).any(|i| {
                 let token = frame.tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
+                matches!(token, Some(TokenTree::Delimited(_, delim, _)) if delim.skip())
             });
-            if all_normal {
+            if !any_skip {
                 return match frame.tree_cursor.look_ahead(dist - 1) {
                     Some(tree) => match tree {
                         TokenTree::Token(token) => looker(token),
@@ -1042,7 +1043,7 @@ impl<'a> Parser<'a> {
             token = cursor.next(/* desugar_doc_comments */ false).0;
             if matches!(
                 token.kind,
-                token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible)
+                token::OpenDelim(delim) | token::CloseDelim(delim) if delim.skip()
             ) {
                 continue;
             }
@@ -1447,8 +1448,10 @@ pub enum FlatToken {
     Empty,
 }
 
+// njn: rename
 #[derive(Debug)]
 pub enum NtOrTt {
     Nt(Nonterminal),
     Tt(TokenTree),
+    Expr(P<Expr>),
 }

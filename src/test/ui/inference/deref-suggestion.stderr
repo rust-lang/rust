@@ -73,7 +73,7 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:2:20
    |
 LL |     ($x:expr) => { &$x }
-   |                    ^^^ expected `u32`, found `&{integer}`
+   |                    ^ expected `u32`, found `&{integer}`
 ...
 LL |     foo3(borrow!(0));
    |     ---- ---------- in this macro invocation
