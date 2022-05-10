@@ -1,6 +1,6 @@
 /* General structure and fonts */
 
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: white;
 	color: black;
 }
@@ -403,6 +403,10 @@ kbd {
 #settings-menu:hover, #settings-menu:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #717171;
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #DDDDDD;
 }
 
 #copy-path {

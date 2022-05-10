@@ -1,4 +1,4 @@
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: #353535;
 	color: #ddd;
 }
@@ -418,6 +418,10 @@ kbd {
 #settings-menu:hover, #settings-menu:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #ffb900;
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #d2d2d2;
 }
 
 #copy-path {

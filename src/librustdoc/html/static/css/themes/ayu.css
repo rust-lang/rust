@@ -5,7 +5,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 
 /* General structure and fonts */
 
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: #0f1419;
 	color: #c5c5c5;
 }
@@ -539,6 +539,10 @@ kbd {
 
 #theme-picker > img, #settings-menu > img {
 	filter: invert(100);
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #5c6773;
 }
 
 #copy-path {

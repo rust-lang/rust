@@ -1404,6 +1404,15 @@ pre.rust {
 	border-radius: 2px;
 	cursor: pointer;
 }
+#settings-menu {
+	padding: 0;
+}
+#settings-menu > a {
+	padding: 5px;
+	width: 100%;
+	height: 100%;
+	display: block;
+}
 
 @keyframes rotating {
 	from {
@@ -1415,6 +1424,30 @@ pre.rust {
 }
 #settings-menu.rotate img {
 	animation: rotating 2s linear infinite;
+}
+#settings-menu #settings {
+	position: absolute;
+	right: 0;
+	z-index: 1;
+	display: block;
+	margin-top: 7px;
+	border-radius: 3px;
+	border: 1px solid;
+}
+#settings-menu #settings .setting-line {
+	margin: 0.6em;
+}
+/* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
+#settings-menu #settings::before {
+	content: '';
+	position: absolute;
+	right: 11px;
+	border: solid;
+	border-width: 1px 1px 0 0;
+	display: inline-block;
+	padding: 4px;
+	transform: rotate(-45deg);
+	top: -5px;
 }
 
 #help-button {
