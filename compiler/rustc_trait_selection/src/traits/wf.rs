@@ -301,14 +301,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let extend = |traits::PredicateObligation { predicate, mut cause, .. }| {
             if let Some(parent_trait_pred) = predicate.to_opt_poly_trait_pred() {
-                cause.map_code(|parent_code| {
-                    {
-                        traits::ObligationCauseCode::DerivedObligation(
-                            traits::DerivedObligationCause { parent_trait_pred, parent_code },
-                        )
-                    }
-                    .into()
-                });
+                cause = cause.derived_cause(
+                    parent_trait_pred,
+                    traits::ObligationCauseCode::DerivedObligation,
+                );
             }
             extend_cause_with_original_assoc_item_obligation(
                 tcx, trait_ref, item, &mut cause, predicate,

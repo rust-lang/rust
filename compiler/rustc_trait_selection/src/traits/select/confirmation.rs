@@ -17,7 +17,6 @@ use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
-use crate::traits::select::TraitObligationExt;
 use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
 use crate::traits::{
     BuiltinDerivedObligation, DerivedObligationCause, ImplDerivedObligation,
