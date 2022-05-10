@@ -94,7 +94,7 @@ crate struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<Symbol>,
-    parent_stack: Vec<DefId>,
+    parent_def_id: Option<DefId>,
     parent_is_trait_impl: bool,
     stripped_mod: bool,
 
@@ -272,17 +272,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.cache.parent_stack.last().expect("parent_stack is empty")),
+                        Some(self.cache.parent_def_id.expect("parent_def_id is empty")),
                         Some(&self.cache.stack[..self.cache.stack.len() - 1]),
                     ),
                     false,
                 ),
                 clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
-                    if self.cache.parent_stack.is_empty() {
+                    if self.cache.parent_def_id.is_none() {
                         ((None, None), false)
                     } else {
-                        let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
-                        let did = *last;
+                        let did = self.cache.parent_def_id.expect("parent_def_id is empty 2");
                         let path = match self.cache.paths.get(&did) {
                             // The current stack not necessarily has correlation
                             // for where the type was defined. On the other
@@ -298,7 +297,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             Some(..) => Some(&*self.cache.stack),
                             None => None,
                         };
-                        ((Some(*last), path), true)
+                        ((Some(did), path), true)
                     }
                 }
                 _ => ((None, Some(&*self.cache.stack)), false),
@@ -407,44 +406,33 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
 
         // Maintain the parent stack
         let orig_parent_is_trait_impl = self.cache.parent_is_trait_impl;
-        let parent_pushed = match *item.kind {
+        let orig_parent_def_id = match *item.kind {
             clean::TraitItem(..)
             | clean::EnumItem(..)
             | clean::ForeignTypeItem
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.item_id.expect_def_id());
                 self.cache.parent_is_trait_impl = false;
-                true
+                self.cache.parent_def_id.replace(item.item_id.expect_def_id())
             }
             clean::ImplItem(ref i) => {
                 self.cache.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
                     clean::Type::Path { ref path } => {
-                        self.cache.parent_stack.push(path.def_id());
-                        true
+                        self.cache.parent_def_id.replace(path.def_id())
                     }
                     clean::DynTrait(ref bounds, _)
                     | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
-                        self.cache.parent_stack.push(bounds[0].trait_.def_id());
-                        true
+                        self.cache.parent_def_id.replace(bounds[0].trait_.def_id())
                     }
-                    ref t => {
-                        let prim_did = t
-                            .primitive_type()
-                            .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
-                        match prim_did {
-                            Some(did) => {
-                                self.cache.parent_stack.push(did);
-                                true
-                            }
-                            None => false,
-                        }
-                    }
+                    ref t => t
+                        .primitive_type()
+                        .and_then(|t| self.cache.primitive_locations.get(&t).cloned())
+                        .and_then(|did| self.cache.parent_def_id.replace(did)),
                 }
             }
-            _ => false,
+            _ => None,
         };
 
         // Once we've recursively found all the generics, hoard off all the
@@ -505,8 +493,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if pushed {
             self.cache.stack.pop().expect("stack already empty");
         }
-        if parent_pushed {
-            self.cache.parent_stack.pop().expect("parent stack already empty");
+        if let Some(orig_parent_def_id) = orig_parent_def_id {
+            self.cache.parent_def_id = Some(orig_parent_def_id);
         }
         self.cache.stripped_mod = orig_stripped_mod;
         self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
