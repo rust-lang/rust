@@ -252,7 +252,6 @@
 mod tests;
 
 use crate::cmp;
-use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};

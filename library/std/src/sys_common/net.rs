@@ -2,7 +2,6 @@
 mod tests;
 
 use crate::cmp;
-use crate::convert::{TryFrom, TryInto};
 use crate::ffi::CString;
 use crate::fmt;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};

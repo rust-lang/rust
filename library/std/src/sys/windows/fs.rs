@@ -1,6 +1,5 @@
 use crate::os::windows::prelude::*;
 
-use crate::convert::TryInto;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};

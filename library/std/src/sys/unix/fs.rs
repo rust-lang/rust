@@ -943,7 +943,6 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        use crate::convert::TryInto;
         let size: off64_t =
             size.try_into().map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         cvt_r(|| unsafe { ftruncate64(self.as_raw_fd(), size) }).map(drop)

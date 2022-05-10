@@ -1,4 +1,3 @@
-use crate::convert::TryFrom;
 use crate::error;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};

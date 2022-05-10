@@ -3,7 +3,6 @@
 #![unstable(feature = "io_safety", issue = "87074")]
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
-use crate::convert::TryFrom;
 use crate::fmt;
 use crate::fs;
 use crate::io;

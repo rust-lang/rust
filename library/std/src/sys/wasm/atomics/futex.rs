@@ -1,5 +1,4 @@
 use crate::arch::wasm32;
-use crate::convert::TryInto;
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
 

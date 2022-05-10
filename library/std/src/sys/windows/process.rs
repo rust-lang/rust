@@ -5,7 +5,6 @@ mod tests;
 
 use crate::cmp;
 use crate::collections::BTreeMap;
-use crate::convert::{TryFrom, TryInto};
 use crate::env;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};

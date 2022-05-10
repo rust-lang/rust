@@ -1,5 +1,4 @@
 use super::{sockaddr_un, SocketAddr};
-use crate::convert::TryFrom;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};

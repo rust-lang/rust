@@ -12,7 +12,7 @@ use crate::collections::TryReserveErrorKind;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
-use crate::iter::{FromIterator, FusedIterator};
+use crate::iter::FusedIterator;
 use crate::ops::Index;
 use crate::sys;
 

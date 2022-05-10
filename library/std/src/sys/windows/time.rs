@@ -1,5 +1,4 @@
 use crate::cmp::Ordering;
-use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
