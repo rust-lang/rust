@@ -429,10 +429,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     ref t => t
                         .primitive_type()
                         .and_then(|t| self.cache.primitive_locations.get(&t).cloned())
-                        .and_then(|did| self.cache.parent_def_id.replace(did)),
+                        .and_then(|did| self.cache.parent_def_id.replace(did))
+                        .or_else(|| self.cache.parent_def_id),
                 }
             }
-            _ => None,
+            _ => self.cache.parent_def_id,
         };
 
         // Once we've recursively found all the generics, hoard off all the
@@ -493,9 +494,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if pushed {
             self.cache.stack.pop().expect("stack already empty");
         }
-        if let Some(orig_parent_def_id) = orig_parent_def_id {
-            self.cache.parent_def_id = Some(orig_parent_def_id);
-        }
+        self.cache.parent_def_id = orig_parent_def_id;
         self.cache.stripped_mod = orig_stripped_mod;
         self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
         ret
