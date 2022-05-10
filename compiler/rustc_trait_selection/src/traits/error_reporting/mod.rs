@@ -694,29 +694,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         }
                                         ObligationCauseCode::ImplDerivedObligation(
                                             box ImplDerivedObligationCause {
-                                                derived:
-                                                    DerivedObligationCause {
-                                                        parent_code,
-                                                        parent_trait_pred,
-                                                    },
+                                                derived,
                                                 ..
                                             },
                                         )
                                         | ObligationCauseCode::BuiltinDerivedObligation(
-                                            DerivedObligationCause {
-                                                parent_code,
-                                                parent_trait_pred,
-                                            },
+                                            derived,
                                         )
                                         | ObligationCauseCode::DerivedObligation(
-                                            DerivedObligationCause {
-                                                parent_code,
-                                                parent_trait_pred,
-                                            },
+                                            derived,
                                         ) => {
                                             peeled = true;
-                                            code = &parent_code;
-                                            trait_pred = *parent_trait_pred;
+                                            code = &derived.parent_code;
+                                            trait_pred = derived.parent_trait_pred;
                                         }
                                         _ => break,
                                     };
