@@ -17,13 +17,12 @@ use crate::{
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let mod_under_caret = match ctx.name_ctx() {
-        Some(NameContext { kind: NameKind::Module(mod_under_caret), .. })
-            if mod_under_caret.item_list().is_none() =>
-        {
-            mod_under_caret
-        }
+        Some(NameContext { kind: NameKind::Module(mod_under_caret), .. }) => mod_under_caret,
         _ => return None,
     };
+    if mod_under_caret.item_list().is_some() {
+        return None;
+    }
 
     let _p = profile::span("completion::complete_mod");
 
@@ -32,8 +31,8 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
     // interested in its parent.
     if ctx.original_token.kind() == SyntaxKind::IDENT {
         if let Some(module) = ctx.original_token.ancestors().nth(1).and_then(ast::Module::cast) {
-            match current_module.definition_source(ctx.db).value {
-                ModuleSource::Module(src) if src == module => {
+            match ctx.sema.to_def(&module) {
+                Some(module) if module == current_module => {
                     if let Some(parent) = current_module.parent(ctx.db) {
                         current_module = parent;
                     }
