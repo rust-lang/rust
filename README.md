@@ -20,7 +20,8 @@ for example:
   or an invalid enum discriminant)
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
-* **Experimental**: Data races (but no weak memory effects)
+* **Experimental**: Data races
+* **Experimental**: Weak memory emulation
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable
@@ -61,9 +62,11 @@ in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Threading support is not finished yet. E.g., weak memory effects are not
-  emulated and spin loops (without syscalls) just loop forever. There is no
-  threading support on Windows.
+* Threading support is not finished yet. E.g. spin loops (without syscalls) just
+  loop forever. There is no threading support on Windows.
+* Weak memory emulation may produce weak behaivours unobservable by compiled
+  programs running on real hardware when `SeqCst` fences are used, and it cannot
+  produce all behaviors possibly observable on real hardware.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
@@ -322,13 +325,13 @@ to Miri failing to detect cases of undefined behavior in a program.
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.  Using this flag is **unsound**
   (but the affected soundness rules are experimental).
-* `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
-  memory effects.
 * `-Zmiri-disable-validation` disables enforcing validity invariants, which are
   enforced by default.  This is mostly useful to focus on other failures (such
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
   in your program.  However, this can also help to make Miri run faster.  Using
   this flag is **unsound**.
+* `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
+  memory effects.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
