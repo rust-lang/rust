@@ -403,9 +403,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
             // the field contains no information
-            _ if field_layout.is_zst() => {
-                Scalar::ZST.into()
-            }
+            _ if field_layout.is_zst() => Scalar::ZST.into(),
             // the field covers the entire type
             _ if field_layout.size == base.layout.size => {
                 assert!(match (base.layout.abi, field_layout.abi) {
