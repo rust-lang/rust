@@ -284,9 +284,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Scalar(s) if force => Some(s.primitive()),
             _ => None,
         };
-        if let Some(s) = scalar_layout {
-            let size = s.size(self);
-            assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+        if let Some(_s) = scalar_layout {
+            //FIXME(#96185): let size = s.size(self);
+            //FIXME(#96185): assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+            let size = mplace.layout.size; //FIXME(#96185): remove this line
             let scalar = alloc.read_scalar(alloc_range(Size::ZERO, size))?;
             return Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }));
         }

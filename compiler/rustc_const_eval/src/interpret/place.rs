@@ -759,7 +759,7 @@ where
                     )
                 };
                 let size = s.size(&tcx);
-                assert_eq!(dest.layout.size, size, "abi::Scalar size does not match layout size");
+                //FIXME(#96185): assert_eq!(dest.layout.size, size, "abi::Scalar size does not match layout size");
                 alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
