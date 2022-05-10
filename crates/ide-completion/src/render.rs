@@ -65,6 +65,19 @@ impl<'a> RenderContext<'a> {
         }
     }
 
+    fn is_immediately_after_macro_bang(&self) -> bool {
+        self.completion.token.kind() == SyntaxKind::BANG
+            && self
+                .completion
+                .token
+                .parent()
+                .map_or(false, |it| it.kind() == SyntaxKind::MACRO_CALL)
+    }
+
+    pub(crate) fn path_is_call(&self) -> bool {
+        self.completion.path_context().map_or(false, |it| it.has_call_parens)
+    }
+
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
         let attrs = def.attrs(self.db());
         attrs.by_key("deprecated").exists()
