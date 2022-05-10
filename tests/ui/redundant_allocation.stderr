@@ -143,5 +143,14 @@ LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
    = note: `Box<Box<dyn T>>` is already on the heap, `Rc<Box<Box<dyn T>>>` makes an extra allocation
    = help: consider using just `Rc<Box<dyn T>>` or `Box<Box<dyn T>>`
 
-error: aborting due to 16 previous errors
+error: usage of `Rc<Box<Box<str>>>`
+  --> $DIR/redundant_allocation.rs:115:27
+   |
+LL |     pub fn test_rc_box(_: Rc<Box<Box<str>>>) {}
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = note: `Box<Box<str>>` is already on the heap, `Rc<Box<Box<str>>>` makes an extra allocation
+   = help: consider using just `Rc<Box<str>>` or `Box<Box<str>>`
+
+error: aborting due to 17 previous errors
 

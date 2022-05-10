@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
+use rustc_hir::{self as hir, def, def_id::DefId, PrimTy, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
@@ -54,8 +54,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {
-            // Box<Box<dyn T>> is smaller than Box<dyn T> because of wide pointers
-            if matches!(ty.kind, TyKind::TraitObject(..)) {
+            if alloc_makes_pointer_thin(cx, ty) {
                 return false;
             }
             ty.span
@@ -109,4 +108,21 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         );
     }
     true
+}
+
+/// Returns `true` if the allocation would make `hir_ty` go from fat to thin.
+fn alloc_makes_pointer_thin(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) -> bool {
+    match &hir_ty.kind {
+        TyKind::TraitObject(..) => true,
+        TyKind::Path(ty_qpath) => {
+            let ty_res = cx.qpath_res(ty_qpath, hir_ty.hir_id);
+            if let def::Res::PrimTy(prim_ty) = ty_res {
+                if matches!(prim_ty, PrimTy::Str) {
+                    return true;
+                }
+            }
+            false
+        },
+        _ => false,
+    }
 }

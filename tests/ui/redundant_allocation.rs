@@ -97,4 +97,22 @@ mod box_dyn {
     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/8604
+mod box_str {
+    use std::boxed::Box;
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    struct S {
+        a: Box<Box<str>>,
+        b: Rc<Box<str>>,
+        c: Arc<Box<str>>,
+    }
+
+    pub fn test_box(_: Box<Box<str>>) {}
+    pub fn test_rc(_: Rc<Box<str>>) {}
+    pub fn test_arc(_: Arc<Box<str>>) {}
+    pub fn test_rc_box(_: Rc<Box<Box<str>>>) {}
+}
+
 fn main() {}
