@@ -94,7 +94,7 @@ of pairing up an impl with each reference to a trait), and [*type
 checking*]. Type checking is the process of converting the types found in the HIR
 ([`hir::Ty`]), which represent what the user wrote,
 into the internal representation used by the compiler ([`Ty<'tcx>`]).
-That information is usedto verify the type safety, correctness and
+That information is used to verify the type safety, correctness and
 coherence of the types used in the program.
 
 ### MIR lowering
