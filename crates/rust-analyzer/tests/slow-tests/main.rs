@@ -685,7 +685,7 @@ version = \"0.0.0\"
 #[test]
 fn out_dirs_check() {
     if skip_slow_tests() {
-        return;
+        // return;
     }
 
     let server = Project::with_fixture(
@@ -737,7 +737,9 @@ fn main() {
     )
     .with_config(serde_json::json!({
         "cargo": {
-            "loadOutDirsFromCheck": true,
+            "buildScripts": {
+                "enable": true
+            },
             "noSysroot": true,
         }
     }))
@@ -890,7 +892,9 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     )
     .with_config(serde_json::json!({
         "cargo": {
-            "loadOutDirsFromCheck": true,
+            "buildScripts": {
+                "enable": true
+            },
             "noSysroot": true,
         },
         "procMacro": {

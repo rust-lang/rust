@@ -111,7 +111,7 @@ macro_rules! env { () => {} }
 macro_rules! concat { () => {} }
 
   include!(concat!(env!("OUT_DIR"), "/out.rs"));
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "run build scripts" to fix
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
 "#,
         );
     }
@@ -161,7 +161,7 @@ fn main() {
   //^^^^^^^^^^^^^ error: could not convert tokens
 
     env!("OUT_DIR");
-  //^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "run build scripts" to fix
+  //^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "build scripts" to fix
 
     compile_error!("compile_error works");
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: compile_error works

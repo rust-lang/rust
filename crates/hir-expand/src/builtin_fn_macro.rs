@@ -635,7 +635,7 @@ fn env_expand(
         // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
         if key == "OUT_DIR" {
             err = Some(ExpandError::Other(
-                r#"`OUT_DIR` not set, enable "run build scripts" to fix"#.into(),
+                r#"`OUT_DIR` not set, enable "build scripts" to fix"#.into(),
             ));
         }
 
