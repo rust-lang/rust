@@ -48,6 +48,7 @@ pub(super) enum PathKind {
     Expr {
         in_block_expr: bool,
         in_loop_body: bool,
+        in_functional_update: bool,
     },
     Type,
     Attr {
@@ -390,10 +391,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expects_expression(&self) -> bool {
         matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Expr { .. }, .. }))
-    }
-
-    pub(crate) fn expects_type(&self) -> bool {
-        matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Type, .. }))
     }
 
     pub(crate) fn is_non_trivial_path(&self) -> bool {
@@ -1104,6 +1101,9 @@ impl<'a> CompletionContext<'a> {
                 })
                 .unwrap_or(false)
         };
+        let is_in_func_update = |it: &SyntaxNode| {
+            it.parent().map_or(false, |it| ast::RecordExprFieldList::can_cast(it.kind()))
+        };
 
         let kind = path.syntax().ancestors().find_map(|it| {
             // using Option<Option<PathKind>> as extra controlflow
@@ -1114,8 +1114,8 @@ impl<'a> CompletionContext<'a> {
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         let in_block_expr = is_in_block(it.syntax());
                         let in_loop_body = is_in_loop_body(it.syntax());
-
-                        Some(PathKind::Expr { in_block_expr, in_loop_body })
+                        let in_functional_update = is_in_func_update(it.syntax());
+                        Some(PathKind::Expr { in_block_expr, in_loop_body, in_functional_update })
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
@@ -1149,7 +1149,8 @@ impl<'a> CompletionContext<'a> {
                                return Some(parent.and_then(ast::MacroExpr::cast).map(|it| {
                                     let in_loop_body = is_in_loop_body(it.syntax());
                                     let in_block_expr = is_in_block(it.syntax());
-                                    PathKind::Expr { in_block_expr, in_loop_body }
+                                    let in_functional_update = is_in_func_update(it.syntax());
+                                    PathKind::Expr { in_block_expr, in_loop_body, in_functional_update }
                                 }));
                             },
                         }

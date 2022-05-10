@@ -52,6 +52,7 @@ enum ImplCompletionKind {
     Const,
 }
 
+// FIXME: Make this a submodule of [`item_list`]
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((kind, replacement_range, impl_def)) = completion_match(ctx) {
         if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {

@@ -168,19 +168,8 @@ fn main() {
             tt Sized
             bt u32
             kw crate::
-            kw false
-            kw for
-            kw if
-            kw if let
-            kw loop
-            kw match
-            kw return
             kw self::
             kw super::
-            kw true
-            kw unsafe
-            kw while
-            kw while let
         "#]],
     );
     check(
