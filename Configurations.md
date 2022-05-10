@@ -1065,7 +1065,7 @@ See also: [`tab_spaces`](#tab_spaces).
 Control the case of the letters in hexadecimal literal values
 
 - **Default value**: `Preserve`
-- **Possible values**: `Upper`, `Lower`
+- **Possible values**: `Preserve`, `Upper`, `Lower`
 - **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
 
 ## `hide_parse_errors`
