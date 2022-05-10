@@ -346,6 +346,7 @@ mod ptr_offset_with_cast;
 mod pub_use;
 mod question_mark;
 mod ranges;
+mod rc_clone_in_vec_init;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -900,6 +901,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_include_file_size = conf.max_include_file_size;
     store.register_late_pass(move || Box::new(large_include_file::LargeIncludeFile::new(max_include_file_size)));
     store.register_late_pass(|| Box::new(strings::TrimSplitWhitespace));
+    store.register_late_pass(|| Box::new(rc_clone_in_vec_init::RcCloneInVecInit));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

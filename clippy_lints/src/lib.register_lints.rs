@@ -446,6 +446,7 @@ store.register_lints(&[
     ranges::RANGE_PLUS_ONE,
     ranges::RANGE_ZIP_WITH_LEN,
     ranges::REVERSED_EMPTY_RANGES,
+    rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT,
     redundant_clone::REDUNDANT_CLONE,
     redundant_closure_call::REDUNDANT_CLOSURE_CALL,
     redundant_else::REDUNDANT_ELSE,
