@@ -41,7 +41,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::lint::{in_external_macro, LintDiagnosticBuilder};
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::subst::{GenericArgKind, Subst};
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
@@ -2777,7 +2777,7 @@ impl ClashingExternDeclarations {
                 let mut ty = ty;
                 loop {
                     if let ty::Adt(def, substs) = *ty.kind() {
-                        let is_transparent = def.subst(tcx, substs).repr().transparent();
+                        let is_transparent = def.repr().transparent();
                         let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, def);
                         debug!(
                             "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
@@ -2837,11 +2837,7 @@ impl ClashingExternDeclarations {
 
                 ensure_sufficient_stack(|| {
                     match (a_kind, b_kind) {
-                        (Adt(a_def, a_substs), Adt(b_def, b_substs)) => {
-                            let a = a.subst(cx.tcx, a_substs);
-                            let b = b.subst(cx.tcx, b_substs);
-                            debug!("Comparing {:?} and {:?}", a, b);
-
+                        (Adt(a_def, _), Adt(b_def, _)) => {
                             // We can immediately rule out these types as structurally same if
                             // their layouts differ.
                             match compare_layouts(a, b) {
