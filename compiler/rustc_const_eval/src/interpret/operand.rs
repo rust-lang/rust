@@ -398,22 +398,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         let field_layout = base.layout.field(self, field);
-        if field_layout.is_zst() {
-            let immediate = Scalar::ZST.into();
-            return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
-        }
-
         let offset = base.layout.fields.offset(field);
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
-        let field_val = match (*base, base.layout.abi) {
+        let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // the field contains no information
+            _ if field_layout.is_zst() => {
+                Scalar::ZST.into()
+            }
             // the field covers the entire type
             _ if field_layout.size == base.layout.size => {
+                assert!(match (base.layout.abi, field_layout.abi) {
+                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    _ => false,
+                });
                 assert!(offset.bytes() == 0);
                 *base
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+                assert!(matches!(field_layout.abi, Abi::Scalar(..)));
                 Immediate::from(if offset.bytes() == 0 {
                     assert_eq!(field_layout.size, a.size(self));
                     a_val
