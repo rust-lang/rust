@@ -1,8 +1,10 @@
 //! This module provides primitives for showing type and function parameter information when editing
 //! a call or use-site.
 
+use std::collections::BTreeSet;
+
 use either::Either;
-use hir::{GenericParam, HasAttrs, HirDisplay, Semantics};
+use hir::{AssocItem, GenericParam, HasAttrs, HirDisplay, Semantics, Trait};
 use ide_db::{active_parameter::callable_for_node, base_db::FilePosition};
 use stdx::format_to;
 use syntax::{
@@ -316,9 +318,50 @@ fn signature_help_for_generics(
         format_to!(buf, "{}", param.display(db));
         res.push_generic_param(&buf);
     }
+    if let hir::GenericDef::Trait(tr) = generics_def {
+        add_assoc_type_bindings(db, &mut res, tr, arg_list);
+    }
     res.signature.push('>');
 
     Some(res)
+}
+
+fn add_assoc_type_bindings(
+    db: &RootDatabase,
+    res: &mut SignatureHelp,
+    tr: Trait,
+    args: ast::GenericArgList,
+) {
+    if args.syntax().ancestors().find_map(ast::TypeBound::cast).is_none() {
+        // Assoc type bindings are only valid in type bound position.
+        return;
+    }
+
+    let present_bindings = args
+        .generic_args()
+        .filter_map(|arg| match arg {
+            ast::GenericArg::AssocTypeArg(arg) => arg.name_ref().map(|n| n.to_string()),
+            _ => None,
+        })
+        .collect::<BTreeSet<_>>();
+
+    let mut buf = String::new();
+    for binding in &present_bindings {
+        buf.clear();
+        format_to!(buf, "{} = …", binding);
+        res.push_generic_param(&buf);
+    }
+
+    for item in tr.items_with_supertraits(db) {
+        if let AssocItem::TypeAlias(ty) = item {
+            let name = ty.name(db).to_smol_str();
+            if !present_bindings.contains(&*name) {
+                buf.clear();
+                format_to!(buf, "{} = …", name);
+                res.push_generic_param(&buf);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -368,10 +411,11 @@ mod tests {
                         panic!("parameter ranges out of order: {:?}", sig_help.parameter_ranges())
                     });
                     rendered.extend(iter::repeat(' ').take(gap as usize));
-                    let width = u32::from(range.end() - range.start());
+                    let param_text = &sig_help.signature[*range];
+                    let width = param_text.chars().count(); // …
                     let marker = if is_active { '^' } else { '-' };
-                    rendered.extend(iter::repeat(marker).take(width as usize));
-                    offset += gap + width;
+                    rendered.extend(iter::repeat(marker).take(width));
+                    offset += gap + u32::from(range.len());
                 }
                 if !sig_help.parameter_ranges().is_empty() {
                     format_to!(rendered, "\n");
@@ -1121,6 +1165,134 @@ fn f() {
                 fn callee<'a, const A: u8, T, const C: u8>
                           --  ^^^^^^^^^^^  -  -----------
             "#]],
+        );
+    }
+
+    #[test]
+    fn test_trait_assoc_types() {
+        check(
+            r#"
+trait Trait<'a, T> {
+    type Assoc;
+}
+fn f() -> impl Trait<(), $0
+            "#,
+            expect![[r#"
+                trait Trait<'a, T, Assoc = …>
+                            --  -  ^^^^^^^^^
+            "#]],
+        );
+        check(
+            r#"
+trait Iterator {
+    type Item;
+}
+fn f() -> impl Iterator<$0
+            "#,
+            expect![[r#"
+                trait Iterator<Item = …>
+                               ^^^^^^^^
+            "#]],
+        );
+        check(
+            r#"
+trait Iterator {
+    type Item;
+}
+fn f() -> impl Iterator<Item = $0
+            "#,
+            expect![[r#"
+                trait Iterator<Item = …>
+                               ^^^^^^^^
+            "#]],
+        );
+        check(
+            r#"
+trait Tr {
+    type A;
+    type B;
+}
+fn f() -> impl Tr<$0
+            "#,
+            expect![[r#"
+                trait Tr<A = …, B = …>
+                         ^^^^^  -----
+            "#]],
+        );
+        check(
+            r#"
+trait Tr {
+    type A;
+    type B;
+}
+fn f() -> impl Tr<B$0
+            "#,
+            expect![[r#"
+                trait Tr<A = …, B = …>
+                         ^^^^^  -----
+            "#]],
+        );
+        check(
+            r#"
+trait Tr {
+    type A;
+    type B;
+}
+fn f() -> impl Tr<B = $0
+            "#,
+            expect![[r#"
+                trait Tr<B = …, A = …>
+                         ^^^^^  -----
+            "#]],
+        );
+        check(
+            r#"
+trait Tr {
+    type A;
+    type B;
+}
+fn f() -> impl Tr<B = (), $0
+            "#,
+            expect![[r#"
+                trait Tr<B = …, A = …>
+                         -----  ^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_supertrait_assoc() {
+        check(
+            r#"
+trait Super {
+    type SuperTy;
+}
+trait Sub: Super + Super {
+    type SubTy;
+}
+fn f() -> impl Sub<$0
+            "#,
+            expect![[r#"
+                trait Sub<SubTy = …, SuperTy = …>
+                          ^^^^^^^^^  -----------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_assoc_types_outside_type_bounds() {
+        check(
+            r#"
+trait Tr<T> {
+    type Assoc;
+}
+
+impl Tr<$0
+        "#,
+            expect![[r#"
+            trait Tr<T>
+                     ^
+        "#]],
         );
     }
 
