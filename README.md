@@ -286,6 +286,10 @@ environment variable:
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
    using the tools in the repository https://github.com/rust-lang/measureme.
+* `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
+  but reports to the program that it did actually write. This is useful when you
+  are not interested in the actual program's output, but only want to see miri's
+  errors and warnings.
 * `-Zmiri-panic-on-unsupported` will makes some forms of unsupported functionality,
   such as FFI and unsupported syscalls, panic within the context of the emulated
   application instead of raising an error within the context of Miri (and halting

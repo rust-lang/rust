@@ -28,7 +28,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::*;
+use crate::{*, shims::posix::FileHandler};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
@@ -291,6 +291,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Failure rate of compare_exchange_weak, between 0.0 and 1.0
     pub(crate) cmpxchg_weak_failure_rate: f64,
+
+    /// Corresponds to -Zmiri-mute-stdout-stderr and doesn't write the output but acts as if it succeeded.
+    pub(crate) mute_stdout_stderr: bool,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -327,7 +330,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             validate: config.validate,
             enforce_number_validity: config.check_number_validity,
             enforce_abi: config.check_abi,
-            file_handler: Default::default(),
+            file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
             time_anchor: Instant::now(),
             layouts,
@@ -344,6 +347,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
+            mute_stdout_stderr: config.mute_stdout_stderr,
         }
     }
 
