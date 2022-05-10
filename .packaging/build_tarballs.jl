@@ -78,6 +78,9 @@ augment_platform_block = """
 # determine exactly which tarballs we should build
 builds = []
 for llvm_version in llvm_versions, llvm_assertions in (false, true)
+    if llvm_version == v"11.0.1" && llvm_assertions
+        continue # Does not have Clang available
+    end
     # Dependencies that must be installed before this package can be built
     llvm_name = llvm_assertions ? "LLVM_full_assert_jll" : "LLVM_full_jll"
     dependencies = [
