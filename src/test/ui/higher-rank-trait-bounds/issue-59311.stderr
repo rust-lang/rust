@@ -1,10 +1,15 @@
-error: higher-ranked lifetime error
-  --> $DIR/issue-59311.rs:17:9
+error[E0477]: the type `&'a V` does not fulfill the required lifetime
+  --> $DIR/issue-59311.rs:17:5
    |
 LL |     v.t(|| {});
-   |         ^^^^^
+   |     ^^^^^^^^^^
    |
-   = note: could not prove for<'a> &'a V: 'static
+note: type must satisfy the static lifetime as required by this binding
+  --> $DIR/issue-59311.rs:15:24
+   |
+LL |     for<'a> &'a V: T + 'static,
+   |                        ^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0477`.

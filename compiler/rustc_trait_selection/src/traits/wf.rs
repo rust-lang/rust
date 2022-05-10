@@ -575,7 +575,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // generators don't take arguments.
                 }
 
-                ty::Closure(_, substs) => {
+                ty::Closure(did, substs) => {
                     // Only check the upvar types for WF, not the rest
                     // of the types within. This is needed because we
                     // capture the signature and it may not be WF
@@ -596,18 +596,26 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // probably always be WF, because it should be
                     // shorthand for something like `where(T: 'a) {
                     // fn(&'a T) }`, as discussed in #25860.
-                    //
-                    // Note that we are also skipping the generic
-                    // types. This is consistent with the `outlives`
-                    // code, but anyway doesn't matter: within the fn
+                    walker.skip_current_subtree(); // subtree handled below
+                    // FIXME(eddyb) add the type to `walker` instead of recursing.
+                    self.compute(substs.as_closure().tupled_upvars_ty().into());
+                    // Note that we cannot skip the generic types
+                    // types. Normally, within the fn
                     // body where they are created, the generics will
                     // always be WF, and outside of that fn body we
                     // are not directly inspecting closure types
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
-                    walker.skip_current_subtree(); // subtree handled below
-                    // FIXME(eddyb) add the type to `walker` instead of recursing.
-                    self.compute(substs.as_closure().tupled_upvars_ty().into());
+                    // But when a closure is part of a type-alias-impl-trait
+                    // then the function that created the defining site may
+                    // have had more bounds available than the type alias
+                    // specifies. This may cause us to have a closure in the
+                    // hidden type that is not actually well formed and
+                    // can cause compiler crashes when the user abuses unsafe
+                    // code to procure such a closure.
+                    // See src/test/ui/type-alias-impl-trait/wf_check_closures.rs
+                    let obligations = self.nominal_obligations(did, substs);
+                    self.out.extend(obligations);
                 }
 
                 ty::FnPtr(_) => {

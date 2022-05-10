@@ -14,7 +14,7 @@ pub fn crash<V>(v: &V)
 where
     for<'a> &'a V: T + 'static,
 {
-    v.t(|| {}); //~ ERROR: higher-ranked lifetime error
+    v.t(|| {}); //~ ERROR: `&'a V` does not fulfill the required lifetime
 }
 
 fn main() {}
