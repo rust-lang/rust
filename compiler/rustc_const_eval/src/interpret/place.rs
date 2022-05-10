@@ -736,20 +736,16 @@ where
         dest: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Note that it is really important that the type here is the right one, and matches the
-        // type things are read at. In case `src_val` is a `ScalarPair`, we don't do any magic here
+        // type things are read at. In case `value` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        // Invalid places are a thing: the return place of a diverging function
         let tcx = *self.tcx;
         let Some(mut alloc) = self.get_place_alloc_mut(dest)? else {
             // zero-sized access
             return Ok(());
         };
 
-        // FIXME: We should check that there are dest.layout.size many bytes available in
-        // memory.  The code below is not sufficient, with enough padding it might not
-        // cover all the bytes!
         match value {
             Immediate::Scalar(scalar) => {
                 let Abi::Scalar(s) = dest.layout.abi else { span_bug!(
