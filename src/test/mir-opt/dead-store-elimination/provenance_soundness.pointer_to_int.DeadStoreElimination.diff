@@ -1,0 +1,35 @@
+- // MIR for `pointer_to_int` before DeadStoreElimination
++ // MIR for `pointer_to_int` after DeadStoreElimination
+  
+  fn pointer_to_int(_1: *mut i32) -> () {
+      debug p => _1;                       // in scope 0 at $DIR/provenance_soundness.rs:7:19: 7:20
+      let mut _0: ();                      // return place in scope 0 at $DIR/provenance_soundness.rs:7:32: 7:32
+      let _2: usize;                       // in scope 0 at $DIR/provenance_soundness.rs:8:9: 8:11
+      let mut _3: *mut i32;                // in scope 0 at $DIR/provenance_soundness.rs:8:14: 8:15
+      let mut _5: *mut i32;                // in scope 0 at $DIR/provenance_soundness.rs:9:14: 9:15
+      scope 1 {
+          debug _x => _2;                  // in scope 1 at $DIR/provenance_soundness.rs:8:9: 8:11
+          let _4: isize;                   // in scope 1 at $DIR/provenance_soundness.rs:9:9: 9:11
+          scope 2 {
+              debug _y => _4;              // in scope 2 at $DIR/provenance_soundness.rs:9:9: 9:11
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/provenance_soundness.rs:8:9: 8:11
+          StorageLive(_3);                 // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:15
+          _3 = _1;                         // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:15
+          _2 = move _3 as usize (Misc);    // scope 0 at $DIR/provenance_soundness.rs:8:14: 8:24
+          StorageDead(_3);                 // scope 0 at $DIR/provenance_soundness.rs:8:23: 8:24
+          StorageLive(_4);                 // scope 1 at $DIR/provenance_soundness.rs:9:9: 9:11
+          StorageLive(_5);                 // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:15
+          _5 = _1;                         // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:15
+          _4 = move _5 as isize (Misc);    // scope 1 at $DIR/provenance_soundness.rs:9:14: 9:24
+          StorageDead(_5);                 // scope 1 at $DIR/provenance_soundness.rs:9:23: 9:24
+          _0 = const ();                   // scope 0 at $DIR/provenance_soundness.rs:7:32: 10:2
+          StorageDead(_4);                 // scope 1 at $DIR/provenance_soundness.rs:10:1: 10:2
+          StorageDead(_2);                 // scope 0 at $DIR/provenance_soundness.rs:10:1: 10:2
+          return;                          // scope 0 at $DIR/provenance_soundness.rs:10:2: 10:2
+      }
+  }
+  

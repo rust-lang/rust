@@ -1,0 +1,14 @@
+- // MIR for `retags` before DeadStoreElimination
++ // MIR for `retags` after DeadStoreElimination
+  
+  fn retags(_1: &mut i32) -> () {
+      debug _r => _1;                      // in scope 0 at $DIR/provenance_soundness.rs:13:11: 13:13
+      let mut _0: ();                      // return place in scope 0 at $DIR/provenance_soundness.rs:13:25: 13:25
+  
+      bb0: {
+          Retag([fn entry] _1);            // scope 0 at $DIR/provenance_soundness.rs:13:1: 13:27
+          _0 = const ();                   // scope 0 at $DIR/provenance_soundness.rs:13:25: 13:27
+          return;                          // scope 0 at $DIR/provenance_soundness.rs:13:27: 13:27
+      }
+  }
+  
