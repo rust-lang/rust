@@ -71,8 +71,8 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+    pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
+        assert!(socket != c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
 }
