@@ -808,6 +808,7 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
         ast::Expr::PathExpr(path_expr) => Some(path_expr.path()?.segment()?.to_string()),
         ast::Expr::PrefixExpr(prefix_expr) => get_string_representation(&prefix_expr.expr()?),
         ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
+        ast::Expr::CastExpr(cast_expr) => get_string_representation(&cast_expr.expr()?),
         _ => None,
     }
 }
@@ -1173,6 +1174,7 @@ fn main() {
 
     let param = 0;
     foo(param);
+    foo(param as _);
     let param_end = 0;
     foo(param_end);
     let start_param = 0;
