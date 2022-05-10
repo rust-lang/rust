@@ -191,9 +191,10 @@ impl<'tcx> ObligationCause<'tcx> {
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
-        self.map_code(|parent_code| {
-            variant(DerivedObligationCause { parent_trait_pred, parent_code }).into()
-        });
+        self.code = Some(
+            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code.take() })
+                .into(),
+        );
         self
     }
 }
@@ -443,7 +444,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             BuiltinDerivedObligation(derived)
             | DerivedObligation(derived)
             | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
-                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
+                Some((derived.parent_code(), Some(derived.parent_trait_pred)))
             }
             _ => None,
         }
@@ -497,14 +498,14 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    parent_code: Lrc<ObligationCauseCode<'tcx>>,
+    parent_code: Option<Lrc<ObligationCauseCode<'tcx>>>,
 }
 
 impl<'tcx> DerivedObligationCause<'tcx> {
     /// Get a reference to the derived obligation cause's parent code.
     #[must_use]
     pub fn parent_code(&self) -> &ObligationCauseCode<'tcx> {
-        self.parent_code.as_ref()
+        self.parent_code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
     }
 }
 
