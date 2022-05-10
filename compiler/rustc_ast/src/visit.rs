@@ -89,6 +89,16 @@ impl<'a> FnKind<'a> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum LifetimeCtxt {
+    /// Appears in a reference type.
+    Rptr,
+    /// Appears as a bound on a type or another lifetime.
+    Bound,
+    /// Appears as a generic argument.
+    GenericArg,
+}
+
 /// Each method of the `Visitor` trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
@@ -184,7 +194,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_label(&mut self, label: &'ast Label) {
         walk_label(self, label)
     }
-    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) {
         walk_lifetime(self, lifetime)
     }
     fn visit_mac_call(&mut self, mac: &'ast MacCall) {
@@ -414,7 +424,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Slice(ref ty) | TyKind::Paren(ref ty) => visitor.visit_ty(ty),
         TyKind::Ptr(ref mutable_type) => visitor.visit_ty(&mutable_type.ty),
         TyKind::Rptr(ref opt_lifetime, ref mutable_type) => {
-            walk_list!(visitor, visit_lifetime, opt_lifetime);
+            walk_list!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Rptr);
             visitor.visit_ty(&mutable_type.ty)
         }
         TyKind::Tup(ref tuple_element_types) => {
@@ -507,7 +517,7 @@ where
     V: Visitor<'a>,
 {
     match generic_arg {
-        GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt),
+        GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg),
         GenericArg::Type(ty) => visitor.visit_ty(ty),
         GenericArg::Const(ct) => visitor.visit_anon_const(ct),
     }
@@ -599,7 +609,9 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) {
     match *bound {
         GenericBound::Trait(ref typ, ref modifier) => visitor.visit_poly_trait_ref(typ, modifier),
-        GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
+        GenericBound::Outlives(ref lifetime) => {
+            visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound)
+        }
     }
 }
 
@@ -639,7 +651,7 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a 
         WherePredicate::RegionPredicate(WhereRegionPredicate {
             ref lifetime, ref bounds, ..
         }) => {
-            visitor.visit_lifetime(lifetime);
+            visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
         WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, .. }) => {

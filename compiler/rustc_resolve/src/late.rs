@@ -793,7 +793,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         });
         self.diagnostic_metadata.current_function = previous_value;
     }
-    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: visit::LifetimeCtxt) {
         self.resolve_lifetime(lifetime)
     }
 
@@ -859,7 +859,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 self.visit_ty(ty);
             }
-            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
+            GenericArg::Lifetime(lt) => self.visit_lifetime(lt, visit::LifetimeCtxt::GenericArg),
             GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
         self.diagnostic_metadata.currently_processing_generics = prev;

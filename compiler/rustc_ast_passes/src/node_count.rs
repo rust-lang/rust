@@ -106,7 +106,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_variant(self, v)
     }
-    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &Lifetime, _: visit::LifetimeCtxt) {
         self.count += 1;
         walk_lifetime(self, lifetime)
     }

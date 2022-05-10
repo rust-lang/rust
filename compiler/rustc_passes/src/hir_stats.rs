@@ -318,7 +318,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_variant(self, v)
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         self.record("Lifetime", Id::None, lifetime);
         ast_visit::walk_lifetime(self, lifetime)
     }
