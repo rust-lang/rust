@@ -206,6 +206,13 @@ rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
 rustup override set stage2
 ```
 
+Important: You need to delete the miri cache (located at `~/.cache/miri` on Linux; the exact location is printed after the library build: "A libstd for Miri is now available in ...") when
+you change the stdlib, otherwise the old, chached version will be used.
+
+Note: `./x.py --stage 2 compiler/rustc` currently errors with `thread 'main'
+panicked at 'fs::read(stamp) failed with No such file or directory (os error 2)`,
+you can simply ignore that error; Miri will build anyway.
+
 For more information about building and configuring a local compiler,
 see <https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html>.
 
