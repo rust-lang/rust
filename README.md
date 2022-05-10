@@ -214,6 +214,14 @@ specifying the minimum supported Rust version (MSRV) in the clippy configuration
 msrv = "1.30.0"
 ```
 
+Alternatively, the [`rust-version` field](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field)
+in the `Cargo.toml` can be used.
+
+```toml
+# Cargo.toml
+rust-version = "1.30"
+```
+
 The MSRV can also be specified as an inner attribute, like below.
 
 ```rust
