@@ -25,6 +25,31 @@ fn test_raw_args() {
 }
 
 #[test]
+fn test_thread_handle() {
+    use crate::os::windows::io::BorrowedHandle;
+    use crate::os::windows::process::{ChildExt, CommandExt};
+    const CREATE_SUSPENDED: u32 = 0x00000004;
+
+    let p = Command::new("cmd").args(&["/C", "exit 0"]).creation_flags(CREATE_SUSPENDED).spawn();
+    assert!(p.is_ok());
+    let mut p = p.unwrap();
+
+    extern "system" {
+        fn ResumeThread(_: BorrowedHandle<'_>) -> u32;
+    }
+    unsafe {
+        ResumeThread(p.main_thread_handle());
+    }
+
+    crate::thread::sleep(crate::time::Duration::from_millis(100));
+
+    let res = p.try_wait();
+    assert!(res.is_ok());
+    assert!(res.unwrap().is_some());
+    assert!(p.try_wait().unwrap().unwrap().success());
+}
+
+#[test]
 fn test_make_command_line() {
     fn test_wrapper(prog: &str, args: &[&str], force_quotes: bool) -> String {
         let command_line = &make_command_line(
