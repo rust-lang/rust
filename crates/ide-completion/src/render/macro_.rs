@@ -20,7 +20,7 @@ fn render(
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
-    let source_range = if completion.is_immediately_after_macro_bang() {
+    let source_range = if ctx.is_immediately_after_macro_bang() {
         cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
         completion.token.parent().map_or_else(|| ctx.source_range(), |it| it.text_range())
     } else {
@@ -52,7 +52,7 @@ fn render(
 
     let name = &*name;
     match ctx.snippet_cap() {
-        Some(cap) if needs_bang && !completion.path_is_call() => {
+        Some(cap) if needs_bang && !ctx.path_is_call() => {
             let snippet = format!("{}!{}$0{}", name, bra, ket);
             let lookup = banged_name(name);
             item.insert_snippet(cap, snippet).lookup_by(lookup);

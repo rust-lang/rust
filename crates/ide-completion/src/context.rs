@@ -326,6 +326,7 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
 
+    // FIXME: This shouldn't exist
     pub(crate) fn expects_generic_arg(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
     }
@@ -395,10 +396,6 @@ impl<'a> CompletionContext<'a> {
         matches!(self.path_context(), Some(PathCompletionCtx { kind: PathKind::Type, .. }))
     }
 
-    pub(crate) fn path_is_call(&self) -> bool {
-        self.path_context().map_or(false, |it| it.has_call_parens)
-    }
-
     pub(crate) fn is_non_trivial_path(&self) -> bool {
         matches!(
             self.path_context(),
@@ -415,10 +412,6 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn path_kind(&self) -> Option<PathKind> {
         self.path_context().map(|it| it.kind)
-    }
-
-    pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
-        self.token.kind() == BANG && self.token.parent().map_or(false, |it| it.kind() == MACRO_CALL)
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
