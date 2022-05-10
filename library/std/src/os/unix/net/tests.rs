@@ -10,7 +10,6 @@ use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::iter::FromIterator;
 #[cfg(any(
     target_os = "android",
     target_os = "dragonfly",

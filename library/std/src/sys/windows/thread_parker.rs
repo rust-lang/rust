@@ -57,7 +57,6 @@
 // [3]: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/november/windows-with-c-the-evolution-of-synchronization-in-windows-and-c
 // [4]: Windows Internals, Part 1, ISBN 9780735671300
 
-use crate::convert::TryFrom;
 use crate::pin::Pin;
 use crate::ptr;
 use crate::sync::atomic::{

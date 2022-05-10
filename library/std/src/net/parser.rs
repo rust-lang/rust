@@ -6,7 +6,6 @@
 #[cfg(test)]
 mod tests;
 
-use crate::convert::TryInto as _;
 use crate::error::Error;
 use crate::fmt;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};

@@ -180,3 +180,17 @@ impl CommandExt for process::Command {
         self
     }
 }
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+pub trait ChildExt: Sealed {
+    /// Extracts the main thread raw handle, without taking ownership
+    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    fn main_thread_handle(&self) -> BorrowedHandle<'_>;
+}
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+impl ChildExt for process::Child {
+    fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+        self.handle.main_thread_handle()
+    }
+}

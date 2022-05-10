@@ -1323,7 +1323,6 @@ window.initSearch = rawSearchIndex => {
                 }
             }
             lev = levenshtein(searchWord, elem.pathLast);
-            lev += lev_add;
             if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1)
             {
                 if (elem.pathLast.length < 6) {
@@ -1332,6 +1331,7 @@ window.initSearch = rawSearchIndex => {
                     lev = 0;
                 }
             }
+            lev += lev_add;
             if (lev > MAX_LEV_DISTANCE) {
                 return;
             } else if (index !== -1 && elem.fullPath.length < 2) {

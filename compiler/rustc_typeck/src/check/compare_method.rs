@@ -7,10 +7,10 @@ use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::util;
-use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -48,6 +48,10 @@ crate fn compare_impl_method<'tcx>(
         return;
     }
 
+    if let Err(_) = compare_generic_param_kinds(tcx, impl_m, trait_m) {
+        return;
+    }
+
     if let Err(_) =
         compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
     {
@@ -60,10 +64,6 @@ crate fn compare_impl_method<'tcx>(
 
     if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
     {
-        return;
-    }
-
-    if let Err(_) = compare_const_param_types(tcx, impl_m, trait_m, trait_item_span) {
         return;
     }
 }
@@ -579,6 +579,27 @@ fn compare_self_type<'tcx>(
     Ok(())
 }
 
+/// Checks that the number of generics on a given assoc item in a trait impl is the same
+/// as the number of generics on the respective assoc item in the trait definition.
+///
+/// For example this code emits the errors in the following code:
+/// ```
+/// trait Trait {
+///     fn foo();
+///     type Assoc<T>;
+/// }
+///
+/// impl Trait for () {
+///     fn foo<T>() {}
+///     //~^ error
+///     type Assoc = u32;
+///     //~^ error
+/// }
+/// ```
+///
+/// Notably this does not error on `foo<T>` implemented as `foo<const N: u8>` or
+/// `foo<const N: u8>` implemented as `foo<const N: u32>`. This is handled in
+/// [`compare_generic_param_kinds`]. This function also does not handle lifetime parameters
 fn compare_number_of_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_: &ty::AssocItem,
@@ -588,6 +609,15 @@ fn compare_number_of_generics<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_own_counts = tcx.generics_of(trait_.def_id).own_counts();
     let impl_own_counts = tcx.generics_of(impl_.def_id).own_counts();
+
+    // This avoids us erroring on `foo<T>` implemented as `foo<const N: u8>` as this is implemented
+    // in `compare_generic_param_kinds` which will give a nicer error message than something like:
+    // "expected 1 type parameter, found 0 type parameters"
+    if (trait_own_counts.types + trait_own_counts.consts)
+        == (impl_own_counts.types + impl_own_counts.consts)
+    {
+        return Ok(());
+    }
 
     let matchings = [
         ("type", trait_own_counts.types, impl_own_counts.types),
@@ -914,60 +944,93 @@ fn compare_synthetic_generics<'tcx>(
     if let Some(reported) = error_found { Err(reported) } else { Ok(()) }
 }
 
-fn compare_const_param_types<'tcx>(
+/// Checks that all parameters in the generics of a given assoc item in a trait impl have
+/// the same kind as the respective generic parameter in the trait def.
+///
+/// For example all 4 errors in the following code are emitted here:
+/// ```
+/// trait Foo {
+///     fn foo<const N: u8>();
+///     type bar<const N: u8>;
+///     fn baz<const N: u32>();
+///     type blah<T>;
+/// }
+///
+/// impl Foo for () {
+///     fn foo<const N: u64>() {}
+///     //~^ error
+///     type bar<const N: u64> {}
+///     //~^ error
+///     fn baz<T>() {}
+///     //~^ error
+///     type blah<const N: i64> = u32;
+///     //~^ error
+/// }
+/// ```
+///
+/// This function does not handle lifetime parameters
+fn compare_generic_param_kinds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_m: &ty::AssocItem,
-    trait_m: &ty::AssocItem,
-    trait_item_span: Option<Span>,
+    impl_item: &ty::AssocItem,
+    trait_item: &ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let const_params_of = |def_id| {
-        tcx.generics_of(def_id).params.iter().filter_map(|param| match param.kind {
-            GenericParamDefKind::Const { .. } => Some(param.def_id),
-            _ => None,
+    assert_eq!(impl_item.kind, trait_item.kind);
+
+    let ty_const_params_of = |def_id| {
+        tcx.generics_of(def_id).params.iter().filter(|param| {
+            matches!(
+                param.kind,
+                GenericParamDefKind::Const { .. } | GenericParamDefKind::Type { .. }
+            )
         })
     };
-    let const_params_impl = const_params_of(impl_m.def_id);
-    let const_params_trait = const_params_of(trait_m.def_id);
 
-    for (const_param_impl, const_param_trait) in iter::zip(const_params_impl, const_params_trait) {
-        let impl_ty = tcx.type_of(const_param_impl);
-        let trait_ty = tcx.type_of(const_param_trait);
-        if impl_ty != trait_ty {
-            let (impl_span, impl_ident) = match tcx.hir().get_if_local(const_param_impl) {
-                Some(hir::Node::GenericParam(hir::GenericParam { span, name, .. })) => (
-                    span,
-                    match name {
-                        hir::ParamName::Plain(ident) => Some(ident),
-                        _ => None,
-                    },
-                ),
-                other => bug!(
-                    "expected GenericParam, found {:?}",
-                    other.map_or_else(|| "nothing".to_string(), |n| format!("{:?}", n))
-                ),
-            };
-            let trait_span = match tcx.hir().get_if_local(const_param_trait) {
-                Some(hir::Node::GenericParam(hir::GenericParam { span, .. })) => Some(span),
-                _ => None,
-            };
+    for (param_impl, param_trait) in
+        iter::zip(ty_const_params_of(impl_item.def_id), ty_const_params_of(trait_item.def_id))
+    {
+        use GenericParamDefKind::*;
+        if match (&param_impl.kind, &param_trait.kind) {
+            (Const { .. }, Const { .. })
+                if tcx.type_of(param_impl.def_id) != tcx.type_of(param_trait.def_id) =>
+            {
+                true
+            }
+            (Const { .. }, Type { .. }) | (Type { .. }, Const { .. }) => true,
+            // this is exhaustive so that anyone adding new generic param kinds knows
+            // to make sure this error is reported for them.
+            (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
+            (Lifetime { .. }, _) | (_, Lifetime { .. }) => unreachable!(),
+        } {
+            let param_impl_span = tcx.def_span(param_impl.def_id);
+            let param_trait_span = tcx.def_span(param_trait.def_id);
+
             let mut err = struct_span_err!(
                 tcx.sess,
-                *impl_span,
+                param_impl_span,
                 E0053,
-                "method `{}` has an incompatible const parameter type for trait",
-                trait_m.name
+                "{} `{}` has an incompatible generic parameter for trait `{}`",
+                assoc_item_kind_str(&impl_item),
+                trait_item.name,
+                &tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
-            err.span_note(
-                trait_span.map_or_else(|| trait_item_span.unwrap_or(*impl_span), |span| *span),
-                &format!(
-                    "the const parameter{} has type `{}`, but the declaration \
-                              in trait `{}` has type `{}`",
-                    &impl_ident.map_or_else(|| "".to_string(), |ident| format!(" `{ident}`")),
-                    impl_ty,
-                    tcx.def_path_str(trait_m.def_id),
-                    trait_ty
-                ),
-            );
+
+            let make_param_message = |prefix: &str, param: &ty::GenericParamDef| match param.kind {
+                Const { .. } => {
+                    format!("{} const parameter of type `{}`", prefix, tcx.type_of(param.def_id))
+                }
+                Type { .. } => format!("{} type parameter", prefix),
+                Lifetime { .. } => unreachable!(),
+            };
+
+            let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
+            err.span_label(trait_header_span, "");
+            err.span_label(param_trait_span, make_param_message("expected", param_trait));
+
+            let impl_header_span =
+                tcx.sess.source_map().guess_head_span(tcx.def_span(tcx.parent(impl_item.def_id)));
+            err.span_label(impl_header_span, "");
+            err.span_label(param_impl_span, make_param_message("found", param_impl));
+
             let reported = err.emit();
             return Err(reported);
         }
@@ -1094,6 +1157,8 @@ crate fn compare_ty_impl<'tcx>(
 
     let _: Result<(), ErrorGuaranteed> = (|| {
         compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
+
+        compare_generic_param_kinds(tcx, impl_ty, trait_ty)?;
 
         let sp = tcx.def_span(impl_ty.def_id);
         compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
