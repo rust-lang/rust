@@ -274,9 +274,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // A "softer" version of the helper above, which checks types without persisting them,
         // and treats error types differently
         // This will allow us to "probe" for other argument orders that would likely have been correct
-        let check_compatible = |arg_idx, input_idx| {
-            let formal_input_ty: Ty<'tcx> = formal_input_tys[input_idx];
-            let expected_input_ty: Ty<'tcx> = expected_input_tys[input_idx];
+        let check_compatible = |input_idx, arg_idx| {
+            let formal_input_ty: Ty<'tcx> = formal_input_tys[arg_idx];
+            let expected_input_ty: Ty<'tcx> = expected_input_tys[arg_idx];
 
             // If either is an error type, we defy the usual convention and consider them to *not* be
             // coercible.  This prevents our error message heuristic from trying to pass errors into
@@ -285,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Compatibility::Incompatible(None);
             }
 
-            let provided_arg: &hir::Expr<'tcx> = &provided_args[arg_idx];
+            let provided_arg: &hir::Expr<'tcx> = &provided_args[input_idx];
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
             // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
             //
@@ -429,11 +429,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let found_errors = !errors.is_empty();
 
             errors.drain_filter(|error| {
-                let Error::Invalid(input_idx, Compatibility::Incompatible(error)) = error else { return false };
-                let expected_ty = expected_input_tys[*input_idx];
-                let Some(Some((provided_ty, _))) = final_arg_types.get(*input_idx) else { return false };
+                let Error::Invalid(input_idx, arg_idx, Compatibility::Incompatible(error)) = error else { return false };
+                let expected_ty = expected_input_tys[*arg_idx];
+                let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
                 let cause = &self.misc(provided_args[*input_idx].span);
-                let trace = TypeTrace::types(cause, true, expected_ty, *provided_ty);
+                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                 if let Some(e) = error {
                     if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
                         self.report_and_explain_type_error(trace, e).emit();
@@ -562,11 +562,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Next special case: if there is only one "Incompatible" error, just emit that
             if errors.len() == 1 {
-                if let Some(Error::Invalid(input_idx, Compatibility::Incompatible(Some(error)))) =
-                    errors.iter().next()
+                if let Some(Error::Invalid(
+                    input_idx,
+                    arg_idx,
+                    Compatibility::Incompatible(Some(error)),
+                )) = errors.iter().next()
                 {
-                    let expected_ty = expected_input_tys[*input_idx];
-                    let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap();
+                    let expected_ty = expected_input_tys[*arg_idx];
+                    let provided_ty = final_arg_types[*arg_idx].map(|ty| ty.0).unwrap();
                     let expected_ty = self.resolve_vars_if_possible(expected_ty);
                     let provided_ty = self.resolve_vars_if_possible(provided_ty);
                     let cause = &self.misc(provided_args[*input_idx].span);
@@ -631,19 +634,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut errors = errors.into_iter().peekable();
             while let Some(error) = errors.next() {
                 match error {
-                    Error::Invalid(input_idx, compatibility) => {
-                        let expected_ty = expected_input_tys[input_idx];
-                        let provided_ty = final_arg_types
-                            .get(input_idx)
-                            .and_then(|x| x.as_ref())
-                            .map(|ty| ty.0)
-                            .unwrap_or(tcx.ty_error());
+                    Error::Invalid(input_idx, arg_idx, compatibility) => {
+                        let expected_ty = expected_input_tys[arg_idx];
+                        let provided_ty = final_arg_types[input_idx].map(|ty| ty.0).unwrap();
                         let expected_ty = self.resolve_vars_if_possible(expected_ty);
                         let provided_ty = self.resolve_vars_if_possible(provided_ty);
                         if let Compatibility::Incompatible(error) = &compatibility {
-                            let cause = &self.misc(
-                                provided_args.get(input_idx).map(|i| i.span).unwrap_or(call_span),
-                            );
+                            let cause = &self.misc(provided_args[input_idx].span);
                             let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                             if let Some(e) = error {
                                 self.note_type_err(
@@ -658,16 +655,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
 
-                        if let Some(expr) = provided_args.get(input_idx) {
-                            self.emit_coerce_suggestions(
-                                &mut err,
-                                &expr,
-                                final_arg_types[input_idx].map(|ty| ty.0).unwrap(),
-                                final_arg_types[input_idx].map(|ty| ty.1).unwrap(),
-                                None,
-                                None,
-                            );
-                        }
+                        self.emit_coerce_suggestions(
+                            &mut err,
+                            &provided_args[input_idx],
+                            final_arg_types[input_idx].map(|ty| ty.0).unwrap(),
+                            final_arg_types[input_idx].map(|ty| ty.1).unwrap(),
+                            None,
+                            None,
+                        );
                     }
                     Error::Extra(arg_idx) => {
                         let arg_type = if let Some((_, ty)) = final_arg_types[arg_idx] {
@@ -843,12 +838,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     Error::Swap(input_idx, other_input_idx, arg_idx, other_arg_idx) => {
-                        let first_span = provided_args[arg_idx].span;
-                        let second_span = provided_args[other_arg_idx].span;
+                        let first_span = provided_args[input_idx].span;
+                        let second_span = provided_args[other_input_idx].span;
 
                         let first_expected_ty =
-                            self.resolve_vars_if_possible(expected_input_tys[input_idx]);
-                        let first_provided_ty = if let Some((ty, _)) = final_arg_types[arg_idx] {
+                            self.resolve_vars_if_possible(expected_input_tys[arg_idx]);
+                        let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
                             format!(",found `{}`", ty)
                         } else {
                             "".into()
@@ -858,9 +853,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("expected `{}`{}", first_expected_ty, first_provided_ty),
                         ));
                         let other_expected_ty =
-                            self.resolve_vars_if_possible(expected_input_tys[other_input_idx]);
+                            self.resolve_vars_if_possible(expected_input_tys[other_arg_idx]);
                         let other_provided_ty =
-                            if let Some((ty, _)) = final_arg_types[other_arg_idx] {
+                            if let Some((ty, _)) = final_arg_types[other_input_idx] {
                                 format!(",found `{}`", ty)
                             } else {
                                 "".into()
@@ -926,14 +921,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "{}(",
                     source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| String::new())
                 );
-                for (idx, arg) in matched_inputs.iter().enumerate() {
-                    let suggestion_text = if let Some(arg) = arg {
-                        let arg_span = provided_args[*arg].span.source_callsite();
+                for (arg_index, input_idx) in matched_inputs.iter().enumerate() {
+                    let suggestion_text = if let Some(input_idx) = input_idx {
+                        let arg_span = provided_args[*input_idx].span.source_callsite();
                         let arg_text = source_map.span_to_snippet(arg_span).unwrap();
                         arg_text
                     } else {
                         // Propose a placeholder of the correct type
-                        let expected_ty = expected_input_tys[idx];
+                        let expected_ty = expected_input_tys[arg_index];
                         let input_ty = self.resolve_vars_if_possible(expected_ty);
                         if input_ty.is_unit() {
                             "()".to_string()
@@ -942,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     suggestion += &suggestion_text;
-                    if idx < minimum_input_count - 1 {
+                    if arg_index < minimum_input_count - 1 {
                         suggestion += ", ";
                     }
                 }
