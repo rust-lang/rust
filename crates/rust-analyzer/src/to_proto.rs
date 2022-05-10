@@ -341,7 +341,7 @@ pub(crate) fn signature_help(
     config: CallInfoConfig,
     label_offsets: bool,
 ) -> lsp_types::SignatureHelp {
-    let (label, parameters) = match (!config.params_only, label_offsets) {
+    let (label, parameters) = match (config.params_only, label_offsets) {
         (concise, false) => {
             let params = call_info
                 .parameter_labels()
