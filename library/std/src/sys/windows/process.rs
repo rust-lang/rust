@@ -14,7 +14,7 @@ use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
-use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
+use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sys::args::{self, Arg};
@@ -334,13 +334,14 @@ impl Command {
             ))
         }?;
 
-        // We close the thread handle because we don't care about keeping
-        // the thread id valid, and we aren't keeping the thread handle
-        // around to be able to close it later.
         unsafe {
-            drop(Handle::from_raw_handle(pi.hThread));
-
-            Ok((Process { handle: Handle::from_raw_handle(pi.hProcess) }, pipes))
+            Ok((
+                Process {
+                    handle: Handle::from_raw_handle(pi.hProcess),
+                    main_thread_handle: Handle::from_raw_handle(pi.hThread),
+                },
+                pipes,
+            ))
         }
     }
 }
@@ -609,6 +610,7 @@ impl From<File> for Stdio {
 /// for the process to terminate.
 pub struct Process {
     handle: Handle,
+    main_thread_handle: Handle,
 }
 
 impl Process {
@@ -619,6 +621,10 @@ impl Process {
 
     pub fn id(&self) -> u32 {
         unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
+    }
+
+    pub fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+        self.main_thread_handle.as_handle()
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
