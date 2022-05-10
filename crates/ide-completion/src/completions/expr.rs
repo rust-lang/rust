@@ -2,6 +2,7 @@
 
 use hir::ScopeDef;
 use ide_db::FxHashSet;
+use syntax::T;
 
 use crate::{
     context::{PathCompletionCtx, PathKind, PathQualifierCtx},
@@ -14,15 +15,16 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
         return;
     }
 
-    let (&is_absolute_path, qualifier) = match ctx.path_context() {
-        Some(PathCompletionCtx {
-            kind: PathKind::Expr { .. },
-            is_absolute_path,
-            qualifier,
-            ..
-        }) => (is_absolute_path, qualifier),
-        _ => return,
-    };
+    let (is_absolute_path, qualifier, in_block_expr, in_loop_body, in_functional_update) =
+        match ctx.path_context() {
+            Some(&PathCompletionCtx {
+                kind: PathKind::Expr { in_block_expr, in_loop_body, in_functional_update },
+                is_absolute_path,
+                ref qualifier,
+                ..
+            }) => (is_absolute_path, qualifier, in_block_expr, in_loop_body, in_functional_update),
+            _ => return,
+        };
 
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
@@ -162,6 +164,64 @@ pub(crate) fn complete_expr_path(acc: &mut Completions, ctx: &CompletionContext)
                     acc.add_resolution(ctx, name, def);
                 }
             });
+
+            if !in_functional_update {
+                let mut add_keyword =
+                    |kw, snippet| super::keyword::add_keyword(acc, ctx, kw, snippet);
+
+                if ctx.expects_expression() {
+                    if !in_block_expr {
+                        add_keyword("unsafe", "unsafe {\n    $0\n}");
+                    }
+                    add_keyword("match", "match $1 {\n    $0\n}");
+                    add_keyword("while", "while $1 {\n    $0\n}");
+                    add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
+                    add_keyword("loop", "loop {\n    $0\n}");
+                    add_keyword("if", "if $1 {\n    $0\n}");
+                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    add_keyword("for", "for $1 in $2 {\n    $0\n}");
+                    add_keyword("true", "true");
+                    add_keyword("false", "false");
+                }
+
+                if ctx.previous_token_is(T![if])
+                    || ctx.previous_token_is(T![while])
+                    || in_block_expr
+                {
+                    add_keyword("let", "let");
+                }
+
+                if ctx.after_if() {
+                    add_keyword("else", "else {\n    $0\n}");
+                    add_keyword("else if", "else if $1 {\n    $0\n}");
+                }
+
+                if ctx.expects_ident_ref_expr() {
+                    add_keyword("mut", "mut ");
+                }
+
+                if in_loop_body {
+                    if in_block_expr {
+                        add_keyword("continue", "continue;");
+                        add_keyword("break", "break;");
+                    } else {
+                        add_keyword("continue", "continue");
+                        add_keyword("break", "break");
+                    }
+                }
+
+                if let Some(fn_def) = &ctx.function_def {
+                    add_keyword(
+                        "return",
+                        match (in_block_expr, fn_def.ret_type().is_some()) {
+                            (true, true) => "return ;",
+                            (true, false) => "return;",
+                            (false, true) => "return $0",
+                            (false, false) => "return",
+                        },
+                    );
+                }
+            }
         }
     }
 }

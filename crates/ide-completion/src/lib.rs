@@ -173,7 +173,7 @@ pub fn completions(
         completions::r#type::complete_type_path(acc, ctx);
         completions::r#type::complete_inferred_type(acc, ctx);
         completions::use_::complete_use_tree(acc, ctx);
-        completions::vis::complete_vis(acc, ctx);
+        completions::vis::complete_vis_path(acc, ctx);
     }
 
     Some(acc)
