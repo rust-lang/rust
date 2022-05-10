@@ -28,7 +28,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::{*, shims::posix::FileHandler};
+use crate::{shims::posix::FileHandler, *};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
