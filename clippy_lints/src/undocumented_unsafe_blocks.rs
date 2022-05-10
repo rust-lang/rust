@@ -140,6 +140,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, block: &hir::Block<'_>) -> boo
 }
 
 /// Checks if the lines immediately preceding the item contain a safety comment.
+#[allow(clippy::collapsible_match)]
 fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
     if span_from_macro_expansion_has_safety_comment(cx, item.span) || span_in_body_has_safety_comment(cx, item.span) {
         return true;
@@ -147,48 +148,51 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
 
     if item.span.ctxt() == SyntaxContext::root() {
         if let Some(parent_node) = get_parent_node(cx.tcx, item.hir_id()) {
-            let mut span_before_item = None;
-            let mut hi = false;
-            if let Node::Item(parent_item) = parent_node {
-                if let ItemKind::Mod(parent_mod) = &parent_item.kind {
-                    for (idx, item_id) in parent_mod.item_ids.iter().enumerate() {
-                        if *item_id == item.item_id() {
-                            if idx == 0 {
-                                // mod A { /* comment */ unsafe impl T {} ... }
-                                // ^------------------------------------------^ gets this span
-                                // ^---------------------^ finally checks the text in this range
-                                hi = false;
-                                span_before_item = Some(parent_item.span);
-                            } else {
-                                let prev_item = cx.tcx.hir().item(parent_mod.item_ids[idx - 1]);
-                                // some_item /* comment */ unsafe impl T {}
-                                // ^-------^ gets this span
-                                //         ^---------------^ finally checks the text in this range
-                                hi = true;
-                                span_before_item = Some(prev_item.span);
-                            }
-                            break;
-                        }
+            let comment_start;
+            match parent_node {
+                Node::Crate(parent_mod) => {
+                    comment_start = comment_start_before_impl_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item);
+                },
+                Node::Item(parent_item) => {
+                    if let ItemKind::Mod(parent_mod) = &parent_item.kind {
+                        comment_start = comment_start_before_impl_in_mod(cx, parent_mod, parent_item.span, item);
+                    } else {
+                        // Doesn't support impls in this position. Pretend a comment was found.
+                        return true;
                     }
-                }
+                },
+                Node::Stmt(stmt) => {
+                    if let Some(stmt_parent) = get_parent_node(cx.tcx, stmt.hir_id) {
+                        match stmt_parent {
+                            Node::Block(block) => {
+                                comment_start = walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo);
+                            },
+                            _ => {
+                                // Doesn't support impls in this position. Pretend a comment was found.
+                                return true;
+                            },
+                        }
+                    } else {
+                        // Doesn't support impls in this position. Pretend a comment was found.
+                        return true;
+                    }
+                },
+                _ => {
+                    // Doesn't support impls in this position. Pretend a comment was found.
+                    return true;
+                },
             }
-            let span_before_item = span_before_item.unwrap();
 
             let source_map = cx.sess().source_map();
-            if let Some(item_span) = walk_span_to_context(item.span, SyntaxContext::root())
-                && let Some(span_before_item) = walk_span_to_context(span_before_item, SyntaxContext::root())
-                && let Ok(unsafe_line) = source_map.lookup_line(item_span.lo())
-                && let Ok(line_before_unsafe) = source_map.lookup_line(if hi {
-                    span_before_item.hi()
-                } else {
-                    span_before_item.lo()
-                })
-                && Lrc::ptr_eq(&unsafe_line.sf, &line_before_unsafe.sf)
+            if let Some(comment_start) = comment_start
+                && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
+                && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
+                && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
                 && let Some(src) = unsafe_line.sf.src.as_deref()
             {
-                line_before_unsafe.line < unsafe_line.line && text_has_safety_comment(
+                comment_start_line.line < unsafe_line.line && text_has_safety_comment(
                     src,
-                    &unsafe_line.sf.lines[line_before_unsafe.line + 1..=unsafe_line.line],
+                    &unsafe_line.sf.lines[comment_start_line.line + 1..=unsafe_line.line],
                     unsafe_line.sf.start_pos.to_usize(),
                 )
             } else {
@@ -202,6 +206,35 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
     } else {
         false
     }
+}
+
+fn comment_start_before_impl_in_mod(
+    cx: &LateContext<'_>,
+    parent_mod: &hir::Mod<'_>,
+    parent_mod_span: Span,
+    imple: &hir::Item<'_>,
+) -> Option<BytePos> {
+    parent_mod.item_ids.iter().enumerate().find_map(|(idx, item_id)| {
+        if *item_id == imple.item_id() {
+            if idx == 0 {
+                // mod A { /* comment */ unsafe impl T {} ... }
+                // ^------------------------------------------^ returns the start of this span
+                //       ^---------------^ finally checks comments in this range
+                if let Some(sp) = walk_span_to_context(parent_mod_span, SyntaxContext::root()) {
+                    return Some(sp.lo());
+                }
+            } else {
+                // some_item /* comment */ unsafe impl T {}
+                // ^-------^ returns the end of this span
+                //         ^---------------^ finally checks comments in this range
+                let prev_item = cx.tcx.hir().item(parent_mod.item_ids[idx - 1]);
+                if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
+                    return Some(sp.hi());
+                }
+            }
+        }
+        None
+    })
 }
 
 fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {

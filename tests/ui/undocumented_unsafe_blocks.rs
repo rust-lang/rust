@@ -344,7 +344,7 @@ mod unsafe_impl_smoke_test {
     unsafe impl A for (i32) {}
 
     mod sub_mod {
-        // error: also works for the first item
+        // error:
         unsafe impl B for (u32) {}
         unsafe trait B {}
     }
@@ -363,22 +363,49 @@ mod unsafe_impl_smoke_test {
 mod unsafe_impl_from_macro {
     unsafe trait T {}
 
+    // error
     macro_rules! no_safety_comment {
         ($t:ty) => {
             unsafe impl T for $t {}
         };
     }
-    // error
+
+    // ok
     no_safety_comment!(());
 
+    // ok
     macro_rules! with_safety_comment {
         ($t:ty) => {
             // SAFETY:
             unsafe impl T for $t {}
         };
     }
+
     // ok
     with_safety_comment!((i32));
+}
+
+mod unsafe_impl_macro_and_not_macro {
+    unsafe trait T {}
+
+    // error
+    macro_rules! no_safety_comment {
+        ($t:ty) => {
+            unsafe impl T for $t {}
+        };
+    }
+
+    // ok
+    no_safety_comment!(());
+
+    // error
+    unsafe impl T for (i32) {}
+
+    // ok
+    no_safety_comment!(u32);
+
+    // error
+    unsafe impl T for (bool) {}
 }
 
 #[rustfmt::skip]
@@ -439,5 +466,23 @@ mod unsafe_impl_invalid_comment {
     const BIG_NUMBER: i32 = 1000000;
     unsafe impl Interference for () {}
 }
+
+unsafe trait ImplInFn {}
+
+fn impl_in_fn() {
+    // error
+    unsafe impl ImplInFn for () {}
+
+    // SAFETY: ok
+    unsafe impl ImplInFn for (i32) {}
+}
+
+unsafe trait CrateRoot {}
+
+// error
+unsafe impl CrateRoot for () {}
+
+// SAFETY: ok
+unsafe impl CrateRoot for (i32) {}
 
 fn main() {}
