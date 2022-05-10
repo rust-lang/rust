@@ -497,7 +497,15 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
+    parent_code: Lrc<ObligationCauseCode<'tcx>>,
+}
+
+impl<'tcx> DerivedObligationCause<'tcx> {
+    /// Get a reference to the derived obligation cause's parent code.
+    #[must_use]
+    pub fn parent_code(&self) -> &ObligationCauseCode<'tcx> {
+        self.parent_code.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, TypeFoldable, Lift)]

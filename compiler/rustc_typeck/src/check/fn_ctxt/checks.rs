@@ -1606,9 +1606,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut result_code = code;
                 loop {
                     let parent = match code {
-                        ObligationCauseCode::ImplDerivedObligation(c) => &c.derived.parent_code,
+                        ObligationCauseCode::ImplDerivedObligation(c) => c.derived.parent_code(),
                         ObligationCauseCode::BuiltinDerivedObligation(c)
-                        | ObligationCauseCode::DerivedObligation(c) => &c.parent_code,
+                        | ObligationCauseCode::DerivedObligation(c) => c.parent_code(),
                         _ => break result_code,
                     };
                     (result_code, code) = (code, parent);
