@@ -113,6 +113,7 @@ store.register_lints(&[
     derivable_impls::DERIVABLE_IMPLS,
     derive::DERIVE_HASH_XOR_EQ,
     derive::DERIVE_ORD_XOR_PARTIAL_ORD,
+    derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ,
     derive::EXPL_IMPL_CLONE_ON_COPY,
     derive::UNSAFE_DERIVE_DESERIALIZE,
     disallowed_methods::DISALLOWED_METHODS,
