@@ -1,6 +1,34 @@
 //! Implementation of C++11-consistent weak memory emulation using store buffers
 //! based on Dynamic Race Detection for C++ ("the paper"):
 //! https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf
+//! 
+//! This implementation will never generate weak memory behaviours forbidden by the C++11 model,
+//! but it is incapable of producing all possible weak behaviours allowed by the model. There are
+//! certain weak behaviours observable on real hardware but not while using this.
+//! 
+//! Note that this implementation does not take into account of C++20's memory model revision to SC accesses
+//! and fences introduced by P0668 (https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html).
+//! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
+//! disallows.
+//! 
+//! Rust follows the full C++20 memory model (except for the Consume ordering). It is therefore
+//! possible for this implementation to generate behaviours never observable when the same program is compiled and
+//! run natively. Unfortunately, no literature exists at the time of writing which proposes an implementable and C++20-compatible
+//! relaxed memory model that supports all atomic operation existing in Rust. The closest one is
+//! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf)
+//! However, this model lacks SC accesses and is therefore unusable by Miri (SC accesses are everywhere in library code).
+//! 
+//! If you find anything that proposes a relaxed memory model that is C++20-consistent, supports all orderings Rust's atomic accesses
+//! and fences accept, and is implementable (with operational semanitcs), please open a GitHub issue!
+//! 
+//! One characteristic of this implementation, in contrast to some other notable operational models such as ones proposed in
+//! Taming Release-Acquire Consistency by Ori Lahav et al. (https://plv.mpi-sws.org/sra/paper.pdf) or Promising Semantics noted above,
+//! is that this implementation does not require each thread to hold an isolated view of the entire memory. Here, store buffers are per-location
+//! and shared across all threads. This is more memory efficient but does require store elements (representing writes to a location) to record
+//! information about reads, whereas in the other two models it is the other way round: reads points to the write it got its value from.
+//! Additionally, writes in our implementation do not have globally unique timestamps attached. In the other two models this timestamp is
+//! used to make sure a value in a thread's view is not overwritten by a write that occured earlier than the one in the existing view.
+//! In our implementation, this is detected using read information attached to store elements, as there is no data strucutre representing reads.
 
 // Our and the author's own implementation (tsan11) of the paper have some deviations from the provided operational semantics in §5.3:
 // 1. In the operational semantics, store elements keep a copy of the atomic object's vector clock (AtomicCellClocks::sync_vector in miri),
@@ -40,6 +68,10 @@ use crate::{
 
 pub type AllocExtra = StoreBufferAlloc;
 
+// Each store buffer must be bounded otherwise it will grow indefinitely.
+// However, bounding the store buffer means restricting the amount of weak
+// behaviours observable. The author picked 128 as a good tradeoff
+// so we follow them here.
 const STORE_BUFFER_LIMIT: usize = 128;
 
 #[derive(Debug, Clone)]
