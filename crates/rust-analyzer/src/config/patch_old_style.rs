@@ -11,13 +11,16 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         ($(
             $($src:ident).+ -> $($dst:ident).+ ;
         )+) => { $(
-            if let Some(it) = copy.pointer(concat!($("/", stringify!($src)),+)).cloned() {
-                let mut last = it;
-                for segment in [$(stringify!($dst)),+].into_iter().rev() {
-                    last = Value::Object(serde_json::Map::from_iter(std::iter::once((segment.to_string(), last))));
-                }
+            match copy.pointer(concat!($("/", stringify!($src)),+)).cloned() {
+                Some(Value::Object(_)) | None => (),
+                Some(it) => {
+                    let mut last = it;
+                    for segment in [$(stringify!($dst)),+].into_iter().rev() {
+                        last = Value::Object(serde_json::Map::from_iter(std::iter::once((segment.to_string(), last))));
+                    }
 
-                merge(json, last);
+                    merge(json, last);
+                },
             }
         )+ };
     }
@@ -36,7 +39,6 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         cargo.runBuildScripts -> cargo.runBuildScripts.overrideCommand;
         cargo.runBuildScriptsCommand -> cargo.runBuildScripts.overrideCommand;
         cargo.useRustcWrapperForBuildScripts -> cargo.runBuildScripts.useRustcWrapper;
-        completion.snippets -> completion.snippets.custom;
         diagnostics.enableExperimental -> diagnostics.experimental.enable;
         experimental.procAttrMacros -> procMacro.attributes.enable;
         highlighting.strings -> semanticHighlighting.strings.enable;
@@ -64,6 +66,22 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         runnables.overrideCargo -> runnables.command ;
         rustcSource -> rustc.source;
         rustfmt.enableRangeFormatting -> rustfmt.rangeFormatting.enable;
+    }
+
+    // completion.snippets -> completion.snippets.custom;
+    if let Some(Value::Object(obj)) = copy.pointer("/completion/snippets").cloned() {
+        if obj.len() != 1 || obj.get("custom").is_none() {
+            merge(
+                json,
+                json! {{
+                    "completion": {
+                        "snippets": {
+                            "custom": obj
+                        },
+                    },
+                }},
+            );
+        }
     }
 
     // callInfo_full -> signatureInfo_detail, signatureInfo_documentation_enable
