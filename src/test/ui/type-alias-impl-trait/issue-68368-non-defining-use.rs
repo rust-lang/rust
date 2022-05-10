@@ -8,7 +8,6 @@ type Alias<'a, U> = impl Trait<U>;
 
 fn f<'a>() -> Alias<'a, ()> {}
 //~^ ERROR non-defining opaque type use in defining scope
-//~| ERROR the trait bound `(): Trait<U>` is not satisfied
 
 fn main() {}
 

@@ -82,6 +82,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         ));
         debug!(?definition_ty);
 
+        if !check_opaque_type_parameter_valid(
+            self.tcx,
+            opaque_type_key,
+            origin,
+            instantiated_ty.span,
+        ) {
+            return self.tcx.ty_error();
+        }
+
         // Only check this for TAIT. RPIT already supports `src/test/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
         if let OpaqueTyOrigin::TyAlias = origin {
@@ -146,6 +155,98 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             definition_ty
         }
     }
+}
+
+fn check_opaque_type_parameter_valid(
+    tcx: TyCtxt<'_>,
+    opaque_type_key: OpaqueTypeKey<'_>,
+    origin: OpaqueTyOrigin,
+    span: Span,
+) -> bool {
+    match origin {
+        // No need to check return position impl trait (RPIT)
+        // because for type and const parameters they are correct
+        // by construction: we convert
+        //
+        // fn foo<P0..Pn>() -> impl Trait
+        //
+        // into
+        //
+        // type Foo<P0...Pn>
+        // fn foo<P0..Pn>() -> Foo<P0...Pn>.
+        //
+        // For lifetime parameters we convert
+        //
+        // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
+        //
+        // into
+        //
+        // type foo::<'p0..'pn>::Foo<'q0..'qm>
+        // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
+        //
+        // which would error here on all of the `'static` args.
+        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return true,
+        // Check these
+        OpaqueTyOrigin::TyAlias => {}
+    }
+    let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
+    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+    for (i, arg) in opaque_type_key.substs.iter().enumerate() {
+        let arg_is_param = match arg.unpack() {
+            GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
+            GenericArgKind::Lifetime(lt) if lt.is_static() => {
+                tcx.sess
+                    .struct_span_err(span, "non-defining opaque type use in defining scope")
+                    .span_label(
+                        tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
+                        "cannot use static lifetime; use a bound lifetime \
+                                    instead or remove the lifetime parameter from the \
+                                    opaque type",
+                    )
+                    .emit();
+                return false;
+            }
+            GenericArgKind::Lifetime(lt) => {
+                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+            }
+            GenericArgKind::Const(ct) => matches!(ct.val(), ty::ConstKind::Param(_)),
+        };
+
+        if arg_is_param {
+            seen_params.entry(arg).or_default().push(i);
+        } else {
+            // Prevent `fn foo() -> Foo<u32>` from being defining.
+            let opaque_param = opaque_generics.param_at(i, tcx);
+            tcx.sess
+                .struct_span_err(span, "non-defining opaque type use in defining scope")
+                .span_note(
+                    tcx.def_span(opaque_param.def_id),
+                    &format!(
+                        "used non-generic {} `{}` for generic parameter",
+                        opaque_param.kind.descr(),
+                        arg,
+                    ),
+                )
+                .emit();
+            return false;
+        }
+    }
+
+    for (_, indices) in seen_params {
+        if indices.len() > 1 {
+            let descr = opaque_generics.param_at(indices[0], tcx).kind.descr();
+            let spans: Vec<_> = indices
+                .into_iter()
+                .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
+                .collect();
+            tcx.sess
+                .struct_span_err(span, "non-defining opaque type use in defining scope")
+                .span_note(spans, &format!("{} used multiple times", descr))
+                .emit();
+            return false;
+        }
+    }
+    true
 }
 
 struct ReverseMapper<'tcx> {

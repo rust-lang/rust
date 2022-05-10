@@ -26,18 +26,6 @@ note: used non-generic type `()` for generic parameter
 LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |             ^
 
-error: non-defining opaque type use in defining scope
-  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:20:27
-   |
-LL | fn my_fun() -> Return<()> {}
-   |                           ^^
-   |
-note: used non-generic type `()` for generic parameter
-  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:17:13
-   |
-LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
-   |             ^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0261`.
