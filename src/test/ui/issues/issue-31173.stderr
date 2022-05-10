@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]> as Iterator>::Item == &_`
   --> $DIR/issue-31173.rs:10:10
    |
+LL |     let temp: Vec<u8> = it.take_while(|&x| {
+   |                            ---------- this call is of type `TakeWhile<&mut std::vec::IntoIter<u8>, _>`
+...
 LL |         .cloned()
    |          ^^^^^^ expected reference, found `u8`
    |

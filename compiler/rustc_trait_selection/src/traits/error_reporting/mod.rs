@@ -1621,6 +1621,36 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 "type mismatch resolving `{}`",
                 predicate
             );
+            let mut v = HirFinder { needle: obligation.cause.span, found: None };
+            let body = self.tcx.hir().get(obligation.cause.body_id);
+            if let hir::Node::Expr(expr) = body {
+                v.visit_expr(expr);
+            }
+            if let Some(expr) = v.found {
+                // FIXME(estebank): look for method calls that can be applied on the previous
+                // element of the chain, that would make the next call to typeck.
+                let mut receiver = expr;
+                if let (Some(typeck_results), hir::ExprKind::MethodCall(..)) =
+                    (self.in_progress_typeck_results, &receiver.kind)
+                {
+                    let typeck_results = typeck_results.borrow();
+                    while let hir::ExprKind::MethodCall(method_segment, args, _) = receiver.kind {
+                        if let Some(ty) = typeck_results.expr_ty_adjusted_opt(receiver) {
+                            diag.span_label(
+                                method_segment.ident.span,
+                                &format!("this call is of type `{ty}`"),
+                            );
+                        }
+                        receiver = &args[0];
+                    }
+                    while let hir::ExprKind::Call(path, _args) = receiver.kind {
+                        if let Some(ty) = typeck_results.expr_ty_adjusted_opt(receiver) {
+                            diag.span_label(path.span, &format!("this call is of type `{ty}`"));
+                        }
+                        receiver = &path;
+                    }
+                }
+            }
             let secondary_span = match predicate.kind().skip_binder() {
                 ty::PredicateKind::Projection(proj) => self
                     .tcx
@@ -2687,5 +2717,26 @@ impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
         } else {
             ControlFlow::CONTINUE
         }
+    }
+}
+
+struct HirFinder<'tcx> {
+    needle: Span,
+    found: Option<&'tcx hir::Expr<'tcx>>,
+}
+
+impl<'v> Visitor<'v> for HirFinder<'v> {
+    fn visit_expr(&mut self, expr: &'v hir::Expr<'v>) {
+        if expr.span == self.needle {
+            self.found = Some(expr);
+            return;
+        }
+        if let hir::ExprKind::MethodCall(segment, _, _) = expr.kind {
+            if segment.ident.span == self.needle {
+                self.found = Some(expr);
+                return;
+            }
+        }
+        hir::intravisit::walk_expr(self, expr);
     }
 }
