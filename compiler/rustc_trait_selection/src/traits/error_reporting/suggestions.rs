@@ -1683,7 +1683,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => {}
                     }
 
-                    next_code = Some(cause.derived.parent_code());
+                    next_code = Some(&cause.derived.parent_code);
                 }
                 ObligationCauseCode::DerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
@@ -1715,7 +1715,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => {}
                     }
 
-                    next_code = Some(derived_obligation.parent_code());
+                    next_code = Some(&derived_obligation.parent_code);
                 }
                 _ => break,
             }
@@ -2365,7 +2365,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
                 } else {
-                    if let ObligationCauseCode::BuiltinDerivedObligation(data) = data.parent_code()
+                    if let ObligationCauseCode::BuiltinDerivedObligation(data) = &*data.parent_code
                     {
                         let parent_trait_ref =
                             self.resolve_vars_if_possible(data.parent_trait_pred);
@@ -2392,14 +2392,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 obligated_types.push(ty);
 
                 let parent_predicate = parent_trait_ref.to_predicate(tcx);
-                if !self.is_recursive_obligation(obligated_types, data.parent_code()) {
+                if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
                     // #74711: avoid a stack overflow
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
                             err,
                             &parent_predicate,
                             param_env,
-                            data.parent_code(),
+                            &data.parent_code,
                             obligated_types,
                             seen_requirements,
                         )
@@ -2410,7 +2410,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err,
                             &parent_predicate,
                             param_env,
-                            &cause_code.peel_derives(),
+                            cause_code.peel_derives(),
                             obligated_types,
                             seen_requirements,
                         )
@@ -2461,7 +2461,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // We don't want to point at the ADT saying "required because it appears within
                     // the type `X`", like we would otherwise do in test `supertrait-auto-trait.rs`.
                     while let ObligationCauseCode::BuiltinDerivedObligation(derived) =
-                        data.parent_code()
+                        &*data.parent_code
                     {
                         let child_trait_ref =
                             self.resolve_vars_if_possible(derived.parent_trait_pred);
@@ -2474,7 +2474,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         parent_trait_pred = child_trait_ref;
                     }
                 }
-                while let ObligationCauseCode::ImplDerivedObligation(child) = data.parent_code() {
+                while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
                     // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
                     let child_trait_pred =
                         self.resolve_vars_if_possible(child.derived.parent_trait_pred);
@@ -2505,7 +2505,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err,
                         &parent_predicate,
                         param_env,
-                        data.parent_code(),
+                        &data.parent_code,
                         obligated_types,
                         seen_requirements,
                     )
@@ -2520,7 +2520,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err,
                         &parent_predicate,
                         param_env,
-                        data.parent_code(),
+                        &data.parent_code,
                         obligated_types,
                         seen_requirements,
                     )

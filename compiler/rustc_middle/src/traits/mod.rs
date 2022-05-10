@@ -97,9 +97,7 @@ pub struct ObligationCause<'tcx> {
     /// information.
     pub body_id: hir::HirId,
 
-    /// `None` for `MISC_OBLIGATION_CAUSE_CODE` (a common case, occurs ~60% of
-    /// the time). `Some` otherwise.
-    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+    code: InternedObligationCauseCode<'tcx>,
 }
 
 // This custom hash function speeds up hashing for `Obligation` deduplication
@@ -123,11 +121,7 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause {
-            span,
-            body_id,
-            code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) },
-        }
+        ObligationCause { span, body_id, code: code.into() }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
@@ -136,11 +130,11 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: None }
+        ObligationCause::dummy_with_span(DUMMY_SP)
     }
 
     pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: None }
+        ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
@@ -160,14 +154,14 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline]
     pub fn code(&self) -> &ObligationCauseCode<'tcx> {
-        self.code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
+        &self.code
     }
 
     pub fn map_code(
         &mut self,
-        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> Lrc<ObligationCauseCode<'tcx>>,
+        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> ObligationCauseCode<'tcx>,
     ) {
-        self.code = Some(f(InternedObligationCauseCode { code: self.code.take() }));
+        self.code = f(std::mem::take(&mut self.code)).into();
     }
 
     pub fn derived_cause(
@@ -188,10 +182,8 @@ impl<'tcx> ObligationCause<'tcx> {
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
-        self.code = Some(
-            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code.take() })
-                .into(),
-        );
+        self.code =
+            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self
     }
 }
@@ -203,9 +195,17 @@ pub struct UnifyReceiverContext<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, Default)]
 pub struct InternedObligationCauseCode<'tcx> {
+    /// `None` for `MISC_OBLIGATION_CAUSE_CODE` (a common case, occurs ~60% of
+    /// the time). `Some` otherwise.
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+}
+
+impl<'tcx> From<ObligationCauseCode<'tcx>> for InternedObligationCauseCode<'tcx> {
+    fn from(code: ObligationCauseCode<'tcx>) -> Self {
+        Self { code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) } }
+    }
 }
 
 impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
@@ -454,7 +454,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             BuiltinDerivedObligation(derived)
             | DerivedObligation(derived)
             | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
-                Some((derived.parent_code(), Some(derived.parent_trait_pred)))
+                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
             }
             _ => None,
         }
@@ -508,15 +508,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    parent_code: Option<Lrc<ObligationCauseCode<'tcx>>>,
-}
-
-impl<'tcx> DerivedObligationCause<'tcx> {
-    /// Get a reference to the derived obligation cause's parent code.
-    #[must_use]
-    pub fn parent_code(&self) -> &ObligationCauseCode<'tcx> {
-        self.parent_code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
-    }
+    pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
 #[derive(Clone, Debug, TypeFoldable, Lift)]

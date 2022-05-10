@@ -1606,9 +1606,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut result_code = code;
                 loop {
                     let parent = match code {
-                        ObligationCauseCode::ImplDerivedObligation(c) => c.derived.parent_code(),
+                        ObligationCauseCode::ImplDerivedObligation(c) => &c.derived.parent_code,
                         ObligationCauseCode::BuiltinDerivedObligation(c)
-                        | ObligationCauseCode::DerivedObligation(c) => c.parent_code(),
+                        | ObligationCauseCode::DerivedObligation(c) => &c.parent_code,
                         _ => break result_code,
                     };
                     (result_code, code) = (code, parent);
@@ -1670,7 +1670,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         call_hir_id: expr.hir_id,
                         parent_code,
                     }
-                    .into()
                 });
             } else if error.obligation.cause.span == call_sp {
                 // Make function calls point at the callee, not the whole thing.

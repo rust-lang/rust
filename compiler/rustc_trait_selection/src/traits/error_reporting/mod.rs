@@ -1868,7 +1868,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         match code {
             ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
-                match self.get_parent_trait_ref(data.parent_code()) {
+                match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
