@@ -110,6 +110,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let remapped_type = infcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
                 universal_concrete_type,
+                origin,
             );
             let ty = if check_opaque_type_parameter_valid(
                 infcx.tcx,

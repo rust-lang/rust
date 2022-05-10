@@ -5,7 +5,6 @@
 use std::future::Future;
 
 type G<'a, T> = impl Future<Output = ()>;
-//~^ ERROR: the trait bound `T: Trait` is not satisfied
 
 trait Trait {
     type F: Future<Output = ()>;
@@ -17,6 +16,7 @@ trait Trait {
         Self: Sized,
     {
         async move { self.f().await }
+        //~^ ERROR: the trait bound `T: Trait` is not satisfied
     }
 }
 

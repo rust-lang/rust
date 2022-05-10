@@ -1,3 +1,16 @@
+error[E0271]: type mismatch resolving `<[closure@$DIR/issue-60564.rs:20:28: 20:100] as FnOnce<(u8,)>>::Output == I`
+  --> $DIR/issue-60564.rs:20:9
+   |
+LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
+   |                         - this type parameter
+...
+LL |         (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found type parameter `I`
+   |
+   = note:        expected type `u8`
+           found type parameter `I`
+   = note: required because of the requirements on the impl of `Iterator` for `Map<Rev<std::ops::Range<u8>>, [closure@$DIR/issue-60564.rs:20:28: 20:100]>`
+
 error: non-defining opaque type use in defining scope
   --> $DIR/issue-60564.rs:20:9
    |
@@ -10,5 +23,6 @@ note: used non-generic type `u8` for generic parameter
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                         ^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0271`.
