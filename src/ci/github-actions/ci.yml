@@ -285,16 +285,27 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-12
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-tools
+#          - name: mingw-check
+#            <<: *job-linux-xl
+#
+#          - name: x86_64-gnu-llvm-12
+#            <<: *job-linux-xl
+#
+#          - name: x86_64-gnu-tools
+#            env:
+#              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+#            <<: *job-linux-xl
+          - name: dist-x86_64-msvc
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --host=x86_64-pc-windows-msvc
+                --target=x86_64-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python src/ci/pgo-windows.py
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
 
   auto:
     <<: *base-ci-job
