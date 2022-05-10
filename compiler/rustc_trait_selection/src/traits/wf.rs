@@ -309,8 +309,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     }
                     .into()
                 });
-            } else {
-                cause = traits::ObligationCause::misc(self.span, self.body_id);
             }
             extend_cause_with_original_assoc_item_obligation(
                 tcx, trait_ref, item, &mut cause, predicate,
