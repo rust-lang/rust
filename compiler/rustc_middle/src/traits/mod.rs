@@ -163,13 +163,6 @@ impl<'tcx> ObligationCause<'tcx> {
         self.code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
     }
 
-    pub fn clone_code(&self) -> Lrc<ObligationCauseCode<'tcx>> {
-        match &self.code {
-            Some(code) => code.clone(),
-            None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
-        }
-    }
-
     pub fn map_code(
         &mut self,
         f: impl FnOnce(Lrc<ObligationCauseCode<'tcx>>) -> Lrc<ObligationCauseCode<'tcx>>,

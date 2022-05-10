@@ -80,7 +80,7 @@ impl<'tcx> TraitObligation<'tcx> {
 
     pub fn derived_cause(
         &self,
-        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         self.cause.clone().derived_cause(self.predicate, variant)
     }
