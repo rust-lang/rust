@@ -1652,7 +1652,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
                 ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                    next_code = Some(parent_code.as_ref());
+                    next_code = Some(parent_code);
                 }
                 ObligationCauseCode::ImplDerivedObligation(cause) => {
                     let ty = cause.derived.parent_trait_pred.skip_binder().self_ty();

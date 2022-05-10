@@ -165,12 +165,9 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn map_code(
         &mut self,
-        f: impl FnOnce(Lrc<ObligationCauseCode<'tcx>>) -> Lrc<ObligationCauseCode<'tcx>>,
+        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> Lrc<ObligationCauseCode<'tcx>>,
     ) {
-        self.code = Some(f(match self.code.take() {
-            Some(code) => code,
-            None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
-        }));
+        self.code = Some(f(InternedObligationCauseCode { code: self.code.take() }));
     }
 
     pub fn derived_cause(
@@ -204,6 +201,19 @@ pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
     pub param_env: ty::ParamEnv<'tcx>,
     pub substs: SubstsRef<'tcx>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+pub struct InternedObligationCauseCode<'tcx> {
+    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+}
+
+impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
+    type Target = ObligationCauseCode<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
@@ -293,7 +303,7 @@ pub enum ObligationCauseCode<'tcx> {
         /// The node of the function call.
         call_hir_id: hir::HirId,
         /// The obligation introduced by this argument.
-        parent_code: Lrc<ObligationCauseCode<'tcx>>,
+        parent_code: InternedObligationCauseCode<'tcx>,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
