@@ -288,7 +288,7 @@ environment variable:
    using the tools in the repository https://github.com/rust-lang/measureme.
 * `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
   but reports to the program that it did actually write. This is useful when you
-  are not interested in the actual program's messages, but only want to see miri's
+  are not interested in the actual program's output, but only want to see miri's
   errors and warnings.
 * `-Zmiri-panic-on-unsupported` will makes some forms of unsupported functionality,
   such as FFI and unsupported syscalls, panic within the context of the emulated
