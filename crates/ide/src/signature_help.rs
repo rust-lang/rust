@@ -129,7 +129,7 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
             format_to!(res.signature, "fn {}", func.name(db));
-            fn_params = Some(match func.self_param(db) {
+            fn_params = Some(match callable.receiver_param(db) {
                 Some(_self) => func.params_without_self(db),
                 None => func.assoc_fn_params(db),
             });
@@ -1139,6 +1139,22 @@ fn f() {
             expect![[r#"
                 fn foo(x: Wrap<impl Trait<U>>)
                        ^^^^^^^^^^^^^^^^^^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fully_qualified_syntax() {
+        check(
+            r#"
+fn f() {
+    trait A { fn foo(&self, other: Self); }
+    A::foo(&self$0, other);
+}
+"#,
+            expect![[r#"
+                fn foo(self: &Self, other: Self)
+                       ^^^^^^^^^^^  -----------
             "#]],
         );
     }
