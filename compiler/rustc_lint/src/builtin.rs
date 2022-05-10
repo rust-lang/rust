@@ -38,7 +38,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::lint::{in_external_macro, LintDiagnosticBuilder};
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
@@ -2115,6 +2115,7 @@ impl ExplicitOutlivesRequirements {
                     None
                 }
             })
+            .filter(|(_, span)| !in_external_macro(tcx.sess, *span))
             .collect()
     }
 
