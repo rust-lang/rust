@@ -19,7 +19,6 @@ use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, Ge
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::sym;
-use std::convert::TryFrom;
 use std::ops::ControlFlow;
 
 macro_rules! unwrap_or_continue {

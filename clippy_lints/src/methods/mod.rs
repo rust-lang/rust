@@ -1776,8 +1776,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// use std::iter::FromIterator;
-    ///
     /// let five_fives = std::iter::repeat(5).take(5);
     ///
     /// let v = Vec::from_iter(five_fives);

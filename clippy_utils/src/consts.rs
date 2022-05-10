@@ -13,7 +13,6 @@ use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
-use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::iter;
 
