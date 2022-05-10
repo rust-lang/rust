@@ -143,10 +143,6 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: None }
     }
 
-    pub fn make_mut_code(&mut self) -> &mut ObligationCauseCode<'tcx> {
-        Lrc::make_mut(self.code.get_or_insert_with(|| Lrc::new(MISC_OBLIGATION_CAUSE_CODE)))
-    }
-
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
         match *self.code() {
             ObligationCauseCode::CompareImplMethodObligation { .. }
@@ -172,6 +168,16 @@ impl<'tcx> ObligationCause<'tcx> {
             Some(code) => code.clone(),
             None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
         }
+    }
+
+    pub fn map_code(
+        &mut self,
+        f: impl FnOnce(Lrc<ObligationCauseCode<'tcx>>) -> Lrc<ObligationCauseCode<'tcx>>,
+    ) {
+        self.code = Some(f(match self.code.take() {
+            Some(code) => code,
+            None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
+        }));
     }
 }
 

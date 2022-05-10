@@ -1668,13 +1668,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We make sure that only *one* argument matches the obligation failure
                 // and we assign the obligation's span to its expression's.
                 error.obligation.cause.span = args[ref_in].span;
-                let parent_code = error.obligation.cause.clone_code();
-                *error.obligation.cause.make_mut_code() =
+                error.obligation.cause.map_code(|parent_code| {
                     ObligationCauseCode::FunctionArgumentObligation {
                         arg_hir_id: args[ref_in].hir_id,
                         call_hir_id: expr.hir_id,
                         parent_code,
-                    };
+                    }
+                    .into()
+                });
             } else if error.obligation.cause.span == call_sp {
                 // Make function calls point at the callee, not the whole thing.
                 if let hir::ExprKind::Call(callee, _) = expr.kind {
