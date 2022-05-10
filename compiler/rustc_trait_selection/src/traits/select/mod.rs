@@ -14,9 +14,9 @@ use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
 use super::{
-    DerivedObligationCause, ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause,
-    Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitObligation, TraitQueryMode,
+    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
+    ObligationCause, ObligationCauseCode, Overflow, PredicateObligation, Selection, SelectionError,
+    SelectionResult, TraitObligation, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -2316,17 +2316,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?predicates);
         assert_eq!(predicates.parent, None);
         let mut obligations = Vec::with_capacity(predicates.predicates.len());
-        let parent_code = cause.clone_code();
         for (predicate, span) in predicates.predicates {
             let span = *span;
-            let derived =
-                DerivedObligationCause { parent_trait_pred, parent_code: parent_code.clone() };
-            let code = ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
-                derived,
-                impl_def_id: def_id,
-                span,
-            }));
-            let cause = ObligationCause::new(cause.span, cause.body_id, code);
+            let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
+                ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                    derived,
+                    impl_def_id: def_id,
+                    span,
+                }))
+            });
             let predicate = normalize_with_depth_to(
                 self,
                 param_env,

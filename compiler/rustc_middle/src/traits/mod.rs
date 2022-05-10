@@ -183,7 +183,7 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn derived_cause(
         mut self,
         parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
-        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         /*!
          * Creates a cause for obligations that are derived from
