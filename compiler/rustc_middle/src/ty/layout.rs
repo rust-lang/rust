@@ -221,6 +221,111 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
+/// Enforce some basic invariants on layouts.
+fn sanity_check_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    layout: &TyAndLayout<'tcx>,
+) {
+    // Type-level uninhabitedness should always imply ABI uninhabitedness.
+    if tcx.conservative_is_privately_uninhabited(param_env.and(layout.ty)) {
+        assert!(layout.abi.is_uninhabited());
+    }
+
+    if cfg!(debug_assertions) {
+        fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
+            match layout.abi() {
+                Abi::Scalar(_scalar) => {
+                    // No padding in scalars.
+                    /* FIXME(#96185):
+                    assert_eq!(
+                        layout.align().abi,
+                        scalar.align(&tcx).abi,
+                        "alignment mismatch between ABI and layout in {layout:#?}"
+                    );
+                    assert_eq!(
+                        layout.size(),
+                        scalar.size(&tcx),
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );*/
+                }
+                Abi::Vector { count, element } => {
+                    // No padding in vectors. Alignment can be strengthened, though.
+                    assert!(
+                        layout.align().abi >= element.align(&tcx).abi,
+                        "alignment mismatch between ABI and layout in {layout:#?}"
+                    );
+                    let size = element.size(&tcx) * count;
+                    assert_eq!(
+                        layout.size(),
+                        size.align_to(tcx.data_layout().vector_align(size).abi),
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );
+                }
+                Abi::ScalarPair(scalar1, scalar2) => {
+                    // Sanity-check scalar pairs. These are a bit more flexible and support
+                    // padding, but we can at least ensure both fields actually fit into the layout
+                    // and the alignment requirement has not been weakened.
+                    let align1 = scalar1.align(&tcx).abi;
+                    let align2 = scalar2.align(&tcx).abi;
+                    assert!(
+                        layout.align().abi >= cmp::max(align1, align2),
+                        "alignment mismatch between ABI and layout in {layout:#?}",
+                    );
+                    let field2_offset = scalar1.size(&tcx).align_to(align2);
+                    assert!(
+                        layout.size() >= field2_offset + scalar2.size(&tcx),
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );
+                }
+                Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
+            }
+        }
+
+        check_layout_abi(tcx, layout.layout);
+
+        if let Variants::Multiple { variants, .. } = &layout.variants {
+            for variant in variants {
+                check_layout_abi(tcx, *variant);
+                // No nested "multiple".
+                assert!(matches!(variant.variants(), Variants::Single { .. }));
+                // Skip empty variants.
+                if variant.size() == Size::ZERO
+                    || variant.fields().count() == 0
+                    || variant.abi().is_uninhabited()
+                {
+                    // These are never actually accessed anyway, so we can skip them. (Note that
+                    // sometimes, variants with fields have size 0, and sometimes, variants without
+                    // fields have non-0 size.)
+                    continue;
+                }
+                // Variants should have the same or a smaller size as the full thing.
+                if variant.size() > layout.size {
+                    bug!(
+                        "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
+                        layout.size.bytes(),
+                        variant.size().bytes(),
+                    )
+                }
+                // The top-level ABI and the ABI of the variants should be coherent.
+                let abi_coherent = match (layout.abi, variant.abi()) {
+                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    (Abi::Uninhabited, _) => true,
+                    (Abi::Aggregate { .. }, _) => true,
+                    _ => false,
+                };
+                if !abi_coherent {
+                    bug!(
+                        "Variant ABI is incompatible with top-level ABI:\nvariant={:#?}\nTop-level: {layout:#?}",
+                        variant
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[instrument(skip(tcx, query), level = "debug")]
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -264,10 +369,7 @@ fn layout_of<'tcx>(
 
             cx.record_layout_for_printing(layout);
 
-            // Type-level uninhabitedness should always imply ABI uninhabitedness.
-            if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
-                assert!(layout.abi.is_uninhabited());
-            }
+            sanity_check_layout(tcx, param_env, &layout);
 
             Ok(layout)
         })
@@ -1314,9 +1416,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
                 let mut abi = Abi::Aggregate { sized: true };
 
-                // Without latter check aligned enums with custom discriminant values
-                // Would result in ICE see the issue #92464 for more info
-                if tag.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
+                if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
+                    abi = Abi::Uninhabited;
+                } else if tag.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
+                    // Without latter check aligned enums with custom discriminant values
+                    // Would result in ICE see the issue #92464 for more info
                     abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
@@ -1390,8 +1494,22 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
-                if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
-                    abi = Abi::Uninhabited;
+                // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
+                // variants to ensure they are consistent. This is because a downcast is
+                // semantically a NOP, and thus should not affect layout.
+                if matches!(abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+                    for variant in &mut layout_variants {
+                        // We only do this for variants with fields; the others are not accessed anyway.
+                        // Also do not overwrite any already existing "clever" ABIs.
+                        if variant.fields.count() > 0
+                            && matches!(variant.abi, Abi::Aggregate { .. })
+                        {
+                            variant.abi = abi;
+                            // Also need to bump up the size and alignment, so that the entire value fits in here.
+                            variant.size = cmp::max(variant.size, size);
+                            variant.align.abi = cmp::max(variant.align.abi, align.abi);
+                        }
+                    }
                 }
 
                 let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
