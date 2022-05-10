@@ -103,6 +103,8 @@ pub struct CopyImplOnNonAdt {
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
     pub span: Span,
+    #[label = "alias-span"]
+    pub trait_alias_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]

@@ -118,13 +118,14 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Get components of trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
+        debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
             pred.subst_supertrait(tcx, &trait_ref)
                 .to_opt_poly_trait_pred()
                 .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });
-        debug!("expand_trait_aliases: items={:?}", items.clone());
+        debug!("expand_trait_aliases: items={:?}", items.clone().collect::<Vec<_>>());
 
         self.stack.extend(items);
 
