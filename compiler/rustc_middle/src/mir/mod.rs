@@ -2084,11 +2084,17 @@ rustc_index::newtype_index! {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
     pub local: Local,
     pub projection: &'tcx [PlaceElem<'tcx>],
 }
+
+// Once we stop implementing `Ord` for `DefId`,
+// this impl will be unnecessary. Until then, we'll
+// leave this impl in place to prevent re-adding a
+// dependnecy on the `Ord` impl for `DefId`
+impl<'tcx> !PartialOrd for PlaceRef<'tcx> {}
 
 impl<'tcx> Place<'tcx> {
     // FIXME change this to a const fn by also making List::empty a const fn.

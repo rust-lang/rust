@@ -1,5 +1,6 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
@@ -701,8 +702,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
                 let all_len = self.place_cache.len();
-                self.place_cache.sort_unstable();
-                self.place_cache.dedup();
+                let mut dedup = FxHashSet::default();
+                self.place_cache.retain(|p| dedup.insert(*p));
                 let has_duplicates = all_len != self.place_cache.len();
                 if has_duplicates {
                     self.fail(
