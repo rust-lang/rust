@@ -518,6 +518,7 @@ impl<'a> Parser<'a> {
             kind: rustc_ast::VisibilityKind::Inherited,
             tokens: None,
         };
+        let span_start = self.token.span;
         let ast::FnHeader { ext, unsafety, constness, asyncness } =
             self.parse_fn_front_matter(&inherited_vis)?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
@@ -531,7 +532,8 @@ impl<'a> Parser<'a> {
         if let ast::Async::Yes { span, .. } = asyncness {
             self.error_fn_ptr_bad_qualifier(whole_span, span, "async");
         }
-        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl })))
+        let decl_span = span_start.to(self.token.span);
+        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
     }
 
     /// Emit an error for the given bad function pointer qualifier.

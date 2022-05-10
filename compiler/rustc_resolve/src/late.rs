@@ -594,11 +594,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.diagnostic_metadata.current_trait_object = Some(&bounds[..]);
             }
             TyKind::BareFn(ref bare_fn) => {
-                let span = if bare_fn.generic_params.is_empty() {
-                    ty.span.shrink_to_lo()
-                } else {
-                    ty.span
-                };
+                let span = ty.span.shrink_to_lo().to(bare_fn.decl_span.shrink_to_lo());
                 self.with_generic_param_rib(
                     &bare_fn.generic_params,
                     NormalRibKind,
@@ -627,8 +623,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.diagnostic_metadata.current_type_path = prev_ty;
     }
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, _: &'ast TraitBoundModifier) {
-        let span =
-            if tref.bound_generic_params.is_empty() { tref.span.shrink_to_lo() } else { tref.span };
+        let span = tref.span.shrink_to_lo().to(tref.trait_ref.path.span.shrink_to_lo());
         self.with_generic_param_rib(
             &tref.bound_generic_params,
             NormalRibKind,
@@ -890,11 +885,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 ..
             }) = p
             {
-                let span = if bound_generic_params.is_empty() {
-                    predicate_span.shrink_to_lo()
-                } else {
-                    *predicate_span
-                };
+                let span = predicate_span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
                 this.with_generic_param_rib(
                     &bound_generic_params,
                     NormalRibKind,
