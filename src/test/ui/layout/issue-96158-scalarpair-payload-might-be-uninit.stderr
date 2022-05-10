@@ -30,9 +30,21 @@ error: layout_of(MissingPayloadField) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
                        largest_niche: None,
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
@@ -131,9 +143,22 @@ error: layout_of(CommonPayloadField) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=255,
+                           },
+                       ),
                        largest_niche: None,
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
@@ -153,9 +178,22 @@ error: layout_of(CommonPayloadField) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=255,
+                           },
+                       ),
                        largest_niche: None,
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
@@ -237,9 +275,21 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        variants: Single {
                            index: 0,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
                        largest_niche: None,
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
@@ -259,9 +309,21 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        variants: Single {
                            index: 1,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
                        largest_niche: None,
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
