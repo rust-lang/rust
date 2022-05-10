@@ -432,6 +432,9 @@ pub fn impossible_predicates<'tcx>(
     debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
+        // HACK: Set tainted by errors to gracefully exit in case of overflow.
+        infcx.set_tainted_by_errors();
+
         let param_env = ty::ParamEnv::reveal_all();
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
@@ -448,6 +451,9 @@ pub fn impossible_predicates<'tcx>(
 
         let errors = fulfill_cx.select_all_or_error(&infcx);
 
+        // Clean up after ourselves
+        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
         !errors.is_empty()
     });
     debug!("impossible_predicates = {:?}", result);
@@ -461,6 +467,14 @@ fn subst_and_check_impossible_predicates<'tcx>(
     debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+
+    // Specifically check trait fulfillment to avoid an error when trying to resolve
+    // associated items.
+    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
+        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+        predicates.push(ty::Binder::dummy(trait_ref).to_poly_trait_predicate().to_predicate(tcx));
+    }
+
     predicates.retain(|predicate| !predicate.needs_subst());
     let result = impossible_predicates(tcx, predicates);
 
