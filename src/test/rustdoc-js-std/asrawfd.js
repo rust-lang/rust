@@ -1,4 +1,4 @@
-// exact-match
+// ignore-order
 
 const QUERY = 'RawFd::as_raw_fd';
 
