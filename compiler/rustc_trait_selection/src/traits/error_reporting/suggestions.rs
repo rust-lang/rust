@@ -1,6 +1,6 @@
 use super::{
-    DerivedObligationCause, EvaluationResult, ImplDerivedObligationCause, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionContext,
+    EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::autoderef::Autoderef;
@@ -623,28 +623,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
         let mut real_trait_pred = trait_pred;
         let mut code = obligation.cause.code();
-        loop {
-            match &code {
-                ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                    code = &parent_code;
-                }
-                ObligationCauseCode::ImplDerivedObligation(box ImplDerivedObligationCause {
-                    derived: DerivedObligationCause { parent_code, parent_trait_pred },
-                    ..
-                })
-                | ObligationCauseCode::BuiltinDerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                })
-                | ObligationCauseCode::DerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                }) => {
-                    code = &parent_code;
-                    real_trait_pred = *parent_trait_pred;
-                }
-                _ => break,
-            };
+        while let Some((parent_code, parent_trait_pred)) = code.parent() {
+            code = parent_code;
+            if let Some(parent_trait_pred) = parent_trait_pred {
+                real_trait_pred = parent_trait_pred;
+            }
             let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
                 continue;
             };

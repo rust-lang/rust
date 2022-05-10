@@ -427,24 +427,26 @@ pub struct ImplDerivedObligationCause<'tcx> {
     pub span: Span,
 }
 
-impl ObligationCauseCode<'_> {
+impl<'tcx> ObligationCauseCode<'tcx> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        loop {
-            match base_cause {
-                BuiltinDerivedObligation(DerivedObligationCause { parent_code, .. })
-                | DerivedObligation(DerivedObligationCause { parent_code, .. })
-                | FunctionArgumentObligation { parent_code, .. } => {
-                    base_cause = &parent_code;
-                }
-                ImplDerivedObligation(obligation_cause) => {
-                    base_cause = &*obligation_cause.derived.parent_code;
-                }
-                _ => break,
-            }
+        while let Some((parent_code, _)) = base_cause.parent() {
+            base_cause = parent_code;
         }
         base_cause
+    }
+
+    pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
+        match self {
+            FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
+            BuiltinDerivedObligation(derived)
+            | DerivedObligation(derived)
+            | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
+                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
+            }
+            _ => None,
+        }
     }
 }
 
