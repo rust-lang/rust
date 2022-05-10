@@ -293,7 +293,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 ItemType::Trait
                                 | ItemType::Struct
                                 | ItemType::Union
-                                | ItemType::Enum,
+                                | ItemType::Enum
+                                | ItemType::Typedef,
                             )) => Some(&fqp[..fqp.len() - 1]),
                             Some(..) => Some(&*self.cache.stack),
                             None => None,
