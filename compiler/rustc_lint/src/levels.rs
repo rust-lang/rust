@@ -14,7 +14,7 @@ use rustc_middle::lint::{
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::{
-    builtin::{self, FORBIDDEN_LINT_GROUPS, UNFULFILLED_LINT_EXPECTATIONS},
+    builtin::{self, FORBIDDEN_LINT_GROUPS, SINGLE_USE_LIFETIMES, UNFULFILLED_LINT_EXPECTATIONS},
     Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
@@ -259,6 +259,14 @@ impl<'s> LintLevelsBuilder<'s> {
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for (attr_index, attr) in attrs.iter().enumerate() {
+            if attr.has_name(sym::automatically_derived) {
+                self.current_specs_mut().insert(
+                    LintId::of(SINGLE_USE_LIFETIMES),
+                    (Level::Allow, LintLevelSource::Default),
+                );
+                continue;
+            }
+
             let level = match Level::from_attr(attr) {
                 None => continue,
                 Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
