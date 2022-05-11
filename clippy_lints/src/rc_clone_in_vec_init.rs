@@ -92,6 +92,8 @@ fn construct_lint_suggestions(
 fn elem_snippet(cx: &LateContext<'_>, elem: &Expr<'_>, symbol_name: &str) -> String {
     let elem_snippet = snippet(cx, elem.span, "..").to_string();
     if elem_snippet.contains('\n') {
+        // This string must be found in `elem_snippet`, otherwise we won't be constructing
+        // the snippet in the first place.
         let reference_creation = format!("{symbol_name}::new");
         let (code_until_reference_creation, _right) = elem_snippet.split_once(&reference_creation).unwrap();
 
@@ -132,14 +134,14 @@ fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, elem: &Expr<
             let suggestions = construct_lint_suggestions(cx, lint_span, symbol_name, elem, len);
 
             diag.note(format!("each element will point to the same `{symbol_name}` instance"));
-            suggestions.iter().for_each(|suggestion| {
+            for suggestion in suggestions {
                 diag.span_suggestion(
                     lint_span,
                     &suggestion.message,
                     &suggestion.snippet,
                     Applicability::Unspecified,
                 );
-            });
+            }
         },
     );
 }
