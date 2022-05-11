@@ -136,15 +136,13 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 
 #[cfg(target_os = "openbsd")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+    use super::time::Timespec;
     use crate::ptr::{null, null_mut};
-    let timespec = timeout.and_then(|d| {
-        Some(libc::timespec {
-            // Sleep forever if the timeout is longer than fits in a timespec.
-            tv_sec: d.as_secs().try_into().ok()?,
-            // This conversion never truncates, as subsec_nanos is always <1e9.
-            tv_nsec: d.subsec_nanos() as _,
-        })
-    });
+
+    // Overflows are rounded up to an infinite timeout (None).
+    let timespec = timeout
+        .and_then(|d| Timespec::zero().checked_add_duration(&d))
+        .and_then(|t| t.to_timespec());
 
     let r = unsafe {
         libc::futex(

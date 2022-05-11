@@ -51,7 +51,7 @@ impl fmt::Debug for SystemTime {
 }
 
 impl Timespec {
-    const fn zero() -> Timespec {
+    pub const fn zero() -> Timespec {
         Timespec { tv_sec: 0, tv_nsec: 0 }
     }
 
