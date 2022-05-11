@@ -195,7 +195,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if i < method_generics.parent_count {
                                 self.infcx.var_for_def(DUMMY_SP, param)
                             } else {
-                                method.substs[i]
+                                *method.substs.get(i).unwrap_or_else(|| {
+                                    span_bug!(
+                                        self.tcx.hir().span(hir_id),
+                                        "{:#?}\n{:#?}\ni: {}",
+                                        method,
+                                        method_generics,
+                                        i
+                                    )
+                                })
                             }
                         }),
                         user_self_ty: None, // not relevant here
