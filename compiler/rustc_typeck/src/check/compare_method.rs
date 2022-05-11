@@ -10,7 +10,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
-use rustc_middle::ty::{self, DefIdTree, EarlyBinder};
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -1451,14 +1451,15 @@ pub fn check_type_bounds<'tcx>(
         };
 
         let obligations = tcx
-            .explicit_item_bounds(trait_ty.def_id)
-            .iter()
-            .map(|&(bound, span)| {
+            .bound_explicit_item_bounds(trait_ty.def_id)
+            .transpose_iter()
+            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+            .map(|(bound, span)| {
                 debug!(?bound);
-                let concrete_ty_bound = EarlyBinder(bound).subst(tcx, rebased_substs);
+                let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+                traits::Obligation::new(mk_cause(span.0), param_env, concrete_ty_bound)
             })
             .collect();
         debug!("check_type_bounds: item_bounds={:?}", obligations);

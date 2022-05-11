@@ -604,6 +604,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_impl_trait_ref(self, def_id: DefId) -> Option<EarlyBinder<ty::TraitRef<'tcx>>> {
         self.impl_trait_ref(def_id).map(|i| EarlyBinder(i))
     }
+
+    pub fn bound_explicit_item_bounds(
+        self,
+        def_id: DefId,
+    ) -> EarlyBinder<&'tcx [(ty::Predicate<'tcx>, rustc_span::Span)]> {
+        EarlyBinder(self.explicit_item_bounds(def_id))
+    }
+
+    pub fn bound_item_bounds(
+        self,
+        def_id: DefId,
+    ) -> EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
+        EarlyBinder(self.item_bounds(def_id))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

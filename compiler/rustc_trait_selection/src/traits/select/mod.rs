@@ -1341,7 +1341,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
         };
-        let bounds = EarlyBinder(tcx.item_bounds(def_id)).subst(tcx, substs);
+        let bounds = tcx.bound_item_bounds(def_id).subst(tcx, substs);
 
         // The bounds returned by `item_bounds` may contain duplicates after
         // normalization, so try to deduplicate when possible to avoid

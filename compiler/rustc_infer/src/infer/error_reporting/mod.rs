@@ -1849,10 +1849,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Future::Output
             let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
-            let bounds = self.tcx.explicit_item_bounds(*def_id);
+            let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
 
-            for (predicate, _) in bounds {
-                let predicate = EarlyBinder(*predicate).subst(self.tcx, substs);
+            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
+                let predicate = predicate.subst(self.tcx, substs);
                 let output = predicate
                     .kind()
                     .map_bound(|kind| match kind {

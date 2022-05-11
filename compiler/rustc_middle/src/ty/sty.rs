@@ -1109,6 +1109,30 @@ impl<T> EarlyBinder<Option<T>> {
     }
 }
 
+impl<T, U> EarlyBinder<(T, U)> {
+    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
+        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+    }
+}
+
+pub struct EarlyBinderIter<T> {
+    t: T,
+}
+
+impl<T: IntoIterator> EarlyBinder<T> {
+    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
+        EarlyBinderIter { t: self.0.into_iter() }
+    }
+}
+
+impl<T: Iterator> Iterator for EarlyBinderIter<T> {
+    type Item = EarlyBinder<T::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.t.next().map(|i| EarlyBinder(i))
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundVariableKind {

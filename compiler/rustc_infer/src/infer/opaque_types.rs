@@ -9,7 +9,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
 use rustc_span::Span;
 
@@ -561,11 +561,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
         }
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
+        let item_bounds = tcx.bound_explicit_item_bounds(def_id);
 
-        for (predicate, _) in item_bounds {
+        for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             debug!(?predicate);
-            let predicate = EarlyBinder(*predicate).subst(tcx, substs);
+            let predicate = predicate.subst(tcx, substs);
 
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,

@@ -1276,10 +1276,8 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
     let bounds = match *obligation.predicate.self_ty().kind() {
-        ty::Projection(ref data) => {
-            EarlyBinder(tcx.item_bounds(data.item_def_id)).subst(tcx, data.substs)
-        }
-        ty::Opaque(def_id, substs) => EarlyBinder(tcx.item_bounds(def_id)).subst(tcx, substs),
+        ty::Projection(ref data) => tcx.bound_item_bounds(data.item_def_id).subst(tcx, data.substs),
+        ty::Opaque(def_id, substs) => tcx.bound_item_bounds(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.

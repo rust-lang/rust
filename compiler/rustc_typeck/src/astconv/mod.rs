@@ -2447,10 +2447,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     true,
                     None,
                 );
-                self.normalize_ty(
-                    span,
-                    EarlyBinder(tcx.at(span).type_of(def_id)).subst(tcx, substs),
-                )
+                EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))
+                    .subst(tcx, substs)
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length = match length {

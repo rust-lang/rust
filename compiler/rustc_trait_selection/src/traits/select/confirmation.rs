@@ -174,7 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
             };
 
-            let candidate_predicate = EarlyBinder(tcx.item_bounds(def_id)[idx]).subst(tcx, substs);
+            let candidate_predicate =
+                tcx.bound_item_bounds(def_id).map_bound(|i| i[idx]).subst(tcx, substs);
             let candidate = candidate_predicate
                 .to_opt_poly_trait_pred()
                 .expect("projection candidate is not a trait predicate")
@@ -500,21 +501,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
-            for bound in self.tcx().item_bounds(assoc_type) {
-                let subst_bound = if defs.count() == 0 {
-                    EarlyBinder(bound).subst(tcx, trait_predicate.trait_ref.substs)
-                } else {
-                    let mut substs = smallvec::SmallVec::with_capacity(defs.count());
-                    substs.extend(trait_predicate.trait_ref.substs.iter());
-                    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-                        smallvec::SmallVec::with_capacity(
-                            bound.kind().bound_vars().len() + defs.count(),
-                        );
-                    bound_vars.extend(bound.kind().bound_vars().into_iter());
-                    InternalSubsts::fill_single(
-                        &mut substs,
-                        defs,
-                        &mut |param, _| match param.kind {
+            for bound in self.tcx().bound_item_bounds(assoc_type).transpose_iter() {
+                let subst_bound =
+                    if defs.count() == 0 {
+                        bound.subst(tcx, trait_predicate.trait_ref.substs)
+                    } else {
+                        let mut substs = smallvec::SmallVec::with_capacity(defs.count());
+                        substs.extend(trait_predicate.trait_ref.substs.iter());
+                        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+                            smallvec::SmallVec::with_capacity(
+                                bound.0.kind().bound_vars().len() + defs.count(),
+                            );
+                        bound_vars.extend(bound.0.kind().bound_vars().into_iter());
+                        InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param
+                            .kind
+                        {
                             GenericParamDefKind::Type { .. } => {
                                 let kind = ty::BoundTyKind::Param(param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
@@ -553,15 +554,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 })
                                 .into()
                             }
-                        },
-                    );
-                    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
-                    let assoc_ty_substs = tcx.intern_substs(&substs);
+                        });
+                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let assoc_ty_substs = tcx.intern_substs(&substs);
 
-                    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
-                    let bound = EarlyBinder(bound.kind().skip_binder()).subst(tcx, assoc_ty_substs);
-                    tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
-                };
+                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let bound =
+                            EarlyBinder(bound.0.kind().skip_binder()).subst(tcx, assoc_ty_substs);
+                        tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
+                    };
                 let normalized_bound = normalize_with_depth_to(
                     self,
                     obligation.param_env,
