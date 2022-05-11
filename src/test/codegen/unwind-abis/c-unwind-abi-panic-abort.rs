@@ -1,7 +1,7 @@
 // compile-flags: -C panic=abort
 
-// Test that `nounwind` atributes are not applied to `C-unwind` extern functions
-// even when the code is compiled with `panic=abort`.
+// Test that `nounwind` atributes are also applied to extern `C-unwind` Rust functions
+// when the code is compiled with `panic=abort`.
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]
@@ -19,4 +19,4 @@ pub unsafe extern "C-unwind" fn rust_item_that_can_unwind() {
 // Now, make sure that the LLVM attributes for this functions are correct.  First, make
 // sure that the first item is correctly marked with the `nounwind` attribute:
 //
-// CHECK-NOT: attributes #0 = { {{.*}}nounwind{{.*}} }
+// CHECK: attributes #0 = { {{.*}}nounwind{{.*}} }
