@@ -67,11 +67,24 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
         Err(VarError::NotUnicode(_value)) => return Err(Error::NonUnicodeColorValue),
     };
 
+    let verbose_entry_exit = match env::var_os(String::from(env) + "_ENTRY_EXIT") {
+        None => false,
+        Some(v) => {
+            if &v == "0" {
+                false
+            } else {
+                true
+            }
+        }
+    };
+
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
         .with_indent_lines(true)
         .with_ansi(color_logs)
         .with_targets(true)
+        .with_verbose_exit(verbose_entry_exit)
+        .with_verbose_entry(verbose_entry_exit)
         .with_indent_amount(2);
     #[cfg(parallel_compiler)]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
