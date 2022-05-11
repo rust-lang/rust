@@ -34,6 +34,7 @@ use crate::sys::cvt;
     target_pointer_width = "64",
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedSocket<'socket> {
     socket: RawSocket,
@@ -56,6 +57,7 @@ pub struct BorrowedSocket<'socket> {
     target_pointer_width = "64",
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedSocket {
     socket: RawSocket,

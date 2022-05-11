@@ -54,3 +54,6 @@ pub use handle::*;
 pub use raw::*;
 #[unstable(feature = "io_safety", issue = "87074")]
 pub use socket::*;
+
+#[cfg(test)]
+mod tests;
