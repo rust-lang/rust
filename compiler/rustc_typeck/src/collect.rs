@@ -1583,8 +1583,13 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                ..
+            }) if !tcx.sess.features_untracked().return_position_impl_trait_v2 => {
+                Some(fn_def_id.to_def_id())
+            }
+            ItemKind::OpaqueTy(hir::OpaqueTy {
+                origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                 ..
             }) => Some(fn_def_id.to_def_id()),
             ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
