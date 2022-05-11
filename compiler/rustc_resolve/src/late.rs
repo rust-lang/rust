@@ -225,9 +225,6 @@ enum LifetimeRibKind {
     /// Create a new anonymous region parameter and reference that.
     AnonymousCreateParameter(NodeId),
 
-    /// Give a hard error when generic lifetime arguments are elided.
-    ReportElidedInPath,
-
     /// Give a hard error when either `&` or `'_` is written. Used to
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
@@ -743,10 +740,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter(fn_id),
                         |this| {
-                            this.with_lifetime_rib(LifetimeRibKind::ReportElidedInPath, |this| {
-                                // Add each argument to the rib.
-                                this.resolve_params(&declaration.inputs)
-                            });
+                            // Add each argument to the rib.
+                            this.resolve_params(&declaration.inputs)
                         },
                     );
 
@@ -1397,7 +1392,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         path_span: Span,
     ) {
         let proj_start = path.len() - partial_res.unresolved_segments();
-        'segment: for (i, segment) in path.iter().enumerate() {
+        for (i, segment) in path.iter().enumerate() {
             if segment.has_lifetime_args {
                 continue;
             }
@@ -1464,32 +1459,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
-                    // We error here because we don't want to support deprecated impl elision in
-                    // new features like impl elision and `async fn`,
-                    LifetimeRibKind::ReportElidedInPath => {
-                        let sess = self.r.session;
-                        let mut err = rustc_errors::struct_span_err!(
-                            sess,
-                            path_span,
-                            E0726,
-                            "implicit elided lifetime not allowed here"
-                        );
-                        rustc_errors::add_elided_lifetime_in_path_suggestion(
-                            sess.source_map(),
-                            &mut err,
-                            expected_lifetimes,
-                            path_span,
-                            !segment.has_generic_args,
-                            elided_lifetime_span,
-                        );
-                        err.note("assuming a `'static` lifetime...");
-                        err.emit();
-                        for i in 0..expected_lifetimes {
-                            let id = node_ids.start.plus(i);
-                            self.record_lifetime_res(id, LifetimeRes::Error);
-                        }
-                        continue 'segment;
-                    }
                     LifetimeRibKind::AnonymousCreateParameter(binder) => {
                         let ident = Ident::new(kw::UnderscoreLifetime, elided_lifetime_span);
                         for i in 0..expected_lifetimes {
@@ -2096,14 +2065,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = Segment::from_path(&trait_ref.path);
-            let res = self.with_lifetime_rib(LifetimeRibKind::ReportElidedInPath, |this| {
-                this.smart_resolve_path_fragment(
-                    None,
-                    &path,
-                    PathSource::Trait(AliasPossibility::No),
-                    Finalize::new(trait_ref.ref_id, trait_ref.path.span),
-                )
-            });
+            let res = self.smart_resolve_path_fragment(
+                None,
+                &path,
+                PathSource::Trait(AliasPossibility::No),
+                Finalize::new(trait_ref.ref_id, trait_ref.path.span),
+            );
             if let Some(def_id) = res.base_res().opt_def_id() {
                 new_id = Some(def_id);
                 new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
@@ -2156,16 +2123,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         let res =
                             Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
                         this.with_self_rib(res, |this| {
-                            this.with_lifetime_rib(LifetimeRibKind::ReportElidedInPath, |this| {
-                                if let Some(trait_ref) = opt_trait_reference.as_ref() {
-                                    // Resolve type arguments in the trait path.
-                                    visit::walk_trait_ref(this, trait_ref);
-                                }
-                                // Resolve the self type.
-                                this.visit_ty(self_type);
-                                // Resolve the generic parameters.
-                                this.visit_generics(generics);
-                            });
+                            if let Some(trait_ref) = opt_trait_reference.as_ref() {
+                                // Resolve type arguments in the trait path.
+                                visit::walk_trait_ref(this, trait_ref);
+                            }
+                            // Resolve the self type.
+                            this.visit_ty(self_type);
+                            // Resolve the generic parameters.
+                            this.visit_generics(generics);
 
                             // Resolve the items within the impl.
                             this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id,false),

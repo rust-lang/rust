@@ -1,15 +1,29 @@
-error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/async-fn-path-elision.rs:5:20
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/async-fn-path-elision.rs:6:20
    |
 LL | async fn error(lt: HasLifetime) {
    |                    ^^^^^^^^^^^ expected lifetime parameter
    |
-   = note: assuming a `'static` lifetime...
+note: the lint level is defined here
+  --> $DIR/async-fn-path-elision.rs:2:9
+   |
+LL | #![deny(elided_lifetimes_in_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: indicate the anonymous lifetime
    |
 LL | async fn error(lt: HasLifetime<'_>) {
    |                               ++++
 
-error: aborting due to previous error
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/async-fn-path-elision.rs:10:19
+   |
+LL | fn also_error(lt: HasLifetime) {
+   |                   ^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | fn also_error(lt: HasLifetime<'_>) {
+   |                              ++++
 
-For more information about this error, try `rustc --explain E0726`.
+error: aborting due to 2 previous errors
+

@@ -29,28 +29,16 @@ LL | impl<'self> Serializable<str> for &'self str {
    |                                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:12:24
+  --> $DIR/issue-10412.rs:11:24
    |
 LL |     fn serialize(val: &'self str) -> Vec<u8> {
    |                        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:16:37
+  --> $DIR/issue-10412.rs:15:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self str {
    |                                     ^^^^^
-
-error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/issue-10412.rs:7:13
-   |
-LL | impl<'self> Serializable<str> for &'self str {
-   |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
-   |
-   = note: assuming a `'static` lifetime...
-help: indicate the anonymous lifetime
-   |
-LL | impl<'self> Serializable<'_, str> for &'self str {
-   |                          +++
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/issue-10412.rs:7:13
@@ -69,7 +57,6 @@ help: consider relaxing the implicit `Sized` restriction
 LL | trait Serializable<'self, T: ?Sized> {
    |                            ++++++++
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0277, E0726.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.
