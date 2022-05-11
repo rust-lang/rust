@@ -767,6 +767,7 @@ impl<H> fmt::Debug for BuildHasherDefault<H> {
 impl<H: Default + Hasher> BuildHasher for BuildHasherDefault<H> {
     type Hasher = H;
 
+    #[inline]
     fn build_hasher(&self) -> H {
         H::default()
     }
