@@ -1759,7 +1759,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         }
     }
 
-    if has_self || parent_has_self {
+    if (has_self || parent_has_self) && tcx.has_attr(def_id, sym::const_trait) {
         params.push(ty::GenericParamDef {
             name: Symbol::intern("<constness>"),
             index: type_start + i as u32,
