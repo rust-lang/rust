@@ -32,7 +32,6 @@ declare_clippy_lint! {
     /// // Good
     /// struct Foo(i32);
     ///
-    /// use std::convert::TryFrom;
     /// impl TryFrom<String> for Foo {
     ///     type Error = ();
     ///     fn try_from(s: String) -> Result<Self, Self::Error> {

@@ -14,7 +14,6 @@ use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::Ident, Span};
-use std::convert::TryInto;
 
 declare_clippy_lint! {
     /// ### What it does

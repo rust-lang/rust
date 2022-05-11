@@ -7,7 +7,6 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::iter::FromIterator;
 
 struct GetFalsePositive {
     arr: [u32; 3],
