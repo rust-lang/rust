@@ -1,7 +1,6 @@
 intrinsics! {
     // Implementation from gcc
     // https://raw.githubusercontent.com/gcc-mirror/gcc/master/libgcc/config/epiphany/mulsi3.c
-    #[cfg(target_arch = "riscv32")]
     pub extern "C" fn __mulsi3(a: u32, b: u32) -> u32 {
         let (mut a, mut b) = (a, b);
         let mut r = 0;
@@ -17,7 +16,7 @@ intrinsics! {
         r
     }
 
-    #[cfg(target_arch = "riscv64")]
+    #[cfg(not(target_feature = "m"))]
     pub extern "C" fn __muldi3(a: u64, b: u64) -> u64 {
         let (mut a, mut b) = (a, b);
         let mut r = 0;
