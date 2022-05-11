@@ -1451,6 +1451,347 @@ impl<T> AtomicPtr<T> {
         }
         Err(prev)
     }
+
+    /// Offsets the pointer's address by adding `val` (in units of `T`),
+    /// returning the previous pointer.
+    ///
+    /// This is equivalent to using [`wrapping_add`] to atomically perform the
+    /// equivalent of `ptr = ptr.wrapping_add(val);`.
+    ///
+    /// This method operates in units of `T`, which means that it cannot be used
+    /// to offset the pointer by an amount which is not a multiple of
+    /// `size_of::<T>()`. This can sometimes be inconvenient, as you may want to
+    /// work with a deliberately misaligned pointer. In such cases, you may use
+    /// the [`fetch_add_bytes`](Self::fetch_add_bytes) method instead.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
+    /// and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// [`wrapping_add`]: pointer::wrapping_add
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
+    /// assert_eq!(atom.fetch_add(1, Ordering::Relaxed).addr(), 0);
+    /// // Note: units of `size_of::<i64>()`.
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 8);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_add(&self, val: usize, order: Ordering) -> *mut T {
+        self.fetch_add_bytes(val.wrapping_mul(core::mem::size_of::<T>()), order)
+    }
+
+    /// Offsets the pointer's address by subtracting `val` (in units of `T`),
+    /// returning the previous pointer.
+    ///
+    /// This is equivalent to using [`wrapping_sub`] to atomically perform the
+    /// equivalent of `ptr = ptr.wrapping_sub(val);`.
+    ///
+    /// This method operates in units of `T`, which means that it cannot be used
+    /// to offset the pointer by an amount which is not a multiple of
+    /// `size_of::<T>()`. This can sometimes be inconvenient, as you may want to
+    /// work with a deliberately misaligned pointer. In such cases, you may use
+    /// the [`fetch_sub_bytes`](Self::fetch_sub_bytes) method instead.
+    ///
+    /// `fetch_sub` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
+    /// and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// [`wrapping_sub`]: pointer::wrapping_sub
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let array = [1i32, 2i32];
+    /// let atom = AtomicPtr::new(array.as_ptr().wrapping_add(1) as *mut _);
+    ///
+    /// assert!(core::ptr::eq(
+    ///     atom.fetch_sub(1, Ordering::Relaxed),
+    ///     &array[1],
+    /// ));
+    /// assert!(core::ptr::eq(atom.load(Ordering::Relaxed), &array[0]));
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_sub(&self, val: usize, order: Ordering) -> *mut T {
+        self.fetch_sub_bytes(val.wrapping_mul(core::mem::size_of::<T>()), order)
+    }
+
+    /// Offsets the pointer's address by adding `val` *bytes*, returning the
+    /// previous pointer.
+    ///
+    /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
+    /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
+    ///
+    /// `fetch_add_bytes` takes an [`Ordering`] argument which describes the
+    /// memory ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// [`wrapping_add`]: pointer::wrapping_add
+    /// [`cast`]: pointer::cast
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
+    /// assert_eq!(atom.fetch_add_bytes(1, Ordering::Relaxed).addr(), 0);
+    /// // Note: in units of bytes, not `size_of::<i64>()`.
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 1);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_add_bytes(&self, val: usize, order: Ordering) -> *mut T {
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast()
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_add(self.p.get().cast::<usize>(), val, order) as *mut T
+        }
+    }
+
+    /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
+    /// previous pointer.
+    ///
+    /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
+    /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
+    ///
+    /// `fetch_add_bytes` takes an [`Ordering`] argument which describes the
+    /// memory ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// [`wrapping_sub`]: pointer::wrapping_sub
+    /// [`cast`]: pointer::cast
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let atom = AtomicPtr::<i64>::new(core::ptr::invalid_mut(1));
+    /// assert_eq!(atom.fetch_sub_bytes(1, Ordering::Relaxed).addr(), 1);
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_sub_bytes(&self, val: usize, order: Ordering) -> *mut T {
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast()
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_sub(self.p.get().cast::<usize>(), val, order) as *mut T
+        }
+    }
+
+    /// Performs a bitwise "or" operation on the address of the current pointer,
+    /// and the argument `val`, and stores a pointer with provenance of the
+    /// current pointer and the resulting address.
+    ///
+    /// This is equivalent equivalent to using [`map_addr`] to atomically
+    /// perform `ptr = ptr.map_addr(|a| a | val)`. This can be used in tagged
+    /// pointer schemes to atomically set tag bits.
+    ///
+    /// **Caveat**: This operation returns the previous value. To compute the
+    /// stored value without losing provenance, you may use [`map_addr`]. For
+    /// example: `a.fetch_or(val).map_addr(|a| a | val)`.
+    ///
+    /// `fetch_or` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
+    /// and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance
+    /// experiment, see the [module documentation for `ptr`][crate::ptr] for
+    /// details.
+    ///
+    /// [`map_addr`]: pointer::map_addr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let pointer = &mut 3i64 as *mut i64;
+    ///
+    /// let atom = AtomicPtr::<i64>::new(pointer);
+    /// // Tag the bottom bit of the pointer.
+    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).addr() & 1, 0);
+    /// // Extract and untag.
+    /// let tagged = atom.load(Ordering::Relaxed);
+    /// assert_eq!(tagged.addr() & 1, 1);
+    /// assert_eq!(tagged.map_addr(|p| p & !1), pointer);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast()
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_or(self.p.get().cast::<usize>(), val, order) as *mut T
+        }
+    }
+
+    /// Performs a bitwise "and" operation on the address of the current
+    /// pointer, and the argument `val`, and stores a pointer with provenance of
+    /// the current pointer and the resulting address.
+    ///
+    /// This is equivalent equivalent to using [`map_addr`] to atomically
+    /// perform `ptr = ptr.map_addr(|a| a & val)`. This can be used in tagged
+    /// pointer schemes to atomically unset tag bits.
+    ///
+    /// **Caveat**: This operation returns the previous value. To compute the
+    /// stored value without losing provenance, you may use [`map_addr`]. For
+    /// example: `a.fetch_and(val).map_addr(|a| a & val)`.
+    ///
+    /// `fetch_and` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
+    /// and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance
+    /// experiment, see the [module documentation for `ptr`][crate::ptr] for
+    /// details.
+    ///
+    /// [`map_addr`]: pointer::map_addr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let pointer = &mut 3i64 as *mut i64;
+    /// // A tagged pointer
+    /// let atom = AtomicPtr::<i64>::new(pointer.map_addr(|a| a | 1));
+    /// assert_eq!(atom.fetch_or(1, Ordering::Relaxed).addr() & 1, 1);
+    /// // Untag, and extract the previously tagged pointer.
+    /// let untagged = atom.fetch_and(!1, Ordering::Relaxed)
+    ///     .map_addr(|a| a & !1);
+    /// assert_eq!(untagged, pointer);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast()
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_and(self.p.get().cast::<usize>(), val, order) as *mut T
+        }
+    }
+
+    /// Performs a bitwise "xor" operation on the address of the current
+    /// pointer, and the argument `val`, and stores a pointer with provenance of
+    /// the current pointer and the resulting address.
+    ///
+    /// This is equivalent equivalent to using [`map_addr`] to atomically
+    /// perform `ptr = ptr.map_addr(|a| a ^ val)`. This can be used in tagged
+    /// pointer schemes to atomically toggle tag bits.
+    ///
+    /// **Caveat**: This operation returns the previous value. To compute the
+    /// stored value without losing provenance, you may use [`map_addr`]. For
+    /// example: `a.fetch_xor(val).map_addr(|a| a ^ val)`.
+    ///
+    /// `fetch_xor` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note that
+    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
+    /// and using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// **Note**: This method is only available on platforms that support atomic
+    /// operations on [`AtomicPtr`].
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance
+    /// experiment, see the [module documentation for `ptr`][crate::ptr] for
+    /// details.
+    ///
+    /// [`map_addr`]: pointer::map_addr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
+    /// use core::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let pointer = &mut 3i64 as *mut i64;
+    /// let atom = AtomicPtr::<i64>::new(pointer);
+    ///
+    /// // Toggle a tag bit on the pointer.
+    /// atom.fetch_xor(1, Ordering::Relaxed);
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr() & 1, 1);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast()
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_xor(self.p.get().cast::<usize>(), val, order) as *mut T
+        }
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "8")]

@@ -90,6 +90,7 @@
 #![feature(slice_group_by)]
 #![feature(split_array)]
 #![feature(strict_provenance)]
+#![feature(strict_provenance_atomic_ptr)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
 #![feature(unzip_option)]
