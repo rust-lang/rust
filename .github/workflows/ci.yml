@@ -37,15 +37,6 @@ jobs:
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
-    strategy:
-      matrix:
-        include:
-          - name: dist-x86_64-msvc
-            env:
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python src/ci/pgo-windows.py
-              DIST_REQUIRE_ALL_TOOLS: 1
-            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -554,9 +545,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
-            env: {}
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              SCRIPT: python src/ci/pgo-windows.py
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
