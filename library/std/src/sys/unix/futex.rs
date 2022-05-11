@@ -25,7 +25,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     //
     // Overflows are rounded up to an infinite timeout (None).
     let timespec = timeout
-        .and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?))
+        .and_then(|d| Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d))
         .and_then(|t| t.to_timespec());
 
     loop {
