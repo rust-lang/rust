@@ -6,6 +6,7 @@ import { assert } from './util';
 import { WorkspaceEdit } from 'vscode';
 import { Workspace } from './ctx';
 import { updateConfig } from './config';
+import { substituteVariablesInEnv } from './config';
 
 export interface Env {
     [name: string]: string;
@@ -30,9 +31,9 @@ export async function createClient(serverPath: string, workspace: Workspace, ext
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
 
-    const newEnv = Object.assign({}, process.env);
-    Object.assign(newEnv, extraEnv);
-
+    const newEnv = substituteVariablesInEnv(Object.assign(
+        {}, process.env, extraEnv
+    ));
     const run: lc.Executable = {
         command: serverPath,
         options: { env: newEnv },
