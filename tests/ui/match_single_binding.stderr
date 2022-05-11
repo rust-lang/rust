@@ -9,7 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);
 LL +     {
@@ -25,7 +25,7 @@ LL | |         (x, y, z) => println!("{} {} {}", x, y, z),
 LL | |     }
    | |_____^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);
 LL +     println!("{} {} {}", x, y, z);
@@ -88,7 +88,7 @@ LL | |         Point { x, y } => println!("Coords: ({}, {})", x, y),
 LL | |     }
    | |_____^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let Point { x, y } = p;
 LL +     println!("Coords: ({}, {})", x, y);
@@ -102,7 +102,7 @@ LL | |         Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
 LL | |     }
    | |_____^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let Point { x: x1, y: y1 } = p;
 LL +     println!("Coords: ({}, {})", x1, y1);
@@ -116,7 +116,7 @@ LL | |         ref r => println!("Got a reference to {}", r),
 LL | |     }
    | |_____^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let ref r = x;
 LL +     println!("Got a reference to {}", r);
@@ -130,7 +130,7 @@ LL | |         ref mut mr => println!("Got a mutable reference to {}", mr),
 LL | |     }
    | |_____^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let ref mut mr = x;
 LL +     println!("Got a mutable reference to {}", mr);
@@ -144,7 +144,7 @@ LL | |         Point { x, y } => x * y,
 LL | |     };
    | |______^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~     let Point { x, y } = coords();
 LL +     let product = x * y;
@@ -159,7 +159,7 @@ LL | |             unwrapped => unwrapped,
 LL | |         })
    | |_________^
    |
-help: consider using `let` statement
+help: consider using a `let` statement
    |
 LL ~         .map(|i| {
 LL +             let unwrapped = i.unwrap();
@@ -176,5 +176,25 @@ LL | |         _ => println!("Not an array index start"),
 LL | |     }
    | |_____^ help: consider using the match body instead: `println!("Not an array index start");`
 
-error: aborting due to 12 previous errors
+error: this assignment could be simplified
+  --> $DIR/match_single_binding.rs:134:5
+   |
+LL | /     val = match val.split_at(idx) {
+LL | |         (pre, suf) => {
+LL | |             println!("{}", pre);
+LL | |             suf
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider removing the `match` expression
+   |
+LL ~     let (pre, suf) = val.split_at(idx);
+LL +     val = {
+LL +         println!("{}", pre);
+LL +         suf
+LL ~     };
+   |
+
+error: aborting due to 13 previous errors
 
