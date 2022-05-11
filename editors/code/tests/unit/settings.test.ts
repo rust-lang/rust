@@ -49,5 +49,13 @@ export async function getTests(ctx: Context) {
             const actualEnv = await substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
         });
+
+        suite.addTest('should support VSCode variables', async () => {
+            const envJson = {
+                USING_VSCODE_VAR: "${workspaceFolderBasename}"
+            };
+            const actualEnv = await substituteVariablesInEnv(envJson);
+            assert.deepStrictEqual(actualEnv.USING_VSCODE_VAR, 'code');
+        });
     });
 }

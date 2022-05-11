@@ -1,3 +1,4 @@
+import path = require('path');
 import * as vscode from 'vscode';
 import { Env } from './client';
 import { log } from "./util";
@@ -253,7 +254,10 @@ export function substituteVariablesInEnv(env: Env): Env {
                 resolved.add(dep);
             }
         } else {
-            // TODO: handle VSCode variables
+            envWithDeps[dep] = {
+                value: computeVscodeVar(dep),
+                deps: []
+            };
         }
     }
     const toResolve = new Set(Object.keys(envWithDeps));
@@ -278,4 +282,53 @@ export function substituteVariablesInEnv(env: Env): Env {
         resolvedEnv[key] = envWithDeps[`env:${key}`].value;
     }
     return resolvedEnv;
+}
+
+function computeVscodeVar(varName: string): string {
+    // https://code.visualstudio.com/docs/editor/variables-reference
+    const supportedVariables: { [k: string]: () => string } = {
+        workspaceFolder: () => {
+            const folders = vscode.workspace.workspaceFolders ?? [];
+            if (folders.length === 1) {
+                // TODO: support for remote workspaces?
+                return folders[0].uri.fsPath;
+            } else if (folders.length > 1) {
+                // could use currently opened document to detect the correct
+                // workspace. However, that would be determined by the document
+                // user has opened on Editor startup. Could lead to
+                // unpredictable workspace selection in practice.
+                // It's better to pick the first one
+                return folders[0].uri.fsPath;
+            } else {
+                // no workspace opened
+                return '';
+            }
+        },
+
+        workspaceFolderBasename: () => {
+            const workspaceFolder = computeVscodeVar('workspaceFolder');
+            if (workspaceFolder) {
+                return path.basename(workspaceFolder);
+            } else {
+                return '';
+            }
+        },
+
+        cwd: () => process.cwd(),
+
+        // see
+        // https://github.com/microsoft/vscode/blob/08ac1bb67ca2459496b272d8f4a908757f24f56f/src/vs/workbench/api/common/extHostVariableResolverService.ts#L81
+        // or
+        // https://github.com/microsoft/vscode/blob/29eb316bb9f154b7870eb5204ec7f2e7cf649bec/src/vs/server/node/remoteTerminalChannel.ts#L56
+        execPath: () => process.env.VSCODE_EXEC_PATH ?? process.execPath,
+
+        pathSeparator: () => path.sep
+    };
+
+    if (varName in supportedVariables) {
+        return supportedVariables[varName]();
+    } else {
+        // can't resolve, keep the expression as is
+        return '${' + varName + '}';
+    }
 }
