@@ -67,7 +67,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     span,
                                 })
                                 .into()],
-                            ty::ConstnessArg::Not,
                         );
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);

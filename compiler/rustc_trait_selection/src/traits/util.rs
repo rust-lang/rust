@@ -268,10 +268,8 @@ pub fn predicate_for_trait_def<'tcx>(
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
 ) -> PredicateObligation<'tcx> {
-    let trait_ref = ty::TraitRef {
-        def_id: trait_def_id,
-        substs: tcx.mk_substs_trait(self_ty, params, ty::ConstnessArg::Not),
-    };
+    let trait_ref =
+        ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(self_ty, params) };
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 

@@ -2817,20 +2817,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         rest: &[GenericArg<'tcx>],
     ) -> SubstsRef<'tcx> {
-        self.mk_substs_trait(self_ty, rest, ty::ConstnessArg::Not)
+        self.mk_substs_trait(self_ty, rest)
     }
 
-    pub fn mk_substs_trait(
-        self,
-        self_ty: Ty<'tcx>,
-        rest: &[GenericArg<'tcx>],
-        constness: ty::ConstnessArg,
-    ) -> SubstsRef<'tcx> {
-        self.mk_substs(
-            iter::once(self_ty.into())
-                .chain(rest.iter().cloned())
-                .chain(iter::once(constness.into())),
-        )
+    pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
+        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }
 
     pub fn mk_bound_variable_kinds<

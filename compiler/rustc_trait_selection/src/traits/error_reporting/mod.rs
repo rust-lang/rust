@@ -1275,9 +1275,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        constness: ty::ConstnessArg,
+        _constness: ty::ConstnessArg,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
+        // TODO: handle constness once the fn traits are const_trait
         self.commit_if_ok(|_| {
             for trait_def_id in [
                 self.tcx.lang_items().fn_trait(),
@@ -1291,7 +1292,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()], constness);
+                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
                 let obligation = Obligation::new(
                     ObligationCause::dummy(),
                     param_env,

@@ -495,7 +495,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let ty = fcx.tcx.erase_regions(ty);
                         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                         let expr_ty = fcx.tcx.erase_regions(expr_ty);
-                        let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[], ty::ConstnessArg::Not);
+                        let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
                         if fcx
                             .infcx
                             .type_implements_trait(from_trait, ty, ty_params, fcx.param_env)

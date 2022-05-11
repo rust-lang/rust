@@ -916,10 +916,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        ty::TraitRef {
-            def_id: self.def_id,
-            substs: tcx.mk_substs_trait(self_ty, self.substs, ty::ConstnessArg::Not),
-        }
+        ty::TraitRef { def_id: self.def_id, substs: tcx.mk_substs_trait(self_ty, self.substs) }
     }
 }
 
@@ -1460,7 +1457,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs: tcx.mk_substs_trait(self_ty, self.substs, ty::ConstnessArg::Not),
+                substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             term: self.term,
         }

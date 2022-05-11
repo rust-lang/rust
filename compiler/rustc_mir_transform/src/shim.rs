@@ -342,7 +342,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
-        let substs = tcx.mk_substs_trait(self_ty, &[], ty::ConstnessArg::Not);
+        let substs = tcx.mk_substs_trait(self_ty, &[]);
         let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
@@ -423,7 +423,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let substs = tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not);
+        let substs = tcx.mk_substs_trait(ty, &[]);
 
         // `func == Clone::clone(&ty) -> ty`
         let func_ty = tcx.mk_fn_def(self.def_id, substs);
@@ -529,8 +529,7 @@ fn build_call_shim<'tcx>(
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
         let arg_tup = tcx.mk_tup(untuple_args.iter());
-        let sig_substs =
-            tcx.mk_substs_trait(ty, &[ty::subst::GenericArg::from(arg_tup)], ty::ConstnessArg::Not);
+        let sig_substs = tcx.mk_substs_trait(ty, &[ty::subst::GenericArg::from(arg_tup)]);
 
         (Some(sig_substs), Some(untuple_args))
     } else {

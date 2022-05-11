@@ -1698,7 +1698,7 @@ fn receiver_is_implemented<'tcx>(
 ) -> bool {
     let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id: receiver_trait_def_id,
-        substs: fcx.tcx.mk_substs_trait(receiver_ty, &[], ty::ConstnessArg::Not),
+        substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
     });
 
     let obligation = traits::Obligation::new(cause, fcx.param_env, trait_ref.to_predicate(fcx.tcx));

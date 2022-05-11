@@ -137,10 +137,8 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         infcx.tcx.def_path_str(def_id)
     );
 
-    let trait_ref = ty::Binder::dummy(ty::TraitRef {
-        def_id,
-        substs: infcx.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
-    });
+    let trait_ref =
+        ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
     let obligation = Obligation {
         param_env,
         cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
@@ -803,7 +801,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
 
     let trait_ref = ty::TraitRef {
         def_id: unsize_trait_did,
-        substs: tcx.mk_substs_trait(source, &[target.into()], ty::ConstnessArg::Not),
+        substs: tcx.mk_substs_trait(source, &[target.into()]),
     };
     let obligation = Obligation::new(
         ObligationCause::dummy(),

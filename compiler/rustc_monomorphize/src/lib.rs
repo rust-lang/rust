@@ -29,7 +29,7 @@ fn custom_coerce_unsize_info<'tcx>(
 
     let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id,
-        substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()], ty::ConstnessArg::Not),
+        substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]),
     });
 
     match tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref)) {
