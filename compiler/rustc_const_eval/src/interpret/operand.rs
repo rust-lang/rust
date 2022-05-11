@@ -418,11 +418,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
                 assert!(matches!(field_layout.abi, Abi::Scalar(..)));
                 Immediate::from(if offset.bytes() == 0 {
-                    assert_eq!(field_layout.size, a.size(self));
+                    debug_assert_eq!(field_layout.size, a.size(self));
                     a_val
                 } else {
-                    assert_eq!(offset, a.size(self).align_to(b.align(self).abi));
-                    assert_eq!(field_layout.size, b.size(self));
+                    debug_assert_eq!(offset, a.size(self).align_to(b.align(self).abi));
+                    debug_assert_eq!(field_layout.size, b.size(self));
                     b_val
                 })
             }
