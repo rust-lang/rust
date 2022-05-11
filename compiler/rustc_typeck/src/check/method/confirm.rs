@@ -397,6 +397,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 _substs: Option<&[subst::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
+                _constness: Option<ty::ConstnessArg>,
             ) -> subst::GenericArg<'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }

@@ -1409,6 +1409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 substs: Option<&[subst::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
+                constness: Option<ty::ConstnessArg>,
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
                 match param.kind {
@@ -1441,7 +1442,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Constness => self.fcx.var_for_def(self.span, param),
+                    GenericParamDefKind::Constness => match constness {
+                        None => self.fcx.var_for_def(self.span, param),
+                        Some(constness) => constness.into(),
+                    },
                 }
             }
         }

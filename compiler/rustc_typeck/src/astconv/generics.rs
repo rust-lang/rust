@@ -225,11 +225,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if let Some(&param) = params.peek() {
                     if param.index == 0 {
                         if let GenericParamDefKind::Type { .. } = param.kind {
-                            substs.push(
-                                self_ty
-                                    .map(|ty| ty.into())
-                                    .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
-                            );
+                            substs.push(self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
+                                ctx.inferred_kind(None, param, true, constness)
+                            }));
                             params.next();
                         }
                     }
@@ -278,7 +276,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
-                                substs.push(ctx.inferred_kind(None, param, infer_args));
+                                substs.push(ctx.inferred_kind(None, param, infer_args, constness));
                                 force_infer_lt = Some((arg, param));
                                 params.next();
                             }
@@ -375,7 +373,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
-                        substs.push(ctx.inferred_kind(Some(&substs), param, infer_args));
+                        substs.push(ctx.inferred_kind(Some(&substs), param, infer_args, constness));
                         params.next();
                     }
 
@@ -383,8 +381,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
-
-        substs.extend(constness.map(Into::into));
 
         tcx.intern_substs(&substs)
     }

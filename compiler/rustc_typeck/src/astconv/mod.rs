@@ -196,6 +196,7 @@ pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
         substs: Option<&[subst::GenericArg<'tcx>]>,
         param: &ty::GenericParamDef,
         infer_args: bool,
+        constness: Option<ty::ConstnessArg>,
     ) -> subst::GenericArg<'tcx>;
 }
 
@@ -492,6 +493,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 substs: Option<&[subst::GenericArg<'tcx>]>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
+                constness: Option<ty::ConstnessArg>,
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.astconv.tcx();
                 match param.kind {
@@ -568,21 +570,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Constness => {
-                        match self.astconv.item_def_id() {
-                            // no information available
-                            // TODO: fall back to `Not`?
-                            None => ty::ConstnessArg::Param,
-                            Some(context) => {
-                                if tcx.generics_of(context).has_constness_param() {
-                                    ty::ConstnessArg::Param
-                                } else {
-                                    // TODO: should use `Required` if we're in a const context
-                                    // like `const`/`static` item initializers.
-                                    ty::ConstnessArg::Not
+                        constness
+                            .unwrap_or_else(|| match self.astconv.item_def_id() {
+                                // no information available
+                                // TODO: fall back to `Not`?
+                                None => ty::ConstnessArg::Param,
+                                Some(context) => {
+                                    if tcx.generics_of(context).has_constness_param() {
+                                        ty::ConstnessArg::Param
+                                    } else {
+                                        // TODO: should use `Required` if we're in a const context
+                                        // like `const`/`static` item initializers.
+                                        ty::ConstnessArg::Not
+                                    }
                                 }
-                            }
-                        }
-                        .into()
+                            })
+                            .into()
                     }
                 }
             }
