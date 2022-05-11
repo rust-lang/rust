@@ -816,10 +816,9 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn constness(self) -> ty::ConstnessArg {
-        // TODO remove panic
         match self.substs.last().expect("constness").unpack() {
             ty::subst::GenericArgKind::Constness(constness) => constness,
-            _ => panic!("?"),
+            _ => ty::ConstnessArg::Not,
         }
     }
 
