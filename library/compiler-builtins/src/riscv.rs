@@ -15,4 +15,20 @@ intrinsics! {
 
         r
     }
+
+    #[cfg(not(target_feature = "m"))]
+    pub extern "C" fn __muldi3(a: u64, b: u64) -> u64 {
+        let (mut a, mut b) = (a, b);
+        let mut r = 0;
+
+        while a > 0 {
+            if a & 1 > 0 {
+                r += b;
+            }
+            a >>= 1;
+            b <<= 1;
+        }
+
+        r
+    }
 }

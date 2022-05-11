@@ -60,8 +60,8 @@ pub mod arm;
 ))]
 pub mod arm_linux;
 
-#[cfg(any(target_arch = "riscv32"))]
-pub mod riscv32;
+#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+pub mod riscv;
 
 #[cfg(target_arch = "x86")]
 pub mod x86;
