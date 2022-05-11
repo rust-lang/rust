@@ -1,15 +1,25 @@
-error[E0637]: `'_` cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/where-clauses.rs:3:10
    |
 LL | impl<'b: '_> Foo<'b> for i32 {}
-   |          ^^ `'_` is a reserved lifetime name
+   |          ^^ expected named lifetime parameter
+   |
+help: consider using the `'b` lifetime
+   |
+LL | impl<'b: 'b> Foo<'b> for i32 {}
+   |          ~~
 
-error[E0637]: `'_` cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/where-clauses.rs:5:9
    |
 LL | impl<T: '_> Foo<'static> for Vec<T> {}
-   |         ^^ `'_` is a reserved lifetime name
+   |         ^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | impl<'a, T: 'a> Foo<'static> for Vec<T> {}
+   |      +++    ~~
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0637`.
+For more information about this error, try `rustc --explain E0106`.

@@ -11,7 +11,7 @@ struct Foo<T> {
 impl<T> Foo<T>
 where
     T: WithRegion<'_>
-//[rust2015,rust2018]~^ ERROR `'_` cannot be used here
+//[rust2015,rust2018]~^ ERROR missing lifetime specifier [E0106]
 { }
 
 fn main() {}

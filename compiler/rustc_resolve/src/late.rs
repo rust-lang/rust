@@ -224,11 +224,6 @@ enum LifetimeRibKind {
     /// For **Deprecated** cases, report an error.
     AnonymousCreateParameter(NodeId),
 
-    /// Give a hard error when either `&` or `'_` is written. Used to
-    /// rule out things like `where T: Foo<'_>`. Does not imply an
-    /// error on default object bounds (e.g., `Box<dyn Foo>`).
-    AnonymousReportError,
-
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     AnonymousPassThrough(NodeId),
 }
@@ -881,40 +876,38 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         debug!("visit_where_predicate {:?}", p);
         let previous_value =
             replace(&mut self.diagnostic_metadata.current_where_predicate, Some(p));
-        self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-            if let WherePredicate::BoundPredicate(WhereBoundPredicate {
-                ref bounded_ty,
-                ref bounds,
-                ref bound_generic_params,
-                span: predicate_span,
-                ..
-            }) = p
-            {
-                let span = if bound_generic_params.is_empty() {
-                    predicate_span.shrink_to_lo()
-                } else {
-                    *predicate_span
-                };
-                this.with_generic_param_rib(
-                    &bound_generic_params,
-                    NormalRibKind,
-                    LifetimeRibKind::Generics {
-                        parent: bounded_ty.id,
-                        kind: LifetimeBinderKind::WhereBound,
-                        span,
-                    },
-                    |this| {
-                        this.visit_generic_param_vec(&bound_generic_params, false);
-                        this.visit_ty(bounded_ty);
-                        for bound in bounds {
-                            this.visit_param_bound(bound, BoundKind::Bound)
-                        }
-                    },
-                );
+        if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+            ref bounded_ty,
+            ref bounds,
+            ref bound_generic_params,
+            span: predicate_span,
+            ..
+        }) = p
+        {
+            let span = if bound_generic_params.is_empty() {
+                predicate_span.shrink_to_lo()
             } else {
-                visit::walk_where_predicate(this, p);
-            }
-        });
+                *predicate_span
+            };
+            self.with_generic_param_rib(
+                &bound_generic_params,
+                NormalRibKind,
+                LifetimeRibKind::Generics {
+                    parent: bounded_ty.id,
+                    kind: LifetimeBinderKind::WhereBound,
+                    span,
+                },
+                |this| {
+                    this.visit_generic_param_vec(&bound_generic_params, false);
+                    this.visit_ty(bounded_ty);
+                    for bound in bounds {
+                        this.visit_param_bound(bound, BoundKind::Bound)
+                    }
+                },
+            );
+        } else {
+            visit::walk_where_predicate(self, p);
+        }
         self.diagnostic_metadata.current_where_predicate = previous_value;
     }
 
@@ -1093,62 +1086,56 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             forward_ty_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
         }
 
-        self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-            for param in params {
-                match param.kind {
-                    GenericParamKind::Lifetime => {
-                        for bound in &param.bounds {
-                            this.visit_param_bound(bound, BoundKind::Bound);
-                        }
-                    }
-                    GenericParamKind::Type { ref default } => {
-                        for bound in &param.bounds {
-                            this.visit_param_bound(bound, BoundKind::Bound);
-                        }
-
-                        if let Some(ref ty) = default {
-                            this.ribs[TypeNS].push(forward_ty_ban_rib);
-                            this.ribs[ValueNS].push(forward_const_ban_rib);
-                            this.visit_ty(ty);
-                            forward_const_ban_rib = this.ribs[ValueNS].pop().unwrap();
-                            forward_ty_ban_rib = this.ribs[TypeNS].pop().unwrap();
-                        }
-
-                        // Allow all following defaults to refer to this type parameter.
-                        forward_ty_ban_rib
-                            .bindings
-                            .remove(&Ident::with_dummy_span(param.ident.name));
-                    }
-                    GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
-                        // Const parameters can't have param bounds.
-                        assert!(param.bounds.is_empty());
-
-                        this.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
-                        this.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
-                        this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
-                            this.visit_ty(ty)
-                        });
-                        this.ribs[TypeNS].pop().unwrap();
-                        this.ribs[ValueNS].pop().unwrap();
-
-                        if let Some(ref expr) = default {
-                            this.ribs[TypeNS].push(forward_ty_ban_rib);
-                            this.ribs[ValueNS].push(forward_const_ban_rib);
-                            this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
-                                this.resolve_anon_const(expr, IsRepeatExpr::No)
-                            });
-                            forward_const_ban_rib = this.ribs[ValueNS].pop().unwrap();
-                            forward_ty_ban_rib = this.ribs[TypeNS].pop().unwrap();
-                        }
-
-                        // Allow all following defaults to refer to this const parameter.
-                        forward_const_ban_rib
-                            .bindings
-                            .remove(&Ident::with_dummy_span(param.ident.name));
+        for param in params {
+            match param.kind {
+                GenericParamKind::Lifetime => {
+                    for bound in &param.bounds {
+                        self.visit_param_bound(bound, BoundKind::Bound);
                     }
                 }
+                GenericParamKind::Type { ref default } => {
+                    for bound in &param.bounds {
+                        self.visit_param_bound(bound, BoundKind::Bound);
+                    }
+
+                    if let Some(ref ty) = default {
+                        self.ribs[TypeNS].push(forward_ty_ban_rib);
+                        self.ribs[ValueNS].push(forward_const_ban_rib);
+                        self.visit_ty(ty);
+                        forward_const_ban_rib = self.ribs[ValueNS].pop().unwrap();
+                        forward_ty_ban_rib = self.ribs[TypeNS].pop().unwrap();
+                    }
+
+                    // Allow all following defaults to refer to this type parameter.
+                    forward_ty_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
+                }
+                GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
+                    // Const parameters can't have param bounds.
+                    assert!(param.bounds.is_empty());
+
+                    self.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
+                    self.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
+                    self.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| this.visit_ty(ty));
+                    self.ribs[TypeNS].pop().unwrap();
+                    self.ribs[ValueNS].pop().unwrap();
+
+                    if let Some(ref expr) = default {
+                        self.ribs[TypeNS].push(forward_ty_ban_rib);
+                        self.ribs[ValueNS].push(forward_const_ban_rib);
+                        self.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
+                            this.resolve_anon_const(expr, IsRepeatExpr::No)
+                        });
+                        forward_const_ban_rib = self.ribs[ValueNS].pop().unwrap();
+                        forward_ty_ban_rib = self.ribs[TypeNS].pop().unwrap();
+                    }
+
+                    // Allow all following defaults to refer to this const parameter.
+                    forward_const_ban_rib
+                        .bindings
+                        .remove(&Ident::with_dummy_span(param.ident.name));
+                }
             }
-        })
+        }
     }
 
     #[tracing::instrument(level = "debug", skip(self, work))]
@@ -1224,28 +1211,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter(item_node_id) => {
                     self.create_fresh_lifetime(lifetime.id, lifetime.ident, item_node_id);
-                    return;
-                }
-                LifetimeRibKind::AnonymousReportError => {
-                    let (msg, note) = if elided {
-                        (
-                            "`&` without an explicit lifetime name cannot be used here",
-                            "explicit lifetime name needed here",
-                        )
-                    } else {
-                        ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
-                    };
-                    rustc_errors::struct_span_err!(
-                        self.r.session,
-                        lifetime.ident.span,
-                        E0637,
-                        "{}",
-                        msg,
-                    )
-                    .span_label(lifetime.ident.span, note)
-                    .emit();
-
-                    self.record_lifetime_res(lifetime.id, LifetimeRes::Error);
                     return;
                 }
                 LifetimeRibKind::AnonymousPassThrough(node_id) => {
@@ -1372,7 +1337,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         res = LifetimeRes::Anonymous { binder, elided: true };
                         break;
                     }
-                    LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
+                    LifetimeRibKind::Item => {
                         // FIXME(cjgillot) This resolution is wrong, but this does not matter
                         // since these cases are erroneous anyway.  Lifetime resolution should
                         // emit a "missing lifetime specifier" diagnostic.
@@ -2028,28 +1993,28 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_generic_param_rib(&generics.params, ItemRibKind(HasGenericParams::Yes), LifetimeRibKind::Generics { span: generics.span, parent: item_id, kind: LifetimeBinderKind::ImplBlock }, |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
             this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
-                this.with_lifetime_rib(LifetimeRibKind::AnonymousCreateParameter(item_id), |this| {
-                    // Resolve the trait reference, if necessary.
-                    this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                        let item_def_id = this.r.local_def_id(item_id);
+                // Resolve the trait reference, if necessary.
+                this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
+                    let item_def_id = this.r.local_def_id(item_id);
 
-                        // Register the trait definitions from here.
-                        if let Some(trait_id) = trait_id {
-                            this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
-                        }
+                    // Register the trait definitions from here.
+                    if let Some(trait_id) = trait_id {
+                        this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
+                    }
 
-                        let item_def_id = item_def_id.to_def_id();
-                        let res =
-                            Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
-                        this.with_self_rib(res, |this| {
+                    let item_def_id = item_def_id.to_def_id();
+                    let res =
+                        Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
+                    this.with_self_rib(res, |this| {
+                        // Resolve the generic parameters.
+                        this.visit_generics(generics);
+                        this.with_lifetime_rib(LifetimeRibKind::AnonymousCreateParameter(item_id), |this| {
                             if let Some(trait_ref) = opt_trait_reference.as_ref() {
                                 // Resolve type arguments in the trait path.
                                 visit::walk_trait_ref(this, trait_ref);
                             }
                             // Resolve the self type.
                             this.visit_ty(self_type);
-                            // Resolve the generic parameters.
-                            this.visit_generics(generics);
 
                             // Resolve the items within the impl.
                             this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id),

@@ -1,33 +1,58 @@
-error[E0637]: `&` without an explicit lifetime name cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/const-param-elided-lifetime.rs:9:19
    |
 LL | struct A<const N: &u8>;
-   |                   ^ explicit lifetime name needed here
+   |                   ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | struct A<'a, const N: &'a u8>;
+   |          +++           ++
 
-error[E0637]: `&` without an explicit lifetime name cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/const-param-elided-lifetime.rs:14:15
    |
 LL | impl<const N: &u8> A<N> {
-   |               ^ explicit lifetime name needed here
+   |               ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | impl<'a, const N: &'a u8> A<N> {
+   |      +++           ++
 
-error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:17:21
+error[E0106]: missing lifetime specifier
+  --> $DIR/const-param-elided-lifetime.rs:16:21
    |
 LL |     fn foo<const M: &u8>(&self) {}
-   |                     ^ explicit lifetime name needed here
+   |                     ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     fn foo<'a, const M: &'a u8>(&self) {}
+   |            +++           ++
 
-error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:22:15
+error[E0106]: missing lifetime specifier
+  --> $DIR/const-param-elided-lifetime.rs:20:15
    |
 LL | impl<const N: &u8> B for A<N> {}
-   |               ^ explicit lifetime name needed here
+   |               ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | impl<'a, const N: &'a u8> B for A<N> {}
+   |      +++           ++
 
-error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/const-param-elided-lifetime.rs:26:17
+error[E0106]: missing lifetime specifier
+  --> $DIR/const-param-elided-lifetime.rs:23:17
    |
 LL | fn bar<const N: &u8>() {}
-   |                 ^ explicit lifetime name needed here
+   |                 ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn bar<'a, const N: &'a u8>() {}
+   |        +++           ++
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0637`.
+For more information about this error, try `rustc --explain E0106`.

@@ -1,9 +1,14 @@
-error[E0637]: `'_` cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/underscore-outlives-bounds.rs:7:10
    |
 LL | impl<'b: '_> Foo<'b> for i32 {}
-   |          ^^ `'_` is a reserved lifetime name
+   |          ^^ expected named lifetime parameter
+   |
+help: consider using the `'b` lifetime
+   |
+LL | impl<'b: 'b> Foo<'b> for i32 {}
+   |          ~~
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0637`.
+For more information about this error, try `rustc --explain E0106`.

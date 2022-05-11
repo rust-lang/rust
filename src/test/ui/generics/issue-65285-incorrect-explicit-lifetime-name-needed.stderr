@@ -1,8 +1,13 @@
-error[E0637]: `&` without an explicit lifetime name cannot be used here
+error[E0106]: missing lifetime specifier
   --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:5:37
    |
 LL | fn should_error<T>() where T : Into<&u32> {}
-   |                                     ^ explicit lifetime name needed here
+   |                                     ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn should_error<'a, T>() where T : Into<&'a u32> {}
+   |                 +++                      ++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:13:17
@@ -35,5 +40,4 @@ LL |     fn foo<'b, L: X<'lifetime, &'b Nested<K>>>();
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0106, E0637.
-For more information about an error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0106`.

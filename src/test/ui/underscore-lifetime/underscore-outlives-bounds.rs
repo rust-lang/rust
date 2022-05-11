@@ -4,5 +4,5 @@
 // #54902
 
 trait Foo<'a> {}
-impl<'b: '_> Foo<'b> for i32 {} //~ ERROR `'_` cannot be used here
+impl<'b: '_> Foo<'b> for i32 {} //~ ERROR missing lifetime specifier [E0106]
 fn main() { }

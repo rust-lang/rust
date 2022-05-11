@@ -7,24 +7,20 @@
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct A<const N: &u8>;
-//~^ ERROR `&` without an explicit lifetime name cannot be used here
-//[min]~^^ ERROR `&'static u8` is forbidden
+//~^ ERROR missing lifetime specifier [E0106]
+
 trait B {}
 
 impl<const N: &u8> A<N> {
-//~^ ERROR `&` without an explicit lifetime name cannot be used here
-//[min]~^^ ERROR `&'static u8` is forbidden
+//~^ ERROR missing lifetime specifier [E0106]
     fn foo<const M: &u8>(&self) {}
-    //~^ ERROR `&` without an explicit lifetime name cannot be used here
-    //[min]~^^ ERROR `&'static u8` is forbidden
+    //~^ ERROR missing lifetime specifier [E0106]
 }
 
 impl<const N: &u8> B for A<N> {}
-//~^ ERROR `&` without an explicit lifetime name cannot be used here
-//[min]~^^ ERROR `&'static u8` is forbidden
+//~^ ERROR missing lifetime specifier [E0106]
 
 fn bar<const N: &u8>() {}
-//~^ ERROR `&` without an explicit lifetime name cannot be used here
-//[min]~^^ ERROR `&'static u8` is forbidden
+//~^ ERROR missing lifetime specifier [E0106]
 
 fn main() {}

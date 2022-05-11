@@ -374,7 +374,6 @@ E0633: include_str!("./error_codes/E0633.md"),
 E0634: include_str!("./error_codes/E0634.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
-E0637: include_str!("./error_codes/E0637.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
 E0641: include_str!("./error_codes/E0641.md"),
@@ -632,6 +631,7 @@ E0787: include_str!("./error_codes/E0787.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
+//  E0637, // merged into E0106
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
 //  E0694, // an unknown tool name found in scoped attributes
