@@ -543,33 +543,13 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // in the handling of `.init_array` (the static constructor list) in versions of
                 // the gold linker (prior to the one released with binutils 2.36).
                 //
-                // However, unconditional use of `llvm.compiler.used` caused a nontrivial amount of
-                // ecosystem breakage, especially on Mach-O targets. To resolve this, we compile it
-                // as llvm.compiler.used on ELF targets and llvm.used elsewhere, which should be
-                // equivalent to how we compiled `#[used]` before LLVM 13, as `llvm.used` and
-                // `llvm.compiler.used` were treated the same on ELF targets prior in earlier LLVM
-                // versions (additionally, it seems to be how Clang handles `__attribute__((used))`,
-                // perhaps for similar compatibility-motivated reasons).
-                //
-                // See https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146 and
-                // following comments for some discussion of this.
-                //
-                // The final wrinkle is it's not really clear how to tell if we're going to output
-                // ELF, so it's been approximated as "not like wasm, osx, or windows", which is
-                // not exactly correct, but is pretty close and hopefully handles all the platforms
-                // platforms where old versions of `ld.gold` are likely to show up.
-                //
-                // All this is subject to change in the future. Which is a good thing, because this
-                // probably should be firmed up somehow!
-                let seems_like_elf = !(self.tcx.sess.target.is_like_osx
-                    || self.tcx.sess.target.is_like_windows
-                    || self.tcx.sess.target.is_like_wasm);
-
-                if seems_like_elf {
-                    self.add_compiler_used_global(g);
-                } else {
-                    self.add_used_global(g);
-                }
+                // That said, we only ever emit these when compiling for ELF targets, unless
+                // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
+                // on other targets, in particular MachO targets have *their* static constructor
+                // lists broken if `llvm.compiler.used` is emitted rather than llvm.used. However,
+                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_typeck`,
+                // so we don't need to take care of it here.
+                self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
                 // `USED` and `USED_LINKER` can't be used together.
