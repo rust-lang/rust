@@ -209,3 +209,50 @@ export async function updateConfig(config: vscode.WorkspaceConfiguration) {
         }
     }
 }
+
+export function substituteVariablesInEnv(env: Env): Env {
+    const missingDeps = new Set<string>();
+    // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
+    // to follow the same convention for our dependency tracking
+    const definedEnvKeys = new Set(Object.keys(env).map(key => `env:${key}`));
+    const envWithDeps = Object.fromEntries(Object.entries(env).map(([key, value]) => {
+        const deps = new Set<string>();
+        const depRe = new RegExp(/\${(?<depName>.+?)}/g);
+        let match = undefined;
+        while ((match = depRe.exec(value))) {
+            const depName = match.groups!.depName;
+            deps.add(depName);
+            // `depName` at this point can have a form of `expression` or
+            // `prefix:expression`
+            if (!definedEnvKeys.has(depName)) {
+                missingDeps.add(depName);
+            }
+        }
+        return [`env:${key}`, { deps: [...deps], value }];
+    }));
+
+    const resolved = new Set<string>();
+    // TODO: handle missing dependencies
+    const toResolve = new Set(Object.keys(envWithDeps));
+
+    let leftToResolveSize;
+    do {
+        leftToResolveSize = toResolve.size;
+        for (const key of toResolve) {
+            if (envWithDeps[key].deps.every(dep => resolved.has(dep))) {
+                envWithDeps[key].value = envWithDeps[key].value.replace(
+                    /\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
+                        return envWithDeps[depName].value;
+                    });
+                resolved.add(key);
+                toResolve.delete(key);
+            }
+        }
+    } while (toResolve.size > 0 && toResolve.size < leftToResolveSize);
+
+    const resolvedEnv: Env = {};
+    for (const key of Object.keys(env)) {
+        resolvedEnv[key] = envWithDeps[`env:${key}`].value;
+    }
+    return resolvedEnv;
+}
