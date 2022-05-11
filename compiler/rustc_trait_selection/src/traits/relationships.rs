@@ -19,7 +19,7 @@ pub(crate) fn update<'tcx, T>(
         let new_self_ty = infcx.tcx.types.unit;
 
         let trait_ref = ty::TraitRef {
-            substs: infcx.tcx.mk_substs_trait_no_append(new_self_ty, &tpred.trait_ref.substs[1..]),
+            substs: infcx.tcx.mk_substs_trait(new_self_ty, &tpred.trait_ref.substs[1..]),
             ..tpred.trait_ref
         };
 

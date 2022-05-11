@@ -958,7 +958,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can only make objects from sized types.
                 let tr = ty::Binder::dummy(ty::TraitRef::new(
                     tcx.require_lang_item(LangItem::Sized, None),
-                    tcx.mk_substs_trait_non_const(source, &[]),
+                    tcx.mk_substs_trait(source, &[]),
                 ));
                 nested.push(predicate_to_obligation(tr.to_predicate(tcx)));
 

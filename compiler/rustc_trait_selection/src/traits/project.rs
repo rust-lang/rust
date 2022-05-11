@@ -1563,7 +1563,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             &obligation.with(
                                 ty::Binder::dummy(ty::TraitRef::new(
                                     selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    selcx.tcx().mk_substs_trait_non_const(self_ty, &[]),
+                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
                                 ))
                                 .to_predicate(selcx.tcx()),
                             ),
@@ -1807,7 +1807,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
     if check_is_sized {
         let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
             tcx.require_lang_item(LangItem::Sized, None),
-            tcx.mk_substs_trait_non_const(self_ty, &[]),
+            tcx.mk_substs_trait(self_ty, &[]),
         ))
         .to_poly_trait_predicate()
         .to_predicate(tcx);

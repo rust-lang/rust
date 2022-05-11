@@ -85,8 +85,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
-        let trait_ref =
-            ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait_non_const(ty, &[]) };
+        let trait_ref = ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait(ty, &[]) };
 
         let trait_pred = ty::Binder::dummy(trait_ref);
 
@@ -298,7 +297,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
-                substs: infcx.tcx.mk_substs_trait_non_const(ty, &[]),
+                substs: infcx.tcx.mk_substs_trait(ty, &[]),
             },
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,

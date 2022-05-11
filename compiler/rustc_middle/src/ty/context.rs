@@ -2803,23 +2803,6 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
-    pub fn mk_substs_trait_no_append(
-        self,
-        self_ty: Ty<'tcx>,
-        rest: &[GenericArg<'tcx>],
-    ) -> SubstsRef<'tcx> {
-        assert!(matches!(rest.last().unwrap().unpack(), GenericArgKind::Constness(_)));
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
-    }
-
-    pub fn mk_substs_trait_non_const(
-        self,
-        self_ty: Ty<'tcx>,
-        rest: &[GenericArg<'tcx>],
-    ) -> SubstsRef<'tcx> {
-        self.mk_substs_trait(self_ty, rest)
-    }
-
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }

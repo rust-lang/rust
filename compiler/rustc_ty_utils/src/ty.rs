@@ -53,7 +53,7 @@ fn sized_constraint_for_ty<'tcx>(
             let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let sized_predicate = ty::Binder::dummy(ty::TraitRef {
                 def_id: sized_trait,
-                substs: tcx.mk_substs_trait_non_const(ty, &[]),
+                substs: tcx.mk_substs_trait(ty, &[]),
             })
             .to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did()).predicates;

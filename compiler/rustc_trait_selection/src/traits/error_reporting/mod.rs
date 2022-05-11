@@ -728,7 +728,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             && fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
-                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait_no_append(
+                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
                                     self.tcx.mk_unit(),
                                     &trait_pred.trait_ref.substs[1..],
                                 );
@@ -1934,7 +1934,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let trait_pred = trait_ref_and_ty.map_bound_ref(|(tr, new_self_ty)| ty::TraitPredicate {
             trait_ref: ty::TraitRef {
-                substs: self.tcx.mk_substs_trait_no_append(*new_self_ty, &tr.trait_ref.substs[1..]),
+                substs: self.tcx.mk_substs_trait(*new_self_ty, &tr.trait_ref.substs[1..]),
                 ..tr.trait_ref
             },
             ..*tr

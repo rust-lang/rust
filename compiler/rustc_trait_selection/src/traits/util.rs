@@ -342,7 +342,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait_non_const(self_ty, &[arguments_tuple.into()]),
+        substs: tcx.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
     };
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
@@ -356,7 +356,7 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait_non_const(self_ty, &[sig.skip_binder().resume_ty.into()]),
+        substs: tcx.mk_substs_trait(self_ty, &[sig.skip_binder().resume_ty.into()]),
     };
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }

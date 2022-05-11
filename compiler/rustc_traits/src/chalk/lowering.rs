@@ -672,7 +672,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                             trait_id: chalk_ir::TraitId(def_id),
                             substitution: interner
                                 .tcx
-                                .mk_substs_trait_non_const(self_ty, substs)
+                                .mk_substs_trait(self_ty, substs)
                                 .lower_into(interner),
                         }),
                     )
@@ -684,7 +684,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                             associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
                             substitution: interner
                                 .tcx
-                                .mk_substs_trait_non_const(self_ty, predicate.substs)
+                                .mk_substs_trait(self_ty, predicate.substs)
                                 .lower_into(interner),
                         }),
                         // FIXME(associated_const_equality): teach chalk about terms for alias eq.
@@ -697,7 +697,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                         trait_id: chalk_ir::TraitId(def_id),
                         substitution: interner
                             .tcx
-                            .mk_substs_trait_non_const(self_ty, &[])
+                            .mk_substs_trait(self_ty, &[])
                             .lower_into(interner),
                     }),
                 ),

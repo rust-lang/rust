@@ -851,7 +851,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 recursion_depth: 0,
                 predicate: ty::Binder::dummy(ty::TraitRef {
                     def_id: clone_trait_did,
-                    substs: self.tcx.mk_substs_trait_non_const(expected_ty.into(), &[]),
+                    substs: self.tcx.mk_substs_trait(expected_ty.into(), &[]),
                 })
                 .to_predicate(self.tcx),
             })

@@ -1763,6 +1763,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     }
 
     if has_constness || parent_has_constness {
+        trace!("adding constness param");
         params.push(ty::GenericParamDef {
             name: Symbol::intern("<constness>"),
             index: type_start + i as u32,
@@ -1774,7 +1775,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
 
-    ty::Generics {
+    let generics = ty::Generics {
         parent: parent_def_id,
         parent_count,
         params,
@@ -1782,7 +1783,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         has_self: has_self || parent_has_self,
         has_constness: has_constness || parent_has_constness,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
-    }
+    };
+    trace!("{:#?}", generics);
+    generics
 }
 
 fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {

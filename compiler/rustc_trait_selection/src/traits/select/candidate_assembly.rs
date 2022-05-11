@@ -752,7 +752,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // <ty as Deref>
         let trait_ref = ty::TraitRef {
             def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait_non_const(ty, &[]),
+            substs: tcx.mk_substs_trait(ty, &[]),
         };
 
         let obligation = traits::Obligation::new(

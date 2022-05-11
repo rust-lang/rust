@@ -411,7 +411,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
                 def_id: self.infcx.tcx.require_lang_item(LangItem::Sized, None),
-                substs: self.infcx.tcx.mk_substs_trait_non_const(subty, &[]),
+                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
             };
             self.out.push(traits::Obligation::with_depth(
                 cause,

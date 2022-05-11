@@ -699,7 +699,7 @@ impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref = self.rebind(ty::TraitRef {
                     def_id: did,
-                    substs: tcx.mk_substs_trait_non_const(self_ty, &[]),
+                    substs: tcx.mk_substs_trait(self_ty, &[]),
                 });
                 trait_ref.to_predicate(tcx)
             }

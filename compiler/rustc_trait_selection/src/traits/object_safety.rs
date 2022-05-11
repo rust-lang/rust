@@ -682,7 +682,7 @@ fn receiver_is_dispatchable<'tcx>(
         // Self: Unsize<U>
         let unsize_predicate = ty::Binder::dummy(ty::TraitRef {
             def_id: unsize_did,
-            substs: tcx.mk_substs_trait_non_const(tcx.types.self_param, &[unsized_self_ty.into()]),
+            substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
         })
         .to_predicate(tcx);
 
@@ -712,7 +712,7 @@ fn receiver_is_dispatchable<'tcx>(
     let obligation = {
         let predicate = ty::Binder::dummy(ty::TraitRef {
             def_id: dispatch_from_dyn_did,
-            substs: tcx.mk_substs_trait_non_const(receiver_ty, &[unsized_receiver_ty.into()]),
+            substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
         })
         .to_predicate(tcx);
 

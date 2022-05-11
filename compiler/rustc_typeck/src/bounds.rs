@@ -63,7 +63,7 @@ impl<'tcx> Bounds<'tcx> {
             tcx.lang_items().sized_trait().map(move |sized| {
                 let trait_ref = ty::Binder::dummy(ty::TraitRef {
                     def_id: sized,
-                    substs: tcx.mk_substs_trait_non_const(param_ty, &[]),
+                    substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
                 (trait_ref.to_predicate(tcx), span)
             })
