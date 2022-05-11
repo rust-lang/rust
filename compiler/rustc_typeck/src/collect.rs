@@ -1518,6 +1518,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         params,
                         param_def_id_to_index,
                         has_self: generics.has_self,
+                        has_constness: generics.has_constness,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }
@@ -1623,7 +1624,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     };
 
     let has_self = opt_self.is_some();
+    let has_constness = tcx.has_attr(def_id, sym::const_trait);
     let mut parent_has_self = false;
+    let mut parent_has_constness = false;
     let mut own_start = has_self as u32;
     let parent_count = parent_def_id.map_or(0, |def_id| {
         let generics = tcx.generics_of(def_id);
@@ -1632,8 +1635,8 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         own_start = generics.count() as u32;
         // if parent has constness param, we do not inherit it from the parent, and we
         // get it in the end instead of the middle.
-        let parent_constness = parent_has_self as usize;
-        generics.parent_count + generics.params.len() - parent_constness
+        parent_has_constness = generics.has_constness;
+        generics.parent_count + generics.params.len() - parent_has_constness as usize
     });
 
     let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
@@ -1759,7 +1762,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         }
     }
 
-    if (has_self || parent_has_self) && tcx.has_attr(def_id, sym::const_trait) {
+    if has_constness || parent_has_constness {
         params.push(ty::GenericParamDef {
             name: Symbol::intern("<constness>"),
             index: type_start + i as u32,
@@ -1777,6 +1780,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
+        has_constness: has_constness || parent_has_constness,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     }
 }

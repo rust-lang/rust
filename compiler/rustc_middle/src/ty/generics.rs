@@ -110,7 +110,7 @@ pub struct GenericParamCount {
 /// with an item or method. Analogous to `hir::Generics`.
 ///
 /// The ordering of parameters is the same as in `Subst` (excluding child generics):
-/// `Self` (optionally), `Lifetime` params..., `Type` params...
+/// `Self` (optionally), `Lifetime` params..., `Type` params..., `constness` (optional)
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct Generics {
     pub parent: Option<DefId>,
@@ -122,6 +122,7 @@ pub struct Generics {
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
+    pub has_constness: bool,
     pub has_late_bound_regions: Option<Span>,
 }
 
@@ -240,7 +241,9 @@ impl<'tcx> Generics {
 
     /// Returns the `ConstnessArg`
     pub fn has_constness_param(&'tcx self) -> bool {
-        self.params.iter().any(|param| matches!(param.kind, ty::GenericParamDefKind::Constness))
+        self.params
+            .last()
+            .map_or(false, |param| matches!(param.kind, ty::GenericParamDefKind::Constness))
     }
 
     /// Returns `true` if `params` has `impl Trait`.
