@@ -2619,7 +2619,7 @@ define_print_and_forward_display! {
             GenericArgKind::Lifetime(lt) => p!(print(lt)),
             GenericArgKind::Type(ty) => p!(print(ty)),
             GenericArgKind::Const(ct) => p!(print(ct)),
-            GenericArgKind::Constness(_) => {},
+            GenericArgKind::Constness(ca) => p!("{ca:?}"),
         }
     }
 }
