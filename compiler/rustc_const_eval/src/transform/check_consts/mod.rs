@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
 
@@ -87,7 +87,7 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // A default body in a `#[const_trait]` is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
     // restrict default bodies to only call const-stable functions.
-    if let Some(trait_id) = tcx.trait_of_item(def_id) && tcx.has_attr(trait_id, sym::const_trait) {
+    if tcx.is_const_default_method(def_id) {
         return false;
     }
 

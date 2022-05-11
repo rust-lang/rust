@@ -892,10 +892,8 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
                 && tcx.sess.opts.output_types.should_codegen();
             // The function has a `const` modifier or is in a `#[const_trait]`.
-            let mut is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
-            if let Some(trait_) = tcx.trait_of_item(def_id.to_def_id()) {
-                is_const_fn = is_const_fn || tcx.has_attr(trait_, sym::const_trait);
-            }
+            let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
+                || tcx.is_const_default_method(def_id.to_def_id());
             let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
             (is_const_fn, needs_inline || always_encode_mir)
         }

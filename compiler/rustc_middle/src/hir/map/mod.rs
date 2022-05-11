@@ -494,7 +494,7 @@ impl<'hir> Map<'hir> {
             BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(def_id.to_def_id()) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if matches!(self.tcx.trait_of_item(def_id.to_def_id()), Some(trait_id) if self.tcx.has_attr(trait_id, sym::const_trait)) => {
+            BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id.to_def_id()) => {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,

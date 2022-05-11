@@ -278,8 +278,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
                 // allow calling functions inside a trait marked with #[const_trait].
-                if !matches!(ecx.tcx.trait_of_item(def.did), Some(trait_id) if ecx.tcx.has_attr(trait_id, sym::const_trait))
-                {
+                if !ecx.tcx.is_const_default_method(def.did) {
                     // We certainly do *not* want to actually call the fn
                     // though, so be sure we return here.
                     throw_unsup_format!("calling non-const function `{}`", instance)
