@@ -2987,6 +2987,7 @@ impl DefaultHasher {
     /// instances created through `new` or `default`.
     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
     #[allow(deprecated)]
+    #[inline]
     #[must_use]
     pub fn new() -> DefaultHasher {
         DefaultHasher(SipHasher13::new_with_keys(0, 0))
@@ -2999,6 +3000,7 @@ impl Default for DefaultHasher {
     /// See its documentation for more.
     ///
     /// [`new`]: DefaultHasher::new
+    #[inline]
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }
