@@ -814,7 +814,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.inlayHints.renderColons": {
-                    "markdownDescription": "Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.",
+                    "markdownDescription": "Whether to render leading colons for type hints, and trailing colons for parameter hints.",
                     "default": true,
                     "type": "boolean"
                 },

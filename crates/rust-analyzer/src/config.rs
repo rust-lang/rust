@@ -264,7 +264,7 @@ config_data! {
         inlayHints_parameterHints_enable: bool                     = "true",
         /// Whether to show inlay type hints for compiler inserted reborrows.
         inlayHints_reborrowHints_enable: bool                      = "false",
-        /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
+        /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool                              = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints_enable: bool                          = "true",
