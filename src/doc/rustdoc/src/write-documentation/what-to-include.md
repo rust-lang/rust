@@ -109,8 +109,9 @@ rustdoc --extend-css custom.css src/lib.rs
 
 A good example of using this feature to create a dark theme is documented [on
 this blog].  Just remember, dark theme is already included in the rustdoc output
-by clicking on the paintbrush.  Adding additional options to the themes are
-as easy as creating a custom theme `.css` file and using the following syntax:
+by clicking on the gear icon in the upper right. Adding additional options to the
+themes are as easy as creating a custom theme `.css` file and using the following
+syntax:
 
 ```bash
 rustdoc --theme awesome.css src/lib.rs
