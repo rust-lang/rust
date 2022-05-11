@@ -11,7 +11,7 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use rustc_data_structures::{
-    fx::{FxHashSet, FxIndexMap},
+    fx::{FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
 use rustc_hir::HirId;
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The set of places that we are creating fake borrows of. If there are
         // no match guards then we don't need any fake borrows, so don't track
         // them.
-        let mut fake_borrows = match_has_guard.then(FxHashSet::default);
+        let mut fake_borrows = match_has_guard.then(FxIndexSet::default);
 
         let mut otherwise = None;
 
@@ -1053,7 +1053,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         debug!(
             "matched_candidate(span={:?}, candidates={:?}, start_block={:?}, otherwise_block={:?})",
@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         // The candidates are sorted by priority. Check to see whether the
         // higher priority candidates (and hence at the front of the slice)
@@ -1184,7 +1184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         matched_candidates: &mut [&mut Candidate<'_, 'tcx>],
         start_block: BasicBlock,
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> Option<BasicBlock> {
         debug_assert!(
             !matched_candidates.is_empty(),
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
 
@@ -1385,7 +1385,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         pats: &'pat [Pat<'tcx>],
         or_span: Span,
         place: PlaceBuilder<'tcx>,
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         debug!("test_or_pattern:\ncandidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
@@ -1572,7 +1572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
         block: BasicBlock,
         otherwise_block: &mut Option<BasicBlock>,
-        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+        fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         // extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
@@ -1715,7 +1715,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///    by a MIR pass run after borrow checking.
     fn calculate_fake_borrows<'b>(
         &mut self,
-        fake_borrows: &'b FxHashSet<Place<'tcx>>,
+        fake_borrows: &'b FxIndexSet<Place<'tcx>>,
         temp_span: Span,
     ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.tcx;
@@ -1741,8 +1741,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             all_fake_borrows.push(place.as_ref());
         }
 
-        // Deduplicate and ensure a deterministic order.
-        all_fake_borrows.sort();
         all_fake_borrows.dedup();
 
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
