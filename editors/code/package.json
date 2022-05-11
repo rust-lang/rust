@@ -33,12 +33,12 @@
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
         "pretest": "tsc && npm run build",
-        "test": "node ./out/tests/runTests.js"
+        "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "vscode-languageclient": "8.0.0-next.14",
         "d3": "^7.3.0",
-        "d3-graphviz": "^4.1.0"
+        "d3-graphviz": "^4.1.0",
+        "vscode-languageclient": "8.0.0-next.14"
     },
     "devDependencies": {
         "@types/node": "~14.17.5",
@@ -46,6 +46,7 @@
         "@typescript-eslint/eslint-plugin": "^5.16.0",
         "@typescript-eslint/parser": "^5.16.0",
         "@vscode/test-electron": "^2.1.3",
+        "cross-env": "^7.0.3",
         "esbuild": "^0.14.27",
         "eslint": "^8.11.0",
         "tslib": "^2.3.0",

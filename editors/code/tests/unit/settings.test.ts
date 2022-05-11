@@ -37,5 +37,17 @@ export async function getTests(ctx: Context) {
             const actualEnv = await substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
         });
+
+        suite.addTest('Should support external variables', async () => {
+            const envJson = {
+                USING_EXTERNAL_VAR: "${env:TEST_VARIABLE} test ${env:TEST_VARIABLE}"
+            };
+            const expectedEnv = {
+                USING_EXTERNAL_VAR: "test test test"
+            };
+
+            const actualEnv = await substituteVariablesInEnv(envJson);
+            assert.deepStrictEqual(actualEnv, expectedEnv);
+        });
     });
 }

@@ -232,7 +232,30 @@ export function substituteVariablesInEnv(env: Env): Env {
     }));
 
     const resolved = new Set<string>();
-    // TODO: handle missing dependencies
+    for (const dep of missingDeps) {
+        const match = /(?<prefix>.*?):(?<body>.+)/.exec(dep);
+        if (match) {
+            const { prefix, body } = match.groups!;
+            if (prefix === 'env') {
+                const envName = body;
+                envWithDeps[dep] = {
+                    value: process.env[envName] ?? '',
+                    deps: []
+                };
+                resolved.add(dep);
+            } else {
+                // we can't handle other prefixes at the moment
+                // leave values as is, but still mark them as resolved
+                envWithDeps[dep] = {
+                    value: '${' + dep + '}',
+                    deps: []
+                };
+                resolved.add(dep);
+            }
+        } else {
+            // TODO: handle VSCode variables
+        }
+    }
     const toResolve = new Set(Object.keys(envWithDeps));
 
     let leftToResolveSize;
