@@ -499,6 +499,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
 }
 
 // Just call `foo.subst(tcx, substs)` to perform a substitution across `foo`.
+#[rustc_on_unimplemented(message = "Calling `subst` must now be done through an `EarlyBinder`")]
 pub trait Subst<'tcx>: Sized {
     type Inner;
 
