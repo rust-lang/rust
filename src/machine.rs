@@ -25,7 +25,6 @@ use rustc_middle::{
 };
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
@@ -308,6 +307,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                 config.tracked_pointer_tags.clone(),
                 config.tracked_call_ids.clone(),
                 config.tag_raw,
+                local_crates.clone(),
             )))
         } else {
             None
@@ -562,7 +562,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
-        set_current_span(&ecx.machine);
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
         }
@@ -570,7 +569,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let stacks = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            Some(Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind))
+            Some(Stacks::new_allocation(
+                id,
+                alloc.size(),
+                stacked_borrows,
+                kind,
+                &ecx.machine.threads,
+            ))
         } else {
             None
         };
@@ -591,7 +596,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
     ) -> Pointer<Tag> {
-        set_current_span(&ecx.machine);
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
         let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
             stacked_borrows.borrow_mut().base_tag(ptr.provenance)
@@ -627,7 +631,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
-        set_current_span(&machine);
         if let Some(data_race) = &alloc_extra.data_race {
             data_race.read(alloc_id, range, machine.data_race.as_ref().unwrap())?;
         }
@@ -637,6 +640,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -651,7 +655,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
-        set_current_span(&machine);
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.write(alloc_id, range, machine.data_race.as_mut().unwrap())?;
         }
@@ -661,6 +664,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -675,7 +679,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         (alloc_id, tag): (AllocId, Self::TagExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
-        set_current_span(&machine);
         if machine.tracked_alloc_ids.contains(&alloc_id) {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
@@ -700,12 +703,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         kind: mir::RetagKind,
         place: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if ecx.machine.stacked_borrows.is_some() {
-            set_current_span(&ecx.machine);
-            ecx.retag(kind, place)
-        } else {
-            Ok(())
-        }
+        if ecx.machine.stacked_borrows.is_some() { ecx.retag(kind, place) } else { Ok(()) }
     }
 
     #[inline(always)]
@@ -751,12 +749,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        if ecx.machine.stacked_borrows.is_some() {
-            set_current_span(&ecx.machine);
-            ecx.retag_return_place()
-        } else {
-            Ok(())
-        }
+        if ecx.machine.stacked_borrows.is_some() { ecx.retag_return_place() } else { Ok(()) }
     }
 
     #[inline(always)]
@@ -771,32 +764,5 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             profiler.finish_recording_interval_event(timing.unwrap());
         }
         res
-    }
-}
-
-// This is potentially a performance hazard.
-// Factoring it into its own function lets us keep an eye on how much it shows up in a profile.
-///
-fn set_current_span<'mir, 'tcx: 'mir>(machine: &Evaluator<'mir, 'tcx>) {
-    if let Some(sb) = machine.stacked_borrows.as_ref() {
-        if sb.borrow().current_span != DUMMY_SP {
-            return;
-        }
-        let current_span = machine
-            .threads
-            .active_thread_stack()
-            .into_iter()
-            .rev()
-            .find(|frame| {
-                let info = FrameInfo {
-                    instance: frame.instance,
-                    span: frame.current_span(),
-                    lint_root: None,
-                };
-                machine.is_local(&info)
-            })
-            .map(|frame| frame.current_span())
-            .unwrap_or(rustc_span::DUMMY_SP);
-        sb.borrow_mut().current_span = current_span;
     }
 }

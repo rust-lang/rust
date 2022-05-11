@@ -7,6 +7,7 @@ use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission
 use crate::Item;
 use crate::SbTag;
 use crate::Stack;
+use crate::ThreadManager;
 
 use rustc_middle::mir::interpret::InterpError;
 
@@ -52,17 +53,32 @@ pub enum TagHistory {
 }
 
 pub trait GlobalStateExt {
-    fn add_creation(
+    fn current_span(&self, threads: &ThreadManager<'_, '_>) -> Span;
+
+    fn log_creation(
         &mut self,
         parent: Option<SbTag>,
         tag: SbTag,
         alloc: AllocId,
         range: AllocRange,
+        threads: &ThreadManager<'_, '_>,
     );
 
-    fn add_invalidation(&mut self, tag: SbTag, alloc: AllocId, range: AllocRange);
+    fn log_invalidation(
+        &mut self,
+        tag: SbTag,
+        alloc: AllocId,
+        range: AllocRange,
+        threads: &ThreadManager<'_, '_>,
+    );
 
-    fn add_protector(&mut self, orig_tag: SbTag, tag: SbTag, alloc: AllocId);
+    fn log_protector(
+        &mut self,
+        orig_tag: SbTag,
+        tag: SbTag,
+        alloc: AllocId,
+        threads: &ThreadManager<'_, '_>,
+    );
 
     fn get_stack_history(
         &self,
@@ -75,39 +91,62 @@ pub trait GlobalStateExt {
 }
 
 impl GlobalStateExt for GlobalStateInner {
-    fn add_creation(
+    fn current_span(&self, threads: &ThreadManager<'_, '_>) -> Span {
+        threads
+            .active_thread_stack()
+            .into_iter()
+            .rev()
+            .find(|frame| {
+                let def_id = frame.instance.def_id();
+                def_id.is_local() || self.local_crates.contains(&def_id.krate)
+            })
+            .map(|frame| frame.current_span())
+            .unwrap_or(rustc_span::DUMMY_SP)
+    }
+
+    fn log_creation(
         &mut self,
         parent: Option<SbTag>,
         tag: SbTag,
         alloc: AllocId,
         range: AllocRange,
+        threads: &ThreadManager<'_, '_>,
     ) {
+        let span = self.current_span(threads);
         let extras = self.extras.entry(alloc).or_default();
-        extras.creations.push(Event {
-            parent,
-            tag,
-            range,
-            span: self.current_span,
-            time: extras.current_time,
-        });
+        extras.creations.push(Event { parent, tag, range, span, time: extras.current_time });
         extras.current_time += 1;
     }
 
-    fn add_invalidation(&mut self, tag: SbTag, alloc: AllocId, range: AllocRange) {
+    fn log_invalidation(
+        &mut self,
+        tag: SbTag,
+        alloc: AllocId,
+        range: AllocRange,
+        threads: &ThreadManager<'_, '_>,
+    ) {
+        let span = self.current_span(threads);
         let extras = self.extras.entry(alloc).or_default();
         extras.invalidations.push(Event {
             parent: None,
             tag,
             range,
-            span: self.current_span,
+            span,
             time: extras.current_time,
         });
         extras.current_time += 1;
     }
 
-    fn add_protector(&mut self, orig_tag: SbTag, tag: SbTag, alloc: AllocId) {
+    fn log_protector(
+        &mut self,
+        orig_tag: SbTag,
+        tag: SbTag,
+        alloc: AllocId,
+        threads: &ThreadManager<'_, '_>,
+    ) {
+        let span = self.current_span(threads);
         let extras = self.extras.entry(alloc).or_default();
-        extras.protectors.push(Protection { orig_tag, tag, span: self.current_span });
+        extras.protectors.push(Protection { orig_tag, tag, span });
         extras.current_time += 1;
     }
 

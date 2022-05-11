@@ -15,7 +15,6 @@ use rustc_target::spec::abi::Abi;
 
 use rustc_session::config::EntryFnType;
 
-use rustc_span::DUMMY_SP;
 use std::collections::HashSet;
 
 use crate::*;
@@ -311,9 +310,6 @@ pub fn eval_entry<'tcx>(
             let info = ecx.preprocess_diagnostics();
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    if let Some(sb) = ecx.machine.stacked_borrows.as_mut() {
-                        sb.get_mut().current_span = DUMMY_SP;
-                    }
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
