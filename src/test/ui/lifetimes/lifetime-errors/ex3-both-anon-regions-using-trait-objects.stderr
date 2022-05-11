@@ -10,8 +10,8 @@ LL |   y.push(z);
    |
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'a>(x:Box<dyn Fn(&'a u8, &'a u8)> , y: Vec<&u8>, z: &u8) {
-   |       ++++               ++      ++
+LL | fn foo<'a>(x:Box<dyn Fn(&u8, &u8)> , y: Vec<&'a u8>, z: &'a u8) {
+   |       ++++                                   ++          ++
 
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/ex3-both-anon-regions-using-trait-objects.rs:2:3

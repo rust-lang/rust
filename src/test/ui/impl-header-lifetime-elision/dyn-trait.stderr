@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/dyn-trait.rs:20:5
+  --> $DIR/dyn-trait.rs:24:5
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
    |                          --  - `x` is a reference that is only valid in the function body

@@ -9,7 +9,7 @@ trait Foo {
 }
 
 fn foo(x: &impl Foo<Item<'_> = u32>) { }
-                       //~^ ERROR missing lifetime specifier
+                       //~^ ERROR `'_` cannot be used here [E0637]
 
 fn bar(x: &impl for<'a> Foo<Item<'a> = &'_ u32>) { }
                                       //~^ ERROR missing lifetime specifier

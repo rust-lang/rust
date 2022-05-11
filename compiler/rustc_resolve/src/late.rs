@@ -21,7 +21,6 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_index::vec::Idx;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -240,9 +239,16 @@ enum LifetimeRibKind {
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
-    /// ```ignore
-    /// struct Foo<'a> { .. }
-    /// fn foo(x: Foo) {}
+    /// ```compile_fail
+    /// struct Foo<'a> { x: &'a () }
+    /// async fn foo(x: Foo) {}
+    /// ```
+    ///
+    /// Note: the error should not trigger when the elided lifetime is in a pattern or
+    /// expression-position path:
+    /// ```
+    /// struct Foo<'a> { x: &'a () }
+    /// async fn foo(Foo { x: _ }: Foo<'_>) {}
     /// ```
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
 
@@ -634,7 +640,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     |this| {
                         this.visit_generic_params(&bare_fn.generic_params, false);
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(ty.id, false),
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: ty.id,
+                                report_in_path: false,
+                            },
                             |this| walk_list!(this, visit_param, &bare_fn.decl.inputs),
                         );
                         this.with_lifetime_rib(
@@ -720,15 +729,13 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             // a body, or if there's no body for some other reason.
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
             | FnKind::Fn(_, _, sig, _, generics, None) => {
+                self.visit_fn_header(&sig.header);
+                self.visit_generics(generics);
                 // We don't need to deal with patterns in parameters, because
                 // they are not possible for foreign or bodiless functions.
                 self.with_lifetime_rib(
                     LifetimeRibKind::AnonymousPassThrough(fn_id, false),
-                    |this| {
-                        this.visit_fn_header(&sig.header);
-                        this.visit_generics(generics);
-                        walk_list!(this, visit_param, &sig.decl.inputs);
-                    },
+                    |this| walk_list!(this, visit_param, &sig.decl.inputs),
                 );
                 self.with_lifetime_rib(
                     LifetimeRibKind::AnonymousPassThrough(fn_id, true),
@@ -761,15 +768,18 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         // generic parameters.  This is especially useful for `async fn`, where
                         // these fresh generic parameters can be applied to the opaque `impl Trait`
                         // return type.
+                        let rib = if async_node_id.is_some() {
+                            // Only emit a hard error for `async fn`, since this kind of
+                            // elision has always been allowed in regular `fn`s.
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: fn_id,
+                                report_in_path: true,
+                            }
+                        } else {
+                            LifetimeRibKind::AnonymousPassThrough(fn_id, false)
+                        };
                         this.with_lifetime_rib(
-                            if async_node_id.is_some() {
-                                LifetimeRibKind::AnonymousCreateParameter {
-                                    binder: fn_id,
-                                    report_in_path: true,
-                                }
-                            } else {
-                                LifetimeRibKind::AnonymousPassThrough(fn_id, false)
-                            },
+                            rib,
                             // Add each argument to the rib.
                             |this| this.resolve_params(&declaration.inputs),
                         );
@@ -937,19 +947,66 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.diagnostic_metadata.currently_processing_generics = prev;
     }
 
+    fn visit_assoc_constraint(&mut self, constraint: &'ast AssocConstraint) {
+        self.visit_ident(constraint.ident);
+        if let Some(ref gen_args) = constraint.gen_args {
+            // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
+            self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                this.visit_generic_args(gen_args.span(), gen_args)
+            });
+        }
+        match constraint.kind {
+            AssocConstraintKind::Equality { ref term } => match term {
+                Term::Ty(ty) => self.visit_ty(ty),
+                Term::Const(c) => self.visit_anon_const(c),
+            },
+            AssocConstraintKind::Bound { ref bounds } => {
+                walk_list!(self, visit_param_bound, bounds, BoundKind::Bound);
+            }
+        }
+    }
+
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
         if let Some(ref args) = path_segment.args {
             match &**args {
                 GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, path_span, args),
-                GenericArgs::Parenthesized(ref data) => {
-                    self.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(path_segment.id, false),
-                        |this| walk_list!(this, visit_ty, &data.inputs),
-                    );
-                    self.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(path_segment.id, true),
-                        |this| visit::walk_fn_ret_ty(this, &data.output),
-                    )
+                GenericArgs::Parenthesized(p_args) => {
+                    // Probe the lifetime ribs to know how to behave.
+                    for rib in self.lifetime_ribs.iter().rev() {
+                        match rib.kind {
+                            // We are inside a `PolyTraitRef`.  The lifetimes are
+                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            LifetimeRibKind::Generics {
+                                binder,
+                                kind: LifetimeBinderKind::PolyTrait,
+                                ..
+                            } => {
+                                self.with_lifetime_rib(
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder,
+                                        report_in_path: false,
+                                    },
+                                    |this| walk_list!(this, visit_ty, &p_args.inputs),
+                                );
+                                self.with_lifetime_rib(
+                                    LifetimeRibKind::AnonymousPassThrough(binder, true),
+                                    |this| visit::walk_fn_ret_ty(this, &p_args.output),
+                                );
+                                break;
+                            }
+                            // We have nowhere to introduce generics.  Code is malformed,
+                            // so use regular lifetime resolution to avoid spurious errors.
+                            LifetimeRibKind::Item | LifetimeRibKind::Generics { .. } => {
+                                visit::walk_generic_args(self, path_span, args);
+                                break;
+                            }
+                            LifetimeRibKind::AnonymousPassThrough(..)
+                            | LifetimeRibKind::AnonymousCreateParameter { .. }
+                            | LifetimeRibKind::AnonymousReportError
+                            | LifetimeRibKind::AnonConst
+                            | LifetimeRibKind::ConstGeneric => {}
+                        }
+                    }
                 }
             }
         }
@@ -1474,7 +1531,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let mut should_lint = match source {
+            let missing = match source {
                 PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => true,
                 PathSource::Expr(..)
                 | PathSource::Pat
@@ -1499,6 +1556,39 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
             );
 
+            if !missing {
+                // Do not create a parameter for patterns and expressions.
+                for rib in self.lifetime_ribs.iter().rev() {
+                    match rib.kind {
+                        LifetimeRibKind::AnonymousPassThrough(binder, _) => {
+                            let res = LifetimeRes::Anonymous { binder, elided: true };
+                            for id in node_ids {
+                                self.record_lifetime_res(id, res);
+                            }
+                            break;
+                        }
+                        // `LifetimeRes::Error`, which would usually be used in the case of
+                        // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
+                        // we simply resolve to an implicit lifetime, which will be checked later, at
+                        // which point a suitable error will be emitted.
+                        LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
+                            // FIXME(cjgillot) This resolution is wrong, but this does not matter
+                            // since these cases are erroneous anyway.  Lifetime resolution should
+                            // emit a "missing lifetime specifier" diagnostic.
+                            let res =
+                                LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
+                            for id in node_ids {
+                                self.record_lifetime_res(id, res);
+                            }
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+                continue;
+            }
+
+            let mut should_lint = true;
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
                     // In create-parameter mode we error here because we don't want to support
@@ -1526,44 +1616,38 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         err.note("assuming a `'static` lifetime...");
                         err.emit();
                         should_lint = false;
-                        for i in 0..expected_lifetimes {
-                            let id = node_ids.start.plus(i);
+
+                        for id in node_ids {
                             self.record_lifetime_res(id, LifetimeRes::Error);
                         }
                         break;
                     }
+                    // Do not create a parameter for patterns and expressions.
                     LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                        let res = self.create_fresh_lifetime(node_ids.start, ident, binder);
-                        self.record_lifetime_res(node_ids.start, res);
-                        for i in 1..expected_lifetimes {
-                            let id = node_ids.start.plus(i);
+                        for id in node_ids {
                             let res = self.create_fresh_lifetime(id, ident, binder);
                             self.record_lifetime_res(id, res);
                         }
                         break;
                     }
                     // `PassThrough` is the normal case.
-                    // `new_error_lifetime`, which would usually be used in the case of `ReportError`,
-                    // is unsuitable here, as these can occur from missing lifetime parameters in a
-                    // `PathSegment`, for which there is no associated `'_` or `&T` with no explicit
-                    // lifetime. Instead, we simply create an implicit lifetime, which will be checked
-                    // later, at which point a suitable error will be emitted.
                     LifetimeRibKind::AnonymousPassThrough(binder, _) => {
                         let res = LifetimeRes::Anonymous { binder, elided: true };
-                        self.record_lifetime_res(node_ids.start, res);
-                        for i in 1..expected_lifetimes {
-                            let id = node_ids.start.plus(i);
+                        for id in node_ids {
                             self.record_lifetime_res(id, res);
                         }
                         break;
                     }
+                    // `LifetimeRes::Error`, which would usually be used in the case of
+                    // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
+                    // we simply resolve to an implicit lifetime, which will be checked later, at
+                    // which point a suitable error will be emitted.
                     LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
                         // FIXME(cjgillot) This resolution is wrong, but this does not matter
                         // since these cases are erroneous anyway.  Lifetime resolution should
                         // emit a "missing lifetime specifier" diagnostic.
                         let res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
-                        for i in 0..expected_lifetimes {
-                            let id = node_ids.start.plus(i);
+                        for id in node_ids {
                             self.record_lifetime_res(id, res);
                         }
                         break;
@@ -2235,7 +2319,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
         use crate::ResolutionError::*;
         match &item.kind {
-            AssocItemKind::Const(_default, _ty, _expr) => {
+            AssocItemKind::Const(_, ty, default) => {
                 debug!("resolve_implementation AssocItemKind::Const");
                 // If this is a trait impl, ensure the const
                 // exists in trait
@@ -2248,14 +2332,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     |i, s, c| ConstNotMemberOfTrait(i, s, c),
                 );
 
-                // We allow arbitrary const expressions inside of associated consts,
-                // even if they are potentially not const evaluatable.
-                //
-                // Type parameters can already be used and as associated consts are
-                // not used as part of the type system, this is far less surprising.
-                self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
-                    visit::walk_assoc_item(this, item, AssocCtxt::Impl)
-                });
+                self.visit_ty(ty);
+                if let Some(expr) = default {
+                    // We allow arbitrary const expressions inside of associated consts,
+                    // even if they are potentially not const evaluatable.
+                    //
+                    // Type parameters can already be used and as associated consts are
+                    // not used as part of the type system, this is far less surprising.
+                    self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
+                        this.visit_expr(expr)
+                    });
+                }
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Fn");

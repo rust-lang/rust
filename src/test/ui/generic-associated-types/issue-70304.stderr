@@ -1,14 +1,8 @@
-error[E0106]: missing lifetime specifier
+error[E0637]: `'_` cannot be used here
   --> $DIR/issue-70304.rs:47:41
    |
 LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
-   |                                         ^^ expected named lifetime parameter
-   |
-   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
-   |
-LL | fn create_doc() -> impl Document<Cursor<'static> = DocCursorImpl<'_>> {
-   |                                         ~~~~~~~
+   |                                         ^^ `'_` is a reserved lifetime name
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-70304.rs:47:61
@@ -24,4 +18,5 @@ LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'static>> {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0106`.
+Some errors have detailed explanations: E0106, E0637.
+For more information about an error, try `rustc --explain E0106`.
