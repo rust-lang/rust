@@ -15,6 +15,5 @@ assert-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden", "opacity": 0})
 // Let's expand the sidebar now.
 click: "#sidebar-toggle"
-// Because of the transition CSS, better wait a second before checking.
+// Because of the transition CSS, we check by using `wait-for-css` instead of `assert-css`.
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
-assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "visible", "opacity": 1})

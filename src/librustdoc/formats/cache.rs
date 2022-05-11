@@ -288,14 +288,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
-                            Some(&(
-                                ref fqp,
-                                ItemType::Trait
-                                | ItemType::Struct
-                                | ItemType::Union
-                                | ItemType::Enum,
-                            )) => Some(&fqp[..fqp.len() - 1]),
-                            Some(..) => Some(&*self.cache.stack),
+                            Some(&(ref fqp, _)) => Some(&fqp[..fqp.len() - 1]),
                             None => None,
                         };
                         ((Some(*last), path), true)

@@ -1,5 +1,5 @@
 // From rust:
-/* global search, sourcesIndex */
+/* global sourcesIndex */
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
@@ -69,7 +69,6 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
             files.appendChild(file);
         }
     }
-    search.fullPath = fullPath;
     children.appendChild(files);
     parent.appendChild(name);
     parent.appendChild(children);
