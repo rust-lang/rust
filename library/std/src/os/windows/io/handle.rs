@@ -22,8 +22,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// so it can be used in FFI in places where a handle is passed as an argument,
 /// it is not captured or consumed.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-/// sometimes a valid handle value. See [here] for the full story.
+/// Note that it *may* have the value `-1`, which in `BorrowedFd` always
+/// represents the current process handle, and not `INVALID_HANDLE_VALUE`,
+/// despite the two having the same value. See [here] for the full story.
 ///
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
@@ -45,8 +46,9 @@ pub struct BorrowedHandle<'handle> {
 ///
 /// This closes the handle on drop.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-/// sometimes a valid handle value. See [here] for the full story.
+/// Note that it *may* have the value `-1`, which in `OwnedFd` always
+/// represents the current process handle, and not `INVALID_HANDLE_VALUE`,
+/// despite the two having the same value. See [here] for the full story.
 ///
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
@@ -75,11 +77,11 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type considers any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
-/// This is because APIs that use `NULL` as their sentry value don't treat `INVALID_HANDLE_VALUE`
-/// as special.
+/// This type may hold any handle value that [`OwnedFd`] may hold, except `NULL`. It may
+/// hold `-1`, even though `-1` has the same value as `INVALID_HANDLE_VALUE`, because in
+/// `HandleOrNull`, `-1` is interpreted to mean the current process handle.
 ///
-/// If this holds a valid handle, it will close the handle on drop.
+/// If this holds a non-null handle, it will close the handle on drop.
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug)]
@@ -95,11 +97,14 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type considers any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
-/// This is because APIs that use `INVALID_HANDLE_VALUE` as their sentry value may return `NULL`
-/// under `windows_subsystem = "windows"` or other situations where I/O devices are detached.
+/// This type may hold any handle value that [`OwnedFd`] may hold, except `-1`. It must not
+/// hold `-1`, because `-1` in `HandleOrInvalid` is interpreted to mean `INVALID_HANDLE_VALUE`.
 ///
-/// If this holds a valid handle, it will close the handle on drop.
+/// This type may hold `NULL`, because APIs that use `INVALID_HANDLE_VALUE` as their sentry value
+/// may return `NULL` under `windows_subsystem = "windows"` or other situations where I/O devices
+/// are detached.
+///
+/// If holds a handle other than `INVALID_HANDLE_VALUE`, it will close the handle on drop.
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug)]
