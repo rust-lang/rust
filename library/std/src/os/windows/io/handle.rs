@@ -22,7 +22,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// so it can be used in FFI in places where a handle is passed as an argument,
 /// it is not captured or consumed.
 ///
-/// Note that it *may* have the value `-1`, which in `BorrowedFd` always
+/// Note that it *may* have the value `-1`, which in `BorrowedHandle` always
 /// represents the current process handle, and not `INVALID_HANDLE_VALUE`,
 /// despite the two having the same value. See [here] for the full story.
 ///
@@ -46,7 +46,7 @@ pub struct BorrowedHandle<'handle> {
 ///
 /// This closes the handle on drop.
 ///
-/// Note that it *may* have the value `-1`, which in `OwnedFd` always
+/// Note that it *may* have the value `-1`, which in `OwnedHandle` always
 /// represents the current process handle, and not `INVALID_HANDLE_VALUE`,
 /// despite the two having the same value. See [here] for the full story.
 ///
@@ -77,7 +77,7 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type may hold any handle value that [`OwnedFd`] may hold, except `NULL`. It may
+/// This type may hold any handle value that [`OwnedHandle`] may hold, except `NULL`. It may
 /// hold `-1`, even though `-1` has the same value as `INVALID_HANDLE_VALUE`, because in
 /// `HandleOrNull`, `-1` is interpreted to mean the current process handle.
 ///
@@ -97,7 +97,7 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type may hold any handle value that [`OwnedFd`] may hold, except `-1`. It must not
+/// This type may hold any handle value that [`OwnedHandle`] may hold, except `-1`. It must not
 /// hold `-1`, because `-1` in `HandleOrInvalid` is interpreted to mean `INVALID_HANDLE_VALUE`.
 ///
 /// This type may hold `NULL`, because APIs that use `INVALID_HANDLE_VALUE` as their sentry value
