@@ -77,9 +77,9 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type may hold any handle value that [`OwnedHandle`] may hold, except `NULL`. It may
-/// hold `-1`, even though `-1` has the same value as `INVALID_HANDLE_VALUE`, because in
-/// `HandleOrNull`, `-1` is interpreted to mean the current process handle.
+/// This type may hold any handle value that [`OwnedHandle`] may hold. As with `OwnedHandle`, when
+/// it holds `-1`, that value is interpreted as the current process handle, and not
+/// `INVALID_HANDLE_VALUE`.
 ///
 /// If this holds a non-null handle, it will close the handle on drop.
 #[repr(transparent)]
@@ -97,12 +97,8 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type may hold any handle value that [`OwnedHandle`] may hold, except `-1`. It must not
-/// hold `-1`, because `-1` in `HandleOrInvalid` is interpreted to mean `INVALID_HANDLE_VALUE`.
-///
-/// This type may hold `NULL`, because APIs that use `INVALID_HANDLE_VALUE` as their sentry value
-/// may return `NULL` under `windows_subsystem = "windows"` or other situations where I/O devices
-/// are detached.
+/// This type may hold any handle value that [`OwnedHandle`] may hold, except that when it holds
+/// `-1`, that value is interpreted to mean `INVALID_HANDLE_VALUE`.
 ///
 /// If holds a handle other than `INVALID_HANDLE_VALUE`, it will close the handle on drop.
 #[repr(transparent)]
