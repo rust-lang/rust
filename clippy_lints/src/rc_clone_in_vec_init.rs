@@ -3,7 +3,7 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::last_path_segment;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{indent_of, snippet};
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -51,70 +51,53 @@ impl LateLintPass<'_> for RcCloneInVecInit {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return; };
         let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else { return; };
         let Some(symbol) = new_reference_call(cx, elem) else { return; };
-        let lint_span = macro_call.span;
-        let symbol_name = symbol.as_str();
-        let len_snippet = snippet(cx, len.span, "..");
-        let elem_snippet = elem_snippet(cx, elem, symbol_name);
-        let indentation = indent_of(cx, lint_span).unwrap_or(0);
-        let lint_suggestions =
-            construct_lint_suggestions(lint_span, symbol_name, &elem_snippet, len_snippet.as_ref(), indentation);
 
-        emit_lint(cx, symbol, lint_span, &lint_suggestions);
+        emit_lint(cx, symbol, macro_call.span, elem, len);
     }
 }
 
 struct LintSuggestion {
-    span: Span,
     message: String,
-    suggestion: String,
-    applicability: Applicability,
-}
-
-impl LintSuggestion {
-    fn span_suggestion(&self, diag: &mut Diagnostic) {
-        diag.span_suggestion(self.span, &self.message, &self.suggestion, self.applicability);
-    }
+    snippet: String,
 }
 
 fn construct_lint_suggestions(
+    cx: &LateContext<'_>,
     span: Span,
     symbol_name: &str,
-    elem_snippet: &str,
-    len_snippet: &str,
-    indentation: usize,
+    elem: &Expr<'_>,
+    len: &Expr<'_>,
 ) -> Vec<LintSuggestion> {
+    let len_snippet = snippet(cx, len.span, "..");
+    let elem_snippet = elem_snippet(cx, elem, symbol_name);
+    let indentation = indent_of(cx, span).unwrap_or(0);
     let indentation = " ".repeat(indentation);
-    let loop_init_suggestion = loop_init_suggestion(elem_snippet, len_snippet, &indentation);
-    let extract_suggestion = extract_suggestion(elem_snippet, len_snippet, &indentation);
+    let loop_init_suggestion = loop_init_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
+    let extract_suggestion = extract_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
 
     vec![
         LintSuggestion {
-            span,
             message: format!("consider initializing each `{symbol_name}` element individually"),
-            suggestion: loop_init_suggestion,
-            applicability: Applicability::Unspecified,
+            snippet: loop_init_suggestion,
         },
         LintSuggestion {
-            span,
             message: format!(
                 "or if this is intentional, consider extracting the `{symbol_name}` initialization to a variable"
             ),
-            suggestion: extract_suggestion,
-            applicability: Applicability::Unspecified,
+            snippet: extract_suggestion,
         },
     ]
 }
 
 fn elem_snippet(cx: &LateContext<'_>, elem: &Expr<'_>, symbol_name: &str) -> String {
-    let mut elem_snippet = snippet(cx, elem.span, "..").to_string();
+    let elem_snippet = snippet(cx, elem.span, "..").to_string();
     if elem_snippet.contains('\n') {
-        let reference_initialization = format!("{symbol_name}::new");
-        // This string must be found in `elem_snippet`, otherwise we won't be constructing the snippet in
-        // the first place.
-        let reference_initialization_end =
-            elem_snippet.find(&reference_initialization).unwrap() + reference_initialization.len();
-        elem_snippet.replace_range(reference_initialization_end.., "..");
+        let reference_creation = format!("{symbol_name}::new");
+        let (code_until_reference_creation, _right) = elem_snippet.split_once(&reference_creation).unwrap();
+
+        return format!("{code_until_reference_creation}{reference_creation}(..)");
     }
+
     elem_snippet
 }
 
@@ -137,7 +120,7 @@ fn extract_suggestion(elem: &str, len: &str, indent: &str) -> String {
     )
 }
 
-fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, lint_suggestions: &[LintSuggestion]) {
+fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, elem: &Expr<'_>, len: &Expr<'_>) {
     let symbol_name = symbol.as_str();
 
     span_lint_and_then(
@@ -146,10 +129,17 @@ fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, lint_suggest
         lint_span,
         &format!("calling `{symbol_name}::new` in `vec![elem; len]`"),
         |diag| {
+            let suggestions = construct_lint_suggestions(cx, lint_span, symbol_name, elem, len);
+
             diag.note(format!("each element will point to the same `{symbol_name}` instance"));
-            lint_suggestions
-                .iter()
-                .for_each(|suggestion| suggestion.span_suggestion(diag));
+            suggestions.iter().for_each(|suggestion| {
+                diag.span_suggestion(
+                    lint_span,
+                    &suggestion.message,
+                    &suggestion.snippet,
+                    Applicability::Unspecified,
+                );
+            });
         },
     );
 }

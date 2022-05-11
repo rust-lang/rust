@@ -40,17 +40,47 @@ help: consider initializing each `Arc` element individually
    |
 LL ~     let v = {
 LL +         let mut v = Vec::with_capacity(2);
-LL +         (0..2).for_each(|_| v.push(std::sync::Arc::new..));
+LL +         (0..2).for_each(|_| v.push(std::sync::Arc::new(..)));
 LL +         v
 LL ~     };
    |
 help: or if this is intentional, consider extracting the `Arc` initialization to a variable
    |
 LL ~     let v = {
-LL +         let data = std::sync::Arc::new..;
+LL +         let data = std::sync::Arc::new(..);
 LL +         vec![data; 2]
 LL ~     };
    |
 
-error: aborting due to 2 previous errors
+error: calling `Arc::new` in `vec![elem; len]`
+  --> $DIR/arc.rs:20:14
+   |
+LL |       let v1 = vec![
+   |  ______________^
+LL | |         Arc::new(Mutex::new({
+LL | |             let x = 1;
+LL | |             dbg!(x);
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Arc` instance
+help: consider initializing each `Arc` element individually
+   |
+LL ~     let v1 = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Arc::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Arc` initialization to a variable
+   |
+LL ~     let v1 = {
+LL +         let data = Arc::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: aborting due to 3 previous errors
 

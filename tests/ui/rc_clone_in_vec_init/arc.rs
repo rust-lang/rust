@@ -16,6 +16,15 @@ fn should_warn_complex_case() {
         }));
         2
     ];
+
+    let v1 = vec![
+        Arc::new(Mutex::new({
+            let x = 1;
+            dbg!(x);
+            x
+        }));
+        2
+    ];
 }
 
 fn should_not_warn_custom_arc() {
