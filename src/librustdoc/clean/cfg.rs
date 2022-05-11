@@ -517,6 +517,8 @@ impl<'a> fmt::Display for Display<'a> {
                         "msp430" => "MSP430",
                         "powerpc" => "PowerPC",
                         "powerpc64" => "PowerPC-64",
+                        "riscv32" => "RISC-V RV32",
+                        "riscv64" => "RISC-V RV64",
                         "s390x" => "s390x",
                         "sparc64" => "SPARC64",
                         "wasm32" | "wasm64" => "WebAssembly",
