@@ -155,6 +155,10 @@ fn init_early_loggers() {
     // initialize them both, and we always initialize `miri`'s first.
     let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
     env_logger::init_from_env(env);
+    // Enable verbose entry/exit logging by default if MIRI_LOG is set.
+    if env::var_os("MIRI_LOG").is_some() && env::var_os("RUSTC_LOG_ENTRY_EXIT").is_none() {
+        env::set_var("RUSTC_LOG_ENTRY_EXIT", "1");
+    }
     // We only initialize `rustc` if the env var is set (so the user asked for it).
     // If it is not set, we avoid initializing now so that we can initialize
     // later with our custom settings, and *not* log anything for what happens before
