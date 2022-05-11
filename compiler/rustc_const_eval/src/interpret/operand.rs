@@ -284,8 +284,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Scalar(s) if force => Some(s.primitive()),
             _ => None,
         };
-        if let Some(_) = scalar_layout {
-            let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
+        if let Some(_s) = scalar_layout {
+            //FIXME(#96185): let size = s.size(self);
+            //FIXME(#96185): assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+            let size = mplace.layout.size; //FIXME(#96185): remove this line
+            let scalar = alloc.read_scalar(alloc_range(Size::ZERO, size))?;
             return Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }));
         }
         let scalar_pair_layout = match mplace.layout.abi {
@@ -302,7 +305,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
             let (a_size, b_size) = (a.size(self), b.size(self));
             let b_offset = a_size.align_to(b.align(self).abi);
-            assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
+            assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
             let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
             let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
             return Ok(Some(ImmTy {
@@ -394,28 +397,44 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Err(value) => value,
         };
 
-        let field_layout = op.layout.field(self, field);
-        if field_layout.is_zst() {
-            let immediate = Scalar::ZST.into();
-            return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
-        }
-        let offset = op.layout.fields.offset(field);
-        let immediate = match *base {
+        let field_layout = base.layout.field(self, field);
+        let offset = base.layout.fields.offset(field);
+        // This makes several assumptions about what layouts we will encounter; we match what
+        // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
+        let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // the field contains no information
+            _ if field_layout.is_zst() => Scalar::ZST.into(),
             // the field covers the entire type
-            _ if offset.bytes() == 0 && field_layout.size == op.layout.size => *base,
-            // extract fields from types with `ScalarPair` ABI
-            Immediate::ScalarPair(a, b) => {
-                let val = if offset.bytes() == 0 { a } else { b };
-                Immediate::from(val)
+            _ if field_layout.size == base.layout.size => {
+                assert!(match (base.layout.abi, field_layout.abi) {
+                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
+                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    _ => false,
+                });
+                assert!(offset.bytes() == 0);
+                *base
             }
-            Immediate::Scalar(val) => span_bug!(
+            // extract fields from types with `ScalarPair` ABI
+            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+                assert!(matches!(field_layout.abi, Abi::Scalar(..)));
+                Immediate::from(if offset.bytes() == 0 {
+                    debug_assert_eq!(field_layout.size, a.size(self));
+                    a_val
+                } else {
+                    debug_assert_eq!(offset, a.size(self).align_to(b.align(self).abi));
+                    debug_assert_eq!(field_layout.size, b.size(self));
+                    b_val
+                })
+            }
+            _ => span_bug!(
                 self.cur_span(),
-                "field access on non aggregate {:#?}, {:#?}",
-                val,
-                op.layout
+                "invalid field access on immediate {}, layout {:#?}",
+                base,
+                base.layout
             ),
         };
-        Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout })
+
+        Ok(OpTy { op: Operand::Immediate(field_val), layout: field_layout })
     }
 
     pub fn operand_index(
