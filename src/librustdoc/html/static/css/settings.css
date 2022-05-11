@@ -56,38 +56,6 @@
 	position: absolute;
 }
 
-.select-wrapper {
-	float: right;
-	position: relative;
-	height: 27px;
-	min-width: 25%;
-}
-
-.select-wrapper select {
-	appearance: none;
-	-moz-appearance: none;
-	-webkit-appearance: none;
-	background: none;
-	border: 2px solid #ccc;
-	padding-right: 28px;
-	width: 100%;
-}
-
-.select-wrapper img {
-	pointer-events: none;
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	background: #ccc;
-	height: 100%;
-	width: 28px;
-	padding: 0px 4px;
-}
-
-.select-wrapper select option {
-	color: initial;
-}
-
 .slider {
 	position: absolute;
 	cursor: pointer;
@@ -96,7 +64,6 @@
 	right: 0;
 	bottom: 0;
 	background-color: #ccc;
-	-webkit-transition: .3s;
 	transition: .3s;
 }
 
@@ -108,7 +75,6 @@
 	left: 4px;
 	bottom: 4px;
 	background-color: white;
-	-webkit-transition: .3s;
 	transition: .3s;
 }
 
@@ -121,8 +87,6 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-	-webkit-transform: translateX(19px);
-	-ms-transform: translateX(19px);
 	transform: translateX(19px);
 }
 
