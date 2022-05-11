@@ -52,6 +52,10 @@
 + 
 +     bb1: {
 +         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:39:5: 39:12
++     }
++ 
++     bb2 (cleanup): {
++         resume;                          // scope 0 at $DIR/inline-diverging.rs:21:1: 23:2
       }
   }
   

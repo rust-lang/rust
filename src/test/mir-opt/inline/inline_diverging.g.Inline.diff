@@ -44,6 +44,10 @@
 +                                          // mir::Constant
 +                                          // + span: $SRC_DIR/std/src/panic.rs:LL:COL
 +                                          // + literal: Const { ty: &str, val: Value(Slice(..)) }
++     }
++ 
++     bb3 (cleanup): {
++         resume;                          // scope 0 at $DIR/inline-diverging.rs:12:1: 18:2
       }
   }
   

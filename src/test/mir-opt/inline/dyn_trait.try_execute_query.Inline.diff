@@ -32,6 +32,10 @@
 +         StorageDead(_4);                 // scope 1 at $DIR/dyn-trait.rs:21:21: 21:22
           StorageDead(_2);                 // scope 0 at $DIR/dyn-trait.rs:27:15: 27:16
           return;                          // scope 0 at $DIR/dyn-trait.rs:28:2: 28:2
++     }
++ 
++     bb2 (cleanup): {
++         resume;                          // scope 0 at $DIR/dyn-trait.rs:26:1: 28:2
       }
   }
   
