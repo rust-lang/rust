@@ -15,22 +15,13 @@ pub struct AddRetag;
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
 fn is_stable(place: PlaceRef<'_>) -> bool {
-    place.projection.iter().all(|elem| {
-        match elem {
-            // Which place this evaluates to can change with any memory write,
-            // so cannot assume this to be stable.
-            ProjectionElem::Deref => false,
-            // Array indices are interesting, but MIR building generates a *fresh*
-            // temporary for every array access, so the index cannot be changed as
-            // a side-effect.
-            ProjectionElem::Index { .. } |
-            // The rest is completely boring, they just offset by a constant.
-            ProjectionElem::Field { .. } |
-            ProjectionElem::ConstantIndex { .. } |
-            ProjectionElem::Subslice { .. } |
-            ProjectionElem::Downcast { .. } => true,
-        }
-    })
+    if place.ret_deref().is_some() {
+        // Which place this evaluates to can change with any memory write,
+        // so cannot assume deref to be stable.
+        return false;
+    } else {
+        return true;
+    }
 }
 
 /// Determine whether this type may contain a reference (or box), and thus needs retagging.
@@ -91,10 +82,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         };
         let place_base_raw = |place: &Place<'tcx>| {
             // If this is a `Deref`, get the type of what we are deref'ing.
-            let deref_base =
-                place.projection.iter().rposition(|p| matches!(p, ProjectionElem::Deref));
-            if let Some(deref_base) = deref_base {
-                let base_proj = &place.projection[..deref_base];
+            if place.ret_deref().is_some() {
+                let base_proj = &place.projection[..0];
                 let ty = Place::ty_from(place.local, base_proj, &*local_decls, tcx).ty;
                 ty.is_unsafe_ptr()
             } else {

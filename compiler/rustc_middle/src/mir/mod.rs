@@ -1461,6 +1461,16 @@ impl<'tcx> Place<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
+    /// If MirPhase >= Derefered and if projection contains Deref,
+    /// It's guaranteed to be in the first place
+    pub fn ret_deref(&self) -> Option<PlaceElem<'tcx>> {
+        if !self.projection.is_empty() && self.projection[0] == PlaceElem::Deref {
+            return Some(self.projection[0]);
+        } else {
+            None
+        }
+    }
+
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     #[inline(always)]
@@ -1530,6 +1540,16 @@ impl<'tcx> PlaceRef<'tcx> {
             PlaceRef { local, projection: [] }
             | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
+        }
+    }
+
+    /// If MirPhase >= Derefered and if projection contains Deref,
+    /// It's guaranteed to be in the first place
+    pub fn ret_deref(&self) -> Option<PlaceElem<'tcx>> {
+        if !self.projection.is_empty() && self.projection[0] == PlaceElem::Deref {
+            return Some(self.projection[0]);
+        } else {
+            None
         }
     }
 
