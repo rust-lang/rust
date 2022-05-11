@@ -1425,7 +1425,16 @@ impl Build {
         if src == dst {
             return;
         }
-        let _ = fs::remove_file(&dst);
+        #[cfg(windows)]
+        {
+            if let Ok(file) = std::sys::fs::File::open(dst, &std::sys::fs::OpenOptions::new()) {
+                let _ = file.posix_delete();
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = fs::remove_file(&dst);
+        }
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {
             let link = t!(fs::read_link(src));
