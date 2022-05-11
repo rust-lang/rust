@@ -477,7 +477,7 @@ fn codegen_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(disabled)]
+    #[cfg(any())] // This is never true
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
