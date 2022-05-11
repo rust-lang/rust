@@ -1,6 +1,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::{sym, DUMMY_SP};
@@ -212,7 +213,22 @@ fn resolve_associated_item<'tcx>(
     let mut bound_vars_collector = BoundVarsCollector::new();
     trait_ref.visit_with(&mut bound_vars_collector);
     let trait_binder = ty::Binder::bind_with_vars(trait_ref, bound_vars_collector.into_vars(tcx));
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, trait_binder))?;
+    let vtbl = match tcx.codegen_fulfill_obligation((param_env, trait_binder)) {
+        Ok(vtbl) => vtbl,
+        Err(CodegenObligationError::Ambiguity) => {
+            let reported = tcx.sess.delay_span_bug(
+                tcx.def_span(trait_item_id),
+                &format!(
+                    "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
+                     overflow or prior type error",
+                    trait_binder
+                ),
+            );
+            return Err(reported);
+        }
+        Err(CodegenObligationError::Unimplemented) => return Ok(None),
+        Err(CodegenObligationError::FulfillmentError) => return Ok(None),
+    };
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
