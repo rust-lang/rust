@@ -3,6 +3,7 @@ module.exports = {
         "es6": true,
         "node": true
     },
+    "extends": ["prettier"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "project": "tsconfig.eslint.json",
