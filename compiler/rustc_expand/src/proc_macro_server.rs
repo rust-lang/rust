@@ -184,7 +184,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
                     delimiter: pm::Delimiter::None,
                     stream,
                     span: DelimSpan::from_single(span),
-                    flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess()),
+                    flatten: crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()),
                 })
             }
 

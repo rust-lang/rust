@@ -7,7 +7,7 @@ use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::visit::Visitor;
 use rustc_ast::NodeId;
 use rustc_ast::{mut_visit, visit};
-use rustc_ast::{AstLike, Attribute};
+use rustc_ast::{Attribute, HasAttrs, HasTokens};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
 use rustc_expand::configure;
@@ -125,7 +125,7 @@ impl<'ast> visit::Visitor<'ast> for CfgFinder {
 }
 
 impl CfgEval<'_, '_> {
-    fn configure<T: AstLike>(&mut self, node: T) -> Option<T> {
+    fn configure<T: HasAttrs + HasTokens>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
 
@@ -173,13 +173,8 @@ impl CfgEval<'_, '_> {
             }
             _ => unreachable!(),
         };
-        let nt = annotatable.into_nonterminal();
 
-        let mut orig_tokens = rustc_parse::nt_to_tokenstream(
-            &nt,
-            &self.cfg.sess.parse_sess,
-            CanSynthesizeMissingTokens::No,
-        );
+        let mut orig_tokens = annotatable.to_tokens(&self.cfg.sess.parse_sess);
 
         // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
         // to `None`-delimited groups containing the corresponding tokens. This

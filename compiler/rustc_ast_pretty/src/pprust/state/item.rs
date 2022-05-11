@@ -19,7 +19,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+    crate fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -496,7 +496,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+    crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();

@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, token::Delimiter, visit, AstLike};
+use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{symbol, BytePos, Pos, Span};
 
