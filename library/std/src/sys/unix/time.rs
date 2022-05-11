@@ -125,6 +125,7 @@ impl Timespec {
         Some(Timespec::new(secs, nsec as i64))
     }
 
+    #[allow(dead_code)]
     pub fn to_timespec(&self) -> Option<libc::timespec> {
         Some(libc::timespec {
             tv_sec: self.tv_sec.try_into().ok()?,
