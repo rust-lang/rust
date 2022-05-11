@@ -79,9 +79,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     for &keyword in RUST_KW.iter() {
         if parser.token.is_keyword(keyword)
             && parser.look_ahead(1, |t| {
-                t.kind == TokenKind::Eof
-                    || t.kind == TokenKind::Comma
-                    || t.kind == TokenKind::CloseDelim(Delimiter::Invisible)
+                t.kind == TokenKind::Eof || t.kind == TokenKind::Comma
             })
         {
             parser.bump();
