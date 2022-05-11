@@ -88,7 +88,7 @@ pub struct StoreBuffer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoreElement {
+struct StoreElement {
     /// The identifier of the vector index, corresponding to a thread
     /// that performed the store.
     store_index: VectorIdx,

@@ -103,7 +103,7 @@ pub enum AtomicFenceOp {
 pub struct ThreadClockSet {
     /// The increasing clock representing timestamps
     /// that happen-before this thread.
-    pub clock: VClock,
+    pub(crate) clock: VClock,
 
     /// The set of timestamps that will happen-before this
     /// thread once it performs an acquire fence.
@@ -113,11 +113,17 @@ pub struct ThreadClockSet {
     /// have been released by this thread by a fence.
     fence_release: VClock,
 
-    pub fence_seqcst: VClock,
+    /// Timestamps of the last SC fence performed by each
+    /// thread, updated when this thread performs an SC fence
+    pub(crate) fence_seqcst: VClock,
 
-    pub write_seqcst: VClock,
+    /// Timestamps of the last SC write performed by each
+    /// thread, updated when this thread performs an SC fence
+    pub(crate) write_seqcst: VClock,
 
-    pub read_seqcst: VClock,
+    /// Timestamps of the last SC fence performed by each
+    /// thread, updated when this thread performs an SC read
+    pub(crate) read_seqcst: VClock,
 }
 
 impl ThreadClockSet {
