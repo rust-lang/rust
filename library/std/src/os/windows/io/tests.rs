@@ -2,7 +2,7 @@
 fn test_niche_optimizations_socket() {
     use crate::mem::size_of;
     use crate::os::windows::io::{
-        BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, OwnedSocket, RawSocket,
+        BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
     };
 
     assert_eq!(size_of::<Option<OwnedSocket>>(), size_of::<RawSocket>());
