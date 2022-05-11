@@ -36,9 +36,9 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         assist.importPrefix -> imports.prefix;
         cache.warmup -> primeCaches.enable;
         cargo.loadOutDirsFromCheck -> cargo.buildScripts.enable;
-        cargo.runBuildScripts -> cargo.runBuildScripts.overrideCommand;
-        cargo.runBuildScriptsCommand -> cargo.runBuildScripts.overrideCommand;
-        cargo.useRustcWrapperForBuildScripts -> cargo.runBuildScripts.useRustcWrapper;
+        cargo.runBuildScripts -> cargo.buildScripts.enable;
+        cargo.runBuildScriptsCommand -> cargo.buildScripts.overrideCommand;
+        cargo.useRustcWrapperForBuildScripts -> cargo.buildScripts.useRustcWrapper;
         diagnostics.enableExperimental -> diagnostics.experimental.enable;
         experimental.procAttrMacros -> procMacro.attributes.enable;
         highlighting.strings -> semanticHighlighting.strings.enable;
