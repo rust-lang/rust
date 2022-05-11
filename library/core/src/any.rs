@@ -93,7 +93,9 @@
 //! trait for objects which can provide data, and the [`request_value`] and [`request_ref`]
 //! functions for requesting data from an object which implements `Provider`. Generally, end users
 //! should not call `request_*` directly, they are helper functions for intermediate implementers
-//! to use to implement a user-facing interface.
+//! to use to implement a user-facing interface. This is purely for the sake of ergonomics, there is
+//! safety concern here; intermediate implementers can typically support methods rather than
+//! free functions and use more specific names.
 //!
 //! Typically, a data provider is a trait object of a trait which extends `Provider`. A user will
 //! request data from a trait object by specifying the type of the data.
@@ -155,7 +157,6 @@
 
 use crate::fmt;
 use crate::intrinsics;
-use crate::mem::transmute;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -781,18 +782,24 @@ pub trait Provider {
     /// Data providers should implement this method to provide *all* values they are able to
     /// provide by using `demand`.
     ///
+    /// Note that the `provide_*` methods on `Demand` have short-circuit semantics: if an earlier
+    /// method has successfully provided a value, then later methods will not get an opportunity to
+    /// provide.
+    ///
     /// # Examples
     ///
-    /// Provides a reference to a field with type `String` as a `&str`.
+    /// Provides a reference to a field with type `String` as a `&str`, and a value of
+    /// type `i32`.
     ///
     /// ```rust
     /// # #![feature(provide_any)]
     /// use std::any::{Provider, Demand};
-    /// # struct SomeConcreteType { field: String }
+    /// # struct SomeConcreteType { field: String, num_field: i32 }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_ref::<str>(&self.field);
+    ///         demand.provide_ref::<str>(&self.field)
+    ///             .provide_value::<i32, _>(|| self.num_field);
     ///     }
     /// }
     /// ```
@@ -864,12 +871,18 @@ where
 /// A helper object for providing data by type.
 ///
 /// A data provider provides values by calling this type's provide methods.
-#[allow(missing_debug_implementations)]
 #[unstable(feature = "provide_any", issue = "96024")]
 #[repr(transparent)]
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Demand<'a> {
+    /// Create a new `&mut Demand` from a `&mut dyn Erased` trait object.
+    fn new<'b>(erased: &'b mut (dyn Erased<'a> + 'a)) -> &'b mut Demand<'a> {
+        // SAFETY: transmuting `&mut (dyn Erased<'a> + 'a)` to `&mut Demand<'a>` is safe since
+        // `Demand` is repr(transparent).
+        unsafe { &mut *(erased as *mut dyn Erased<'a> as *mut Demand<'a>) }
+    }
+
     /// Provide a value or other type with only static lifetimes.
     ///
     /// # Examples
@@ -943,6 +956,13 @@ impl<'a> Demand<'a> {
     }
 }
 
+#[unstable(feature = "provide_any", issue = "96024")]
+impl<'a> fmt::Debug for Demand<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Demand").finish_non_exhaustive()
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Type tags
 ///////////////////////////////////////////////////////////////////////////////
@@ -951,9 +971,9 @@ mod tags {
     //! Type tags are used to identify a type using a separate value. This module includes type tags
     //! for some very common types.
     //!
-    //! Many users of the provider APIs will not need to use type tags at all. But if you want to
-    //! use them with more complex types (typically those including lifetime parameters), you will
-    //! need to write your own tags.
+    //! Currently type tags are not exposed to the user. But in the future, if you want to use the
+    //! Provider API with more complex types (typically those including lifetime parameters), you
+    //! will need to write your own tags.
 
     use crate::marker::PhantomData;
 
@@ -970,7 +990,7 @@ mod tags {
     }
 
     /// Similar to the [`Type`] trait, but represents a type which may be unsized (i.e., has a
-    /// `'Sized` bound). E.g., `str`.
+    /// `?Sized` bound). E.g., `str`.
     pub trait MaybeSizedType<'a>: Sized + 'static {
         type Reified: 'a + ?Sized;
     }
@@ -995,7 +1015,8 @@ mod tags {
         type Reified = T;
     }
 
-    /// Type-based tag for `&'a T` types.
+    /// Type-based tag for reference types (`&'a T`, where T is represented by
+    /// `<I as MaybeSizedType<'a>>::Reified`.
     #[derive(Debug)]
     pub struct Ref<I>(PhantomData<I>);
 
@@ -1014,28 +1035,26 @@ struct TaggedOption<'a, I: tags::Type<'a>>(Option<I::Reified>);
 
 impl<'a, I: tags::Type<'a>> TaggedOption<'a, I> {
     fn as_demand(&mut self) -> &mut Demand<'a> {
-        // SAFETY: transmuting `&mut (dyn Erased<'a> + 'a)` to `&mut Demand<'a>` is safe since
-        // `Demand` is repr(transparent) and holds only a `dyn Erased<'a> + 'a`.
-        unsafe { transmute(self as &mut (dyn Erased<'a> + 'a)) }
+        Demand::new(self as &mut (dyn Erased<'a> + 'a))
     }
 }
 
 /// Represents a type-erased but identifiable object.
 ///
 /// This trait is exclusively implemented by the `TaggedOption` type.
-trait Erased<'a>: 'a {
+unsafe trait Erased<'a>: 'a {
     /// The `TypeId` of the erased type.
     fn tag_id(&self) -> TypeId;
 }
 
-impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
+unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
     fn tag_id(&self) -> TypeId {
         TypeId::of::<I>()
     }
 }
 
 #[unstable(feature = "provide_any", issue = "96024")]
-impl<'a> dyn Erased<'a> {
+impl<'a> dyn Erased<'a> + 'a {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
@@ -1045,7 +1064,7 @@ impl<'a> dyn Erased<'a> {
     {
         if self.tag_id() == TypeId::of::<I>() {
             // SAFETY: Just checked whether we're pointing to an I.
-            Some(unsafe { &mut *(self as *mut Self as *mut TaggedOption<'a, I>) })
+            Some(unsafe { &mut *(self as *mut Self).cast::<TaggedOption<'a, I>>() })
         } else {
             None
         }
