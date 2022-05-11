@@ -1379,25 +1379,15 @@ pre.rust {
 	margin-bottom: 6px;
 }
 
-.theme-picker {
-	position: absolute;
-	left: -38px;
-	top: 4px;
-}
-
-.theme-picker button {
-	outline: none;
-}
-
 #settings-menu, #help-button {
 	margin-left: 4px;
 	outline: none;
 }
 
-#theme-picker, #copy-path {
+#copy-path {
 	height: 34px;
 }
-#theme-picker, #settings-menu, #help-button, #copy-path {
+#settings-menu > a, #help-button, #copy-path {
 	padding: 5px;
 	width: 33px;
 	border: 1px solid;
@@ -1422,7 +1412,7 @@ pre.rust {
 		transform: rotate(360deg);
 	}
 }
-#settings-menu.rotate img {
+#settings-menu.rotate > a img {
 	animation: rotating 2s linear infinite;
 }
 #settings-menu #settings {
@@ -1869,12 +1859,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.source nav:not(.sidebar).sub {
 		margin-left: 32px;
-	}
-
-	/* Space is at a premium on mobile, so remove the theme-picker icon. */
-	#theme-picker {
-		display: none;
-		width: 0;
 	}
 
 	.content {

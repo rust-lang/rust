@@ -394,13 +394,12 @@ kbd {
 	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
-#theme-picker, #settings-menu, #help-button {
+#settings-menu > a, #help-button {
 	border-color: #e0e0e0;
 	background-color: #fff;
 }
 
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
+#settings-menu > a:hover, #settings-menu > a:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #717171;
 }
@@ -430,12 +429,6 @@ kbd {
 
 #theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: #eee;
-}
-
-@media (max-width: 700px) {
-	#theme-picker {
-		background: #fff;
-	}
 }
 
 .search-results .result-name span.alias {
