@@ -1995,7 +1995,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
-    fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
+    pub fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
         } else {

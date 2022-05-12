@@ -58,8 +58,8 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
         EntryPointType::MainAttr
     } else {
-        let item = ctxt.tcx.hir().item(id);
-        if item.ident.name == sym::main {
+        if let Some(name) = ctxt.tcx.opt_item_name(id.def_id.to_def_id())
+            && name == sym::main {
             if at_root {
                 // This is a top-level function so can be `main`.
                 EntryPointType::MainNamed
