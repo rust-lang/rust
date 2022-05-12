@@ -58,7 +58,9 @@ fn slice_branches<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
 ) -> Option<ty::ValTree<'tcx>> {
-    let n = place.len(&ecx.tcx.tcx).expect(&format!("expected to use len of place {:?}", place));
+    let n = place
+        .len(&ecx.tcx.tcx)
+        .unwrap_or_else(|_| panic!("expected to use len of place {:?}", place));
     let branches = (0..n).map(|i| {
         let place_elem = ecx.mplace_index(place, i).unwrap();
         const_to_valtree_inner(ecx, &place_elem)
