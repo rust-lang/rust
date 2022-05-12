@@ -92,3 +92,40 @@ fn foo() {
 }"##]],
     );
 }
+
+#[test]
+fn float_parsing_panic() {
+    // Regression test for https://github.com/rust-lang/rust-analyzer/issues/12211
+    check(
+        r#"
+//- proc_macros: identity
+macro_rules! id {
+    ($($t:tt)*) => {
+        $($t)*
+    };
+}
+
+id! {
+    #[proc_macros::identity]
+    impl Foo for WrapBj {
+        async fn foo(&self) {
+            self.0. id().await;
+        }
+    }
+}
+"#,
+        expect![[r##"
+macro_rules! id {
+    ($($t:tt)*) => {
+        $($t)*
+    };
+}
+
+#[proc_macros::identity] impl Foo for WrapBj {
+    async fn foo(&self ) {
+        self .0.id().await ;
+    }
+}
+"##]],
+    );
+}
