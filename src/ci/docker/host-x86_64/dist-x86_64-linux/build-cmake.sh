@@ -3,7 +3,7 @@
 set -ex
 source shared.sh
 
-CMAKE=3.13.4
+CMAKE=3.15.6
 curl -L https://github.com/Kitware/CMake/releases/download/v$CMAKE/cmake-$CMAKE.tar.gz | tar xzf -
 
 mkdir cmake-build

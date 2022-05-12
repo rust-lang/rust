@@ -88,7 +88,7 @@ COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
 # Build Python 3 needed for LLVM 12.
 RUN ./build-python.sh 3.9.1
 
-# LLVM needs cmake 3.13.4 or higher.
+# Ninja needs cmake 3.15 or higher.
 COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
