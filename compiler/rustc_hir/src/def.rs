@@ -92,6 +92,7 @@ pub enum DefKind {
     /// [RFC 2593]: https://github.com/rust-lang/rfcs/pull/2593
     Ctor(CtorOf, CtorKind),
     /// Associated function: `impl MyStruct { fn associated() {} }`
+    /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
     AssocConst,
