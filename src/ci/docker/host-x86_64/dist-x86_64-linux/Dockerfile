@@ -125,7 +125,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
-      --set llvm.ninja=false \
+      --set llvm.ninja=true \
       --set rust.jemalloc
 ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
