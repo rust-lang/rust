@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
@@ -153,7 +152,7 @@ crate fn mir_inliner_callees<'tcx>(
         // Functions from other crates and MIR shims
         _ => tcx.instance_mir(instance),
     };
-    let mut calls = SsoHashSet::new();
+    let mut calls = FxIndexSet::default();
     for bb_data in body.basic_blocks() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, .. } = &terminator.kind {
