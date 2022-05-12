@@ -47,6 +47,56 @@ struct#10 MyTraitMap2#32 {#13
 }
 
 #[test]
+fn token_mapping_floats() {
+    check(
+        r#"
+// +tokenids
+macro_rules! f {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
+
+// +tokenids
+f! {
+    fn main() {
+        1;
+        1.0;
+        let x = 1;
+    }
+}
+
+
+"#,
+        expect![[r##"
+// call ids will be shifted by Shift(18)
+// +tokenids
+macro_rules! f {#0
+    (#1$#2(#3$#4tt#5:#6tt#7)#3*#8)#1 =#9>#10 {#11
+        $#12(#13$#14tt#15)#13*#16
+    }#11;#17
+}#0
+
+// // +tokenids
+// f! {
+//     fn#1 main#2() {
+//         1#5;#6
+//         1.0#7;#8
+//         let#9 x#10 =#11 1#12;#13
+//     }
+// }
+fn#19 main#20(#21)#21 {#22
+    1#23;#24
+    1#26.0;
+    let x#31 =#22 1;
+}
+
+
+"##]],
+    );
+}
+
+#[test]
 fn mbe_smoke_test() {
     check(
         r#"
