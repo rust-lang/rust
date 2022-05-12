@@ -142,20 +142,19 @@ fn block_has_safety_comment(cx: &LateContext<'_>, block: &hir::Block<'_>) -> boo
 /// Checks if the lines immediately preceding the item contain a safety comment.
 #[allow(clippy::collapsible_match)]
 fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
-    if span_from_macro_expansion_has_safety_comment(cx, item.span) || span_in_body_has_safety_comment(cx, item.span) {
+    if span_from_macro_expansion_has_safety_comment(cx, item.span) {
         return true;
     }
 
     if item.span.ctxt() == SyntaxContext::root() {
         if let Some(parent_node) = get_parent_node(cx.tcx, item.hir_id()) {
-            let comment_start;
-            match parent_node {
+            let comment_start = match parent_node {
                 Node::Crate(parent_mod) => {
-                    comment_start = comment_start_before_impl_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item);
+                    comment_start_before_impl_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item)
                 },
                 Node::Item(parent_item) => {
                     if let ItemKind::Mod(parent_mod) = &parent_item.kind {
-                        comment_start = comment_start_before_impl_in_mod(cx, parent_mod, parent_item.span, item);
+                        comment_start_before_impl_in_mod(cx, parent_mod, parent_item.span, item)
                     } else {
                         // Doesn't support impls in this position. Pretend a comment was found.
                         return true;
@@ -164,16 +163,14 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
                 Node::Stmt(stmt) => {
                     if let Some(stmt_parent) = get_parent_node(cx.tcx, stmt.hir_id) {
                         match stmt_parent {
-                            Node::Block(block) => {
-                                comment_start = walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo);
-                            },
+                            Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
                             _ => {
                                 // Doesn't support impls in this position. Pretend a comment was found.
                                 return true;
                             },
                         }
                     } else {
-                        // Doesn't support impls in this position. Pretend a comment was found.
+                        // Problem getting the parent node. Pretend a comment was found.
                         return true;
                     }
                 },
@@ -181,7 +178,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> bool {
                     // Doesn't support impls in this position. Pretend a comment was found.
                     return true;
                 },
-            }
+            };
 
             let source_map = cx.sess().source_map();
             if let Some(comment_start) = comment_start
