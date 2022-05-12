@@ -1739,8 +1739,8 @@ impl ExitCode {
     /// `process::exit()` accepts any `i32` value as the exit code for the process; however, there
     /// are platforms that only use a subset of that value (see [`process::exit` platform-specific
     /// behavior][exit#platform-specific-behavior]). `ExitCode` exists because of this; only
-    /// `ExitCode`s that are valid on all platforms can be created, so those problems don't exist
-    /// with this method.
+    /// `ExitCode`s that are supported by a majority of our platforms can be created, so those
+    /// problems don't exist (as much) with this method.
     ///
     /// # Examples
     ///
