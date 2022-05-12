@@ -56,39 +56,6 @@ impl LateLintPass<'_> for RcCloneInVecInit {
     }
 }
 
-struct LintSuggestion {
-    message: String,
-    snippet: String,
-}
-
-fn construct_lint_suggestions(
-    cx: &LateContext<'_>,
-    span: Span,
-    symbol_name: &str,
-    elem: &Expr<'_>,
-    len: &Expr<'_>,
-) -> Vec<LintSuggestion> {
-    let len_snippet = snippet(cx, len.span, "..");
-    let elem_snippet = elem_snippet(cx, elem, symbol_name);
-    let indentation = indent_of(cx, span).unwrap_or(0);
-    let indentation = " ".repeat(indentation);
-    let loop_init_suggestion = loop_init_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
-    let extract_suggestion = extract_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
-
-    vec![
-        LintSuggestion {
-            message: format!("consider initializing each `{symbol_name}` element individually"),
-            snippet: loop_init_suggestion,
-        },
-        LintSuggestion {
-            message: format!(
-                "or if this is intentional, consider extracting the `{symbol_name}` initialization to a variable"
-            ),
-            snippet: extract_suggestion,
-        },
-    ]
-}
-
 fn elem_snippet(cx: &LateContext<'_>, elem: &Expr<'_>, symbol_name: &str) -> String {
     let elem_snippet = snippet(cx, elem.span, "..").to_string();
     if elem_snippet.contains('\n') {
@@ -131,17 +98,27 @@ fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, elem: &Expr<
         lint_span,
         &format!("calling `{symbol_name}::new` in `vec![elem; len]`"),
         |diag| {
-            let suggestions = construct_lint_suggestions(cx, lint_span, symbol_name, elem, len);
+            let len_snippet = snippet(cx, len.span, "..");
+            let elem_snippet = elem_snippet(cx, elem, symbol_name);
+            let indentation = " ".repeat(indent_of(cx, lint_span).unwrap_or(0));
+            let loop_init_suggestion = loop_init_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
+            let extract_suggestion = extract_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
 
             diag.note(format!("each element will point to the same `{symbol_name}` instance"));
-            for suggestion in suggestions {
-                diag.span_suggestion(
-                    lint_span,
-                    &suggestion.message,
-                    &suggestion.snippet,
-                    Applicability::Unspecified,
-                );
-            }
+            diag.span_suggestion(
+                lint_span,
+                format!("consider initializing each `{symbol_name}` element individually"),
+                loop_init_suggestion,
+                Applicability::Unspecified,
+            );
+            diag.span_suggestion(
+                lint_span,
+                format!(
+                    "or if this is intentional, consider extracting the `{symbol_name}` initialization to a variable"
+                ),
+                extract_suggestion,
+                Applicability::Unspecified,
+            );
         },
     );
 }
