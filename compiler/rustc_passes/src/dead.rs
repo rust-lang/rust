@@ -511,18 +511,24 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Impl => {
-            let item = tcx.hir().item(id);
-            if let hir::ItemKind::Impl(hir::Impl { ref of_trait, items, .. }) = item.kind {
-                if of_trait.is_some() {
-                    worklist.push(item.def_id);
-                }
-                for impl_item_ref in *items {
-                    let impl_item = tcx.hir().impl_item(impl_item_ref.id);
-                    if of_trait.is_some()
-                        || has_allow_dead_code_or_lang_attr(tcx, impl_item.hir_id())
-                    {
-                        worklist.push(impl_item_ref.id.def_id);
-                    }
+            let of_trait = tcx.impl_trait_ref(id.def_id);
+
+            if of_trait.is_some() {
+                worklist.push(id.def_id);
+            }
+
+            // get DefIds from another query
+            let local_def_ids = tcx
+                .associated_item_def_ids(id.def_id)
+                .iter()
+                .filter_map(|def_id| def_id.as_local());
+
+            // And we access the Map here to get HirId from LocalDefId
+            for id in local_def_ids {
+                if of_trait.is_some()
+                    || has_allow_dead_code_or_lang_attr(tcx, tcx.hir().local_def_id_to_hir_id(id))
+                {
+                    worklist.push(id);
                 }
             }
         }
