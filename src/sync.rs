@@ -223,10 +223,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         F: FnOnce(&mut MiriEvalContext<'mir, 'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
     {
         let this = self.eval_context_mut();
-        if let Some(old) = existing(this, this.machine.threads.sync.mutexes.next_index())? {
+        let next_index = this.machine.threads.sync.mutexes.next_index();
+        if let Some(old) = existing(this, next_index)? {
             Ok(old)
         } else {
-            Ok(self.mutex_create())
+            let new_index = this.machine.threads.sync.mutexes.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
         }
     }
 
@@ -323,10 +326,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ) -> InterpResult<'tcx, Option<RwLockId>>,
     {
         let this = self.eval_context_mut();
-        if let Some(old) = existing(this, this.machine.threads.sync.rwlocks.next_index())? {
+        let next_index = this.machine.threads.sync.rwlocks.next_index();
+        if let Some(old) = existing(this, next_index)? {
             Ok(old)
         } else {
-            Ok(self.rwlock_create())
+            let new_index = this.machine.threads.sync.rwlocks.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
         }
     }
 
@@ -489,10 +495,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ) -> InterpResult<'tcx, Option<CondvarId>>,
     {
         let this = self.eval_context_mut();
-        if let Some(old) = existing(this, this.machine.threads.sync.condvars.next_index())? {
+        let next_index = this.machine.threads.sync.condvars.next_index();
+        if let Some(old) = existing(this, next_index)? {
             Ok(old)
         } else {
-            Ok(self.condvar_create())
+            let new_index = this.machine.threads.sync.condvars.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
         }
     }
 
