@@ -113,23 +113,27 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
     mutex_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, MutexId> {
     let value_place = ecx.offset_and_layout_to_place(mutex_op, 4, ecx.machine.layouts.u32)?;
-    let (old, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &value_place,
-            &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-            ecx.mutex_next_id().to_u32_scalar().into(),
-            AtomicRwOp::Relaxed,
-            AtomicReadOp::Relaxed,
-            false,
-        )?
-        .to_scalar_pair()?;
 
-    if success.to_bool().expect("compare_exchange's second return value is a bool") {
-        let id = ecx.mutex_create();
-        Ok(id)
-    } else {
-        Ok(MutexId::from_u32(old.to_u32().expect("layout is u32")))
-    }
+    ecx.mutex_get_or_create(|ecx, next_id| {
+        let (old, success) = ecx
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
+                next_id.to_u32_scalar().into(),
+                AtomicRwOp::Relaxed,
+                AtomicReadOp::Relaxed,
+                false,
+            )?
+            .to_scalar_pair()
+            .expect("compare_exchange returns a scalar pair");
+
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(MutexId::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    })
 }
 
 // pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
@@ -165,23 +169,27 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     rwlock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, RwLockId> {
     let value_place = ecx.offset_and_layout_to_place(rwlock_op, 4, ecx.machine.layouts.u32)?;
-    let (old, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &value_place,
-            &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-            ecx.rwlock_next_id().to_u32_scalar().into(),
-            AtomicRwOp::Relaxed,
-            AtomicReadOp::Relaxed,
-            false,
-        )?
-        .to_scalar_pair()?;
 
-    if success.to_bool().expect("compare_exchange's second return value is a bool") {
-        let id = ecx.rwlock_create();
-        Ok(id)
-    } else {
-        Ok(RwLockId::from_u32(old.to_u32().expect("layout is u32")))
-    }
+    ecx.rwlock_get_or_create(|ecx, next_id| {
+        let (old, success) = ecx
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
+                next_id.to_u32_scalar().into(),
+                AtomicRwOp::Relaxed,
+                AtomicReadOp::Relaxed,
+                false,
+            )?
+            .to_scalar_pair()
+            .expect("compare_exchange returns a scalar pair");
+
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(RwLockId::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    })
 }
 
 // pthread_condattr_t
@@ -246,23 +254,26 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, CondvarId> {
     let value_place = ecx.offset_and_layout_to_place(cond_op, 4, ecx.machine.layouts.u32)?;
 
-    let (old, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &value_place,
-            &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-            ecx.condvar_next_id().to_u32_scalar().into(),
-            AtomicRwOp::Relaxed,
-            AtomicReadOp::Relaxed,
-            false,
-        )?
-        .to_scalar_pair()?;
+    ecx.condvar_get_or_create(|ecx, next_id| {
+        let (old, success) = ecx
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
+                next_id.to_u32_scalar().into(),
+                AtomicRwOp::Relaxed,
+                AtomicReadOp::Relaxed,
+                false,
+            )?
+            .to_scalar_pair()
+            .expect("compare_exchange returns a scalar pair");
 
-    if success.to_bool().expect("compare_exchange's second return value is a bool") {
-        let id = ecx.condvar_create();
-        Ok(id)
-    } else {
-        Ok(CondvarId::from_u32(old.to_u32().expect("layout is u32")))
-    }
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(CondvarId::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    })
 }
 
 fn cond_get_clock_id<'mir, 'tcx: 'mir>(

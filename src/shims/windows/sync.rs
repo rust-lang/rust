@@ -9,23 +9,26 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, RwLockId> {
     let value_place = ecx.offset_and_layout_to_place(lock_op, 0, ecx.machine.layouts.u32)?;
 
-    let (old, success) = ecx
-        .atomic_compare_exchange_scalar(
-            &value_place,
-            &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-            ecx.rwlock_next_id().to_u32_scalar().into(),
-            AtomicRwOp::AcqRel,
-            AtomicReadOp::Acquire,
-            false,
-        )?
-        .to_scalar_pair()?;
+    ecx.rwlock_get_or_create(|ecx, next_id| {
+        let (old, success) = ecx
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
+                next_id.to_u32_scalar().into(),
+                AtomicRwOp::Relaxed,
+                AtomicReadOp::Relaxed,
+                false,
+            )?
+            .to_scalar_pair()
+            .expect("compare_exchange returns a scalar pair");
 
-    if success.to_bool().expect("compare_exchange's second return value is a bool") {
-        let id = ecx.rwlock_create();
-        Ok(id)
-    } else {
-        Ok(RwLockId::from_u32(old.to_u32().expect("layout is u32")))
-    }
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(RwLockId::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    })
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
