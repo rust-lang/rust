@@ -80,12 +80,12 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
-            fn dispatch(&mut self, b: Buffer<u8>) -> Buffer<u8>;
+            fn dispatch(&mut self, b: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
-            fn dispatch(&mut self, mut b: Buffer<u8>) -> Buffer<u8> {
+            fn dispatch(&mut self, mut b: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
                 let mut reader = &b[..];
@@ -123,11 +123,11 @@ pub trait ExecutionStrategy {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8>;
+    ) -> Buffer;
 }
 
 pub struct SameThread;
@@ -136,11 +136,11 @@ impl ExecutionStrategy for SameThread {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
+    ) -> Buffer {
         let mut dispatch = |b| dispatcher.dispatch(b);
 
         run_client(
@@ -164,11 +164,11 @@ impl ExecutionStrategy for CrossThread1 {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
+    ) -> Buffer {
         use std::sync::mpsc::channel;
 
         let (req_tx, req_rx) = channel();
@@ -205,11 +205,11 @@ impl ExecutionStrategy for CrossThread2 {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
         dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+        input: Buffer,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
         client_data: D,
         force_show_panics: bool,
-    ) -> Buffer<u8> {
+    ) -> Buffer {
         use std::sync::{Arc, Mutex};
 
         enum State<T> {
@@ -276,7 +276,7 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer,
     client_data: D,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {

@@ -367,7 +367,7 @@ pub struct Client<F> {
     // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
+    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer,
     pub(super) f: F,
 }
 
@@ -377,7 +377,7 @@ pub struct Client<F> {
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     mut bridge: Bridge<'_>,
     f: impl FnOnce(A) -> R,
-) -> Buffer<u8> {
+) -> Buffer {
     // The initial `cached_buffer` contains the input.
     let mut b = bridge.cached_buffer.take();
 
@@ -420,7 +420,7 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
         extern "C" fn run(
             bridge: Bridge<'_>,
             f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
-        ) -> Buffer<u8> {
+        ) -> Buffer {
             run_client(bridge, |input| f(crate::TokenStream(input)).0)
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
@@ -434,7 +434,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
         extern "C" fn run(
             bridge: Bridge<'_>,
             f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
-        ) -> Buffer<u8> {
+        ) -> Buffer {
             run_client(bridge, |(input, input2)| {
                 f(crate::TokenStream(input), crate::TokenStream(input2)).0
             })

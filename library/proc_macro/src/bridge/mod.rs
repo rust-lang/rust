@@ -224,10 +224,10 @@ use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 pub struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests, but also for passing input to client.
-    cached_buffer: Buffer<u8>,
+    cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+    dispatch: closure::Closure<'a, Buffer, Buffer>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
