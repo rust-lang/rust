@@ -252,59 +252,47 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                 if !keep_searching {
                     return false;
                 }
-                // CoWR: if a store happens-before the current load,
-                // then we can't read-from anything earlier in modification order.
-                if store_elem.timestamp <= clocks.clock[store_elem.store_index] {
-                    log::info!("Stopped due to coherent write-read");
-                    keep_searching = false;
-                    return true;
-                }
 
-                // CoRR: if there was a load from this store which happened-before the current load,
-                // then we cannot read-from anything earlier in modification order.
-                if store_elem.loads.borrow().iter().any(|(&load_index, &load_timestamp)| {
+                keep_searching = if store_elem.timestamp <= clocks.clock[store_elem.store_index] {
+                    // CoWR: if a store happens-before the current load,
+                    // then we can't read-from anything earlier in modification order.
+                    log::info!("Stopping due to coherent write-read");
+                    false
+                } else if store_elem.loads.borrow().iter().any(|(&load_index, &load_timestamp)| {
                     load_timestamp <= clocks.clock[load_index]
                 }) {
-                    log::info!("Stopped due to coherent read-read");
-                    keep_searching = false;
-                    return true;
-                }
-
-                // The current load, which may be sequenced-after an SC fence, can only read-from
-                // the last store sequenced-before an SC fence in another thread (or any stores
-                // later than that SC fence)
-                if store_elem.timestamp <= clocks.fence_seqcst[store_elem.store_index] {
-                    log::info!("Stopped due to coherent load sequenced after sc fence");
-                    keep_searching = false;
-                    return true;
-                }
-
-                // The current non-SC load can only read-from the latest SC store (or any stores later than that
-                // SC store)
-                if store_elem.timestamp <= clocks.write_seqcst[store_elem.store_index]
+                    // CoRR: if there was a load from this store which happened-before the current load,
+                    // then we cannot read-from anything earlier in modification order.
+                    log::info!("Stopping due to coherent read-read");
+                    false
+                } else if store_elem.timestamp <= clocks.fence_seqcst[store_elem.store_index] {
+                    // The current load, which may be sequenced-after an SC fence, can only read-from
+                    // the last store sequenced-before an SC fence in another thread (or any stores
+                    // later than that SC fence)
+                    log::info!("Stopping due to coherent load sequenced after sc fence");
+                    false
+                } else if store_elem.timestamp <= clocks.write_seqcst[store_elem.store_index]
                     && store_elem.is_seqcst
                 {
-                    log::info!("Stopped due to needing to load from the last SC store");
-                    keep_searching = false;
-                    return true;
-                }
-
-                // The current SC load can only read-from the last store sequenced-before
-                // the last SC fence (or any stores later than the SC fence)
-                if is_seqcst && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index] {
-                    log::info!("Stopped due to sc load needing to load from the last SC store before an SC fence");
-                    keep_searching = false;
-                    return true;
-                }
+                    // The current non-SC load can only read-from the latest SC store (or any stores later than that
+                    // SC store)
+                    log::info!("Stopping due to needing to load from the last SC store");
+                    false
+                } else if is_seqcst && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index] {
+                    // The current SC load can only read-from the last store sequenced-before
+                    // the last SC fence (or any stores later than the SC fence)
+                    log::info!("Stopping due to sc load needing to load from the last SC store before an SC fence");
+                    false
+                } else {true};
 
                 true
             })
             .filter(|&store_elem| {
-                if is_seqcst {
+                if is_seqcst && store_elem.is_seqcst {
                     // An SC load needs to ignore all but last store maked SC (stores not marked SC are not
                     // affected)
-                    let include = !(store_elem.is_seqcst && found_sc);
-                    found_sc |= store_elem.is_seqcst;
+                    let include = !found_sc;
+                    found_sc = true;
                     include
                 } else {
                     true
