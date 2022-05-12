@@ -34,7 +34,8 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         assist.importMergeBehaviour -> imports.granularity.group;
         assist.importGroup -> imports.group.enable;
         assist.importPrefix -> imports.prefix;
-        cache.warmup -> primeCaches.enable;
+        primeCaches.enable -> cachePriming.enable;
+        cache.warmup -> cachePriming.enable;
         cargo.loadOutDirsFromCheck -> cargo.buildScripts.enable;
         cargo.runBuildScripts -> cargo.buildScripts.enable;
         cargo.runBuildScriptsCommand -> cargo.buildScripts.overrideCommand;
@@ -50,7 +51,7 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         hover.linksInHover -> hover.links.enable;
         hoverActions.linksInHover -> hover.links.enable;
         hoverActions.debug -> hoverActions.debug.enable;
-        hoverActions.enable -> hoverActions.enable.enable;
+        hoverActions.enable -> hoverActions.enable;
         hoverActions.gotoTypeDef -> hoverActions.gotoTypeDef.enable;
         hoverActions.implementations -> hoverActions.implementations.enable;
         hoverActions.references -> hoverActions.references.enable;
