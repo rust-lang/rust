@@ -54,6 +54,18 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { ptr_offset_from(end_ptr, end_ptr) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: alloc26 has size 4, so pointer at offset 10 is out-of-bounds
 
-error: aborting due to 8 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/offset_from_ub.rs:78:27
+   |
+LL |     let offset = unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ptr_offset_from_unsigned cannot compute offset of pointers into different allocations.
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/offset_from_ub.rs:86:14
+   |
+LL |     unsafe { ptr_offset_from_unsigned(p, p.add(2) ) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ptr_offset_from_unsigned cannot compute a negative offset, but 0 < 8
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

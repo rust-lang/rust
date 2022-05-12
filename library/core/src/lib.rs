@@ -126,6 +126,7 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
+#![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]

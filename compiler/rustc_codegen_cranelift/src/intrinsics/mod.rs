@@ -713,14 +713,21 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         };
 
-        ptr_offset_from, (v ptr, v base) {
+        ptr_offset_from | ptr_offset_from_unsigned, (v ptr, v base) {
             let ty = substs.type_at(0);
             let isize_layout = fx.layout_of(fx.tcx.types.isize);
 
             let pointee_size: u64 = fx.layout_of(ty).size.bytes();
-            let diff = fx.bcx.ins().isub(ptr, base);
+            let diff_bytes = fx.bcx.ins().isub(ptr, base);
             // FIXME this can be an exact division.
-            let val = CValue::by_val(fx.bcx.ins().sdiv_imm(diff, pointee_size as i64), isize_layout);
+            let diff = if intrinsic == sym::ptr_offset_from_unsigned {
+                // Because diff_bytes ULE isize::MAX, this would be fine as signed,
+                // but unsigned is slightly easier to codegen, so might as well.
+                fx.bcx.ins().udiv_imm(diff_bytes, pointee_size as i64)
+            } else {
+                fx.bcx.ins().sdiv_imm(diff_bytes, pointee_size as i64)
+            };
+            let val = CValue::by_val(diff, isize_layout);
             ret.write_cvalue(fx, val);
         };
 

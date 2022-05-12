@@ -250,7 +250,7 @@ where
         let sink =
             self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
         // iteration succeeded, don't drop head
-        unsafe { ManuallyDrop::new(sink).dst.offset_from(dst_buf) as usize }
+        unsafe { ManuallyDrop::new(sink).dst.sub_ptr(dst_buf) }
     }
 }
 

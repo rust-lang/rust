@@ -127,6 +127,7 @@
 #![feature(pattern)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
 #![feature(set_ptr_value)]
 #![feature(slice_group_by)]
