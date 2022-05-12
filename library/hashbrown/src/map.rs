@@ -755,6 +755,10 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
     ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining key-value pairs. The returned iterator keeps a
+    /// mutable borrow on the vector to optimize its implementation.
+    ///
     /// # Examples
     ///
     /// ```
@@ -773,7 +777,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// // As we can see, the map is empty and contains no element.
     /// assert!(a.is_empty() && a.len() == 0);
     /// // But map capacity is equal to old one.
-    /// assert!(a.capacity() == capacity_before_drain);
+    /// assert_eq!(a.capacity(), capacity_before_drain);
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// {   // Iterator is dropped without being consumed.
+    ///     let d = a.drain();
+    /// }
+    ///
+    /// // But the map is empty even if we do not use Drain iterator.
+    /// assert!(a.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain(&mut self) -> Drain<'_, K, V, A> {
@@ -785,7 +800,8 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Retains only the elements specified by the predicate. Keeps the
     /// allocated memory for reuse.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
     ///
@@ -801,7 +817,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// // We can see, that the number of elements inside map is changed.
     /// assert_eq!(map.len(), 4);
     /// // But map capacity is equal to old one.
-    /// assert!(map.capacity() == capacity_before_retain);
+    /// assert_eq!(map.capacity(), capacity_before_retain);
     ///
     /// let mut vec: Vec<(i32, i32)> = map.iter().map(|(&k, &v)| (k, v)).collect();
     /// vec.sort_unstable();
@@ -825,11 +841,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `true` out
+    /// In other words, move all pairs `(k, v)` such that `f(&k, &mut v)` returns `true` out
     /// into another iterator.
+    ///
+    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
+    /// whether you choose to keep or remove it.
     ///
     /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the table.
+    ///
+    /// It is unspecified how many more elements will be subjected to the closure
+    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
+    /// or if the `DrainFilter` value is leaked.
     ///
     /// Keeps the allocated memory for reuse.
     ///
@@ -851,6 +874,16 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// // Map capacity is equal to old one.
     /// assert_eq!(map.capacity(), capacity_before_drain_filter);
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    ///
+    /// {   // Iterator is dropped without being consumed.
+    ///     let d = map.drain_filter(|k, _v| k % 2 != 0);
+    /// }
+    ///
+    /// // But the map lens have been reduced by half
+    /// // even if we do not use DrainFilter iterator.
+    /// assert_eq!(map.len(), 4);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
@@ -1017,14 +1050,6 @@ where
     ///     Err(error) => match error {
     ///         TryReserveError::CapacityOverflow => {}
     ///         _ => panic!("TryReserveError::AllocError ?"),
-    ///     },
-    ///     _ => panic!(),
-    /// }
-    ///
-    /// match map.try_reserve(usize::MAX / 64) {
-    ///     Err(error) => match error {
-    ///         TryReserveError::AllocError { .. } => {}
-    ///         _ => panic!("TryReserveError::CapacityOverflow ?"),
     ///     },
     ///     _ => panic!(),
     /// }
