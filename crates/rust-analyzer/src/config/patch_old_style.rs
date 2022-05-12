@@ -117,7 +117,8 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
     ) {
         (Some(Value::Bool(true)), Some(Value::Bool(true))) => json!("fill_arguments"),
         (Some(Value::Bool(true)), _) => json!("add_parentheses"),
-        (_, _) => json!(null),
+        (Some(Value::Bool(false)), Some(Value::Bool(false))) => json!("add_parentheses"),
+        (_, _) => return,
     };
     merge(json, json!({ "completion": { "callable": {"snippets": res }} }));
 }
