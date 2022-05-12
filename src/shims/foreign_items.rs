@@ -15,7 +15,7 @@ use rustc_middle::middle::{
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
-use rustc_span::{symbol::sym, Symbol};
+use rustc_span::Symbol;
 use rustc_target::{
     abi::{Align, Size},
     spec::abi::Abi,
@@ -236,12 +236,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-        let attrs = this.tcx.get_attrs(def_id);
-        let link_name = this
-            .tcx
-            .sess
-            .first_attr_value_str_by_name(attrs, sym::link_name)
-            .unwrap_or_else(|| this.tcx.item_name(def_id));
+        let link_name = this.item_link_name(def_id);
         let tcx = this.tcx.tcx;
 
         // First: functions that diverge.

@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     layout::{LayoutOf, TyAndLayout},
     List, TyCtxt,
 };
-use rustc_span::{def_id::CrateNum, Symbol};
+use rustc_span::{def_id::CrateNum, sym, Symbol};
 use rustc_target::abi::{Align, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -774,6 +774,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // This got just allocated, so there definitely is a pointer here.
         this.alloc_mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
             .unwrap();
+    }
+
+    fn item_link_name(&self, def_id: DefId) -> Symbol {
+        let tcx = self.eval_context_ref().tcx;
+        match tcx.get_attrs(def_id, sym::link_name).filter_map(|a| a.value_str()).next() {
+            Some(name) => name,
+            None => tcx.item_name(def_id),
+        }
     }
 }
 
