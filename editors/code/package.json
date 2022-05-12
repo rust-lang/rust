@@ -823,8 +823,21 @@
                 },
                 "rust-analyzer.inlayHints.reborrowHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for compiler inserted reborrows.",
-                    "default": false,
-                    "type": "boolean"
+                    "default": "never",
+                    "type": [
+                        "string",
+                        "boolean"
+                    ],
+                    "enum": [
+                        "always",
+                        "never",
+                        "mutable"
+                    ],
+                    "enumDescriptions": [
+                        "Always show reborrow hints.",
+                        "Never show reborrow hints.",
+                        "Only show mutable reborrow hints."
+                    ]
                 },
                 "rust-analyzer.inlayHints.renderColons": {
                     "markdownDescription": "Whether to render leading colons for type hints, and trailing colons for parameter hints.",

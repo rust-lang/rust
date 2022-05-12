@@ -80,7 +80,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
-    inlay_hints::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints},
+    inlay_hints::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints, ReborrowHints},
     join_lines::JoinLinesConfig,
     markup::Markup,
     moniker::{MonikerKind, MonikerResult, PackageInformation},

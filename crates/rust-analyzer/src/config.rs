@@ -12,8 +12,7 @@ use std::{ffi::OsString, fmt, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, HighlightRelatedConfig,
-    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, LifetimeElisionHints, Snippet,
-    SnippetScope,
+    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -268,7 +267,7 @@ config_data! {
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
         /// Whether to show inlay type hints for compiler inserted reborrows.
-        inlayHints_reborrowHints_enable: bool                      = "false",
+        inlayHints_reborrowHints_enable: ReborrowHintsDef          = "\"never\"",
         /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool                              = "true",
         /// Whether to show inlay type hints for variables.
@@ -986,12 +985,16 @@ impl Config {
             chaining_hints: self.data.inlayHints_chainingHints_enable,
             closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints_enable,
             lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints_enable {
-                LifetimeElisionDef::Always => LifetimeElisionHints::Always,
-                LifetimeElisionDef::Never => LifetimeElisionHints::Never,
-                LifetimeElisionDef::SkipTrivial => LifetimeElisionHints::SkipTrivial,
+                LifetimeElisionDef::Always => ide::LifetimeElisionHints::Always,
+                LifetimeElisionDef::Never => ide::LifetimeElisionHints::Never,
+                LifetimeElisionDef::SkipTrivial => ide::LifetimeElisionHints::SkipTrivial,
             },
             hide_named_constructor_hints: self.data.inlayHints_typeHints_hideNamedConstructor,
-            reborrow_hints: self.data.inlayHints_reborrowHints_enable,
+            reborrow_hints: match self.data.inlayHints_reborrowHints_enable {
+                ReborrowHintsDef::Always => ide::ReborrowHints::Always,
+                ReborrowHintsDef::Never => ide::ReborrowHints::Never,
+                ReborrowHintsDef::Mutable => ide::ReborrowHints::MutableOnly,
+            },
             param_names_for_lifetime_elision_hints: self
                 .data
                 .inlayHints_lifetimeElisionHints_useParameterNames,
@@ -1293,6 +1296,7 @@ macro_rules! named_unit_variant {
 mod de_unit_v {
     named_unit_variant!(all);
     named_unit_variant!(skip_trivial);
+    named_unit_variant!(mutable);
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -1402,6 +1406,17 @@ enum LifetimeElisionDef {
     Never,
     #[serde(deserialize_with = "de_unit_v::skip_trivial")]
     SkipTrivial,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum ReborrowHintsDef {
+    #[serde(deserialize_with = "true_or_always")]
+    Always,
+    #[serde(deserialize_with = "false_or_never")]
+    Never,
+    #[serde(deserialize_with = "de_unit_v::mutable")]
+    Mutable,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1673,6 +1688,15 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show lifetime elision hints.",
                 "Never show lifetime elision hints.",
                 "Only show lifetime elision hints if a return type is involved."
+            ],
+        },
+        "ReborrowHintsDef" => set! {
+            "type": ["string", "boolean"],
+            "enum": ["always", "never", "mutable"],
+            "enumDescriptions": [
+                "Always show reborrow hints.",
+                "Never show reborrow hints.",
+                "Only show mutable reborrow hints."
             ],
         },
         "CargoFeatures" => set! {
