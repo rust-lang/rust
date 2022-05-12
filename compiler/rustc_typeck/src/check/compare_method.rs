@@ -660,8 +660,24 @@ fn compare_number_of_generics<'tcx>(
                     _ => None,
                 })
                 .collect();
-            let spans = impl_item.generics.spans();
-            let span = spans.primary_span();
+            let spans = if impl_item.generics.params.is_empty() {
+                vec![impl_item.generics.span]
+            } else {
+                impl_item
+                    .generics
+                    .params
+                    .iter()
+                    .filter(|p| {
+                        matches!(
+                            p.kind,
+                            hir::GenericParamKind::Type { .. }
+                                | hir::GenericParamKind::Const { .. }
+                        )
+                    })
+                    .map(|p| p.span)
+                    .collect::<Vec<Span>>()
+            };
+            let span = spans.first().copied();
 
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans,
