@@ -12,6 +12,7 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::{GenericParamKind, Ty};
 use rustc_middle::ty::Region;
+use rustc_span::symbol::kw;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
@@ -169,7 +170,7 @@ pub fn suggest_adding_lifetime_params<'tcx>(
         return false;
     };
 
-    if !lifetime_sub.name.is_elided() || !lifetime_sup.name.is_elided() {
+    if !lifetime_sub.name.is_anonymous() || !lifetime_sup.name.is_anonymous() {
         return false;
     };
 
@@ -188,32 +189,37 @@ pub fn suggest_adding_lifetime_params<'tcx>(
         _ => return false,
     };
 
-    let (suggestion_param_name, introduce_new) = generics
+    let suggestion_param_name = generics
         .params
         .iter()
-        .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
-        .and_then(|p| tcx.sess.source_map().span_to_snippet(p.span).ok())
-        .map(|name| (name, false))
-        .unwrap_or_else(|| ("'a".to_string(), true));
+        .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+        .map(|p| p.name.ident().name)
+        .find(|i| *i != kw::UnderscoreLifetime);
+    let introduce_new = suggestion_param_name.is_none();
+    let suggestion_param_name =
+        suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
 
-    let mut suggestions = vec![
-        if let hir::LifetimeName::Underscore = lifetime_sub.name {
-            (lifetime_sub.span, suggestion_param_name.clone())
+    debug!(?lifetime_sup.span);
+    debug!(?lifetime_sub.span);
+    let make_suggestion = |span: rustc_span::Span| {
+        if span.is_empty() {
+            (span, format!("{}, ", suggestion_param_name))
+        } else if let Ok("&") = tcx.sess.source_map().span_to_snippet(span).as_deref() {
+            (span.shrink_to_hi(), format!("{} ", suggestion_param_name))
         } else {
-            (lifetime_sub.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
-        },
-        if let hir::LifetimeName::Underscore = lifetime_sup.name {
-            (lifetime_sup.span, suggestion_param_name.clone())
-        } else {
-            (lifetime_sup.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
-        },
-    ];
+            (span, suggestion_param_name.clone())
+        }
+    };
+    let mut suggestions =
+        vec![make_suggestion(lifetime_sub.span), make_suggestion(lifetime_sup.span)];
 
     if introduce_new {
-        let new_param_suggestion = match &generics.params {
-            [] => (generics.span, format!("<{}>", suggestion_param_name)),
-            [first, ..] => (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name)),
-        };
+        let new_param_suggestion =
+            if let Some(first) = generics.params.iter().find(|p| !p.name.ident().span.is_empty()) {
+                (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name))
+            } else {
+                (generics.span, format!("<{}>", suggestion_param_name))
+            };
 
         suggestions.push(new_param_suggestion);
     }

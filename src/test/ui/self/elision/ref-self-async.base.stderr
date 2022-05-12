@@ -7,6 +7,12 @@ LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                                 this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn ref_self<'a>(&'a self, f: &'a u32) -> &u32 {
+   |                      ++++  ++           ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:34:9
@@ -17,6 +23,12 @@ LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                                       this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn ref_Self<'a>(self: &'a Self, f: &'a u32) -> &u32 {
+   |                      ++++        ++           ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:40:9
@@ -27,6 +39,12 @@ LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                                this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_ref_Self<'a>(self: Box<&'a Self>, f: &'a u32) -> &u32 {
+   |                          ++++            ++            ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:46:9
@@ -37,6 +55,12 @@ LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                                this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn pin_ref_Self<'a>(self: Pin<&'a Self>, f: &'a u32) -> &u32 {
+   |                          ++++            ++            ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:52:9
@@ -47,6 +71,12 @@ LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                                         this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_box_ref_Self<'a>(self: Box<Box<&'a Self>>, f: &'a u32) -> &u32 {
+   |                              ++++                ++             ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:58:9
@@ -57,6 +87,12 @@ LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                                         this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_pin_ref_Self<'a>(self: Box<Pin<&'a Self>>, f: &'a u32) -> &u32 {
+   |                              ++++                ++             ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:64:9
@@ -67,6 +103,12 @@ LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                                             this parameter and the return type are declared with different lifetimes...
 LL |         f
    |         ^ ...but data from `f` is returned here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn wrap_ref_Self_Self<'a>(self: Wrap<&'a Self, Self>, f: &'a u8) -> &u8 {
+   |                                ++++             ++                  ++
 
 error: aborting due to 7 previous errors
 

@@ -72,7 +72,7 @@ use rustc_middle::ty::{
     subst::{GenericArgKind, Subst, SubstsRef},
     Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
+use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -161,7 +161,12 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
             {
                 sp = param.span;
             }
-            (format!("the lifetime `{}` as defined here", br.name), sp)
+            let text = if br.name == kw::UnderscoreLifetime {
+                format!("the anonymous lifetime as defined here")
+            } else {
+                format!("the lifetime `{}` as defined here", br.name)
+            };
+            (text, sp)
         }
         ty::ReFree(ty::FreeRegion {
             bound_region: ty::BoundRegionKind::BrNamed(_, name), ..
@@ -172,7 +177,12 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
             {
                 sp = param.span;
             }
-            (format!("the lifetime `{}` as defined here", name), sp)
+            let text = if name == kw::UnderscoreLifetime {
+                format!("the anonymous lifetime as defined here")
+            } else {
+                format!("the lifetime `{}` as defined here", name)
+            };
+            (text, sp)
         }
         ty::ReFree(ref fr) => match fr.bound_region {
             ty::BrAnon(idx) => {

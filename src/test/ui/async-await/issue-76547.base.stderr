@@ -5,6 +5,12 @@ LL | async fn fut(bufs: &mut [&mut [u8]]) {
    |                    ---------------- these two types are declared with different lifetimes...
 LL |     ListFut(bufs).await
    |             ^^^^ ...but data from `bufs` flows into `bufs` here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | async fn fut<'a>(bufs: &'a mut [&'a mut [u8]]) {
+   |             ++++        ++       ++
 
 error[E0623]: lifetime mismatch
   --> $DIR/issue-76547.rs:39:14
@@ -13,6 +19,12 @@ LL | async fn fut2(bufs: &mut [&mut [u8]]) -> i32 {
    |                     ---------------- these two types are declared with different lifetimes...
 LL |     ListFut2(bufs).await
    |              ^^^^ ...but data from `bufs` flows into `bufs` here
+   |
+   = note: each elided lifetime in input position becomes a distinct lifetime
+help: consider introducing a named lifetime parameter
+   |
+LL | async fn fut2<'a>(bufs: &'a mut [&'a mut [u8]]) -> i32 {
+   |              ++++        ++       ++
 
 error: aborting due to 2 previous errors
 
