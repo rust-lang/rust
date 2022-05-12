@@ -12,6 +12,7 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -23,6 +24,7 @@ use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
 
+use std::any::type_name;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
@@ -189,6 +191,12 @@ pub fn collect_temps_and_candidates<'tcx>(
 struct Validator<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
+
+    // Caches return values of `qualif_local` for each kind of `impl Qualif`
+    qualif_local_cache: FxHashMap<&'a str, FxHashMap<Local, bool>>,
+
+    // Caches return values of `validate_local`
+    validate_local_cache: FxHashMap<Local, Result<(), Unpromotable>>,
 }
 
 impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
@@ -199,10 +207,45 @@ impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 struct Unpromotable;
 
-impl<'tcx> Validator<'_, 'tcx> {
-    fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
+// Used for caching
+#[derive(Debug, Copy, Clone)]
+enum ResultKind<'a> {
+    Qualif(&'a str, bool),
+    Validate(Result<(), Unpromotable>),
+}
+
+impl<'a, 'tcx> Validator<'a, 'tcx> {
+    fn new(ccx: &'a ConstCx<'a, 'tcx>, temps: &'a IndexVec<Local, TempState>) -> Self {
+        Validator {
+            ccx,
+            temps,
+            qualif_local_cache: Default::default(),
+            validate_local_cache: Default::default(),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn cache_result(&mut self, kind: ResultKind<'a>, local: Local) {
+        match kind {
+            ResultKind::Qualif(analysis_kind, result) => {
+                let analysis_cache = self
+                    .qualif_local_cache
+                    .entry(analysis_kind)
+                    .or_insert_with(|| FxHashMap::default());
+                debug!(?analysis_cache);
+                analysis_cache.insert(local, result);
+            }
+            ResultKind::Validate(result) => {
+                debug!("validate_local_cache: {:?}", self.validate_local_cache);
+                self.validate_local_cache.insert(local, result);
+            }
+        }
+    }
+
+    fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
         let loc = candidate.location;
         let statement = &self.body[loc.block].statements[loc.statement_index];
         match &statement.kind {
@@ -234,11 +277,21 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     // FIXME(eddyb) maybe cache this?
-    fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
+    #[instrument(skip(self), level = "debug")]
+    fn qualif_local<Q: qualifs::Qualif>(&mut self, local: Local) -> bool {
+        debug!("qualif_local_cache: {:?}", self.qualif_local_cache);
+        if let Some(cached) = self
+            .qualif_local_cache
+            .get(type_name::<Q>())
+            .and_then(|local_cache| local_cache.get(&local))
+        {
+            return *cached;
+        }
+
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
 
-            if loc.statement_index < num_stmts {
+            let result = if loc.statement_index < num_stmts {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
@@ -265,7 +318,11 @@ impl<'tcx> Validator<'_, 'tcx> {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
                 }
-            }
+            };
+
+            self.cache_result(ResultKind::Qualif(type_name::<Q>(), result), local);
+
+            result
         } else {
             let span = self.body.local_decls[local].source_info.span;
             span_bug!(span, "{:?} not promotable, qualif_local shouldn't have been called", local);
@@ -273,8 +330,14 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     // FIXME(eddyb) maybe cache this?
-    fn validate_local(&self, local: Local) -> Result<(), Unpromotable> {
-        if let TempState::Defined { location: loc, .. } = self.temps[local] {
+    #[instrument(skip(self), level = "debug")]
+    fn validate_local(&mut self, local: Local) -> Result<(), Unpromotable> {
+        debug!("validate_local_cache: {:?}", self.validate_local_cache);
+        if let Some(cached) = self.validate_local_cache.get(&local) {
+            return *cached;
+        }
+
+        let result = if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let block = &self.body[loc.block];
             let num_stmts = block.statements.len();
 
@@ -302,10 +365,14 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
         } else {
             Err(Unpromotable)
-        }
+        };
+
+        self.cache_result(ResultKind::Validate(result), local);
+
+        result
     }
 
-    fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
+    fn validate_place(&mut self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
         match place.last_projection() {
             None => self.validate_local(place.local),
             Some((place_base, elem)) => {
@@ -417,7 +484,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_operand(&self, operand: &Operand<'tcx>) -> Result<(), Unpromotable> {
+    fn validate_operand(&mut self, operand: &Operand<'tcx>) -> Result<(), Unpromotable> {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.validate_place(place.as_ref()),
 
@@ -447,7 +514,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_ref(&self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
+    fn validate_ref(&mut self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
         match kind {
             // Reject these borrow types just to be safe.
             // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
@@ -480,7 +547,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         Ok(())
     }
 
-    fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
+    fn validate_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
             Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
                 self.validate_operand(operand)?;
@@ -623,7 +690,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     fn validate_call(
-        &self,
+        &mut self,
         callee: &Operand<'tcx>,
         args: &[Operand<'tcx>],
     ) -> Result<(), Unpromotable> {
@@ -668,7 +735,7 @@ pub fn validate_candidates(
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
-    let validator = Validator { ccx, temps };
+    let mut validator = Validator::new(ccx, temps);
 
     candidates
         .iter()
