@@ -1,0 +1,35 @@
+error[E0282]: type annotations needed
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
+   |
+LL |     a.method();
+   |     --^^^^^^--
+   |     | |
+   |     | cannot infer type for type parameter `U` declared on the trait `V`
+   |     this method call resolves to `U`
+
+error[E0283]: type annotations needed
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
+   |
+LL |     a.method();
+   |     --^^^^^^--
+   |     | |
+   |     | cannot infer type for type parameter `U`
+   |     this method call resolves to `U`
+   |
+note: multiple `impl`s satisfying `B: I<_>` found
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1
+   |
+LL | impl I<i32> for B {}
+   | ^^^^^^^^^^^^^^^^^
+LL | impl I<u32> for B {}
+   | ^^^^^^^^^^^^^^^^^
+note: required because of the requirements on the impl of `V<_>` for `A<B>`
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:12:12
+   |
+LL | impl<T, U> V<U> for A<T>
+   |            ^^^^     ^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.
