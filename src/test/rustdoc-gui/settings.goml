@@ -65,3 +65,8 @@ assert: ".setting-line.hidden #theme"
 // We check their text as well.
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
 assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
+
+// Now we go to the settings page to check that the CSS is loaded as expected.
+goto: file://|DOC_PATH|/settings.html
+wait-for: "#settings"
+assert-css: (".setting-line .toggle", {"width": "45px", "margin-right": "20px"})
