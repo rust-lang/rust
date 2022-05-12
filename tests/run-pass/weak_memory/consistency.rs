@@ -206,11 +206,7 @@ fn test_sc_store_buffering() {
 }
 
 pub fn main() {
-    // TODO: does this make chances of spurious success
-    // "sufficiently low"? This also takes a long time to run,
-    // prehaps each function should be its own test case so they
-    // can be run in parallel
-    for _ in 0..500 {
+    for _ in 0..100 {
         test_mixed_access();
         test_load_buffering_acq_rel();
         test_message_passing();
