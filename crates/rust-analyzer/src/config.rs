@@ -1683,21 +1683,39 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "maximum": 255
         },
         "LifetimeElisionDef" => set! {
-            "type": ["string", "boolean"],
-            "enum": ["always", "never", "skip_trivial"],
-            "enumDescriptions": [
-                "Always show lifetime elision hints.",
-                "Never show lifetime elision hints.",
-                "Only show lifetime elision hints if a return type is involved."
+            "anyOf": [
+                {
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "skip_trivial"
+                    ],
+                    "enumDescriptions": [
+                        "Always show lifetime elision hints.",
+                        "Never show lifetime elision hints.",
+                        "Only show lifetime elision hints if a return type is involved."
+                    ]
+                },
+                { "type": "boolean" }
             ],
         },
         "ReborrowHintsDef" => set! {
-            "type": ["string", "boolean"],
-            "enum": ["always", "never", "mutable"],
-            "enumDescriptions": [
-                "Always show reborrow hints.",
-                "Never show reborrow hints.",
-                "Only show mutable reborrow hints."
+            "anyOf": [
+                {
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "mutable"
+                    ],
+                    "enumDescriptions": [
+                        "Always show reborrow hints.",
+                        "Never show reborrow hints.",
+                        "Only show mutable reborrow hints."
+                    ]
+                },
+                { "type": "boolean" }
             ],
         },
         "CargoFeatures" => set! {
@@ -1709,19 +1727,37 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             ],
         },
         "Option<CargoFeatures>" => set! {
-            "type": ["string", "array", "null"],
-            "items": { "type": "string" },
-            "enum": ["all"],
-            "enumDescriptions": [
-                "Pass `--all-features` to cargo",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "enum": [
+                        "all"
+                    ],
+                    "enumDescriptions": [
+                        "Pass `--all-features` to cargo",
+                    ]
+                },
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
+                { "type": "null" }
             ],
         },
         "Option<CallableCompletionDef>" => set! {
-            "type": ["string", "null"],
-            "enum": ["fill_arguments", "add_parentheses"],
-            "enumDescriptions": [
-                "Add call parentheses and pre-fill arguments",
-                "Add call parentheses",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "enum": [
+                        "fill_arguments",
+                        "add_parentheses"
+                    ],
+                    "enumDescriptions": [
+                        "Add call parentheses and pre-fill arguments",
+                        "Add call parentheses"
+                    ]
+                },
+                { "type": "null" }
             ],
         },
         "SignatureDetail" => set! {

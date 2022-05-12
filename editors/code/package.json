@@ -491,19 +491,25 @@
                 "rust-analyzer.checkOnSave.features": {
                     "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to cargo.",
                     "default": null,
-                    "type": [
-                        "string",
-                        "array",
-                        "null"
-                    ],
-                    "items": {
-                        "type": "string"
-                    },
-                    "enum": [
-                        "all"
-                    ],
-                    "enumDescriptions": [
-                        "Pass `--all-features` to cargo"
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "all"
+                            ],
+                            "enumDescriptions": [
+                                "Pass `--all-features` to cargo"
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "type": "null"
+                        }
                     ]
                 },
                 "rust-analyzer.checkOnSave.noDefaultFeatures": {
@@ -546,17 +552,21 @@
                 "rust-analyzer.completion.callable.snippets": {
                     "markdownDescription": "Whether to add parenthesis and argument snippets when completing function.",
                     "default": "fill_arguments",
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "enum": [
-                        "fill_arguments",
-                        "add_parentheses"
-                    ],
-                    "enumDescriptions": [
-                        "Add call parentheses and pre-fill arguments",
-                        "Add call parentheses"
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "fill_arguments",
+                                "add_parentheses"
+                            ],
+                            "enumDescriptions": [
+                                "Add call parentheses and pre-fill arguments",
+                                "Add call parentheses"
+                            ]
+                        },
+                        {
+                            "type": "null"
+                        }
                     ]
                 },
                 "rust-analyzer.completion.postfix.enable": {
@@ -787,19 +797,23 @@
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",
-                    "type": [
-                        "string",
-                        "boolean"
-                    ],
-                    "enum": [
-                        "always",
-                        "never",
-                        "skip_trivial"
-                    ],
-                    "enumDescriptions": [
-                        "Always show lifetime elision hints.",
-                        "Never show lifetime elision hints.",
-                        "Only show lifetime elision hints if a return type is involved."
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "always",
+                                "never",
+                                "skip_trivial"
+                            ],
+                            "enumDescriptions": [
+                                "Always show lifetime elision hints.",
+                                "Never show lifetime elision hints.",
+                                "Only show lifetime elision hints if a return type is involved."
+                            ]
+                        },
+                        {
+                            "type": "boolean"
+                        }
                     ]
                 },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.useParameterNames": {
@@ -824,19 +838,23 @@
                 "rust-analyzer.inlayHints.reborrowHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for compiler inserted reborrows.",
                     "default": "never",
-                    "type": [
-                        "string",
-                        "boolean"
-                    ],
-                    "enum": [
-                        "always",
-                        "never",
-                        "mutable"
-                    ],
-                    "enumDescriptions": [
-                        "Always show reborrow hints.",
-                        "Never show reborrow hints.",
-                        "Only show mutable reborrow hints."
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "always",
+                                "never",
+                                "mutable"
+                            ],
+                            "enumDescriptions": [
+                                "Always show reborrow hints.",
+                                "Never show reborrow hints.",
+                                "Only show mutable reborrow hints."
+                            ]
+                        },
+                        {
+                            "type": "boolean"
+                        }
                     ]
                 },
                 "rust-analyzer.inlayHints.renderColons": {
