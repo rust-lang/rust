@@ -57,6 +57,11 @@ config_data! {
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
+        /// Warm up caches on project load.
+        cachePriming_enable: bool = "true",
+        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+        cachePriming_numThreads: ParallelCachePrimingNumThreads = "0",
+
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
         cargo_autoreload: bool           = "true",
@@ -320,11 +325,6 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
-        /// Warm up caches on project load.
-        primeCaches_enable: bool = "true",
-        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
-        primeCaches_numThreads: ParallelPrimeCachesNumThreads = "0",
-
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = "true",
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
@@ -402,7 +402,7 @@ pub struct Config {
     snippets: Vec<Snippet>,
 }
 
-type ParallelPrimeCachesNumThreads = u8;
+type ParallelCachePrimingNumThreads = u8;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
@@ -716,7 +716,7 @@ impl Config {
     }
 
     pub fn prefill_caches(&self) -> bool {
-        self.data.primeCaches_enable
+        self.data.cachePriming_enable
     }
 
     pub fn location_link(&self) -> bool {
@@ -1189,7 +1189,7 @@ impl Config {
     }
 
     pub fn prime_caches_num_threads(&self) -> u8 {
-        match self.data.primeCaches_numThreads {
+        match self.data.cachePriming_numThreads {
             0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
             n => n,
         }
@@ -1661,7 +1661,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Search for all symbols kinds"
             ],
         },
-        "ParallelPrimeCachesNumThreads" => set! {
+        "ParallelCachePrimingNumThreads" => set! {
             "type": "number",
             "minimum": 0,
             "maximum": 255

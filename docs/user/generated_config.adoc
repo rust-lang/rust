@@ -3,6 +3,16 @@
 --
 Placeholder expression to use for missing expressions in assists.
 --
+[[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
++
+--
+Warm up caches on project load.
+--
+[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `0`)::
++
+--
+How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+--
 [[rust-analyzer.cargo.autoreload]]rust-analyzer.cargo.autoreload (default: `true`)::
 +
 --
@@ -476,16 +486,6 @@ Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
 +
 --
 Whether to show `can't find Cargo.toml` error message.
---
-[[rust-analyzer.primeCaches.enable]]rust-analyzer.primeCaches.enable (default: `true`)::
-+
---
-Warm up caches on project load.
---
-[[rust-analyzer.primeCaches.numThreads]]rust-analyzer.primeCaches.numThreads (default: `0`)::
-+
---
-How many worker threads to to handle priming caches. The default `0` means to pick automatically.
 --
 [[rust-analyzer.procMacro.attributes.enable]]rust-analyzer.procMacro.attributes.enable (default: `true`)::
 +
