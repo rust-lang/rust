@@ -22,7 +22,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
-use crate::{match_def_path, must_use_attr, path_res, paths};
+use crate::{match_def_path, path_res, paths};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -178,18 +178,18 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => must_use_attr(cx.tcx.get_attrs(adt.did())).is_some(),
-        ty::Foreign(ref did) => must_use_attr(cx.tcx.get_attrs(*did)).is_some(),
+        ty::Adt(adt, _) => cx.tcx.has_attr(adt.did(), sym::must_use),
+        ty::Foreign(did) => cx.tcx.has_attr(*did, sym::must_use),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(ref def_id, _) => {
+        ty::Opaque(def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if must_use_attr(cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
+                    if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
                 }
@@ -199,7 +199,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Dynamic(binder, _) => {
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if must_use_attr(cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
+                    if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
                         return true;
                     }
                 }
