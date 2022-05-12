@@ -98,6 +98,10 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
+# Build Ninja for faster LLVM builds.
+COPY host-x86_64/dist-x86_64-linux/build-ninja.sh /tmp/
+RUN ./build-ninja.sh
+
 # rustc-perf version from 2022-04-05
 ENV PERF_COMMIT 04fccd80396f954b339c366e30221f4bd52c5e03
 RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
