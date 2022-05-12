@@ -119,7 +119,7 @@ window.initSearch = rawSearchIndex => {
      */
     let searchIndex;
     let currentResults;
-    const ALIASES = {};
+    const ALIASES = Object.create(null);
     const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
@@ -1953,7 +1953,7 @@ window.initSearch = rawSearchIndex => {
             }
 
             if (aliases) {
-                ALIASES[crate] = {};
+                ALIASES[crate] = Object.create(null);
                 for (const alias_name in aliases) {
                     if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
                         continue;
