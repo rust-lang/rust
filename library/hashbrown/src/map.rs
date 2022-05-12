@@ -300,6 +300,8 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// ```
     /// use hashbrown::HashMap;
     /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// assert_eq!(map.len(), 0);
+    /// assert_eq!(map.capacity(), 0);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new() -> Self {
@@ -316,6 +318,8 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// ```
     /// use hashbrown::HashMap;
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
+    /// assert_eq!(map.len(), 0);
+    /// assert!(map.capacity() >= 10);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity(capacity: usize) -> Self {
@@ -348,7 +352,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
     ///
-    /// The created map has the default initial capacity.
+    /// The hash map is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
     /// Warning: `hash_builder` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
@@ -366,10 +371,13 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_hasher(s);
+    /// assert_eq!(map.len(), 0);
+    /// assert_eq!(map.capacity(), 0);
+    ///
     /// map.insert(1, 2);
     /// ```
     ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub const fn with_hasher(hash_builder: S) -> Self {
         Self {
@@ -400,10 +408,13 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
+    /// assert_eq!(map.len(), 0);
+    /// assert!(map.capacity() >= 10);
+    ///
     /// map.insert(1, 2);
     /// ```
     ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
@@ -506,6 +517,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// ```
     /// use hashbrown::HashMap;
     /// let map: HashMap<i32, i32> = HashMap::with_capacity(100);
+    /// assert_eq!(map.len(), 0);
     /// assert!(map.capacity() >= 100);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -525,10 +537,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert("a", 1);
     /// map.insert("b", 2);
     /// map.insert("c", 3);
+    /// assert_eq!(map.len(), 3);
+    /// let mut vec: Vec<&str> = Vec::new();
     ///
     /// for key in map.keys() {
     ///     println!("{}", key);
+    ///     vec.push(*key);
     /// }
+    ///
+    /// // The `Keys` iterator produces keys in arbitrary order, so the
+    /// // keys must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, ["a", "b", "c"]);
+    ///
+    /// assert_eq!(map.len(), 3);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn keys(&self) -> Keys<'_, K, V> {
@@ -547,10 +569,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert("a", 1);
     /// map.insert("b", 2);
     /// map.insert("c", 3);
+    /// assert_eq!(map.len(), 3);
+    /// let mut vec: Vec<i32> = Vec::new();
     ///
     /// for val in map.values() {
     ///     println!("{}", val);
+    ///     vec.push(*val);
     /// }
+    ///
+    /// // The `Values` iterator produces values in arbitrary order, so the
+    /// // values must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [1, 2, 3]);
+    ///
+    /// assert_eq!(map.len(), 3);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn values(&self) -> Values<'_, K, V> {
@@ -575,9 +607,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///     *val = *val + 10;
     /// }
     ///
+    /// assert_eq!(map.len(), 3);
+    /// let mut vec: Vec<i32> = Vec::new();
+    ///
     /// for val in map.values() {
     ///     println!("{}", val);
+    ///     vec.push(*val);
     /// }
+    ///
+    /// // The `Values` iterator produces values in arbitrary order, so the
+    /// // values must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [11, 12, 13]);
+    ///
+    /// assert_eq!(map.len(), 3);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
@@ -598,10 +641,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert("a", 1);
     /// map.insert("b", 2);
     /// map.insert("c", 3);
+    /// assert_eq!(map.len(), 3);
+    /// let mut vec: Vec<(&str, i32)> = Vec::new();
     ///
     /// for (key, val) in map.iter() {
     ///     println!("key: {} val: {}", key, val);
+    ///     vec.push((*key, *val));
     /// }
+    ///
+    /// // The `Iter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [("a", 1), ("b", 2), ("c", 3)]);
+    ///
+    /// assert_eq!(map.len(), 3);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter(&self) -> Iter<'_, K, V> {
@@ -633,9 +686,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///     *val *= 2;
     /// }
     ///
+    /// assert_eq!(map.len(), 3);
+    /// let mut vec: Vec<(&str, i32)> = Vec::new();
+    ///
     /// for (key, val) in &map {
     ///     println!("key: {} val: {}", key, val);
+    ///     vec.push((*key, *val));
     /// }
+    ///
+    /// // The `Iter` iterator produces items in arbitrary order, so the
+    /// // items must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [("a", 2), ("b", 4), ("c", 6)]);
+    ///
+    /// assert_eq!(map.len(), 3);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
@@ -691,6 +755,10 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
     ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining key-value pairs. The returned iterator keeps a
+    /// mutable borrow on the vector to optimize its implementation.
+    ///
     /// # Examples
     ///
     /// ```
@@ -699,12 +767,27 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// let mut a = HashMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
+    /// let capacity_before_drain = a.capacity();
     ///
     /// for (k, v) in a.drain().take(1) {
     ///     assert!(k == 1 || k == 2);
     ///     assert!(v == "a" || v == "b");
     /// }
     ///
+    /// // As we can see, the map is empty and contains no element.
+    /// assert!(a.is_empty() && a.len() == 0);
+    /// // But map capacity is equal to old one.
+    /// assert_eq!(a.capacity(), capacity_before_drain);
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// {   // Iterator is dropped without being consumed.
+    ///     let d = a.drain();
+    /// }
+    ///
+    /// // But the map is empty even if we do not use Drain iterator.
     /// assert!(a.is_empty());
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
@@ -714,9 +797,11 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
         }
     }
 
-    /// Retains only the elements specified by the predicate.
+    /// Retains only the elements specified by the predicate. Keeps the
+    /// allocated memory for reuse.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
     ///
@@ -724,8 +809,19 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// assert_eq!(map.len(), 8);
+    /// let capacity_before_retain = map.capacity();
+    ///
     /// map.retain(|&k, _| k % 2 == 0);
+    ///
+    /// // We can see, that the number of elements inside map is changed.
     /// assert_eq!(map.len(), 4);
+    /// // But map capacity is equal to old one.
+    /// assert_eq!(map.capacity(), capacity_before_retain);
+    ///
+    /// let mut vec: Vec<(i32, i32)> = map.iter().map(|(&k, &v)| (k, v)).collect();
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [(0, 0), (2, 20), (4, 40), (6, 60)]);
     /// ```
     pub fn retain<F>(&mut self, mut f: F)
     where
@@ -745,11 +841,20 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Drains elements which are true under the given predicate,
     /// and returns an iterator over the removed items.
     ///
-    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `true` out
+    /// In other words, move all pairs `(k, v)` such that `f(&k, &mut v)` returns `true` out
     /// into another iterator.
+    ///
+    /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
+    /// whether you choose to keep or remove it.
     ///
     /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
     /// the predicate are dropped from the table.
+    ///
+    /// It is unspecified how many more elements will be subjected to the closure
+    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
+    /// or if the `DrainFilter` value is leaked.
+    ///
+    /// Keeps the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -757,6 +862,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// use hashbrown::HashMap;
     ///
     /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let capacity_before_drain_filter = map.capacity();
     /// let drained: HashMap<i32, i32> = map.drain_filter(|k, _v| k % 2 == 0).collect();
     ///
     /// let mut evens = drained.keys().cloned().collect::<Vec<_>>();
@@ -766,6 +872,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// assert_eq!(evens, vec![0, 2, 4, 6]);
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
+    /// // Map capacity is equal to old one.
+    /// assert_eq!(map.capacity(), capacity_before_drain_filter);
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    ///
+    /// {   // Iterator is dropped without being consumed.
+    ///     let d = map.drain_filter(|k, _v| k % 2 != 0);
+    /// }
+    ///
+    /// // But the map lens have been reduced by half
+    /// // even if we do not use DrainFilter iterator.
+    /// assert_eq!(map.len(), 4);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
@@ -791,8 +909,14 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///
     /// let mut a = HashMap::new();
     /// a.insert(1, "a");
+    /// let capacity_before_clear = a.capacity();
+    ///
     /// a.clear();
+    ///
+    /// // Map is empty.
     /// assert!(a.is_empty());
+    /// // But map capacity is equal to old one.
+    /// assert_eq!(a.capacity(), capacity_before_clear);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
@@ -813,7 +937,12 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert("b", 2);
     /// map.insert("c", 3);
     ///
-    /// let vec: Vec<&str> = map.into_keys().collect();
+    /// let mut vec: Vec<&str> = map.into_keys().collect();
+    ///
+    /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
+    /// // keys must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, ["a", "b", "c"]);
     /// ```
     #[inline]
     pub fn into_keys(self) -> IntoKeys<K, V, A> {
@@ -836,7 +965,12 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert("b", 2);
     /// map.insert("c", 3);
     ///
-    /// let vec: Vec<i32> = map.into_values().collect();
+    /// let mut vec: Vec<i32> = map.into_values().collect();
+    ///
+    /// // The `IntoValues` iterator produces values in arbitrary order, so
+    /// // the values must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [1, 2, 3]);
     /// ```
     #[inline]
     pub fn into_values(self) -> IntoValues<K, V, A> {
@@ -867,7 +1001,13 @@ where
     /// ```
     /// use hashbrown::HashMap;
     /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// // Map is empty and doesn't allocate memory
+    /// assert_eq!(map.capacity(), 0);
+    ///
     /// map.reserve(10);
+    ///
+    /// // And now map can hold at least 10 elements
+    /// assert!(map.capacity() >= 10);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
@@ -888,8 +1028,36 @@ where
     ///
     /// ```
     /// use hashbrown::HashMap;
+    ///
     /// let mut map: HashMap<&str, isize> = HashMap::new();
+    /// // Map is empty and doesn't allocate memory
+    /// assert_eq!(map.capacity(), 0);
+    ///
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    ///
+    /// // And now map can hold at least 10 elements
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned:
+    /// ```
+    /// # fn test() {
+    /// use hashbrown::HashMap;
+    /// use hashbrown::TryReserveError;
+    /// let mut map: HashMap<i32, i32> = HashMap::new();
+    ///
+    /// match map.try_reserve(usize::MAX) {
+    ///     Err(error) => match error {
+    ///         TryReserveError::CapacityOverflow => {}
+    ///         _ => panic!("TryReserveError::AllocError ?"),
+    ///     },
+    ///     _ => panic!(),
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(not(miri))]
+    /// #     test()
+    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1188,6 +1356,8 @@ where
     ///     *x = "b";
     /// }
     /// assert_eq!(map[&1], "b");
+    ///
+    /// assert_eq!(map.get_mut(&2), None);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
@@ -1273,7 +1443,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be returned if
     /// any of the keys are missing.
     ///
-    /// For a safe alternative see [`get_many_mut`].
+    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
     ///
     /// # Safety
     ///
@@ -1386,7 +1556,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be returned if
     /// any of the keys are missing.
     ///
-    /// For a safe alternative see [`get_many_key_value_mut`].
+    /// For a safe alternative see [`get_many_key_value_mut`](`HashMap::get_many_key_value_mut`).
     ///
     /// # Safety
     ///
@@ -1480,11 +1650,12 @@ where
     ///
     /// If the map did have this key present, the value is updated, and the old
     /// value is returned. The key is not updated, though; this matters for
-    /// types that can be `==` without being identical. See the [module-level
-    /// documentation] for more.
+    /// types that can be `==` without being identical. See the [`std::collections`]
+    /// [module-level documentation] for more.
     ///
     /// [`None`]: https://doc.rust-lang.org/std/option/enum.Option.html#variant.None
-    /// [module-level documentation]: index.html#insert-and-complex-keys
+    /// [`std::collections`]: https://doc.rust-lang.org/std/collections/index.html
+    /// [module-level documentation]: https://doc.rust-lang.org/std/collections/index.html#insert-and-complex-keys
     ///
     /// # Examples
     ///
@@ -1531,6 +1702,35 @@ where
     /// This operation is useful during initial population of the map.
     /// For example, when constructing a map from another map, we know
     /// that keys are unique.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map1 = HashMap::new();
+    /// assert_eq!(map1.insert(1, "a"), None);
+    /// assert_eq!(map1.insert(2, "b"), None);
+    /// assert_eq!(map1.insert(3, "c"), None);
+    /// assert_eq!(map1.len(), 3);
+    ///
+    /// let mut map2 = HashMap::new();
+    ///
+    /// for (key, value) in map1.into_iter() {
+    ///     map2.insert_unique_unchecked(key, value);
+    /// }
+    ///
+    /// let (key, value) = map2.insert_unique_unchecked(4, "d");
+    /// assert_eq!(key, &4);
+    /// assert_eq!(value, &mut "d");
+    /// *value = "e";
+    ///
+    /// assert_eq!(map2[&1], "a");
+    /// assert_eq!(map2[&2], "b");
+    /// assert_eq!(map2[&3], "c");
+    /// assert_eq!(map2[&4], "e");
+    /// assert_eq!(map2.len(), 4);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_unique_unchecked(&mut self, k: K, v: V) -> (&K, &mut V) {
         let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
@@ -1555,14 +1755,19 @@ where
     ///
     /// ```
     /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::OccupiedError;
     ///
     /// let mut map = HashMap::new();
     /// assert_eq!(map.try_insert(37, "a").unwrap(), &"a");
     ///
-    /// let err = map.try_insert(37, "b").unwrap_err();
-    /// assert_eq!(err.entry.key(), &37);
-    /// assert_eq!(err.entry.get(), &"a");
-    /// assert_eq!(err.value, "b");
+    /// match map.try_insert(37, "b") {
+    ///     Err(OccupiedError { entry, value }) => {
+    ///         assert_eq!(entry.key(), &37);
+    ///         assert_eq!(entry.get(), &"a");
+    ///         assert_eq!(value, "b");
+    ///     }
+    ///     _ => panic!()
+    /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_insert(
@@ -1577,7 +1782,7 @@ where
     }
 
     /// Removes a key from the map, returning the value at the key if the key
-    /// was previously in the map.
+    /// was previously in the map. Keeps the allocated memory for reuse.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -1592,9 +1797,17 @@ where
     /// use hashbrown::HashMap;
     ///
     /// let mut map = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.insert(1, "a");
+    /// let capacity_before_remove = map.capacity();
+    ///
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
+    ///
+    /// // Now map holds none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
@@ -1610,7 +1823,7 @@ where
     }
 
     /// Removes a key from the map, returning the stored key and value if the
-    /// key was previously in the map.
+    /// key was previously in the map. Keeps the allocated memory for reuse.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -1625,9 +1838,17 @@ where
     /// use hashbrown::HashMap;
     ///
     /// let mut map = HashMap::new();
+    /// // The map is empty
+    /// assert!(map.is_empty() && map.capacity() == 0);
+    ///
     /// map.insert(1, "a");
+    /// let capacity_before_remove = map.capacity();
+    ///
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove(&1), None);
+    ///
+    /// // Now map hold none elements but capacity is equal to the old one
+    /// assert!(map.len() == 0 && map.capacity() == capacity_before_remove);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
@@ -1672,6 +1893,72 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// so that the map now contains keys which compare equal, search may start
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::{HashMap, hash_map::RawEntryMut};
+    ///
+    /// let mut map = HashMap::new();
+    /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
+    ///
+    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
+    ///     use core::hash::{BuildHasher, Hash, Hasher};
+    ///
+    ///     let mut hasher = map.hasher().build_hasher();
+    ///     k.hash(&mut hasher);
+    ///     hasher.finish()
+    /// };
+    ///
+    /// // Existing key (insert and update)
+    /// match map.raw_entry_mut().from_key(&"a") {
+    ///     RawEntryMut::Vacant(_) => unreachable!(),
+    ///     RawEntryMut::Occupied(mut view) => {
+    ///         assert_eq!(view.get(), &100);
+    ///         let v = view.get_mut();
+    ///         let new_v = (*v) * 10;
+    ///         *v = new_v;
+    ///         assert_eq!(view.insert(1111), 1000);
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(map[&"a"], 1111);
+    /// assert_eq!(map.len(), 3);
+    ///
+    /// // Existing key (take)
+    /// let hash = compute_hash(&map, &"c");
+    /// match map.raw_entry_mut().from_key_hashed_nocheck(hash, &"c") {
+    ///     RawEntryMut::Vacant(_) => unreachable!(),
+    ///     RawEntryMut::Occupied(view) => {
+    ///         assert_eq!(view.remove_entry(), ("c", 300));
+    ///     }
+    /// }
+    /// assert_eq!(map.raw_entry().from_key(&"c"), None);
+    /// assert_eq!(map.len(), 2);
+    ///
+    /// // Nonexistent key (insert and update)
+    /// let key = "d";
+    /// let hash = compute_hash(&map, &key);
+    /// match map.raw_entry_mut().from_hash(hash, |q| *q == key) {
+    ///     RawEntryMut::Occupied(_) => unreachable!(),
+    ///     RawEntryMut::Vacant(view) => {
+    ///         let (k, value) = view.insert("d", 4000);
+    ///         assert_eq!((*k, *value), ("d", 4000));
+    ///         *value = 40000;
+    ///     }
+    /// }
+    /// assert_eq!(map[&"d"], 40000);
+    /// assert_eq!(map.len(), 3);
+    ///
+    /// match map.raw_entry_mut().from_hash(hash, |q| *q == key) {
+    ///     RawEntryMut::Vacant(_) => unreachable!(),
+    ///     RawEntryMut::Occupied(view) => {
+    ///         assert_eq!(view.remove_entry(), ("d", 40000));
+    ///     }
+    /// }
+    /// assert_eq!(map.get(&"d"), None);
+    /// assert_eq!(map.len(), 2);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S, A> {
         RawEntryBuilderMut { map: self }
@@ -1692,6 +1979,35 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// `get` should be preferred.
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.extend([("a", 100), ("b", 200), ("c", 300)]);
+    ///
+    /// let compute_hash = |map: &HashMap<&str, i32>, k: &str| -> u64 {
+    ///     use core::hash::{BuildHasher, Hash, Hasher};
+    ///
+    ///     let mut hasher = map.hasher().build_hasher();
+    ///     k.hash(&mut hasher);
+    ///     hasher.finish()
+    /// };
+    ///
+    /// for k in ["a", "b", "c", "d", "e", "f"] {
+    ///     let hash = compute_hash(&map, k);
+    ///     let v = map.get(&k).cloned();
+    ///     let kv = v.as_ref().map(|v| (&k, v));
+    ///
+    ///     println!("Key: {} and value: {:?}", k, v);
+    ///
+    ///     assert_eq!(map.raw_entry().from_key(&k), kv);
+    ///     assert_eq!(map.raw_entry().from_hash(hash, |q| *q == k), kv);
+    ///     assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
+    /// }
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S, A> {
         RawEntryBuilder { map: self }
