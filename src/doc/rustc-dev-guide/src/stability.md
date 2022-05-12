@@ -121,24 +121,21 @@ Always ping @rust-lang/wg-const-eval if you are adding more
 
 ## staged_api
 
-Any crate that uses the `stable`, `unstable`, or `rustc_deprecated` attributes
-must include the `#![feature(staged_api)]` attribute on the crate.
+Any crate that uses the `stable` or `unstable` attributes must include the
+`#![feature(staged_api)]` attribute on the crate.
 
-## rustc_deprecated
+## deprecated
 
-The deprecation system shares the same infrastructure as the stable/unstable
-attributes. The `rustc_deprecated` attribute is similar to the [`deprecated`
-attribute]. It was previously called `deprecated`, but was split off when
-`deprecated` was stabilized. The `deprecated` attribute cannot be used in a
-`staged_api` crate, `rustc_deprecated` must be used instead. The deprecated
-item must also have a `stable` or `unstable` attribute.
+Deprecations in the standard library are nearly identical to deprecations in
+user code. When `#[deprecated]` is used on an item, it must also have a `stable`
+or `unstable `attribute.
 
-`rustc_deprecated` has the following form:
+`deprecated` has the following form:
 
 ```rust,ignore
-#[rustc_deprecated(
+#[deprecated(
     since = "1.38.0",
-    reason = "explanation for deprecation",
+    note = "explanation for deprecation",
     suggestion = "other_function"
 )]
 ```
@@ -146,13 +143,13 @@ item must also have a `stable` or `unstable` attribute.
 The `suggestion` field is optional. If given, it should be a string that can be
 used as a machine-applicable suggestion to correct the warning. This is
 typically used when the identifier is renamed, but no other significant changes
-are necessary.
+are necessary. When the `suggestion` field is used, you need to have
+`#![feature(deprecated_suggestion)]` at the crate root.
 
-Another difference from the `deprecated` attribute is that the `since` field is
-actually checked against the current version of `rustc`. If `since` is in a
-future version, then the `deprecated_in_future` lint is triggered which is
-default `allow`, but most of the standard library raises it to a warning with
+Another difference from user code is that the `since` field is actually checked
+against the current version of `rustc`. If `since` is in a future version, then
+the `deprecated_in_future` lint is triggered which is default `allow`, but most
+of the standard library raises it to a warning with
 `#![warn(deprecated_in_future)]`.
 
-[`deprecated` attribute]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-deprecated-attribute
 [blog]: https://www.ralfj.de/blog/2018/07/19/const.html
