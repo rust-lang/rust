@@ -850,7 +850,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// assert_eq!(evens, vec![0, 2, 4, 6]);
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// // Map capacity is equal to old one.
-    /// assert!(map.capacity() == capacity_before_drain_filter);
+    /// assert_eq!(map.capacity(), capacity_before_drain_filter);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
