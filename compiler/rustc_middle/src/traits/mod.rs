@@ -133,6 +133,7 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause::dummy_with_span(DUMMY_SP)
     }
 
+    #[inline(always)]
     pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
@@ -203,6 +204,7 @@ pub struct InternedObligationCauseCode<'tcx> {
 }
 
 impl<'tcx> From<ObligationCauseCode<'tcx>> for InternedObligationCauseCode<'tcx> {
+    #[inline(always)]
     fn from(code: ObligationCauseCode<'tcx>) -> Self {
         Self { code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) } }
     }
