@@ -37,8 +37,8 @@ you can write: <!-- date: 2022-04 --><!-- the date comment is for the edition be
         "--edition=2021"
     ],
     "editor.formatOnSave": true,
-    "rust-analyzer.cargo.runBuildScripts": false,
-    "rust-analyzer.rustcSource": "./Cargo.toml",
+    "rust-analyzer.cargo.buildScripts.enable": false,
+    "rust-analyzer.rustc.source": "./Cargo.toml",
     "rust-analyzer.procMacro.enable": false
 }
 ```
