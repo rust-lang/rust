@@ -23,7 +23,30 @@ LL ~     };
    |
 
 error: calling `Rc::new` in `vec![elem; len]`
-  --> $DIR/rc.rs:12:13
+  --> $DIR/rc.rs:16:21
+   |
+LL |             let v = vec![Rc::new("x".to_string()); 2];
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Rc` instance
+help: consider initializing each `Rc` element individually
+   |
+LL ~             let v = {
+LL +                 let mut v = Vec::with_capacity(2);
+LL +                 (0..2).for_each(|_| v.push(Rc::new("x".to_string())));
+LL +                 v
+LL ~             };
+   |
+help: or if this is intentional, consider extracting the `Rc` initialization to a variable
+   |
+LL ~             let v = {
+LL +                 let data = Rc::new("x".to_string());
+LL +                 vec![data; 2]
+LL ~             };
+   |
+
+error: calling `Rc::new` in `vec![elem; len]`
+  --> $DIR/rc.rs:22:13
    |
 LL |       let v = vec![
    |  _____________^
@@ -53,7 +76,7 @@ LL ~     };
    |
 
 error: calling `Rc::new` in `vec![elem; len]`
-  --> $DIR/rc.rs:21:14
+  --> $DIR/rc.rs:31:14
    |
 LL |       let v1 = vec![
    |  ______________^
@@ -82,5 +105,5 @@ LL +         vec![data; 2]
 LL ~     };
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

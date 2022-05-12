@@ -106,9 +106,9 @@ fn elem_snippet(cx: &LateContext<'_>, elem: &Expr<'_>, symbol_name: &str) -> Str
 fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
     format!(
         r#"{{
-{indent}{indent}let mut v = Vec::with_capacity({len});
-{indent}{indent}(0..{len}).for_each(|_| v.push({elem}));
-{indent}{indent}v
+{indent}    let mut v = Vec::with_capacity({len});
+{indent}    (0..{len}).for_each(|_| v.push({elem}));
+{indent}    v
 {indent}}}"#
     )
 }
@@ -116,8 +116,8 @@ fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
 fn extract_suggestion(elem: &str, len: &str, indent: &str) -> String {
     format!(
         "{{
-{indent}{indent}let data = {elem};
-{indent}{indent}vec![data; {len}]
+{indent}    let data = {elem};
+{indent}    vec![data; {len}]
 {indent}}}"
     )
 }

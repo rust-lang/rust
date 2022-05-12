@@ -7,6 +7,16 @@ fn should_warn_simple_case() {
     let v = vec![Arc::new("x".to_string()); 2];
 }
 
+fn should_warn_simple_case_with_big_indentation() {
+    if true {
+        let k = 1;
+        dbg!(k);
+        if true {
+            let v = vec![Arc::new("x".to_string()); 2];
+        }
+    }
+}
+
 fn should_warn_complex_case() {
     let v = vec![
         std::sync::Arc::new(Mutex::new({
