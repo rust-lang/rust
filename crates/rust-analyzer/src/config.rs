@@ -595,6 +595,7 @@ impl Config {
                 .collect();
         patch_old_style::patch_json_for_outdated_configs(&mut json);
         self.data = ConfigData::from_json(json, &mut errors);
+        tracing::debug!("deserialized config data: {:#?}", self.data);
         self.snippets.clear();
         for (name, def) in self.data.completion_snippets_custom.iter() {
             if def.prefix.is_empty() && def.postfix.is_empty() {
