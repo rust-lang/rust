@@ -42,7 +42,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
-        // List taken from `libstd/sys_common/alloc.rs`.
+        // List taken from `library/std/src/sys/common/alloc.rs`.
+        // This list should be kept in sync with the one from libstd.
         let min_align = match this.tcx.sess.target.arch.as_ref() {
             "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
