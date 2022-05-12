@@ -191,7 +191,7 @@ define_handles! {
 // FIXME(eddyb) generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`
 // to distinguish between 'owned and 'interned, above.
-// Alternatively, special 'modes" could be listed of types in with_api
+// Alternatively, special "modes" could be listed of types in with_api
 // instead of pattern matching on methods, here and in server decl.
 
 impl Clone for TokenStream {
