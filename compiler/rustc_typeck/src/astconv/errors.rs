@@ -1,4 +1,5 @@
 use crate::astconv::AstConv;
+use crate::errors::{ManualImplementation, MissingTypeParams};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -24,65 +25,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if missing_type_params.is_empty() {
             return;
         }
-        let display =
-            missing_type_params.iter().map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
-        let mut err = struct_span_err!(
-            self.tcx().sess,
+
+        self.tcx().sess.emit_err(MissingTypeParams {
             span,
-            E0393,
-            "the type parameter{} {} must be explicitly specified",
-            pluralize!(missing_type_params.len()),
-            display,
-        );
-        err.span_label(
-            self.tcx().def_span(def_id),
-            &format!(
-                "type parameter{} {} must be specified for this",
-                pluralize!(missing_type_params.len()),
-                display,
-            ),
-        );
-        let mut suggested = false;
-        if let (Ok(snippet), true) = (
-            self.tcx().sess.source_map().span_to_snippet(span),
-            // Don't suggest setting the type params if there are some already: the order is
-            // tricky to get right and the user will already know what the syntax is.
+            def_span: self.tcx().def_span(def_id),
+            missing_type_params,
             empty_generic_args,
-        ) {
-            if snippet.ends_with('>') {
-                // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
-                // we would have to preserve the right order. For now, as clearly the user is
-                // aware of the syntax, we do nothing.
-            } else {
-                // The user wrote `Iterator`, so we don't have a type we can suggest, but at
-                // least we can clue them to the correct syntax `Iterator<Type>`.
-                err.span_suggestion(
-                    span,
-                    &format!(
-                        "set the type parameter{plural} to the desired type{plural}",
-                        plural = pluralize!(missing_type_params.len()),
-                    ),
-                    format!("{}<{}>", snippet, missing_type_params.join(", ")),
-                    Applicability::HasPlaceholders,
-                );
-                suggested = true;
-            }
-        }
-        if !suggested {
-            err.span_label(
-                span,
-                format!(
-                    "missing reference{} to {}",
-                    pluralize!(missing_type_params.len()),
-                    display,
-                ),
-            );
-        }
-        err.note(
-            "because of the default `Self` reference, type parameters must be \
-                  specified on object types",
-        );
-        err.emit();
+        });
     }
 
     /// When the code is using the `Fn` traits directly, instead of the `Fn(A) -> B` syntax, emit
@@ -172,19 +121,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if is_impl {
             let trait_name = self.tcx().def_path_str(trait_def_id);
-            struct_span_err!(
-                self.tcx().sess,
-                span,
-                E0183,
-                "manual implementations of `{}` are experimental",
-                trait_name,
-            )
-            .span_label(
-                span,
-                format!("manual implementations of `{}` are experimental", trait_name),
-            )
-            .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
-            .emit();
+            self.tcx().sess.emit_err(ManualImplementation { span, trait_name });
         }
     }
 

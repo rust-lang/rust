@@ -3,10 +3,7 @@ use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition,
 };
-use crate::errors::{
-    AssocTypeBindingNotAllowed, ExplicitGenericArgsWithImplTrait,
-    ExplicitGenericArgsWithImplTraitFeature,
-};
+use crate::errors::{AssocTypeBindingNotAllowed, ExplicitGenericArgsWithImplTrait};
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
@@ -639,11 +636,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
                 .collect::<Vec<_>>();
 
-            let mut err = tcx.sess.create_err(ExplicitGenericArgsWithImplTrait { spans });
-            if tcx.sess.is_nightly_build() {
-                err.subdiagnostic(ExplicitGenericArgsWithImplTraitFeature);
-            }
-            err.emit();
+            tcx.sess.emit_err(ExplicitGenericArgsWithImplTrait {
+                spans,
+                is_nightly_build: tcx.sess.is_nightly_build().then_some(()),
+            });
         }
 
         impl_trait

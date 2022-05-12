@@ -3494,22 +3494,21 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
-        let src_dir = self
-            .config
-            .src_base
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("library");
+        let base_dir = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+        let src_dir = base_dir.join("library");
         normalize_path(&src_dir, "$SRC_DIR");
+
+        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+        // `rustc_macros`
+        // eg. /home/user/rust/compiler
+        let compiler_src_dir = base_dir.join("compiler");
+        normalize_path(&compiler_src_dir, "$COMPILER_DIR");
 
         if let Some(virtual_rust_source_base_dir) =
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
         {
             normalize_path(&virtual_rust_source_base_dir.join("library"), "$SRC_DIR");
+            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$COMPILER_DIR");
         }
 
         // Paths into the build directory

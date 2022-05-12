@@ -327,7 +327,7 @@ struct ErrorWithDefaultLabelAttr<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-//~^ ERROR no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
+//~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
 #[error(code = "E0123", slug = "foo")]
 struct ArgFieldWithoutSkip {
     #[primary_span]
@@ -481,4 +481,26 @@ struct VecField {
     #[primary_span]
     #[label]
     spans: Vec<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct UnitField {
+    #[primary_span]
+    spans: Span,
+    #[help]
+    foo: (),
+    #[help = "a"]
+    bar: (),
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct OptUnitField {
+    #[primary_span]
+    spans: Span,
+    #[help]
+    foo: Option<()>,
+    #[help = "a"]
+    bar: Option<()>,
 }

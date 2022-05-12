@@ -99,6 +99,33 @@ typeck-explicit-generic-args-with-impl-trait =
     cannot provide explicit generic arguments when `impl Trait` is used in argument position
     .label = explicit generic argument not allowed
     .note = see issue #83701 <https://github.com/rust-lang/rust/issues/83701> for more information
+    .help = add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
 
-typeck-explicit-generic-args-with-impl-trait-feature =
-    add `#![feature(explicit_generic_args_with_impl_trait)]` to the crate attributes to enable
+typeck-missing-type-params =
+    the type {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be explicitly specified
+    .label = type {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } {$parameters} must be specified for this
+    .suggestion = set the type {$parameterCount ->
+        [one] parameter
+        *[other] parameters
+    } to the desired {$parameterCount ->
+        [one] type
+        *[other] types
+    }
+    .no-suggestion-label = missing {$parameterCount ->
+        [one] reference
+        *[other] references
+    } to {$parameters}
+    .note = because of the default `Self` reference, type parameters must be specified on object types
+
+typeck-manual-implementation =
+    manual implementations of `{$trait_name}` are experimental
+    .label = manual implementations of `{$trait_name}` are experimental
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+typeck-substs-on-overridden-impl = could not resolve substs on overridden impl

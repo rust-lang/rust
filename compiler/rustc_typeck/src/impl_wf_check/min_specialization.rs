@@ -66,6 +66,7 @@
 //! on traits with methods can.
 
 use crate::constrained_generic_params as cgp;
+use crate::errors::SubstsOnOverriddenImpl;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -165,7 +166,7 @@ fn get_impl_substs<'tcx>(
     let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
     infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env, RegionckMode::default());
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
-        tcx.sess.struct_span_err(span, "could not resolve substs on overridden impl").emit();
+        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
         return None;
     };
     Some((impl1_substs, impl2_substs))

@@ -5,10 +5,10 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    report_error_if_not_applied_to_span, type_matches_path, Applicability, FieldInfo, FieldInnerTy,
-    HasFieldMap, SetOnce,
+    report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
+    Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -113,7 +113,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                         quote! {
                             #diag.set_arg(
                                 stringify!(#ident),
-                                #field_binding.into_diagnostic_arg()
+                                #field_binding
                             );
                         }
                     } else {
@@ -388,7 +388,8 @@ impl SessionDiagnosticDeriveBuilder {
     ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
         let diag = &self.diag;
 
-        let name = attr.path.segments.last().unwrap().ident.to_string();
+        let ident = &attr.path.segments.last().unwrap().ident;
+        let name = ident.to_string();
         let name = name.as_str();
 
         let meta = attr.parse_meta()?;
@@ -405,9 +406,18 @@ impl SessionDiagnosticDeriveBuilder {
                         #diag.set_span(#binding);
                     })
                 }
-                "label" | "note" | "help" => {
+                "label" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
-                    Ok(self.add_subdiagnostic(binding, name, name))
+                    Ok(self.add_spanned_subdiagnostic(binding, ident, name))
+                }
+                "note" | "help" => {
+                    if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+                        Ok(self.add_spanned_subdiagnostic(binding, ident, name))
+                    } else if type_is_unit(&info.ty) {
+                        Ok(self.add_subdiagnostic(ident, name))
+                    } else {
+                        report_type_error(attr, "`Span` or `()`")?;
+                    }
                 }
                 "subdiagnostic" => Ok(quote! { #diag.subdiagnostic(#binding); }),
                 _ => throw_invalid_attr!(attr, &meta, |diag| {
@@ -416,9 +426,18 @@ impl SessionDiagnosticDeriveBuilder {
                 }),
             },
             Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(ref s), .. }) => match name {
-                "label" | "note" | "help" => {
+                "label" => {
                     report_error_if_not_applied_to_span(attr, &info)?;
-                    Ok(self.add_subdiagnostic(binding, name, &s.value()))
+                    Ok(self.add_spanned_subdiagnostic(binding, ident, &s.value()))
+                }
+                "note" | "help" => {
+                    if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+                        Ok(self.add_spanned_subdiagnostic(binding, ident, &s.value()))
+                    } else if type_is_unit(&info.ty) {
+                        Ok(self.add_subdiagnostic(ident, &s.value()))
+                    } else {
+                        report_type_error(attr, "`Span` or `()`")?;
+                    }
                 }
                 _ => throw_invalid_attr!(attr, &meta, |diag| {
                     diag.help("only `label`, `note` and `help` are valid field attributes")
@@ -510,12 +529,12 @@ impl SessionDiagnosticDeriveBuilder {
         }
     }
 
-    /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug and
-    /// `fluent_attr_identifier`.
-    fn add_subdiagnostic(
+    /// Adds a spanned subdiagnostic by generating a `diag.span_$kind` call with the current slug
+    /// and `fluent_attr_identifier`.
+    fn add_spanned_subdiagnostic(
         &self,
         field_binding: TokenStream,
-        kind: &str,
+        kind: &Ident,
         fluent_attr_identifier: &str,
     ) -> TokenStream {
         let diag = &self.diag;
@@ -528,6 +547,16 @@ impl SessionDiagnosticDeriveBuilder {
                 #field_binding,
                 rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier)
             );
+        }
+    }
+
+    /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug
+    /// and `fluent_attr_identifier`.
+    fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: &str) -> TokenStream {
+        let diag = &self.diag;
+        let slug = self.slug.as_ref().map(|(slug, _)| slug.as_str()).unwrap_or("missing-slug");
+        quote! {
+            #diag.#kind(rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier));
         }
     }
 

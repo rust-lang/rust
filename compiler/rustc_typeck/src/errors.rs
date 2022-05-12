@@ -1,7 +1,10 @@
 //! Errors emitted by typeck.
-use rustc_errors::Applicability;
+use rustc_errors::{
+    error_code, Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
+};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
+use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -247,8 +250,83 @@ pub struct ExplicitGenericArgsWithImplTrait {
     #[primary_span]
     #[label]
     pub spans: Vec<Span>,
+    #[help]
+    pub is_nightly_build: Option<()>,
 }
 
-#[derive(SessionSubdiagnostic)]
-#[help(slug = "typeck-explicit-generic-args-with-impl-trait-feature")]
-pub struct ExplicitGenericArgsWithImplTraitFeature;
+pub struct MissingTypeParams {
+    pub span: Span,
+    pub def_span: Span,
+    pub missing_type_params: Vec<String>,
+    pub empty_generic_args: bool,
+}
+
+// Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
+impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        static SLUG: &'static str = "typeck-missing-type-params";
+        let mut err = sess.span_diagnostic.struct_span_err_with_code(
+            self.span,
+            DiagnosticMessage::fluent(SLUG),
+            error_code!(E0393),
+        );
+        err.set_arg("parameterCount", self.missing_type_params.len());
+        err.set_arg(
+            "parameters",
+            self.missing_type_params
+                .iter()
+                .map(|n| format!("`{}`", n))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
+
+        err.span_label(self.def_span, DiagnosticMessage::fluent_attr(SLUG, "label"));
+
+        let mut suggested = false;
+        if let (Ok(snippet), true) = (
+            sess.source_map().span_to_snippet(self.span),
+            // Don't suggest setting the type params if there are some already: the order is
+            // tricky to get right and the user will already know what the syntax is.
+            self.empty_generic_args,
+        ) {
+            if snippet.ends_with('>') {
+                // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
+                // we would have to preserve the right order. For now, as clearly the user is
+                // aware of the syntax, we do nothing.
+            } else {
+                // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                // least we can clue them to the correct syntax `Iterator<Type>`.
+                err.span_suggestion(
+                    self.span,
+                    DiagnosticMessage::fluent_attr(SLUG, "suggestion"),
+                    format!("{}<{}>", snippet, self.missing_type_params.join(", ")),
+                    Applicability::HasPlaceholders,
+                );
+                suggested = true;
+            }
+        }
+        if !suggested {
+            err.span_label(self.span, DiagnosticMessage::fluent_attr(SLUG, "no-suggestion-label"));
+        }
+
+        err.note(DiagnosticMessage::fluent_attr(SLUG, "note"));
+        err
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0183", slug = "typeck-manual-implementation")]
+#[help]
+pub struct ManualImplementation {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub trait_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(slug = "typeck-substs-on-overridden-impl")]
+pub struct SubstsOnOverriddenImpl {
+    #[primary_span]
+    pub span: Span,
+}
