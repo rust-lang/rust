@@ -5,7 +5,7 @@ pub use self::imp::read2;
 use std::io;
 use std::process::{Child, Output};
 
-pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
+pub fn read2_abbreviated(mut child: Child, allow_stderr_truncation: bool) -> io::Result<Output> {
     use io::Write;
     use std::mem::replace;
 
@@ -45,6 +45,17 @@ pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
             *self = new_self;
         }
 
+        fn extend_no_truncate(&mut self, data: &[u8]) {
+            match *self {
+                ProcOutput::Full(ref mut bytes) => {
+                    bytes.extend_from_slice(data);
+                }
+                ProcOutput::Abbreviated { .. } => {
+                    panic!("must not use extend_no_truncate on abbreviated output")
+                }
+            };
+        }
+
         fn into_bytes(self) -> Vec<u8> {
             match self {
                 ProcOutput::Full(bytes) => bytes,
@@ -65,7 +76,15 @@ pub fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
         child.stdout.take().unwrap(),
         child.stderr.take().unwrap(),
         &mut |is_stdout, data, _| {
-            if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+            if is_stdout {
+                stdout.extend(data);
+            } else {
+                if allow_stderr_truncation {
+                    stderr.extend(data);
+                } else {
+                    stderr.extend_no_truncate(data);
+                }
+            }
             data.clear();
         },
     )?;

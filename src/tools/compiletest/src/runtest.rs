@@ -1769,8 +1769,10 @@ impl<'test> TestCx<'test> {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
+        // For Ui tests we parse the stderr as json, which breaks if the output gets truncated.
+        let allow_truncation = self.config.mode != Ui;
         let Output { status, stdout, stderr } =
-            read2_abbreviated(child).expect("failed to read output");
+            read2_abbreviated(child, allow_truncation).expect("failed to read output");
 
         let result = ProcRes {
             status,
@@ -2959,7 +2961,8 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = cmd.spawn().and_then(read2_abbreviated).expect("failed to spawn `make`");
+        let output =
+            cmd.spawn().and_then(|c| read2_abbreviated(c, true)).expect("failed to spawn `make`");
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
