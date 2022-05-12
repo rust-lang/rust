@@ -30,8 +30,8 @@ pub struct Annotation {
 #[derive(Debug)]
 pub enum AnnotationKind {
     Runnable(Runnable),
-    HasImpls { position: FilePosition, data: Option<Vec<NavigationTarget>> },
-    HasReferences { position: FilePosition, data: Option<Vec<FileRange>> },
+    HasImpls { file_id: FileId, data: Option<Vec<NavigationTarget>> },
+    HasReferences { file_id: FileId, data: Option<Vec<FileRange>> },
 }
 
 pub struct AnnotationConfig {
@@ -83,10 +83,7 @@ pub(crate) fn annotations(
                             .for_each(|range| {
                                 annotations.push(Annotation {
                                     range,
-                                    kind: AnnotationKind::HasReferences {
-                                        position: FilePosition { file_id, offset: range.start() },
-                                        data: None,
-                                    },
+                                    kind: AnnotationKind::HasReferences { file_id, data: None },
                                 })
                             })
                     }
@@ -107,27 +104,19 @@ pub(crate) fn annotations(
             _ => None,
         };
 
-        let (range, offset) = match range {
-            Some(range) => (range, range.start()),
+        let range = match range {
+            Some(range) => range,
             None => return,
         };
 
         if config.annotate_impls && !matches!(def, Definition::Const(_)) {
-            annotations.push(Annotation {
-                range,
-                kind: AnnotationKind::HasImpls {
-                    position: FilePosition { file_id, offset },
-                    data: None,
-                },
-            });
+            annotations
+                .push(Annotation { range, kind: AnnotationKind::HasImpls { file_id, data: None } });
         }
         if config.annotate_references {
             annotations.push(Annotation {
                 range,
-                kind: AnnotationKind::HasReferences {
-                    position: FilePosition { file_id, offset },
-                    data: None,
-                },
+                kind: AnnotationKind::HasReferences { file_id, data: None },
             });
         }
 
@@ -149,10 +138,7 @@ pub(crate) fn annotations(
         annotations.extend(find_all_methods(db, file_id).into_iter().map(
             |FileRange { file_id, range }| Annotation {
                 range,
-                kind: AnnotationKind::HasReferences {
-                    position: FilePosition { file_id, offset: range.start() },
-                    data: None,
-                },
+                kind: AnnotationKind::HasReferences { file_id, data: None },
             },
         ));
     }
@@ -161,12 +147,19 @@ pub(crate) fn annotations(
 }
 
 pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) -> Annotation {
-    match &mut annotation.kind {
-        AnnotationKind::HasImpls { position, data } => {
-            *data = goto_implementation(db, *position).map(|range| range.info);
+    match annotation.kind {
+        AnnotationKind::HasImpls { file_id, ref mut data } => {
+            *data =
+                goto_implementation(db, FilePosition { file_id, offset: annotation.range.start() })
+                    .map(|range| range.info);
         }
-        AnnotationKind::HasReferences { position, data } => {
-            *data = find_all_refs(&Semantics::new(db), *position, None).map(|result| {
+        AnnotationKind::HasReferences { file_id, ref mut data } => {
+            *data = find_all_refs(
+                &Semantics::new(db),
+                FilePosition { file_id, offset: annotation.range.start() },
+                None,
+            )
+            .map(|result| {
                 result
                     .into_iter()
                     .flat_map(|res| res.references)
@@ -254,12 +247,9 @@ fn main() {
                     Annotation {
                         range: 6..10,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 6,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -275,12 +265,9 @@ fn main() {
                     Annotation {
                         range: 30..36,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 30,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -289,12 +276,9 @@ fn main() {
                     Annotation {
                         range: 53..57,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 53,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -339,12 +323,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -353,12 +334,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -374,12 +352,9 @@ fn main() {
                     Annotation {
                         range: 17..21,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 17,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -428,12 +403,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     NavigationTarget {
@@ -452,12 +424,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -479,12 +448,9 @@ fn main() {
                     Annotation {
                         range: 20..31,
                         kind: HasImpls {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 20,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     NavigationTarget {
@@ -503,12 +469,9 @@ fn main() {
                     Annotation {
                         range: 20..31,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 20,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -524,12 +487,9 @@ fn main() {
                     Annotation {
                         range: 69..73,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 69,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -570,12 +530,9 @@ fn main() {}
                     Annotation {
                         range: 3..7,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 3,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -624,12 +581,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasImpls {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     NavigationTarget {
@@ -648,12 +602,9 @@ fn main() {
                     Annotation {
                         range: 7..11,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 7,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -675,12 +626,9 @@ fn main() {
                     Annotation {
                         range: 33..44,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 33,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [
                                     FileRange {
@@ -696,12 +644,9 @@ fn main() {
                     Annotation {
                         range: 61..65,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 61,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),
@@ -795,12 +740,9 @@ mod tests {
                     Annotation {
                         range: 3..7,
                         kind: HasReferences {
-                            position: FilePosition {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 3,
-                            },
+                            file_id: FileId(
+                                0,
+                            ),
                             data: Some(
                                 [],
                             ),

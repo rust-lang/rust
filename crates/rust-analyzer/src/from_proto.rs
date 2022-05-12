@@ -101,10 +101,7 @@ pub(crate) fn annotation(
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range)?,
-                kind: AnnotationKind::HasImpls {
-                    position: file_position(snap, params.text_document_position_params)?,
-                    data: None,
-                },
+                kind: AnnotationKind::HasImpls { file_id, data: None },
             })
         }
         lsp_ext::CodeLensResolveData::References(params) => {
@@ -113,10 +110,7 @@ pub(crate) fn annotation(
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range)?,
-                kind: AnnotationKind::HasReferences {
-                    position: file_position(snap, params)?,
-                    data: None,
-                },
+                kind: AnnotationKind::HasReferences { file_id, data: None },
             })
         }
     }
