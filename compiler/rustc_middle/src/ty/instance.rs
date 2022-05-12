@@ -8,6 +8,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
+use rustc_span::Symbol;
 
 use std::fmt;
 
@@ -185,8 +186,8 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs(&self, tcx: TyCtxt<'tcx>) -> ty::Attributes<'tcx> {
-        tcx.get_attrs(self.def_id())
+    pub fn get_attrs(&self, tcx: TyCtxt<'tcx>, attr: Symbol) -> ty::Attributes<'tcx> {
+        tcx.get_attrs(self.def_id(), attr)
     }
 
     /// Returns `true` if the LLVM version of this instance is unconditionally

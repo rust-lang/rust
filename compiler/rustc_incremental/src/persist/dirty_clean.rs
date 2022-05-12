@@ -183,10 +183,7 @@ pub struct DirtyCleanVisitor<'tcx> {
 impl<'tcx> DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
     fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
-        if !attr.has_name(sym::rustc_clean) {
-            // skip: not rustc_clean/dirty
-            return None;
-        }
+        assert!(attr.has_name(sym::rustc_clean));
         if !check_config(self.tcx, attr) {
             // skip: not the correct `cfg=`
             return None;
@@ -384,7 +381,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn check_item(&mut self, item_id: LocalDefId) {
         let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
-        for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
+        for attr in self.tcx.get_attrs(item_id.to_def_id(), sym::rustc_clean) {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };

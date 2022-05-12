@@ -49,27 +49,26 @@ struct SymbolNamesTest<'tcx> {
 impl SymbolNamesTest<'_> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
-            if attr.has_name(SYMBOL_NAME) {
-                let def_id = def_id.to_def_id();
-                let instance = Instance::new(
-                    def_id,
-                    tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
-                );
-                let mangled = tcx.symbol_name(instance);
-                tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
-                if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
-                    tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
-                    tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
-                }
-            } else if attr.has_name(DEF_PATH) {
-                let path = with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id()));
-                tcx.sess.span_err(attr.span, &format!("def-path({})", path));
+        // The formatting of `tag({})` is chosen so that tests can elect
+        // to test the entirety of the string, if they choose, or else just
+        // some subset.
+        for attr in tcx.get_attrs(def_id.to_def_id(), SYMBOL_NAME) {
+            let def_id = def_id.to_def_id();
+            let instance = Instance::new(
+                def_id,
+                tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
+            );
+            let mangled = tcx.symbol_name(instance);
+            tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
+            if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
+                tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
+                tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
             }
+        }
 
-            // (*) The formatting of `tag({})` is chosen so that tests can elect
-            // to test the entirety of the string, if they choose, or else just
-            // some subset.
+        for attr in tcx.get_attrs(def_id.to_def_id(), DEF_PATH) {
+            let path = with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id()));
+            tcx.sess.span_err(attr.span, &format!("def-path({})", path));
         }
     }
 }

@@ -1148,9 +1148,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let attrs = self.get_attrs(def_id);
         let get = |name| {
-            let Some(attr) = attrs.iter().find(|a| a.has_name(name)) else {
+            let Some(attr) = self.get_attr(def_id, name) else {
                 return Bound::Unbounded;
             };
             debug!("layout_scalar_valid_range: attr={:?}", attr);

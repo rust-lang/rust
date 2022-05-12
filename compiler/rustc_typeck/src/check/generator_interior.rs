@@ -609,44 +609,43 @@ fn check_must_not_suspend_def(
     hir_id: HirId,
     data: SuspendCheckData<'_, '_>,
 ) -> bool {
-    for attr in tcx.get_attrs(def_id).iter() {
-        if attr.has_name(sym::must_not_suspend) {
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::MUST_NOT_SUSPEND,
-                hir_id,
-                data.source_span,
-                |lint| {
-                    let msg = format!(
-                        "{}`{}`{} held across a suspend point, but should not be",
-                        data.descr_pre,
-                        tcx.def_path_str(def_id),
-                        data.descr_post,
-                    );
-                    let mut err = lint.build(&msg);
+    if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
+        tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::MUST_NOT_SUSPEND,
+            hir_id,
+            data.source_span,
+            |lint| {
+                let msg = format!(
+                    "{}`{}`{} held across a suspend point, but should not be",
+                    data.descr_pre,
+                    tcx.def_path_str(def_id),
+                    data.descr_post,
+                );
+                let mut err = lint.build(&msg);
 
-                    // add span pointing to the offending yield/await
-                    err.span_label(data.yield_span, "the value is held across this suspend point");
+                // add span pointing to the offending yield/await
+                err.span_label(data.yield_span, "the value is held across this suspend point");
 
-                    // Add optional reason note
-                    if let Some(note) = attr.value_str() {
-                        // FIXME(guswynn): consider formatting this better
-                        err.span_note(data.source_span, note.as_str());
-                    }
+                // Add optional reason note
+                if let Some(note) = attr.value_str() {
+                    // FIXME(guswynn): consider formatting this better
+                    err.span_note(data.source_span, note.as_str());
+                }
 
-                    // Add some quick suggestions on what to do
-                    // FIXME: can `drop` work as a suggestion here as well?
-                    err.span_help(
-                        data.source_span,
-                        "consider using a block (`{ ... }`) \
-                        to shrink the value's scope, ending before the suspend point",
-                    );
+                // Add some quick suggestions on what to do
+                // FIXME: can `drop` work as a suggestion here as well?
+                err.span_help(
+                    data.source_span,
+                    "consider using a block (`{ ... }`) \
+                    to shrink the value's scope, ending before the suspend point",
+                );
 
-                    err.emit();
-                },
-            );
+                err.emit();
+            },
+        );
 
-            return true;
-        }
+        true
+    } else {
+        false
     }
-    false
 }

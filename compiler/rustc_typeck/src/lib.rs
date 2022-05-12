@@ -298,17 +298,12 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
-    for attr in tcx.get_attrs(main_def_id) {
-        if attr.has_name(sym::track_caller) {
-            tcx.sess
-                .struct_span_err(
-                    attr.span,
-                    "`main` function is not allowed to be `#[track_caller]`",
-                )
-                .span_label(main_span, "`main` function is not allowed to be `#[track_caller]`")
-                .emit();
-            error = true;
-        }
+    for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
+        tcx.sess
+            .struct_span_err(attr.span, "`main` function is not allowed to be `#[track_caller]`")
+            .span_label(main_span, "`main` function is not allowed to be `#[track_caller]`")
+            .emit();
+        error = true;
     }
 
     if error {

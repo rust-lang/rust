@@ -333,14 +333,11 @@ struct RustcMirAttrs {
 
 impl RustcMirAttrs {
     fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
-        let attrs = tcx.get_attrs(def_id);
-
         let mut result = Ok(());
         let mut ret = RustcMirAttrs::default();
 
-        let rustc_mir_attrs = attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::rustc_mir))
+        let rustc_mir_attrs = tcx
+            .get_attrs(def_id, sym::rustc_mir)
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {

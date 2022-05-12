@@ -551,7 +551,7 @@ impl MissingDoc {
             }
         }
 
-        let attrs = cx.tcx.get_attrs(def_id.to_def_id());
+        let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
             cx.struct_span_lint(
@@ -2738,11 +2738,7 @@ impl ClashingExternDeclarations {
                 // bottleneck, this does just fine.
                 (
                     overridden_link_name,
-                    tcx.get_attrs(fi.def_id.to_def_id())
-                        .iter()
-                        .find(|at| at.has_name(sym::link_name))
-                        .unwrap()
-                        .span,
+                    tcx.get_attr(fi.def_id.to_def_id(), sym::link_name).unwrap().span,
                 )
             })
         {

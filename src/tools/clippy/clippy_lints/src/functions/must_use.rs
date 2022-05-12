@@ -13,13 +13,13 @@ use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_must_use_ty;
-use clippy_utils::{match_def_path, must_use_attr, return_ty, trait_ref_of_method};
+use clippy_utils::{match_def_path, return_ty, trait_ref_of_method};
 
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    let attr = must_use_attr(attrs);
+    let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
     if let hir::ItemKind::Fn(ref sig, _generics, ref body_id) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -44,7 +44,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let attr = must_use_attr(attrs);
+        let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
         } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id).is_none() {
@@ -67,7 +67,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let attr = must_use_attr(attrs);
+        let attr = cx.tcx.get_attr(item.def_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
         } else if let hir::TraitFn::Provided(eid) = *eid {

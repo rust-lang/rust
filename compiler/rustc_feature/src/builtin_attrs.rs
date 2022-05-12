@@ -147,6 +147,16 @@ pub enum AttributeDuplicates {
     FutureWarnPreceding,
 }
 
+/// A conveniece macro to deal with `$($expr)?`.
+macro_rules! or_default {
+    ($default:expr,) => {
+        $default
+    };
+    ($default:expr, $next:expr) => {
+        $next
+    };
+}
+
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
@@ -168,9 +178,10 @@ macro_rules! template {
 }
 
 macro_rules! ungated {
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr $(, @only_local: $only_local:expr)? $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
+            only_local: or_default!(false, $($only_local)?),
             type_: $typ,
             template: $tpl,
             gate: Ungated,
@@ -180,18 +191,20 @@ macro_rules! ungated {
 }
 
 macro_rules! gated {
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $gate:ident, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr $(, @only_local: $only_local:expr)?, $gate:ident, $msg:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
+            only_local: or_default!(false, $($only_local)?),
             type_: $typ,
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
         }
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr $(, @only_local: $only_local:expr)?, $msg:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
+            only_local: or_default!(false, $($only_local)?),
             type_: $typ,
             template: $tpl,
             duplicates: $duplicates,
@@ -201,12 +214,13 @@ macro_rules! gated {
 }
 
 macro_rules! rustc_attr {
-    (TEST, $attr:ident, $typ:expr, $tpl:expr, $duplicate:expr $(,)?) => {
+    (TEST, $attr:ident, $typ:expr, $tpl:expr, $duplicate:expr $(, @only_local: $only_local:expr)? $(,)?) => {
         rustc_attr!(
             $attr,
             $typ,
             $tpl,
             $duplicate,
+            $(@only_local: $only_local,)?
             concat!(
                 "the `#[",
                 stringify!($attr),
@@ -215,9 +229,10 @@ macro_rules! rustc_attr {
             ),
         )
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr $(, @only_local: $only_local:expr)?, $msg:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
+            only_local: or_default!(false, $($only_local)?),
             type_: $typ,
             template: $tpl,
             duplicates: $duplicates,
@@ -237,6 +252,10 @@ const INTERNAL_UNSTABLE: &str = "this is an internal attribute that will never b
 
 pub struct BuiltinAttribute {
     pub name: Symbol,
+    /// Whether this attribute is only used in the local crate.
+    ///
+    /// If so, it is not encoded in the crate metadata.
+    pub only_local: bool,
     pub type_: AttributeType,
     pub template: AttributeTemplate,
     pub duplicates: AttributeDuplicates,
@@ -295,7 +314,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(must_use, Normal, template!(Word, NameValueStr: "reason"), FutureWarnFollowing),
     gated!(
         must_not_suspend, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing,
-        must_not_suspend, experimental!(must_not_suspend)
+        experimental!(must_not_suspend)
     ),
     ungated!(
         deprecated, Normal,
@@ -324,8 +343,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
-    ungated!(no_mangle, Normal, template!(Word), WarnFollowing),
-    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing),
+    ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
+    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -358,8 +377,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(panic_handler, Normal, template!(Word), WarnFollowing), // RFC 2070
 
     // Code generation:
-    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing),
-    ungated!(cold, Normal, template!(Word), WarnFollowing),
+    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, @only_local: true),
+    ungated!(cold, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
     ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
@@ -385,7 +404,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Linking:
-    gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
+    gated!(naked, Normal, template!(Word), WarnFollowing, @only_local: true, naked_functions, experimental!(naked)),
     gated!(
         link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, raw_dylib,
         experimental!(link_ordinal)
@@ -394,6 +413,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Plugins:
     BuiltinAttribute {
         name: sym::plugin,
+        only_local: false,
         type_: CrateLevel,
         template: template!(List: "name"),
         duplicates: DuplicatesOk,
@@ -475,7 +495,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // DuplicatesOk since it has its own validation
     ungated!(
-        stable, Normal, template!(List: r#"feature = "name", since = "version""#), DuplicatesOk
+        stable, Normal, template!(List: r#"feature = "name", since = "version""#), DuplicatesOk,
     ),
     ungated!(
         unstable, Normal,
@@ -546,11 +566,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(
-        linkage, Normal, template!(NameValueStr: "external|internal|..."), ErrorPreceding,
+        linkage, Normal, template!(NameValueStr: "external|internal|..."), ErrorPreceding, @only_local: true,
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
     rustc_attr!(
-        rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+        rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing, @only_local: true, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================
@@ -633,7 +653,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Misc:
     // ==========================================================================
     gated!(
-        lang, Normal, template!(NameValueStr: "name"), DuplicatesOk, lang_items,
+        lang, Normal, template!(NameValueStr: "name"), DuplicatesOk, @only_local: true, lang_items,
         "language items are subject to change",
     ),
     rustc_attr!(
@@ -642,11 +662,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
     rustc_attr!(
-        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing,
+        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
     rustc_attr!(
-        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing,
+        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
@@ -656,6 +676,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
+        // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
+        only_local: false,
         type_: Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
@@ -676,7 +698,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "unboxed_closures are still evolving",
     ),
     rustc_attr!(
-        rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing,
+        rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, @only_local: true,
         "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
@@ -776,6 +798,10 @@ pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
+}
+
+pub fn is_builtin_only_local(name: Symbol) -> bool {
+    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
 }
 
 pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &BuiltinAttribute>> =

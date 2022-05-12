@@ -211,8 +211,8 @@ impl ExternalCrate {
         // Failing that, see if there's an attribute specifying where to find this
         // external crate
         let did = self.crate_num.as_def_id();
-        tcx.get_attrs(did)
-            .lists(sym::doc)
+        tcx.get_attrs(did, sym::doc)
+            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
             .filter(|a| a.has_name(sym::html_root_url))
             .filter_map(|a| a.value_str())
             .map(to_remote)
@@ -226,11 +226,13 @@ impl ExternalCrate {
 
         let as_keyword = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = tcx.get_attrs(def_id);
                 let mut keyword = None;
-                for attr in attrs.lists(sym::doc) {
-                    if attr.has_name(sym::keyword) {
-                        if let Some(v) = attr.value_str() {
+                let meta_items = tcx
+                    .get_attrs(def_id, sym::doc)
+                    .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
+                for meta in meta_items {
+                    if meta.has_name(sym::keyword) {
+                        if let Some(v) = meta.value_str() {
                             keyword = Some(v);
                             break;
                         }
@@ -288,11 +290,13 @@ impl ExternalCrate {
         // rendering by delegating everything to a hash map.
         let as_primitive = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = tcx.get_attrs(def_id);
                 let mut prim = None;
-                for attr in attrs.lists(sym::doc) {
-                    if let Some(v) = attr.value_str() {
-                        if attr.has_name(sym::primitive) {
+                let meta_items = tcx
+                    .get_attrs(def_id, sym::doc)
+                    .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
+                for meta in meta_items {
+                    if let Some(v) = meta.value_str() {
+                        if meta.has_name(sym::primitive) {
                             prim = PrimitiveType::from_symbol(v);
                             if prim.is_some() {
                                 break;
@@ -413,7 +417,10 @@ impl Item {
     }
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        self.item_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
+        self.item_id
+            .as_def_id()
+            .map(|did| tcx.get_attrs_unchecked(did).inner_docs())
+            .unwrap_or(false)
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -464,7 +471,7 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let ast_attrs = cx.tcx.get_attrs(def_id);
+        let ast_attrs = cx.tcx.get_attrs_unchecked(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,

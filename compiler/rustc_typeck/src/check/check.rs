@@ -1056,9 +1056,7 @@ fn check_impl_items_against_trait<'tcx>(
         if let Some(missing_items) = must_implement_one_of {
             let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
             let attr_span = tcx
-                .get_attrs(impl_trait_ref.def_id)
-                .iter()
-                .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
+                .get_attr(impl_trait_ref.def_id, sym::rustc_must_implement_one_of)
                 .map(|attr| attr.span);
 
             missing_items_must_implement_one_of_err(tcx, impl_span, missing_items, attr_span);
@@ -1158,20 +1156,20 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
 pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
-        for attr in tcx.get_attrs(def.did()).iter() {
-            for r in attr::find_repr_attrs(&tcx.sess, attr) {
+        for attr in tcx.get_attrs(def.did(), sym::repr) {
+            for r in attr::parse_repr_attr(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
-                    && let Some(repr_pack) = repr.pack
-                    && pack as u64 != repr_pack.bytes()
-                {
-                            struct_span_err!(
-                                tcx.sess,
-                                sp,
-                                E0634,
-                                "type has conflicting packed representation hints"
-                            )
-                            .emit();
-                }
+                && let Some(repr_pack) = repr.pack
+                && pack as u64 != repr_pack.bytes()
+            {
+                        struct_span_err!(
+                            tcx.sess,
+                            sp,
+                            E0634,
+                            "type has conflicting packed representation hints"
+                        )
+                        .emit();
+            }
             }
         }
         if repr.align.is_some() {
@@ -1321,8 +1319,7 @@ fn check_enum<'tcx>(
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {
-        let attributes = tcx.get_attrs(def_id.to_def_id());
-        if let Some(attr) = tcx.sess.find_by_name(&attributes, sym::repr) {
+        if let Some(attr) = tcx.get_attr(def_id.to_def_id(), sym::repr) {
             struct_span_err!(
                 tcx.sess,
                 attr.span,

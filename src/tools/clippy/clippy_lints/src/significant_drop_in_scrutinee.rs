@@ -290,7 +290,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 
     fn has_sig_drop_attr(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(cx.sess(), cx.tcx.get_attrs(adt.did()), "has_significant_drop").count() > 0 {
+            if get_attr(cx.sess(), cx.tcx.get_attrs_unchecked(adt.did()), "has_significant_drop").count() > 0 {
                 return true;
             }
         }

@@ -258,10 +258,7 @@ impl<'tcx> Queries<'tcx> {
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
         let Some((def_id, _)) = tcx.entry_fn(()) else { return };
-
-        let attrs = &*tcx.get_attrs(def_id);
-        let attrs = attrs.iter().filter(|attr| attr.has_name(sym::rustc_error));
-        for attr in attrs {
+        for attr in tcx.get_attrs(def_id, sym::rustc_error) {
             match attr.meta_item_list() {
                 // Check if there is a `#[rustc_error(delay_span_bug_from_inside_query)]`.
                 Some(list)

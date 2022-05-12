@@ -668,7 +668,7 @@ enum FfiResult<'tcx> {
 }
 
 crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
-    tcx.get_attrs(def.did()).iter().any(|a| a.has_name(sym::rustc_nonnull_optimization_guaranteed))
+    tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
 }
 
 /// `repr(transparent)` structs can have a single non-ZST field, this function returns that

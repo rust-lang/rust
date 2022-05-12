@@ -1200,9 +1200,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         ty::trait_def::TraitSpecializationKind::None
     };
     let must_implement_one_of = tcx
-        .get_attrs(def_id)
-        .iter()
-        .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
+        .get_attr(def_id, sym::rustc_must_implement_one_of)
         // Check that there are at least 2 arguments of `#[rustc_must_implement_one_of]`
         // and that they are all identifiers
         .and_then(|attr| match attr.meta_item_list() {

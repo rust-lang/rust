@@ -14,12 +14,6 @@ pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
-pub use adt::*;
-pub use assoc::*;
-pub use generics::*;
-use rustc_data_structures::fingerprint::Fingerprint;
-pub use vtable::*;
-
 use crate::metadata::ModChild;
 use crate::middle::privacy::AccessLevels;
 use crate::mir::{Body, GeneratorLayout};
@@ -28,8 +22,12 @@ use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::Discr;
+pub use adt::*;
+pub use assoc::*;
+pub use generics::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -44,6 +42,7 @@ use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
+pub use vtable::*;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -1818,8 +1817,8 @@ impl ReprOptions {
             field_shuffle_seed ^= user_seed;
         }
 
-        for attr in tcx.get_attrs(did).iter() {
-            for r in attr::find_repr_attrs(&tcx.sess, attr) {
+        for attr in tcx.get_attrs(did, sym::repr) {
+            for r in attr::parse_repr_attr(&tcx.sess, attr) {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
@@ -1941,8 +1940,7 @@ impl<'tcx> FieldDef {
     }
 }
 
-pub type Attributes<'tcx> = &'tcx [ast::Attribute];
-
+pub type Attributes<'tcx> = impl Iterator<Item = &'tcx ast::Attribute>;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
@@ -2186,8 +2184,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Gets the attributes of a definition.
-    pub fn get_attrs(self, did: DefId) -> Attributes<'tcx> {
+    // FIXME(@lcnr): Remove this function.
+    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
         } else {
@@ -2195,9 +2193,29 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Gets all attributes with the given name.
+    pub fn get_attrs(self, did: DefId, attr: Symbol) -> ty::Attributes<'tcx> {
+        let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
+        if let Some(did) = did.as_local() {
+            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+        } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
+            bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
+        } else {
+            self.item_attrs(did).iter().filter(filter_fn)
+        }
+    }
+
+    pub fn get_attr(self, did: DefId, attr: Symbol) -> Option<&'tcx ast::Attribute> {
+        self.get_attrs(did, attr).next()
+    }
+
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
-        self.sess.contains_name(&self.get_attrs(did), attr)
+        if cfg!(debug_assertions) && !did.is_local() && rustc_feature::is_builtin_only_local(attr) {
+            bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
+        } else {
+            self.get_attrs(did, attr).next().is_some()
+        }
     }
 
     /// Returns `true` if this is an `auto trait`.

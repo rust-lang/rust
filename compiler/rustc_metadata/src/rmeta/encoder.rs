@@ -985,11 +985,17 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn encode_attrs(&mut self, def_id: DefId) {
-        let attrs = self.tcx.get_attrs(def_id);
-        record!(self.tables.attributes[def_id] <- attrs);
-        if attrs.iter().any(|attr| attr.may_have_doc_links()) {
-            self.tables.may_have_doc_links.set(def_id.index, ());
+    fn encode_attrs(&mut self, def_id: LocalDefId) {
+        let mut attrs = self
+            .tcx
+            .hir()
+            .attrs(self.tcx.hir().local_def_id_to_hir_id(def_id))
+            .iter()
+            .filter(|attr| !rustc_feature::is_builtin_only_local(attr.name_or_empty()));
+
+        record!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
+        if attrs.any(|attr| attr.may_have_doc_links()) {
+            self.tables.may_have_doc_links.set(def_id.local_def_index, ());
         }
     }
 
@@ -1005,7 +1011,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let Some(def_kind) = def_kind else { continue };
             self.tables.opt_def_kind.set(def_id.index, def_kind);
             record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
-            self.encode_attrs(def_id);
+            self.encode_attrs(local_id);
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
             if def_kind.has_codegen_attrs() {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
@@ -1670,7 +1676,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             self.tables.opt_def_kind.set(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
-            self.encode_attrs(LOCAL_CRATE.as_def_id());
+            self.encode_attrs(LOCAL_CRATE.as_def_id().expect_local());
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- tcx.visibility(LOCAL_CRATE.as_def_id()));
             if let Some(stability) = stability {
                 record!(self.tables.lookup_stability[LOCAL_CRATE.as_def_id()] <- stability);
@@ -1711,7 +1717,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_id = id.to_def_id();
                 self.tables.opt_def_kind.set(def_id.index, DefKind::Macro(macro_kind));
                 record!(self.tables.kind[def_id] <- EntryKind::ProcMacro(macro_kind));
-                self.encode_attrs(def_id);
+                self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
                 record!(self.tables.def_span[def_id] <- span);

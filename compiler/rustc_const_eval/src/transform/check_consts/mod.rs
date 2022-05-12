@@ -66,8 +66,12 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     }
 }
 
-pub fn rustc_allow_const_fn_unstable(tcx: TyCtxt<'_>, def_id: DefId, feature_gate: Symbol) -> bool {
-    let attrs = tcx.get_attrs(def_id);
+pub fn rustc_allow_const_fn_unstable(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    feature_gate: Symbol,
+) -> bool {
+    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
     attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
 }
 

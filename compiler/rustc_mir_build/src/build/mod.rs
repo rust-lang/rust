@@ -679,7 +679,6 @@ where
     } else {
         None
     };
-    debug!("fn_id {:?} has attrs {:?}", fn_def, tcx.get_attrs(fn_def.did.to_def_id()));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;

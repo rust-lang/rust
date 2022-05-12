@@ -868,154 +868,120 @@ impl IntType {
 /// structure layout, `packed` to remove padding, and `transparent` to delegate representation
 /// concerns to the only non-ZST field.
 pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
-    use ReprAttr::*;
+    if attr.has_name(sym::repr) { parse_repr_attr(sess, attr) } else { Vec::new() }
+}
 
+pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
+    assert!(attr.has_name(sym::repr), "expected `#[repr(..)]`, found: {:?}", attr);
+    use ReprAttr::*;
     let mut acc = Vec::new();
     let diagnostic = &sess.parse_sess.span_diagnostic;
-    if attr.has_name(sym::repr) {
-        if let Some(items) = attr.meta_item_list() {
-            for item in items {
-                let mut recognised = false;
-                if item.is_word() {
-                    let hint = match item.name_or_empty() {
-                        sym::C => Some(ReprC),
-                        sym::packed => Some(ReprPacked(1)),
-                        sym::simd => Some(ReprSimd),
-                        sym::transparent => Some(ReprTransparent),
-                        sym::no_niche => Some(ReprNoNiche),
-                        sym::align => {
-                            let mut err = struct_span_err!(
-                                diagnostic,
-                                item.span(),
-                                E0589,
-                                "invalid `repr(align)` attribute: `align` needs an argument"
-                            );
-                            err.span_suggestion(
-                                item.span(),
-                                "supply an argument here",
-                                "align(...)".to_string(),
-                                Applicability::HasPlaceholders,
-                            );
-                            err.emit();
-                            recognised = true;
-                            None
-                        }
-                        name => int_type_of_word(name).map(ReprInt),
-                    };
 
-                    if let Some(h) = hint {
+    if let Some(items) = attr.meta_item_list() {
+        for item in items {
+            let mut recognised = false;
+            if item.is_word() {
+                let hint = match item.name_or_empty() {
+                    sym::C => Some(ReprC),
+                    sym::packed => Some(ReprPacked(1)),
+                    sym::simd => Some(ReprSimd),
+                    sym::transparent => Some(ReprTransparent),
+                    sym::no_niche => Some(ReprNoNiche),
+                    sym::align => {
+                        let mut err = struct_span_err!(
+                            diagnostic,
+                            item.span(),
+                            E0589,
+                            "invalid `repr(align)` attribute: `align` needs an argument"
+                        );
+                        err.span_suggestion(
+                            item.span(),
+                            "supply an argument here",
+                            "align(...)".to_string(),
+                            Applicability::HasPlaceholders,
+                        );
+                        err.emit();
                         recognised = true;
-                        acc.push(h);
+                        None
                     }
-                } else if let Some((name, value)) = item.name_value_literal() {
-                    let mut literal_error = None;
-                    if name == sym::align {
-                        recognised = true;
-                        match parse_alignment(&value.kind) {
-                            Ok(literal) => acc.push(ReprAlign(literal)),
-                            Err(message) => literal_error = Some(message),
-                        };
-                    } else if name == sym::packed {
-                        recognised = true;
-                        match parse_alignment(&value.kind) {
-                            Ok(literal) => acc.push(ReprPacked(literal)),
-                            Err(message) => literal_error = Some(message),
-                        };
-                    } else if matches!(name, sym::C | sym::simd | sym::transparent | sym::no_niche)
-                        || int_type_of_word(name).is_some()
-                    {
-                        recognised = true;
-                        struct_span_err!(
+                    name => int_type_of_word(name).map(ReprInt),
+                };
+
+                if let Some(h) = hint {
+                    recognised = true;
+                    acc.push(h);
+                }
+            } else if let Some((name, value)) = item.name_value_literal() {
+                let mut literal_error = None;
+                if name == sym::align {
+                    recognised = true;
+                    match parse_alignment(&value.kind) {
+                        Ok(literal) => acc.push(ReprAlign(literal)),
+                        Err(message) => literal_error = Some(message),
+                    };
+                } else if name == sym::packed {
+                    recognised = true;
+                    match parse_alignment(&value.kind) {
+                        Ok(literal) => acc.push(ReprPacked(literal)),
+                        Err(message) => literal_error = Some(message),
+                    };
+                } else if matches!(name, sym::C | sym::simd | sym::transparent | sym::no_niche)
+                    || int_type_of_word(name).is_some()
+                {
+                    recognised = true;
+                    struct_span_err!(
                                 diagnostic,
                                 item.span(),
                                 E0552,
                                 "invalid representation hint: `{}` does not take a parenthesized argument list",
                                 name.to_ident_string(),
                             ).emit();
-                    }
-                    if let Some(literal_error) = literal_error {
-                        struct_span_err!(
+                }
+                if let Some(literal_error) = literal_error {
+                    struct_span_err!(
+                        diagnostic,
+                        item.span(),
+                        E0589,
+                        "invalid `repr({})` attribute: {}",
+                        name.to_ident_string(),
+                        literal_error
+                    )
+                    .emit();
+                }
+            } else if let Some(meta_item) = item.meta_item() {
+                if let MetaItemKind::NameValue(ref value) = meta_item.kind {
+                    if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
+                        let name = meta_item.name_or_empty().to_ident_string();
+                        recognised = true;
+                        let mut err = struct_span_err!(
                             diagnostic,
                             item.span(),
-                            E0589,
-                            "invalid `repr({})` attribute: {}",
-                            name.to_ident_string(),
-                            literal_error
-                        )
-                        .emit();
-                    }
-                } else if let Some(meta_item) = item.meta_item() {
-                    if let MetaItemKind::NameValue(ref value) = meta_item.kind {
-                        if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
-                            let name = meta_item.name_or_empty().to_ident_string();
-                            recognised = true;
-                            let mut err = struct_span_err!(
-                                diagnostic,
-                                item.span(),
-                                E0693,
-                                "incorrect `repr({})` attribute format",
-                                name,
-                            );
-                            match value.kind {
-                                ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                    err.span_suggestion(
-                                        item.span(),
-                                        "use parentheses instead",
-                                        format!("{}({})", name, int),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                ast::LitKind::Str(s, _) => {
-                                    err.span_suggestion(
-                                        item.span(),
-                                        "use parentheses instead",
-                                        format!("{}({})", name, s),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                _ => {}
+                            E0693,
+                            "incorrect `repr({})` attribute format",
+                            name,
+                        );
+                        match value.kind {
+                            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                                err.span_suggestion(
+                                    item.span(),
+                                    "use parentheses instead",
+                                    format!("{}({})", name, int),
+                                    Applicability::MachineApplicable,
+                                );
                             }
-                            err.emit();
-                        } else {
-                            if matches!(
-                                meta_item.name_or_empty(),
-                                sym::C | sym::simd | sym::transparent | sym::no_niche
-                            ) || int_type_of_word(meta_item.name_or_empty()).is_some()
-                            {
-                                recognised = true;
-                                struct_span_err!(
-                                    diagnostic,
-                                    meta_item.span,
-                                    E0552,
-                                    "invalid representation hint: `{}` does not take a value",
-                                    meta_item.name_or_empty().to_ident_string(),
-                                )
-                                .emit();
+                            ast::LitKind::Str(s, _) => {
+                                err.span_suggestion(
+                                    item.span(),
+                                    "use parentheses instead",
+                                    format!("{}({})", name, s),
+                                    Applicability::MachineApplicable,
+                                );
                             }
+                            _ => {}
                         }
-                    } else if let MetaItemKind::List(_) = meta_item.kind {
-                        if meta_item.has_name(sym::align) {
-                            recognised = true;
-                            struct_span_err!(
-                                diagnostic,
-                                meta_item.span,
-                                E0693,
-                                "incorrect `repr(align)` attribute format: \
-                                 `align` takes exactly one argument in parentheses"
-                            )
-                            .emit();
-                        } else if meta_item.has_name(sym::packed) {
-                            recognised = true;
-                            struct_span_err!(
-                                diagnostic,
-                                meta_item.span,
-                                E0552,
-                                "incorrect `repr(packed)` attribute format: \
-                                 `packed` takes exactly one parenthesized argument, \
-                                 or no parentheses at all"
-                            )
-                            .emit();
-                        } else if matches!(
+                        err.emit();
+                    } else {
+                        if matches!(
                             meta_item.name_or_empty(),
                             sym::C | sym::simd | sym::transparent | sym::no_niche
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
@@ -1025,20 +991,57 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                                 diagnostic,
                                 meta_item.span,
                                 E0552,
+                                "invalid representation hint: `{}` does not take a value",
+                                meta_item.name_or_empty().to_ident_string(),
+                            )
+                            .emit();
+                        }
+                    }
+                } else if let MetaItemKind::List(_) = meta_item.kind {
+                    if meta_item.has_name(sym::align) {
+                        recognised = true;
+                        struct_span_err!(
+                            diagnostic,
+                            meta_item.span,
+                            E0693,
+                            "incorrect `repr(align)` attribute format: \
+                                 `align` takes exactly one argument in parentheses"
+                        )
+                        .emit();
+                    } else if meta_item.has_name(sym::packed) {
+                        recognised = true;
+                        struct_span_err!(
+                            diagnostic,
+                            meta_item.span,
+                            E0552,
+                            "incorrect `repr(packed)` attribute format: \
+                                 `packed` takes exactly one parenthesized argument, \
+                                 or no parentheses at all"
+                        )
+                        .emit();
+                    } else if matches!(
+                        meta_item.name_or_empty(),
+                        sym::C | sym::simd | sym::transparent | sym::no_niche
+                    ) || int_type_of_word(meta_item.name_or_empty()).is_some()
+                    {
+                        recognised = true;
+                        struct_span_err!(
+                                diagnostic,
+                                meta_item.span,
+                                E0552,
                                 "invalid representation hint: `{}` does not take a parenthesized argument list",
                                 meta_item.name_or_empty().to_ident_string(),
                             ).emit();
-                        }
                     }
                 }
-                if !recognised {
-                    // Not a word we recognize. This will be caught and reported by
-                    // the `check_mod_attrs` pass, but this pass doesn't always run
-                    // (e.g. if we only pretty-print the source), so we have to gate
-                    // the `delay_span_bug` call as follows:
-                    if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
-                        diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
-                    }
+            }
+            if !recognised {
+                // Not a word we recognize. This will be caught and reported by
+                // the `check_mod_attrs` pass, but this pass doesn't always run
+                // (e.g. if we only pretty-print the source), so we have to gate
+                // the `delay_span_bug` call as follows:
+                if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
+                    diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }
