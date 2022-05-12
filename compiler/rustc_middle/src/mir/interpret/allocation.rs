@@ -667,14 +667,26 @@ impl InitMask {
 
     pub fn new(size: Size, state: bool) -> Self {
         let mut m = InitMask { blocks: vec![], len: Size::ZERO };
-        m.grow(size, state);
+        if size.bytes() != 0 {
+            m.set_range(Size::ZERO, size, state);
+        }
         m
     }
 
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
         let len = self.len;
         if end > len {
-            self.grow(end - len, new_state);
+            let amount = end - len;
+            let unused_trailing_bits =
+                u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE - len.bytes();
+            if amount.bytes() > unused_trailing_bits {
+                let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
+                self.blocks.extend(
+                    // FIXME(oli-obk): optimize this by repeating `new_state as Block`.
+                    iter::repeat(0).take(usize::try_from(additional_blocks).unwrap()),
+                );
+            }
+            self.len = end;
         }
         self.set_range_inbounds(start, end, new_state);
     }
@@ -770,11 +782,11 @@ impl InitMask {
         ///
         /// Note that all examples below are written with 8 (instead of 64) bit blocks for simplicity,
         /// and with the least significant bit (and lowest block) first:
-        ///
-        ///          00000000|00000000
-        ///          ^      ^ ^      ^
-        ///   index: 0      7 8      15
-        ///
+        /// ```text
+        ///        00000000|00000000
+        ///        ^      ^ ^      ^
+        /// index: 0      7 8      15
+        /// ```
         /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the first 1 bit.
         fn find_bit_fast(
             init_mask: &InitMask,
