@@ -1,6 +1,7 @@
 //! Custom formatting traits used when outputting Graphviz diagrams with the results of a dataflow
 //! analysis.
 
+use crate::lattice::{FactArray, FactCache};
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use std::fmt;
@@ -121,6 +122,30 @@ where
         }
 
         fmt_diff(&set_in_self, &cleared_in_self, ctxt, f)
+    }
+}
+
+impl<T: Clone + Eq + fmt::Debug, C, const N: usize> DebugWithContext<C> for FactArray<T, N>
+where
+    T: DebugWithContext<C>,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map()
+            .entries(
+                self.arr
+                    .iter()
+                    .enumerate()
+                    .map(|(i, ref v)| (i, DebugWithAdapter { this: *v, ctxt })),
+            )
+            .finish()
+    }
+}
+
+impl<I: Eq + fmt::Debug, L: Eq + fmt::Debug, F: Eq + fmt::Debug, C, const N: usize>
+    DebugWithContext<C> for FactCache<I, L, F, N>
+{
+    fn fmt_with(&self, _: &C, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
     }
 }
 

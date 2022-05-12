@@ -82,6 +82,7 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
+mod single_enum;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod simplify;
 mod simplify_branches;
@@ -491,6 +492,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
+            &single_enum::SingleEnum,
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,

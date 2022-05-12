@@ -250,3 +250,183 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
         true
     }
 }
+
+macro_rules! packed_int_join_semi_lattice {
+    ($name: ident, $base: ty) => {
+        #[derive(Debug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+        pub struct $name($base);
+        impl $name {
+            pub const TOP: Self = Self(<$base>::MAX);
+            // If the value is too large it will be top, which is more conservative and thus
+            // alright. It is only unsafe to make items bot.
+            #[inline]
+            pub const fn new(v: $base) -> Self {
+                Self(v)
+            }
+
+            #[inline]
+            pub fn saturating_new(v: impl TryInto<$base>) -> Self {
+                v.try_into().map(|v| Self(v)).unwrap_or(Self::TOP)
+            }
+
+            pub const fn inner(self) -> $base {
+                self.0
+            }
+        }
+
+        impl JoinSemiLattice for $name {
+            #[inline]
+            fn join(&mut self, other: &Self) -> bool {
+                match (*self, *other) {
+                    (Self::TOP, _) => false,
+                    (a, b) if a == b => false,
+                    _ => {
+                        *self = Self::TOP;
+                        true
+                    }
+                }
+            }
+        }
+
+        impl<C> crate::fmt::DebugWithContext<C> for $name {
+            fn fmt_with(&self, _: &C, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                if *self == Self::TOP { write!(f, "TOP") } else { write!(f, "{}", self.inner()) }
+            }
+        }
+    };
+}
+
+packed_int_join_semi_lattice!(PackedU8JoinSemiLattice, u8);
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub struct FactArray<T, const N: usize> {
+    // FIXME(julianknodt): maybe map Idxs to each N element?
+    pub arr: [T; N],
+}
+
+impl<T, const N: usize> FactArray<T, N> {
+    #[inline]
+    pub fn insert(&mut self, i: impl Idx, fact: T) {
+        let Some(v) = self.arr.get_mut(i.index()) else { return };
+        *v = fact;
+    }
+    #[inline]
+    pub fn get(&self, i: &impl Idx) -> Option<&T> {
+        self.arr.get(i.index())
+    }
+}
+
+impl<T: JoinSemiLattice, const N: usize> JoinSemiLattice for FactArray<T, N> {
+    fn join(&mut self, other: &Self) -> bool {
+        let mut changed = false;
+        for (a, b) in self.arr.iter_mut().zip(other.arr.iter()) {
+            changed |= a.join(b);
+        }
+        changed
+    }
+}
+
+impl<T: MeetSemiLattice, const N: usize> MeetSemiLattice for FactArray<T, N> {
+    fn meet(&mut self, other: &Self) -> bool {
+        let mut changed = false;
+        for (a, b) in self.arr.iter_mut().zip(other.arr.iter()) {
+            changed |= a.meet(b);
+        }
+        changed
+    }
+}
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub struct FactCache<I, L, F, const N: usize> {
+    facts: [F; N],
+    ord: [(I, L); N],
+    len: usize,
+}
+
+impl<I: Idx, L: Ord + Eq + Copy, F, const N: usize> FactCache<I, L, F, N> {
+    pub fn new(empty_i: I, empty_l: L, empty_f: F) -> Self
+    where
+        F: Copy,
+    {
+        Self { facts: [empty_f; N], ord: [(empty_i, empty_l); N], len: 0 }
+    }
+    /// inserts a fact into the cache, evicting the oldest one,
+    /// Or updating it if there is information on one already. If the new fact being
+    /// inserted is older than the previous fact, it will not be inserted.
+    pub fn insert(&mut self, i: I, l: L, fact: F) {
+        let mut idx = None;
+        for (j, (ci, cl)) in self.ord[..self.len].iter_mut().enumerate() {
+            if *ci == i {
+                assert!(*cl <= l);
+                idx = Some(j);
+                break;
+            }
+        }
+        if idx.is_none() && self.len < N {
+            let new_len = self.len + 1;
+            idx = Some(std::mem::replace(&mut self.len, new_len));
+        };
+        if let Some(idx) = idx {
+            self.facts[idx] = fact;
+            self.ord[idx] = (i, l);
+            return;
+        };
+        let (p, (_, old_l)) = self.ord.iter().enumerate().min_by_key(|k| k.1.1).unwrap();
+        // FIXME(julianknodt) maybe don't make this an assert but just don't update?
+        assert!(*old_l <= l);
+        self.ord[p] = (i, l);
+        self.facts[p] = fact;
+    }
+    pub fn get(&self, i: I) -> Option<(&L, &F)> {
+        let (p, (_, loc)) =
+            self.ord[..self.len].iter().enumerate().find(|(_, iloc)| iloc.0 == i)?;
+        Some((loc, &self.facts[p]))
+    }
+    pub fn remove(&mut self, i: I) -> bool {
+        let Some(pos) = self.ord[..self.len].iter().position(|(ci, _)| *ci == i)
+        else { return false };
+
+        self.remove_idx(pos);
+        return true;
+    }
+    #[inline]
+    fn remove_idx(&mut self, i: usize) {
+        assert!(i < self.len);
+        self.ord.swap(i, self.len);
+        self.facts.swap(i, self.len);
+        self.len -= 1;
+    }
+
+    fn drain_filter(&mut self, mut should_rm: impl FnMut(&I, &mut L, &mut F) -> bool) {
+        let mut i = 0;
+        while i < self.len {
+            let (idx, l) = &mut self.ord[i];
+            let f = &mut self.facts[i];
+            if should_rm(idx, l, f) {
+                self.remove_idx(i);
+                continue;
+            }
+            i += 1;
+        }
+    }
+}
+
+impl<I: Idx, L: Ord + Eq + Copy, F: Eq, const N: usize> JoinSemiLattice for FactCache<I, L, F, N> {
+    fn join(&mut self, other: &Self) -> bool {
+        let mut changed = false;
+        self.drain_filter(|i, l, f| {
+            let Some((other_loc, other_fact)) = other.get(*i) else {
+                changed = true;
+                return true;
+            };
+            if other_fact == f {
+                *l = (*l).max(*other_loc);
+                return false;
+            }
+            changed = true;
+            return true;
+        });
+
+        changed
+    }
+}

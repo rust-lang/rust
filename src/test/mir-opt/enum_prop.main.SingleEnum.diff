@@ -1,0 +1,475 @@
+- // MIR for `main` before SingleEnum
++ // MIR for `main` after SingleEnum
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/enum_prop.rs:3:11: 3:11
+      let _1: i32;                         // in scope 0 at $DIR/enum_prop.rs:4:7: 4:8
+      let mut _2: std::option::Option<std::boxed::Box<i32>>; // in scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+      let mut _3: std::boxed::Box<i32>;    // in scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+      let mut _4: isize;                   // in scope 0 at $DIR/enum_prop.rs:5:5: 5:12
+      let _5: std::boxed::Box<i32>;        // in scope 0 at $DIR/enum_prop.rs:5:10: 5:11
+      let _6: ();                          // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let _7: ();                          // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _8: std::fmt::Arguments;     // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _9: &[&str];                 // in scope 0 at $DIR/enum_prop.rs:6:16: 6:20
+      let mut _10: &[&str; 2];             // in scope 0 at $DIR/enum_prop.rs:6:16: 6:20
+      let _11: &[&str; 2];                 // in scope 0 at $DIR/enum_prop.rs:6:16: 6:20
+      let _12: [&str; 2];                  // in scope 0 at $DIR/enum_prop.rs:6:16: 6:20
+      let mut _13: &[std::fmt::ArgumentV1]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _14: &[std::fmt::ArgumentV1; 1]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let _15: &[std::fmt::ArgumentV1; 1]; // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let _16: [std::fmt::ArgumentV1; 1];  // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _17: std::fmt::ArgumentV1;   // in scope 0 at $DIR/enum_prop.rs:6:22: 6:23
+      let mut _18: &std::boxed::Box<i32>;  // in scope 0 at $DIR/enum_prop.rs:6:22: 6:23
+      let _19: &std::boxed::Box<i32>;      // in scope 0 at $DIR/enum_prop.rs:6:22: 6:23
+      let _20: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _21: (&i32, &i32);           // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _22: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _23: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _24: i32;                        // in scope 0 at $DIR/enum_prop.rs:11:16: 11:18
+      let mut _27: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _28: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _29: i32;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _30: i32;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _31: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _33: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _34: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _35: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _36: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _37: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _38: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _39: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _41: std::option::Option<i32>; // in scope 0 at $DIR/enum_prop.rs:14:17: 14:24
+      let mut _42: isize;                  // in scope 0 at $DIR/enum_prop.rs:15:14: 15:21
+      let _44: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _45: (&i32, &i32);           // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _46: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _47: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _48: i32;                        // in scope 0 at $DIR/enum_prop.rs:18:17: 18:18
+      let mut _51: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _52: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _53: i32;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _54: i32;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _55: !;                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _57: !;                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _58: core::panicking::AssertKind; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _59: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _60: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _61: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let _62: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _63: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _68: bool;                   // in scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      let mut _69: isize;                  // in scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      let mut _70: isize;                  // in scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      let mut _71: isize;                  // in scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      let mut _72: i32;                    // in scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+      scope 1 {
+          debug v => _1;                   // in scope 1 at $DIR/enum_prop.rs:4:7: 4:8
+          let _25: &i32;                   // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          let _26: &i32;                   // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          let _40: i32;                    // in scope 1 at $DIR/enum_prop.rs:14:7: 14:8
+          let _43: &std::option::Option<i32>; // in scope 1 at $DIR/enum_prop.rs:15:5: 15:21
+          let mut _65: &std::option::Option<i32>; // in scope 1 at $DIR/enum_prop.rs:15:5: 15:21
+          let mut _66: &i32;               // in scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          scope 3 {
+              debug left_val => _25;       // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              debug right_val => _26;      // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              let _32: core::panicking::AssertKind; // in scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              scope 4 {
+                  debug kind => _32;       // in scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              }
+          }
+          scope 5 {
+              debug x => _40;              // in scope 5 at $DIR/enum_prop.rs:14:7: 14:8
+              let _49: &i32;               // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              let _50: &i32;               // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              let mut _64: &i32;           // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+              scope 7 {
+                  debug left_val => _49;   // in scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                  debug right_val => _50;  // in scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                  let _56: core::panicking::AssertKind; // in scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                  scope 8 {
+                      debug kind => _56;   // in scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                  }
+              }
+          }
+          scope 6 {
+              debug _y => _43;             // in scope 6 at $DIR/enum_prop.rs:15:5: 15:21
+          }
+      }
+      scope 2 {
+          debug x => _5;                   // in scope 2 at $DIR/enum_prop.rs:5:10: 5:11
+          let mut _67: &[&str; 2];         // in scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          scope 11 (inlined ArgumentV1::new_display::<Box<i32>>) { // at $DIR/enum_prop.rs:6:22: 6:23
+              debug x => _18;              // in scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+              let mut _76: &std::boxed::Box<i32>; // in scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+              let mut _77: for<'r, 's, 't0> fn(&'r std::boxed::Box<i32>, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+              scope 12 (inlined ArgumentV1::new::<Box<i32>>) { // at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  debug x => _76;          // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  debug f => _77;          // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  let mut _78: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  let mut _79: for<'r, 's, 't0> fn(&'r std::boxed::Box<i32>, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  let mut _80: &core::fmt::Opaque; // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  let mut _81: &std::boxed::Box<i32>; // in scope 12 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                  scope 13 {
+                  }
+              }
+          }
+      }
+      scope 9 (inlined Box::<i32>::new) {  // at $DIR/enum_prop.rs:4:22: 4:34
+          debug x => _72;                  // in scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          let mut _73: usize;              // in scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          let mut _74: usize;              // in scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          let mut _75: *mut u8;            // in scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          scope 10 {
+          }
+      }
+  
+      bb0: {
+          _68 = const false;               // scope 0 at $DIR/enum_prop.rs:4:7: 4:8
+          StorageLive(_1);                 // scope 0 at $DIR/enum_prop.rs:4:7: 4:8
+          StorageLive(_2);                 // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          StorageLive(_3);                 // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageLive(_72);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          _72 = const 10_i32;              // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageLive(_73);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageLive(_74);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageLive(_75);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          _73 = const 4_usize;             // scope 10 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          _74 = const 4_usize;             // scope 10 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          _75 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> [return: bb20, unwind: bb21]; // scope 10 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+                                           // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          _1 = const 3_i32;                // scope 0 at $DIR/enum_prop.rs:9:10: 9:11
+          goto -> bb18;                    // scope 0 at $DIR/enum_prop.rs:9:10: 9:11
+      }
+  
+      bb2: {
+          StorageLive(_5);                 // scope 0 at $DIR/enum_prop.rs:5:10: 5:11
+          _68 = const false;               // scope 0 at $DIR/enum_prop.rs:5:10: 5:11
+          _5 = move ((_2 as Some).0: std::boxed::Box<i32>); // scope 0 at $DIR/enum_prop.rs:5:10: 5:11
+          StorageLive(_6);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_7);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_8);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_9);                 // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          StorageLive(_10);                // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          StorageLive(_11);                // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          _67 = const main::promoted[3];   // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+                                           // mir::Constant
+                                           // + span: $DIR/enum_prop.rs:6:16: 6:20
+                                           // + literal: Const { ty: &[&str; 2], val: Unevaluated(main, [], Some(promoted[3])) }
+          _11 = _67;                       // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          _10 = _11;                       // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          _9 = move _10 as &[&str] (Pointer(Unsize)); // scope 2 at $DIR/enum_prop.rs:6:16: 6:20
+          StorageDead(_10);                // scope 2 at $DIR/enum_prop.rs:6:19: 6:20
+          StorageLive(_13);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_14);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_15);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_16);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_17);                // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          StorageLive(_18);                // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          StorageLive(_19);                // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          _19 = &_5;                       // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          _18 = _19;                       // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          StorageLive(_76);                // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _76 = _18;                       // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_77);                // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _77 = <Box<i32> as std::fmt::Display>::fmt as for<'r, 's, 't0> fn(&'r std::boxed::Box<i32>, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> (Pointer(ReifyFnPointer)); // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + literal: Const { ty: for<'r, 's, 't0> fn(&'r Box<i32>, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error> {<Box<i32> as std::fmt::Display>::fmt}, val: Value(Scalar(<ZST>)) }
+          StorageLive(_78);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_79);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _79 = _77;                       // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _78 = transmute::<for<'r, 's, 't0> fn(&'r Box<i32>, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>>(move _79) -> [return: bb22, unwind: bb13]; // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r Box<i32>, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error> {transmute::<for<'r, 's, 't0> fn(&'r Box<i32>, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb3: {
+          StorageDead(_13);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_9);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _7 = _print(move _8) -> [return: bb4, unwind: bb13]; // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + literal: Const { ty: for<'r> fn(Arguments<'r>) {_print}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb4: {
+          StorageDead(_8);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_19);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_16);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_15);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_11);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_7);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_6);                 // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _1 = (*_5);                      // scope 2 at $DIR/enum_prop.rs:7:7: 7:9
+          drop(_5) -> [return: bb5, unwind: bb19]; // scope 0 at $DIR/enum_prop.rs:8:5: 8:6
+      }
+  
+      bb5: {
+          StorageDead(_5);                 // scope 0 at $DIR/enum_prop.rs:8:5: 8:6
+          goto -> bb18;                    // scope 0 at $DIR/enum_prop.rs:8:5: 8:6
+      }
+  
+      bb6: {
+          StorageLive(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_32);                     // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          discriminant(_32) = 0;           // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_33);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_34);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _34 = const core::panicking::AssertKind::Eq; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
+          StorageLive(_35);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_36);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _36 = _25;                       // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _35 = _36;                       // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_37);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_38);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _38 = _26;                       // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _37 = _38;                       // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_39);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_39);                     // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          discriminant(_39) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _33 = core::panicking::assert_failed::<i32, i32>(const core::panicking::AssertKind::Eq, move _35, move _37, move _39); // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r i32, &'s i32, Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
+      }
+  
+      bb7: {
+          StorageDead(_27);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_26);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_25);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_21);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_20);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_40);                // scope 1 at $DIR/enum_prop.rs:14:7: 14:8
+          StorageLive(_41);                // scope 1 at $DIR/enum_prop.rs:14:17: 14:24
+          Deinit(_41);                     // scope 1 at $DIR/enum_prop.rs:14:17: 14:24
+          ((_41 as Some).0: i32) = const 1_i32; // scope 1 at $DIR/enum_prop.rs:14:17: 14:24
+          discriminant(_41) = 1;           // scope 1 at $DIR/enum_prop.rs:14:17: 14:24
+          _42 = const 1_isize;             // scope 1 at $DIR/enum_prop.rs:14:17: 14:24
+          switchInt(const 1_isize) -> [0_isize: bb8, otherwise: bb9]; // scope 1 at $DIR/enum_prop.rs:14:11: 14:24
+      }
+  
+      bb8: {
+          _40 = const 2_i32;               // scope 1 at $DIR/enum_prop.rs:16:13: 16:14
+          goto -> bb10;                    // scope 1 at $DIR/enum_prop.rs:16:13: 16:14
+      }
+  
+      bb9: {
+          StorageLive(_43);                // scope 1 at $DIR/enum_prop.rs:15:5: 15:21
+          _65 = const main::promoted[1];   // scope 1 at $DIR/enum_prop.rs:15:5: 15:21
+                                           // mir::Constant
+                                           // + span: $DIR/enum_prop.rs:15:5: 15:21
+                                           // + literal: Const { ty: &Option<i32>, val: Unevaluated(main, [], Some(promoted[1])) }
+          _43 = _65;                       // scope 1 at $DIR/enum_prop.rs:15:5: 15:21
+          _40 = const 1_i32;               // scope 6 at $DIR/enum_prop.rs:15:25: 15:26
+          StorageDead(_43);                // scope 1 at $DIR/enum_prop.rs:15:25: 15:26
+          goto -> bb10;                    // scope 1 at $DIR/enum_prop.rs:15:25: 15:26
+      }
+  
+      bb10: {
+          StorageDead(_41);                // scope 1 at $DIR/enum_prop.rs:17:4: 17:5
+          StorageLive(_44);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_45);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_46);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _46 = &_40;                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_47);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _64 = const main::promoted[0];   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
+          _47 = _64;                       // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_45);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          (_45.0: &i32) = move _46;        // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          (_45.1: &i32) = move _47;        // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_47);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_46);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_49);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _49 = (_45.0: &i32);             // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_50);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _50 = (_45.1: &i32);             // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_51);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_52);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_53);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _53 = (*_49);                    // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_54);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _54 = const 1_i32;               // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _52 = Eq(move _53, const 1_i32); // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_54);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_53);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _51 = Not(move _52);             // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_52);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          switchInt(move _51) -> [false: bb12, otherwise: bb11]; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      }
+  
+      bb11: {
+          StorageLive(_56);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_56);                     // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          discriminant(_56) = 0;           // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_57);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_58);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _58 = const core::panicking::AssertKind::Eq; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
+          StorageLive(_59);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_60);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _60 = _49;                       // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _59 = _60;                       // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_61);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_62);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _62 = _50;                       // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _61 = _62;                       // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_63);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_63);                     // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          discriminant(_63) = 0;           // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _57 = core::panicking::assert_failed::<i32, i32>(const core::panicking::AssertKind::Eq, move _59, move _61, move _63); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r i32, &'s i32, Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
+      }
+  
+      bb12: {
+          StorageDead(_51);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_50);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_49);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_45);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_44);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_40);                // scope 1 at $DIR/enum_prop.rs:20:1: 20:2
+          StorageDead(_1);                 // scope 0 at $DIR/enum_prop.rs:20:1: 20:2
+          return;                          // scope 0 at $DIR/enum_prop.rs:20:2: 20:2
+      }
+  
+      bb13 (cleanup): {
+          drop(_5) -> bb19;                // scope 0 at $DIR/enum_prop.rs:8:5: 8:6
+      }
+  
+      bb14 (cleanup): {
+          resume;                          // scope 0 at $DIR/enum_prop.rs:3:1: 20:2
+      }
+  
+      bb15: {
+          _68 = const false;               // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+          StorageDead(_2);                 // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+          StorageLive(_20);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_21);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_22);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _22 = &_1;                       // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_23);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _66 = const main::promoted[2];   // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
+                                           // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[2])) }
+          _23 = _66;                       // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          Deinit(_21);                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          (_21.0: &i32) = move _22;        // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          (_21.1: &i32) = move _23;        // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_23);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_22);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_25);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _25 = (_21.0: &i32);             // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_26);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _26 = (_21.1: &i32);             // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_27);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_28);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_29);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _29 = (*_25);                    // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_30);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _30 = const 10_i32;              // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _28 = Eq(move _29, const 10_i32); // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_30);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_29);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _27 = Not(move _28);             // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_28);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          switchInt(move _27) -> [false: bb7, otherwise: bb6]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      }
+  
+      bb16: {
+          switchInt(_68) -> [false: bb15, otherwise: bb17]; // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      }
+  
+      bb17: {
+          drop(((_2 as Some).0: std::boxed::Box<i32>)) -> [return: bb15, unwind: bb14]; // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      }
+  
+      bb18: {
+          _69 = discriminant(_2);          // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+          switchInt(move _69) -> [1_isize: bb16, otherwise: bb15]; // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      }
+  
+      bb19 (cleanup): {
+          _71 = discriminant(_2);          // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+          goto -> bb14;                    // scope 0 at $DIR/enum_prop.rs:10:4: 10:5
+      }
+  
+      bb20: {
+          _3 = ShallowInitBox(move _75, i32); // scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          (*_3) = const 10_i32;            // scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+          StorageDead(_75);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageDead(_74);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageDead(_73);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          StorageDead(_72);                // scope 0 at $DIR/enum_prop.rs:4:22: 4:34
+          _68 = const true;                // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          Deinit(_2);                      // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          ((_2 as Some).0: std::boxed::Box<i32>) = move _3; // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          discriminant(_2) = 1;            // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          StorageDead(_3);                 // scope 0 at $DIR/enum_prop.rs:4:34: 4:35
+-         _4 = discriminant(_2);           // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
++         _4 = const 1_isize;              // scope 0 at $DIR/enum_prop.rs:4:17: 4:35
+          switchInt(move _4) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/enum_prop.rs:4:11: 4:35
+      }
+  
+      bb21 (cleanup): {
+          resume;                          // scope 9 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+      }
+  
+      bb22: {
+          StorageDead(_79);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_80);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_81);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _81 = _76;                       // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          _80 = transmute::<&Box<i32>, &core::fmt::Opaque>(move _81) -> [return: bb23, unwind: bb13]; // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&Box<i32>) -> &core::fmt::Opaque {transmute::<&Box<i32>, &core::fmt::Opaque>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb23: {
+          StorageDead(_81);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          Deinit(_17);                     // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_17.0: &core::fmt::Opaque) = move _80; // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_17.1: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) = move _78; // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageDead(_80);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageDead(_78);                // scope 13 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageDead(_77);                // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageDead(_76);                // scope 11 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageDead(_18);                // scope 2 at $DIR/enum_prop.rs:6:22: 6:23
+          _16 = [move _17];                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_17);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _15 = &_16;                      // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _14 = _15;                       // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _13 = move _14 as &[std::fmt::ArgumentV1] (Pointer(Unsize)); // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_14);                // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _8 = Arguments::new_v1(move _9, move _13) -> [return: bb3, unwind: bb13]; // scope 2 at $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
+                                           // + user_ty: UserType(1)
+                                           // + literal: Const { ty: fn(&[&'static str], &[ArgumentV1]) -> Arguments {Arguments::new_v1}, val: Value(Scalar(<ZST>)) }
+      }
+  }
+  

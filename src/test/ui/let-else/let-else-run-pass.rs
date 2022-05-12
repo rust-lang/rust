@@ -11,7 +11,7 @@ fn main() {
     }
     // ref binding to non-copy value and or-pattern
     let (MyEnum::A(ref x) | MyEnum::B { f: ref x }) = (MyEnum::B { f: String::new() }) else {
-        panic!();
+        panic!("Shouldn't have matched enum");
     };
     assert_eq!(x, "");
 
@@ -25,11 +25,11 @@ fn main() {
             };
             break;
         };
-        panic!();
+        panic!("Shouldn't have matched int");
     }
     assert_eq!(x, 3);
 
     // else return
     let Some(1) = Some(2) else { return };
-    panic!();
+    panic!("Shouldn't have matched");
 }

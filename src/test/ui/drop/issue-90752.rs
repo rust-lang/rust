@@ -14,14 +14,14 @@ fn test(drops: &RefCell<Vec<i32>>) {
     let mut foo = None;
     match foo {
         None => (),
-        _ => return,
+        _ => panic!(),
     }
 
     *(&mut foo) = Some((S(0, drops), S(1, drops))); // Both S(0) and S(1) should be dropped
 
     match foo {
         Some((_x, _)) => {}
-        _ => {}
+        _ => panic!("Should not match"),
     }
 }
 
