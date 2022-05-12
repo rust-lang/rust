@@ -35,6 +35,7 @@
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
 #![feature(map_first_last)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]

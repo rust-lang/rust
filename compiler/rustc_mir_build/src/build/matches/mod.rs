@@ -11,7 +11,7 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use rustc_data_structures::{
-    fx::{FxIndexMap, FxIndexSet},
+    fx::{FxHashSet, FxIndexMap, FxIndexSet},
     stack::ensure_sufficient_stack,
 };
 use rustc_hir::HirId;
@@ -1741,7 +1741,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             all_fake_borrows.push(place.as_ref());
         }
 
-        all_fake_borrows.dedup();
+        // Deduplicate
+        let mut dedup = FxHashSet::default();
+        all_fake_borrows.retain(|b| dedup.insert(*b));
 
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 
