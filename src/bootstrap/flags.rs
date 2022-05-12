@@ -111,6 +111,7 @@ pub enum Subcommand {
         compare_mode: Option<String>,
         pass: Option<String>,
         run: Option<String>,
+        skip: Vec<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -261,6 +262,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         match subcommand {
             Kind::Test => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
+                opts.optmulti("", "skip", "skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times", "SUBSTRING");
                 opts.optmulti(
                     "",
                     "test-args",
@@ -545,6 +547,7 @@ Arguments:
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
                 run: matches.opt_str("run"),
+                skip: matches.opt_strs("skip"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -689,12 +692,26 @@ impl Subcommand {
     }
 
     pub fn test_args(&self) -> Vec<&str> {
+        let mut args = vec![];
+
+        match *self {
+            Subcommand::Test { ref skip, .. } => {
+                for s in skip {
+                    args.push("--skip");
+                    args.push(s.as_str());
+                }
+            }
+            _ => (),
+        };
+
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
+                args.extend(test_args.iter().flat_map(|s| s.split_whitespace()))
             }
-            _ => Vec::new(),
+            _ => (),
         }
+
+        args
     }
 
     pub fn rustc_args(&self) -> Vec<&str> {
