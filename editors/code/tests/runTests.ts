@@ -14,7 +14,7 @@ async function main() {
     let minimalVersion: string = json.engines.vscode;
     if (minimalVersion.startsWith('^')) minimalVersion = minimalVersion.slice(1);
 
-    const launchArgs = ["--disable-extensions"];
+    const launchArgs = ["--disable-extensions", extensionDevelopmentPath];
 
     // All test suites (either unit tests or integration tests) should be in subfolders.
     const extensionTestsPath = path.resolve(__dirname, './unit/index');
