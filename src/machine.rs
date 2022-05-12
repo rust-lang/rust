@@ -24,7 +24,7 @@ use rustc_middle::{
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
@@ -548,11 +548,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
-        let attrs = ecx.tcx.get_attrs(def_id);
-        let link_name = match ecx.tcx.sess.first_attr_value_str_by_name(attrs, sym::link_name) {
-            Some(name) => name,
-            None => ecx.tcx.item_name(def_id),
-        };
+        let link_name = ecx.item_link_name(def_id);
         if let Some(&ptr) = ecx.machine.extern_statics.get(&link_name) {
             Ok(ptr)
         } else {
