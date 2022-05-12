@@ -62,9 +62,9 @@ macro_rules! panic {
 #[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
-    ($($arg:tt)*) => {
-        $crate::io::_print($crate::format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard output, with a newline.
@@ -133,9 +133,9 @@ macro_rules! println {
 #[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
-    ($($arg:tt)*) => {
-        $crate::io::_eprint($crate::format_args!($($arg)*))
-    };
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error, with a newline.
