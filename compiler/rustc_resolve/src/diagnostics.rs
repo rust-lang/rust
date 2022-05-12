@@ -35,6 +35,9 @@ use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, Vis
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet};
 use crate::{Segment, UseError};
 
+#[cfg(test)]
+mod tests;
+
 type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.
@@ -2674,4 +2677,15 @@ fn is_span_suitable_for_use_injection(s: Span) -> bool {
     // don't suggest placing a use before the prelude
     // import or other generated ones
     !s.from_expansion()
+}
+
+/// Convert the given number into the corresponding ordinal
+crate fn ordinalize(v: usize) -> String {
+    let suffix = match ((11..=13).contains(&(v % 100)), v % 10) {
+        (false, 1) => "st",
+        (false, 2) => "nd",
+        (false, 3) => "rd",
+        _ => "th",
+    };
+    format!("{v}{suffix}")
 }

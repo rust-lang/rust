@@ -749,6 +749,10 @@ declare_lint! {
 declare_lint! {
     /// The `unused_macros` lint detects macros that were not used.
     ///
+    /// Note that this lint is distinct from the `unused_macro_rules` lint,
+    /// which checks for single rules that never match of an otherwise used
+    /// macro, and thus never expand.
+    ///
     /// ### Example
     ///
     /// ```rust
@@ -773,6 +777,45 @@ declare_lint! {
     pub UNUSED_MACROS,
     Warn,
     "detects macros that were not used"
+}
+
+declare_lint! {
+    /// The `unused_macro_rules` lint detects macro rules that were not used.
+    ///
+    /// Note that the lint is distinct from the `unused_macros` lint, which
+    /// fires if the entire macro is never called, while this lint fires for
+    /// single unused rules of the macro that is otherwise used.
+    /// `unused_macro_rules` fires only if `unused_macros` wouldn't fire.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// macro_rules! unused_empty {
+    ///     (hello) => { println!("Hello, world!") }; // This rule is unused
+    ///     () => { println!("empty") }; // This rule is used
+    /// }
+    ///
+    /// fn main() {
+    ///     unused_empty!(hello);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unused macro rules may signal a mistake or unfinished code. Furthermore,
+    /// they slow down compilation. Right now, silencing the warning is not
+    /// supported on a single rule level, so you have to add an allow to the
+    /// entire macro definition.
+    ///
+    /// If you intended to export the macro to make it
+    /// available outside of the crate, use the [`macro_export` attribute].
+    ///
+    /// [`macro_export` attribute]: https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope
+    pub UNUSED_MACRO_RULES,
+    Warn,
+    "detects macro rules that were not used"
 }
 
 declare_lint! {
@@ -3104,6 +3147,7 @@ declare_lint_pass! {
         OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         WARNINGS,
         UNUSED_FEATURES,
         STABLE_FEATURES,

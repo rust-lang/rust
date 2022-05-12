@@ -975,6 +975,7 @@ pub struct Resolver<'a> {
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
+    unused_macro_rules: FxHashMap<(LocalDefId, usize), (Ident, Span)>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -1374,6 +1375,7 @@ impl<'a> Resolver<'a> {
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
+            unused_macro_rules: Default::default(),
             proc_macro_stubs: Default::default(),
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),

@@ -886,6 +886,8 @@ pub trait ResolverExpand {
         force: bool,
     ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
 
+    fn record_macro_rule_usage(&mut self, mac_id: NodeId, rule_index: usize);
+
     fn check_unused_macros(&mut self);
 
     // Resolver interfaces for specific built-in macros.
