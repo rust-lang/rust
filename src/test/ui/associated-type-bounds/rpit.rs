@@ -1,5 +1,3 @@
-// run-pass
-
 #![feature(associated_type_bounds)]
 
 use std::ops::Add;
@@ -42,6 +40,7 @@ pub fn use_et3() {
 }
 
 fn def_et4() -> impl Tr1<As1: for<'a> Tr2<'a>> {
+    //~^ ERROR lifetime bounds on nested opaque types are not supported yet
     #[derive(Copy, Clone)]
     struct A;
     impl Tr1 for A {

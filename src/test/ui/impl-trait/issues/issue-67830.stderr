@@ -1,3 +1,11 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-67830.rs:21:62
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+   |                                                              ^^
+   |
+   = help: See https://github.com/rust-lang/rust/issues/96194 for further details
+
 error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-67830.rs:21:14
    |
@@ -7,5 +15,5 @@ LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
    = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

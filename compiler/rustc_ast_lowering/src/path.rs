@@ -180,14 +180,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment: &PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
-                    self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
+                    self.lower_angle_bracketed_parameter_data(data, param_mode, itctx.reborrow())
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => {
@@ -220,7 +220,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
                                 param_mode,
-                                itctx,
+                                itctx.reborrow(),
                             )
                             .0,
                             false,
@@ -248,6 +248,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 segment.id,
                 segment.ident.span,
                 &mut generic_args,
+                itctx,
             );
         }
 
@@ -277,6 +278,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment_id: NodeId,
         segment_ident_span: Span,
         generic_args: &mut GenericArgsCtor<'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) {
         let (start, end) = match self.resolver.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
@@ -305,10 +307,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             0,
             (start.as_u32()..end.as_u32()).map(|i| {
                 let id = NodeId::from_u32(i);
-                let l = self.lower_lifetime(&Lifetime {
-                    id,
-                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
-                });
+                let l = self.lower_lifetime(
+                    &Lifetime {
+                        id,
+                        ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                    },
+                    itctx.reborrow(),
+                );
                 GenericArg::Lifetime(l)
             }),
         );

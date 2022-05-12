@@ -1353,6 +1353,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.kind,
                 bounds,
                 PredicateOrigin::GenericParam,
+                itctx.reborrow(),
             )
         }));
         predicates.extend(
@@ -1388,6 +1389,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: &GenericParamKind,
         bounds: &'hir [hir::GenericBound<'hir>],
         origin: PredicateOrigin,
+        itctx: ImplTraitContext<'_, 'hir>,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
         if bounds.is_empty() {
@@ -1437,7 +1439,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     panic!("Missing resolution for lifetime {:?} at {:?}", id, ident.span)
                 });
                 let lt_id = self.resolver.next_node_id();
-                let lifetime = self.new_named_lifetime_with_res(lt_id, ident_span, ident, res);
+                let lifetime =
+                    self.new_named_lifetime_with_res(lt_id, ident_span, ident, res, itctx);
                 Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     span,
@@ -1474,7 +1477,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             }) => hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                 span: self.lower_span(span),
-                lifetime: self.lower_lifetime(lifetime),
+                lifetime: self.lower_lifetime(
+                    lifetime,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                ),
                 bounds: self.lower_param_bounds(
                     bounds,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
