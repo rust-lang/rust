@@ -1216,9 +1216,9 @@
                 "superType": "type"
             },
             {
-                "id": "char",
+                "id": "character",
                 "description": "Style for character literals",
-                "superType": "type"
+                "superType": "string"
             },
             {
                 "id": "colon",
