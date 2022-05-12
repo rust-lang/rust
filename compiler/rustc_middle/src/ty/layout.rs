@@ -2888,6 +2888,14 @@ pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: Spe
             return false;
         }
 
+        // With `-C panic=abort`, all non-FFI functions are required to not unwind.
+        //
+        // Note that this is true regardless ABI specified on the function -- a `extern "C-unwind"`
+        // function defined in Rust is also required to abort.
+        if tcx.sess.panic_strategy() == PanicStrategy::Abort && !tcx.is_foreign_item(did) {
+            return false;
+        }
+
         // With -Z panic-in-drop=abort, drop_in_place never unwinds.
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
