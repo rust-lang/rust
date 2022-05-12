@@ -19,7 +19,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
-    pub reborrow_hints: bool,
+    pub reborrow_hints: ReborrowHints,
     pub closure_return_type_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
@@ -31,6 +31,13 @@ pub struct InlayHintsConfig {
 pub enum LifetimeElisionHints {
     Always,
     SkipTrivial,
+    Never,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReborrowHints {
+    Always,
+    MutableOnly,
     Never,
 }
 
@@ -372,18 +379,20 @@ fn reborrow_hints(
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
-    if !config.reborrow_hints {
+    if config.reborrow_hints == ReborrowHints::Never {
         return None;
     }
 
     let mutability = sema.is_implicit_reborrow(expr)?;
+    let label = match mutability {
+        hir::Mutability::Shared if config.reborrow_hints != ReborrowHints::MutableOnly => "&*",
+        hir::Mutability::Mut => "&mut *",
+        _ => return None,
+    };
     acc.push(InlayHint {
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrow,
-        label: match mutability {
-            hir::Mutability::Shared => SmolStr::new_inline("&*"),
-            hir::Mutability::Mut => SmolStr::new_inline("&mut *"),
-        },
+        label: SmolStr::new_inline(label),
     });
     Some(())
 }
@@ -848,6 +857,7 @@ mod tests {
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
+    use crate::inlay_hints::ReborrowHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
     const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
@@ -858,7 +868,7 @@ mod tests {
         lifetime_elision_hints: LifetimeElisionHints::Never,
         hide_named_constructor_hints: false,
         closure_return_type_hints: false,
-        reborrow_hints: false,
+        reborrow_hints: ReborrowHints::Always,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
     };
@@ -866,7 +876,7 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
-        reborrow_hints: true,
+        reborrow_hints: ReborrowHints::Always,
         closure_return_type_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
         ..DISABLED_CONFIG
@@ -2146,7 +2156,11 @@ impl () {
     #[test]
     fn hints_implicit_reborrow() {
         check_with_config(
-            InlayHintsConfig { reborrow_hints: true, parameter_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig {
+                reborrow_hints: ReborrowHints::Always,
+                parameter_hints: true,
+                ..DISABLED_CONFIG
+            },
             r#"
 fn __() {
     let unique = &mut ();
