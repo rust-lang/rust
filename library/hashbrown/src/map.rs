@@ -883,7 +883,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// // Map is empty.
     /// assert!(a.is_empty());
     /// // But map capacity is equal to old one.
-    /// assert!(a.capacity() == capacity_before_clear);
+    /// assert_eq!(a.capacity(), capacity_before_clear);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
