@@ -86,6 +86,7 @@ pub struct OwnedHandle {
 /// [the current process handle], and not `INVALID_HANDLE_VALUE`.
 ///
 /// If this holds a non-null handle, it will close the handle on drop.
+///
 /// [the current process handle]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentprocess#remarks
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
