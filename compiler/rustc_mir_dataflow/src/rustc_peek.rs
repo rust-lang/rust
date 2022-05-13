@@ -1,7 +1,6 @@
 use rustc_ast::ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::MirPass;
@@ -197,9 +196,8 @@ impl PeekCall {
             &terminator.kind
         {
             if let ty::FnDef(def_id, substs) = *func.literal.ty().kind() {
-                let sig = tcx.fn_sig(def_id);
                 let name = tcx.item_name(def_id);
-                if sig.abi() != Abi::RustIntrinsic || name != sym::rustc_peek {
+                if !tcx.is_intrinsic(def_id) || name != sym::rustc_peek {
                     return None;
                 }
 

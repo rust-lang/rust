@@ -4,7 +4,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::abi::Abi;
 
 /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
 pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
@@ -34,10 +33,7 @@ fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
             // foreign items cannot be evaluated at compile-time.
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            let is_const = if let Abi::RustIntrinsic | Abi::PlatformIntrinsic =
-                tcx.hir().get_foreign_abi(hir_id)
-            {
+            let is_const = if tcx.is_intrinsic(def_id) {
                 tcx.lookup_const_stability(def_id).is_some()
             } else {
                 false

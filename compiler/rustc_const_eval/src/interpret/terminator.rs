@@ -312,8 +312,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         match instance.def {
-            ty::InstanceDef::Intrinsic(..) => {
-                assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
+            ty::InstanceDef::Intrinsic(def_id) => {
+                assert!(self.tcx.is_intrinsic(def_id));
                 // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }

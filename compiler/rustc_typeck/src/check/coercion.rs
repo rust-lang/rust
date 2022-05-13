@@ -775,17 +775,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.kind() {
             ty::FnPtr(b_sig) => {
                 let a_sig = a.fn_sig(self.tcx);
-                // Intrinsics are not coercible to function pointers
-                if a_sig.abi() == Abi::RustIntrinsic || a_sig.abi() == Abi::PlatformIntrinsic {
-                    return Err(TypeError::IntrinsicCast);
-                }
+                if let ty::FnDef(def_id, _) = *a.kind() {
+                    // Intrinsics are not coercible to function pointers
+                    if self.tcx.is_intrinsic(def_id) {
+                        return Err(TypeError::IntrinsicCast);
+                    }
 
-                // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
-                if let ty::FnDef(def_id, _) = *a.kind()
-                    && b_sig.unsafety() == hir::Unsafety::Normal
-                    && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
-                {
-                    return Err(TypeError::TargetFeatureCast(def_id));
+                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+
+                    if b_sig.unsafety() == hir::Unsafety::Normal
+                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                    {
+                        return Err(TypeError::TargetFeatureCast(def_id));
+                    }
                 }
 
                 let InferOk { value: a_sig, obligations: o1 } =
