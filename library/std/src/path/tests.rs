@@ -7,6 +7,7 @@ use crate::rc::Rc;
 use crate::sync::Arc;
 use core::hint::black_box;
 
+#[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (
     ($path:expr, iter: $iter:expr) => (
         {
