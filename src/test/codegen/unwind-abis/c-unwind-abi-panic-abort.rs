@@ -6,7 +6,7 @@
 #![crate_type = "lib"]
 #![feature(c_unwind)]
 
-// CHECK: @rust_item_that_can_unwind() unnamed_addr #0
+// CHECK: @rust_item_that_can_unwind() unnamed_addr [[ATTR0:#[0-9]+]]
 #[no_mangle]
 pub unsafe extern "C-unwind" fn rust_item_that_can_unwind() {
     // CHECK: call void @_ZN4core9panicking15panic_no_unwind
@@ -14,14 +14,14 @@ pub unsafe extern "C-unwind" fn rust_item_that_can_unwind() {
 }
 
 extern "C-unwind" {
-    // CHECK: @may_unwind() unnamed_addr #1
+    // CHECK: @may_unwind() unnamed_addr [[ATTR1:#[0-9]+]]
     fn may_unwind();
 }
 
 // Now, make sure that the LLVM attributes for this functions are correct.  First, make
 // sure that the first item is correctly marked with the `nounwind` attribute:
 //
-// CHECK: attributes #0 = { {{.*}}nounwind{{.*}} }
+// CHECK: attributes [[ATTR0]] = { {{.*}}nounwind{{.*}} }
 //
 // Now, check that foreign item is correctly marked without the `nounwind` attribute.
-// CHECK-NOT: attributes #1 = { {{.*}}nounwind{{.*}} }
+// CHECK-NOT: attributes [[ATTR1]] = { {{.*}}nounwind{{.*}} }
