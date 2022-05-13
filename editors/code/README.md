@@ -34,7 +34,7 @@ This extension provides support for the [Rust programming language](https://www.
 2. Install the [rust-analyzer extension]
 
 [rustup]: https://rustup.rs
-[rust-analyzer extension]: https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer
+[rust-analyzer extension]: https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer
 
 ## Configuration
 
