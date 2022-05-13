@@ -49,7 +49,9 @@ export async function createClient(serverPath: string, workspace: Workspace, ext
     let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
     // Update outdated user configs
-    await updateConfig(initializationOptions);
+    await updateConfig(initializationOptions).catch(err => {
+        void vscode.window.showErrorMessage(`Failed updating old config keys: ${err.message}`);
+    });
 
     if (workspace.kind === "Detached Files") {
         initializationOptions = { "detachedFiles": workspace.files.map(file => file.uri.fsPath), ...initializationOptions };

@@ -50,12 +50,12 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         hover.documentation -> hover.documentation.enable;
         hover.linksInHover -> hover.links.enable;
         hoverActions.linksInHover -> hover.links.enable;
-        hoverActions.debug -> hoverActions.debug.enable;
-        hoverActions.enable -> hoverActions.enable;
-        hoverActions.gotoTypeDef -> hoverActions.gotoTypeDef.enable;
-        hoverActions.implementations -> hoverActions.implementations.enable;
-        hoverActions.references -> hoverActions.references.enable;
-        hoverActions.run -> hoverActions.run.enable;
+        hoverActions.debug -> hover.actions.debug.enable;
+        hoverActions.enable -> hover.actions.enable;
+        hoverActions.gotoTypeDef -> hover.actions.gotoTypeDef.enable;
+        hoverActions.implementations -> hover.actions.implementations.enable;
+        hoverActions.references -> hover.actions.references.enable;
+        hoverActions.run -> hover.actions.run.enable;
         inlayHints.chainingHints -> inlayHints.chainingHints.enable;
         inlayHints.closureReturnTypeHints -> inlayHints.closureReturnTypeHints.enable;
         inlayHints.hideNamedConstructorHints -> inlayHints.typeHints.hideNamedConstructorHints;

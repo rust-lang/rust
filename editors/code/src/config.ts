@@ -123,12 +123,12 @@ export class Config {
 
     get hoverActions() {
         return {
-            enable: this.get<boolean>("hoverActions.enable"),
-            implementations: this.get<boolean>("hoverActions.implementations.enable"),
-            references: this.get<boolean>("hoverActions.references.enable"),
-            run: this.get<boolean>("hoverActions.run.enable"),
-            debug: this.get<boolean>("hoverActions.debug.enable"),
-            gotoTypeDef: this.get<boolean>("hoverActions.gotoTypeDef.enable"),
+            enable: this.get<boolean>("hover.actions.enable"),
+            implementations: this.get<boolean>("hover.actions.implementations.enable"),
+            references: this.get<boolean>("hover.actions.references.enable"),
+            run: this.get<boolean>("hover.actions.run.enable"),
+            debug: this.get<boolean>("hover.actions.debug.enable"),
+            gotoTypeDef: this.get<boolean>("hover.actions.gotoTypeDef.enable"),
         };
     }
 
@@ -164,12 +164,12 @@ export async function updateConfig(config: vscode.WorkspaceConfiguration) {
         ["hover.documentation", "hover.documentation.enable",],
         ["hover.linksInHover", "hover.links.enable",],
         ["hoverActions.linksInHover", "hover.links.enable",],
-        ["hoverActions.debug", "hoverActions.debug.enable",],
-        ["hoverActions.enable", "hoverActions.enable.enable",],
-        ["hoverActions.gotoTypeDef", "hoverActions.gotoTypeDef.enable",],
-        ["hoverActions.implementations", "hoverActions.implementations.enable",],
-        ["hoverActions.references", "hoverActions.references.enable",],
-        ["hoverActions.run", "hoverActions.run.enable",],
+        ["hoverActions.debug", "hover.actions.debug.enable",],
+        ["hoverActions.enable", "hover.actions.enable.enable",],
+        ["hoverActions.gotoTypeDef", "hover.actions.gotoTypeDef.enable",],
+        ["hoverActions.implementations", "hover.actions.implementations.enable",],
+        ["hoverActions.references", "hover.actions.references.enable",],
+        ["hoverActions.run", "hover.actions.run.enable",],
         ["inlayHints.chainingHints", "inlayHints.chainingHints.enable",],
         ["inlayHints.closureReturnTypeHints", "inlayHints.closureReturnTypeHints.enable",],
         ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructorHints",],
