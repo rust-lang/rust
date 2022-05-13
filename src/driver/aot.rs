@@ -69,7 +69,7 @@ fn emit_module(
         rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
             tcx.sess,
             &name,
-            &Some(tmp_file.clone()),
+            Some(&tmp_file),
         )
     };
 
