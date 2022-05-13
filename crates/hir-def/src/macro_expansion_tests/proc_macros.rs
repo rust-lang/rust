@@ -104,8 +104,7 @@ macro_rules! id {
         $($t)*
     };
 }
-
-id! {
+id /*+errors*/! {
     #[proc_macros::identity]
     impl Foo for WrapBj {
         async fn foo(&self) {
@@ -120,7 +119,7 @@ macro_rules! id {
         $($t)*
     };
 }
-
+/* parse error: expected SEMICOLON */
 #[proc_macros::identity] impl Foo for WrapBj {
     async fn foo(&self ) {
         self .0.id().await ;

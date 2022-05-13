@@ -1062,7 +1062,7 @@ impl<'a> CompletionContext<'a> {
                     let receiver_is_ambiguous_float_literal = match &receiver {
                         Some(ast::Expr::Literal(l)) => matches! {
                             l.kind(),
-                            ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().map_or(false, |it| it.kind() == T![.])
+                            ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().map_or(false, |it| it.text().ends_with('.'))
                         },
                         _ => false,
                     };

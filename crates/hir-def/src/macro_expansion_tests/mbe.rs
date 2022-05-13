@@ -48,6 +48,8 @@ struct#10 MyTraitMap2#32 {#13
 
 #[test]
 fn token_mapping_floats() {
+    // Regression test for https://github.com/rust-lang/rust-analyzer/issues/12216
+    // (and related issues)
     check(
         r#"
 // +tokenids
@@ -87,9 +89,9 @@ macro_rules! f {#0
 // }
 fn#19 main#20(#21)#21 {#22
     1#23;#24
-    1#26.0;
-    let x#31 =#22 1;
-}
+    1.0#25;#26
+    let#27 x#28 =#29 1#30;#31
+}#22
 
 
 "##]],

@@ -35,13 +35,15 @@ pub(crate) fn to_parser_input(buffer: &TokenBuffer) -> parser::Input {
                         let is_negated = lit.text.starts_with('-');
                         let inner_text = &lit.text[if is_negated { 1 } else { 0 }..];
 
-                        let lexed_str = parser::LexedStr::new(inner_text);
-                        if lexed_str.is_empty() {
-                            panic!("failed to convert literal: {:?}", lit);
-                        }
-                        for i in 0..lexed_str.len() {
-                            res.push(lexed_str.kind(i));
-                        }
+                        let kind = parser::LexedStr::single_token(inner_text)
+                            .map(|(kind, _error)| kind)
+                            .filter(|kind| {
+                                kind.is_literal()
+                                    && (!is_negated || matches!(kind, FLOAT_NUMBER | INT_NUMBER))
+                            })
+                            .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &lit));
+
+                        res.push(kind);
                     }
                     tt::Leaf::Ident(ident) => match ident.text.as_ref() {
                         "_" => res.push(T![_]),

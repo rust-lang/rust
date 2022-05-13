@@ -119,15 +119,8 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
 
-    let token = literal.value();
-    let text;
-    let text = match &token {
-        rowan::NodeOrToken::Node(node) => {
-            text = node.text().to_string();
-            &*text
-        }
-        rowan::NodeOrToken::Token(token) => token.text(),
-    };
+    let token = literal.token();
+    let text = token.text();
 
     // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {
