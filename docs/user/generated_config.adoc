@@ -278,7 +278,7 @@ Enables highlighting of all break points for a loop or block context while the c
 +
 --
 Whether to show `Debug` action. Only applies when
-`#rust-analyzer.hoverActions.enable#` is set.
+`#rust-analyzer.hover.actions.enable#` is set.
 --
 [[rust-analyzer.hover.actions.enable]]rust-analyzer.hover.actions.enable (default: `true`)::
 +
@@ -289,25 +289,25 @@ Whether to show HoverActions in Rust files.
 +
 --
 Whether to show `Go to Type Definition` action. Only applies when
-`#rust-analyzer.hoverActions.enable#` is set.
+`#rust-analyzer.hover.actions.enable#` is set.
 --
 [[rust-analyzer.hover.actions.implementations.enable]]rust-analyzer.hover.actions.implementations.enable (default: `true`)::
 +
 --
 Whether to show `Implementations` action. Only applies when
-`#rust-analyzer.hoverActions.enable#` is set.
+`#rust-analyzer.hover.actions.enable#` is set.
 --
 [[rust-analyzer.hover.actions.references.enable]]rust-analyzer.hover.actions.references.enable (default: `false`)::
 +
 --
 Whether to show `References` action. Only applies when
-`#rust-analyzer.hoverActions.enable#` is set.
+`#rust-analyzer.hover.actions.enable#` is set.
 --
 [[rust-analyzer.hover.actions.run.enable]]rust-analyzer.hover.actions.run.enable (default: `true`)::
 +
 --
 Whether to show `Run` action. Only applies when
-`#rust-analyzer.hoverActions.enable#` is set.
+`#rust-analyzer.hover.actions.enable#` is set.
 --
 [[rust-analyzer.hover.documentation.enable]]rust-analyzer.hover.documentation.enable (default: `true`)::
 +

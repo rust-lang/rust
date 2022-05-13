@@ -221,21 +221,21 @@ config_data! {
         highlightRelated_yieldPoints_enable: bool = "true",
 
         /// Whether to show `Debug` action. Only applies when
-        /// `#rust-analyzer.hoverActions.enable#` is set.
+        /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_debug_enable: bool           = "true",
         /// Whether to show HoverActions in Rust files.
         hover_actions_enable: bool          = "true",
         /// Whether to show `Go to Type Definition` action. Only applies when
-        /// `#rust-analyzer.hoverActions.enable#` is set.
+        /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_gotoTypeDef_enable: bool     = "true",
         /// Whether to show `Implementations` action. Only applies when
-        /// `#rust-analyzer.hoverActions.enable#` is set.
+        /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_implementations_enable: bool = "true",
         /// Whether to show `References` action. Only applies when
-        /// `#rust-analyzer.hoverActions.enable#` is set.
+        /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_references_enable: bool      = "false",
         /// Whether to show `Run` action. Only applies when
-        /// `#rust-analyzer.hoverActions.enable#` is set.
+        /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_run_enable: bool             = "true",
 
         /// Whether to show documentation on hover.

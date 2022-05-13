@@ -698,7 +698,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.actions.debug.enable": {
-                    "markdownDescription": "Whether to show `Debug` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Debug` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -708,22 +708,22 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.actions.gotoTypeDef.enable": {
-                    "markdownDescription": "Whether to show `Go to Type Definition` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Go to Type Definition` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.actions.implementations.enable": {
-                    "markdownDescription": "Whether to show `Implementations` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Implementations` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.actions.references.enable": {
-                    "markdownDescription": "Whether to show `References` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `References` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` is set.",
                     "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.actions.run.enable": {
-                    "markdownDescription": "Whether to show `Run` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Run` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
