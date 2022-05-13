@@ -676,17 +676,24 @@ impl InitMask {
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
         let len = self.len;
         if end > len {
-            let amount = end - len;
-            let unused_trailing_bits =
-                u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE - len.bytes();
-            if amount.bytes() > unused_trailing_bits {
-                let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
-                self.blocks.extend(
-                    // FIXME(oli-obk): optimize this by repeating `new_state as Block`.
-                    iter::repeat(0).take(usize::try_from(additional_blocks).unwrap()),
-                );
-            }
+            // grow to the new len
             self.len = end;
+            let grow = end.bytes() - len.bytes();
+            let blocks_bits = u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE;
+
+            // if the unused tailing bits are not enough
+            if grow > blocks_bits - len.bytes() {
+                let additional_blocks = grow / Self::BLOCK_SIZE + 1;
+                let elt = if new_state { u64::MAX } else { 0 };
+                self.blocks
+                    .extend(iter::repeat(elt).take(usize::try_from(additional_blocks).unwrap()));
+
+                // set the remain bits if not growing from `new()`
+                if blocks_bits != 0 {
+                    self.set_range_inbounds(start, Size::from_bytes(blocks_bits), new_state);
+                }
+                return;
+            }
         }
         self.set_range_inbounds(start, end, new_state);
     }
@@ -754,24 +761,6 @@ impl InitMask {
         } else {
             self.blocks[block] &= !(1 << bit);
         }
-    }
-
-    pub fn grow(&mut self, amount: Size, new_state: bool) {
-        if amount.bytes() == 0 {
-            return;
-        }
-        let unused_trailing_bits =
-            u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE - self.len.bytes();
-        if amount.bytes() > unused_trailing_bits {
-            let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
-            self.blocks.extend(
-                // FIXME(oli-obk): optimize this by repeating `new_state as Block`.
-                iter::repeat(0).take(usize::try_from(additional_blocks).unwrap()),
-            );
-        }
-        let start = self.len;
-        self.len += amount;
-        self.set_range_inbounds(start, start + amount, new_state); // `Size` operation
     }
 
     /// Returns the index of the first bit in `start..end` (end-exclusive) that is equal to is_init.
