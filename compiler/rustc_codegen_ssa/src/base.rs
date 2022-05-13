@@ -607,6 +607,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         second_half.iter().rev().interleave(first_half).copied().collect()
     };
 
+    // Calculate the CGU reuse
+    let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
+        codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+    });
+
     // The non-parallel compiler can only translate codegen units to LLVM IR
     // on a single thread, leading to a staircase effect where the N LLVM
     // threads have to wait on the single codegen threads to generate work
@@ -618,7 +623,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
     #[cfg(parallel_compiler)]
-    let pre_compile_cgus = |cgu_reuse: &[CguReuse]| {
+    let pre_compile_cgus = || {
         tcx.sess.time("compile_first_CGU_batch", || {
             // Try to find one CGU to compile per thread.
             let cgus: Vec<_> = cgu_reuse
@@ -643,9 +648,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     };
 
     #[cfg(not(parallel_compiler))]
-    let pre_compile_cgus = |_: &[CguReuse]| (FxHashMap::default(), Duration::new(0, 0));
+    let pre_compile_cgus = || (FxHashMap::default(), Duration::new(0, 0));
 
-    let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
     let mut total_codegen_time = Duration::new(0, 0);
     let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
@@ -656,12 +660,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         // Do some setup work in the first iteration
         if pre_compiled_cgus.is_none() {
-            // Calculate the CGU reuse
-            cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-                codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect()
-            });
             // Pre compile some CGUs
-            let (compiled_cgus, codegen_time) = pre_compile_cgus(&cgu_reuse);
+            let (compiled_cgus, codegen_time) = pre_compile_cgus();
             pre_compiled_cgus = Some(compiled_cgus);
             total_codegen_time += codegen_time;
         }
