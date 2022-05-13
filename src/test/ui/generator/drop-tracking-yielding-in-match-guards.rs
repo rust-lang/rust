@@ -11,15 +11,11 @@
 // Thus, `&'_ u8` should be included in type signature
 // of the underlying generator.
 
-async fn f() -> u8 { 1 }
-
-async fn i(x: u8) {
-    match x {
-        y if f().await == y + 1 => (),
-        _ => (),
-    }
-}
+#![feature(generators)]
 
 fn main() {
-    let _ = i(8);
+    let _ = static |x: u8| match x {
+        y if { yield } == y + 1 => (),
+        _ => (),
+    };
 }
