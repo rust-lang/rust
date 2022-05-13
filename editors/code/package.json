@@ -1,7 +1,7 @@
 {
     "name": "rust-analyzer",
     "displayName": "rust-analyzer",
-    "description": "A language server for the rust programming language",
+    "description": "The future of Rust support in VSCode.",
     "preview": true,
     "private": true,
     "icon": "icon.png",
@@ -9,7 +9,7 @@
     "releaseTag": null,
     "publisher": "rust-lang",
     "repository": {
-        "url": "https://github.com/rust-analyzer/rust-analyzer.git",
+        "url": "https://github.com/rust-lang/rust-analyzer.git",
         "type": "git"
     },
     "homepage": "https://rust-analyzer.github.io/",
