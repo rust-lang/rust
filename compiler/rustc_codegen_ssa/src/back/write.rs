@@ -494,10 +494,10 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let path = module.object.as_ref().cloned();
+        let path = module.object.as_deref();
 
         if let Some((id, product)) =
-            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)
+            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, path)
         {
             work_products.insert(id, product);
         }

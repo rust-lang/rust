@@ -7,13 +7,13 @@ use rustc_fs_util::link_or_copy;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use std::fs as std_fs;
-use std::path::PathBuf;
+use std::path::Path;
 
 /// Copies a CGU work product to the incremental compilation directory, so next compilation can find and reuse it.
 pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
     cgu_name: &str,
-    path: &Option<PathBuf>,
+    path: Option<&Path>,
 ) -> Option<(WorkProductId, WorkProduct)> {
     debug!("copy_cgu_workproduct_to_incr_comp_cache_dir({:?},{:?})", cgu_name, path);
     sess.opts.incremental.as_ref()?;
