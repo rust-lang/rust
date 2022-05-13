@@ -261,14 +261,16 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker).
     CrateRoot,
-    // Catch-all for random `DefId` things like `DUMMY_NODE_ID`.
-    Misc,
 
     // Different kinds of items and item-like things:
     /// An impl.
     Impl,
     /// An `extern` block.
     ForeignMod,
+    /// A `use` item.
+    Use,
+    /// A global asm item.
+    GlobalAsm,
     /// Something in the type namespace.
     TypeNs(Symbol),
     /// Something in the value namespace.
@@ -443,9 +445,8 @@ impl DefPathData {
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | ForeignMod | CrateRoot | Misc | ClosureExpr | Ctor | AnonConst | ImplTrait => {
-                None
-            }
+            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
+            | ImplTrait => None,
         }
     }
 
@@ -459,7 +460,8 @@ impl DefPathData {
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
             ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
-            Misc => DefPathDataName::Anon { namespace: sym::misc },
+            Use => DefPathDataName::Anon { namespace: kw::Use },
+            GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
             ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },

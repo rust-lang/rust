@@ -109,7 +109,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 visit::walk_item(self, i);
                 return self.visit_macro_invoc(i.id);
             }
-            ItemKind::GlobalAsm(..) => DefPathData::Misc,
+            ItemKind::GlobalAsm(..) => DefPathData::GlobalAsm,
             ItemKind::Use(..) => {
                 return visit::walk_item(self, i);
             }
@@ -160,11 +160,11 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
-        self.create_def(id, DefPathData::Misc, use_tree.span);
+        self.create_def(id, DefPathData::Use, use_tree.span);
         match use_tree.kind {
             UseTreeKind::Simple(_, id1, id2) => {
-                self.create_def(id1, DefPathData::Misc, use_tree.prefix.span);
-                self.create_def(id2, DefPathData::Misc, use_tree.prefix.span);
+                self.create_def(id1, DefPathData::Use, use_tree.prefix.span);
+                self.create_def(id2, DefPathData::Use, use_tree.prefix.span);
             }
             UseTreeKind::Glob => (),
             UseTreeKind::Nested(..) => {}
