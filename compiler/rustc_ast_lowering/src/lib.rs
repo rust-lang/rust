@@ -1876,6 +1876,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         res: LifetimeRes,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::Lifetime {
+        fn check_impl_trait_lifetimes(
+            sess: &Session,
+            itctx: ImplTraitContext<'_, '_>,
+            span: Span,
+            note_span: Option<Span>,
+        ) {
+            match itctx {
+                ImplTraitContext::ReturnPositionOpaqueTy { nested: Some(true), .. }
+                | ImplTraitContext::TypeAliasesOpaqueTy => {
+                    let mut err = sess.struct_span_err(
+                        span,
+                        "higher kinded lifetime bounds on nested opaque types are not supported yet",
+                    );
+                    if let Some(span) = note_span {
+                        err.span_note(span, "lifetime declared here");
+                    }
+                    err.help(
+                        "See https://github.com/rust-lang/rust/issues/96194 for further details",
+                    );
+                    err.emit();
+                }
+                _ => {}
+            }
+        }
         debug!(?self.captured_lifetimes);
         let name = match res {
             LifetimeRes::Param { param, binder } => {
@@ -1885,23 +1909,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &mut self.captured_lifetimes
                 {
                     if binders_to_ignore.contains(&binder) {
-                        match itctx {
-                            ImplTraitContext::ReturnPositionOpaqueTy {
-                                nested: Some(true), ..
-                            }
-                            | ImplTraitContext::TypeAliasesOpaqueTy => {
-                                let mut err = self.sess.struct_span_err(
-                                    span,
-                                    "higher kinded lifetime bounds on nested opaque types are not supported yet",
-                                );
-                                if let Some(&(span, _, _, _)) = captures.get(&param) {
-                                    err.span_note(span, "lifetime declared here");
-                                }
-                                err.help("See https://github.com/rust-lang/rust/issues/96194 for further details");
-                                err.emit();
-                            }
-                            _ => {}
-                        }
+                        check_impl_trait_lifetimes(
+                            self.sess,
+                            itctx,
+                            span,
+                            captures.get(&param).map(|cap| cap.0),
+                        );
                     } else {
                         match captures.entry(param) {
                             Entry::Occupied(_) => {}
@@ -1926,23 +1939,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
                     &mut self.captured_lifetimes
-                    && !binders_to_ignore.contains(&binder)
                 {
-                    match captures.entry(param) {
-                        Entry::Occupied(o) => param = self.resolver.local_def_id(o.get().1),
-                        Entry::Vacant(v) => {
-                            let p_id = self.resolver.next_node_id();
-                            let p_def_id = self.resolver.create_def(
-                                *parent_def_id,
-                                p_id,
-                                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                ExpnId::root(),
-                                span.with_parent(None),
-                            );
+                    if binders_to_ignore.contains(&binder) {
+                        check_impl_trait_lifetimes(
+                            self.sess,
+                            itctx,
+                            span,
+                            captures.get(&param).map(|cap| cap.0),
+                        );
+                    } else {
+                        match captures.entry(param) {
+                            Entry::Occupied(o) => param = self.resolver.local_def_id(o.get().1),
+                            Entry::Vacant(v) => {
+                                let p_id = self.resolver.next_node_id();
+                                let p_def_id = self.resolver.create_def(
+                                    *parent_def_id,
+                                    p_id,
+                                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                                    ExpnId::root(),
+                                    span.with_parent(None),
+                                );
 
-                            let p_name = ParamName::Fresh(param);
-                            v.insert((span, p_id, p_name, res));
-                            param = p_def_id;
+                                let p_name = ParamName::Fresh(param);
+                                v.insert((span, p_id, p_name, res));
+                                param = p_def_id;
+                            }
                         }
                     }
                 }
@@ -1957,19 +1978,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 if let Some(LifetimeCaptureContext { parent_def_id, captures, binders_to_ignore }) =
                     &mut self.captured_lifetimes
-                    && !binders_to_ignore.contains(&binder)
                 {
-                    let p_id = self.resolver.next_node_id();
-                    let p_def_id = self.resolver.create_def(
-                        *parent_def_id,
-                        p_id,
-                        DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                        ExpnId::root(),
-                        span.with_parent(None),
-                    );
-                    let p_name = ParamName::Fresh(p_def_id);
-                    captures.insert(p_def_id, (span, p_id, p_name, res));
-                    hir::LifetimeName::Param(p_name)
+                    if binders_to_ignore.contains(&binder) {
+                        check_impl_trait_lifetimes(self.sess, itctx, span, None);
+                        l_name
+                    } else {
+                        let p_id = self.resolver.next_node_id();
+                        let p_def_id = self.resolver.create_def(
+                            *parent_def_id,
+                            p_id,
+                            DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                            ExpnId::root(),
+                            span.with_parent(None),
+                        );
+                        let p_name = ParamName::Fresh(p_def_id);
+                        captures.insert(p_def_id, (span, p_id, p_name, res));
+                        hir::LifetimeName::Param(p_name)
+                    }
                 } else {
                     l_name
                 }
