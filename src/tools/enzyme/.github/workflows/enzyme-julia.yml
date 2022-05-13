@@ -39,10 +39,17 @@ jobs:
       with:
         version: ${{ matrix.version }}
         arch: ${{ matrix.arch }}
+
     - name: Build libEnzyme
+      if: ${{ matrix.os != 'macOS-latest'}}
       run: |
         julia --project=jl/deps -e 'using Pkg; Pkg.instantiate()'
         julia --project=jl/deps jl/deps/build_local.jl ./enzyme
+    - name: Build libEnzyme MacOS
+      if: ${{ matrix.os == 'macOS-latest'}}
+      run: |
+        julia --project=jl/deps -e 'using Pkg; Pkg.instantiate()'
+        SDKROOT=`xcrun --show-sdk-path` julia --project=jl/deps jl/deps/build_local.jl ./enzyme
     - uses: julia-actions/julia-buildpkg@v1
       with:
         project: jl
