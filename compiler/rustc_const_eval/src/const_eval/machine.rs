@@ -18,7 +18,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    OpTy, PlaceTy, Scalar, StackPopUnwind,
+    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -441,6 +441,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    fn expose_ptr(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ptr: Pointer<AllocId>,
+    ) -> InterpResult<'tcx> {
+        Err(ConstEvalErrKind::NeedsRfc("exposing pointers".to_string()).into())
     }
 
     #[inline(always)]

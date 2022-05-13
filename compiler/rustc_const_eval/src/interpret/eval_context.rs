@@ -905,7 +905,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             trace!(
                 "deallocating local {:?}: {:?}",
                 local,
-                self.dump_alloc(ptr.provenance.unwrap().get_alloc_id())
+                // Locals always have a `alloc_id` (they are never the result of a int2ptr).
+                self.dump_alloc(ptr.provenance.unwrap().get_alloc_id().unwrap())
             );
             self.deallocate_ptr(ptr, None, MemoryKind::Stack)?;
         };
@@ -1013,9 +1014,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                 }
 
-                write!(fmt, ": {:?}", self.ecx.dump_allocs(allocs))
+                write!(
+                    fmt,
+                    ": {:?}",
+                    self.ecx.dump_allocs(allocs.into_iter().filter_map(|x| x).collect())
+                )
             }
-            Place::Ptr(mplace) => match mplace.ptr.provenance.map(Provenance::get_alloc_id) {
+            Place::Ptr(mplace) => match mplace.ptr.provenance.and_then(Provenance::get_alloc_id) {
                 Some(alloc_id) => write!(
                     fmt,
                     "by align({}) ref {:?}: {:?}",
