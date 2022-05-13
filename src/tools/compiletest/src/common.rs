@@ -246,6 +246,10 @@ pub struct Config {
     /// Only run tests that match these filters
     pub filters: Vec<String>,
 
+    /// Skip tests tests matching these substrings. Corresponds to
+    /// `test::TestOpts::skip`. `filter_exact` does not apply to these flags.
+    pub skip: Vec<String>,
+
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
 

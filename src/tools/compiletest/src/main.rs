@@ -91,6 +91,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
@@ -236,6 +237,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         debugger: None,
         run_ignored,
         filters: matches.free.clone(),
+        skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
@@ -312,6 +314,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
     logv(c, format!("filters: {:?}", config.filters));
+    logv(c, format!("skip: {:?}", config.skip));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
@@ -506,7 +509,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         shuffle: false,
         shuffle_seed: None,
         test_threads: None,
-        skip: vec![],
+        skip: config.skip.clone(),
         list: false,
         options: test::Options::new(),
         time_options: None,
@@ -595,6 +598,7 @@ fn collect_tests_from_dir(
             debug!("found test file: {:?}", file_path.display());
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
+
             tests.extend(make_test(config, &paths, inputs))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
