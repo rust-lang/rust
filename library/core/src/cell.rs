@@ -197,7 +197,7 @@ use crate::fmt::{self, Debug, Display};
 use crate::marker::Unsize;
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut};
-use crate::ptr;
+use crate::ptr::{self, NonNull};
 
 /// A mutable memory location.
 ///
@@ -896,7 +896,8 @@ impl<T: ?Sized> RefCell<T> {
 
                 // SAFETY: `BorrowRef` ensures that there is only immutable access
                 // to the value while borrowed.
-                Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b })
+                let value = unsafe { NonNull::new_unchecked(self.value.get()) };
+                Ok(Ref { value, borrow: b })
             }
             None => Err(BorrowError {
                 // If a borrow occurred, then we must already have an outstanding borrow,
@@ -1314,7 +1315,9 @@ impl Clone for BorrowRef<'_> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_not_suspend = "holding a Ref across suspend points can cause BorrowErrors"]
 pub struct Ref<'b, T: ?Sized + 'b> {
-    value: &'b T,
+    // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
+    // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
+    value: NonNull<T>,
     borrow: BorrowRef<'b>,
 }
 
@@ -1324,7 +1327,8 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        self.value
+        // SAFETY: the value is accessible as long as we hold our borrow.
+        unsafe { self.value.as_ref() }
     }
 }
 
@@ -1368,7 +1372,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     where
         F: FnOnce(&T) -> &U,
     {
-        Ref { value: f(orig.value), borrow: orig.borrow }
+        Ref { value: NonNull::from(f(&*orig)), borrow: orig.borrow }
     }
 
     /// Makes a new `Ref` for an optional component of the borrowed data. The
@@ -1399,8 +1403,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     where
         F: FnOnce(&T) -> Option<&U>,
     {
-        match f(orig.value) {
-            Some(value) => Ok(Ref { value, borrow: orig.borrow }),
+        match f(&*orig) {
+            Some(value) => Ok(Ref { value: NonNull::from(value), borrow: orig.borrow }),
             None => Err(orig),
         }
     }
@@ -1431,9 +1435,12 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     where
         F: FnOnce(&T) -> (&U, &V),
     {
-        let (a, b) = f(orig.value);
+        let (a, b) = f(&*orig);
         let borrow = orig.borrow.clone();
-        (Ref { value: a, borrow }, Ref { value: b, borrow: orig.borrow })
+        (
+            Ref { value: NonNull::from(a), borrow },
+            Ref { value: NonNull::from(b), borrow: orig.borrow },
+        )
     }
 
     /// Convert into a reference to the underlying data.
@@ -1467,7 +1474,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         // unique reference to the borrowed RefCell. No further mutable references can be created
         // from the original cell.
         mem::forget(orig.borrow);
-        orig.value
+        // SAFETY: after forgetting, we can form a reference for the rest of lifetime `'b`.
+        unsafe { orig.value.as_ref() }
     }
 }
 
