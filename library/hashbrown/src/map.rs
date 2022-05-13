@@ -2138,7 +2138,7 @@ where
 /// [`iter`]: struct.HashMap.html#method.iter
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2188,7 +2188,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// [`iter_mut`]: struct.HashMap.html#method.iter_mut
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2232,13 +2232,14 @@ impl<K, V> IterMut<'_, K, V> {
 /// The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// (provided by the [`IntoIterator`] trait). See its documentation for more.
 /// The map cannot be used after calling that method.
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
 /// [`HashMap`]: struct.HashMap.html
+/// [`IntoIterator`]: https://doc.rust-lang.org/core/iter/trait.IntoIterator.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2282,7 +2283,7 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 /// [`into_keys`]: struct.HashMap.html#method.into_keys
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2344,7 +2345,7 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> 
 /// [`into_values`]: struct.HashMap.html#method.into_values
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2406,7 +2407,7 @@ impl<K, V: Debug, A: Allocator + Clone> fmt::Debug for IntoValues<K, V, A> {
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2454,7 +2455,7 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// [`values`]: struct.HashMap.html#method.values
 /// [`HashMap`]: struct.HashMap.html
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use hashbrown::HashMap;
@@ -2493,13 +2494,34 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
     }
 }
 
-/// A draining iterator over the entries of a `HashMap`.
+/// A draining iterator over the entries of a `HashMap` in arbitrary
+/// order. The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut drain_iter = map.drain();
+/// let mut vec = vec![drain_iter.next(), drain_iter.next(), drain_iter.next()];
+///
+/// // The `Drain` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")), Some((2, "b")), Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(drain_iter.next(), None);
+/// assert_eq!(drain_iter.next(), None);
+/// ```
 pub struct Drain<'a, K, V, A: Allocator + Clone = Global> {
     inner: RawDrain<'a, (K, V), A>,
 }
@@ -2515,13 +2537,37 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
     }
 }
 
-/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate `f`.
+/// A draining iterator over entries of a `HashMap` which don't satisfy the predicate
+/// `f(&k, &mut v)` in arbitrary order. The iterator element type is `(K, V)`.
 ///
 /// This `struct` is created by the [`drain_filter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`drain_filter`]: struct.HashMap.html#method.drain_filter
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<i32, &str> = [(1, "a"), (2, "b"), (3, "c")].into();
+///
+/// let mut drain_filter = map.drain_filter(|k, _v| k % 2 != 0);
+/// let mut vec = vec![drain_filter.next(), drain_filter.next()];
+///
+/// // The `DrainFilter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, [Some((1, "a")),Some((3, "c"))]);
+///
+/// // It is fused iterator
+/// assert_eq!(drain_filter.next(), None);
+/// assert_eq!(drain_filter.next(), None);
+/// drop(drain_filter);
+/// 
+/// assert_eq!(map.len(), 1);
+/// ```
 pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K, &mut V) -> bool,
@@ -2598,13 +2644,33 @@ impl<K, V, A: Allocator + Clone> DrainFilterInner<'_, K, V, A> {
     }
 }
 
-/// A mutable iterator over the values of a `HashMap`.
+/// A mutable iterator over the values of a `HashMap` in arbitrary order.
+/// The iterator element type is `&'a mut V`.
 ///
 /// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
 /// [`values_mut`]: struct.HashMap.html#method.values_mut
 /// [`HashMap`]: struct.HashMap.html
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::HashMap;
+///
+/// let mut map: HashMap<_, _> = [(1, "One".to_owned()), (2, "Two".into())].into();
+///
+/// let mut values = map.values_mut();
+/// values.next().map(|v| v.push_str(" Mississippi"));
+/// values.next().map(|v| v.push_str(" Mississippi"));
+///
+/// // It is fused iterator
+/// assert_eq!(values.next(), None);
+/// assert_eq!(values.next(), None);
+///
+/// assert_eq!(map.get(&1).unwrap(), &"One Mississippi".to_owned());
+/// assert_eq!(map.get(&2).unwrap(), &"Two Mississippi".to_owned());
+/// ```
 pub struct ValuesMut<'a, K, V> {
     inner: IterMut<'a, K, V>,
 }
