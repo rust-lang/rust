@@ -206,7 +206,9 @@ pub struct InternedObligationCauseCode<'tcx> {
 impl<'tcx> From<ObligationCauseCode<'tcx>> for InternedObligationCauseCode<'tcx> {
     #[inline(always)]
     fn from(code: ObligationCauseCode<'tcx>) -> Self {
-        Self { code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) } }
+        Self {
+            code: if let MISC_OBLIGATION_CAUSE_CODE = code { None } else { Some(Lrc::new(code)) },
+        }
     }
 }
 
