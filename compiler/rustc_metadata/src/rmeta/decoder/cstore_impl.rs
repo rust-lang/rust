@@ -215,7 +215,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     impl_polarity => { table_direct }
     impl_defaultness => { table_direct }
     constness => { table_direct }
-    coerce_unsized_info => { table }
+    coerce_unsized_kind => { table }
     mir_const_qualif => { table }
     rendered_const => { table }
     asyncness => { table_direct }

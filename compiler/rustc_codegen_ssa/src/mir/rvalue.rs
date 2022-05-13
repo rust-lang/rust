@@ -225,7 +225,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         operand.val
                     }
                     mir::CastKind::Pointer(PointerCast::Unsize) => {
-                        assert!(bx.cx().is_backend_scalar_pair(cast));
                         let (lldata, llextra) = match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer -- this is a
@@ -240,9 +239,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
                             }
                         };
-                        let (lldata, llextra) =
-                            base::unsize_ptr(&mut bx, lldata, operand.layout.ty, cast.ty, llextra);
-                        OperandValue::Pair(lldata, llextra)
+                        base::unsize_ptr(&mut bx, lldata, operand.layout.ty, cast.ty, llextra)
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
                     | mir::CastKind::Misc

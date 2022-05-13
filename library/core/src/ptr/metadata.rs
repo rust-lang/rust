@@ -59,6 +59,30 @@ pub trait Pointee {
     type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
 }
 
+/// Just the metadata associated with some pointee.
+///
+/// This reattaches the pointee type to the metadata to allow pointee unsizing
+/// to happen.
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(ptr_metadata)]
+///
+/// use std::ptr::TypedMetadata;
+///
+/// // The metadata for any sized type is ()
+/// let sized_metadata: TypedMetadata<[u8; 5]> = TypedMetadata::<[u8; 5]>(());
+///
+/// // But we can coerce the pointee from an array to a slice
+/// let unsized_metadata: TypedMetadata<[u8]> = sized_metadata;
+///
+/// // Now the metadata is the slice length
+/// assert_eq!(unsized_metadata.0, 5);
+/// ```
+#[cfg_attr(not(bootstrap), lang = "typed_metadata")]
+pub struct TypedMetadata<T: ?Sized>(pub <T as Pointee>::Metadata);
+
 /// Pointers to types implementing this trait alias are “thin”.
 ///
 /// This includes statically-`Sized` types and `extern` types.
@@ -218,6 +242,15 @@ unsafe impl<Dyn: ?Sized> Sync for DynMetadata<Dyn> {}
 impl<Dyn: ?Sized> fmt::Debug for DynMetadata<Dyn> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DynMetadata").field(&(self.vtable_ptr as *const VTable)).finish()
+    }
+}
+
+impl<T: ?Sized> fmt::Debug for TypedMetadata<T>
+where
+    <T as Pointee>::Metadata: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("TypedMetadata").field(&self.0 as &dyn fmt::Debug).finish()
     }
 }
 

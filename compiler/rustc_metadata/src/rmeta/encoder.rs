@@ -1482,9 +1482,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     // if this is an impl of `CoerceUnsized`, create its
                     // "unsized info", else just store None
                     if Some(trait_ref.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
-                        let coerce_unsized_info =
-                            self.tcx.at(item.span).coerce_unsized_info(def_id);
-                        record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
+                        let coerce_unsized_kind =
+                            self.tcx.at(item.span).coerce_unsized_kind(def_id);
+                        record!(self.tables.coerce_unsized_kind[def_id] <- coerce_unsized_kind);
                     }
                 }
 

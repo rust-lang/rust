@@ -1466,6 +1466,7 @@ symbols! {
         type_length_limit,
         type_macros,
         type_name,
+        typed_metadata,
         u128,
         u16,
         u32,

@@ -835,8 +835,8 @@ rustc_queries! {
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
-    query coerce_unsized_info(key: DefId) -> ty::adjustment::CoerceUnsizedInfo {
-        desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
+    query coerce_unsized_kind(key: DefId) -> ty::adjustment::CoerceUnsizedKind {
+        desc { |tcx| "computing CoerceUnsized kind for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }

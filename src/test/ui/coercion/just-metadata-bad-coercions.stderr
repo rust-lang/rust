@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/just-metadata-bad-coercions.rs:12:38
+   |
+LL |     let _: TypedMetadata<[Struct]> = struct_metadata;
+   |            -----------------------   ^^^^^^^^^^^^^^^ expected slice, found struct `Struct`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `TypedMetadata<[Struct]>`
+              found struct `TypedMetadata<Struct>`
+
+error[E0277]: the trait bound `Struct: Trait` is not satisfied
+  --> $DIR/just-metadata-bad-coercions.rs:11:39
+   |
+LL |     let _: TypedMetadata<dyn Trait> = struct_metadata;
+   |                                       ^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `Struct`
+   |
+   = note: required for the cast from `Struct` to the object type `dyn Trait`
+
+error[E0308]: mismatched types
+  --> $DIR/just-metadata-bad-coercions.rs:16:35
+   |
+LL |     let _: TypedMetadata<[u32]> = array_metadata;
+   |            --------------------   ^^^^^^^^^^^^^^ expected slice `[u32]`, found array `[u8; 4]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `TypedMetadata<[u32]>`
+              found struct `TypedMetadata<[u8; 4]>`
+
+error[E0308]: mismatched types
+  --> $DIR/just-metadata-bad-coercions.rs:17:36
+   |
+LL |     let _: TypedMetadata<Struct> = array_metadata;
+   |            ---------------------   ^^^^^^^^^^^^^^ expected struct `Struct`, found array `[u8; 4]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `TypedMetadata<Struct>`
+              found struct `TypedMetadata<[u8; 4]>`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

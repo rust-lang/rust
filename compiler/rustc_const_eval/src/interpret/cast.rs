@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar, ScalarMaybeUninit};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
@@ -305,22 +305,37 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         source_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
+        // We *could* forward `data` without even checking that it is initialized, but for now,
+        // let's only allow casting properly initialized pointers.
+        let (data, old_meta) = match *self.read_immediate(src)? {
+            // If the input ptr is thin, use `Uninit` for the old metadata.
+            // `unsize_just_metadata` knows how to handle that.
+            Immediate::Scalar(data) => (data.check_init()?, ScalarMaybeUninit::Uninit),
+            Immediate::ScalarPair(data, meta) => (data.check_init()?, meta),
+        };
+
+        let new_meta = self.unsize_just_metadata(old_meta, source_ty, cast_ty)?;
+        self.write_immediate(Immediate::ScalarPair(data.into(), new_meta.into()), dest)
+    }
+
+    fn unsize_just_metadata(
+        &mut self,
+        src_meta: ScalarMaybeUninit<M::PointerTag>,
+        // The pointee types
+        source_ty: Ty<'tcx>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
             self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env);
 
-        match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
+        Ok(match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
-                let ptr = self.read_immediate(src)?.to_scalar()?;
-                // u64 cast is from usize to u64, which is always good
-                let val =
-                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
-                self.write_immediate(val, dest)
+                Scalar::from_machine_usize(length.eval_usize(*self.tcx, self.param_env), self)
             }
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
-                let val = self.read_immediate(src)?;
                 if data_a.principal_def_id() == data_b.principal_def_id() {
-                    return self.write_immediate(*val, dest);
+                    return src_meta.check_init();
                 }
                 // trait upcasting coercion
                 let vptr_entry_idx = self.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
@@ -330,27 +345,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 if let Some(entry_idx) = vptr_entry_idx {
                     let entry_idx = u64::try_from(entry_idx).unwrap();
-                    let (old_data, old_vptr) = val.to_scalar_pair()?;
+                    let old_vptr = src_meta.check_init()?;
                     let old_vptr = self.scalar_to_ptr(old_vptr)?;
                     let new_vptr = self
                         .read_new_vtable_after_trait_upcasting_from_vtable(old_vptr, entry_idx)?;
-                    self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
+                    Scalar::from_maybe_pointer(new_vptr, self)
                 } else {
-                    self.write_immediate(*val, dest)
+                    src_meta.check_init()?
                 }
             }
             (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable(src_pointee_ty, data.principal())?;
-                let ptr = self.read_immediate(src)?.to_scalar()?;
-                let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
-                self.write_immediate(val, dest)
+                Scalar::from_maybe_pointer(vtable, &*self.tcx)
             }
 
             _ => {
-                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty)
+                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", source_ty, cast_ty)
             }
-        }
+        })
     }
 
     fn unsize_into(
@@ -360,16 +373,40 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
-        match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
-            | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
+        let typed_metadata = self.tcx.lang_items().typed_metadata();
+        match (src.layout.ty.kind(), cast_ty.ty.kind()) {
+            (ty::Ref(_, s, _), ty::Ref(_, c, _) | ty::RawPtr(TypeAndMut { ty: c, .. }))
+            | (ty::RawPtr(TypeAndMut { ty: s, .. }), ty::RawPtr(TypeAndMut { ty: c, .. })) => {
                 self.unsize_into_ptr(src, dest, *s, *c)
             }
-            (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+            (ty::Adt(def_a, _), ty::Adt(def_b, _)) if def_a.is_box() || def_b.is_box() => {
                 assert_eq!(def_a, def_b);
-
+                if !def_a.is_box() || !def_b.is_box() {
+                    span_bug!(
+                        self.cur_span(),
+                        "invalid unsizing between {:?} -> {:?}",
+                        src.layout.ty,
+                        cast_ty.ty
+                    );
+                }
+                self.unsize_into_ptr(src, dest, src.layout.ty.boxed_ty(), cast_ty.ty.boxed_ty())
+            }
+            (ty::Adt(def_a, substs_a), ty::Adt(def_b, substs_b))
+                if def_a == def_b && Some(def_a.did()) == typed_metadata =>
+            {
+                // unsizing of TypedMetadata container
+                // Example: `TypedMetadata<T>` -> `TypedMetadata<dyn Trait>`
+                let a_pointee = substs_a.type_at(0);
+                let b_pointee = substs_b.type_at(0);
+                let src_field = self.operand_field(src, 0)?;
+                let src = self.read_immediate(&src_field)?.to_scalar_or_uninit();
+                let dst_field = self.place_field(dest, 0)?;
+                let new_meta = self.unsize_just_metadata(src, a_pointee, b_pointee)?;
+                self.write_scalar(new_meta, &dst_field)
+            }
+            (ty::Adt(def_a, _), ty::Adt(def_b, _)) if def_a == def_b => {
                 // unsizing of generic struct with pointer fields
-                // Example: `Arc<T>` -> `Arc<Trait>`
+                // Example: `Arc<T>` -> `Arc<dyn Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
                     let cast_ty_field = cast_ty.field(self, i);

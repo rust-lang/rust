@@ -1,4 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
 #![feature(let_else)]

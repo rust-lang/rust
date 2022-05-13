@@ -191,7 +191,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
-use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
+use rustc_middle::ty::adjustment::{CoerceUnsizedKind, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, VtblEntry};
@@ -1106,21 +1106,39 @@ fn find_vtable_types_for_unsizing<'tcx>(
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
-            let CustomCoerceUnsized::Struct(coerce_index) =
-                crate::custom_coerce_unsize_info(tcx, source_ty, target_ty);
+            match crate::custom_coerce_unsize_info(tcx, source_ty, target_ty) {
+                CoerceUnsizedKind::Struct(coerce_index) => {
+                    let source_fields = &source_adt_def.non_enum_variant().fields;
+                    let target_fields = &target_adt_def.non_enum_variant().fields;
 
-            let source_fields = &source_adt_def.non_enum_variant().fields;
-            let target_fields = &target_adt_def.non_enum_variant().fields;
+                    assert!(
+                        coerce_index < source_fields.len()
+                            && source_fields.len() == target_fields.len()
+                    );
 
-            assert!(
-                coerce_index < source_fields.len() && source_fields.len() == target_fields.len()
-            );
-
-            find_vtable_types_for_unsizing(
-                tcx,
-                source_fields[coerce_index].ty(tcx, source_substs),
-                target_fields[coerce_index].ty(tcx, target_substs),
-            )
+                    find_vtable_types_for_unsizing(
+                        tcx,
+                        source_fields[coerce_index].ty(tcx, source_substs),
+                        target_fields[coerce_index].ty(tcx, target_substs),
+                    )
+                }
+                CoerceUnsizedKind::TypedMetadata => {
+                    let typed_metadata = tcx.lang_items().typed_metadata();
+                    if !typed_metadata.is_some() || source_adt_def.did() != typed_metadata.unwrap()
+                    {
+                        bug!(
+                            "find_vtable_types_for_unsizing: tried to treat {:?} as `TypedMetadata`",
+                            source_ty
+                        );
+                    }
+                    ptr_vtable(source_substs.type_at(0), target_substs.type_at(0))
+                }
+                CoerceUnsizedKind::Ptr => bug!(
+                    "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?} with Adt type but Ptr kind",
+                    source_ty,
+                    target_ty
+                ),
+            }
         }
         _ => bug!(
             "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",

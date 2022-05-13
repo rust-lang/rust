@@ -37,6 +37,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, VariantIdx};
 
+use std::assert_matches::assert_matches;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
@@ -197,21 +198,21 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>,
     old_info: Option<Bx::Value>,
-) -> (Bx::Value, Bx::Value) {
+) -> OperandValue<Bx::Value> {
     debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
+    let src_layout = bx.cx().layout_of(src_ty);
+    let dst_layout = bx.cx().layout_of(dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
             let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
+            OperandValue::Pair(bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if bx.cx().is_backend_scalar_pair(dst_layout) => {
             assert_eq!(def_a, def_b);
-            let src_layout = bx.cx().layout_of(src_ty);
-            let dst_layout = bx.cx().layout_of(dst_ty);
             if src_ty == dst_ty {
-                return (src, old_info.unwrap());
+                return OperandValue::Pair(src, old_info.unwrap());
             }
             let mut result = None;
             for i in 0..src_layout.fields.count() {
@@ -226,16 +227,29 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
                 let dst_f = dst_layout.field(bx.cx(), i);
                 assert_ne!(src_f.ty, dst_f.ty);
-                assert_eq!(result, None);
+                assert_matches!(result, None);
                 result = Some(unsize_ptr(bx, src, src_f.ty, dst_f.ty, old_info));
             }
-            let (lldata, llextra) = result.unwrap();
+            let OperandValue::Pair(lldata, llextra) = result.unwrap()
+            else { bug!() };
             let lldata_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true);
             let llextra_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true);
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
+            OperandValue::Pair(bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
         }
-        _ => bug!("unsize_ptr: called on bad types"),
+        (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) => {
+            assert_eq!(def_a, def_b);
+            let typed_metadata = bx.tcx().require_lang_item(LangItem::TypedMetadata, None);
+            assert_eq!(def_a.did(), typed_metadata);
+            if src_ty == dst_ty {
+                return OperandValue::Immediate(src);
+            }
+            let a = substs_a.type_at(0);
+            let b = substs_b.type_at(0);
+            assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
+            OperandValue::Immediate(unsized_info(bx, a, b, old_info))
+        }
+        _ => bug!("unsize_ptr: called on bad types {:?} -> {:?}", src_ty, dst_ty),
     }
 }
 
@@ -250,12 +264,12 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let dst_ty = dst.layout.ty;
     match (src_ty.kind(), dst_ty.kind()) {
         (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
-            let (base, info) = match bx.load_operand(src).val {
+            let val = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
                 OperandValue::Ref(..) => bug!(),
             };
-            OperandValue::Pair(base, info).store(bx, dst);
+            val.store(bx, dst);
         }
 
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {

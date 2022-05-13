@@ -10,7 +10,7 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
+use rustc_middle::ty::adjustment::CoerceUnsizedKind;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
@@ -195,7 +195,7 @@ fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: Loc
     // errors; other parts of the code may demand it for the info of
     // course.
     let span = tcx.def_span(impl_did);
-    tcx.at(span).coerce_unsized_info(impl_did);
+    tcx.at(span).coerce_unsized_kind(impl_did);
 }
 
 fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
@@ -363,8 +363,8 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
     })
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
-    debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
+pub fn coerce_unsized_kind<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedKind {
+    debug!("compute_coerce_unsized_kind(impl_did={:?})", impl_did);
 
     // this provider should only get invoked for local def-ids
     let impl_did = impl_did.expect_local();
@@ -376,6 +376,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
     });
 
+    let typed_metadata = tcx.lang_items().typed_metadata();
+
     let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
@@ -385,7 +387,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
-    let err_info = CoerceUnsizedInfo { custom_kind: None };
+    let err_info = CoerceUnsizedKind::Ptr;
 
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
 
@@ -405,7 +407,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     )
                     .emit();
             }
-            (mt_a.ty, mt_b.ty, unsize_trait, None)
+            (mt_a.ty, mt_b.ty, unsize_trait, CoerceUnsizedKind::Ptr)
         };
         let (source, target, trait_def_id, kind) = match (source.kind(), target.kind()) {
             (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
@@ -422,6 +424,17 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
             (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
                 check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
+            }
+
+            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b))
+                if Some(def_a.did()) == typed_metadata && Some(def_b.did()) == typed_metadata =>
+            {
+                (
+                    substs_a.type_at(0),
+                    substs_b.type_at(0),
+                    unsize_trait,
+                    CoerceUnsizedKind::TypedMetadata,
+                )
             }
 
             (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b))
@@ -566,8 +579,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 }
 
                 let (i, a, b) = diff_fields[0];
-                let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
-                (a, b, coerce_unsized_trait, Some(kind))
+                (a, b, coerce_unsized_trait, CoerceUnsizedKind::Struct(i))
             }
 
             _ => {
@@ -608,6 +620,6 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         let outlives_env = OutlivesEnvironment::new(param_env);
         infcx.resolve_regions_and_report_errors(impl_did.to_def_id(), &outlives_env);
 
-        CoerceUnsizedInfo { custom_kind: kind }
+        kind
     })
 }

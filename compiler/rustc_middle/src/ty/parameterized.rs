@@ -59,7 +59,7 @@ trivially_parameterized_over_tcx! {
     ty::ReprOptions,
     ty::TraitDef,
     ty::Visibility,
-    ty::adjustment::CoerceUnsizedInfo,
+    ty::adjustment::CoerceUnsizedKind,
     ty::fast_reject::SimplifiedTypeGen<DefId>,
     rustc_ast::Attribute,
     rustc_ast::MacArgs,
