@@ -417,7 +417,7 @@ pub(super) fn write_shared(
             ));
             all_sources.sort();
             Ok(format!(
-                "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
+                "var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
                 all_sources.join("\n")
             )
             .into_bytes())
