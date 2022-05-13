@@ -416,7 +416,6 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
 }
 
 impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
@@ -429,7 +428,6 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
 }
 
 impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn expand2(
         f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
@@ -474,7 +472,6 @@ impl ProcMacro {
         }
     }
 
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn custom_derive(
         trait_name: &'static str,
         attributes: &'static [&'static str],
@@ -483,7 +480,6 @@ impl ProcMacro {
         ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
     }
 
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn attr(
         name: &'static str,
         expand: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
@@ -491,7 +487,6 @@ impl ProcMacro {
         ProcMacro::Attr { name, client: Client::expand2(expand) }
     }
 
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn bang(
         name: &'static str,
         expand: fn(crate::TokenStream) -> crate::TokenStream,
