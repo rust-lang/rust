@@ -2687,55 +2687,74 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                     anti =
                         shadowHandlers[called->getName().str()](NB, orig, args);
                   } else {
+                    auto rule = [&]() {
 #if LLVM_VERSION_MAJOR >= 11
-                    anti = NB.CreateCall(orig->getFunctionType(),
-                                         orig->getCalledOperand(), args,
-                                         orig->getName() + "'mi");
+                      Value *anti = NB.CreateCall(
+                          orig->getFunctionType(), orig->getCalledOperand(),
+                          args, orig->getName() + "'mi");
 #else
-                    anti = NB.CreateCall(orig->getCalledValue(), args,
-                                         orig->getName() + "'mi");
+                      Value *anti = NB.CreateCall(orig->getCalledValue(), args,
+                                                  orig->getName() + "'mi");
 #endif
-                    cast<CallInst>(anti)->setAttributes(orig->getAttributes());
-                    cast<CallInst>(anti)->setCallingConv(
-                        orig->getCallingConv());
-                    cast<CallInst>(anti)->setTailCallKind(
-                        orig->getTailCallKind());
-                    cast<CallInst>(anti)->setDebugLoc(
-                        getNewFromOriginal(I.getDebugLoc()));
+                      cast<CallInst>(anti)->setAttributes(
+                          orig->getAttributes());
+                      cast<CallInst>(anti)->setCallingConv(
+                          orig->getCallingConv());
+                      cast<CallInst>(anti)->setTailCallKind(
+                          orig->getTailCallKind());
+                      cast<CallInst>(anti)->setDebugLoc(
+                          getNewFromOriginal(I.getDebugLoc()));
 
 #if LLVM_VERSION_MAJOR >= 14
-                    cast<CallInst>(anti)->addAttributeAtIndex(
-                        AttributeList::ReturnIndex, Attribute::NoAlias);
-                    cast<CallInst>(anti)->addAttributeAtIndex(
-                        AttributeList::ReturnIndex, Attribute::NonNull);
+                      cast<CallInst>(anti)->addAttributeAtIndex(
+                          AttributeList::ReturnIndex, Attribute::NoAlias);
+                      cast<CallInst>(anti)->addAttributeAtIndex(
+                          AttributeList::ReturnIndex, Attribute::NonNull);
 #else
-                    cast<CallInst>(anti)->addAttribute(
-                        AttributeList::ReturnIndex, Attribute::NoAlias);
-                    cast<CallInst>(anti)->addAttribute(
-                        AttributeList::ReturnIndex, Attribute::NonNull);
+                      cast<CallInst>(anti)->addAttribute(
+                          AttributeList::ReturnIndex, Attribute::NoAlias);
+                      cast<CallInst>(anti)->addAttribute(
+                          AttributeList::ReturnIndex, Attribute::NonNull);
 #endif
+                      return anti;
+                    };
+
+                    anti = applyChainRule(orig->getType(), NB, rule);
+
                     if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
-                      AllocaInst *replacement = NB.CreateAlloca(
-                          Type::getInt8Ty(orig->getContext()), args[0]);
-                      replacement->takeName(anti);
-                      auto Alignment =
-                          cast<ConstantInt>(
-                              cast<ConstantAsMetadata>(MD->getOperand(0))
-                                  ->getValue())
-                              ->getLimitedValue();
+                      auto rule = [&](Value *anti) {
+                        AllocaInst *replacement = NB.CreateAlloca(
+                            Type::getInt8Ty(orig->getContext()), args[0]);
+                        replacement->takeName(anti);
+                        auto Alignment =
+                            cast<ConstantInt>(
+                                cast<ConstantAsMetadata>(MD->getOperand(0))
+                                    ->getValue())
+                                ->getLimitedValue();
 #if LLVM_VERSION_MAJOR >= 10
-                      replacement->setAlignment(Align(Alignment));
+                        replacement->setAlignment(Align(Alignment));
 #else
-                      replacement->setAlignment(Alignment);
+                        replacement->setAlignment(Alignment);
 #endif
-                      replacement->setDebugLoc(
-                          getNewFromOriginal(I.getDebugLoc()));
+                        replacement->setDebugLoc(
+                            getNewFromOriginal(I.getDebugLoc()));
+                        return replacement;
+                      };
+
+                      Value *replacement = applyChainRule(
+                          Type::getInt8Ty(orig->getContext()), NB, rule, anti);
+
                       replaceAWithB(cast<Instruction>(anti), replacement);
                       erase(cast<Instruction>(anti));
                       anti = replacement;
                     }
 
-                    zeroKnownAllocation(NB, anti, args, *called, TLI);
+                    applyChainRule(
+                        NB,
+                        [&](Value *anti) {
+                          zeroKnownAllocation(NB, anti, args, *called, TLI);
+                        },
+                        anti);
                   }
                 } else {
                   llvm_unreachable("Unknown shadow rematerialization value");
@@ -3822,32 +3841,42 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
   if (isa<Argument>(oval) && cast<Argument>(oval)->hasByValAttr()) {
     IRBuilder<> bb(inversionAllocs);
-    AllocaInst *antialloca = bb.CreateAlloca(
-        oval->getType()->getPointerElementType(),
-        cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
-        oval->getName() + "'ipa");
-    invertedPointers.insert(std::make_pair(
-        (const Value *)oval, InvertedPointerVH(this, antialloca)));
-    auto dst_arg =
-        bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
-    auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
-    auto len_arg =
-        ConstantInt::get(Type::getInt64Ty(oval->getContext()),
-                         M->getDataLayout().getTypeAllocSizeInBits(
-                             oval->getType()->getPointerElementType()) /
-                             8);
-    auto volatile_arg = ConstantInt::getFalse(oval->getContext());
+
+    auto rule1 = [&]() {
+      AllocaInst *antialloca = bb.CreateAlloca(
+          oval->getType()->getPointerElementType(),
+          cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
+          oval->getName() + "'ipa");
+
+      auto dst_arg =
+          bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
+      auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
+      auto len_arg =
+          ConstantInt::get(Type::getInt64Ty(oval->getContext()),
+                           M->getDataLayout().getTypeAllocSizeInBits(
+                               oval->getType()->getPointerElementType()) /
+                               8);
+      auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-    auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
-                                      antialloca->getAlignment());
-    Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+      auto align_arg = ConstantInt::get(Type::getInt32Ty(oval->getContext()),
+                                        antialloca->getAlignment());
+      Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
 #else
-    Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
+      Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
 #endif
-    Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-    cast<CallInst>(bb.CreateCall(
-        Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+      Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+      cast<CallInst>(bb.CreateCall(
+          Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+
+      return antialloca;
+    };
+
+    Value *antialloca = applyChainRule(oval->getType(), bb, rule1);
+
+    invertedPointers.insert(std::make_pair(
+        (const Value *)oval, InvertedPointerVH(this, antialloca)));
+
     return antialloca;
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {

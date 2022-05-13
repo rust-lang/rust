@@ -1300,8 +1300,12 @@ public:
           if (auto I = dyn_cast<Instruction>(U))
             todo.push_back(I);
       }
+
       for (auto v : llvm::reverse(seen)) {
-        assert(v->getNumUses() == 0);
+        for (auto &use : v->uses())
+          if (!seen.count(dyn_cast<Instruction>(use.getUser())))
+            assert(false);
+
         v->replaceAllUsesWith(UndefValue::get(v->getType()));
         erase(v);
       }
