@@ -72,11 +72,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::{mir, ty::layout::TyAndLayout};
 use rustc_target::abi::Size;
 
-use crate::{
-    AllocId, AllocRange, HelpersEvalContextExt, ImmTy, Immediate, InterpResult, MPlaceTy,
-    MemoryKind, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, OpTy, Pointer, RangeMap,
-    Scalar, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp, VectorIdx,
-};
+use crate::*;
 
 pub type AllocExtra = VClockAlloc;
 
