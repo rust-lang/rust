@@ -1,18 +1,27 @@
 use std::{path::PathBuf, process::Command};
 #[cfg(feature = "bindgen")]
 use {bindgen, std::fs};
+use std::env;
 
 fn main() {
-    let build_dir = PathBuf::from("/scratch/a/aspuru/drehwald/Enzyme/enzyme/build");
-    let llvm_dir = PathBuf::from("/scratch/a/aspuru/drehwald/rust/build/x86_64-unknown-linux-gnu/llvm/lib/cmake/llvm");
-    let llvm_dir = "-DLLVM_DIR=".to_owned() + llvm_dir.to_str().unwrap();
-    let llvm_external_lib = "-DENZYME_EXTERNAL_SHARED_LIB=ON";
-    let build_type = "-DCMAKE_BUILD_TYPE=Release";
-    let mut cmake = Command::new("cmake");
-    let mut ninja = Command::new("ninja");
+    let base_dir = env!("CARGO_MANIFEST_DIR");
+    let base_dir = PathBuf::from(&base_dir);                                        
+    let build_dir = base_dir.join("enzyme").join("build");
     if !std::path::Path::new(&build_dir).exists() {
         std::fs::create_dir(&build_dir).unwrap();
     }
+
+    let rust_build_dir = base_dir.parent().unwrap()
+        .parent().unwrap()
+        .parent().unwrap();
+    let llvm_dir = rust_build_dir.join("build")
+        .join("x86_64-unknown-linux-gnu").join("llvm");
+    let llvm_lib_dir = llvm_dir.join("lib").join("cmake").join("llvm");
+    let llvm_external_lib = "-DENZYME_EXTERNAL_SHARED_LIB=ON";
+    let build_type = "-DCMAKE_BUILD_TYPE=Release";
+
+    let mut cmake = Command::new("cmake");
+    let mut build = Command::new("cmake");
     cmake
         .args(&[
               "-G",
@@ -20,15 +29,16 @@ fn main() {
               "..",
               build_type,
               &llvm_external_lib,
-              &llvm_dir,
+              &("-DLLVM_DIR=".to_owned() + &llvm_lib_dir.to_string_lossy()),
         ])
         .current_dir(&build_dir.to_str().unwrap());
-    ninja.current_dir(&build_dir.to_str().unwrap());
+    build.args(&["--build","."])
+        .current_dir(&build_dir.to_str().unwrap());
     run_and_printerror(&mut cmake);
-    run_and_printerror(&mut ninja);
+    run_and_printerror(&mut build);
 
     #[cfg(feature = "bindgen")]
-    generate_bindings();
+    generate_bindings(base_dir, llvm_dir);
 }
 
 fn run_and_printerror(command: &mut Command) {
@@ -46,10 +56,11 @@ fn run_and_printerror(command: &mut Command) {
 }
 
 #[cfg(feature = "bindgen")]
-fn generate_bindings() {
-    let llvm_headers = PathBuf::from("/scratch/a/aspuru/drehwald/rust/build/x86_64-unknown-linux-gnu/llvm/include");
-    let out_file = PathBuf::from("/scratch/a/aspuru/drehwald/enzyme.rs");
-    let capi_header = PathBuf::from("/scratch/a/aspuru/drehwald/Enzyme/enzyme/Enzyme/CApi.h");
+fn generate_bindings(base_dir: PathBuf, llvm_dir: PathBuf) {
+    let llvm_headers = llvm_dir.join("include");
+    let out_file = base_dir.join("enzyme.rs");
+    let capi_header = base_dir.join("enzyme").join("Enzyme").join("CApi.h");
+    print!("{:?}", capi_header.display());
 
     let content: String = fs::read_to_string(capi_header.clone()).unwrap();
 
