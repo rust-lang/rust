@@ -36,7 +36,10 @@ use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
-use crate::{resolve_completion_edits, CompletionConfig, CompletionItem, CompletionItemKind};
+use crate::{
+    resolve_completion_edits, CallableSnippets, CompletionConfig, CompletionItem,
+    CompletionItemKind,
+};
 
 /// Lots of basic item definitions
 const BASE_ITEMS_FIXTURE: &str = r#"
@@ -63,8 +66,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
     enable_private_editable: true,
-    add_call_parenthesis: true,
-    add_call_argument_snippets: true,
+    callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,

@@ -102,8 +102,8 @@ pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
 pub use ide_completion::{
-    CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance, Snippet,
-    SnippetScope,
+    CallableSnippets, CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance,
+    Snippet, SnippetScope,
 };
 pub use ide_db::{
     base_db::{

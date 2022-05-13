@@ -10,6 +10,7 @@ use crate::{
     context::{CompletionContext, DotAccess, NameRefContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
+    CallableSnippets,
 };
 
 enum FuncKind {
@@ -123,7 +124,7 @@ pub(super) fn add_call_parens<'b>(
         (format!("{}()$0", name), "()")
     } else {
         builder.trigger_call_info();
-        let snippet = if ctx.config.add_call_argument_snippets {
+        let snippet = if let Some(CallableSnippets::FillArguments) = ctx.config.callable {
             let offset = if self_param.is_some() { 2 } else { 1 };
             let function_params_snippet =
                 params.iter().enumerate().format_with(", ", |(index, param), f| {
@@ -191,7 +192,7 @@ fn ref_of_param(ctx: &CompletionContext, arg: &str, ty: &hir::Type) -> &'static 
 }
 
 fn should_add_parens(ctx: &CompletionContext) -> bool {
-    if !ctx.config.add_call_parenthesis {
+    if ctx.config.callable.is_none() {
         return false;
     }
 
@@ -288,7 +289,7 @@ fn params(
 mod tests {
     use crate::{
         tests::{check_edit, check_edit_with_config, TEST_CONFIG},
-        CompletionConfig,
+        CallableSnippets, CompletionConfig,
     };
 
     #[test]
@@ -404,7 +405,7 @@ fn main() { S::foo(${1:&self})$0 }
     fn suppress_arg_snippets() {
         cov_mark::check!(suppress_arg_snippets);
         check_edit_with_config(
-            CompletionConfig { add_call_argument_snippets: false, ..TEST_CONFIG },
+            CompletionConfig { callable: Some(CallableSnippets::AddParentheses), ..TEST_CONFIG },
             "with_args",
             r#"
 fn with_args(x: i32, y: String) {}
