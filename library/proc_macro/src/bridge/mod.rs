@@ -176,7 +176,7 @@ macro_rules! with_api {
 }
 
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
-// to avoid borrow conflicts from borrows started by `&mut` arguments.
+// to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {
     ($writer:ident;) => {};
     ($writer:ident; $first:ident $(, $rest:ident)*) => {
