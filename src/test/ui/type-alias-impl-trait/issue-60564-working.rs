@@ -1,11 +1,11 @@
 #![feature(type_alias_impl_trait)]
 
+// check-pass
+
 trait IterBits {
     type BitsIter: Iterator<Item = u8>;
     fn iter_bits(self, n: u8) -> Self::BitsIter;
 }
-
-type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
 
 impl<T: Copy, E> IterBits for T
 where
@@ -15,10 +15,9 @@ where
         + std::convert::TryInto<u8, Error = E>,
     E: std::fmt::Debug,
 {
-    type BitsIter = IterBitsIter<T, E, u8>;
+    type BitsIter = impl std::iter::Iterator<Item = u8>;
     fn iter_bits(self, n: u8) -> Self::BitsIter {
         (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
-        //~^ ERROR non-defining opaque type use in defining scope
     }
 }
 

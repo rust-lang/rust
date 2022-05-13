@@ -15,7 +15,6 @@ type TwoConsts<const X: usize, const Y: usize> = impl Debug;
 fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
     t
     //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR `U` doesn't implement `Debug`
 }
 
 fn one_lifetime<'a>(t: &'a u32) -> TwoLifetimes<'a, 'a> {

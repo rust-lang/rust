@@ -1,14 +1,3 @@
-error[E0277]: `U` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use.rs:16:5
-   |
-LL |     t
-   |     ^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   |
-help: consider restricting type parameter `U`
-   |
-LL | type TwoTys<T, U: std::fmt::Debug> = impl Debug;
-   |                 +++++++++++++++++
-
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:16:5
    |
@@ -22,7 +11,7 @@ LL | type TwoTys<T, U> = impl Debug;
    |             ^  ^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:22:5
+  --> $DIR/generic_duplicate_param_use.rs:21:5
    |
 LL |     t
    |     ^
@@ -34,7 +23,7 @@ LL | type TwoLifetimes<'a, 'b> = impl Debug;
    |                   ^^  ^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:27:5
+  --> $DIR/generic_duplicate_param_use.rs:26:5
    |
 LL |     t
    |     ^
@@ -45,6 +34,5 @@ note: constant used multiple times
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.

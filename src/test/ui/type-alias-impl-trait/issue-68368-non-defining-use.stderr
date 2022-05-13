@@ -1,14 +1,3 @@
-error[E0277]: the trait bound `(): Trait<U>` is not satisfied
-  --> $DIR/issue-68368-non-defining-use.rs:9:29
-   |
-LL | fn f<'a>() -> Alias<'a, ()> {}
-   |                             ^^ the trait `Trait<U>` is not implemented for `()`
-   |
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
-   |
-LL | type Alias<'a, U> = impl Trait<U> where (): Trait<U>;
-   |                                   ++++++++++++++++++
-
 error: non-defining opaque type use in defining scope
   --> $DIR/issue-68368-non-defining-use.rs:9:29
    |
@@ -21,6 +10,5 @@ note: used non-generic type `()` for generic parameter
 LL | type Alias<'a, U> = impl Trait<U>;
    |                ^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

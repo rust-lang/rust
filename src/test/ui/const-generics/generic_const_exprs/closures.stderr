@@ -1,13 +1,26 @@
-error: overly complex generic constant
+error[E0391]: cycle detected when building an abstract representation for test::{constant#0}
   --> $DIR/closures.rs:3:35
    |
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
-   |                                   ^^^^-------^^
-   |                                       |
-   |                                       borrowing is not supported in generic constants
+   |                                   ^^^^^^^^^^^^^
    |
-   = help: consider moving this anonymous constant into a `const` function
-   = note: this operation may be supported in the future
+note: ...which requires building THIR for `test::{constant#0}`...
+  --> $DIR/closures.rs:3:35
+   |
+LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
+   |                                   ^^^^^^^^^^^^^
+note: ...which requires type-checking `test::{constant#0}`...
+  --> $DIR/closures.rs:3:35
+   |
+LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
+   |                                   ^^^^^^^^^^^^^
+   = note: ...which again requires building an abstract representation for test::{constant#0}, completing the cycle
+note: cycle used when checking that `test` is well-formed
+  --> $DIR/closures.rs:3:1
+   |
+LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0391`.
