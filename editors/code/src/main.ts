@@ -287,7 +287,7 @@ async function isNixOs(): Promise<boolean> {
 function warnAboutExtensionConflicts() {
     if (vscode.extensions.getExtension("rust-lang.rust")) {
         vscode.window.showWarningMessage(
-            `You have both the rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) ` +
+            `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
             "both plugins to not work correctly. You should disable one of them.", "Got it")
             .then(() => { }, console.error);

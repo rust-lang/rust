@@ -10,7 +10,7 @@ const NIGHTLY_TAG = "nightly";
 export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
 
 export class Config {
-    readonly extensionId = "matklad.rust-analyzer";
+    readonly extensionId = "rust-lang.rust-analyzer";
 
     readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [

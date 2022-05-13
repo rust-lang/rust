@@ -61,7 +61,7 @@ The rust-analyzer plugin for VS Code is maintained
 https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree].
 
 You can install the latest release of the plugin from
-https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
+https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer[the marketplace].
 
 Note that the plugin may cause conflicts with the
 https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[official Rust plugin].
@@ -81,14 +81,14 @@ To disable this notification put the following to `settings.json`
 ----
 ====
 
-The server binary is stored in the extension install directory, which starts with `matklad.rust-analyzer-` and is located under:
+The server binary is stored in the extension install directory, which starts with `rust-lang.rust-analyzer-` and is located under:
 
 * Linux: `~/.vscode/extensions`
 * Linux (Remote, such as WSL): `~/.vscode-server/extensions`
 * macOS: `~/.vscode/extensions`
 * Windows: `%USERPROFILE%\.vscode\extensions`
 
-As an exception, on NixOS, the extension makes a copy of the server and stores it under `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
+As an exception, on NixOS, the extension makes a copy of the server and stores it under `~/.config/Code/User/globalStorage/rust-lang.rust-analyzer`.
 
 Note that we only support the two most recent versions of VS Code.
 

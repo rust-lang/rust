@@ -7,7 +7,7 @@
     "icon": "icon.png",
     "version": "0.4.0-dev",
     "releaseTag": null,
-    "publisher": "matklad",
+    "publisher": "ryst-lang",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
         "type": "git"
