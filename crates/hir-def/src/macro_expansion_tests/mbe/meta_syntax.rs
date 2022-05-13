@@ -80,7 +80,7 @@ macro_rules! f3 { ($i:_) => () }
 
 #[test]
 fn test_rustc_issue_57597() {
-    // <https://github.com/rust-lang/rust/blob/master/src/test/ui/macros/issue-57597.rs>
+    // <https://github.com/rust-lang/rust/blob/master/src/test/ui/issues/issue-57597.rs>
     check(
         r#"
 macro_rules! m0 { ($($($i:ident)?)+) => {}; }
