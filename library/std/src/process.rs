@@ -1725,6 +1725,49 @@ impl ExitCode {
     /// return the same codes (but will also `eprintln!` the error).
     #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+
+    /// Exit the current process with the given `ExitCode`.
+    ///
+    /// Note that this has the same caveats as [`process::exit()`][exit], namely that this function
+    /// terminates the process immediately, so no destructors on the current stack or any other
+    /// thread's stack will be run. If a clean shutdown is needed, it is recommended to simply
+    /// return this ExitCode from the `main` function, as demonstrated in the [type
+    /// documentation](#examples).
+    ///
+    /// # Differences from `process::exit()`
+    ///
+    /// `process::exit()` accepts any `i32` value as the exit code for the process; however, there
+    /// are platforms that only use a subset of that value (see [`process::exit` platform-specific
+    /// behavior][exit#platform-specific-behavior]). `ExitCode` exists because of this; only
+    /// `ExitCode`s that are supported by a majority of our platforms can be created, so those
+    /// problems don't exist (as much) with this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exitcode_exit_method)]
+    /// # use std::process::ExitCode;
+    /// # use std::fmt;
+    /// # enum UhOhError { GenericProblem, Specific, WithCode { exit_code: ExitCode, _x: () } }
+    /// # impl fmt::Display for UhOhError {
+    /// #     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result { unimplemented!() }
+    /// # }
+    /// // there's no way to gracefully recover from an UhOhError, so we just
+    /// // print a message and exit
+    /// fn handle_unrecoverable_error(err: UhOhError) -> ! {
+    ///     eprintln!("UH OH! {err}");
+    ///     let code = match err {
+    ///         UhOhError::GenericProblem => ExitCode::FAILURE,
+    ///         UhOhError::Specific => ExitCode::from(3),
+    ///         UhOhError::WithCode { exit_code, .. } => exit_code,
+    ///     };
+    ///     code.exit_process()
+    /// }
+    /// ```
+    #[unstable(feature = "exitcode_exit_method", issue = "none")]
+    pub fn exit_process(self) -> ! {
+        exit(self.to_i32())
+    }
 }
 
 impl ExitCode {
@@ -1944,7 +1987,17 @@ impl Child {
 /// process, no destructors on the current stack or any other thread's stack
 /// will be run. If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
-/// to run.
+/// to run; or, preferably, simply return a type implementing [`Termination`]
+/// (such as [`ExitCode`] or `Result`) from the `main` function and avoid this
+/// function altogether:
+///
+/// ```
+/// # use std::io::Error as MyError;
+/// fn main() -> Result<(), MyError> {
+///     // ...
+///     Ok(())
+/// }
+/// ```
 ///
 /// ## Platform-specific behavior
 ///
@@ -1952,39 +2005,14 @@ impl Child {
 /// will be visible to a parent process inspecting the exit code. On most
 /// Unix-like platforms, only the eight least-significant bits are considered.
 ///
-/// # Examples
-///
-/// Due to this function’s behavior regarding destructors, a conventional way
-/// to use the function is to extract the actual computation to another
-/// function and compute the exit code from its return value:
-///
-/// ```
-/// fn run_app() -> Result<(), ()> {
-///     // Application logic here
-///     Ok(())
-/// }
-///
-/// fn main() {
-///     std::process::exit(match run_app() {
-///         Ok(_) => 0,
-///         Err(err) => {
-///             eprintln!("error: {err:?}");
-///             1
-///         }
-///     });
-/// }
-/// ```
-///
-/// Due to [platform-specific behavior], the exit code for this example will be
-/// `0` on Linux, but `256` on Windows:
+/// For example, the exit code for this example will be `0` on Linux, but `256`
+/// on Windows:
 ///
 /// ```no_run
 /// use std::process;
 ///
 /// process::exit(0x0100);
 /// ```
-///
-/// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
     crate::rt::cleanup();
