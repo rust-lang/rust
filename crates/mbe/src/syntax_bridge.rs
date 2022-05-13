@@ -243,8 +243,6 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             let char = match token.to_char(conv) {
                 Some(c) => c,
                 None => {
-                    // FIXME: this isn't really correct, `to_char` yields the *first* char of the token,
-                    // and this is relevant when eg. creating 2 `tt::Punct` from a single `::` token
                     panic!("Token from lexer must be single char: token = {:#?}", token);
                 }
             };

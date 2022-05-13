@@ -324,9 +324,7 @@ fn name_ref_or_index(p: &mut Parser) {
     );
     let m = p.start();
     if p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST) {
-        // Ideally we'd remap this to `INT_NUMBER` instead, but that causes the MBE conversion to
-        // lose track of what's a float and what isn't, causing panics.
-        p.bump_remap(FLOAT_NUMBER_PART);
+        p.bump_remap(INT_NUMBER);
     } else {
         p.bump_any();
     }

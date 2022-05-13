@@ -104,7 +104,6 @@ macro_rules! id {
         $($t)*
     };
 }
-
 id! {
     #[proc_macros::identity]
     impl Foo for WrapBj {
@@ -120,7 +119,6 @@ macro_rules! id {
         $($t)*
     };
 }
-
 #[proc_macros::identity] impl Foo for WrapBj {
     async fn foo(&self ) {
         self .0.id().await ;
