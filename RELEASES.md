@@ -14,21 +14,21 @@ Compiler
 
 - [Linking modifier syntax in `#[link]` attributes and on the command line, as well as the `whole-archive` modifier specifically, are now supported][93901]
 - [Update to LLVM 14.0.0][95247]
-- [The `char` type is now described as UTF-8 (`DW_ATE_UTF`) in DWARF debuginfo][89887]
+- [The `char` type is now described as UTF-32 in debuginfo][89887]
 - The [`#[target_feature]`][target_feature] attribute [can now be used with aarch64 features][90621]
-- [`#[target_feature = "adx"]` is now stable][93745]
+- X86 [`#[target_feature = "adx"]` is now stable][93745]
 - [Catching a second unwind from FFI code while cleaning up from a Rust panic now causes the process to abort][92911]
 
 Libraries
 ---------
 
 - [`ManuallyDrop<T>` is now documented to have the same layout as `T`][88375]
-- [Windows paths longer than 260 chars are now supported in `process::Command` without needing explicit canonoicalization][92519]
+- [Windows paths longer than 260 chars are now supported in `process::Command` without needing explicit canonicalization][92519]
 - [`#[ignore = "…"]` messages are printed when running tests][92714]
 - [Consistently present absent stdio handles on Windows as NULL handles][93263]
-- [Make `std::io::stdio::lock()` return `'static` handles][93965]
+- [Make `std::io::stdio::lock()` return `'static` handles.][93965] Previously, the creation of locked handles to stdin/stdout/stderr would borrow the handles being locked, which prevented writing `let out = std::io::stdout().lock();` because `out` would outlive the return value of `stdout()`. Such code now works, eliminating a common pitfall that affected many Rust users.
 - [`Vec::from_raw_parts` is now less restrictive about its inputs][95016]
-- [Use cgroup quotas for calculating `available_parallelism` on Linux][92697]
+- [`std::thread::available_parallelism` now takes cgroup quotas into account.][92697] Since `available_parallelism` is often used to create a thread pool for parallel computation, which may be CPU-bound for performance, `available_parallelism` will return a value consistent with the ability to use that many threads continuously, if possible. For instance, in a container with 8 virtual CPUs but quotas only allowing for 50% usage, `available_parallelism` will return 4.
 
 Stabilized APIs
 ---------------
@@ -41,8 +41,7 @@ Stabilized APIs
 - [`VecDeque::retain_mut`][95491]
 - [`Write` for `Cursor<[u8; N]>`][92663]
 - [`std::os::unix::net::SocketAddr::from_pathname`][94356]
-- [`std::process::ExitCode`][93840]
-- [`std::process::Termination`][93840]
+- [`std::process::ExitCode`][93840] and [`std::process::Termination`][93840]. The stabilization of these two APIs now makes it possible for programs to return errors from `main` with custom exit codes.
 - [`std::thread::JoinHandle::is_finished`][95130]
 
 These APIs are now usable in const contexts:
@@ -70,7 +69,7 @@ Compatibility Notes
 - [The number of `#` in `r#` raw string literals is now required to be less than 256][95251]
 - [When checking that a dyn type satisfies a trait bound, supertrait bounds are now enforced][92285]
 - [`cargo vendor` now only accepts one value for each `--sync` flag][cargo/10448]
-- [`cfg` predicates in `all()` and `any()` are always evaluated to detect errors, instead of short-circuiting][94295]
+- [`cfg` predicates in `all()` and `any()` are always evaluated to detect errors, instead of short-circuiting.][94295] The compatibility considerations here arise in nightly-only code that used the short-circuiting behavior of `all` to write something like `cfg(all(feature = "nightly", syntax-requiring-nightly))`, which will now fail to compile. Instead, use either `cfg_attr(feature = "nightly", ...)` or nested uses of `cfg`.
 - [bootstrap: static-libstdcpp is now enabled by default, and can now be disabled when llvm-tools is enabled][94832]
 
 Internal Changes
