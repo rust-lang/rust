@@ -1,7 +1,7 @@
 {
     "name": "rust-analyzer",
     "displayName": "rust-analyzer",
-    "description": "An alternative rust language server to the RLS",
+    "description": "A language server for the rust programming language",
     "preview": true,
     "private": true,
     "icon": "icon.png",
