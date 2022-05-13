@@ -216,6 +216,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
+    /// Provides the closure with the next MutexId. Creates that mutex if the closure returns None,
+    /// otherwise returns the value from the closure
+    fn mutex_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, MutexId>
+    where
+        F: FnOnce(&mut MiriEvalContext<'mir, 'tcx>, MutexId) -> InterpResult<'tcx, Option<MutexId>>,
+    {
+        let this = self.eval_context_mut();
+        let next_index = this.machine.threads.sync.mutexes.next_index();
+        if let Some(old) = existing(this, next_index)? {
+            Ok(old)
+        } else {
+            let new_index = this.machine.threads.sync.mutexes.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
+        }
+    }
+
+    #[inline]
     /// Get the id of the thread that currently owns this lock.
     fn mutex_get_owner(&mut self, id: MutexId) -> ThreadId {
         let this = self.eval_context_ref();
@@ -295,6 +313,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn rwlock_create(&mut self) -> RwLockId {
         let this = self.eval_context_mut();
         this.machine.threads.sync.rwlocks.push(Default::default())
+    }
+
+    #[inline]
+    /// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
+    /// otherwise returns the value from the closure
+    fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
+    where
+        F: FnOnce(
+            &mut MiriEvalContext<'mir, 'tcx>,
+            RwLockId,
+        ) -> InterpResult<'tcx, Option<RwLockId>>,
+    {
+        let this = self.eval_context_mut();
+        let next_index = this.machine.threads.sync.rwlocks.next_index();
+        if let Some(old) = existing(this, next_index)? {
+            Ok(old)
+        } else {
+            let new_index = this.machine.threads.sync.rwlocks.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
+        }
     }
 
     #[inline]
@@ -443,6 +482,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn condvar_create(&mut self) -> CondvarId {
         let this = self.eval_context_mut();
         this.machine.threads.sync.condvars.push(Default::default())
+    }
+
+    #[inline]
+    /// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
+    /// otherwise returns the value from the closure
+    fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
+    where
+        F: FnOnce(
+            &mut MiriEvalContext<'mir, 'tcx>,
+            CondvarId,
+        ) -> InterpResult<'tcx, Option<CondvarId>>,
+    {
+        let this = self.eval_context_mut();
+        let next_index = this.machine.threads.sync.condvars.next_index();
+        if let Some(old) = existing(this, next_index)? {
+            Ok(old)
+        } else {
+            let new_index = this.machine.threads.sync.condvars.push(Default::default());
+            assert_eq!(next_index, new_index);
+            Ok(new_index)
+        }
     }
 
     #[inline]

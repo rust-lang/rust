@@ -73,9 +73,9 @@ use rustc_middle::{mir, ty::layout::TyAndLayout};
 use rustc_target::abi::Size;
 
 use crate::{
-    AllocId, AllocRange, ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MemoryKind,
-    MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, OpTy, Pointer, RangeMap, Scalar,
-    ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp, VectorIdx,
+    AllocId, AllocRange, HelpersEvalContextExt, ImmTy, Immediate, InterpResult, MPlaceTy,
+    MemoryKind, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, OpTy, Pointer, RangeMap,
+    Scalar, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp, VectorIdx,
 };
 
 pub type AllocExtra = VClockAlloc;
@@ -450,12 +450,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-
-        // Ensure that the following read at an offset is within bounds.
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.read_scalar_atomic(&value_place, atomic)
     }
 
@@ -469,12 +464,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-
-        // Ensure that the following read at an offset is within bounds.
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.write_scalar_atomic(value.into(), &value_place, atomic)
     }
 

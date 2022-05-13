@@ -597,6 +597,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Calculates the MPlaceTy given the offset and layout of an access on an operand
+    fn deref_operand_and_offset(
+        &self,
+        op: &OpTy<'tcx, Tag>,
+        offset: u64,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+        let this = self.eval_context_ref();
+        let op_place = this.deref_operand(op)?;
+        let offset = Size::from_bytes(offset);
+
+        // Ensure that the access is within bounds.
+        assert!(op_place.layout.size >= offset + layout.size);
+        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        Ok(value_place)
+    }
+
     fn read_scalar_at_offset(
         &self,
         op: &OpTy<'tcx, Tag>,
@@ -604,11 +621,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-        // Ensure that the following read at an offset is within bounds
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.read_scalar(&value_place.into())
     }
 
@@ -620,11 +633,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let op_place = this.deref_operand(op)?;
-        let offset = Size::from_bytes(offset);
-        // Ensure that the following read at an offset is within bounds
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.write_scalar(value, &value_place.into())
     }
 
