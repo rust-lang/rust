@@ -1,13 +1,13 @@
 {
     "name": "rust-analyzer",
     "displayName": "rust-analyzer",
-    "description": "An alternative rust language server to the RLS",
+    "description": "A language server for the rust programming language",
     "preview": true,
     "private": true,
     "icon": "icon.png",
     "version": "0.4.0-dev",
     "releaseTag": null,
-    "publisher": "ryst-lang",
+    "publisher": "rust-lang",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
         "type": "git"
