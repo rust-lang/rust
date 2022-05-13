@@ -52,7 +52,7 @@ declare_clippy_lint! {
     /// to a function that needs the memory address. For further details, refer to
     /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
     /// that explains a real case in which this false positive
-    /// led to an **undefined behaviour** introduced with unsafe code.
+    /// led to an **undefined behavior** introduced with unsafe code.
     ///
     /// ### Example
     ///

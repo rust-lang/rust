@@ -632,7 +632,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 }
 
 /// Collect possible borrowed for every `&mut` local.
-/// For exampel, `_1 = &mut _2` generate _1: {_2,...}
+/// For example, `_1 = &mut _2` generate _1: {_2,...}
 /// Known Problems: not sure all borrowed are tracked
 struct PossibleOriginVisitor<'a, 'tcx> {
     possible_origin: TransitiveRelation,

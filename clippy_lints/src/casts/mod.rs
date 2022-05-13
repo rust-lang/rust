@@ -306,7 +306,7 @@ declare_clippy_lint! {
     /// Checks for casts of `&T` to `&mut T` anywhere in the code.
     ///
     /// ### Why is this bad?
-    /// It’s basically guaranteed to be undefined behaviour.
+    /// It’s basically guaranteed to be undefined behavior.
     /// `UnsafeCell` is the only way to obtain aliasable data that is considered
     /// mutable.
     ///

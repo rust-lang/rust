@@ -124,7 +124,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                  * the lint count in README.md is correct\n \
                  * the changelog contains markdown link references at the bottom\n \
                  * all lint groups include the correct lints\n \
-                 * lint modules in `clippy_lints/*` are visible in `src/lifb.rs` via `pub mod`\n \
+                 * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod`\n \
                  * all lints are registered in the lint store",
                 )
                 .arg(Arg::with_name("print-only").long("print-only").help(

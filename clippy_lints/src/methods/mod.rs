@@ -1563,7 +1563,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.39.0"]
     pub MANUAL_SATURATING_ARITHMETIC,
     style,
-    "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`"
+    "`.checked_add/sub(x).unwrap_or(MAX/MIN)`"
 }
 
 declare_clippy_lint! {
