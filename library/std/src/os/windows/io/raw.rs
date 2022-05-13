@@ -32,8 +32,15 @@ pub trait AsRawHandle {
     /// raw handle to the caller, and the handle is only guaranteed
     /// to be valid while the original object has not yet been destroyed.
     ///
+    /// This function may return null, such as when called on [`Stdin`],
+    /// [`Stdout`], or [`Stderr`] when the console is detached.
+    ///
     /// However, borrowing is not strictly required. See [`AsHandle::as_handle`]
     /// for an API which strictly borrows a handle.
+    ///
+    /// [`Stdin`]: io::Stdin
+    /// [`Stdout`]: io::Stdout
+    /// [`Stderr`]: io::Stderr
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_handle(&self) -> RawHandle;
 }

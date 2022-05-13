@@ -1994,6 +1994,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
     }
 
+    /// Look up the name of a definition across crates. This does not look at HIR.
     fn opt_item_name(self, def_id: DefId) -> Option<Symbol> {
         if let Some(cnum) = def_id.as_crate_root() {
             Some(self.crate_name(cnum))
@@ -2014,16 +2015,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Look up the name of a definition across crates. This does not look at HIR.
     ///
-    /// When possible, this function should be used for cross-crate lookups over
-    /// [`opt_item_name`] to avoid invalidating the incremental cache. If you
-    /// need to handle items without a name, or HIR items that will not be
-    /// serialized cross-crate, or if you need the span of the item, use
+    /// This method will ICE if the corresponding item does not have a name.  In these cases, use
     /// [`opt_item_name`] instead.
     ///
     /// [`opt_item_name`]: Self::opt_item_name
     pub fn item_name(self, id: DefId) -> Symbol {
-        // Look at cross-crate items first to avoid invalidating the incremental cache
-        // unless we have to.
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
