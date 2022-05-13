@@ -194,7 +194,7 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::marker::Unsize;
+use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut};
 use crate::ptr::{self, NonNull};
@@ -981,8 +981,9 @@ impl<T: ?Sized> RefCell<T> {
                     self.borrowed_at.set(Some(crate::panic::Location::caller()));
                 }
 
-                // SAFETY: `BorrowRef` guarantees unique access.
-                Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b })
+                // SAFETY: `BorrowRefMut` guarantees unique access.
+                let value = unsafe { NonNull::new_unchecked(self.value.get()) };
+                Ok(RefMut { value, borrow: b, marker: PhantomData })
             }
             None => Err(BorrowMutError {
                 // If a borrow occurred, then we must already have an outstanding borrow,
@@ -1515,13 +1516,13 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[stable(feature = "cell_map", since = "1.8.0")]
     #[inline]
-    pub fn map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
+    pub fn map<U: ?Sized, F>(mut orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
     where
         F: FnOnce(&mut T) -> &mut U,
     {
         // FIXME(nll-rfc#40): fix borrow-check
-        let RefMut { value, borrow } = orig;
-        RefMut { value: f(value), borrow }
+        let value = NonNull::from(f(&mut *orig));
+        RefMut { value, borrow: orig.borrow, marker: PhantomData }
     }
 
     /// Makes a new `RefMut` for an optional component of the borrowed data. The
@@ -1556,23 +1557,20 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
     #[inline]
-    pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
+    pub fn filter_map<U: ?Sized, F>(mut orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
     {
         // FIXME(nll-rfc#40): fix borrow-check
-        let RefMut { value, borrow } = orig;
-        let value = value as *mut T;
         // SAFETY: function holds onto an exclusive reference for the duration
         // of its call through `orig`, and the pointer is only de-referenced
         // inside of the function call never allowing the exclusive reference to
         // escape.
-        match f(unsafe { &mut *value }) {
-            Some(value) => Ok(RefMut { value, borrow }),
-            None => {
-                // SAFETY: same as above.
-                Err(RefMut { value: unsafe { &mut *value }, borrow })
+        match f(&mut *orig) {
+            Some(value) => {
+                Ok(RefMut { value: NonNull::from(value), borrow: orig.borrow, marker: PhantomData })
             }
+            None => Err(orig),
         }
     }
 
@@ -1604,15 +1602,18 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(
-        orig: RefMut<'b, T>,
+        mut orig: RefMut<'b, T>,
         f: F,
     ) -> (RefMut<'b, U>, RefMut<'b, V>)
     where
         F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
-        let (a, b) = f(orig.value);
         let borrow = orig.borrow.clone();
-        (RefMut { value: a, borrow }, RefMut { value: b, borrow: orig.borrow })
+        let (a, b) = f(&mut *orig);
+        (
+            RefMut { value: NonNull::from(a), borrow, marker: PhantomData },
+            RefMut { value: NonNull::from(b), borrow: orig.borrow, marker: PhantomData },
+        )
     }
 
     /// Convert into a mutable reference to the underlying data.
@@ -1638,14 +1639,15 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
-    pub fn leak(orig: RefMut<'b, T>) -> &'b mut T {
+    pub fn leak(mut orig: RefMut<'b, T>) -> &'b mut T {
         // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell can't
         // go back to UNUSED within the lifetime `'b`. Resetting the reference tracking state would
         // require a unique reference to the borrowed RefCell. No further references can be created
         // from the original cell within that lifetime, making the current borrow the only
         // reference for the remaining lifetime.
         mem::forget(orig.borrow);
-        orig.value
+        // SAFETY: after forgetting, we can form a reference for the rest of lifetime `'b`.
+        unsafe { orig.value.as_mut() }
     }
 }
 
@@ -1700,8 +1702,12 @@ impl<'b> BorrowRefMut<'b> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_not_suspend = "holding a RefMut across suspend points can cause BorrowErrors"]
 pub struct RefMut<'b, T: ?Sized + 'b> {
-    value: &'b mut T,
+    // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
+    // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
+    value: NonNull<T>,
     borrow: BorrowRefMut<'b>,
+    // NonNull is covariant over T, so we need to reintroduce invariance.
+    marker: PhantomData<&'b mut T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1710,7 +1716,8 @@ impl<T: ?Sized> Deref for RefMut<'_, T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        self.value
+        // SAFETY: the value is accessible as long as we hold our borrow.
+        unsafe { self.value.as_ref() }
     }
 }
 
@@ -1718,7 +1725,8 @@ impl<T: ?Sized> Deref for RefMut<'_, T> {
 impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        self.value
+        // SAFETY: the value is accessible as long as we hold our borrow.
+        unsafe { self.value.as_mut() }
     }
 }
 
