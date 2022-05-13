@@ -1,11 +1,8 @@
 use crate::mir::Mutability;
-use crate::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir::def_id::DefId;
-use rustc_query_system::ich::StableHashingContext;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::mem;
 
 use self::SimplifiedTypeGen::*;
 
@@ -17,7 +14,7 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 /// because we sometimes need to use SimplifiedTypeGen values as stable sorting
 /// keys (in which case we use a DefPathHash as id-type) but in the general case
 /// the non-stable but fast to construct DefId-version is the better choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 pub enum SimplifiedTypeGen<D>
 where
     D: Copy + Debug + Eq,
@@ -45,34 +42,49 @@ where
     GeneratorWitnessSimplifiedType(usize),
     OpaqueSimplifiedType(D),
     FunctionSimplifiedType(usize),
-    ParameterSimplifiedType,
+    PlaceholderSimplifiedType,
 }
 
+/// Generic parameters are pretty much just bound variables, e.g.
+/// the type of `fn foo<'a, T>(x: &'a T) -> u32 { ... }` can be thought of as
+/// `for<'a, T> fn(&'a T) -> u32`.
+///
+/// Typecheck of `foo` has to succeed for all possible generic arguments, so
+/// during typeck, we have to treat its generic parameters as if they
+/// were placeholders.
+///
+/// But when calling `foo` we only have to provide a specific generic argument.
+/// In that case the generic parameters are instantiated with inference variables.
+/// As we use `simplify_type` before that instantiation happens, we just treat
+/// generic parameters as if they were inference variables in that case.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatParams {
-    /// Treat parameters as bound types in the given environment.
+    /// Treat parameters as placeholders in the given environment.
     ///
-    /// For this to be correct the input has to be fully normalized
-    /// in its param env as it may otherwise cause us to ignore
-    /// potentially applying impls.
-    AsBoundTypes,
-    AsPlaceholders,
+    /// Note that this also causes us to treat projections as if they were
+    /// placeholders. This is only correct if the given projection cannot
+    /// be normalized in the current context. Even if normalization fails,
+    /// it may still succeed later if the projection contains any inference
+    /// variables.
+    AsPlaceholder,
+    AsInfer,
 }
 
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
 ///
 /// The idea is to get something simple that we can use to quickly decide if two types could unify,
-/// for example during method lookup.
+/// for example during method lookup. If this function returns `Some(x)` it can only unify with
+/// types for which this method returns either `Some(x)` as well or `None`.
 ///
 /// A special case here are parameters and projections, which are only injective
-/// if they are treated as bound types.
+/// if they are treated as placeholders.
 ///
 /// For example when storing impls based on their simplified self type, we treat
-/// generic parameters as placeholders. We must not simplify them here,
+/// generic parameters as if they were inference variables. We must not simplify them here,
 /// as they can unify with any other type.
 ///
-/// With projections we have to be even more careful, as even when treating them as bound types
-/// this is still only correct if they are fully normalized.
+/// With projections we have to be even more careful, as treating them as placeholders
+/// is only correct if they are fully normalized.
 ///
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
 pub fn simplify_type<'tcx>(
@@ -104,20 +116,25 @@ pub fn simplify_type<'tcx>(
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
-        ty::Param(_) | ty::Projection(_) => match treat_params {
-            // When treated as bound types, projections don't unify with
-            // anything as long as they are fully normalized.
+        ty::Placeholder(..) => Some(PlaceholderSimplifiedType),
+        ty::Param(_) => match treat_params {
+            TreatParams::AsPlaceholder => Some(PlaceholderSimplifiedType),
+            TreatParams::AsInfer => None,
+        },
+        ty::Projection(_) => match treat_params {
+            // When treating `ty::Param` as a placeholder, projections also
+            // don't unify with anything else as long as they are fully normalized.
             //
             // We will have to be careful with lazy normalization here.
-            TreatParams::AsBoundTypes => {
-                debug!("treating `{}` as a bound type", ty);
-                Some(ParameterSimplifiedType)
+            TreatParams::AsPlaceholder if !ty.has_infer_types_or_consts() => {
+                debug!("treating `{}` as a placeholder", ty);
+                Some(PlaceholderSimplifiedType)
             }
-            TreatParams::AsPlaceholders => None,
+            TreatParams::AsPlaceholder | TreatParams::AsInfer => None,
         },
         ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
-        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
+        ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 
@@ -161,41 +178,7 @@ impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
             GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
             OpaqueSimplifiedType(d) => OpaqueSimplifiedType(map(d)),
             FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
-            ParameterSimplifiedType => ParameterSimplifiedType,
-        }
-    }
-}
-
-impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
-where
-    D: Copy + Debug + Eq + HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            BoolSimplifiedType
-            | CharSimplifiedType
-            | StrSimplifiedType
-            | ArraySimplifiedType
-            | SliceSimplifiedType
-            | NeverSimplifiedType
-            | ParameterSimplifiedType
-            | MarkerTraitObjectSimplifiedType => {
-                // nothing to do
-            }
-            RefSimplifiedType(m) | PtrSimplifiedType(m) => m.hash_stable(hcx, hasher),
-            IntSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            UintSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            FloatSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            AdtSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            TupleSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            TraitSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            ClosureSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            GeneratorSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            GeneratorWitnessSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            OpaqueSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            FunctionSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            ForeignSimplifiedType(d) => d.hash_stable(hcx, hasher),
+            PlaceholderSimplifiedType => PlaceholderSimplifiedType,
         }
     }
 }

@@ -104,7 +104,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 }
             }
 
-            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsPlaceholders) {
+            if let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) {
                 self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
             } else {
                 bug!("unexpected self type: {:?}", self_ty);
@@ -169,7 +169,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         }
 
-        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsPlaceholders) {
+        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsInfer) {
             self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
         } else {
             bug!("unexpected primitive type: {:?}", ty);

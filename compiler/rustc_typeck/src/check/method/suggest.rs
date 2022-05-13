@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .into_iter()
             .any(|info| self.associated_value(info.def_id, item_name).is_some());
         let found_assoc = |ty: Ty<'tcx>| {
-            simplify_type(tcx, ty, TreatParams::AsPlaceholders)
+            simplify_type(tcx, ty, TreatParams::AsInfer)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
                         .iter()
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // cases where a positive bound implies a negative impl.
                 (candidates, Vec::new())
             } else if let Some(simp_rcvr_ty) =
-                simplify_type(self.tcx, rcvr_ty, TreatParams::AsBoundTypes)
+                simplify_type(self.tcx, rcvr_ty, TreatParams::AsPlaceholder)
             {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
@@ -1971,7 +1971,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .any(|imp_did| {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap();
                             let imp_simp =
-                                simplify_type(self.tcx, imp.self_ty(), TreatParams::AsBoundTypes);
+                                simplify_type(self.tcx, imp.self_ty(), TreatParams::AsPlaceholder);
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })
                     {
