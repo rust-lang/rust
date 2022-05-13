@@ -31,8 +31,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
-mod allocation_map;
-mod data_race;
+mod concurrency;
 mod diagnostics;
 mod eval;
 mod helpers;
@@ -46,7 +45,6 @@ mod stacked_borrows;
 mod sync;
 mod thread;
 mod vector_clock;
-mod weak_memory;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -65,7 +63,7 @@ pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
-pub use crate::data_race::{
+pub use crate::concurrency::data_race::{
     AtomicFenceOp, AtomicReadOp, AtomicRwOp, AtomicWriteOp,
     EvalContextExt as DataRaceEvalContextExt,
 };

@@ -100,10 +100,10 @@ pub enum AtomicFenceOp {
 /// of a thread, contains the happens-before clock and
 /// additional metadata to model atomic fence operations.
 #[derive(Clone, Default, Debug)]
-pub struct ThreadClockSet {
+pub(super) struct ThreadClockSet {
     /// The increasing clock representing timestamps
     /// that happen-before this thread.
-    pub(crate) clock: VClock,
+    pub(super) clock: VClock,
 
     /// The set of timestamps that will happen-before this
     /// thread once it performs an acquire fence.
@@ -115,15 +115,15 @@ pub struct ThreadClockSet {
 
     /// Timestamps of the last SC fence performed by each
     /// thread, updated when this thread performs an SC fence
-    pub(crate) fence_seqcst: VClock,
+    pub(super) fence_seqcst: VClock,
 
     /// Timestamps of the last SC write performed by each
     /// thread, updated when this thread performs an SC fence
-    pub(crate) write_seqcst: VClock,
+    pub(super) write_seqcst: VClock,
 
     /// Timestamps of the last SC fence performed by each
     /// thread, updated when this thread performs an SC read
-    pub(crate) read_seqcst: VClock,
+    pub(super) read_seqcst: VClock,
 }
 
 impl ThreadClockSet {
@@ -166,7 +166,7 @@ pub struct DataRace;
 /// common case where no atomic operations
 /// exists on the memory cell.
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
-pub struct AtomicMemoryCellClocks {
+struct AtomicMemoryCellClocks {
     /// The clock-vector of the timestamp of the last atomic
     /// read operation performed by each thread.
     /// This detects potential data-races between atomic read
@@ -1547,7 +1547,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector.
     #[inline]
-    pub fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+    pub(super) fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow();
         let clocks = Ref::map(ref_vector, |vec| &vec[index]);
@@ -1557,7 +1557,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector mutably for modification.
     #[inline]
-    pub fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
+    pub(super) fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);

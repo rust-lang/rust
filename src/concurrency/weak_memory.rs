@@ -60,10 +60,11 @@ use std::{
 use rustc_const_eval::interpret::{AllocRange, InterpResult, ScalarMaybeUninit};
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::{
+use crate::{Tag, VClock, VTimestamp, VectorIdx};
+
+use super::{
     allocation_map::{AccessType, AllocationMap},
     data_race::{GlobalState, ThreadClockSet},
-    Tag, VClock, VTimestamp, VectorIdx,
 };
 
 pub type AllocExtra = StoreBufferAlloc;
@@ -82,7 +83,7 @@ pub struct StoreBufferAlloc {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoreBuffer {
+pub(super) struct StoreBuffer {
     // Stores to this location in modification order
     buffer: VecDeque<StoreElement>,
 }
@@ -112,7 +113,7 @@ impl StoreBufferAlloc {
     }
 
     /// Gets a store buffer associated with an atomic object in this allocation
-    pub fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
+    pub(super) fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
         let access_type = self.store_buffer.borrow().access_type(range);
         let index = match access_type {
             AccessType::PerfectlyOverlapping(index) => index,
@@ -143,7 +144,7 @@ impl StoreBufferAlloc {
     }
 
     /// Gets a mutable store buffer associated with an atomic object in this allocation
-    pub fn get_store_buffer_mut(&mut self, range: AllocRange) -> &mut StoreBuffer {
+    pub(super) fn get_store_buffer_mut(&mut self, range: AllocRange) -> &mut StoreBuffer {
         let buffer = self.store_buffer.get_mut();
         let access_type = buffer.access_type(range);
         let index = match access_type {
@@ -174,7 +175,7 @@ impl Default for StoreBuffer {
 
 impl<'mir, 'tcx: 'mir> StoreBuffer {
     /// Reads from the last store in modification order
-    pub fn read_from_last_store(&self, global: &GlobalState) {
+    pub(super) fn read_from_last_store(&self, global: &GlobalState) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
             let (index, clocks) = global.current_thread_state();
@@ -182,7 +183,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         }
     }
 
-    pub fn buffered_read(
+    pub(super) fn buffered_read(
         &self,
         global: &GlobalState,
         is_seqcst: bool,
@@ -213,7 +214,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         Ok(loaded)
     }
 
-    pub fn buffered_write(
+    pub(super) fn buffered_write(
         &mut self,
         val: ScalarMaybeUninit<Tag>,
         global: &GlobalState,
