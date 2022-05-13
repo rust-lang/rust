@@ -8,34 +8,25 @@ use super::client::HandleStore;
 /// Declare an associated item of one of the traits below, optionally
 /// adjusting it (i.e., adding bounds to types and default bodies to methods).
 macro_rules! associated_item {
-    (type FreeFunctions) =>
-        (type FreeFunctions: 'static;);
-    (type TokenStream) =>
-        (type TokenStream: 'static + Clone;);
-    (type TokenStreamBuilder) =>
-        (type TokenStreamBuilder: 'static;);
-    (type TokenStreamIter) =>
-        (type TokenStreamIter: 'static + Clone;);
-    (type Group) =>
-        (type Group: 'static + Clone;);
-    (type Punct) =>
-        (type Punct: 'static + Copy + Eq + Hash;);
-    (type Ident) =>
-        (type Ident: 'static + Copy + Eq + Hash;);
-    (type Literal) =>
-        (type Literal: 'static + Clone;);
-    (type SourceFile) =>
-        (type SourceFile: 'static + Clone;);
-    (type MultiSpan) =>
-        (type MultiSpan: 'static;);
-    (type Diagnostic) =>
-        (type Diagnostic: 'static;);
-    (type Span) =>
-        (type Span: 'static + Copy + Eq + Hash;);
+    (type FreeFunctions) => (type FreeFunctions: 'static;);
+    (type TokenStream) => (type TokenStream: 'static + Clone;);
+    (type TokenStreamBuilder) => (type TokenStreamBuilder: 'static;);
+    (type TokenStreamIter) => (type TokenStreamIter: 'static + Clone;);
+    (type Group) => (type Group: 'static + Clone;);
+    (type Punct) => (type Punct: 'static + Copy + Eq + Hash;);
+    (type Ident) => (type Ident: 'static + Copy + Eq + Hash;);
+    (type Literal) => (type Literal: 'static + Clone;);
+    (type SourceFile) => (type SourceFile: 'static + Clone;);
+    (type MultiSpan) => (type MultiSpan: 'static;);
+    (type Diagnostic) => (type Diagnostic: 'static;);
+    (type Span) => (type Span: 'static + Copy + Eq + Hash;);
+
     (fn drop(&mut self, $arg:ident: $arg_ty:ty)) =>
         (fn drop(&mut self, $arg: $arg_ty) { mem::drop($arg) });
+
     (fn clone(&mut self, $arg:ident: $arg_ty:ty) -> $ret_ty:ty) =>
         (fn clone(&mut self, $arg: $arg_ty) -> $ret_ty { $arg.clone() });
+
     ($($item:tt)*) => ($($item)*;)
 }
 
