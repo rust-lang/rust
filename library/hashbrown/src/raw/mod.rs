@@ -69,15 +69,9 @@ fn unlikely(b: bool) -> bool {
     b
 }
 
-#[cfg(feature = "nightly")]
 #[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
     to.offset_from(from) as usize
-}
-#[cfg(not(feature = "nightly"))]
-#[inline]
-unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
-    (to as usize - from as usize) / mem::size_of::<T>()
 }
 
 /// Whether memory allocation errors should return an error or abort.
