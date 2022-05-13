@@ -13,28 +13,24 @@ use std::path::Path;
 pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
     cgu_name: &str,
-    path: Option<&Path>,
+    path: &Path,
 ) -> Option<(WorkProductId, WorkProduct)> {
     debug!("copy_cgu_workproduct_to_incr_comp_cache_dir({:?},{:?})", cgu_name, path);
     sess.opts.incremental.as_ref()?;
 
-    let saved_file = if let Some(path) = path {
-        let file_name = format!("{}.o", cgu_name);
-        let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
-        match link_or_copy(path, &path_in_incr_dir) {
-            Ok(_) => Some(file_name),
-            Err(err) => {
-                sess.warn(&format!(
-                    "error copying object file `{}` to incremental directory as `{}`: {}",
-                    path.display(),
-                    path_in_incr_dir.display(),
-                    err
-                ));
-                return None;
-            }
+    let file_name = format!("{}.o", cgu_name);
+    let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
+    let saved_file = match link_or_copy(path, &path_in_incr_dir) {
+        Ok(_) => Some(file_name),
+        Err(err) => {
+            sess.warn(&format!(
+                "error copying object file `{}` to incremental directory as `{}`: {}",
+                path.display(),
+                path_in_incr_dir.display(),
+                err
+            ));
+            return None;
         }
-    } else {
-        None
     };
 
     let work_product = WorkProduct { cgu_name: cgu_name.to_string(), saved_file };
