@@ -667,35 +667,38 @@ impl InitMask {
 
     pub fn new(size: Size, state: bool) -> Self {
         let mut m = InitMask { blocks: vec![], len: Size::ZERO };
-        if size.bytes() != 0 {
-            m.set_range(Size::ZERO, size, state);
-        }
+        m.grow_and_set(Size::ZERO, size, state);
         m
     }
 
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
-        let len = self.len;
-        if end > len {
-            // grow to the new len
-            self.len = end;
-            let grow = end.bytes() - len.bytes();
-            let blocks_bits = u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE;
-
-            // if the unused tailing bits are not enough
-            if grow > blocks_bits - len.bytes() {
-                let additional_blocks = grow / Self::BLOCK_SIZE + 1;
-                let elt = if new_state { u64::MAX } else { 0 };
-                self.blocks
-                    .extend(iter::repeat(elt).take(usize::try_from(additional_blocks).unwrap()));
-
-                // set the remain bits if not growing from `new()`
-                if blocks_bits != 0 {
-                    self.set_range_inbounds(start, Size::from_bytes(blocks_bits), new_state);
-                }
-                return;
-            }
+        if end > self.len {
+            return self.grow_and_set(start, end - start, new_state);
         }
-        self.set_range_inbounds(start, end, new_state);
+        self.set_range_inbounds(start, end, new_state)
+    }
+
+    fn grow_and_set(&mut self, start: Size, amount: Size, new_state: bool) {
+        if amount.bytes() == 0 {
+            return;
+        }
+        let blocks_bits = u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE;
+
+        // if the tailing bits are not enough
+        if amount.bytes() > blocks_bits - start.bytes() {
+            let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
+            let elt = if new_state { u64::MAX } else { 0 };
+            self.blocks.extend(iter::repeat(elt).take(usize::try_from(additional_blocks).unwrap()));
+
+            // set the remain bits
+            if blocks_bits - start.bytes() != 0 {
+                self.set_range_inbounds(start, Size::from_bytes(blocks_bits), new_state);
+            }
+        } else {
+            self.set_range_inbounds(start, start + amount, new_state);
+        }
+
+        self.len = start + amount;
     }
 
     pub fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
