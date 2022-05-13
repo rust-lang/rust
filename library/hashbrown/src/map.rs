@@ -2565,7 +2565,7 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
 /// assert_eq!(drain_filter.next(), None);
 /// assert_eq!(drain_filter.next(), None);
 /// drop(drain_filter);
-/// 
+///
 /// assert_eq!(map.len(), 1);
 /// ```
 pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
