@@ -55,7 +55,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {
-            // Reallocation of a fat pointer causes it to become thin
+            // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
+            // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
+            // is not run on locals.
             if !hir_ty_to_ty(cx.tcx, ty).is_sized(cx.tcx.at(ty.span), cx.param_env) {
                 return false;
             }
