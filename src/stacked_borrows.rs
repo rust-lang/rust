@@ -3,9 +3,9 @@
 
 use log::trace;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU64;
+use std::rc::Rc;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
@@ -22,7 +22,7 @@ use std::collections::HashSet;
 use crate::*;
 
 pub mod diagnostics;
-use diagnostics::{AllocHistory, GlobalStateExt, StackExt};
+use diagnostics::AllocHistory;
 
 use diagnostics::TagHistory;
 
@@ -97,6 +97,8 @@ pub struct Stack {
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
+    /// Stores past operations on this allocation
+    history: RefCell<AllocHistory>,
 }
 
 /// Extra global state, available to the memory access hooks.
@@ -118,10 +120,6 @@ pub struct GlobalStateInner {
     tracked_call_ids: HashSet<CallId>,
     /// Whether to track raw pointers.
     tag_raw: bool,
-    /// Crates which are considered local for the purposes of error reporting.
-    local_crates: Vec<CrateNum>,
-    /// Extra per-allocation information
-    extras: HashMap<AllocId, AllocHistory>,
 }
 
 /// We need interior mutable access to the global state.
@@ -174,7 +172,6 @@ impl GlobalStateInner {
         tracked_pointer_tags: HashSet<PtrId>,
         tracked_call_ids: HashSet<CallId>,
         tag_raw: bool,
-        local_crates: Vec<CrateNum>,
     ) -> Self {
         GlobalStateInner {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
@@ -184,8 +181,6 @@ impl GlobalStateInner {
             tracked_pointer_tags,
             tracked_call_ids,
             tag_raw,
-            local_crates,
-            extras: HashMap::new(),
         }
     }
 
@@ -331,30 +326,29 @@ impl<'tcx> Stack {
     /// currently checking.
     fn check_protector(
         item: &Item,
-        provoking_access: Option<(SbTag, AllocId, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
+        provoking_access: Option<(SbTag, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
+        alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
         if let SbTag::Tagged(id) = item.tag {
             if global.tracked_pointer_tags.contains(&id) {
                 register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
                     *item,
-                    provoking_access
-                        .map(|(tag, _alloc_id, _alloc_range, _size, access)| (tag, access)),
+                    provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
                 ));
             }
         }
         if let Some(call) = item.protector {
             if global.is_active(call) {
-                if let Some((tag, alloc_id, alloc_range, offset, _access)) = provoking_access {
+                if let Some((tag, alloc_range, offset, _access)) = provoking_access {
                     Err(err_sb_ub(
                         format!(
                             "not granting access to tag {:?} because incompatible item is protected: {:?}",
                             tag, item
                         ),
                         None,
-                        global.get_stack_history(
+                        alloc_history.get_logs_relevant_to(
                             tag,
-                            alloc_id,
                             alloc_range,
                             offset,
                             Some(item.tag),
@@ -383,13 +377,14 @@ impl<'tcx> Stack {
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
         threads: &ThreadManager<'_, 'tcx>,
+        alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self
-            .find_granting(access, tag)
-            .ok_or_else(|| self.access_error(access, tag, alloc_id, alloc_range, offset, global))?;
+        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
+            alloc_history.access_error(access, tag, alloc_id, alloc_range, offset, self)
+        })?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -401,10 +396,11 @@ impl<'tcx> Stack {
                 trace!("access: popping item {:?}", item);
                 Stack::check_protector(
                     &item,
-                    Some((tag, alloc_id, alloc_range, offset, access)),
+                    Some((tag, alloc_range, offset, access)),
                     global,
+                    alloc_history,
                 )?;
-                global.log_invalidation(item.tag, alloc_id, alloc_range, threads);
+                alloc_history.log_invalidation(item.tag, alloc_range, threads);
             }
         } else {
             // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
@@ -421,11 +417,12 @@ impl<'tcx> Stack {
                     trace!("access: disabling item {:?}", item);
                     Stack::check_protector(
                         item,
-                        Some((tag, alloc_id, alloc_range, offset, access)),
+                        Some((tag, alloc_range, offset, access)),
                         global,
+                        alloc_history,
                     )?;
                     item.perm = Permission::Disabled;
-                    global.log_invalidation(item.tag, alloc_id, alloc_range, threads);
+                    alloc_history.log_invalidation(item.tag, alloc_range, threads);
                 }
             }
         }
@@ -441,6 +438,7 @@ impl<'tcx> Stack {
         tag: SbTag,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalStateInner,
+        alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
@@ -449,13 +447,13 @@ impl<'tcx> Stack {
                 tag, alloc_id,
                 ),
                 None,
-                global.get_stack_history(tag, alloc_id, alloc_range, offset, None),
+                alloc_history.get_logs_relevant_to(tag, alloc_range, offset, None),
             )
         })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
-            Stack::check_protector(&item, None, global)?;
+            Stack::check_protector(&item, None, global, alloc_history)?;
         }
 
         Ok(())
@@ -474,6 +472,7 @@ impl<'tcx> Stack {
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
         threads: &ThreadManager<'_, 'tcx>,
+        alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
@@ -481,7 +480,7 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from).ok_or_else(|| {
-            self.grant_error(derived_from, new, alloc_id, alloc_range, offset, global)
+            alloc_history.grant_error(derived_from, new, alloc_id, alloc_range, offset, self)
         })?;
 
         // Compute where to put the new item.
@@ -501,7 +500,14 @@ impl<'tcx> Stack {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
             // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
-            self.access(access, derived_from, (alloc_id, alloc_range, offset), global, threads)?;
+            self.access(
+                access,
+                derived_from,
+                (alloc_id, alloc_range, offset),
+                global,
+                threads,
+                alloc_history,
+            )?;
 
             // We insert "as far up as possible": We know only compatible items are remaining
             // on top of `derived_from`, and we want the new item at the top so that we
@@ -527,22 +533,26 @@ impl<'tcx> Stack {
 /// Map per-stack operations to higher-level per-location-range operations.
 impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
-    fn new(size: Size, perm: Permission, tag: SbTag) -> Self {
+    fn new(size: Size, perm: Permission, tag: SbTag, local_crates: Rc<[CrateNum]>) -> Self {
         let item = Item { perm, tag, protector: None };
         let stack = Stack { borrows: vec![item] };
 
-        Stacks { stacks: RefCell::new(RangeMap::new(size, stack)) }
+        Stacks {
+            stacks: RefCell::new(RangeMap::new(size, stack)),
+            history: RefCell::new(AllocHistory::new(local_crates)),
+        }
     }
 
     /// Call `f` on every stack in the range.
     fn for_each(
         &self,
         range: AllocRange,
-        mut f: impl FnMut(Size, &mut Stack) -> InterpResult<'tcx>,
+        mut f: impl FnMut(Size, &mut Stack, &mut AllocHistory) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let mut stacks = self.stacks.borrow_mut();
+        let history = &mut *self.history.borrow_mut();
         for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack)?;
+            f(offset, stack, history)?;
         }
         Ok(())
     }
@@ -551,11 +561,12 @@ impl<'tcx> Stacks {
     fn for_each_mut(
         &mut self,
         range: AllocRange,
-        mut f: impl FnMut(Size, &mut Stack) -> InterpResult<'tcx>,
+        mut f: impl FnMut(Size, &mut Stack, &mut AllocHistory) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let stacks = self.stacks.get_mut();
+        let history = &mut *self.history.borrow_mut();
         for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack)?;
+            f(offset, stack, history)?;
         }
         Ok(())
     }
@@ -569,6 +580,7 @@ impl Stacks {
         state: &GlobalState,
         kind: MemoryKind<MiriMemoryKind>,
         threads: &ThreadManager<'_, '_>,
+        local_crates: Rc<[CrateNum]>,
     ) -> Self {
         let mut extra = state.borrow_mut();
         let (base_tag, perm) = match kind {
@@ -602,8 +614,14 @@ impl Stacks {
                 (tag, Permission::SharedReadWrite)
             }
         };
-        extra.log_creation(None, base_tag, id, alloc_range(Size::ZERO, size), threads);
-        Stacks::new(size, perm, base_tag)
+        let stacks = Stacks::new(size, perm, base_tag, local_crates);
+        stacks.history.borrow_mut().log_creation(
+            None,
+            base_tag,
+            alloc_range(Size::ZERO, size),
+            threads,
+        );
+        stacks
     }
 
     #[inline(always)]
@@ -622,8 +640,15 @@ impl Stacks {
             range.size.bytes()
         );
         let mut state = state.borrow_mut();
-        self.for_each(range, |offset, stack| {
-            stack.access(AccessKind::Read, tag, (alloc_id, range, offset), &mut state, threads)
+        self.for_each(range, |offset, stack, history| {
+            stack.access(
+                AccessKind::Read,
+                tag,
+                (alloc_id, range, offset),
+                &mut state,
+                threads,
+                history,
+            )
         })
     }
 
@@ -643,8 +668,15 @@ impl Stacks {
             range.size.bytes()
         );
         let mut state = state.borrow_mut();
-        self.for_each_mut(range, |offset, stack| {
-            stack.access(AccessKind::Write, tag, (alloc_id, range, offset), &mut state, threads)
+        self.for_each_mut(range, |offset, stack, history| {
+            stack.access(
+                AccessKind::Write,
+                tag,
+                (alloc_id, range, offset),
+                &mut state,
+                threads,
+                history,
+            )
         })
     }
 
@@ -658,10 +690,9 @@ impl Stacks {
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let mut state = state.borrow_mut();
-        self.for_each_mut(range, |offset, stack| {
-            stack.dealloc(tag, (alloc_id, range, offset), &mut state)
+        self.for_each_mut(range, |offset, stack, history| {
+            stack.dealloc(tag, (alloc_id, range, offset), &mut state, history)
         })?;
-        state.extras.remove(&alloc_id);
         Ok(())
     }
 }
@@ -692,16 +723,20 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
 
-        let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
-        mem_extra.log_creation(
-            Some(orig_tag),
-            new_tag,
-            alloc_id,
-            alloc_range(base_offset, base_offset + size),
-            &this.machine.threads,
-        );
-        if protect {
-            mem_extra.log_protector(orig_tag, new_tag, alloc_id, &this.machine.threads);
+        {
+            let extra = this.get_alloc_extra(alloc_id)?;
+            let stacked_borrows =
+                extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+            let mut alloc_history = stacked_borrows.history.borrow_mut();
+            alloc_history.log_creation(
+                Some(orig_tag),
+                new_tag,
+                alloc_range(base_offset, base_offset + size),
+                &this.machine.threads,
+            );
+            if protect {
+                alloc_history.log_protector(orig_tag, new_tag, &this.machine.threads);
+            }
         }
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
@@ -763,13 +798,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     let item = Item { perm, tag: new_tag, protector };
                     let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
-                    stacked_borrows.for_each(range, |offset, stack| {
+                    stacked_borrows.for_each(range, |offset, stack, history| {
                         stack.grant(
                             orig_tag,
                             item,
                             (alloc_id, range, offset),
                             &mut *global,
                             &this.machine.threads,
+                            history,
                         )
                     })
                 })?;
@@ -785,8 +821,15 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let item = Item { perm, tag: new_tag, protector };
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
-        stacked_borrows.for_each_mut(range, |offset, stack| {
-            stack.grant(orig_tag, item, (alloc_id, range, offset), &mut global, &machine.threads)
+        stacked_borrows.for_each_mut(range, |offset, stack, history| {
+            stack.grant(
+                orig_tag,
+                item,
+                (alloc_id, range, offset),
+                &mut global,
+                &machine.threads,
+                history,
+            )
         })?;
 
         Ok(())

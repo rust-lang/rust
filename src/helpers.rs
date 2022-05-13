@@ -1,5 +1,6 @@
 use std::mem;
 use std::num::NonZeroUsize;
+use std::rc::Rc;
 use std::time::Duration;
 
 use log::trace;
@@ -797,7 +798,7 @@ pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
 
 /// Retrieve the list of local crates that should have been passed by cargo-miri in
 /// MIRI_LOCAL_CRATES and turn them into `CrateNum`s.
-pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
+pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Rc<[CrateNum]> {
     // Convert the local crate names from the passed-in config into CrateNums so that they can
     // be looked up quickly during execution
     let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
@@ -811,7 +812,7 @@ pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
             local_crates.push(crate_num);
         }
     }
-    local_crates
+    Rc::from(local_crates.as_slice())
 }
 
 /// Formats an AllocRange like [0x1..0x3], for use in diagnostics.

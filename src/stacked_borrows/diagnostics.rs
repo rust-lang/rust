@@ -1,9 +1,13 @@
+use smallvec::SmallVec;
+use std::rc::Rc;
+
 use rustc_middle::mir::interpret::{AllocId, AllocRange};
+use rustc_span::def_id::CrateNum;
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::helpers::HexRange;
-use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission};
+use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
 use crate::SbTag;
 use crate::Stack;
@@ -11,7 +15,7 @@ use crate::ThreadManager;
 
 use rustc_middle::mir::interpret::InterpError;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct AllocHistory {
     // The time tags can be compressed down to one bit per event, by just storing a Vec<u8>
     // where each bit is set to indicate if the event was a creation or a retag
@@ -19,16 +23,18 @@ pub struct AllocHistory {
     creations: smallvec::SmallVec<[Event; 2]>,
     invalidations: smallvec::SmallVec<[Event; 1]>,
     protectors: smallvec::SmallVec<[Protection; 1]>,
+    /// This field is a clone of the `local_crates` field on `Evaluator`.
+    local_crates: Rc<[CrateNum]>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Protection {
     orig_tag: SbTag,
     tag: SbTag,
     span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Event {
     time: usize,
     parent: Option<SbTag>,
@@ -52,45 +58,17 @@ pub enum TagHistory {
     },
 }
 
-pub trait GlobalStateExt {
-    fn current_span(&self, threads: &ThreadManager<'_, '_>) -> Span;
+impl AllocHistory {
+    pub fn new(local_crates: Rc<[CrateNum]>) -> Self {
+        Self {
+            current_time: 0,
+            creations: SmallVec::new(),
+            invalidations: SmallVec::new(),
+            protectors: SmallVec::new(),
+            local_crates,
+        }
+    }
 
-    fn log_creation(
-        &mut self,
-        parent: Option<SbTag>,
-        tag: SbTag,
-        alloc: AllocId,
-        range: AllocRange,
-        threads: &ThreadManager<'_, '_>,
-    );
-
-    fn log_invalidation(
-        &mut self,
-        tag: SbTag,
-        alloc: AllocId,
-        range: AllocRange,
-        threads: &ThreadManager<'_, '_>,
-    );
-
-    fn log_protector(
-        &mut self,
-        orig_tag: SbTag,
-        tag: SbTag,
-        alloc: AllocId,
-        threads: &ThreadManager<'_, '_>,
-    );
-
-    fn get_stack_history(
-        &self,
-        tag: SbTag,
-        alloc: AllocId,
-        alloc_range: AllocRange,
-        offset: Size,
-        protector_tag: Option<SbTag>,
-    ) -> Option<TagHistory>;
-}
-
-impl GlobalStateExt for GlobalStateInner {
     fn current_span(&self, threads: &ThreadManager<'_, '_>) -> Span {
         threads
             .active_thread_stack()
@@ -104,64 +82,45 @@ impl GlobalStateExt for GlobalStateInner {
             .unwrap_or(rustc_span::DUMMY_SP)
     }
 
-    fn log_creation(
+    pub fn log_creation(
         &mut self,
         parent: Option<SbTag>,
         tag: SbTag,
-        alloc: AllocId,
         range: AllocRange,
         threads: &ThreadManager<'_, '_>,
     ) {
         let span = self.current_span(threads);
-        let extras = self.extras.entry(alloc).or_default();
-        extras.creations.push(Event { parent, tag, range, span, time: extras.current_time });
-        extras.current_time += 1;
+        self.creations.push(Event { parent, tag, range, span, time: self.current_time });
+        self.current_time += 1;
     }
 
-    fn log_invalidation(
+    pub fn log_invalidation(
         &mut self,
         tag: SbTag,
-        alloc: AllocId,
         range: AllocRange,
         threads: &ThreadManager<'_, '_>,
     ) {
         let span = self.current_span(threads);
-        let extras = self.extras.entry(alloc).or_default();
-        extras.invalidations.push(Event {
-            parent: None,
-            tag,
-            range,
-            span,
-            time: extras.current_time,
-        });
-        extras.current_time += 1;
+        self.invalidations.push(Event { parent: None, tag, range, span, time: self.current_time });
+        self.current_time += 1;
     }
 
-    fn log_protector(
-        &mut self,
-        orig_tag: SbTag,
-        tag: SbTag,
-        alloc: AllocId,
-        threads: &ThreadManager<'_, '_>,
-    ) {
+    pub fn log_protector(&mut self, orig_tag: SbTag, tag: SbTag, threads: &ThreadManager<'_, '_>) {
         let span = self.current_span(threads);
-        let extras = self.extras.entry(alloc).or_default();
-        extras.protectors.push(Protection { orig_tag, tag, span });
-        extras.current_time += 1;
+        self.protectors.push(Protection { orig_tag, tag, span });
+        self.current_time += 1;
     }
 
-    fn get_stack_history(
+    pub fn get_logs_relevant_to(
         &self,
         tag: SbTag,
-        alloc: AllocId,
         alloc_range: AllocRange,
         offset: Size,
         protector_tag: Option<SbTag>,
     ) -> Option<TagHistory> {
-        let extras = self.extras.get(&alloc)?;
         let protected = protector_tag
             .and_then(|protector| {
-                extras.protectors.iter().find_map(|protection| {
+                self.protectors.iter().find_map(|protection| {
                     if protection.tag == protector {
                         Some((protection.orig_tag, protection.span.data()))
                     } else {
@@ -170,7 +129,7 @@ impl GlobalStateExt for GlobalStateInner {
                 })
             })
             .and_then(|(tag, call_span)| {
-                extras.creations.iter().rev().find_map(|event| {
+                self.creations.iter().rev().find_map(|event| {
                     if event.tag == tag {
                         Some((event.parent?, event.span.data(), call_span))
                     } else {
@@ -178,6 +137,7 @@ impl GlobalStateExt for GlobalStateInner {
                     }
                 })
             });
+
         if let SbTag::Tagged(_) = tag {
             let get_matching = |events: &[Event]| {
                 events.iter().rev().find_map(|event| {
@@ -186,14 +146,14 @@ impl GlobalStateExt for GlobalStateInner {
             };
             Some(TagHistory::Tagged {
                 tag,
-                created: get_matching(&extras.creations)?,
-                invalidated: get_matching(&extras.invalidations),
+                created: get_matching(&self.creations)?,
+                invalidated: get_matching(&self.invalidations),
                 protected,
             })
         } else {
             let mut created_time = 0;
             // Find the most recently created tag that satsfies this offset
-            let recently_created = extras.creations.iter().rev().find_map(|event| {
+            let recently_created = self.creations.iter().rev().find_map(|event| {
                 if event.tag == tag && offset >= event.range.start && offset < event.range.end() {
                     created_time = event.time;
                     Some((event.range, event.span.data()))
@@ -206,8 +166,8 @@ impl GlobalStateExt for GlobalStateInner {
             // the recently created tag, and has a different span.
             // We're trying to make a guess at which span the user wanted to provide the tag that
             // they're using.
-            let matching_created = if let Some((_created_range, created_span)) = recently_created {
-                extras.creations.iter().rev().find_map(|event| {
+            let matching_created = recently_created.and_then(|(_created_range, created_span)| {
+                self.creations.iter().rev().find_map(|event| {
                     if event.tag == tag
                         && alloc_range.start >= event.range.start
                         && alloc_range.end() <= event.range.end()
@@ -219,26 +179,26 @@ impl GlobalStateExt for GlobalStateInner {
                         None
                     }
                 })
-            } else {
-                None
-            };
+            });
 
-            let recently_invalidated = if recently_created.is_some() {
-                // Find the most recent invalidation of this tag which post-dates the creation
-                let mut found = None;
-                for event in extras.invalidations.iter().rev() {
-                    if event.time < created_time {
-                        break;
-                    }
-                    if event.tag == tag && offset >= event.range.start && offset < event.range.end()
-                    {
-                        found = Some((event.range, event.span.data()))
-                    }
-                }
-                found
-            } else {
-                None
-            };
+            // Find the most recent invalidation of this tag which post-dates the creation
+            let recently_invalidated = recently_created.and_then(|_| {
+                self.invalidations
+                    .iter()
+                    .rev()
+                    .take_while(|event| event.time > created_time)
+                    .find_map(|event| {
+                        if event.tag == tag
+                            && offset >= event.range.start
+                            && offset < event.range.end()
+                        {
+                            Some((event.range, event.span.data()))
+                        } else {
+                            None
+                        }
+                    })
+            });
+
             Some(TagHistory::Untagged {
                 recently_created,
                 matching_created,
@@ -247,40 +207,16 @@ impl GlobalStateExt for GlobalStateInner {
             })
         }
     }
-}
 
-pub trait StackExt {
-    fn grant_error(
-        &self,
-        derived_from: SbTag,
-        new: Item,
-        alloc_id: AllocId,
-        alloc_range: AllocRange,
-        error_offset: Size,
-        global: &GlobalStateInner,
-    ) -> InterpError<'static>;
-
-    fn access_error(
-        &self,
-        access: AccessKind,
-        tag: SbTag,
-        alloc_id: AllocId,
-        alloc_range: AllocRange,
-        error_offset: Size,
-        global: &GlobalStateInner,
-    ) -> InterpError<'static>;
-}
-
-impl StackExt for Stack {
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
-    fn grant_error(
+    pub fn grant_error(
         &self,
         derived_from: SbTag,
         new: Item,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
-        global: &GlobalStateInner,
+        stack: &Stack,
     ) -> InterpError<'static> {
         let action = format!(
             "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
@@ -290,21 +226,21 @@ impl StackExt for Stack {
             error_offset.bytes(),
         );
         err_sb_ub(
-            format!("{}{}", action, error_cause(self, derived_from)),
+            format!("{}{}", action, error_cause(stack, derived_from)),
             Some(operation_summary("a reborrow", alloc_id, alloc_range)),
-            global.get_stack_history(derived_from, alloc_id, alloc_range, error_offset, None),
+            self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None),
         )
     }
 
     /// Report a descriptive error when `access` is not permitted based on `tag`.
-    fn access_error(
+    pub fn access_error(
         &self,
         access: AccessKind,
         tag: SbTag,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
-        global: &GlobalStateInner,
+        stack: &Stack,
     ) -> InterpError<'static> {
         let action = format!(
             "attempting a {} using {:?} at {}[{:#x}]",
@@ -314,9 +250,9 @@ impl StackExt for Stack {
             error_offset.bytes(),
         );
         err_sb_ub(
-            format!("{}{}", action, error_cause(self, tag)),
+            format!("{}{}", action, error_cause(stack, tag)),
             Some(operation_summary("an access", alloc_id, alloc_range)),
-            global.get_stack_history(tag, alloc_id, alloc_range, error_offset, None),
+            self.get_logs_relevant_to(tag, alloc_range, error_offset, None),
         )
     }
 }
