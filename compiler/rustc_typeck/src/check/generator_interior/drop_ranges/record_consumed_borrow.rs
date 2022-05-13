@@ -171,7 +171,13 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             .insert(TrackedValue::from_place_with_projections_allowed(place_with_id));
 
         // For copied we treat this mostly like a borrow except that we don't add the place
-        // to borrowed_temporaries because the copy is consumed.
+        // to borrowed_temporaries if it is not a local because the copy is consumed.
+        match place_with_id.place.base {
+            PlaceBase::Rvalue | PlaceBase::StaticItem | PlaceBase::Upvar(_) => (),
+            PlaceBase::Local(_) => {
+                self.places.borrowed_temporaries.insert(place_with_id.hir_id);
+            }
+        }
     }
 
     fn mutate(
