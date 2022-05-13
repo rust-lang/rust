@@ -27,7 +27,7 @@ use text_edit::TextEdit;
 use crate::{completions::Completions, context::CompletionContext};
 
 pub use crate::{
-    config::CompletionConfig,
+    config::{CallableSnippets, CompletionConfig},
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
     },

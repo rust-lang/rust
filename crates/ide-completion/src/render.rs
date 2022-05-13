@@ -287,7 +287,7 @@ fn render_resolution_simple_(
     let type_path_no_ty_args = matches!(
         ctx.completion.path_context(),
         Some(PathCompletionCtx { kind: PathKind::Type, has_type_args: false, .. })
-    ) && ctx.completion.config.add_call_parenthesis;
+    ) && ctx.completion.config.callable.is_some();
     if type_path_no_ty_args {
         if let Some(cap) = ctx.snippet_cap() {
             let has_non_default_type_params = match resolution {

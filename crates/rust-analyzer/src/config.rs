@@ -11,8 +11,9 @@ use std::{ffi::OsString, fmt, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, HighlightRelatedConfig,
-    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
+    AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
+    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
+    Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -1029,14 +1030,10 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
-            add_call_parenthesis: matches!(
-                self.data.completion_callable_snippets,
-                Some(CallableCompletionDef::AddParentheses)
-            ),
-            add_call_argument_snippets: matches!(
-                self.data.completion_callable_snippets,
-                Some(CallableCompletionDef::FillArguments)
-            ),
+            callable: self.data.completion_callable_snippets.map(|it| match it {
+                CallableCompletionDef::FillArguments => CallableSnippets::FillArguments,
+                CallableCompletionDef::AddParentheses => CallableSnippets::AddParentheses,
+            }),
             insert_use: self.insert_use_config(),
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
@@ -1383,7 +1380,7 @@ enum ImportGranularityDef {
     Module,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
 enum CallableCompletionDef {
     FillArguments,

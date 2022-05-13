@@ -14,11 +14,16 @@ pub struct CompletionConfig {
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
     pub enable_private_editable: bool,
-    pub add_call_parenthesis: bool,
-    pub add_call_argument_snippets: bool,
+    pub callable: Option<CallableSnippets>,
     pub snippet_cap: Option<SnippetCap>,
     pub insert_use: InsertUseConfig,
     pub snippets: Vec<Snippet>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallableSnippets {
+    FillArguments,
+    AddParentheses,
 }
 
 impl CompletionConfig {
