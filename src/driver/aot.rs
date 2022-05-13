@@ -66,11 +66,7 @@ fn emit_module(
     let work_product = if backend_config.disable_incr_cache {
         None
     } else {
-        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-            tcx.sess,
-            &name,
-            Some(&tmp_file),
-        )
+        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(tcx.sess, &name, &tmp_file)
     };
 
     ModuleCodegenResult(
