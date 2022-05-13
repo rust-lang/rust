@@ -28,7 +28,7 @@ because that's clearly a non-descriptive name.
   - [Debugging](#debugging)
   - [PR Checklist](#pr-checklist)
   - [Adding configuration to a lint](#adding-configuration-to-a-lint)
-  - [Cheatsheet](#cheatsheet)
+  - [Cheat Sheet](#cheat-sheet)
 
 ## Setup
 
@@ -649,7 +649,7 @@ in the following steps:
         with the configuration value and a rust file that should be linted by Clippy. The test can
         otherwise be written as usual.
 
-## Cheatsheet
+## Cheat Sheet
 
 Here are some pointers to things you are likely going to need for every lint:
 

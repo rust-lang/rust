@@ -102,8 +102,8 @@ declare_clippy_lint! {
     /// types.
     ///
     /// ### Why is this bad?
-    /// To avoid surprising behaviour, these traits should
-    /// agree and the behaviour of `Copy` cannot be overridden. In almost all
+    /// To avoid surprising behavior, these traits should
+    /// agree and the behavior of `Copy` cannot be overridden. In almost all
     /// situations a `Copy` type should have a `Clone` implementation that does
     /// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
     /// gets you.
