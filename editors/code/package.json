@@ -1,8 +1,7 @@
 {
     "name": "rust-analyzer",
     "displayName": "rust-analyzer",
-    "description": "The future of Rust support in VSCode.",
-    "preview": true,
+    "description": "Rust language support for Visual Studio Code",
     "private": true,
     "icon": "icon.png",
     "version": "0.4.0-dev",
