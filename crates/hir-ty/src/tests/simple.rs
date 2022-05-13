@@ -2733,14 +2733,3 @@ fn f() {
     "#,
     );
 }
-
-#[test]
-fn nested_tuple_index() {
-    check_no_mismatches(
-        r#"
-fn main() {
-    let fld: i32 = ((0,),).0.0;
-}
-"#,
-    );
-}

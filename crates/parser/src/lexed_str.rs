@@ -177,7 +177,7 @@ impl<'a> Converter<'a> {
 
                 rustc_lexer::TokenKind::RawIdent => IDENT,
                 rustc_lexer::TokenKind::Literal { kind, .. } => {
-                    self.extend_literal(token_text, kind);
+                    self.extend_literal(token_text.len(), kind);
                     return;
                 }
 
@@ -223,7 +223,7 @@ impl<'a> Converter<'a> {
         self.push(syntax_kind, token_text.len(), err);
     }
 
-    fn extend_literal(&mut self, token_text: &str, kind: &rustc_lexer::LiteralKind) {
+    fn extend_literal(&mut self, len: usize, kind: &rustc_lexer::LiteralKind) {
         let mut err = "";
 
         let syntax_kind = match *kind {
@@ -237,27 +237,7 @@ impl<'a> Converter<'a> {
                 if empty_exponent {
                     err = "Missing digits after the exponent symbol";
                 }
-
-                // In order to correctly parse nested tuple accesses like `tup.0.0`, where the `0.0`
-                // is lexed as a float, we split floats that contain a `.` into 3 tokens.
-                // To ensure that later stages can always reconstruct the token correctly, the first
-                // token in the sequence indicates the number of following tokens that are part of
-                // the float literal.
-                if let Some((before, after)) = token_text.split_once('.') {
-                    let err = if err.is_empty() { None } else { Some(err) };
-
-                    assert!(!before.is_empty());
-                    let tok =
-                        if after.is_empty() { FLOAT_NUMBER_START_1 } else { FLOAT_NUMBER_START_2 };
-                    self.push(tok, before.len(), None);
-                    self.push(DOT, 1, None);
-                    if !after.is_empty() {
-                        self.push(FLOAT_NUMBER_PART, after.len(), err);
-                    }
-                    return;
-                }
-
-                FLOAT_NUMBER_START_0
+                FLOAT_NUMBER
             }
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
@@ -315,6 +295,6 @@ impl<'a> Converter<'a> {
         };
 
         let err = if err.is_empty() { None } else { Some(err) };
-        self.push(syntax_kind, token_text.len(), err);
+        self.push(syntax_kind, len, err);
     }
 }

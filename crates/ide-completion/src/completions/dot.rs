@@ -793,24 +793,4 @@ fn main() {
 ",
         )
     }
-
-    #[test]
-    fn tuple_index_completion() {
-        check(
-            r#"
-struct I;
-impl I {
-    fn i_method(&self) {}
-}
-struct S((), I);
-
-fn f(s: S) {
-    s.1.$0
-}
-"#,
-            expect![[r#"
-                me i_method() fn(&self)
-            "#]],
-        );
-    }
 }

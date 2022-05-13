@@ -140,7 +140,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
 }
 
 fn is_literal_pat_start(p: &Parser) -> bool {
-    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER_PART)
+    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
         || p.at_ts(expressions::LITERAL_FIRST)
 }
 

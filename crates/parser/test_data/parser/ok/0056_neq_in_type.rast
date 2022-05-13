@@ -19,10 +19,7 @@ SOURCE_FILE
             CAST_EXPR
               METHOD_CALL_EXPR
                 LITERAL
-                  FLOAT_LITERAL
-                    FLOAT_NUMBER_START_2 "1"
-                    DOT "."
-                    FLOAT_NUMBER_PART "0f32"
+                  FLOAT_NUMBER "1.0f32"
                 DOT "."
                 NAME_REF
                   IDENT "floor"
@@ -43,10 +40,7 @@ SOURCE_FILE
             CAST_EXPR
               METHOD_CALL_EXPR
                 LITERAL
-                  FLOAT_LITERAL
-                    FLOAT_NUMBER_START_2 "1"
-                    DOT "."
-                    FLOAT_NUMBER_PART "0f32"
+                  FLOAT_NUMBER "1.0f32"
                 DOT "."
                 NAME_REF
                   IDENT "floor"

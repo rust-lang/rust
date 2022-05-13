@@ -321,7 +321,7 @@ impl ast::IntNumber {
     }
 }
 
-impl ast::FloatNumberPart {
+impl ast::FloatNumber {
     pub fn suffix(&self) -> Option<&str> {
         let text = self.text();
         let mut indices = text.char_indices();
@@ -355,24 +355,14 @@ impl Radix {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{self, make};
+    use crate::ast::{self, make, FloatNumber, IntNumber};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
-        let suffix = match make::literal(lit).kind() {
-            ast::LiteralKind::FloatNumber(f) => f.suffix(),
-            // `1f32` lexes as an INT_NUMBER
-            ast::LiteralKind::IntNumber(i) => i.suffix().map(|s| s.to_string()),
-            e => unreachable!("{e:?}"),
-        };
-        assert_eq!(suffix.as_deref(), expected.into());
+        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
     }
 
     fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
-        let i = match make::literal(lit).kind() {
-            ast::LiteralKind::IntNumber(i) => i,
-            _ => unreachable!(),
-        };
-        assert_eq!(i.suffix(), expected.into());
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
     }
 
     #[test]
@@ -400,11 +390,12 @@ mod tests {
     }
 
     fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
-        let s = match make::literal(&format!("\"{}\"", lit)).kind() {
-            ast::LiteralKind::String(s) => s,
-            _ => unreachable!(),
-        };
-        assert_eq!(s.value().as_deref(), expected.into());
+        assert_eq!(
+            ast::String { syntax: make::tokens::literal(&format!("\"{}\"", lit)) }
+                .value()
+                .as_deref(),
+            expected.into()
+        );
     }
 
     #[test]

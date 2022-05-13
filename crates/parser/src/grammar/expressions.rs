@@ -3,7 +3,7 @@ mod atom;
 use super::*;
 
 pub(crate) use self::atom::{block_expr, match_arm_list};
-pub(super) use self::atom::{literal, FLOAT_LITERAL_FIRST, LITERAL_FIRST};
+pub(super) use self::atom::{literal, LITERAL_FIRST};
 
 #[derive(PartialEq, Eq)]
 pub(super) enum Semicolon {
@@ -452,9 +452,6 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo();
 //     y.bar::<T>(1, 2,);
-//
-//     0e0.sin();
-//     0e0f32.sin();
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
@@ -472,16 +469,17 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo;
 //     x.0.bar;
-//     x.0. bar;
-//     x.0.1;
 //     x.0();
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);
     p.bump(T![.]);
-    if p.at(IDENT) || p.at(INT_NUMBER) || p.at(FLOAT_NUMBER_PART) || p.at_ts(FLOAT_LITERAL_FIRST) {
+    if p.at(IDENT) || p.at(INT_NUMBER) {
         name_ref_or_index(p);
+    } else if p.at(FLOAT_NUMBER) {
+        // FIXME: How to recover and instead parse INT + T![.]?
+        p.bump_any();
     } else {
         p.error("expected field name or number");
     }

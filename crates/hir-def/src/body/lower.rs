@@ -972,7 +972,7 @@ impl From<ast::LiteralKind> for Literal {
                 }
             }
             LiteralKind::FloatNumber(lit) => {
-                let ty = lit.suffix().and_then(|s| BuiltinFloat::from_suffix(&s));
+                let ty = lit.suffix().and_then(BuiltinFloat::from_suffix);
                 Literal::Float(Default::default(), ty)
             }
             LiteralKind::ByteString(bs) => {

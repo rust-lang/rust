@@ -5,7 +5,7 @@ mod format_like;
 use hir::{Documentation, HasAttrs};
 use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
 use syntax::{
-    ast::{self, AstNode, LiteralKind},
+    ast::{self, AstNode, AstToken},
     SyntaxKind::{EXPR_STMT, STMT_LIST},
     TextRange, TextSize,
 };
@@ -194,7 +194,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     if let ast::Expr::Literal(literal) = dot_receiver.clone() {
-        if let LiteralKind::String(literal_text) = literal.kind() {
+        if let Some(literal_text) = ast::String::cast(literal.token()) {
             add_format_like_completions(acc, ctx, &dot_receiver, cap, &literal_text);
         }
     }

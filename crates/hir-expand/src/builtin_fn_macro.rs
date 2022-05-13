@@ -4,7 +4,10 @@ use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
-use syntax::{ast, SmolStr};
+use syntax::{
+    ast::{self, AstToken},
+    SmolStr,
+};
 
 use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId, MacroCallLoc};
 
@@ -355,7 +358,14 @@ fn unreachable_expand(
 }
 
 fn unquote_str(lit: &tt::Literal) -> Option<String> {
-    let token = ast::make::literal(&lit.to_string()).as_string()?;
+    let lit = ast::make::tokens::literal(&lit.to_string());
+    let token = ast::String::cast(lit)?;
+    token.value().map(|it| it.into_owned())
+}
+
+fn unquote_byte_string(lit: &tt::Literal) -> Option<Vec<u8>> {
+    let lit = ast::make::tokens::literal(&lit.to_string());
+    let token = ast::ByteString::cast(lit)?;
     token.value().map(|it| it.into_owned())
 }
 
@@ -432,16 +442,12 @@ fn concat_bytes_expand(
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
             tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
-                let lit = ast::make::literal(&lit.to_string());
-                match lit.kind() {
-                    ast::LiteralKind::ByteString(s) => {
-                        s.value()
-                            .unwrap_or_default()
-                            .into_iter()
-                            .for_each(|x| bytes.push(x.to_string()));
-                    }
-                    ast::LiteralKind::Byte(_) => {
-                        bytes.push(lit.to_string());
+                let token = ast::make::tokens::literal(&lit.to_string());
+                match token.kind() {
+                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
+                    syntax::SyntaxKind::BYTE_STRING => {
+                        let components = unquote_byte_string(lit).unwrap_or_else(Vec::new);
+                        components.into_iter().for_each(|x| bytes.push(x.to_string()));
                     }
                     _ => {
                         err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
@@ -475,10 +481,10 @@ fn concat_bytes_expand_subtree(
     for (ti, tt) in tree.token_trees.iter().enumerate() {
         match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
-                let lit = ast::make::literal(&lit.to_string());
+                let lit = ast::make::tokens::literal(&lit.to_string());
                 match lit.kind() {
-                    ast::LiteralKind::IntNumber(_) | ast::LiteralKind::Byte(_) => {
-                        bytes.push(lit.to_string());
+                    syntax::SyntaxKind::BYTE | syntax::SyntaxKind::INT_NUMBER => {
+                        bytes.push(lit.text().to_string())
                     }
                     _ => {
                         return Err(mbe::ExpandError::UnexpectedToken.into());
