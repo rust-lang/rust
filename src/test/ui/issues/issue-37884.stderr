@@ -11,7 +11,7 @@ LL | |     }
    |
    = note: expected fn pointer `fn(&mut RepeatMut<'a, T>) -> Option<_>`
               found fn pointer `fn(&'a mut RepeatMut<'a, T>) -> Option<_>`
-note: the anonymous lifetime as defined here...
+note: the anonymous lifetime #1 defined here...
   --> $DIR/issue-37884.rs:6:5
    |
 LL |     fn next(&'a mut self) -> Option<Self::Item>
