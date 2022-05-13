@@ -85,7 +85,7 @@ fn reuse_workproduct_for_cgu(
     work_products: &mut FxHashMap<WorkProductId, WorkProduct>,
 ) -> CompiledModule {
     let mut object = None;
-    let work_product = cgu.work_product(tcx);
+    let work_product = cgu.previous_work_product(tcx);
     if let Some(saved_file) = &work_product.saved_file {
         let obj_out =
             tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
