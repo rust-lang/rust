@@ -5,27 +5,78 @@
 
 use crate::intrinsics;
 
-/// Informs the compiler that this point in the code is not reachable, enabling
-/// further optimizations.
+/// Informs the compiler that the site which is calling this function is not
+/// reachable, possibly enabling further optimizations.
 ///
 /// # Safety
 ///
-/// Reaching this function is completely *undefined behavior* (UB). In
-/// particular, the compiler assumes that all UB must never happen, and
-/// therefore will eliminate all branches that reach to a call to
-/// `unreachable_unchecked()`.
+/// Reaching this function is *Undefined Behavior*.
 ///
-/// Like all instances of UB, if this assumption turns out to be wrong, i.e., the
-/// `unreachable_unchecked()` call is actually reachable among all possible
-/// control flow, the compiler will apply the wrong optimization strategy, and
-/// may sometimes even corrupt seemingly unrelated code, causing
-/// difficult-to-debug problems.
+/// As the compiler assumes that all forms of Undefined Behavior can never
+/// happen, it will eliminate all branches in the surrounding code that it can
+/// determine will invariably lead to a call to `unreachable_unchecked()`.
 ///
-/// Use this function only when you can prove that the code will never call it.
-/// Otherwise, consider using the [`unreachable!`] macro, which does not allow
-/// optimizations but will panic when executed.
+/// If the assumptions embedded in using this function turn out to be wrong -
+/// that is, if the site which is calling `unreachable_unchecked()` is actually
+/// reachable at runtime - the compiler may have generated nonsensical machine
+/// instructions for this situation, including in seemingly unrelated code,
+/// causing difficult-to-debug problems.
 ///
-/// # Example
+/// Use this function sparingly. Consider using the [`unreachable!`] macro,
+/// which may prevent some optimizations but will safely panic in case it is
+/// actually reached at runtime. Benchmark your code to find out if using
+/// `unreachable_unchecked()` comes with a performance benefit.
+///
+/// # Examples
+///
+/// `unreachable_unchecked()` can be used in situations where the compiler
+/// can't prove invariants that were previously established. Such situations
+/// have a higher chance of occuring if those invariants are upheld by
+/// external code that the compiler can't analyze.
+/// ```
+/// fn prepare_inputs(divisors: &mut Vec<u32>) {
+///     // Note to future-self when making changes: The invariant established
+///     // here is NOT checked in `do_computation()`; if this changes, you HAVE
+///     // to change `do_computation()`.
+///     divisors.retain(|divisor| *divisor != 0)
+/// }
+///
+/// /// # Safety
+/// /// All elements of `divisor` must be non-zero.
+/// unsafe fn do_computation(i: u32, divisors: &[u32]) -> u32 {
+///     divisors.iter().fold(i, |acc, divisor| {
+///         // Convince the compiler that a division by zero can't happen here
+///         // and a check is not needed below.
+///         if *divisor == 0 {
+///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
+///             // but the compiler does not know about this. We *promise*
+///             // that we always call `prepare_inputs`.
+///             std::hint::unreachable_unchecked()
+///         }
+///         // The compiler would normally introduce a check here that prevents
+///         // a division by zero. However, if `divisor` was zero, the branch
+///         // above would reach what we explicitly marked as unreachable.
+///         // The compiler concludes that `divisor` can't be zero at this point
+///         // and removes the - now proven useless - check.
+///         acc / divisor
+///     })
+/// }
+///
+/// let mut divisors = vec![2, 0, 4];
+/// prepare_inputs(&mut divisors);
+/// let result = unsafe {
+///     // Safety: prepare_inputs() guarantees that divisors is non-zero
+///     do_computation(100, &divisors)
+/// };
+/// assert_eq!(result, 12);
+///
+/// ```
+///
+/// While using `unreachable_unchecked()` is perfectly sound in the following
+/// example, the compiler is able to prove that a division by zero is not
+/// possible. Benchmarking reveals that `unreachable_unchecked()` provides
+/// no benefit over using [`unreachable!`], while the latter does not introduce
+/// the possibility of Undefined Behavior.
 ///
 /// ```
 /// fn div_1(a: u32, b: u32) -> u32 {

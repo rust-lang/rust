@@ -52,7 +52,6 @@ macro_rules! nonzero_integers {
                 #[$const_new_unchecked_stability]
                 #[must_use]
                 #[inline]
-                #[rustc_allow_const_fn_unstable(const_fn_fn_ptr_basics)] // required by assert_unsafe_precondition
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {

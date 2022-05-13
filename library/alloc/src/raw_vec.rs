@@ -118,7 +118,6 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
-    #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr: Unique::dangling(), cap: 0, alloc }
