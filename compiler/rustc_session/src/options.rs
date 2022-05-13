@@ -126,36 +126,36 @@ impl Options {
 
 top_level_options!(
     /// The top-level command-line options struct.
-    ///
-    /// For each option, one has to specify how it behaves with regard to the
-    /// dependency tracking system of incremental compilation. This is done via the
-    /// square-bracketed directive after the field type. The options are:
-    ///
-    /// - `[TRACKED]`
-    /// A change in the given field will cause the compiler to completely clear the
-    /// incremental compilation cache before proceeding.
-    ///
-    /// - `[TRACKED_NO_CRATE_HASH]`
-    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that only
-    /// affect the incremental cache.
-    ///
-    /// - `[UNTRACKED]`
-    /// Incremental compilation is not influenced by this option.
-    ///
-    /// - `[SUBSTRUCT]`
-    /// Second-level sub-structs containing more options.
-    ///
-    /// If you add a new option to this struct or one of the sub-structs like
-    /// `CodegenOptions`, think about how it influences incremental compilation. If in
-    /// doubt, specify `[TRACKED]`, which is always "correct" but might lead to
-    /// unnecessary re-compilation.
+    //
+    // For each option, one has to specify how it behaves with regard to the
+    // dependency tracking system of incremental compilation. This is done via the
+    // square-bracketed directive after the field type. The options are:
+    //
+    // - `[TRACKED]`
+    // A change in the given field will cause the compiler to completely clear the
+    // incremental compilation cache before proceeding.
+    //
+    // - `[TRACKED_NO_CRATE_HASH]`
+    // Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that only
+    // affect the incremental cache.
+    //
+    // - `[UNTRACKED]`
+    // Incremental compilation is not influenced by this option.
+    //
+    // - `[SUBSTRUCT]`
+    // Second-level sub-structs containing more options.
+    //
+    // If you add a new option to this struct or one of the sub-structs like
+    // `CodegenOptions`, think about how it influences incremental compilation. If in
+    // doubt, specify `[TRACKED]`, which is always "correct" but might lead to
+    // unnecessary re-compilation.
     pub struct Options {
         /// The crate config requested for the session, which may be combined
         /// with additional crate configurations during the compile process.
         crate_types: Vec<CrateType> [TRACKED],
         optimize: OptLevel [TRACKED],
-        /// Include the `debug_assertions` flag in dependency tracking, since it
-        /// can influence whether overflow checks are done or not.
+        // Include the `debug_assertions` flag in dependency tracking, since it
+        // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED_NO_CRATE_HASH],
