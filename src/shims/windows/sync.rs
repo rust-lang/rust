@@ -7,7 +7,7 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     lock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, RwLockId> {
-    let value_place = ecx.offset_and_layout_to_place(lock_op, 0, ecx.machine.layouts.u32)?;
+    let value_place = ecx.deref_operand_and_offset(lock_op, 0, ecx.machine.layouts.u32)?;
 
     ecx.rwlock_get_or_create(|ecx, next_id| {
         let (old, success) = ecx

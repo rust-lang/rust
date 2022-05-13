@@ -112,7 +112,7 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, MutexId> {
-    let value_place = ecx.offset_and_layout_to_place(mutex_op, 4, ecx.machine.layouts.u32)?;
+    let value_place = ecx.deref_operand_and_offset(mutex_op, 4, ecx.machine.layouts.u32)?;
 
     ecx.mutex_get_or_create(|ecx, next_id| {
         let (old, success) = ecx
@@ -168,7 +168,7 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, RwLockId> {
-    let value_place = ecx.offset_and_layout_to_place(rwlock_op, 4, ecx.machine.layouts.u32)?;
+    let value_place = ecx.deref_operand_and_offset(rwlock_op, 4, ecx.machine.layouts.u32)?;
 
     ecx.rwlock_get_or_create(|ecx, next_id| {
         let (old, success) = ecx
@@ -252,7 +252,7 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, CondvarId> {
-    let value_place = ecx.offset_and_layout_to_place(cond_op, 4, ecx.machine.layouts.u32)?;
+    let value_place = ecx.deref_operand_and_offset(cond_op, 4, ecx.machine.layouts.u32)?;
 
     ecx.condvar_get_or_create(|ecx, next_id| {
         let (old, success) = ecx
