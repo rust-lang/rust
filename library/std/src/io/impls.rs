@@ -6,7 +6,7 @@ use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
+    self, BorrowCursor, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
 use crate::mem;
 
@@ -21,8 +21,8 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        (**self).read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
     }
 
     #[inline]
@@ -125,8 +125,8 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        (**self).read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
     }
 
     #[inline]
@@ -249,11 +249,11 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let amt = cmp::min(buf.remaining(), self.len());
+    fn read_buf(&mut self, mut cursor: BorrowCursor<'_, '_>) -> io::Result<()> {
+        let amt = cmp::min(cursor.capacity(), self.len());
         let (a, b) = self.split_at(amt);
 
-        buf.append(a);
+        cursor.append(a);
 
         *self = b;
         Ok(())
