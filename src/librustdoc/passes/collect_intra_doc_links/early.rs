@@ -40,6 +40,7 @@ crate fn early_resolve_intra_doc_links(
         traits_in_scope: Default::default(),
         all_traits: Default::default(),
         all_trait_impls: Default::default(),
+        all_macro_rules: Default::default(),
         document_private_items,
     };
 
@@ -64,7 +65,7 @@ crate fn early_resolve_intra_doc_links(
         traits_in_scope: link_resolver.traits_in_scope,
         all_traits: Some(link_resolver.all_traits),
         all_trait_impls: Some(link_resolver.all_trait_impls),
-        all_macro_rules: link_resolver.resolver.take_all_macro_rules(),
+        all_macro_rules: link_resolver.all_macro_rules,
     }
 }
 
@@ -82,6 +83,7 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_traits: Vec<DefId>,
     all_trait_impls: Vec<DefId>,
+    all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
     document_private_items: bool,
 }
 
@@ -339,8 +341,10 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
                 }
                 ItemKind::MacroDef(macro_def) if macro_def.macro_rules => {
-                    self.parent_scope.macro_rules =
+                    let (macro_rules_scope, res) =
                         self.resolver.macro_rules_scope(self.resolver.local_def_id(item.id));
+                    self.parent_scope.macro_rules = macro_rules_scope;
+                    self.all_macro_rules.insert(item.ident.name, res);
                 }
                 _ => {}
             }
