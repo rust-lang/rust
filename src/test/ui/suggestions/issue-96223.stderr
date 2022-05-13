@@ -6,7 +6,6 @@ LL |     icey_bounds(&p);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Foo<'de>` is implemented for `Baz<T>`
 note: required because of the requirements on the impl of `for<'de> Foo<'de>` for `Baz<EmptyBis<'de>>`
   --> $DIR/issue-96223.rs:16:14
    |
