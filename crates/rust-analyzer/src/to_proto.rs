@@ -426,7 +426,8 @@ pub(crate) fn inlay_hint(
             | InlayKind::TypeHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
-            | InlayKind::LifetimeHint => position(line_index, inlay_hint.range.end()),
+            | InlayKind::LifetimeHint
+            | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
         label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
@@ -442,12 +443,13 @@ pub(crate) fn inlay_hint(
             InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrowHint => None,
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::ClosingBraceHint => None,
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
-            InlayKind::ChainingHint => true,
+            InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
             InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
@@ -460,7 +462,8 @@ pub(crate) fn inlay_hint(
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
             | InlayKind::ImplicitReborrowHint
-            | InlayKind::TypeHint => false,
+            | InlayKind::TypeHint
+            | InlayKind::ClosingBraceHint => false,
             InlayKind::BindingModeHint => inlay_hint.label != "&",
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),

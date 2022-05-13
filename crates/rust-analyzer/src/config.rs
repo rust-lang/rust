@@ -259,6 +259,11 @@ config_data! {
         inlayHints_bindingModeHints_enable: bool                   = "false",
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints_enable: bool                      = "true",
+        /// Whether to show inlay hints after a closing `}` to indicate what item it belongs to.
+        inlayHints_closingBraceHints_enable: bool                  = "true",
+        /// Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
+        /// to always show them).
+        inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures with blocks.
         inlayHints_closureReturnTypeHints_enable: bool             = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
@@ -1005,6 +1010,11 @@ impl Config {
                 .data
                 .inlayHints_lifetimeElisionHints_useParameterNames,
             max_length: self.data.inlayHints_maxLength,
+            closing_brace_hints_min_lines: if self.data.inlayHints_closingBraceHints_enable {
+                Some(self.data.inlayHints_closingBraceHints_minLines)
+            } else {
+                None
+            },
         }
     }
 
