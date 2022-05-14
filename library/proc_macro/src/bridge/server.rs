@@ -85,14 +85,16 @@ macro_rules! define_dispatcher_impl {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
-        // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
-        pub trait DispatcherTrait {
-            // HACK(eddyb) these are here to allow `Self::$name` to work below.
+        // HACK(eddyb) only a (private) trait because inherent impls can't have
+        // associated types (and `Self::AssocType` is used within `$arg_ty`).
+        // While `with_api!` allows customizing `Self`, it would have to be
+        // extended to allow `Self::` to become `<MarkedTypes<S> as Types>::`.
+        trait DispatcherPrivateHelperTrait {
             $(type $name;)*
             fn dispatch(&mut self, b: Buffer<u8>) -> Buffer<u8>;
         }
 
-        impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
+        impl<S: Server> DispatcherPrivateHelperTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
             fn dispatch(&mut self, mut b: Buffer<u8>) -> Buffer<u8> {
                 let Dispatcher { handle_store, server } = self;
@@ -133,60 +135,6 @@ with_api!(Self, self_, define_dispatcher_impl);
 pub type DynDispatch<'a> = &'a mut dyn FnMut(Buffer<u8>) -> Buffer<u8>;
 
 pub trait ExecutionStrategy {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
-        &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
-        client_data: D,
-        force_show_panics: bool,
-    ) -> Buffer<u8> {
-        enum OptionDynDispatchL {}
-
-        impl<'a> scoped_cell::ApplyL<'a> for OptionDynDispatchL {
-            type Out = Option<DynDispatch<'a>>;
-        }
-
-        thread_local! {
-            /// Dispatch callback held in server TLS, and using server ABI, but
-            /// on the client thread (which can differ from the server thread).
-            //
-            // FIXME(eddyb) how redundant is this with the (also) thread-local
-            // client-side `BridgeState`? Some of that indirection can probably
-            // be removed, as long as concerns around further isolation methods
-            // (IPC and/or wasm) are considered.
-            static CLIENT_THREAD_DISPATCH: scoped_cell::ScopedCell<OptionDynDispatchL> =
-                scoped_cell::ScopedCell::new(None);
-        }
-
-        self.cross_thread_dispatch(
-            |b| dispatcher.dispatch(b),
-            move |client_thread_dispatch| {
-                CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
-                    dispatch_slot.set(Some(client_thread_dispatch), || {
-                        let mut dispatch = |b| {
-                            CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
-                                dispatch_slot.replace(None, |mut client_thread_dispatch| {
-                                    client_thread_dispatch.as_mut().unwrap()(b)
-                                })
-                            })
-                        };
-
-                        run_client(
-                            Bridge {
-                                cached_buffer: input,
-                                dispatch: (&mut dispatch).into(),
-                                force_show_panics,
-                                _marker: marker::PhantomData,
-                            },
-                            client_data,
-                        )
-                    })
-                })
-            },
-        )
-    }
-
     fn cross_thread_dispatch(
         &self,
         server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
@@ -291,6 +239,57 @@ impl ExecutionStrategy for CrossThread2 {
     }
 }
 
+fn run_bridge_and_client<D: Copy + Send + 'static>(
+    strategy: &impl ExecutionStrategy,
+    server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
+    input: Buffer<u8>,
+    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+    client_data: D,
+    force_show_panics: bool,
+) -> Buffer<u8> {
+    enum OptionDynDispatchL {}
+
+    impl<'a> scoped_cell::ApplyL<'a> for OptionDynDispatchL {
+        type Out = Option<DynDispatch<'a>>;
+    }
+
+    thread_local! {
+        /// Dispatch callback held in server TLS, and using server ABI, but
+        /// on the client thread (which can differ from the server thread).
+        //
+        // FIXME(eddyb) how redundant is this with the (also) thread-local
+        // client-side `BridgeState`? Some of that indirection can probably
+        // be removed, as long as concerns around further isolation methods
+        // (IPC and/or wasm) are considered.
+        static CLIENT_THREAD_DISPATCH: scoped_cell::ScopedCell<OptionDynDispatchL> =
+            scoped_cell::ScopedCell::new(None);
+    }
+
+    strategy.cross_thread_dispatch(server_thread_dispatch, move |client_thread_dispatch| {
+        CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
+            dispatch_slot.set(Some(client_thread_dispatch), || {
+                let mut dispatch = |b| {
+                    CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
+                        dispatch_slot.replace(None, |mut client_thread_dispatch| {
+                            client_thread_dispatch.as_mut().unwrap()(b)
+                        })
+                    })
+                };
+
+                run_client(
+                    Bridge {
+                        cached_buffer: input,
+                        dispatch: (&mut dispatch).into(),
+                        force_show_panics,
+                        _marker: marker::PhantomData,
+                    },
+                    client_data,
+                )
+            })
+        })
+    })
+}
+
 fn run_server<
     S: Server,
     I: Encode<HandleStore<MarkedTypes<S>>>,
@@ -311,8 +310,9 @@ fn run_server<
     let mut b = Buffer::new();
     input.encode(&mut b, &mut dispatcher.handle_store);
 
-    b = strategy.run_bridge_and_client(
-        &mut dispatcher,
+    b = run_bridge_and_client(
+        strategy,
+        |b| dispatcher.dispatch(b),
         b,
         run_client,
         client_data,
