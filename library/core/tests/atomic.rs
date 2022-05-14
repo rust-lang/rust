@@ -131,16 +131,16 @@ fn int_max() {
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
 fn ptr_add_null() {
     let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    assert_eq!(atom.fetch_add(1, SeqCst).addr(), 0);
+    assert_eq!(atom.fetch_ptr_add(1, SeqCst).addr(), 0);
     assert_eq!(atom.load(SeqCst).addr(), 8);
 
-    assert_eq!(atom.fetch_add_bytes(1, SeqCst).addr(), 8);
+    assert_eq!(atom.fetch_byte_add(1, SeqCst).addr(), 8);
     assert_eq!(atom.load(SeqCst).addr(), 9);
 
-    assert_eq!(atom.fetch_sub(1, SeqCst).addr(), 9);
+    assert_eq!(atom.fetch_ptr_sub(1, SeqCst).addr(), 9);
     assert_eq!(atom.load(SeqCst).addr(), 1);
 
-    assert_eq!(atom.fetch_sub_bytes(1, SeqCst).addr(), 1);
+    assert_eq!(atom.fetch_byte_sub(1, SeqCst).addr(), 1);
     assert_eq!(atom.load(SeqCst).addr(), 0);
 }
 
@@ -150,23 +150,23 @@ fn ptr_add_data() {
     let num = 0i64;
     let n = &num as *const i64 as *mut _;
     let atom = AtomicPtr::<i64>::new(n);
-    assert_eq!(atom.fetch_add(1, SeqCst), n);
+    assert_eq!(atom.fetch_ptr_add(1, SeqCst), n);
     assert_eq!(atom.load(SeqCst), n.wrapping_add(1));
 
-    assert_eq!(atom.fetch_sub(1, SeqCst), n.wrapping_add(1));
+    assert_eq!(atom.fetch_ptr_sub(1, SeqCst), n.wrapping_add(1));
     assert_eq!(atom.load(SeqCst), n);
     let bytes_from_n = |b| n.cast::<u8>().wrapping_add(b).cast::<i64>();
 
-    assert_eq!(atom.fetch_add_bytes(1, SeqCst), n);
+    assert_eq!(atom.fetch_byte_add(1, SeqCst), n);
     assert_eq!(atom.load(SeqCst), bytes_from_n(1));
 
-    assert_eq!(atom.fetch_add_bytes(5, SeqCst), bytes_from_n(1));
+    assert_eq!(atom.fetch_byte_add(5, SeqCst), bytes_from_n(1));
     assert_eq!(atom.load(SeqCst), bytes_from_n(6));
 
-    assert_eq!(atom.fetch_sub_bytes(1, SeqCst), bytes_from_n(6));
+    assert_eq!(atom.fetch_byte_sub(1, SeqCst), bytes_from_n(6));
     assert_eq!(atom.load(SeqCst), bytes_from_n(5));
 
-    assert_eq!(atom.fetch_sub_bytes(5, SeqCst), bytes_from_n(5));
+    assert_eq!(atom.fetch_byte_sub(5, SeqCst), bytes_from_n(5));
     assert_eq!(atom.load(SeqCst), n);
 }
 

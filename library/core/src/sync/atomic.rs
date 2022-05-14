@@ -1462,12 +1462,12 @@ impl<T> AtomicPtr<T> {
     /// to offset the pointer by an amount which is not a multiple of
     /// `size_of::<T>()`. This can sometimes be inconvenient, as you may want to
     /// work with a deliberately misaligned pointer. In such cases, you may use
-    /// the [`fetch_add_bytes`](Self::fetch_add_bytes) method instead.
+    /// the [`fetch_byte_add`](Self::fetch_byte_add) method instead.
     ///
-    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. All ordering modes are possible. Note that
-    /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
-    /// and using [`Release`] makes the load part [`Relaxed`].
+    /// `fetch_ptr_add` takes an [`Ordering`] argument which describes the
+    /// memory ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
     ///
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
@@ -1481,15 +1481,15 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    /// assert_eq!(atom.fetch_add(1, Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_ptr_add(1, Ordering::Relaxed).addr(), 0);
     /// // Note: units of `size_of::<i64>()`.
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 8);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
-    pub fn fetch_add(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_add_bytes(val.wrapping_mul(core::mem::size_of::<T>()), order)
+    pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
+        self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by subtracting `val` (in units of `T`),
@@ -1502,9 +1502,9 @@ impl<T> AtomicPtr<T> {
     /// to offset the pointer by an amount which is not a multiple of
     /// `size_of::<T>()`. This can sometimes be inconvenient, as you may want to
     /// work with a deliberately misaligned pointer. In such cases, you may use
-    /// the [`fetch_sub_bytes`](Self::fetch_sub_bytes) method instead.
+    /// the [`fetch_byte_sub`](Self::fetch_byte_sub) method instead.
     ///
-    /// `fetch_sub` takes an [`Ordering`] argument which describes the memory
+    /// `fetch_ptr_sub` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note that
     /// using [`Acquire`] makes the store part of this operation [`Relaxed`],
     /// and using [`Release`] makes the load part [`Relaxed`].
@@ -1524,7 +1524,7 @@ impl<T> AtomicPtr<T> {
     /// let atom = AtomicPtr::new(array.as_ptr().wrapping_add(1) as *mut _);
     ///
     /// assert!(core::ptr::eq(
-    ///     atom.fetch_sub(1, Ordering::Relaxed),
+    ///     atom.fetch_ptr_sub(1, Ordering::Relaxed),
     ///     &array[1],
     /// ));
     /// assert!(core::ptr::eq(atom.load(Ordering::Relaxed), &array[0]));
@@ -1532,8 +1532,8 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
-    pub fn fetch_sub(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_sub_bytes(val.wrapping_mul(core::mem::size_of::<T>()), order)
+    pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
+        self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by adding `val` *bytes*, returning the
@@ -1542,7 +1542,7 @@ impl<T> AtomicPtr<T> {
     /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
     /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
     ///
-    /// `fetch_add_bytes` takes an [`Ordering`] argument which describes the
+    /// `fetch_byte_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
     /// that using [`Acquire`] makes the store part of this operation
     /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
@@ -1560,14 +1560,14 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
-    /// assert_eq!(atom.fetch_add_bytes(1, Ordering::Relaxed).addr(), 0);
+    /// assert_eq!(atom.fetch_byte_add(1, Ordering::Relaxed).addr(), 0);
     /// // Note: in units of bytes, not `size_of::<i64>()`.
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 1);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
-    pub fn fetch_add_bytes(&self, val: usize, order: Ordering) -> *mut T {
+    pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
@@ -1586,7 +1586,7 @@ impl<T> AtomicPtr<T> {
     /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
     /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
     ///
-    /// `fetch_add_bytes` takes an [`Ordering`] argument which describes the
+    /// `fetch_byte_sub` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
     /// that using [`Acquire`] makes the store part of this operation
     /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
@@ -1604,13 +1604,13 @@ impl<T> AtomicPtr<T> {
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::invalid_mut(1));
-    /// assert_eq!(atom.fetch_sub_bytes(1, Ordering::Relaxed).addr(), 1);
+    /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
-    pub fn fetch_sub_bytes(&self, val: usize, order: Ordering) -> *mut T {
+    pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
