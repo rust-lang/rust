@@ -1,5 +1,3 @@
-// check-pass
-
 // this used to cause stack overflows
 
 trait Hrtb<'a> {
@@ -15,5 +13,6 @@ impl<'a> Hrtb<'a> for &'a () {
 }
 
 fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+//~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
 
 fn main() {}

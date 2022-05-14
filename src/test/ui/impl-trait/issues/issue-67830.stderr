@@ -1,11 +1,14 @@
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue-67830.rs:21:14
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-67830.rs:21:62
    |
 LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |                                                              ^^
    |
-   = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
+note: lifetime declared here
+  --> $DIR/issue-67830.rs:21:23
+   |
+LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
+   |                       ^^
 
 error: aborting due to previous error
 

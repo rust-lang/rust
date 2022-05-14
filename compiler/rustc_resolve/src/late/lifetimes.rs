@@ -1025,6 +1025,20 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         }
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }
+                    if let hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::OpaqueTy { .. }, ..
+                    }) = self.tcx.hir().get(parent_id)
+                    {
+                        if !self.trait_definition_only {
+                            let mut err = self.tcx.sess.struct_span_err(
+                                lifetime.span,
+                                "higher kinded lifetime bounds on nested opaque types are not supported yet",
+                            );
+                            err.span_note(self.tcx.def_span(def_id), "lifetime declared here");
+                            err.emit();
+                        }
+                        self.uninsert_lifetime_on_error(lifetime, def.unwrap());
+                    }
                 }
 
                 // We want to start our early-bound indices at the end of the parent scope,
