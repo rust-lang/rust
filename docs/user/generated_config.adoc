@@ -104,7 +104,8 @@ Set to `"all"` to pass `--all-features` to cargo.
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +
 --
-Do not activate the `default` feature.
+Whether to pass `--no-default-features` to cargo. Defaults to
+`#rust-analyzer.cargo.noDefaultFeatures#`.
 --
 [[rust-analyzer.checkOnSave.overrideCommand]]rust-analyzer.checkOnSave.overrideCommand (default: `null`)::
 +
