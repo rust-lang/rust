@@ -1,5 +1,3 @@
-// check-pass
-
 trait Trait<'a> {
     type Out;
     fn call(&'a self) -> Self::Out;
@@ -15,6 +13,7 @@ impl<'a> Trait<'a> for X {
 }
 
 fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
+    //~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
     X(())
 }
 
