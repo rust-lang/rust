@@ -175,7 +175,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         if !self.valid {
             return DummyResult::any(sp);
         }
-        generic_extension(
+        expand_macro(
             cx,
             sp,
             self.span,
@@ -202,8 +202,9 @@ fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span,
     cx_expansions.entry(sp).or_default().push(message);
 }
 
-/// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx, 'tt>(
+/// Expands the rules based macro defined by `lhses` and `rhses` for a given
+/// input `arg`.
+fn expand_macro<'cx, 'tt>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,

@@ -76,6 +76,7 @@ crate use ParseResult::*;
 use crate::mbe::{KleeneOp, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
+use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{NtOrTt, Parser};
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
@@ -668,8 +669,7 @@ impl TtParser {
                 self.macro_name,
                 match self.next_mps.len() {
                     0 => format!("built-in NTs {}.", nts),
-                    1 => format!("built-in NTs {} or 1 other option.", nts),
-                    n => format!("built-in NTs {} or {} other options.", nts, n),
+                    n => format!("built-in NTs {} or {n} other option{s}.", nts, s = pluralize!(n)),
                 }
             ),
         )
