@@ -75,38 +75,38 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 "__builtin_ia32_pternlogd512_mask" | "__builtin_ia32_pternlogd256_mask"
                     | "__builtin_ia32_pternlogd128_mask" | "__builtin_ia32_pternlogq512_mask"
                     | "__builtin_ia32_pternlogq256_mask" | "__builtin_ia32_pternlogq128_mask" => {
-                        let mut new_args = args.to_vec();
+                    let mut new_args = args.to_vec();
+                    let arg5_type = gcc_func.get_param_type(4);
+                    let minus_one = builder.context.new_rvalue_from_int(arg5_type, -1);
+                    new_args.push(minus_one);
+                    args = new_args.into();
+                },
+                "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
+                    let mut new_args = args.to_vec();
+
+                    let mut last_arg = None;
+                    if args.len() == 4 {
+                        last_arg = new_args.pop();
+                    }
+
+                    let arg4_type = gcc_func.get_param_type(3);
+                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                    new_args.push(minus_one);
+
+                    if args.len() == 3 {
+                        // Both llvm.fma.v16f32 and llvm.x86.avx512.vfmadd.ps.512 maps to
+                        // the same GCC intrinsic, but the former has 3 parameters and the
+                        // latter has 4 so it doesn't require this additional argument.
                         let arg5_type = gcc_func.get_param_type(4);
-                        let minus_one = builder.context.new_rvalue_from_int(arg5_type, -1);
-                        new_args.push(minus_one);
-                        args = new_args.into();
-                    },
-                    "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
-                        let mut new_args = args.to_vec();
+                        new_args.push(builder.context.new_rvalue_from_int(arg5_type, 4));
+                    }
 
-                        let mut last_arg = None;
-                        if args.len() == 4 {
-                            last_arg = new_args.pop();
-                        }
+                    if let Some(last_arg) = last_arg {
+                        new_args.push(last_arg);
+                    }
 
-                        let arg4_type = gcc_func.get_param_type(3);
-                        let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                        new_args.push(minus_one);
-
-                        if args.len() == 3 {
-                            // Both llvm.fma.v16f32 and llvm.x86.avx512.vfmadd.ps.512 maps to
-                            // the same GCC intrinsic, but the former has 3 parameters and the
-                            // latter has 4 so it doesn't require this additional argument.
-                            let arg5_type = gcc_func.get_param_type(4);
-                            new_args.push(builder.context.new_rvalue_from_int(arg5_type, 4));
-                        }
-
-                        if let Some(last_arg) = last_arg {
-                            new_args.push(last_arg);
-                        }
-
-                        args = new_args.into();
-                    },
+                    args = new_args.into();
+                },
                     "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
                         | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
                         | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
@@ -131,6 +131,18 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                         new_args.push(last_arg);
                         args = new_args.into();
                     },
+                    "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask" => {
+                        let mut new_args = args.to_vec();
+                        let last_arg = new_args.pop().expect("last arg");
+                        let arg2_type = gcc_func.get_param_type(1);
+                        let undefined = builder.current_func().new_local(None, arg2_type, "undefined_for_intrinsic").to_rvalue();
+                        new_args.push(undefined);
+                        let arg3_type = gcc_func.get_param_type(2);
+                        let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                        new_args.push(minus_one);
+                        new_args.push(last_arg);
+                        args = new_args.into();
+                    },
                     _ => (),
         }
     }
@@ -149,7 +161,8 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
             | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
             | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
             | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask"
-            | "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
+            | "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask"
+            | "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask" => {
                 if index == args_len - 1 {
                     return true;
                 }
@@ -221,6 +234,48 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.div.pd.512" => "__builtin_ia32_divpd512_mask",
         "llvm.x86.avx512.vfmadd.ps.512" => "__builtin_ia32_vfmaddps512_mask",
         "llvm.x86.avx512.vfmadd.pd.512" => "__builtin_ia32_vfmaddpd512_mask",
+        "llvm.x86.avx512.sitofp.round.v16f32.v16i32" => "__builtin_ia32_cvtdq2ps512_mask",
+        "llvm.x86.avx512.uitofp.round.v16f32.v16i32" => "__builtin_ia32_cvtudq2ps512_mask",
+        "llvm.x86.avx512.mask.cvttps2dq.256" => "__builtin_ia32_cvttps2dq256_mask",
+        "llvm.x86.avx512.mask.cvttps2dq.128" => "__builtin_ia32_cvttps2dq128_mask",
+        "llvm.x86.avx512.mask.cvttpd2dq.256" => "__builtin_ia32_cvttpd2dq256_mask",
+        "llvm.x86.avx512.mask.compress.d.512" => "__builtin_ia32_compresssi512_mask",
+        "llvm.x86.avx512.mask.compress.d.256" => "__builtin_ia32_compresssi256_mask",
+        "llvm.x86.avx512.mask.compress.d.128" => "__builtin_ia32_compresssi128_mask",
+        "llvm.x86.avx512.mask.compress.q.512" => "__builtin_ia32_compressdi512_mask",
+        "llvm.x86.avx512.mask.compress.q.256" => "__builtin_ia32_compressdi256_mask",
+        "llvm.x86.avx512.mask.compress.q.128" => "__builtin_ia32_compressdi128_mask",
+        "llvm.x86.avx512.mask.compress.ps.512" => "__builtin_ia32_compresssf512_mask",
+        "llvm.x86.avx512.mask.compress.ps.256" => "__builtin_ia32_compresssf256_mask",
+        "llvm.x86.avx512.mask.compress.ps.128" => "__builtin_ia32_compresssf128_mask",
+        "llvm.x86.avx512.mask.compress.pd.512" => "__builtin_ia32_compressdf512_mask",
+        "llvm.x86.avx512.mask.compress.pd.256" => "__builtin_ia32_compressdf256_mask",
+        "llvm.x86.avx512.mask.compress.pd.128" => "__builtin_ia32_compressdf128_mask",
+        "llvm.x86.avx512.mask.compress.store.d.512" => "",
+        "llvm.x86.avx512.mask.compress.store.d.256" => "",
+        "llvm.x86.avx512.mask.compress.store.d.128" => "",
+        "llvm.x86.avx512.mask.compress.store.q.512" => "",
+        "llvm.x86.avx512.mask.compress.store.q.256" => "",
+        "llvm.x86.avx512.mask.compress.store.q.128" => "",
+        "llvm.x86.avx512.mask.compress.store.ps.512" => "",
+        "llvm.x86.avx512.mask.compress.store.ps.256" => "",
+        "llvm.x86.avx512.mask.compress.store.ps.128" => "",
+        "llvm.x86.avx512.mask.compress.store.pd.512" => "",
+        "llvm.x86.avx512.mask.compress.store.pd.256" => "",
+        "llvm.x86.avx512.mask.compress.store.pd.128" => "",
+        "llvm.x86.avx512.mask.expand.d.512" => "",
+        "llvm.x86.avx512.mask.expand.d.256" => "",
+        "llvm.x86.avx512.mask.expand.d.128" => "",
+        "llvm.x86.avx512.mask.expand.q.512" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
+        "" => "",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",

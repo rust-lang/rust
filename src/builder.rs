@@ -1409,7 +1409,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    pub fn vector_reduce<F>(&mut self, _src: RValue<'gcc>, _op: F) -> RValue<'gcc>
     where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
     {
         unimplemented!();

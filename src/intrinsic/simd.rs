@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use gccjit::{BinaryOp, RValue, Type, ToRValue};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
@@ -309,117 +307,37 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
         enum Style {
             Float,
-            Int(/* is signed? */ bool),
+            Int,
             Unsupported,
         }
 
-        let (in_style, in_width) = match in_elem.kind() {
-            // vectors of pointer-sized integers should've been
-            // disallowed before here, so this unwrap is safe.
-            ty::Int(i) => (
-                Style::Int(true),
-                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Uint(u) => (
-                Style::Int(false),
-                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Float(f) => (Style::Float, f.bit_width()),
-            _ => (Style::Unsupported, 0),
-        };
-        let (out_style, out_width) = match out_elem.kind() {
-            ty::Int(i) => (
-                Style::Int(true),
-                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Uint(u) => (
-                Style::Int(false),
-                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-            ),
-            ty::Float(f) => (Style::Float, f.bit_width()),
-            _ => (Style::Unsupported, 0),
-        };
-
-        let extend = |in_type, out_type| {
-            let vector_type = bx.context.new_vector_type(out_type, 8);
-            let vector = args[0].immediate();
-            let array_type = bx.context.new_array_type(None, in_type, 8);
-            // TODO(antoyo): switch to using new_vector_access or __builtin_convertvector for vector casting.
-            let array = bx.context.new_bitcast(None, vector, array_type);
-
-            let cast_vec_element = |index| {
-                let index = bx.context.new_rvalue_from_int(bx.int_type, index);
-                bx.context.new_cast(None, bx.context.new_array_access(None, array, index).to_rvalue(), out_type)
+        let in_style =
+            match in_elem.kind() {
+                ty::Int(_) | ty::Uint(_) => Style::Int,
+                ty::Float(_) => Style::Float,
+                 _ => Style::Unsupported,
             };
 
-            bx.context.new_rvalue_from_vector(None, vector_type, &[
-                cast_vec_element(0),
-                cast_vec_element(1),
-                cast_vec_element(2),
-                cast_vec_element(3),
-                cast_vec_element(4),
-                cast_vec_element(5),
-                cast_vec_element(6),
-                cast_vec_element(7),
-            ])
-        };
+        let out_style =
+            match out_elem.kind() {
+                ty::Int(_) | ty::Uint(_) => Style::Int,
+                ty::Float(_) => Style::Float,
+                 _ => Style::Unsupported,
+            };
 
         match (in_style, out_style) {
-            (Style::Int(in_is_signed), Style::Int(_)) => {
-                return Ok(match in_width.cmp(&out_width) {
-                    Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
-                    Ordering::Equal => args[0].immediate(),
-                    Ordering::Less => {
-                        if in_is_signed {
-                            match (in_width, out_width) {
-                                // FIXME(antoyo): the function _mm_cvtepi8_epi16 should directly
-                                // call an intrinsic equivalent to __builtin_ia32_pmovsxbw128 so that
-                                // we can generate a call to it.
-                                (8, 16) => extend(bx.i8_type, bx.i16_type),
-                                (8, 32) => extend(bx.i8_type, bx.i32_type),
-                                (8, 64) => extend(bx.i8_type, bx.i64_type),
-                                (16, 32) => extend(bx.i16_type, bx.i32_type),
-                                (32, 64) => extend(bx.i32_type, bx.i64_type),
-                                (16, 64) => extend(bx.i16_type, bx.i64_type),
-                                _ => unimplemented!("in: {}, out: {}", in_width, out_width),
-                            }
-                        } else {
-                            match (in_width, out_width) {
-                                (8, 16) => extend(bx.u8_type, bx.u16_type),
-                                (8, 32) => extend(bx.u8_type, bx.u32_type),
-                                (8, 64) => extend(bx.u8_type, bx.u64_type),
-                                (16, 32) => extend(bx.u16_type, bx.u32_type),
-                                (16, 64) => extend(bx.u16_type, bx.u64_type),
-                                (32, 64) => extend(bx.u32_type, bx.u64_type),
-                                _ => unimplemented!("in: {}, out: {}", in_width, out_width),
-                            }
-                        }
-                    }
-                });
-            }
-            (Style::Int(_), Style::Float) => {
-                // TODO: add support for internal functions in libgccjit to get access to IFN_VEC_CONVERT which is
-                // doing like __builtin_convertvector?
-                // Or maybe provide convert_vector as an API since it might not easy to get the
-                // types of internal functions.
-                unimplemented!();
-            }
-            (Style::Float, Style::Int(_)) => {
-                unimplemented!();
-            }
-            (Style::Float, Style::Float) => {
-                unimplemented!();
-            }
-            _ => { /* Unsupported. Fallthrough. */ }
+            (Style::Unsupported, Style::Unsupported) => {
+                require!(
+                    false,
+                    "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
+                    in_ty,
+                    in_elem,
+                    ret_ty,
+                    out_elem
+                );
+            },
+            _ => return Ok(bx.context.convert_vector(None, args[0].immediate(), llret_ty)),
         }
-        require!(
-            false,
-            "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
-            in_ty,
-            in_elem,
-            ret_ty,
-            out_elem
-        );
     }
 
     macro_rules! arith_binary {
@@ -590,6 +508,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 );
             }
         };
+        // TODO(antoyo): don't use target specific builtins here.
+        // Not sure how easy it would be to avoid theme here.
         let builtin_name =
             match (signed, is_add, in_len, elem_width) {
                 (true, true, 32, 8) => "__builtin_ia32_paddsb256", // TODO(antoyo): cast arguments to unsigned.
