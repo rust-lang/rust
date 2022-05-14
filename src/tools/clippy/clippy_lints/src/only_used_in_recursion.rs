@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lint_allowed;
 use itertools::{izip, Itertools};
 use rustc_ast::{walk_list, Label, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -8,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_stmt, FnKind, Visitor};
 use rustc_hir::{
     Arm, Block, Body, Expr, ExprKind, Guard, HirId, ImplicitSelfKind, Let, Local, Pat, PatKind, Path, PathSegment,
     QPath, Stmt, StmtKind, TyKind, UnOp,
@@ -33,6 +34,9 @@ declare_clippy_lint! {
     /// and the assigned variables are also only in recursion, it is useless.
     ///
     /// ### Known problems
+    /// Too many code paths in the linting code are currently untested and prone to produce false
+    /// positives or are prone to have performance implications.
+    ///
     /// In some cases, this would not catch all useless arguments.
     ///
     /// ```rust
@@ -85,7 +89,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub ONLY_USED_IN_RECURSION,
-    complexity,
+    nursery,
     "arguments that is only used in recursion can be removed"
 }
 declare_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION]);
@@ -100,6 +104,9 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         _: Span,
         id: HirId,
     ) {
+        if is_lint_allowed(cx, ONLY_USED_IN_RECURSION, id) {
+            return;
+        }
         if let FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) = kind {
             let def_id = id.owner.to_def_id();
             let data = cx.tcx.def_path(def_id).data;
@@ -145,7 +152,8 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 is_method: matches!(kind, FnKind::Method(..)),
                 has_self,
                 ty_res,
-                ty_ctx: cx.tcx,
+                tcx: cx.tcx,
+                visited_exprs: FxHashSet::default(),
             };
 
             visitor.visit_expr(&body.value);
@@ -206,19 +214,13 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
 }
 
 pub fn is_primitive(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, t, _) => is_primitive(*t),
-        _ => false,
-    }
+    let ty = ty.peel_refs();
+    ty.is_primitive() || ty.is_str()
 }
 
 pub fn is_array(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Array(..) | ty::Slice(..) => true,
-        ty::Ref(_, t, _) => is_array(*t),
-        _ => false,
-    }
+    let ty = ty.peel_refs();
+    ty.is_array() || ty.is_array_slice()
 }
 
 /// This builds the graph of side effect.
@@ -250,40 +252,30 @@ pub struct SideEffectVisit<'tcx> {
     is_method: bool,
     has_self: bool,
     ty_res: &'tcx TypeckResults<'tcx>,
-    ty_ctx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    visited_exprs: FxHashSet<HirId>,
 }
 
 impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
-    fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
-        b.stmts.iter().for_each(|stmt| {
-            self.visit_stmt(stmt);
-            self.ret_vars.clear();
-        });
-        walk_list!(self, visit_expr, b.expr);
-    }
-
     fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) {
         match s.kind {
             StmtKind::Local(Local {
                 pat, init: Some(init), ..
             }) => {
                 self.visit_pat_expr(pat, init, false);
-                self.ret_vars.clear();
             },
-            StmtKind::Item(i) => {
-                let item = self.ty_ctx.hir().item(i);
-                self.visit_item(item);
-                self.ret_vars.clear();
-            },
-            StmtKind::Expr(e) | StmtKind::Semi(e) => {
-                self.visit_expr(e);
-                self.ret_vars.clear();
+            StmtKind::Item(_) | StmtKind::Expr(_) | StmtKind::Semi(_) => {
+                walk_stmt(self, s);
             },
             StmtKind::Local(_) => {},
         }
+        self.ret_vars.clear();
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        if !self.visited_exprs.insert(ex.hir_id) {
+            return;
+        }
         match ex.kind {
             ExprKind::Array(exprs) | ExprKind::Tup(exprs) => {
                 self.ret_vars = exprs
@@ -307,7 +299,7 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
             ExprKind::Match(expr, arms, _) => self.visit_match(expr, arms),
             // since analysing the closure is not easy, just set all variables in it to side-effect
             ExprKind::Closure(_, _, body_id, _, _) => {
-                let body = self.ty_ctx.hir().body(body_id);
+                let body = self.tcx.hir().body(body_id);
                 self.visit_body(body);
                 let vars = std::mem::take(&mut self.ret_vars);
                 self.add_side_effect(vars);
