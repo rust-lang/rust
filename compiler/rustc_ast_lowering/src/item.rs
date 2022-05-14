@@ -88,6 +88,8 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             lifetimes_to_define: Vec::new(),
             is_collecting_anonymous_lifetimes: None,
             in_scope_lifetimes: Vec::new(),
+            hkt_bound_lifetimes: Vec::new(),
+
             allow_try_trait: Some([sym::try_trait_v2][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
@@ -1537,7 +1539,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             }) => hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                 span: self.lower_span(span),
-                lifetime: self.lower_lifetime(lifetime),
+                lifetime: self.lower_lifetime(
+                    lifetime,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                ),
                 bounds: self.lower_param_bounds(
                     bounds,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Bound),

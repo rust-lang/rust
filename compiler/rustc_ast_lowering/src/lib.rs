@@ -85,6 +85,9 @@ mod path;
 
 rustc_hir::arena_types!(rustc_arena::declare_arena);
 
+#[allow(non_camel_case_types)]
+type usize_nesting = u32;
+
 struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
@@ -143,6 +146,10 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// We always store a `normalize_to_macros_2_0()` version of the param-name in this
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
+
+    /// `for<'a>` bound lifetimes currently in scope, and the
+    /// ReturnPositionOpaqueTy-depth they were bound at.
+    hkt_bound_lifetimes: Vec<(hir::LifetimeName, Span, usize_nesting)>,
 
     current_hir_id_owner: LocalDefId,
     item_local_id_counter: hir::ItemLocalId,
@@ -222,6 +229,9 @@ enum ImplTraitContext<'b, 'a> {
         fn_def_id: LocalDefId,
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
+        /// The depth to which we have nested return position opaque types.
+        /// 0 if the context *is* is the outermost return position opaque type.
+        nested: usize_nesting,
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy {
@@ -273,8 +283,8 @@ impl<'a> ImplTraitContext<'_, 'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(params, parent) => Universal(params, *parent),
-            ReturnPositionOpaqueTy { fn_def_id, origin } => {
-                ReturnPositionOpaqueTy { fn_def_id: *fn_def_id, origin: *origin }
+            ReturnPositionOpaqueTy { fn_def_id, origin, nested } => {
+                ReturnPositionOpaqueTy { fn_def_id: *fn_def_id, origin: *origin, nested: *nested }
             }
             TypeAliasesOpaqueTy { capturable_lifetimes } => {
                 TypeAliasesOpaqueTy { capturable_lifetimes }
@@ -1162,7 +1172,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::GenericArg<'hir> {
         match arg {
-            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
+            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt, itctx)),
             ast::GenericArg::Type(ty) => {
                 match ty.kind {
                     TyKind::Infer if self.sess.features_untracked().generic_arg_infer => {
@@ -1260,10 +1270,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Rptr(ref region, ref mt) => {
                 let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
                 let lifetime = match *region {
-                    Some(ref lt) => self.lower_lifetime(lt),
+                    Some(ref lt) => self.lower_lifetime(lt, itctx.reborrow()),
                     None => self.elided_ref_lifetime(span),
                 };
-                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
+                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx.reborrow()))
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
                 this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
@@ -1327,7 +1337,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 ) => None,
                                 GenericBound::Outlives(ref lifetime) => {
                                     if lifetime_bound.is_none() {
-                                        lifetime_bound = Some(this.lower_lifetime(lifetime));
+                                        lifetime_bound =
+                                            Some(this.lower_lifetime(lifetime, itctx.reborrow()));
                                     }
                                     None
                                 }
@@ -1342,15 +1353,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { fn_def_id, origin } => self
-                        .lower_opaque_impl_trait(
+                    ImplTraitContext::ReturnPositionOpaqueTy { fn_def_id, origin, nested } => {
+                        self.lower_opaque_impl_trait(
                             span,
                             Some(fn_def_id),
                             origin,
                             def_node_id,
                             None,
-                            |this| this.lower_param_bounds(bounds, itctx),
-                        ),
+                            |this, itctx| this.lower_param_bounds(bounds, itctx),
+                            ImplTraitContext::ReturnPositionOpaqueTy {
+                                fn_def_id,
+                                origin,
+                                nested: nested.checked_add(1).unwrap_or_else(|| {
+                                    panic!("return position opaque ty nesting depth exceeded max");
+                                })
+                            },
+                        )
+                    }
                     ImplTraitContext::TypeAliasesOpaqueTy { ref capturable_lifetimes } => {
                         // Reset capturable lifetimes, any nested impl trait
                         // types will inherit lifetimes from this opaque type,
@@ -1364,7 +1383,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir::OpaqueTyOrigin::TyAlias,
                             def_node_id,
                             Some(capturable_lifetimes),
-                            |this| this.lower_param_bounds(bounds, nested_itctx),
+                            |this, itctx| this.lower_param_bounds(bounds, itctx),
+                            nested_itctx,
                         )
                     }
                     ImplTraitContext::Universal(in_band_ty_params, parent_def_id) => {
@@ -1428,7 +1448,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
         capturable_lifetimes: Option<&FxHashSet<hir::LifetimeName>>,
-        lower_bounds: impl FnOnce(&mut Self) -> hir::GenericBounds<'hir>,
+        lower_bounds: impl FnOnce(&mut Self, ImplTraitContext<'_, 'hir>) -> hir::GenericBounds<'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TyKind<'hir> {
         debug!(
             "lower_opaque_impl_trait(fn_def_id={:?}, opaque_ty_node_id={:?}, span={:?})",
@@ -1446,7 +1467,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let mut collected_lifetimes = Vec::new();
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
-            let hir_bounds = lower_bounds(lctx);
+            let hir_bounds = lower_bounds(lctx, itctx.reborrow());
 
             collected_lifetimes = lifetimes_from_impl_trait_bounds(
                 opaque_ty_node_id,
@@ -1636,6 +1657,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 fn_def_id: def_id,
                                 origin: hir::OpaqueTyOrigin::FnReturn(def_id),
+                                nested: 0,
                             }
                         }
                         _ => ImplTraitContext::Disallowed(match kind {
@@ -1907,6 +1929,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let context = ImplTraitContext::ReturnPositionOpaqueTy {
                     fn_def_id,
                     origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                    nested: 0,
                 };
                 self.lower_ty(ty, context)
             }
@@ -1933,7 +1956,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
-        itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::GenericBound<'hir> {
         match tpb {
             GenericBound::Trait(p, modifier) => hir::GenericBound::Trait(
@@ -1941,32 +1964,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lower_trait_bound_modifier(*modifier),
             ),
             GenericBound::Outlives(lifetime) => {
-                hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
+                hir::GenericBound::Outlives(self.lower_lifetime(lifetime, itctx.reborrow()))
             }
         }
     }
 
-    fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
+    fn lower_lifetime(&mut self, l: &Lifetime, mut itctx: ImplTraitContext<'_, 'hir>) -> hir::Lifetime {
         let span = self.lower_span(l.ident.span);
         match l.ident {
             ident if ident.name == kw::StaticLifetime => {
-                self.new_named_lifetime(l.id, span, hir::LifetimeName::Static)
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Static, itctx.reborrow())
             }
             ident if ident.name == kw::UnderscoreLifetime => match self.anonymous_lifetime_mode {
                 AnonymousLifetimeMode::CreateParameter => {
                     let fresh_name = self.collect_fresh_anonymous_lifetime(span);
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name))
+                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name), itctx.reborrow())
                 }
 
                 AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
+                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore, itctx.reborrow())
                 }
 
                 AnonymousLifetimeMode::ReportError => self.new_error_lifetime(Some(l.id), span),
             },
             ident => {
                 let param_name = ParamName::Plain(self.lower_ident(ident));
-                self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name))
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name), itctx.reborrow())
             }
         }
     }
@@ -1976,7 +1999,57 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: NodeId,
         span: Span,
         name: hir::LifetimeName,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::Lifetime {
+        fn check_impl_trait_lifetimes(
+            sess: &Session,
+            itctx: ImplTraitContext<'_, '_>,
+            span: Span,
+            note_span: Option<Span>,
+            def_site_nesting: usize_nesting,
+        ) {
+            match itctx {
+                ImplTraitContext::ReturnPositionOpaqueTy { nested, .. }
+                    if nested > 0 && nested > def_site_nesting =>
+                {
+                    debug!("check_impl_trait_lifetimes badness \
+                            nested: {} def_site_nesting: {}, span: {:?}, note_span: {:?}",
+                           nested, def_site_nesting, span, note_span);
+                    // fall through to error reporting code
+                }
+                ImplTraitContext::TypeAliasesOpaqueTy { .. } => {
+                    // fall through to error reporting code
+                }
+                _ => {
+                    // otherwise, accept this lifetime
+                    return
+                }
+            }
+            let mut err = sess.struct_span_err(
+                span,
+                "higher kinded lifetime bounds on nested opaque types are not supported yet",
+            );
+            if let Some(span) = note_span {
+                err.span_note(span, "lifetime declared here");
+            }
+            err.help(
+                "See https://github.com/rust-lang/rust/issues/96194 for further details",
+            );
+            err.emit();
+        }
+
+        for (lt, def_site_span, def_site_nesting) in &self.hkt_bound_lifetimes {
+            if lt == &name {
+                check_impl_trait_lifetimes(
+                    self.sess,
+                    itctx.reborrow(),
+                    span,
+                    Some(*def_site_span),
+                    *def_site_nesting,
+                );
+            }
+        }
+
         hir::Lifetime { hir_id: self.lower_node_id(id), span: self.lower_span(span), name }
     }
 
@@ -2013,7 +2086,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let lt = self
                     .with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
-                        this.lower_lifetime(&Lifetime { id: param.id, ident: param.ident })
+                        this.lower_lifetime(&Lifetime { id: param.id, ident: param.ident }, itctx.reborrow())
                     });
                 let param_name = match lt.name {
                     hir::LifetimeName::Param(param_name) => param_name,
@@ -2108,8 +2181,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 capturable_lifetimes.extend(lt_def_names.clone());
             }
 
+            let hkt_len = this.hkt_bound_lifetimes.len();
+            if let ImplTraitContext::ReturnPositionOpaqueTy { nested: rp_nesting, .. } = itctx {
+                this.hkt_bound_lifetimes.extend(lt_def_names.clone().map(|lt| (lt, p.span, rp_nesting)));
+            }
+
             let res = this.lower_trait_ref(&p.trait_ref, itctx.reborrow());
 
+            this.hkt_bound_lifetimes.truncate(hkt_len);
             if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes } = itctx {
                 for param in lt_def_names {
                     capturable_lifetimes.remove(&param);
@@ -2418,7 +2497,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         err.span_label(span, label);
         err.emit();
 
-        self.new_named_lifetime(id, span, hir::LifetimeName::Error)
+        self.new_silent_error_lifetime(id, span)
+    }
+
+    fn new_silent_error_lifetime(&mut self, id: NodeId, span: Span) -> hir::Lifetime
+    {
+        hir::Lifetime { hir_id: self.lower_node_id(id), span: self.lower_span(span), name: hir::LifetimeName::Error }
     }
 
     /// Invoked to create the lifetime argument(s) for a path like
@@ -2441,7 +2525,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.sess
                     .delay_span_bug(span, "expected 'implicit elided lifetime not allowed' error");
                 let id = self.resolver.next_node_id();
-                self.new_named_lifetime(id, span, hir::LifetimeName::Error)
+                self.new_silent_error_lifetime(id, span)
             }
             // `PassThrough` is the normal case.
             // `new_error_lifetime`, which would usually be used in the case of `ReportError`,
