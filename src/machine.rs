@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::num::NonZeroU64;
+use std::rc::Rc;
 use std::time::Instant;
 
 use rand::rngs::StdRng;
@@ -273,7 +274,7 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) backtrace_style: BacktraceStyle,
 
     /// Crates which are considered local for the purposes of error reporting.
-    pub(crate) local_crates: Vec<CrateNum>,
+    pub(crate) local_crates: Rc<[CrateNum]>,
 
     /// Mapping extern static names to their base pointer.
     extern_statics: FxHashMap<Symbol, Pointer<Tag>>,
@@ -569,7 +570,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let stacks = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            Some(Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind))
+            Some(Stacks::new_allocation(
+                id,
+                alloc.size(),
+                stacked_borrows,
+                kind,
+                &ecx.machine.threads,
+                ecx.machine.local_crates.clone(),
+            ))
         } else {
             None
         };
@@ -634,6 +642,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -656,7 +665,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc_id,
                 tag,
                 range,
-                machine.stacked_borrows.as_mut().unwrap(),
+                machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -682,7 +692,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc_id,
                 tag,
                 range,
-                machine.stacked_borrows.as_mut().unwrap(),
+                machine.stacked_borrows.as_ref().unwrap(),
             )
         } else {
             Ok(())
