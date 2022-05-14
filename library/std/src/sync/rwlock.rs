@@ -524,7 +524,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    /// Create a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
+    /// Create a new instance of `RwLockWriteGuard<T>` from a `RwLock<T>`.
     ///
     /// It is safe to call this function if and only if `lock.inner.write()` (or
     /// `lock.inner.try_write()`) has been successfully called before instantiating this object.
