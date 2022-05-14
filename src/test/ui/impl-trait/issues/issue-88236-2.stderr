@@ -1,5 +1,44 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:15:61
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                             ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:15:24
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: See https://github.com/rust-lang/rust/issues/96194 for further details
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:17:80
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                                ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:17:43
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: See https://github.com/rust-lang/rust/issues/96194 for further details
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:22:78
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                              ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:22:41
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: See https://github.com/rust-lang/rust/issues/96194 for further details
+
 error: implementation of `Hrtb` is not general enough
-  --> $DIR/issue-88236-2.rs:16:38
+  --> $DIR/issue-88236-2.rs:17:38
    |
 LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Hrtb` is not general enough
@@ -8,7 +47,7 @@ LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Sen
    = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
 
 error: implementation of `Hrtb` is not general enough
-  --> $DIR/issue-88236-2.rs:19:36
+  --> $DIR/issue-88236-2.rs:22:36
    |
 LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Hrtb` is not general enough
@@ -16,5 +55,5 @@ LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send 
    = note: `Hrtb<'1>` would have to be implemented for the type `&()`, for any lifetime `'1`...
    = note: ...but `Hrtb<'_>` is actually implemented for the type `&()`
 
-error: aborting due to 2 previous errors
+error: aborting due to 5 previous errors
 

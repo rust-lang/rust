@@ -1,0 +1,15 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236.rs:15:61
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                             ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236.rs:15:24
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: See https://github.com/rust-lang/rust/issues/96194 for further details
+
+error: aborting due to previous error
+
