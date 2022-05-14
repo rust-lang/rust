@@ -340,6 +340,12 @@ impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     }
 }
 
+impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
+    fn from(bit_set: GrowableBitSet<T>) -> Self {
+        bit_set.bit_set
+    }
+}
+
 /// A fixed-size bitset type with a partially dense, partially sparse
 /// representation. The bitset is broken into chunks, and chunks that are all
 /// zeros or all ones are represented and handled very efficiently.
@@ -1466,6 +1472,12 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
         self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
+    }
+}
+
+impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
+    fn from(bit_set: BitSet<T>) -> Self {
+        Self { bit_set }
     }
 }
 
