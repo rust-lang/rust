@@ -38,7 +38,7 @@ mod format;
 mod format_foreign;
 mod global_allocator;
 mod log_syntax;
-mod source_util;
+pub mod source_util;
 mod test;
 mod trace_macros;
 mod util;
