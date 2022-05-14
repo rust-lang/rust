@@ -1,20 +1,38 @@
-error: implementation of `Hrtb` is not general enough
-  --> $DIR/issue-88236-2.rs:16:38
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:15:61
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                             ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:15:28
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                            ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:18:80
    |
 LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Hrtb` is not general enough
+   |                                                                                ^^
    |
-   = note: `Hrtb<'0>` would have to be implemented for the type `&()`, for any lifetime `'0`...
-   = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:18:47
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                               ^^
 
-error: implementation of `Hrtb` is not general enough
-  --> $DIR/issue-88236-2.rs:19:36
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:23:78
    |
 LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Hrtb` is not general enough
+   |                                                                              ^^
    |
-   = note: `Hrtb<'1>` would have to be implemented for the type `&()`, for any lifetime `'1`...
-   = note: ...but `Hrtb<'_>` is actually implemented for the type `&()`
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:23:45
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                             ^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
