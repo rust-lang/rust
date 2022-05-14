@@ -33,7 +33,7 @@ threadpool = "1.8.1"
 rayon = "1.5.1"
 num_cpus = "1.13.1"
 mimalloc = { version = "0.1.28", default-features = false, optional = true }
-lsp-server = "0.6.0"
+lsp-server = { version = "0.6.0", path = "../../lib/lsp-server" }
 tracing = "0.1.32"
 tracing-subscriber = { version = "0.3.9", default-features = false, features = [
     "env-filter",
