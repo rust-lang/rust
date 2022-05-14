@@ -4,6 +4,7 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::{Deref, DerefMut};
+use crate::ptr::NonNull;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::rwlock as sys;
 
@@ -101,7 +102,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    data: *const T,
+    data: NonNull<T>,
     inner_lock: &'a sys::MovableRwLock,
 }
 
@@ -510,15 +511,23 @@ impl<T> From<T> for RwLock<T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
+    /// Create a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
+    ///
+    /// It is safe to call this function if and only if `lock.inner.read()` (or
+    /// `lock.inner.try_read()`) has been successfully called before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
+            data: NonNull::new_unchecked(lock.data.get()),
             inner_lock: &lock.inner,
-            data: lock.data.get(),
         })
     }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
+    /// Create a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
+    ///
+    /// It is safe to call this function if and only if `lock.inner.write()` (or
+    /// `lock.inner.try_write()`) has been successfully called before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.guard(), |guard| RwLockWriteGuard { lock, poison: guard })
     }
@@ -557,7 +566,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.data }
+        unsafe { self.data.as_ref() }
     }
 }
 
