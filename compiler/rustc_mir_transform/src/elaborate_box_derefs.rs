@@ -1,5 +1,6 @@
-//! This pass transforms derefs of Box into a deref of the pointer inside Box
-//! Codegen does not allow box to be directly dereferenced
+//! This pass transforms derefs of Box into a deref of the pointer inside Box.
+//!
+//! Box is not actually a pointer so it is incorrect to dereference it directly.
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
@@ -10,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::TyCtxt;
 
-struct ElaborateBoxDerefVistor<'tcx, 'a> {
+struct ElaborateBoxDerefVisitor<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     unique_did: DefId,
     nonnull_did: DefId,
@@ -18,7 +19,7 @@ struct ElaborateBoxDerefVistor<'tcx, 'a> {
     patch: MirPatch<'tcx>,
 }
 
-impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVistor<'tcx, 'a> {
+impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -90,7 +91,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
 
             let mut visitor =
-                ElaborateBoxDerefVistor { tcx, unique_did, nonnull_did, local_decls, patch };
+                ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
             for (block, BasicBlockData { statements, terminator, .. }) in
                 basic_blocks.iter_enumerated_mut()
@@ -111,7 +112,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
 
                 let location = Location { block, statement_index: index };
                 match terminator {
-                    // yielding into a box is handed when lowering generators
+                    // yielding into a box is handled when lowering generators
                     Some(Terminator { kind: TerminatorKind::Yield { value, .. }, .. }) => {
                         visitor.visit_operand(value, location);
                     }
