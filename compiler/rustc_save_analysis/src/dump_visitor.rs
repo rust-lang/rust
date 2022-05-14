@@ -780,13 +780,18 @@ impl<'tcx> DumpVisitor<'tcx> {
         variant: &'tcx ty::VariantDef,
         rest: Option<&'tcx hir::Expr<'tcx>>,
     ) {
-        if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
+        if let Some(_ex_res_data) = self.save_ctxt.get_expr_data(ex) {
             if let hir::QPath::Resolved(_, path) = path {
                 self.write_sub_paths_truncated(path);
             }
-            down_cast_data!(struct_lit_data, RefData, ex.span);
+            // For MyEnum::MyVariant, get_expr_data gives us MyEnum, not MyVariant.
+            // For recording the span's ref id, we want MyVariant.
             if !generated_code(ex.span) {
-                self.dumper.dump_ref(struct_lit_data);
+                let sub_span = path.last_segment_span();
+                let span = self.save_ctxt.span_from_span(sub_span);
+                let reff =
+                    Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(variant.def_id) };
+                self.dumper.dump_ref(reff);
             }
 
             for field in fields {
