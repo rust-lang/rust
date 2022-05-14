@@ -109,7 +109,8 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to cargo.
         checkOnSave_features: Option<CargoFeatures>      = "null",
-        /// Do not activate the `default` feature.
+        /// Whether to pass `--no-default-features` to cargo. Defaults to
+        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Override the command rust-analyzer uses to  run build scripts and
         /// build procedural macros. The command is required to output json
@@ -134,7 +135,7 @@ config_data! {
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
-        completion_callable_snippets: Option<CallableCompletionDef>  = "\"fill_arguments\"",
+        completion_callable_snippets: CallableCompletionDef  = "\"fill_arguments\"",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
@@ -1030,10 +1031,11 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
-            callable: self.data.completion_callable_snippets.map(|it| match it {
-                CallableCompletionDef::FillArguments => CallableSnippets::FillArguments,
-                CallableCompletionDef::AddParentheses => CallableSnippets::AddParentheses,
-            }),
+            callable: match self.data.completion_callable_snippets {
+                CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),
+                CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
+                CallableCompletionDef::None => None,
+            },
             insert_use: self.insert_use_config(),
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
@@ -1385,6 +1387,7 @@ enum ImportGranularityDef {
 enum CallableCompletionDef {
     FillArguments,
     AddParentheses,
+    None,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1662,16 +1665,16 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": ["workspace", "workspace_and_dependencies"],
             "enumDescriptions": [
-                "Search in current workspace only",
-                "Search in current workspace and dependencies"
+                "Search in current workspace only.",
+                "Search in current workspace and dependencies."
             ],
         },
         "WorkspaceSymbolSearchKindDef" => set! {
             "type": "string",
             "enum": ["only_types", "all_symbols"],
             "enumDescriptions": [
-                "Search for types only",
-                "Search for all symbols kinds"
+                "Search for types only.",
+                "Search for all symbols kinds."
             ],
         },
         "ParallelCachePrimingNumThreads" => set! {
@@ -1680,47 +1683,46 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "maximum": 255
         },
         "LifetimeElisionDef" => set! {
-            "anyOf": [
-                {
-                    "type": "string",
-                    "enum": [
-                        "always",
-                        "never",
-                        "skip_trivial"
-                    ],
-                    "enumDescriptions": [
-                        "Always show lifetime elision hints.",
-                        "Never show lifetime elision hints.",
-                        "Only show lifetime elision hints if a return type is involved."
-                    ]
-                },
-                { "type": "boolean" }
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "skip_trivial"
             ],
+            "enumDescriptions": [
+                "Always show lifetime elision hints.",
+                "Never show lifetime elision hints.",
+                "Only show lifetime elision hints if a return type is involved."
+            ]
         },
         "ReborrowHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "mutable"
+            ],
+            "enumDescriptions": [
+                "Always show reborrow hints.",
+                "Never show reborrow hints.",
+                "Only show mutable reborrow hints."
+            ]
+        },
+        "CargoFeatures" => set! {
             "anyOf": [
                 {
                     "type": "string",
                     "enum": [
-                        "always",
-                        "never",
-                        "mutable"
+                        "all"
                     ],
                     "enumDescriptions": [
-                        "Always show reborrow hints.",
-                        "Never show reborrow hints.",
-                        "Only show mutable reborrow hints."
+                        "Pass `--all-features` to cargo",
                     ]
                 },
-                { "type": "boolean" }
-            ],
-        },
-        "CargoFeatures" => set! {
-            "type": ["string", "array"],
-            "items": { "type": "string" },
-            "enum": ["all"],
-            "enumDescriptions": [
-                "Pass `--all-features` to cargo",
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
             ],
         },
         "Option<CargoFeatures>" => set! {
@@ -1741,21 +1743,18 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 { "type": "null" }
             ],
         },
-        "Option<CallableCompletionDef>" => set! {
-            "anyOf": [
-                {
-                    "type": "string",
-                    "enum": [
-                        "fill_arguments",
-                        "add_parentheses"
-                    ],
-                    "enumDescriptions": [
-                        "Add call parentheses and pre-fill arguments",
-                        "Add call parentheses"
-                    ]
-                },
-                { "type": "null" }
+        "CallableCompletionDef" => set! {
+            "type": "string",
+            "enum": [
+                "fill_arguments",
+                "add_parentheses",
+                "none",
             ],
+            "enumDescriptions": [
+                "Add call parentheses and pre-fill arguments.",
+                "Add call parentheses.",
+                "Do no snippet completions for callables."
+            ]
         },
         "SignatureDetail" => set! {
             "type": "string",
