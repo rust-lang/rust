@@ -180,6 +180,15 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         diag_expr_id: HirId,
     ) {
         debug!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
+
+        if assignee_place.place.base == PlaceBase::Rvalue
+            && assignee_place.place.projections.is_empty()
+        {
+            // Assigning to an Rvalue is illegal unless done through a dereference. We would have
+            // already gotten a type error, so we will just return here.
+            return;
+        }
+
         // If the type being assigned needs dropped, then the mutation counts as a borrow
         // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
         if assignee_place.place.base_ty.needs_drop(self.tcx, self.param_env) {
