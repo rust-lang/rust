@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if check_inputs(cx, body.params, args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
             let substs = cx.typeck_results().node_substs(body.value.hir_id);
-            let call_ty = cx.tcx.type_of(method_def_id).subst(cx.tcx, substs);
+            let call_ty = cx.tcx.bound_type_of(method_def_id).subst(cx.tcx, substs);
             if check_sig(cx, closure_ty, call_ty);
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure", |diag| {
