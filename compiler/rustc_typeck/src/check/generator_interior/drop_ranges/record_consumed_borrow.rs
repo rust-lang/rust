@@ -182,7 +182,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         debug!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
 
         if assignee_place.place.base == PlaceBase::Rvalue
-            && assignee_place.place.projections.len() == 0
+            && assignee_place.place.projections.is_empty()
         {
             // Assigning to an Rvalue is illegal unless done through a dereference. We would have
             // already gotten a type error, so we will just return here.
