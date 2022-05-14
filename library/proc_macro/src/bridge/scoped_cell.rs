@@ -41,9 +41,10 @@ impl<T: LambdaL> ScopedCell<T> {
 
     /// Sets the value in `self` to `replacement` while
     /// running `f`, which gets the old value, mutably.
+    ///
     /// The old value will be restored after `f` exits, even
     /// by panic, including modifications made to it by `f`.
-    pub fn replace<'a, R>(
+    pub fn replace_during<'a, R>(
         &self,
         replacement: <T as ApplyL<'a>>::Out,
         f: impl for<'b, 'c> FnOnce(RefMutL<'b, 'c, T>) -> R,
@@ -76,6 +77,6 @@ impl<T: LambdaL> ScopedCell<T> {
 
     /// Sets the value in `self` to `value` while running `f`.
     pub fn set<R>(&self, value: <T as ApplyL<'_>>::Out, f: impl FnOnce() -> R) -> R {
-        self.replace(value, |_| f())
+        self.replace_during(value, |_| f())
     }
 }

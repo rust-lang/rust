@@ -243,7 +243,7 @@ fn run_bridge_and_client<D: Copy + Send + 'static>(
     strategy: &impl ExecutionStrategy,
     server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
     input: Buffer<u8>,
-    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
     client_data: D,
     force_show_panics: bool,
 ) -> Buffer<u8> {
@@ -268,18 +268,21 @@ fn run_bridge_and_client<D: Copy + Send + 'static>(
     strategy.cross_thread_dispatch(server_thread_dispatch, move |client_thread_dispatch| {
         CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
             dispatch_slot.set(Some(client_thread_dispatch), || {
-                let mut dispatch = |b| {
+                extern "C" fn dispatch(b: Buffer<u8>) -> Buffer<u8> {
                     CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
-                        dispatch_slot.replace(None, |mut client_thread_dispatch| {
-                            client_thread_dispatch.as_mut().unwrap()(b)
+                        dispatch_slot.replace_during(None, |mut client_thread_dispatch| {
+                            client_thread_dispatch.as_mut().expect(
+                                "proc_macro::bridge::server: dispatch used on \
+                                 thread lacking an active server-side dispatcher",
+                            )(b)
                         })
                     })
-                };
+                }
 
                 run_client(
                     Bridge {
                         cached_buffer: input,
-                        dispatch: (&mut dispatch).into(),
+                        dispatch,
                         force_show_panics,
                         _marker: marker::PhantomData,
                     },
@@ -300,7 +303,7 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
     client_data: D,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {

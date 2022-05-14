@@ -2,6 +2,7 @@
 
 use super::*;
 
+use std::cell::Cell;
 use std::marker::PhantomData;
 
 macro_rules! define_handles {
@@ -256,7 +257,7 @@ macro_rules! define_client_side {
                     api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
                     reverse_encode!(b; $($arg),*);
 
-                    b = bridge.dispatch.call(b);
+                    b = (bridge.dispatch)(b);
 
                     let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
 
@@ -270,48 +271,64 @@ macro_rules! define_client_side {
 }
 with_api!(self, self, define_client_side);
 
-enum BridgeState<'a> {
+enum BridgeState {
     /// No server is currently connected to this client.
     NotConnected,
 
     /// A server is connected and available for requests.
-    Connected(Bridge<'a>),
+    Connected(Bridge),
 
     /// Access to the bridge is being exclusively acquired
     /// (e.g., during `BridgeState::with`).
     InUse,
 }
 
-enum BridgeStateL {}
+impl BridgeState {
+    /// Sets the thread-local `BridgeState` to `replacement` while
+    /// running `f`, which gets the old `BridgeState`, mutably.
+    ///
+    /// The state will be restored after `f` exits, even
+    /// by panic, including modifications made to it by `f`.
+    fn replace_during<R>(replacement: Self, f: impl FnOnce(&mut Self) -> R) -> R {
+        /// Wrapper that ensures that a cell always gets filled
+        /// (with the original state, optionally changed by `f`),
+        /// even if `f` had panicked.
+        struct PutBackOnDrop<'a, T> {
+            cell: &'a Cell<T>,
+            value: Option<T>,
+        }
 
-impl<'a> scoped_cell::ApplyL<'a> for BridgeStateL {
-    type Out = BridgeState<'a>;
-}
+        impl<'a, T> Drop for PutBackOnDrop<'a, T> {
+            fn drop(&mut self) {
+                self.cell.set(self.value.take().unwrap());
+            }
+        }
 
-thread_local! {
-    static BRIDGE_STATE: scoped_cell::ScopedCell<BridgeStateL> =
-        scoped_cell::ScopedCell::new(BridgeState::NotConnected);
-}
+        thread_local! {
+            static BRIDGE_STATE: Cell<BridgeState> = Cell::new(BridgeState::NotConnected);
+        }
+        BRIDGE_STATE.with(|state| {
+            let mut put_back_on_drop =
+                PutBackOnDrop { cell: state, value: Some(state.replace(replacement)) };
 
-impl BridgeState<'_> {
+            f(put_back_on_drop.value.as_mut().unwrap())
+        })
+    }
+
     /// Take exclusive control of the thread-local
     /// `BridgeState`, and pass it to `f`, mutably.
+    ///
     /// The state will be restored after `f` exits, even
     /// by panic, including modifications made to it by `f`.
     ///
     /// N.B., while `f` is running, the thread-local state
     /// is `BridgeState::InUse`.
-    fn with<R>(f: impl FnOnce(&mut BridgeState<'_>) -> R) -> R {
-        BRIDGE_STATE.with(|state| {
-            state.replace(BridgeState::InUse, |mut state| {
-                // FIXME(#52812) pass `f` directly to `replace` when `RefMutL` is gone
-                f(&mut *state)
-            })
-        })
+    fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
+        Self::replace_during(BridgeState::InUse, f)
     }
 }
 
-impl Bridge<'_> {
+impl Bridge {
     pub(crate) fn is_available() -> bool {
         BridgeState::with(|state| match state {
             BridgeState::Connected(_) | BridgeState::InUse => true,
@@ -337,10 +354,10 @@ impl Bridge<'_> {
             }));
         });
 
-        BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
+        BridgeState::replace_during(BridgeState::Connected(self), |_| f())
     }
 
-    fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
+    fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
         BridgeState::with(|state| match state {
             BridgeState::NotConnected => {
                 panic!("procedural macro API is used outside of a procedural macro");
@@ -367,7 +384,7 @@ pub struct Client<F> {
     // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
+    pub(super) run: extern "C" fn(Bridge, F) -> Buffer<u8>,
     pub(super) f: F,
 }
 
@@ -375,7 +392,7 @@ pub struct Client<F> {
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
-    mut bridge: Bridge<'_>,
+    mut bridge: Bridge,
     f: impl FnOnce(A) -> R,
 ) -> Buffer<u8> {
     // The initial `cached_buffer` contains the input.
@@ -418,7 +435,7 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
 impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: Bridge,
             f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |input| f(crate::TokenStream(input)).0)
@@ -432,7 +449,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
         f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: Bridge,
             f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {

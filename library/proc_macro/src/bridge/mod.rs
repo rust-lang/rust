@@ -199,8 +199,6 @@ macro_rules! reverse_decode {
 mod buffer;
 #[forbid(unsafe_code)]
 pub mod client;
-#[allow(unsafe_code)]
-mod closure;
 #[forbid(unsafe_code)]
 mod handle;
 #[macro_use]
@@ -221,13 +219,13 @@ use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 /// field of `client::Client`. The client holds its copy of the `Bridge`
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
-pub struct Bridge<'a> {
+pub struct Bridge {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
     /// used for making requests, but also for passing input to client.
     cached_buffer: Buffer<u8>,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+    dispatch: extern "C" fn(Buffer<u8>) -> Buffer<u8>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
