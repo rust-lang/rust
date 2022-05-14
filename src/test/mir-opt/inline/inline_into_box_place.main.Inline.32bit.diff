@@ -9,7 +9,8 @@
       let mut _4: *mut u8;                 // in scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
       let mut _5: std::boxed::Box<std::vec::Vec<u32>>; // in scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
       let mut _6: ();                      // in scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
-+     let mut _7: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
+      let mut _7: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
++     let mut _8: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/inline-into-box-place.rs:8:9: 8:11
       }
@@ -32,7 +33,7 @@
       bb1: {
           StorageLive(_5);                 // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
           _5 = ShallowInitBox(move _4, std::vec::Vec<u32>); // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
--         (*_5) = Vec::<u32>::new() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
+-         (*((_5.0: std::ptr::Unique<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>)) = Vec::<u32>::new() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         StorageLive(_7);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         _7 = &mut (*_5);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         StorageLive(_8);                 // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
@@ -71,6 +72,7 @@
 -     }
 - 
 -     bb5 (cleanup): {
+-         StorageDead(_7);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 -         _6 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_5.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_5.1: std::alloc::Global)) -> bb4; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:42: 8:43

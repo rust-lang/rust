@@ -23,8 +23,10 @@ use core::panic::PanicInfo;
 
 extern crate libc;
 
+struct Unique<T>(*mut T);
+
 #[lang = "owned_box"]
-pub struct Box<T>(*mut T);
+pub struct Box<T>(Unique<T>);
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {

@@ -176,8 +176,9 @@ pub enum MirPhase {
     DropsLowered = 3,
     /// After this projections may only contain deref projections as the first element.
     Derefered = 4,
-    /// Beginning with this phase, the following variant is disallowed:
+    /// Beginning with this phase, the following variants are disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
+    /// * [`ProjectionElem::Deref`] of `Box`
     ///
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]

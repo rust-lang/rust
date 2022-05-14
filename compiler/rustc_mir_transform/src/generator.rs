@@ -56,7 +56,7 @@ use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::{BitMatrix, BitSet};
+use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
@@ -206,7 +206,7 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: BitSet<Local>,
+    storage_liveness: GrowableBitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
@@ -362,7 +362,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     resume,
                     resume_arg,
                     drop,
-                    storage_liveness: self.storage_liveness[block].clone().unwrap(),
+                    storage_liveness: self.storage_liveness[block].clone().unwrap().into(),
                 });
 
                 VariantIdx::new(state)
@@ -1177,6 +1177,8 @@ fn create_cases<'tcx>(
     transform: &TransformVisitor<'tcx>,
     operation: Operation,
 ) -> Vec<(usize, BasicBlock)> {
+    let tcx = transform.tcx;
+
     let source_info = SourceInfo::outermost(body.span);
 
     transform
@@ -1209,13 +1211,84 @@ fn create_cases<'tcx>(
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = Local::new(2); // 0 = return, 1 = self
-                    statements.push(Statement {
-                        source_info,
-                        kind: StatementKind::Assign(Box::new((
-                            point.resume_arg,
-                            Rvalue::Use(Operand::Move(resume_arg.into())),
-                        ))),
-                    });
+
+                    // handle `box yield` properly
+                    let box_place = if let [projection @ .., ProjectionElem::Deref] =
+                        &**point.resume_arg.projection
+                    {
+                        let box_place =
+                            Place::from(point.resume_arg.local).project_deeper(projection, tcx);
+
+                        let box_ty = box_place.ty(&body.local_decls, tcx).ty;
+
+                        if box_ty.is_box() { Some((box_place, box_ty)) } else { None }
+                    } else {
+                        None
+                    };
+
+                    if let Some((box_place, box_ty)) = box_place {
+                        let unique_did = box_ty
+                            .ty_adt_def()
+                            .expect("expected Box to be an Adt")
+                            .non_enum_variant()
+                            .fields[0]
+                            .did;
+
+                        let Some(nonnull_def) = tcx.type_of(unique_did).ty_adt_def() else {
+                            span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
+                        };
+
+                        let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
+
+                        let substs = tcx.intern_substs(&[box_ty.boxed_ty().into()]);
+                        let unique_ty = tcx.bound_type_of(unique_did).subst(tcx, substs);
+                        let nonnull_ty = tcx.bound_type_of(nonnull_did).subst(tcx, substs);
+                        let ptr_ty = tcx.mk_imm_ptr(box_ty.boxed_ty());
+
+                        let ptr_local = body.local_decls.push(LocalDecl::new(ptr_ty, body.span));
+
+                        statements.push(Statement {
+                            source_info,
+                            kind: StatementKind::StorageLive(ptr_local),
+                        });
+
+                        statements.push(Statement {
+                            source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                Place::from(ptr_local),
+                                Rvalue::Use(Operand::Copy(box_place.project_deeper(
+                                    &[
+                                        PlaceElem::Field(Field::new(0), unique_ty),
+                                        PlaceElem::Field(Field::new(0), nonnull_ty),
+                                        PlaceElem::Field(Field::new(0), ptr_ty),
+                                    ],
+                                    tcx,
+                                ))),
+                            ))),
+                        });
+
+                        statements.push(Statement {
+                            source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                Place::from(ptr_local)
+                                    .project_deeper(&[ProjectionElem::Deref], tcx),
+                                Rvalue::Use(Operand::Move(resume_arg.into())),
+                            ))),
+                        });
+
+                        statements.push(Statement {
+                            source_info,
+                            kind: StatementKind::StorageDead(ptr_local),
+                        });
+                    } else {
+                        statements.push(Statement {
+                            source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                point.resume_arg,
+                                Rvalue::Use(Operand::Move(resume_arg.into())),
+                            ))),
+                        });
+                    }
                 }
 
                 // Then jump to the real target

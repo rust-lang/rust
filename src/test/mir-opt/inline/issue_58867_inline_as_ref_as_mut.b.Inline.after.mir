@@ -11,6 +11,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         let mut _5: &mut T;              // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         let mut _6: &mut T;              // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         let mut _7: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let mut _8: *const T;            // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
     }
 
     bb0: {
@@ -22,7 +23,10 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageLive(_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _7 = move (*_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _6 = &mut (*_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageLive(_8);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _8 = (((_7.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _6 = &mut (*_8);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageDead(_8);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageDead(_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _5 = &mut (*_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _3 = &mut (*_5);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
