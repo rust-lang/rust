@@ -47,7 +47,7 @@ extern "C" {
 }
 
 #[allow(improper_ctypes)]
-extern "C-unwind" {
+extern "Rust" {
     /// `payload` is passed through another layer of raw pointers as `&mut dyn Trait` is not
     /// FFI-safe. `BoxMeUp` lazily performs allocation only when needed (this avoids allocations
     /// when using the "abort" panic runtime).

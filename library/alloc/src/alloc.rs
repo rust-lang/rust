@@ -398,13 +398,13 @@ pub mod __alloc_error_handler {
 
     // if there is no `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C-unwind" fn __rdl_oom(size: usize, _align: usize) -> ! {
+    pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
         panic!("memory allocation of {size} bytes failed")
     }
 
     // if there is an `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C-unwind" fn __rg_oom(size: usize, align: usize) -> ! {
+    pub unsafe fn __rg_oom(size: usize, align: usize) -> ! {
         let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
         extern "Rust" {
             #[lang = "oom"]
