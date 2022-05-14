@@ -19,7 +19,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, DelaySpanBugEmitted, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DelaySpanBugEmitted, EarlyBinder, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
@@ -263,8 +263,10 @@ impl<'tcx> AbstractConst<'tcx> {
     pub fn root(self, tcx: TyCtxt<'tcx>) -> Node<'tcx> {
         let node = self.inner.last().copied().unwrap();
         match node {
-            Node::Leaf(leaf) => Node::Leaf(leaf.subst(tcx, self.substs)),
-            Node::Cast(kind, operand, ty) => Node::Cast(kind, operand, ty.subst(tcx, self.substs)),
+            Node::Leaf(leaf) => Node::Leaf(EarlyBinder(leaf).subst(tcx, self.substs)),
+            Node::Cast(kind, operand, ty) => {
+                Node::Cast(kind, operand, EarlyBinder(ty).subst(tcx, self.substs))
+            }
             // Don't perform substitution on the following as they can't directly contain generic params
             Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => node,
         }

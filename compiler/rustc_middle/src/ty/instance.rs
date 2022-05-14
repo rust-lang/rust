@@ -1,7 +1,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -558,7 +558,11 @@ impl<'tcx> Instance<'tcx> {
     where
         T: TypeFoldable<'tcx> + Copy,
     {
-        if let Some(substs) = self.substs_for_mir_body() { v.subst(tcx, substs) } else { *v }
+        if let Some(substs) = self.substs_for_mir_body() {
+            EarlyBinder(*v).subst(tcx, substs)
+        } else {
+            *v
+        }
     }
 
     #[inline(always)]

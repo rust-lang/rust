@@ -561,9 +561,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
         }
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
+        let item_bounds = tcx.bound_explicit_item_bounds(def_id);
 
-        for (predicate, _) in item_bounds {
+        for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             debug!(?predicate);
             let predicate = predicate.subst(tcx, substs);
 

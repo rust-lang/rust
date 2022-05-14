@@ -21,7 +21,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, AdtKind, EarlyBinder, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeVisitor,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -1388,7 +1389,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = pred.subst(tcx, substs);
+            let substituted_pred = EarlyBinder(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_param_types_or_consts()

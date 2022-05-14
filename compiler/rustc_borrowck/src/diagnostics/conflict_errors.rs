@@ -13,7 +13,9 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
+use rustc_middle::ty::{
+    self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
+};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span};
@@ -336,7 +338,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let find_fn_kind_from_did = |predicates: &[(ty::Predicate<'tcx>, Span)], substs| {
             predicates.iter().find_map(|(pred, _)| {
                 let pred = if let Some(substs) = substs {
-                    pred.subst(tcx, substs).kind().skip_binder()
+                    EarlyBinder(*pred).subst(tcx, substs).kind().skip_binder()
                 } else {
                     pred.kind().skip_binder()
                 };

@@ -129,7 +129,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
             ));
-            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+            let va_list_ty = tcx.bound_type_of(did).subst(tcx, &[region.into()]);
             (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
         })
     };

@@ -202,7 +202,9 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
-                AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
+                AggregateKind::Adt(did, _, substs, _, _) => {
+                    tcx.bound_type_of(did).subst(tcx, substs)
+                }
                 AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
                     tcx.mk_generator(did, substs, movability)

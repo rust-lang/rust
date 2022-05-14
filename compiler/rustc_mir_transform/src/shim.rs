@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -70,7 +70,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             // of this function. Is this intentional?
             if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = body.clone().subst(tcx, substs);
+                let body = EarlyBinder(body.clone()).subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
                 return body;
             }
@@ -151,7 +151,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     } else {
         InternalSubsts::identity_for_item(tcx, def_id)
     };
-    let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+    let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(sig);
     let span = tcx.def_span(def_id);
 
@@ -343,7 +343,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
         let substs = tcx.mk_substs_trait(self_ty, &[]);
-        let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+        let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
@@ -541,7 +541,7 @@ fn build_call_shim<'tcx>(
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
     if let Some(sig_substs) = sig_substs {
-        sig = sig.subst(tcx, sig_substs);
+        sig = EarlyBinder(sig).subst(tcx, sig_substs);
     }
 
     if let CallKind::Indirect(fnty) = call_kind {

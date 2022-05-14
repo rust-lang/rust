@@ -247,7 +247,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
         let ty = self
             .tcx
-            .type_of(self.state_adt_ref.variant(idx).fields[0].did)
+            .bound_type_of(self.state_adt_ref.variant(idx).fields[0].did)
             .subst(self.tcx, self.state_substs);
         expand_aggregate(
             Place::return_place(),

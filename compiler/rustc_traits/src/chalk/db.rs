@@ -8,7 +8,9 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, AssocItemContainer, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable,
+};
 
 use rustc_ast::ast;
 use rustc_attr as attr;
@@ -41,7 +43,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
         let predicates = self.interner.tcx.predicates_defined_on(def_id).predicates;
         predicates
             .iter()
-            .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
+            .map(|(wc, _)| EarlyBinder(*wc).subst(self.interner.tcx, bound_vars))
             .filter_map(|wc| LowerInto::<
                     Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
                     >::lower_into(wc, self.interner)).collect()
@@ -55,7 +57,7 @@ impl<'tcx> RustIrDatabase<'tcx> {
             .tcx
             .explicit_item_bounds(def_id)
             .iter()
-            .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
+            .map(|(bound, _)| EarlyBinder(*bound).subst(self.interner.tcx, &bound_vars))
             .filter_map(|bound| LowerInto::<Option<_>>::lower_into(bound, self.interner))
             .collect()
     }
@@ -272,15 +274,17 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             self.interner,
             self.interner.tcx,
-            sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
+            EarlyBinder(sig.inputs_and_output()).subst(self.interner.tcx, bound_vars),
         );
 
         let argument_types = inputs_and_output[..inputs_and_output.len() - 1]
             .iter()
-            .map(|t| t.subst(self.interner.tcx, &bound_vars).lower_into(self.interner))
+            .map(|t| {
+                EarlyBinder(*t).subst(self.interner.tcx, &bound_vars).lower_into(self.interner)
+            })
             .collect();
 
-        let return_type = inputs_and_output[inputs_and_output.len() - 1]
+        let return_type = EarlyBinder(inputs_and_output[inputs_and_output.len() - 1])
             .subst(self.interner.tcx, &bound_vars)
             .lower_into(self.interner);
 
@@ -306,7 +310,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(self.interner, bound_vars);
 
-        let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
+        let trait_ref = self.interner.tcx.bound_impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
@@ -348,10 +352,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let all_impls = self.interner.tcx.all_impls(def_id);
         let matched_impls = all_impls.filter(|impl_def_id| {
             use chalk_ir::could_match::CouldMatch;
-            let trait_ref = self.interner.tcx.impl_trait_ref(*impl_def_id).unwrap();
+            let trait_ref = self.interner.tcx.bound_impl_trait_ref(*impl_def_id).unwrap();
             let bound_vars = bound_vars_for_item(self.interner.tcx, *impl_def_id);
 
-            let self_ty = trait_ref.self_ty();
+            let self_ty = trait_ref.map_bound(|t| t.self_ty());
             let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
             let lowered_ty = self_ty.lower_into(self.interner);
 
@@ -463,7 +467,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let ty = self
             .interner
             .tcx
-            .type_of(def_id)
+            .bound_type_of(def_id)
             .subst(self.interner.tcx, bound_vars)
             .lower_into(self.interner);
 
@@ -506,7 +510,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .tcx
                 .explicit_item_bounds(opaque_ty_id.0)
                 .iter()
-                .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
+                .map(|(bound, _)| EarlyBinder(*bound).subst(self.interner.tcx, &bound_vars))
                 .map(|bound| {
                     bound.fold_with(&mut ReplaceOpaqueTyFolder {
                         tcx: self.interner.tcx,

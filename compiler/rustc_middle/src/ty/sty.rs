@@ -713,7 +713,9 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
-            variant.iter().map(move |field| layout.field_tys[*field].subst(tcx, self.substs))
+            variant
+                .iter()
+                .map(move |field| EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
         })
     }
 
@@ -1065,6 +1067,69 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable)]
+pub struct EarlyBinder<T>(pub T);
+
+impl<T> EarlyBinder<T> {
+    pub fn as_ref(&self) -> EarlyBinder<&T> {
+        EarlyBinder(&self.0)
+    }
+
+    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(&T) -> U,
+    {
+        self.as_ref().map_bound(f)
+    }
+
+    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let value = f(self.0);
+        EarlyBinder(value)
+    }
+
+    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        let value = f(self.0)?;
+        Ok(EarlyBinder(value))
+    }
+}
+
+impl<T> EarlyBinder<Option<T>> {
+    pub fn transpose(self) -> Option<EarlyBinder<T>> {
+        self.0.map(|v| EarlyBinder(v))
+    }
+}
+
+impl<T, U> EarlyBinder<(T, U)> {
+    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
+        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+    }
+}
+
+pub struct EarlyBinderIter<T> {
+    t: T,
+}
+
+impl<T: IntoIterator> EarlyBinder<T> {
+    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
+        EarlyBinderIter { t: self.0.into_iter() }
+    }
+}
+
+impl<T: Iterator> Iterator for EarlyBinderIter<T> {
+    type Item = EarlyBinder<T::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.t.next().map(|i| EarlyBinder(i))
     }
 }
 
@@ -2139,7 +2204,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),
+            FnDef(def_id, substs) => tcx.bound_fn_sig(*def_id).subst(tcx, substs),
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
@@ -2306,7 +2371,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
-                (tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
+                (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
 
             // type parameters only have unit metadata if they're sized, so return true

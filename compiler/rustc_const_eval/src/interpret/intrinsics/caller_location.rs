@@ -95,7 +95,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Allocate memory for `CallerLocation` struct.
         let loc_ty = self
             .tcx
-            .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
+            .bound_type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
             .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be

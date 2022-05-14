@@ -2,7 +2,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::subst::Subst;
-use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeFoldable};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_hir as hir;
@@ -1706,7 +1706,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     ) -> Result<Layout<'tcx>, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-        let subst_field = |ty: Ty<'tcx>| ty.subst(tcx, substs);
+        let subst_field = |ty: Ty<'tcx>| EarlyBinder(ty).subst(tcx, substs);
 
         let Some(info) = tcx.generator_layout(def_id) else {
             return Err(LayoutError::Unknown(ty));
@@ -2750,7 +2750,7 @@ impl<'tcx> ty::Instance<'tcx> {
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
                 let mut sig = match *ty.kind() {
                     ty::FnDef(def_id, substs) => tcx
-                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
+                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.bound_fn_sig(def_id))
                         .subst(tcx, substs),
                     _ => unreachable!(),
                 };

@@ -21,7 +21,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
+            let impl_ty = EarlyBinder(impl_ty).subst(self.tcx, impl_substs);
 
             debug!("impl_ty: {:?}", impl_ty);
 
@@ -901,7 +901,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> bool {
         match method.kind {
             ty::AssocKind::Fn => {
-                let fty = self.tcx.fn_sig(method.def_id);
+                let fty = self.tcx.bound_fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
@@ -1771,7 +1771,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
-        let fn_sig = self.tcx.fn_sig(method);
+        let fn_sig = self.tcx.bound_fn_sig(method);
         debug!(?fn_sig);
 
         assert!(!substs.has_escaping_bound_vars());

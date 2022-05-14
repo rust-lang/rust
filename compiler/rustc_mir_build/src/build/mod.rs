@@ -177,7 +177,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
                     let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
 
-                    tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
+                    tcx.bound_type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
                     fn_sig.inputs()[index]
                 };

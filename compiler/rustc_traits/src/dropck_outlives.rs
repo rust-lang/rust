@@ -5,7 +5,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc_trait_selection::traits::query::dropck_outlives::{
@@ -271,9 +271,15 @@ fn dtorck_constraint_for_ty<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did())?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints.dtorck_types.extend(dtorck_types.iter().map(|t| t.subst(tcx, substs)));
-            constraints.outlives.extend(outlives.iter().map(|t| t.subst(tcx, substs)));
-            constraints.overflows.extend(overflows.iter().map(|t| t.subst(tcx, substs)));
+            constraints
+                .dtorck_types
+                .extend(dtorck_types.iter().map(|t| EarlyBinder(*t).subst(tcx, substs)));
+            constraints
+                .outlives
+                .extend(outlives.iter().map(|t| EarlyBinder(*t).subst(tcx, substs)));
+            constraints
+                .overflows
+                .extend(overflows.iter().map(|t| EarlyBinder(*t).subst(tcx, substs)));
         }
 
         // Objects must be alive in order for their destructor

@@ -265,9 +265,8 @@ fn compare_predicate_entailment<'tcx>(
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        // First liberate late bound regions and subst placeholders
-        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
-        let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
+        let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
+        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
         // Add the resulting inputs and output as well-formed.
@@ -1066,7 +1065,7 @@ crate fn compare_const_impl<'tcx>(
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
-        let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
+        let trait_ty = tcx.bound_type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
@@ -1452,14 +1451,15 @@ pub fn check_type_bounds<'tcx>(
         };
 
         let obligations = tcx
-            .explicit_item_bounds(trait_ty.def_id)
-            .iter()
-            .map(|&(bound, span)| {
+            .bound_explicit_item_bounds(trait_ty.def_id)
+            .transpose_iter()
+            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+            .map(|(bound, span)| {
                 debug!(?bound);
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+                traits::Obligation::new(mk_cause(span.0), param_env, concrete_ty_bound)
             })
             .collect();
         debug!("check_type_bounds: item_bounds={:?}", obligations);

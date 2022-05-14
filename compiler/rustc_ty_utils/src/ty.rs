@@ -2,7 +2,9 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits;
 
@@ -33,7 +35,7 @@ fn sized_constraint_for_ty<'tcx>(
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
                 .iter()
-                .map(|ty| ty.subst(tcx, substs))
+                .map(|ty| EarlyBinder(*ty).subst(tcx, substs))
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -442,7 +444,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
             //     one uninhabited field.
             def.variants().iter().all(|var| {
                 var.fields.iter().any(|field| {
-                    let ty = tcx.type_of(field.did).subst(tcx, substs);
+                    let ty = tcx.bound_type_of(field.did).subst(tcx, substs);
                     tcx.conservative_is_privately_uninhabited(param_env.and(ty))
                 })
             })

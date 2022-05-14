@@ -260,7 +260,7 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
+                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
 
                 return Some(CallSite {
                     callee,

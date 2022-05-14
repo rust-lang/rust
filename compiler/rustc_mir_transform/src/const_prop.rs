@@ -18,7 +18,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
@@ -383,7 +385,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         );
 
         let ret = ecx
-            .layout_of(body.return_ty().subst(tcx, substs))
+            .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
             .ok()
             // Don't bother allocating memory for ZST types which have no values
             // or for large values.

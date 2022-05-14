@@ -26,7 +26,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs};
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Const, DefIdTree, EarlyBinder, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -523,7 +523,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 self.astconv
                                     .normalize_ty(
                                         self.span,
-                                        tcx.at(self.span).type_of(param.def_id).subst(tcx, substs),
+                                        EarlyBinder(tcx.at(self.span).type_of(param.def_id))
+                                            .subst(tcx, substs),
                                     )
                                     .into()
                             }
@@ -543,7 +544,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
+                            EarlyBinder(tcx.const_param_default(param.def_id))
+                                .subst(tcx, substs.unwrap())
+                                .into()
                         } else {
                             if infer_args {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
@@ -1292,7 +1295,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
     ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.normalize_ty(span, self.tcx().at(span).type_of(did).subst(self.tcx(), substs))
+        self.normalize_ty(
+            span,
+            EarlyBinder(self.tcx().at(span).type_of(did)).subst(self.tcx(), substs),
+        )
     }
 
     fn conv_object_ty_poly_trait_ref(
@@ -2441,7 +2447,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     true,
                     None,
                 );
-                self.normalize_ty(span, tcx.at(span).type_of(def_id).subst(tcx, substs))
+                EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))
+                    .subst(tcx, substs)
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length = match length {
@@ -2684,7 +2691,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.def_id,
         )?;
 
-        let fn_sig = tcx.fn_sig(assoc.def_id).subst(
+        let fn_sig = tcx.bound_fn_sig(assoc.def_id).subst(
             tcx,
             trait_ref.substs.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
         );

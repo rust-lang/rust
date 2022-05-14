@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::{sym, DUMMY_SP};
 
@@ -204,7 +204,7 @@ fn drop_tys_helper<'tcx>(
             match subty.kind() {
                 ty::Adt(adt_id, subst) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(subty.subst(tcx, subst));
+                        vec.push(EarlyBinder(subty).subst(tcx, subst));
                     }
                 }
                 _ => vec.push(subty),
@@ -237,7 +237,7 @@ fn drop_tys_helper<'tcx>(
             Ok(Vec::new())
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
-                let r = tcx.type_of(field.did).subst(tcx, substs);
+                let r = tcx.bound_type_of(field.did).subst(tcx, substs);
                 debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
                 r
             });

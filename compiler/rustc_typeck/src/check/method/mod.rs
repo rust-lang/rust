@@ -460,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let fn_sig = tcx.fn_sig(def_id);
+        let fn_sig = tcx.bound_fn_sig(def_id);
         let fn_sig = fn_sig.subst(self.tcx, substs);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
 

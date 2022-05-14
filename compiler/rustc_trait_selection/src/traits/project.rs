@@ -31,7 +31,7 @@ use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
@@ -515,7 +515,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         }
 
                         let substs = substs.super_fold_with(self);
-                        let generic_ty = self.tcx().type_of(def_id);
+                        let generic_ty = self.tcx().bound_type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
@@ -1276,8 +1276,8 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
     let bounds = match *obligation.predicate.self_ty().kind() {
-        ty::Projection(ref data) => tcx.item_bounds(data.item_def_id).subst(tcx, data.substs),
-        ty::Opaque(def_id, substs) => tcx.item_bounds(def_id).subst(tcx, substs),
+        ty::Projection(ref data) => tcx.bound_item_bounds(data.item_def_id).subst(tcx, data.substs),
+        ty::Opaque(def_id, substs) => tcx.bound_item_bounds(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
@@ -2032,7 +2032,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err.into(), obligations: nested }
     } else {
         assoc_ty_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.subst(tcx, substs), obligations: nested }
+        Progress { term: EarlyBinder(term).subst(tcx, substs), obligations: nested }
     }
 }
 

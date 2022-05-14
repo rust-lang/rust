@@ -587,7 +587,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
+                let sig = self.tcx().bound_fn_sig(def_id).subst(self.tcx(), substs);
                 p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
@@ -774,13 +774,13 @@ pub trait PrettyPrinter<'tcx>:
 
         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
         // by looking up the projections associated with the def_id.
-        let bounds = self.tcx().explicit_item_bounds(def_id);
+        let bounds = self.tcx().bound_explicit_item_bounds(def_id);
 
         let mut traits = BTreeMap::new();
         let mut fn_traits = BTreeMap::new();
         let mut is_sized = false;
 
-        for (predicate, _) in bounds {
+        for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             let predicate = predicate.subst(self.tcx(), substs);
             let bound_predicate = predicate.kind();
 

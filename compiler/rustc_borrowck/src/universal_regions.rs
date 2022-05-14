@@ -477,8 +477,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .infcx
                     .tcx
                     .mk_region(ty::ReVar(self.infcx.next_nll_region_var(FR).to_region_vid()));
-                let va_list_ty =
-                    self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
+                let va_list_ty = self
+                    .infcx
+                    .tcx
+                    .bound_type_of(va_list_did)
+                    .subst(self.infcx.tcx, &[region.into()]);
 
                 unnormalized_input_tys = self.infcx.tcx.mk_type_list(
                     unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),

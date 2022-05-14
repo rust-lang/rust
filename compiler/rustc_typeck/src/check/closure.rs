@@ -175,19 +175,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
             ty::Opaque(def_id, substs) => {
-                let bounds = self.tcx.explicit_item_bounds(def_id);
-                let sig = bounds.iter().find_map(|(pred, span)| match pred.kind().skip_binder() {
-                    ty::PredicateKind::Projection(proj_predicate) => self
-                        .deduce_sig_from_projection(
-                            Some(*span),
-                            pred.kind().rebind(proj_predicate.subst(self.tcx, substs)),
-                        ),
-                    _ => None,
-                });
+                let bounds = self.tcx.bound_explicit_item_bounds(def_id);
+                let sig = bounds
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .find_map(|(pred, span)| match pred.0.kind().skip_binder() {
+                        ty::PredicateKind::Projection(proj_predicate) => self
+                            .deduce_sig_from_projection(
+                                Some(span.0),
+                                pred.0.kind().rebind(
+                                    pred.map_bound(|_| proj_predicate).subst(self.tcx, substs),
+                                ),
+                            ),
+                        _ => None,
+                    });
 
                 let kind = bounds
-                    .iter()
-                    .filter_map(|(pred, _)| match pred.kind().skip_binder() {
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .filter_map(|(pred, _)| match pred.0.kind().skip_binder() {
                         ty::PredicateKind::Trait(tp) => {
                             self.tcx.fn_trait_kind_from_lang_item(tp.def_id())
                         }
@@ -668,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         };
 
-        let item_bounds = self.tcx.explicit_item_bounds(def_id);
+        let item_bounds = self.tcx.bound_explicit_item_bounds(def_id);
 
         // Search for a pending obligation like
         //
@@ -676,17 +682,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // where R is the return type we are expecting. This type `T`
         // will be our output.
-        let output_ty = item_bounds.iter().find_map(|&(predicate, span)| {
-            let bound_predicate = predicate.subst(self.tcx, substs).kind();
-            if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
-                self.deduce_future_output_from_projection(
-                    span,
-                    bound_predicate.rebind(proj_predicate),
-                )
-            } else {
-                None
-            }
-        });
+        let output_ty = item_bounds
+            .transpose_iter()
+            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+            .find_map(|(predicate, span)| {
+                let bound_predicate = predicate.subst(self.tcx, substs).kind();
+                if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
+                {
+                    self.deduce_future_output_from_projection(
+                        span.0,
+                        bound_predicate.rebind(proj_predicate),
+                    )
+                } else {
+                    None
+                }
+            });
 
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         output_ty

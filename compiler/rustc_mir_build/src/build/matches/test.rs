@@ -834,7 +834,7 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.type_of(item.def_id);
+    let method_ty = tcx.bound_type_of(item.def_id);
     let method_ty = method_ty.subst(tcx, substs);
 
     ConstantKind::zero_sized(method_ty)

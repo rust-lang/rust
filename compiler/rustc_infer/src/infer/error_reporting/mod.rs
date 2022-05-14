@@ -70,7 +70,7 @@ use rustc_middle::ty::{
     self,
     error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
-    Binder, List, Region, Ty, TyCtxt, TypeFoldable,
+    Binder, EarlyBinder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -961,12 +961,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         for (def_id, actual) in iter::zip(default_params, substs.iter().rev()) {
             match actual.unpack() {
                 GenericArgKind::Const(c) => {
-                    if self.tcx.const_param_default(def_id).subst(self.tcx, substs) != c {
+                    if EarlyBinder(self.tcx.const_param_default(def_id)).subst(self.tcx, substs)
+                        != c
+                    {
                         break;
                     }
                 }
                 GenericArgKind::Type(ty) => {
-                    if self.tcx.type_of(def_id).subst(self.tcx, substs) != ty {
+                    if self.tcx.bound_type_of(def_id).subst(self.tcx, substs) != ty {
                         break;
                     }
                 }
@@ -1383,8 +1385,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
                 let mut values = self.cmp_fn_sig(&sig1, &sig2);
                 let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did1, substs1));
                 let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did2, substs2));
@@ -1395,7 +1397,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
+                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
                 let mut values = self.cmp_fn_sig(&sig1, sig2);
                 values.0.push_highlighted(format!(
                     " {{{}}}",
@@ -1405,7 +1407,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
                 let mut values = self.cmp_fn_sig(sig1, &sig2);
                 values.1.push_normal(format!(
                     " {{{}}}",
@@ -1847,9 +1849,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // Future::Output
             let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
-            let bounds = self.tcx.explicit_item_bounds(*def_id);
+            let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
 
-            for (predicate, _) in bounds {
+            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
                 let predicate = predicate.subst(self.tcx, substs);
                 let output = predicate
                     .kind()

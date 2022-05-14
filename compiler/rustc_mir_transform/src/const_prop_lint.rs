@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
+    self, ConstInt, ConstKind, EarlyBinder, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
@@ -378,7 +378,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         );
 
         let ret = ecx
-            .layout_of(body.return_ty().subst(tcx, substs))
+            .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
             .ok()
             // Don't bother allocating memory for ZST types which have no values
             // or for large values.

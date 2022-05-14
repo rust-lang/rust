@@ -460,7 +460,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let sig = self.tcx.fn_sig(def_id);
+        let sig = self.tcx.bound_fn_sig(def_id);
 
         let sig = sig.subst(self.tcx, all_substs);
         debug!("type scheme substituted, sig={:?}", sig);

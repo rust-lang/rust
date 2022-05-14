@@ -38,7 +38,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
 
@@ -1341,7 +1341,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
         };
-        let bounds = tcx.item_bounds(def_id).subst(tcx, substs);
+        let bounds = tcx.bound_item_bounds(def_id).subst(tcx, substs);
 
         // The bounds returned by `item_bounds` may contain duplicates after
         // normalization, so try to deduplicate when possible to avoid
@@ -1795,11 +1795,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(
-                    obligation.predicate.rebind({
-                        sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
-                    }),
-                )
+                Where(obligation.predicate.rebind({
+                    sized_crit.iter().map(|ty| EarlyBinder(*ty).subst(self.tcx(), substs)).collect()
+                }))
             }
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
@@ -1962,7 +1960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
+                t.rebind(vec![self.tcx().bound_type_of(def_id).subst(self.tcx(), substs)])
             }
         }
     }
@@ -2068,12 +2066,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
-        let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
+        let impl_trait_ref = self.tcx().bound_impl_trait_ref(impl_def_id).unwrap();
 
         // Before we create the substitutions and everything, first
         // consider a "quick reject". This avoids creating more types
         // and so forth that we need to.
-        if self.fast_reject_trait_refs(obligation, &impl_trait_ref) {
+        if self.fast_reject_trait_refs(obligation, &impl_trait_ref.0) {
             return Err(());
         }
 
@@ -2332,7 +2330,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                predicate.subst(tcx, substs),
+                EarlyBinder(*predicate).subst(tcx, substs),
                 &mut obligations,
             );
             obligations.push(Obligation { cause, recursion_depth, param_env, predicate });

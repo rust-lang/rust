@@ -8,7 +8,7 @@ use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Predicate, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::query::dropck_outlives::AtExt;
@@ -84,7 +84,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         let drop_impl_span = tcx.def_span(drop_impl_did);
         let fresh_impl_substs =
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did.to_def_id());
-        let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
+        let fresh_impl_self_ty = EarlyBinder(drop_impl_ty).subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_hir_id);
         match infcx.at(cause, impl_param_env).eq(named_type, fresh_impl_self_ty) {

@@ -15,14 +15,14 @@ crate struct BlanketImplFinder<'a, 'tcx> {
 impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
     crate fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(item_def_id);
-        let ty = self.cx.tcx.type_of(item_def_id);
+        let ty = self.cx.tcx.bound_type_of(item_def_id);
 
         trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         self.cx.with_all_traits(|cx, all_traits| {
             for &trait_def_id in all_traits {
                 if !cx.cache.access_levels.is_public(trait_def_id)
-                    || cx.generated_synthetics.get(&(ty, trait_def_id)).is_some()
+                    || cx.generated_synthetics.get(&(ty.0, trait_def_id)).is_some()
                 {
                     continue;
                 }
@@ -34,12 +34,12 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         trait_def_id,
                         impl_def_id
                     );
-                    let trait_ref = cx.tcx.impl_trait_ref(impl_def_id).unwrap();
-                    let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
+                    let trait_ref = cx.tcx.bound_impl_trait_ref(impl_def_id).unwrap();
+                    let is_param = matches!(trait_ref.0.self_ty().kind(), ty::Param(_));
                     let may_apply = is_param && cx.tcx.infer_ctxt().enter(|infcx| {
                         let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                         let ty = ty.subst(infcx.tcx, substs);
-                        let param_env = param_env.subst(infcx.tcx, substs);
+                        let param_env = EarlyBinder(param_env).subst(infcx.tcx, substs);
 
                         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
                         let trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
@@ -99,7 +99,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         continue;
                     }
 
-                    cx.generated_synthetics.insert((ty, trait_def_id));
+                    cx.generated_synthetics.insert((ty.0, trait_def_id));
 
                     impls.push(Item {
                         name: None,
@@ -115,15 +115,15 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ),
                             // FIXME(eddyb) compute both `trait_` and `for_` from
                             // the post-inference `trait_ref`, as it's more accurate.
-                            trait_: Some(trait_ref.clean(cx)),
-                            for_: ty.clean(cx),
+                            trait_: Some(trait_ref.0.clean(cx)),
+                            for_: ty.0.clean(cx),
                             items: cx.tcx
                                 .associated_items(impl_def_id)
                                 .in_definition_order()
                                 .map(|x| x.clean(cx))
                                 .collect::<Vec<_>>(),
                             polarity: ty::ImplPolarity::Positive,
-                            kind: ImplKind::Blanket(box trait_ref.self_ty().clean(cx)),
+                            kind: ImplKind::Blanket(box trait_ref.0.self_ty().clean(cx)),
                         }),
                         cfg: None,
                     });
