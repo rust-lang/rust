@@ -273,7 +273,7 @@ impl ast::ArrayExpr {
     }
 
     fn is_repeat(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![;])
+        self.semicolon_token().is_some()
     }
 }
 

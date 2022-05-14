@@ -11,9 +11,7 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    infer::{
-        Adjust, Adjustment, AutoBorrow, BindingMode, Expectation, InferenceContext, TypeMismatch,
-    },
+    infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     static_lifetime, ConcreteConst, ConstValue, Interner, Substitution, Ty, TyBuilder, TyExt,
     TyKind,
@@ -105,10 +103,7 @@ impl<'a> InferenceContext<'a> {
         if is_non_ref_pat(&self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
-                pat_adjustments.push(Adjustment {
-                    target: expected.clone(),
-                    kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
-                });
+                pat_adjustments.push(expected.clone());
                 expected = self.resolve_ty_shallow(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),

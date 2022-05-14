@@ -254,6 +254,8 @@ config_data! {
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
+        /// Whether to show inlay type hints for binding modes.
+        inlayHints_bindingModeHints_enable: bool                   = "false",
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints_enable: bool                      = "true",
         /// Whether to show inlay type hints for return types of closures with blocks.
@@ -997,6 +999,7 @@ impl Config {
                 ReborrowHintsDef::Never => ide::ReborrowHints::Never,
                 ReborrowHintsDef::Mutable => ide::ReborrowHints::MutableOnly,
             },
+            binding_mode_hints: self.data.inlayHints_bindingModeHints_enable,
             param_names_for_lifetime_elision_hints: self
                 .data
                 .inlayHints_lifetimeElisionHints_useParameterNames,

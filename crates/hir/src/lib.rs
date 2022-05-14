@@ -3332,6 +3332,12 @@ impl Callable {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum BindingMode {
+    Move,
+    Ref(Mutability),
+}
+
 /// For IDE only
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ScopeDef {

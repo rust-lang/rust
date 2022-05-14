@@ -418,9 +418,9 @@ pub(crate) fn inlay_hint(
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
-            InlayKind::ParameterHint | InlayKind::ImplicitReborrow => {
-                position(line_index, inlay_hint.range.start())
-            }
+            InlayKind::ParameterHint
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
@@ -439,27 +439,30 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
-            InlayKind::GenericParamListHint
+            InlayKind::BindingModeHint
+            | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrow => None,
+            | InlayKind::ImplicitReborrowHint => None,
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
-            InlayKind::ParameterHint | InlayKind::ClosureReturnTypeHint => false,
             InlayKind::ChainingHint => true,
-            InlayKind::GenericParamListHint => false,
-            InlayKind::LifetimeHint => false,
-            InlayKind::ImplicitReborrow => false,
+            InlayKind::BindingModeHint
+            | InlayKind::ClosureReturnTypeHint
+            | InlayKind::GenericParamListHint
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::LifetimeHint
+            | InlayKind::ParameterHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::TypeHint | InlayKind::ChainingHint | InlayKind::ClosureReturnTypeHint => {
-                false
-            }
-            InlayKind::ParameterHint => true,
-            InlayKind::LifetimeHint => true,
-            InlayKind::GenericParamListHint => false,
-            InlayKind::ImplicitReborrow => false,
+            InlayKind::ChainingHint
+            | InlayKind::ClosureReturnTypeHint
+            | InlayKind::GenericParamListHint
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::TypeHint => false,
+            InlayKind::BindingModeHint => inlay_hint.label != "&",
+            InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
         text_edits: None,
         data: None,
