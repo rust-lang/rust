@@ -98,7 +98,9 @@
             // visible. This is necessary since updateScrapedExample calls scrollToLoc which
             // depends on offsetHeight, a property that requires an element to be visible to
             // compute correctly.
-            setTimeout(() => { onEachLazy(moreExamples, updateScrapedExample); });
+            setTimeout(() => {
+                onEachLazy(moreExamples, updateScrapedExample);
+            });
         }, {once: true});
     });
 })();
