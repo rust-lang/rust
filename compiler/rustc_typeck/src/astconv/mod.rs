@@ -2986,6 +2986,51 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(r)
     }
 
+    /// make sure that we are in the condition to suggest the blanket implementation, if we are in the
+    /// case of suggest it, use the function `err_reporter` to report the error or suggestion.
+    fn maybe_lint_blanket_trait_impl<T: rustc_errors::EmissionGuarantee>(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        diagnostic: &mut DiagnosticBuilder<'_, T>,
+    ) {
+        let tcx = self.tcx();
+        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id);
+        if let hir::Node::Item(hir::Item {
+            kind:
+                hir::ItemKind::Impl(hir::Impl {
+                    self_ty: impl_self_typ, of_trait: Some(trait_ref), generics, ..
+                }),
+            ..
+        }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_typ.hir_id
+        {
+            let trait_span = trait_ref.path.span;
+            let target_span = if let Some(span) = generics.span_for_param_suggestion() {
+                span
+            } else {
+                trait_span
+            };
+            let is_local = trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local());
+            if is_local {
+                let trait_name = tcx.sess.source_map().span_to_snippet(trait_span).unwrap();
+                let self_name = tcx.sess.source_map().span_to_snippet(self_ty.span).unwrap();
+                let blanket_msg = format!(
+                    "use a blanket implementation to implement {} for all types that also implement {}",
+                    trait_name, self_name
+                );
+                let blanket_sugg = vec![
+                    (target_span, "<T: ".to_owned()),
+                    (trait_span.shrink_to_hi(), format!("{}>", self_name)),
+                    (self_ty.span, "T".to_owned()),
+                ];
+                diagnostic.multipart_suggestion(
+                    blanket_msg,
+                    blanket_sugg,
+                    Applicability::Unspecified,
+                );
+            }
+        }
+    }
+
     fn maybe_lint_bare_trait(&self, self_ty: &hir::Ty<'_>, in_path: bool) {
         let tcx = self.tcx();
         if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
@@ -3021,9 +3066,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
-                rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg)
-                    .multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable)
-                    .emit();
+                let mut diag =
+                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
+                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                diag.emit();
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.struct_span_lint_hir(
@@ -3031,13 +3078,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self_ty.hir_id,
                     self_ty.span,
                     |lint| {
-                        lint.build(msg)
-                            .multipart_suggestion_verbose(
-                                "use `dyn`",
-                                sugg,
-                                Applicability::MachineApplicable,
-                            )
-                            .emit();
+                        let mut diag = lint.build(msg);
+                        diag.multipart_suggestion_verbose(
+                            "use `dyn`",
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                        self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
+                        diag.emit();
                     },
                 );
             }
