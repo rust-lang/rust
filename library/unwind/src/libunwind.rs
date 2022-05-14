@@ -264,10 +264,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 
-    #[inline]
-    pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
-        _Unwind_SjLj_RaiseException(exc)
-    }
+    pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
 }
 } // cfg_if!
 
