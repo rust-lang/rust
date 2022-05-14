@@ -784,6 +784,11 @@
                         "Force import paths to be absolute by always starting them with `crate` or the extern crate name they come from."
                     ]
                 },
+                "rust-analyzer.inlayHints.bindingModeHints.enable": {
+                    "markdownDescription": "Whether to show inlay type hints for binding modes.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.chainingHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for method chains.",
                     "default": true,

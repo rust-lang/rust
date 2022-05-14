@@ -344,6 +344,11 @@ Whether to allow import insertion to merge new imports into single path glob imp
 --
 The path structure for newly inserted paths to use.
 --
+[[rust-analyzer.inlayHints.bindingModeHints.enable]]rust-analyzer.inlayHints.bindingModeHints.enable (default: `false`)::
++
+--
+Whether to show inlay type hints for binding modes.
+--
 [[rust-analyzer.inlayHints.chainingHints.enable]]rust-analyzer.inlayHints.chainingHints.enable (default: `true`)::
 +
 --
