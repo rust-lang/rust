@@ -40,6 +40,7 @@ crate fn early_resolve_intra_doc_links(
         traits_in_scope: Default::default(),
         all_traits: Default::default(),
         all_trait_impls: Default::default(),
+        all_macro_rules: Default::default(),
         document_private_items,
     };
 
@@ -64,7 +65,7 @@ crate fn early_resolve_intra_doc_links(
         traits_in_scope: link_resolver.traits_in_scope,
         all_traits: Some(link_resolver.all_traits),
         all_trait_impls: Some(link_resolver.all_trait_impls),
-        all_macro_rules: link_resolver.resolver.take_all_macro_rules(),
+        all_macro_rules: link_resolver.all_macro_rules,
     }
 }
 
@@ -82,6 +83,7 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_traits: Vec<DefId>,
     all_trait_impls: Vec<DefId>,
+    all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
     document_private_items: bool,
 }
 
@@ -134,24 +136,21 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                 // using privacy, private traits and impls from other crates are never documented in
                 // the current crate, and links in their doc comments are not resolved.
                 for &def_id in &all_traits {
-                    if self.resolver.cstore().visibility_untracked(def_id) == Visibility::Public {
+                    if self.resolver.cstore().visibility_untracked(def_id).is_public() {
                         self.resolve_doc_links_extern_impl(def_id, false);
                     }
                 }
                 for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
-                    if self.resolver.cstore().visibility_untracked(trait_def_id)
-                        == Visibility::Public
+                    if self.resolver.cstore().visibility_untracked(trait_def_id).is_public()
                         && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
-                            self.resolver.cstore().visibility_untracked(ty_def_id)
-                                == Visibility::Public
+                            self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
                         })
                     {
                         self.resolve_doc_links_extern_impl(impl_def_id, false);
                     }
                 }
                 for (ty_def_id, impl_def_id) in all_inherent_impls {
-                    if self.resolver.cstore().visibility_untracked(ty_def_id) == Visibility::Public
-                    {
+                    if self.resolver.cstore().visibility_untracked(ty_def_id).is_public() {
                         self.resolve_doc_links_extern_impl(impl_def_id, true);
                     }
                 }
@@ -178,8 +177,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
             self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.sess),
         );
         for assoc_def_id in assoc_item_def_ids {
-            if !is_inherent
-                || self.resolver.cstore().visibility_untracked(assoc_def_id) == Visibility::Public
+            if !is_inherent || self.resolver.cstore().visibility_untracked(assoc_def_id).is_public()
             {
                 self.resolve_doc_links_extern_outer(assoc_def_id, def_id);
             }
@@ -279,7 +277,7 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
 
         for child in self.resolver.module_children_or_reexports(module_id) {
             // This condition should give a superset of `denied` from `fn clean_use_statement`.
-            if child.vis == Visibility::Public
+            if child.vis.is_public()
                 || self.document_private_items
                     && child.vis != Visibility::Restricted(module_id)
                     && module_id.is_local()
@@ -343,8 +341,10 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
                 }
                 ItemKind::MacroDef(macro_def) if macro_def.macro_rules => {
-                    self.parent_scope.macro_rules =
+                    let (macro_rules_scope, res) =
                         self.resolver.macro_rules_scope(self.resolver.local_def_id(item.id));
+                    self.parent_scope.macro_rules = macro_rules_scope;
+                    self.all_macro_rules.insert(item.ident.name, res);
                 }
                 _ => {}
             }
