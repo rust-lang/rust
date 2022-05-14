@@ -128,6 +128,10 @@ macro_rules! define_dispatcher_impl {
 }
 with_api!(Self, self_, define_dispatcher_impl);
 
+// FIXME(eddyb) a trait alias of `FnMut(Buffer<u8>) -> Buffer<u8>` would allow
+// replacing the non-dynamic mentions of that trait, as well.
+pub type DynDispatch<'a> = &'a mut dyn FnMut(Buffer<u8>) -> Buffer<u8>;
+
 pub trait ExecutionStrategy {
     fn run_bridge_and_client<D: Copy + Send + 'static>(
         &self,
@@ -136,31 +140,69 @@ pub trait ExecutionStrategy {
         run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
         force_show_panics: bool,
+    ) -> Buffer<u8> {
+        enum OptionDynDispatchL {}
+
+        impl<'a> scoped_cell::ApplyL<'a> for OptionDynDispatchL {
+            type Out = Option<DynDispatch<'a>>;
+        }
+
+        thread_local! {
+            /// Dispatch callback held in server TLS, and using server ABI, but
+            /// on the client thread (which can differ from the server thread).
+            //
+            // FIXME(eddyb) how redundant is this with the (also) thread-local
+            // client-side `BridgeState`? Some of that indirection can probably
+            // be removed, as long as concerns around further isolation methods
+            // (IPC and/or wasm) are considered.
+            static CLIENT_THREAD_DISPATCH: scoped_cell::ScopedCell<OptionDynDispatchL> =
+                scoped_cell::ScopedCell::new(None);
+        }
+
+        self.cross_thread_dispatch(
+            |b| dispatcher.dispatch(b),
+            move |client_thread_dispatch| {
+                CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
+                    dispatch_slot.set(Some(client_thread_dispatch), || {
+                        let mut dispatch = |b| {
+                            CLIENT_THREAD_DISPATCH.with(|dispatch_slot| {
+                                dispatch_slot.replace(None, |mut client_thread_dispatch| {
+                                    client_thread_dispatch.as_mut().unwrap()(b)
+                                })
+                            })
+                        };
+
+                        run_client(
+                            Bridge {
+                                cached_buffer: input,
+                                dispatch: (&mut dispatch).into(),
+                                force_show_panics,
+                                _marker: marker::PhantomData,
+                            },
+                            client_data,
+                        )
+                    })
+                })
+            },
+        )
+    }
+
+    fn cross_thread_dispatch(
+        &self,
+        server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
+        with_client_thread_dispatch: impl FnOnce(DynDispatch<'_>) -> Buffer<u8> + Send + 'static,
     ) -> Buffer<u8>;
 }
 
 pub struct SameThread;
 
 impl ExecutionStrategy for SameThread {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn cross_thread_dispatch(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
-        client_data: D,
-        force_show_panics: bool,
+        mut server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
+        with_client_thread_dispatch: impl FnOnce(DynDispatch<'_>) -> Buffer<u8> + Send + 'static,
     ) -> Buffer<u8> {
-        let mut dispatch = |b| dispatcher.dispatch(b);
-
-        run_client(
-            Bridge {
-                cached_buffer: input,
-                dispatch: (&mut dispatch).into(),
-                force_show_panics,
-                _marker: marker::PhantomData,
-            },
-            client_data,
-        )
+        with_client_thread_dispatch(&mut server_thread_dispatch)
     }
 }
 
@@ -170,13 +212,10 @@ impl ExecutionStrategy for SameThread {
 pub struct CrossThread1;
 
 impl ExecutionStrategy for CrossThread1 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn cross_thread_dispatch(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
-        client_data: D,
-        force_show_panics: bool,
+        mut server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
+        with_client_thread_dispatch: impl FnOnce(DynDispatch<'_>) -> Buffer<u8> + Send + 'static,
     ) -> Buffer<u8> {
         use std::sync::mpsc::channel;
 
@@ -184,24 +223,14 @@ impl ExecutionStrategy for CrossThread1 {
         let (res_tx, res_rx) = channel();
 
         let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
+            with_client_thread_dispatch(&mut |b| {
                 req_tx.send(b).unwrap();
                 res_rx.recv().unwrap()
-            };
-
-            run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                    _marker: marker::PhantomData,
-                },
-                client_data,
-            )
+            })
         });
 
         for b in req_rx {
-            res_tx.send(dispatcher.dispatch(b)).unwrap();
+            res_tx.send(server_thread_dispatch(b)).unwrap();
         }
 
         join_handle.join().unwrap()
@@ -211,13 +240,10 @@ impl ExecutionStrategy for CrossThread1 {
 pub struct CrossThread2;
 
 impl ExecutionStrategy for CrossThread2 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn cross_thread_dispatch(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
-        input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
-        client_data: D,
-        force_show_panics: bool,
+        mut server_thread_dispatch: impl FnMut(Buffer<u8>) -> Buffer<u8>,
+        with_client_thread_dispatch: impl FnOnce(DynDispatch<'_>) -> Buffer<u8> + Send + 'static,
     ) -> Buffer<u8> {
         use std::sync::{Arc, Mutex};
 
@@ -231,7 +257,7 @@ impl ExecutionStrategy for CrossThread2 {
         let server_thread = thread::current();
         let state2 = state.clone();
         let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
+            let r = with_client_thread_dispatch(&mut |b| {
                 *state2.lock().unwrap() = State::Req(b);
                 server_thread.unpark();
                 loop {
@@ -240,17 +266,7 @@ impl ExecutionStrategy for CrossThread2 {
                         break b.take();
                     }
                 }
-            };
-
-            let r = run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                    _marker: marker::PhantomData,
-                },
-                client_data,
-            );
+            });
 
             // Wake up the server so it can exit the dispatch loop.
             drop(state2);
@@ -266,7 +282,7 @@ impl ExecutionStrategy for CrossThread2 {
                 State::Req(b) => b.take(),
                 _ => continue,
             };
-            b = dispatcher.dispatch(b.take());
+            b = server_thread_dispatch(b.take());
             *state.lock().unwrap() = State::Res(b);
             join_handle.thread().unpark();
         }
