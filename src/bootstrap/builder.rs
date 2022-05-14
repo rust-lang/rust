@@ -1154,9 +1154,13 @@ impl<'a> Builder<'a> {
             // backtrace, core_simd, std_float, ...), those dependencies have their own features
             // but cargo isn't involved in the #[path] and so cannot pass the complete list of
             // features, so for that reason we don't enable checking of features for std.
-            if mode != Mode::Std {
-                cargo.arg("-Zcheck-cfg-features");
-            }
+            //
+            // FIXME: Re-enable this after the beta bump as apperently rustc-perf doesn't use the
+            // beta cargo. See https://github.com/rust-lang/rust/pull/96984#issuecomment-1126678773
+            // #[cfg(not(bootstrap))]
+            // if mode != Mode::Std {
+            //     cargo.arg("-Zcheck-cfg-features"); // -Zcheck-cfg=features after bump
+            // }
 
             // Enable cfg checking of well known names/values
             rustflags
