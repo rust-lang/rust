@@ -388,9 +388,9 @@ fn reborrow_hints(
         return None;
     }
 
-    // let descended = sema.descend_node_into_attributes(expr.clone()).pop();
-    // let desc_expr = descended.as_ref().unwrap_or(expr);
-    let mutability = sema.is_implicit_reborrow(expr)?;
+    let descended = sema.descend_node_into_attributes(expr.clone()).pop();
+    let desc_expr = descended.as_ref().unwrap_or(expr);
+    let mutability = sema.is_implicit_reborrow(desc_expr)?;
     let label = match mutability {
         hir::Mutability::Shared if config.reborrow_hints != ReborrowHints::MutableOnly => "&*",
         hir::Mutability::Mut => "&mut *",
