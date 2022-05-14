@@ -298,6 +298,7 @@ mod methods;
 mod minmax;
 mod misc;
 mod misc_early;
+mod mismatching_type_param_order;
 mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
@@ -917,6 +918,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(unused_rounding::UnusedRounding));
     store.register_early_pass(move || Box::new(almost_complete_letter_range::AlmostCompleteLetterRange::new(msrv)));
     store.register_late_pass(|| Box::new(swap_ptr_to_ref::SwapPtrToRef));
+    store.register_late_pass(|| Box::new(mismatching_type_param_order::TypeParamMismatch));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -67,6 +67,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(methods::UNNECESSARY_JOIN),
     LintId::of(misc::FLOAT_CMP),
     LintId::of(misc::USED_UNDERSCORE_BINDING),
+    LintId::of(mismatching_type_param_order::MISMATCHING_TYPE_PARAM_ORDER),
     LintId::of(mut_mut::MUT_MUT),
     LintId::of(needless_bitwise_bool::NEEDLESS_BITWISE_BOOL),
     LintId::of(needless_continue::NEEDLESS_CONTINUE),
