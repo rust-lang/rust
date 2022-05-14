@@ -26,7 +26,7 @@ use crate::{
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload::{self, SourceRootConfig},
-    thread_pool::TaskPool,
+    task_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
 };

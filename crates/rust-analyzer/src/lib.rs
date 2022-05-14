@@ -30,7 +30,7 @@ mod markdown;
 mod diagnostics;
 mod line_index;
 mod lsp_utils;
-mod thread_pool;
+mod task_pool;
 mod mem_docs;
 mod diff;
 mod op_queue;
