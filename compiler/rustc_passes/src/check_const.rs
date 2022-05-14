@@ -98,7 +98,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
                         .unwrap_or(false);
 
                     if !is_implemented {
-                        to_implement.push(tcx.item_name(trait_item_id).to_string());
+                        to_implement.push(trait_item_id);
                     }
                 }
             }
@@ -106,13 +106,18 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             // all nonconst trait functions (not marked with #[default_method_body_is_const])
             // must be implemented
             if !to_implement.is_empty() {
+                let not_implemented = to_implement
+                    .into_iter()
+                    .map(|did| tcx.item_name(did).to_string())
+                    .collect::<Vec<_>>()
+                    .join("`, `");
                 tcx
                     .sess
                     .struct_span_err(
                         item.span,
                         "const trait implementations may not use non-const default functions",
                     )
-                    .note(&format!("`{}` not implemented", to_implement.join("`, `")))
+                    .note(&format!("`{}` not implemented", not_implemented))
                     .emit();
             }
         }
