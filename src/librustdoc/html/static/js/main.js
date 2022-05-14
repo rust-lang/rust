@@ -709,8 +709,8 @@ function loadCss(cssFileName) {
             onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
                 if (e.parentNode.id !== "implementations-list" ||
                     (!hasClass(e, "implementors-toggle") &&
-                     !hasClass(e, "type-contents-toggle")))
-                {
+                     !hasClass(e, "type-contents-toggle"))
+                ) {
                     e.open = false;
                 }
             });
