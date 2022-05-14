@@ -82,6 +82,7 @@ mod uefi_msvc_base;
 mod vxworks_base;
 mod wasm_base;
 mod windows_gnu_base;
+mod windows_gnullvm_base;
 mod windows_msvc_base;
 mod windows_uwp_gnu_base;
 mod windows_uwp_msvc_base;
@@ -938,6 +939,9 @@ supported_targets! {
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
     ("i686-uwp-windows-gnu", i686_uwp_windows_gnu),
     ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
+
+    ("aarch64-pc-windows-gnullvm", aarch64_pc_windows_gnullvm),
+    ("x86_64-pc-windows-gnullvm", x86_64_pc_windows_gnullvm),
 
     ("aarch64-pc-windows-msvc", aarch64_pc_windows_msvc),
     ("aarch64-uwp-windows-msvc", aarch64_uwp_windows_msvc),

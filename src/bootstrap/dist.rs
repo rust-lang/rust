@@ -285,7 +285,7 @@ impl Step for Mingw {
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        if !host.contains("pc-windows-gnu") {
+        if !host.ends_with("pc-windows-gnu") {
             return None;
         }
 
@@ -341,7 +341,7 @@ impl Step for Rustc {
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.contains("pc-windows-gnu") {
+        if host.ends_with("pc-windows-gnu") {
             make_win_dist(tarball.image_dir(), &tmpdir(builder), host, builder);
             tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
@@ -1352,7 +1352,7 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
-        if target.contains("windows-gnu") {
+        if target.ends_with("windows-gnu") {
             tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
         }
 
@@ -1522,7 +1522,7 @@ impl Step for Extended {
                     prepare(tool);
                 }
             }
-            if target.contains("windows-gnu") {
+            if target.ends_with("windows-gnu") {
                 prepare("rust-mingw");
             }
 
@@ -1711,7 +1711,7 @@ impl Step for Extended {
                     .arg("-t")
                     .arg(etc.join("msi/remove-duplicates.xsl")),
             );
-            if target.contains("windows-gnu") {
+            if target.ends_with("windows-gnu") {
                 builder.run(
                     Command::new(&heat)
                         .current_dir(&exe)
@@ -1760,7 +1760,7 @@ impl Step for Extended {
                 if built_tools.contains("miri") {
                     cmd.arg("-dMiriDir=miri");
                 }
-                if target.contains("windows-gnu") {
+                if target.ends_with("windows-gnu") {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
                 builder.run(&mut cmd);
@@ -1787,7 +1787,7 @@ impl Step for Extended {
             }
             candle("AnalysisGroup.wxs".as_ref());
 
-            if target.contains("windows-gnu") {
+            if target.ends_with("windows-gnu") {
                 candle("GccGroup.wxs".as_ref());
             }
 
@@ -1829,7 +1829,7 @@ impl Step for Extended {
                 cmd.arg("MiriGroup.wixobj");
             }
 
-            if target.contains("windows-gnu") {
+            if target.ends_with("windows-gnu") {
                 cmd.arg("GccGroup.wixobj");
             }
             // ICE57 wrongly complains about the shortcuts
@@ -1859,7 +1859,9 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
         .env("CFG_BUILD", target.triple)
         .env("CFG_CHANNEL", &builder.config.channel);
 
-    if target.contains("windows-gnu") {
+    if target.contains("windows-gnullvm") {
+        cmd.env("CFG_MINGW", "1").env("CFG_ABI", "LLVM");
+    } else if target.contains("windows-gnu") {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");
     } else {
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
