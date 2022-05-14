@@ -18,7 +18,7 @@ with tarfile.open(archive) as f:
 # llvm_pgo_path = Path("artifacts/reproducible-artifacts-nightly-x86_64-unknown-linux-gnu/reproducible-artifacts/llvm-pgo.profdata")
 # assert llvm_pgo_path.exists()
 
-rustc_pgo_path = Path("artifacts/reproducible-artifacts-nightly-x86_64-unknown-linux-gnu/reproducible-artifacts/rustc-pgo.profdata")
+rustc_pgo_path = Path("artifacts/reproducible-artifacts-nightly-x86_64-unknown-linux-gnu/reproducible-artifacts/rustc-pgo.profdata").resolve()
 assert rustc_pgo_path.exists()
 
 env = os.environ.copy()
