@@ -344,7 +344,8 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
                 } else {
                     // We know `offset` is relative, since `OFFSET_IS_ADDR == false`.
                     let (tag, offset) = ptr.into_parts();
-                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id(), offset), sz))
+                    // Because `OFFSET_IS_ADDR == false`, this unwrap can never fail.
+                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id().unwrap(), offset), sz))
                 }
             }
         }

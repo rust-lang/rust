@@ -741,17 +741,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_encoding {
             TagEncoding::Direct => {
+                let scalar = tag_val.to_scalar()?;
                 // Generate a specific error if `tag_val` is not an integer.
                 // (`tag_bits` itself is only used for error messages below.)
-                let tag_bits = tag_val
-                    .to_scalar()?
+                let tag_bits = scalar
                     .try_to_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
                     .assert_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
-                // After the checks we did above, this cannot fail.
+                // After the checks we did above, this cannot fail, as
+                // discriminants are int-like.
                 let discr_val =
-                    self.misc_cast(&tag_val, discr_layout.ty).unwrap().to_scalar().unwrap();
+                    self.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *op.layout.ty.kind() {

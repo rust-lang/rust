@@ -120,9 +120,11 @@ pub trait Provenance: Copy + fmt::Debug {
     where
         Self: Sized;
 
-    /// Provenance must always be able to identify the allocation this ptr points to.
+    /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
+    /// identify the allocation this ptr points to (i.e., this must return `Some`).
+    /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
     /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
-    fn get_alloc_id(self) -> AllocId;
+    fn get_alloc_id(self) -> Option<AllocId>;
 }
 
 impl Provenance for AllocId {
@@ -147,8 +149,8 @@ impl Provenance for AllocId {
         Ok(())
     }
 
-    fn get_alloc_id(self) -> AllocId {
-        self
+    fn get_alloc_id(self) -> Option<AllocId> {
+        Some(self)
     }
 }
 
