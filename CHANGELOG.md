@@ -3363,6 +3363,7 @@ Released 2018-09-13
 [`drop_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_copy
 [`drop_non_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_non_drop
 [`drop_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_ref
+[`duplicate_mod`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_mod
 [`duplicate_underscore_argument`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
 [`duration_subsec`]: https://rust-lang.github.io/rust-clippy/master/index.html#duration_subsec
 [`else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
