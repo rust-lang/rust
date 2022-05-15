@@ -41,15 +41,5 @@ unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
 
-# Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
-# execution time of build scripts is so fast that optimizing them slows down the total build time.
-[profile.release.build-override]
-opt-level = 0
-debug = false
-
-[profile.release.package.cranelift-codegen-meta]
-opt-level = 0
-debug = false
-
 [package.metadata.rust-analyzer]
 rustc_private = true

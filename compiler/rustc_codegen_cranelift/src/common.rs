@@ -340,22 +340,46 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         self.bcx.set_srcloc(SourceLoc::new(index as u32));
     }
 
-    pub(crate) fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
-        if let Some(loc) = self.caller_location {
-            // `#[track_caller]` is used; return caller location instead of current location.
-            return loc;
+    // Note: must be kept in sync with get_caller_location from cg_ssa
+    pub(crate) fn get_caller_location(&mut self, mut source_info: mir::SourceInfo) -> CValue<'tcx> {
+        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
+            let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+            let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+            let const_loc = fx.tcx.const_caller_location((
+                rustc_span::symbol::Symbol::intern(
+                    &caller.file.name.prefer_remapped().to_string_lossy(),
+                ),
+                caller.line as u32,
+                caller.col_display as u32 + 1,
+            ));
+            crate::constant::codegen_const_value(fx, const_loc, fx.tcx.caller_location_ty())
+        };
+
+        // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
+        // If so, the starting `source_info.span` is in the innermost inlined
+        // function, and will be replaced with outer callsite spans as long
+        // as the inlined functions were `#[track_caller]`.
+        loop {
+            let scope_data = &self.mir.source_scopes[source_info.scope];
+
+            if let Some((callee, callsite_span)) = scope_data.inlined {
+                // Stop inside the most nested non-`#[track_caller]` function,
+                // before ever reaching its caller (which is irrelevant).
+                if !callee.def.requires_caller_location(self.tcx) {
+                    return span_to_caller_location(self, source_info.span);
+                }
+                source_info.span = callsite_span;
+            }
+
+            // Skip past all of the parents with `inlined: None`.
+            match scope_data.inlined_parent_scope {
+                Some(parent) => source_info.scope = parent,
+                None => break,
+            }
         }
 
-        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-        let const_loc = self.tcx.const_caller_location((
-            rustc_span::symbol::Symbol::intern(
-                &caller.file.name.prefer_remapped().to_string_lossy(),
-            ),
-            caller.line as u32,
-            caller.col_display as u32 + 1,
-        ));
-        crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
+        // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
+        self.caller_location.unwrap_or_else(|| span_to_caller_location(self, source_info.span))
     }
 
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
