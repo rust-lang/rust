@@ -502,8 +502,8 @@ impl server::TokenStream for Rustc<'_, '_> {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
-        // XXX: This is a raw port of the previous approach, and can probably be
-        // optimized.
+        // FIXME: This is a raw port of the previous approach, and can probably
+        // be optimized.
         let mut cursor = stream.into_trees();
         let mut stack = Vec::new();
         let mut tts = Vec::new();
