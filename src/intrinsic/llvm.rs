@@ -15,6 +15,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 | "__builtin_ia32_pmaxsq128_mask" | "__builtin_ia32_pmaxud512_mask" | "__builtin_ia32_pmaxuq512_mask"
                 | "__builtin_ia32_pminsd512_mask" | "__builtin_ia32_pminsq512_mask" | "__builtin_ia32_pminsq256_mask"
                 | "__builtin_ia32_pminsq128_mask" | "__builtin_ia32_pminud512_mask" | "__builtin_ia32_pminuq512_mask"
+                | "__builtin_ia32_prolq512_mask" | "__builtin_ia32_prorq512_mask"
                 => {
                 let mut new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
@@ -25,8 +26,11 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 new_args.push(minus_one);
                 args = new_args.into();
             },
-            "__builtin_ia32_pmaxuq256_mask" | "__builtin_ia32_pmaxuq128_mask"
-                | "__builtin_ia32_pminuq256_mask" | "__builtin_ia32_pminuq128_mask"
+            "__builtin_ia32_pmaxuq256_mask" | "__builtin_ia32_pmaxuq128_mask" | "__builtin_ia32_pminuq256_mask"
+                | "__builtin_ia32_pminuq128_mask" | "__builtin_ia32_prold256_mask" | "__builtin_ia32_prold128_mask"
+                | "__builtin_ia32_prord512_mask" | "__builtin_ia32_prord256_mask" | "__builtin_ia32_prord128_mask"
+                | "__builtin_ia32_prolq256_mask" | "__builtin_ia32_prolq128_mask" | "__builtin_ia32_prorq256_mask"
+                | "__builtin_ia32_prorq128_mask"
                 => {
                 let mut new_args = args.to_vec();
                 let arg3_type = gcc_func.get_param_type(2);
