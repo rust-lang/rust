@@ -70,7 +70,7 @@ impl<I: Idx> IntervalSet<I> {
     /// Returns true if we increased the number of elements present.
     pub fn insert_range(&mut self, range: impl RangeBounds<I> + Clone) -> bool {
         let start = inclusive_start(range.clone());
-        let Some(mut end) = inclusive_end(self.domain, range) else {
+        let Some(end) = inclusive_end(self.domain, range) else {
             // empty range
             return false;
         };
@@ -78,59 +78,56 @@ impl<I: Idx> IntervalSet<I> {
             return false;
         }
 
-        loop {
-            // This condition looks a bit weird, but actually makes sense.
-            //
-            // if r.0 == end + 1, then we're actually adjacent, so we want to
-            // continue to the next range. We're looking here for the first
-            // range which starts *non-adjacently* to our end.
-            let next = self.map.partition_point(|r| r.0 <= end + 1);
-            if let Some(last) = next.checked_sub(1) {
-                let (prev_start, prev_end) = &mut self.map[last];
-                if *prev_end + 1 >= start {
-                    // If the start for the inserted range is adjacent to the
-                    // end of the previous, we can extend the previous range.
-                    if start < *prev_start {
-                        // Our range starts before the one we found. We'll need
-                        // to *remove* it, and then try again.
-                        //
-                        // FIXME: This is not so efficient; we may need to
-                        // recurse a bunch of times here. Instead, it's probably
-                        // better to do something like drain_filter(...) on the
-                        // map to be able to delete or modify all the ranges in
-                        // start..=end and then potentially re-insert a new
-                        // range.
-                        end = std::cmp::max(end, *prev_end);
-                        self.map.remove(last);
-                    } else {
-                        // We overlap with the previous range, increase it to
-                        // include us.
-                        //
-                        // Make sure we're actually going to *increase* it though --
-                        // it may be that end is just inside the previously existing
-                        // set.
-                        return if end > *prev_end {
-                            *prev_end = end;
-                            true
-                        } else {
-                            false
-                        };
+        // This condition looks a bit weird, but actually makes sense.
+        //
+        // if r.0 == end + 1, then we're actually adjacent, so we want to
+        // continue to the next range. We're looking here for the first
+        // range which starts *non-adjacently* to our end.
+        let next = self.map.partition_point(|r| r.0 <= end + 1);
+        if let Some(right) = next.checked_sub(1) {
+            let (prev_start, prev_end) = self.map[right];
+            if prev_end + 1 >= start {
+                // If the start for the inserted range is adjacent to the
+                // end of the previous, we can extend the previous range.
+                if start < prev_start {
+                    // The first range which ends *non-adjacently* to our start.
+                    // And we can ensure that left <= right.
+                    let left = self.map.partition_point(|l| l.1 + 1 < start);
+                    let min = std::cmp::min(self.map[left].0, start);
+                    let max = std::cmp::max(prev_end, end);
+                    self.map[right] = (min, max);
+                    if left != right {
+                        self.map.drain(left..right);
                     }
-                } else {
-                    // Otherwise, we don't overlap, so just insert
-                    self.map.insert(last + 1, (start, end));
                     return true;
+                } else {
+                    // We overlap with the previous range, increase it to
+                    // include us.
+                    //
+                    // Make sure we're actually going to *increase* it though --
+                    // it may be that end is just inside the previously existing
+                    // set.
+                    return if end > prev_end {
+                        self.map[right].1 = end;
+                        true
+                    } else {
+                        false
+                    };
                 }
             } else {
-                if self.map.is_empty() {
-                    // Quite common in practice, and expensive to call memcpy
-                    // with length zero.
-                    self.map.push((start, end));
-                } else {
-                    self.map.insert(next, (start, end));
-                }
+                // Otherwise, we don't overlap, so just insert
+                self.map.insert(right + 1, (start, end));
                 return true;
             }
+        } else {
+            if self.map.is_empty() {
+                // Quite common in practice, and expensive to call memcpy
+                // with length zero.
+                self.map.push((start, end));
+            } else {
+                self.map.insert(next, (start, end));
+            }
+            return true;
         }
     }
 
