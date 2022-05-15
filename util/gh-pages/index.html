@@ -110,6 +110,7 @@ Otherwise, have a great day =^.^=
                 left: auto;
             }
 
+            <!-- TODO -->
             #version-filter-count {
                 display: none;
             }
@@ -291,7 +292,7 @@ Otherwise, have a great day =^.^=
             border: 1px solid var(--theme-popup-border);
         }
 
-        #version-filter-selector .item {
+        #version-filter-selector .checkbox {
             display: flex;
         }
 
@@ -440,14 +441,14 @@ Otherwise, have a great day =^.^=
                                     <span class="caret"></span>
                                 </button>
                                 <ul id="version-filter-selector" class="dropdown-menu">
-                                    <li class="item">
+                                    <li class="checkbox">
                                         <label ng-click="clearVersionFilters()">
                                             <input type="checkbox" class="invisible" />
                                             Clear filters
                                         </label>
                                     </li>
                                     <li role="separator" class="divider"></li>
-                                    <li class="item" ng-repeat="(filter, vars) in versionFilters">
+                                    <li class="checkbox" ng-repeat="(filter, vars) in versionFilters">
                                         <label ng-attr-for="filter-{filter}">{{filter}}</label>
                                         <span>1.</span>
                                         <input type="number"

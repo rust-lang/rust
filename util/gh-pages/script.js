@@ -185,6 +185,7 @@
                     // 1.29.0 and greater
                     if (minorVersion && minorVersion > 28) {
                         $scope.versionFilters[filter].enabled = true;
+                        continue;
                     }
 
                     $scope.versionFilters[filter].enabled = false;
@@ -201,23 +202,18 @@
                         let lintVersion = lint.version.startsWith("pre ") ? lint.version.substring(4, lint.version.length) : lint.version;
                         let lintMinorVersion = lintVersion.substring(2, 4);
 
-                        let result;
                         switch (filter) {
-                            case "≥":
-                                result = (lintMinorVersion >= minorVersion);
-                                break;
-                            case "≤":
-                                result = (lintMinorVersion <= minorVersion);
-                                break;
                             // "=" gets the highest priority, since all filters are inclusive
                             case "=":
                                 return (lintMinorVersion == minorVersion);
+                            case "≥":
+                                if (lintMinorVersion < minorVersion) { return false; }
+                                break;
+                            case "≤":
+                                if (lintMinorVersion > minorVersion) { return false; }
+                                break;
                             default:
                                 return true
-                        }
-
-                        if (!result) {
-                            return false;
                         }
 
                         let cmpFilter;
@@ -229,10 +225,10 @@
 
                         if (filters[cmpFilter].enabled) {
                             let cmpMinorVersion = filters[cmpFilter].minorVersion;
-                            result = (cmpFilter === "≥") ? (lintMinorVersion >= cmpMinorVersion) : (lintMinorVersion <= cmpMinorVersion);
+                            return (cmpFilter === "≥") ? (lintMinorVersion >= cmpMinorVersion) : (lintMinorVersion <= cmpMinorVersion);
                         }
 
-                        return result;
+                        return true;
                     }
                 }
 
