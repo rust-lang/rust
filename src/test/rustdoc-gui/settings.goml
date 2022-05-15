@@ -5,36 +5,25 @@ assert-false: "#settings"
 // We now click on the settings button.
 click: "#settings-menu"
 wait-for: "#settings"
-assert: "#main-content.hidden"
 assert-css: ("#settings", {"display": "block"})
 // Let's close it by clicking on the same button.
 click: "#settings-menu"
-assert-false: "#alternative-display #settings"
-assert: "#not-displayed #settings"
-assert: "#main-content:not(.hidden)"
-
-// Let's open and then close it again with the "close settings" button.
-click: "#settings-menu"
-wait-for: "#alternative-display #settings"
-assert: "#main-content.hidden"
-click: "#back"
-wait-for: "#not-displayed #settings"
-assert: "#main-content:not(.hidden)"
+wait-for-css: ("#settings", {"display": "none"})
 
 // Let's check that pressing "ESCAPE" is closing it.
 click: "#settings-menu"
-wait-for: "#alternative-display #settings"
+wait-for-css: ("#settings", {"display": "block"})
 press-key: "Escape"
-wait-for: "#not-displayed #settings"
-assert: "#main-content:not(.hidden)"
+wait-for-css: ("#settings", {"display": "none"})
 
 // Let's click on it when the search results are displayed.
 focus: ".search-input"
 write: "test"
 wait-for: "#alternative-display #search"
 click: "#settings-menu"
-wait-for: "#alternative-display #settings"
-assert: "#not-displayed #search"
+wait-for-css: ("#settings", {"display": "block"})
+// Ensure that the search is still displayed.
+wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.

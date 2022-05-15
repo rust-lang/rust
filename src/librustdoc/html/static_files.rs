@@ -41,9 +41,6 @@ crate static SCRAPE_EXAMPLES_JS: &str = include_str!("static/js/scrape-examples.
 
 crate static SCRAPE_EXAMPLES_HELP_MD: &str = include_str!("static/scrape-examples-help.md");
 
-/// The file contents of `brush.svg`, the icon used for the theme-switch button.
-crate static BRUSH_SVG: &[u8] = include_bytes!("static/images/brush.svg");
-
 /// The file contents of `wheel.svg`, the icon used for the settings button.
 crate static WHEEL_SVG: &[u8] = include_bytes!("static/images/wheel.svg");
 
