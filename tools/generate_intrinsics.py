@@ -16,7 +16,7 @@ def run_command(command, cwd=None):
 def clone_repository(repo_name, path, repo_url, sub_path=None):
     if os.path.exists(path):
         while True:
-            choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(repo_name))
+            choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(path))
             if choice == "" or choice.lower() == "n":
                 print("Skipping repository update.")
                 return
@@ -116,12 +116,11 @@ def extract_instrinsics_from_llvmint(llvmint, intrinsics):
     ]
 
     json_file = os.path.join(llvmint, "target/doc/llvmint.json")
-    if not os.path.exists(json_file):
-        # We need to regenerate the documentation!
-        run_command(
-            ["cargo", "rustdoc", "--", "-Zunstable-options", "--output-format", "json"],
-            cwd=llvmint,
-        )
+    # We need to regenerate the documentation!
+    run_command(
+        ["cargo", "rustdoc", "--", "-Zunstable-options", "--output-format", "json"],
+        cwd=llvmint,
+    )
     with open(json_file, "r", encoding="utf8") as f:
         json_data = json.loads(f.read())
     for p in json_data["paths"]:
@@ -160,13 +159,14 @@ def fill_intrinsics(intrinsics, from_intrinsics, all_intrinsics):
                 all_intrinsics[entry[0]] = entry[1]
 
 
-def update_intrinsics(llvm_path, llvmint):
+def update_intrinsics(llvm_path, llvmint, llvmint2):
     intrinsics_llvm = {}
     intrinsics_llvmint = {}
     all_intrinsics = {}
 
     extract_instrinsics_from_llvm(llvm_path, intrinsics_llvm)
     extract_instrinsics_from_llvmint(llvmint, intrinsics_llvmint)
+    extract_instrinsics_from_llvmint(llvmint2, intrinsics_llvmint)
 
     intrinsics = {}
     # We give priority to translations from LLVM over the ones from llvmint.
@@ -209,6 +209,10 @@ def main():
         os.path.dirname(os.path.abspath(__file__)),
         "llvmint",
     )
+    llvmint2_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "llvmint-2",
+    )
 
     # First, we clone the LLVM repository if it's not already here.
     clone_repository(
@@ -222,7 +226,12 @@ def main():
         llvmint_path,
         "https://github.com/GuillaumeGomez/llvmint",
     )
-    update_intrinsics(llvm_path, llvmint_path)
+    clone_repository(
+        "llvmint2",
+        llvmint2_path,
+        "https://github.com/antoyo/llvmint",
+    )
+    update_intrinsics(llvm_path, llvmint_path, llvmint2_path)
 
 
 if __name__ == "__main__":

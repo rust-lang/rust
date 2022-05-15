@@ -22,3 +22,4 @@ gcc_path
 benchmarks
 tools/llvm-project
 tools/llvmint
+tools/llvmint-2
