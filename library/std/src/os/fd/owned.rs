@@ -32,6 +32,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 // 32-bit c_int. Below is -2, in two's complement, but that only works out
 // because c_int is 32 bits.
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedFd<'fd> {
     fd: RawFd,
@@ -52,6 +53,7 @@ pub struct BorrowedFd<'fd> {
 // 32-bit c_int. Below is -2, in two's complement, but that only works out
 // because c_int is 32 bits.
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+#[rustc_nonnull_optimization_guaranteed]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedFd {
     fd: RawFd,

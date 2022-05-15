@@ -206,6 +206,7 @@ impl OwnedHandle {
     }
 
     /// Allow child processes to inherit the handle.
+    #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_inheritable(&self) -> io::Result<()> {
         cvt(unsafe {
             c::SetHandleInformation(

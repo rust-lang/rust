@@ -254,8 +254,8 @@
     function blurHandler(event) {
         const settingsButton = getSettingsButton();
         if (!elemIsInParent(document.activeElement, settingsButton) &&
-            !elemIsInParent(event.relatedTarget, settingsButton))
-        {
+            !elemIsInParent(event.relatedTarget, settingsButton)
+        ) {
             window.hideSettings();
         }
     }
