@@ -392,8 +392,7 @@ mod desc {
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
-    pub const parse_lto: &str =
-        "either a boolean (`true`, `false`, `yes`, `no`, `on`, `off`, etc), or a string (`\"thin\"`, `\"fat\"`), or omitted";
+    pub const parse_lto: &str = "either a boolean (`true`, `false`, `yes`, `no`, `on`, `off`, etc), or a string (`\"thin\"`, `\"fat\"`), or omitted";
     pub const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
     pub const parse_location_detail: &str =
