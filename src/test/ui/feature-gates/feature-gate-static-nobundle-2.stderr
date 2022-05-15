@@ -1,2 +1,2 @@
-warning: library kind `static-nobundle` has been superseded by specifying `-bundle` on library kind `static`. Try `static:-bundle`
+warning: library kind `static-nobundle` has been superseded by specifying modifier `-bundle` with library kind `static`. Try `static:-bundle`
 

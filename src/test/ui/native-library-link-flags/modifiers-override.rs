@@ -3,12 +3,13 @@
 #![feature(native_link_modifiers_bundle)]
 
 #[link(name = "foo")]
-#[link( //~ ERROR multiple `modifiers` arguments in a single `#[link]` attribute
+#[link(
     name = "bar",
     kind = "static",
     modifiers = "+whole-archive,-whole-archive",
-    //~^ ERROR same modifier is used multiple times in a single `modifiers` argument
+    //~^ ERROR multiple `whole-archive` modifiers in a single `modifiers` argument
     modifiers = "+bundle"
+    //~^ ERROR multiple `modifiers` arguments in a single `#[link]` attribute
 )]
 extern "C" {}
 //~^ ERROR overriding linking modifiers from command line is not supported

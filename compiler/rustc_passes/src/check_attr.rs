@@ -23,6 +23,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::spec::abi::Abi;
 use std::collections::hash_map::Entry;
 
 pub(crate) fn target_from_impl_item<'tcx>(
@@ -1317,22 +1318,27 @@ impl CheckAttrVisitor<'_> {
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
     fn check_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
-        match target {
-            Target::ForeignMod => {}
-            _ => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    let mut diag = lint.build("attribute should be applied to an `extern` block");
-                    diag.warn(
-                        "this was previously accepted by the compiler but is \
-                         being phased out; it will become a hard error in \
-                         a future release!",
-                    );
-
-                    diag.span_label(span, "not an `extern` block");
-                    diag.emit();
-                });
-            }
+        if target == Target::ForeignMod
+            && let hir::Node::Item(item) = self.tcx.hir().get(hir_id)
+            && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
+            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+        {
+            return;
         }
+
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            let mut diag =
+                lint.build("attribute should be applied to an `extern` block with non-Rust ABI");
+            diag.warn(
+                "this was previously accepted by the compiler but is \
+                 being phased out; it will become a hard error in \
+                 a future release!",
+            );
+            if target != Target::ForeignMod {
+                diag.span_label(span, "not an `extern` block");
+            }
+            diag.emit();
+        });
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.

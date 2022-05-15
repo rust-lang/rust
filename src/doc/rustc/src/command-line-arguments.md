@@ -52,7 +52,8 @@ where `KIND` may be one of:
 If the kind is specified, then linking modifiers can be attached to it.
 Modifiers are specified as a comma-delimited string with each modifier prefixed with
 either a `+` or `-` to indicate that the modifier is enabled or disabled, respectively.
-The last boolean value specified for a given modifier wins. \
+Specifying multiple `modifiers` arguments in a single `link` attribute,
+or multiple identical modifiers in the same `modifiers` argument is not currently supported. \
 Example: `-l static:+whole-archive=mylib`.
 
 The kind of library and the modifiers can also be specified in a [`#[link]`

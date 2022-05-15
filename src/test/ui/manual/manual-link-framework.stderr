@@ -1,4 +1,4 @@
-error: native frameworks are only available on macOS targets
+error: library kind `framework` is only supported on Apple targets
 
 error: aborting due to previous error
 

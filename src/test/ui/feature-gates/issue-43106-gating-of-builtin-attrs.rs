@@ -581,6 +581,10 @@ mod link {
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
+
+    #[link()] extern "Rust" {}
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
 }
 
 struct StructForDeprecated;
