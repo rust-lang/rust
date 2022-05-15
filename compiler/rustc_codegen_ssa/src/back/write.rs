@@ -853,35 +853,31 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     module: CachedModuleCodegen,
     module_config: &ModuleConfig,
 ) -> WorkItemResult<B> {
-    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
-    let mut object = None;
-    if let Some(saved_file) = module.source.saved_file {
-        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-        object = Some(obj_out.clone());
-        let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
-        debug!(
-            "copying pre-existing module `{}` from {:?} to {}",
-            module.name,
-            source_file,
-            obj_out.display()
-        );
-        if let Err(err) = link_or_copy(&source_file, &obj_out) {
-            let diag_handler = cgcx.create_diag_handler();
-            diag_handler.err(&format!(
-                "unable to copy {} to {}: {}",
-                source_file.display(),
-                obj_out.display(),
-                err
-            ));
-        }
-    }
+    assert!(module_config.emit_obj != EmitObj::None);
 
-    assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
+    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
+    let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
+    let source_file = in_incr_comp_dir(&incr_comp_session_dir, &module.source.saved_file);
+    debug!(
+        "copying pre-existing module `{}` from {:?} to {}",
+        module.name,
+        source_file,
+        obj_out.display()
+    );
+    if let Err(err) = link_or_copy(&source_file, &obj_out) {
+        let diag_handler = cgcx.create_diag_handler();
+        diag_handler.err(&format!(
+            "unable to copy {} to {}: {}",
+            source_file.display(),
+            obj_out.display(),
+            err
+        ));
+    }
 
     WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
-        object,
+        object: Some(obj_out),
         dwarf_object: None,
         bytecode: None,
     })

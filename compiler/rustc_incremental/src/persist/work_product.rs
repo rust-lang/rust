@@ -21,7 +21,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     let file_name = format!("{}.o", cgu_name);
     let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
     let saved_file = match link_or_copy(path, &path_in_incr_dir) {
-        Ok(_) => Some(file_name),
+        Ok(_) => file_name,
         Err(err) => {
             sess.warn(&format!(
                 "error copying object file `{}` to incremental directory as `{}`: {}",
@@ -41,17 +41,15 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
 
 /// Removes files for a given work product.
 pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
-    if let Some(ref file_name) = work_product.saved_file {
-        let path = in_incr_comp_dir_sess(sess, file_name);
-        match std_fs::remove_file(&path) {
-            Ok(()) => {}
-            Err(err) => {
-                sess.warn(&format!(
-                    "file-system error deleting outdated file `{}`: {}",
-                    path.display(),
-                    err
-                ));
-            }
+    let path = in_incr_comp_dir_sess(sess, &work_product.saved_file);
+    match std_fs::remove_file(&path) {
+        Ok(()) => {}
+        Err(err) => {
+            sess.warn(&format!(
+                "file-system error deleting outdated file `{}`: {}",
+                path.display(),
+                err
+            ));
         }
     }
 }

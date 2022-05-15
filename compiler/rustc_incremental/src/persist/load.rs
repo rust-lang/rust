@@ -162,18 +162,16 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
             for swp in work_products {
                 let mut all_files_exist = true;
-                if let Some(ref file_name) = swp.work_product.saved_file {
-                    let path = in_incr_comp_dir_sess(sess, file_name);
-                    if !path.exists() {
-                        all_files_exist = false;
+                let path = in_incr_comp_dir_sess(sess, &swp.work_product.saved_file);
+                if !path.exists() {
+                    all_files_exist = false;
 
-                        if sess.opts.debugging_opts.incremental_info {
-                            eprintln!(
-                                "incremental: could not find file for work \
+                    if sess.opts.debugging_opts.incremental_info {
+                        eprintln!(
+                            "incremental: could not find file for work \
                                     product: {}",
-                                path.display()
-                            );
-                        }
+                            path.display()
+                        );
                     }
                 }
 
