@@ -10,6 +10,7 @@ use crate::mem;
 use crate::mem::forget;
 use crate::sys;
 use crate::sys::c;
+#[cfg(not(target_vendor = "uwp"))]
 use crate::sys::cvt;
 
 /// A borrowed socket.

@@ -57,10 +57,21 @@ impl Pipes {
             } else {
                 let (ours, theirs) = if ours_readable { (read, write) } else { (write, read) };
                 let ours = Handle::from_raw_handle(ours);
+                #[cfg(not(target_vendor = "uwp"))]
                 let theirs = Handle::from_raw_handle(theirs);
+                #[cfg(target_vendor = "uwp")]
+                let mut theirs = Handle::from_raw_handle(theirs);
 
                 if their_handle_inheritable {
-                    theirs.set_inheritable()?;
+                    #[cfg(not(target_vendor = "uwp"))]
+                    {
+                        theirs.set_inheritable()?;
+                    }
+
+                    #[cfg(target_vendor = "uwp")]
+                    {
+                        theirs = theirs.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)?;
+                    }
                 }
 
                 Ok(Pipes { ours: AnonPipe::Sync(ours), theirs: AnonPipe::Sync(theirs) })
