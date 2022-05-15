@@ -9,151 +9,112 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
     // arguments here.
     if gcc_func.get_param_count() != args.len() {
         match &*func_name {
-            "__builtin_ia32_pmuldq512_mask" | "__builtin_ia32_pmuludq512_mask"
-                // FIXME(antoyo): the following intrinsics has 4 (or 5) arguments according to the doc, but is defined with 2 (or 3) arguments in library/stdarch/crates/core_arch/src/x86/avx512f.rs.
+            // NOTE: the following intrinsics have a different number of parameters in LLVM and GCC.
+            "__builtin_ia32_prold512_mask" | "__builtin_ia32_pmuldq512_mask" | "__builtin_ia32_pmuludq512_mask"
                 | "__builtin_ia32_pmaxsd512_mask" | "__builtin_ia32_pmaxsq512_mask" | "__builtin_ia32_pmaxsq256_mask"
-                | "__builtin_ia32_pmaxsq128_mask" | "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-                | "__builtin_ia32_pmaxud512_mask" | "__builtin_ia32_pmaxuq512_mask" | "__builtin_ia32_pmaxuq256_mask"
-                | "__builtin_ia32_pmaxuq128_mask"
+                | "__builtin_ia32_pmaxsq128_mask" | "__builtin_ia32_pmaxud512_mask" | "__builtin_ia32_pmaxuq512_mask"
                 | "__builtin_ia32_pminsd512_mask" | "__builtin_ia32_pminsq512_mask" | "__builtin_ia32_pminsq256_mask"
-                | "__builtin_ia32_pminsq128_mask" | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask"
-                | "__builtin_ia32_pminud512_mask" | "__builtin_ia32_pminuq512_mask" | "__builtin_ia32_pminuq256_mask"
-                | "__builtin_ia32_pminuq128_mask" | "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask"
+                | "__builtin_ia32_pminsq128_mask" | "__builtin_ia32_pminud512_mask" | "__builtin_ia32_pminuq512_mask"
                 => {
-                    // TODO: refactor by separating those intrinsics outside of this branch.
-                    let add_before_last_arg =
-                        match &*func_name {
-                            "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-                                | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask"
-                                | "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => true,
-                            _ => false,
-                        };
-                    let new_first_arg_is_zero =
-                        match &*func_name {
-                            "__builtin_ia32_pmaxuq256_mask" | "__builtin_ia32_pmaxuq128_mask"
-                                | "__builtin_ia32_pminuq256_mask" | "__builtin_ia32_pminuq128_mask" => true,
-                            _ => false
-                        };
-                    let arg3_index =
-                        match &*func_name {
-                            "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => 1,
-                            _ => 2,
-                        };
-                    let mut new_args = args.to_vec();
-                    let arg3_type = gcc_func.get_param_type(arg3_index);
-                    let first_arg =
-                        if new_first_arg_is_zero {
-                            let vector_type = arg3_type.dyncast_vector().expect("vector type");
-                            let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
-                            let num_units = vector_type.get_num_units();
-                            builder.context.new_rvalue_from_vector(None, arg3_type, &vec![zero; num_units])
-                        }
-                        else {
-                            builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue()
-                        };
-                    if add_before_last_arg {
-                        new_args.insert(new_args.len() - 1, first_arg);
-                    }
-                    else {
-                        new_args.push(first_arg);
-                    }
-                    let arg4_index =
-                        match &*func_name {
-                            "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => 2,
-                            _ => 3,
-                        };
-                    let arg4_type = gcc_func.get_param_type(arg4_index);
-                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                    if add_before_last_arg {
-                        new_args.insert(new_args.len() - 1, minus_one);
-                    }
-                    else {
-                        new_args.push(minus_one);
-                    }
-                    args = new_args.into();
-                },
-                "__builtin_ia32_pternlogd512_mask" | "__builtin_ia32_pternlogd256_mask"
-                    | "__builtin_ia32_pternlogd128_mask" | "__builtin_ia32_pternlogq512_mask"
-                    | "__builtin_ia32_pternlogq256_mask" | "__builtin_ia32_pternlogq128_mask" => {
-                    let mut new_args = args.to_vec();
+                let mut new_args = args.to_vec();
+                let arg3_type = gcc_func.get_param_type(2);
+                let first_arg = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
+                new_args.push(first_arg);
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                args = new_args.into();
+            },
+            "__builtin_ia32_pmaxuq256_mask" | "__builtin_ia32_pmaxuq128_mask"
+                | "__builtin_ia32_pminuq256_mask" | "__builtin_ia32_pminuq128_mask"
+                => {
+                let mut new_args = args.to_vec();
+                let arg3_type = gcc_func.get_param_type(2);
+                let vector_type = arg3_type.dyncast_vector().expect("vector type");
+                let zero = builder.context.new_rvalue_zero(vector_type.get_element_type());
+                let num_units = vector_type.get_num_units();
+                let first_arg = builder.context.new_rvalue_from_vector(None, arg3_type, &vec![zero; num_units]);
+                new_args.push(first_arg);
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                args = new_args.into();
+            },
+            "__builtin_ia32_pternlogd512_mask" | "__builtin_ia32_pternlogd256_mask"
+                | "__builtin_ia32_pternlogd128_mask" | "__builtin_ia32_pternlogq512_mask"
+                | "__builtin_ia32_pternlogq256_mask" | "__builtin_ia32_pternlogq128_mask" => {
+                let mut new_args = args.to_vec();
+                let arg5_type = gcc_func.get_param_type(4);
+                let minus_one = builder.context.new_rvalue_from_int(arg5_type, -1);
+                new_args.push(minus_one);
+                args = new_args.into();
+            },
+            "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
+                let mut new_args = args.to_vec();
+
+                let mut last_arg = None;
+                if args.len() == 4 {
+                    last_arg = new_args.pop();
+                }
+
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+
+                if args.len() == 3 {
+                    // Both llvm.fma.v16f32 and llvm.x86.avx512.vfmadd.ps.512 maps to
+                    // the same GCC intrinsic, but the former has 3 parameters and the
+                    // latter has 4 so it doesn't require this additional argument.
                     let arg5_type = gcc_func.get_param_type(4);
-                    let minus_one = builder.context.new_rvalue_from_int(arg5_type, -1);
-                    new_args.push(minus_one);
-                    args = new_args.into();
-                },
-                "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
-                    let mut new_args = args.to_vec();
+                    new_args.push(builder.context.new_rvalue_from_int(arg5_type, 4));
+                }
 
-                    let mut last_arg = None;
-                    if args.len() == 4 {
-                        last_arg = new_args.pop();
-                    }
-
-                    let arg4_type = gcc_func.get_param_type(3);
-                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                    new_args.push(minus_one);
-
-                    if args.len() == 3 {
-                        // Both llvm.fma.v16f32 and llvm.x86.avx512.vfmadd.ps.512 maps to
-                        // the same GCC intrinsic, but the former has 3 parameters and the
-                        // latter has 4 so it doesn't require this additional argument.
-                        let arg5_type = gcc_func.get_param_type(4);
-                        new_args.push(builder.context.new_rvalue_from_int(arg5_type, 4));
-                    }
-
-                    if let Some(last_arg) = last_arg {
-                        new_args.push(last_arg);
-                    }
-
-                    args = new_args.into();
-                },
-                "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
-                    | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
-                    | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
-                    | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask" => {
-                    let mut new_args = args.to_vec();
-                    let last_arg = new_args.pop().expect("last arg");
-                    let arg3_type = gcc_func.get_param_type(2);
-                    let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
-                    new_args.push(undefined);
-                    let arg4_type = gcc_func.get_param_type(3);
-                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                    new_args.push(minus_one);
+                if let Some(last_arg) = last_arg {
                     new_args.push(last_arg);
-                    args = new_args.into();
-                },
-                "__builtin_ia32_prold512_mask" => {
-                    let mut new_args = args.to_vec();
-                    let arg3_type = gcc_func.get_param_type(2);
-                    let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
-                    new_args.push(undefined);
-                    let arg4_type = gcc_func.get_param_type(3);
-                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                    new_args.push(minus_one);
-                    args = new_args.into();
-                },
-                "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
-                    let mut new_args = args.to_vec();
-                    let last_arg = new_args.pop().expect("last arg");
-                    let arg4_type = gcc_func.get_param_type(3);
-                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                    new_args.push(minus_one);
-                    new_args.push(last_arg);
-                    args = new_args.into();
-                },
-                "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask" => {
-                    let mut new_args = args.to_vec();
-                    let last_arg = new_args.pop().expect("last arg");
-                    let arg2_type = gcc_func.get_param_type(1);
-                    let undefined = builder.current_func().new_local(None, arg2_type, "undefined_for_intrinsic").to_rvalue();
-                    new_args.push(undefined);
-                    let arg3_type = gcc_func.get_param_type(2);
-                    let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
-                    new_args.push(minus_one);
-                    new_args.push(last_arg);
-                    args = new_args.into();
-                },
-                _ => (),
+                }
+
+                args = new_args.into();
+            },
+            "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
+                | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
+                | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
+                | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask"
+                | "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
+                |  "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask" => {
+                let mut new_args = args.to_vec();
+                let last_arg = new_args.pop().expect("last arg");
+                let arg3_type = gcc_func.get_param_type(2);
+                let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
+                new_args.push(undefined);
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                new_args.push(last_arg);
+                args = new_args.into();
+            },
+            "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
+                let mut new_args = args.to_vec();
+                let last_arg = new_args.pop().expect("last arg");
+                let arg4_type = gcc_func.get_param_type(3);
+                let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                new_args.push(minus_one);
+                new_args.push(last_arg);
+                args = new_args.into();
+            },
+            "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask"
+                | "__builtin_ia32_sqrtps512_mask" | "__builtin_ia32_sqrtpd512_mask" => {
+                let mut new_args = args.to_vec();
+                let last_arg = new_args.pop().expect("last arg");
+                let arg2_type = gcc_func.get_param_type(1);
+                let undefined = builder.current_func().new_local(None, arg2_type, "undefined_for_intrinsic").to_rvalue();
+                new_args.push(undefined);
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                new_args.push(minus_one);
+                new_args.push(last_arg);
+                args = new_args.into();
+            },
+            _ => (),
         }
     }
 
