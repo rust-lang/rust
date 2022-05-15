@@ -156,7 +156,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
         let llvm_lib = llvm_root.join("lib");
         for entry in t!(fs::read_dir(&llvm_lib)) {
             let lib = t!(entry).path();
-            if lib.ends_with(".so") {
+            if lib.extension().map_or(false, |ext| ext == "so") {
                 fix_bin_or_dylib(builder, &lib);
             }
         }
@@ -284,7 +284,7 @@ fn fix_bin_or_dylib(builder: &Builder<'_>, fname: &Path) {
         entries
     };
     patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
-    if !fname.ends_with(".so") {
+    if !fname.extension().map_or(false, |ext| ext == "so") {
         // Finally, set the corret .interp for binaries
         let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
         // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...

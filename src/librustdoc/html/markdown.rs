@@ -1448,8 +1448,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     // used in tera template files).
     map.insert("mainThemeStyle".into(), 1);
     map.insert("themeStyle".into(), 1);
-    map.insert("theme-picker".into(), 1);
-    map.insert("theme-choices".into(), 1);
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
     map.insert("main-content".into(), 1);

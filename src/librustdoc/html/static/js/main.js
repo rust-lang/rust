@@ -1,7 +1,6 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
 /* global onEach, onEachLazy, removeClass */
-/* global switchTheme, useSystemTheme */
 
 "use strict";
 
@@ -109,20 +108,10 @@ function getVirtualKey(ev) {
     return String.fromCharCode(c);
 }
 
-const THEME_PICKER_ELEMENT_ID = "theme-picker";
-const THEMES_ELEMENT_ID = "theme-choices";
 const MAIN_ID = "main-content";
 const SETTINGS_BUTTON_ID = "settings-menu";
 const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
-
-function getThemesElement() {
-    return document.getElementById(THEMES_ELEMENT_ID);
-}
-
-function getThemePickerElement() {
-    return document.getElementById(THEME_PICKER_ELEMENT_ID);
-}
 
 function getSettingsButton() {
     return document.getElementById(SETTINGS_BUTTON_ID);
@@ -133,73 +122,9 @@ function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
 }
 
-function showThemeButtonState() {
-    const themePicker = getThemePickerElement();
-    const themeChoices = getThemesElement();
-
-    themeChoices.style.display = "block";
-    themePicker.style.borderBottomRightRadius = "0";
-    themePicker.style.borderBottomLeftRadius = "0";
-}
-
-function hideThemeButtonState() {
-    const themePicker = getThemePickerElement();
-    const themeChoices = getThemesElement();
-
-    themeChoices.style.display = "none";
-    themePicker.style.borderBottomRightRadius = "3px";
-    themePicker.style.borderBottomLeftRadius = "3px";
-}
-
 window.hideSettings = () => {
     // Does nothing by default.
 };
-
-// Set up the theme picker list.
-(function () {
-    if (!document.location.href.startsWith("file:///")) {
-        return;
-    }
-    const themeChoices = getThemesElement();
-    const themePicker = getThemePickerElement();
-    const availableThemes = getVar("themes").split(",");
-
-    removeClass(themeChoices.parentElement, "hidden");
-
-    function switchThemeButtonState() {
-        if (themeChoices.style.display === "block") {
-            hideThemeButtonState();
-        } else {
-            showThemeButtonState();
-        }
-    }
-
-    function handleThemeButtonsBlur(e) {
-        const active = document.activeElement;
-        const related = e.relatedTarget;
-
-        if (active.id !== THEME_PICKER_ELEMENT_ID &&
-            (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
-            (!related ||
-             (related.id !== THEME_PICKER_ELEMENT_ID &&
-              (!related.parentNode || related.parentNode.id !== THEMES_ELEMENT_ID)))) {
-            hideThemeButtonState();
-        }
-    }
-
-    themePicker.onclick = switchThemeButtonState;
-    themePicker.onblur = handleThemeButtonsBlur;
-    availableThemes.forEach(item => {
-        const but = document.createElement("button");
-        but.textContent = item;
-        but.onclick = () => {
-            switchTheme(window.currentTheme, window.mainTheme, item, true);
-            useSystemTheme(false);
-        };
-        but.onblur = handleThemeButtonsBlur;
-        themeChoices.appendChild(but);
-    });
-}());
 
 /**
  * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
@@ -512,7 +437,7 @@ function loadCss(cssFileName) {
             ev.preventDefault();
         }
         searchState.defocus();
-        hideThemeButtonState();
+        window.hideSettings();
     }
 
     const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
@@ -521,8 +446,6 @@ function loadCss(cssFileName) {
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
-
-        let themePicker;
 
         if (document.activeElement.tagName === "INPUT") {
             switch (getVirtualKey(ev)) {
@@ -553,64 +476,9 @@ function loadCss(cssFileName) {
                 displayHelp(true, ev);
                 break;
 
-            case "t":
-            case "T":
-                displayHelp(false, ev);
-                ev.preventDefault();
-                themePicker = getThemePickerElement();
-                themePicker.click();
-                themePicker.focus();
-                break;
-
             default:
-                if (getThemePickerElement().parentNode.contains(ev.target)) {
-                    handleThemeKeyDown(ev);
-                }
+                break;
             }
-        }
-    }
-
-    function handleThemeKeyDown(ev) {
-        const active = document.activeElement;
-        const themes = getThemesElement();
-        switch (getVirtualKey(ev)) {
-        case "ArrowUp":
-            ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
-                active.previousElementSibling.focus();
-            } else {
-                showThemeButtonState();
-                themes.lastElementChild.focus();
-            }
-            break;
-        case "ArrowDown":
-            ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
-                active.nextElementSibling.focus();
-            } else {
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }
-            break;
-        case "Enter":
-        case "Return":
-        case "Space":
-            if (ev.target.id === THEME_PICKER_ELEMENT_ID && themes.style.display === "none") {
-                ev.preventDefault();
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }
-            break;
-        case "Home":
-            ev.preventDefault();
-            themes.firstElementChild.focus();
-            break;
-        case "End":
-            ev.preventDefault();
-            themes.lastElementChild.focus();
-            break;
-        // The escape key is handled in handleEscape, not here,
-        // so that pressing escape will close the menu even if it isn't focused
         }
     }
 
@@ -1006,7 +874,6 @@ function loadCss(cssFileName) {
         const shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
-            ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
             ["← / →", "Switch result tab (when results focused)"],
