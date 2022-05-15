@@ -71,11 +71,16 @@ fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Gets an instance for a path; fails gracefully if the path does not exist.
+    fn try_resolve_path(&self, path: &[&str]) -> Option<ty::Instance<'tcx>> {
+        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)?;
+        Some(ty::Instance::mono(self.eval_context_ref().tcx.tcx, did))
+    }
+
     /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
-        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)
-            .unwrap_or_else(|| panic!("failed to find required Rust item: {:?}", path));
-        ty::Instance::mono(self.eval_context_ref().tcx.tcx, did)
+        self.try_resolve_path(path)
+            .unwrap_or_else(|| panic!("failed to find required Rust item: {:?}", path))
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
