@@ -2999,15 +2999,15 @@ fn foo() {
             216..217 's': Option<i32>
             220..224 'None': Option<i32>
             234..235 'f': Box<dyn FnOnce(&Option<i32>)>
-            269..282 'box (|ps| {})': Box<|{unknown}| -> ()>
-            274..281 '|ps| {}': |{unknown}| -> ()
-            275..277 'ps': {unknown}
+            269..282 'box (|ps| {})': Box<|&Option<i32>| -> ()>
+            274..281 '|ps| {}': |&Option<i32>| -> ()
+            275..277 'ps': &Option<i32>
             279..281 '{}': ()
             288..289 'f': Box<dyn FnOnce(&Option<i32>)>
             288..293 'f(&s)': ()
             290..292 '&s': &Option<i32>
             291..292 's': Option<i32>
-            269..282: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
+            269..282: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|&Option<i32>| -> ()>
         "#]],
     );
 }
