@@ -320,8 +320,8 @@ window.initSearch = rawSearchIndex => {
                     if (foundExclamation) {
                         throw new Error("Cannot have more than one `!` in an ident");
                     } else if (parserState.pos + 1 < parserState.length &&
-                        isIdentCharacter(parserState.userQuery[parserState.pos + 1]))
-                    {
+                        isIdentCharacter(parserState.userQuery[parserState.pos + 1])
+                    ) {
                         throw new Error("`!` can only be at the end of an ident");
                     }
                     foundExclamation = true;
@@ -330,12 +330,10 @@ window.initSearch = rawSearchIndex => {
                 } else if (
                     isStopCharacter(c) ||
                     isSpecialStartCharacter(c) ||
-                    isSeparatorCharacter(c))
-                {
+                    isSeparatorCharacter(c)
+                ) {
                     break;
-                }
-                // If we allow paths ("str::string" for example).
-                else if (c === ":") {
+                } else if (c === ":") { // If we allow paths ("str::string" for example).
                     if (!isPathStart(parserState)) {
                         break;
                     }
@@ -372,8 +370,8 @@ window.initSearch = rawSearchIndex => {
             end = getIdentEndPosition(parserState);
         }
         if (parserState.pos < parserState.length &&
-            parserState.userQuery[parserState.pos] === "<")
-        {
+            parserState.userQuery[parserState.pos] === "<"
+        ) {
             if (isInGenerics) {
                 throw new Error("Unexpected `<` after `<`");
             } else if (start >= end) {
@@ -592,8 +590,8 @@ window.initSearch = rawSearchIndex => {
 
         if (elem &&
             elem.value !== "All crates" &&
-            hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
-        {
+            hasOwnPropertyRustdoc(rawSearchIndex, elem.value)
+        ) {
             return elem.value;
         }
         return null;
@@ -786,37 +784,51 @@ window.initSearch = rawSearchIndex => {
                 // sort by exact match with regard to the last word (mismatch goes later)
                 a = (aaa.word !== userQuery);
                 b = (bbb.word !== userQuery);
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // Sort by non levenshtein results and then levenshtein results by the distance
                 // (less changes required to match means higher rankings)
                 a = (aaa.lev);
                 b = (bbb.lev);
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by crate (non-current crate goes later)
                 a = (aaa.item.crate !== window.currentCrate);
                 b = (bbb.item.crate !== window.currentCrate);
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by item name length (longer goes later)
                 a = aaa.word.length;
                 b = bbb.word.length;
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by item name (lexicographically larger goes later)
                 a = aaa.word;
                 b = bbb.word;
-                if (a !== b) { return (a > b ? +1 : -1); }
+                if (a !== b) {
+                    return (a > b ? +1 : -1);
+                }
 
                 // sort by index of keyword in item name (no literal occurrence goes later)
                 a = (aaa.index < 0);
                 b = (bbb.index < 0);
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
                 // (later literal occurrence, if any, goes later)
                 a = aaa.index;
                 b = bbb.index;
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // special precedence for primitive and keyword pages
                 if ((aaa.item.ty === TY_PRIMITIVE && bbb.item.ty !== TY_KEYWORD) ||
@@ -831,17 +843,23 @@ window.initSearch = rawSearchIndex => {
                 // sort by description (no description goes later)
                 a = (aaa.item.desc === "");
                 b = (bbb.item.desc === "");
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by type (later occurrence in `itemTypes` goes later)
                 a = aaa.item.ty;
                 b = bbb.item.ty;
-                if (a !== b) { return a - b; }
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by path (lexicographically larger goes later)
                 a = aaa.item.path;
                 b = bbb.item.path;
-                if (a !== b) { return (a > b ? +1 : -1); }
+                if (a !== b) {
+                    return (a > b ? +1 : -1);
+                }
 
                 // que sera, sera
                 return 0;
@@ -1315,16 +1333,15 @@ window.initSearch = rawSearchIndex => {
             }
 
             if (searchWord.indexOf(elem.pathLast) > -1 ||
-                row.normalizedName.indexOf(elem.pathLast) > -1)
-            {
+                row.normalizedName.indexOf(elem.pathLast) > -1
+            ) {
                 // filter type: ... queries
                 if (!results_others[fullId] !== undefined) {
                     index = row.normalizedName.indexOf(elem.pathLast);
                 }
             }
             lev = levenshtein(searchWord, elem.pathLast);
-            if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1)
-            {
+            if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1) {
                 if (elem.pathLast.length < 6) {
                     lev = 1;
                 } else {
@@ -1670,8 +1687,8 @@ window.initSearch = rawSearchIndex => {
             // By default, the search DOM element is "empty" (meaning it has no children not
             // text content). Once a search has been run, it won't be empty, even if you press
             // ESC or empty the search input (which also "cancels" the search).
-            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText)))
-        {
+            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText))
+        ) {
             const elem = document.createElement("a");
             elem.href = results.others[0].href;
             removeClass(elem, "active");
@@ -1766,7 +1783,7 @@ window.initSearch = rawSearchIndex => {
         let i = 0;
         for (const elem of elems) {
             const j = i;
-            elem.onclick = () => { printTab(j); };
+            elem.onclick = () => printTab(j);
             searchState.focusedByTab.push(null);
             i += 1;
         }
