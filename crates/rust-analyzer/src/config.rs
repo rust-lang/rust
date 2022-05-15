@@ -281,6 +281,9 @@ config_data! {
         inlayHints_renderColons: bool                              = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints_enable: bool                          = "true",
+        /// Whether to hide inlay type hints for `let` statements that initialize to a closure.
+        /// Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
+        inlayHints_typeHints_hideClosureInitialization: bool       = "false",
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = "false",
 
@@ -1000,6 +1003,9 @@ impl Config {
                 LifetimeElisionDef::SkipTrivial => ide::LifetimeElisionHints::SkipTrivial,
             },
             hide_named_constructor_hints: self.data.inlayHints_typeHints_hideNamedConstructor,
+            hide_closure_initialization_hints: self
+                .data
+                .inlayHints_typeHints_hideClosureInitialization,
             reborrow_hints: match self.data.inlayHints_reborrowHints_enable {
                 ReborrowHintsDef::Always => ide::ReborrowHints::Always,
                 ReborrowHintsDef::Never => ide::ReborrowHints::Never,
