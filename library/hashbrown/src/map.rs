@@ -186,8 +186,15 @@ pub enum DefaultHashBuilder {}
 /// // use the values stored in map
 /// ```
 pub struct HashMap<K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
+    #[cfg(any(feature = "rustc-internal-api", not(feature = "map-inner")))]
     pub(crate) hash_builder: S,
+    #[cfg(any(feature = "rustc-internal-api", not(feature = "map-inner")))]
     pub(crate) table: RawTable<(K, V), A>,
+
+    #[cfg(all(feature = "map-inner", not(feature = "rustc-internal-api")))]
+    pub hash_builder: S,
+    #[cfg(all(feature = "map-inner", not(feature = "rustc-internal-api")))]
+    pub table: RawTable<(K, V), A>,
 }
 
 impl<K: Clone, V: Clone, S: Clone, A: Allocator + Clone> Clone for HashMap<K, V, S, A> {
