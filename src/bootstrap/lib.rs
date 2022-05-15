@@ -122,7 +122,8 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed, CiEnv,
+    check_run, exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
+    CiEnv,
 };
 
 mod builder;
@@ -959,6 +960,17 @@ impl Build {
         }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
+    }
+
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Returns false if do not execute at all, otherwise returns its
+    /// `status.success()`.
+    fn check_run(&self, cmd: &mut Command) -> bool {
+        if self.config.dry_run {
+            return true;
+        }
+        self.verbose(&format!("running: {:?}", cmd));
+        check_run(cmd, self.is_verbose())
     }
 
     pub fn is_verbose(&self) -> bool {
