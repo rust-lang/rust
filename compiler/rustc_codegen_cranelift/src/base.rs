@@ -325,7 +325,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                     AssertKind::BoundsCheck { ref len, ref index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
-                        let location = fx.get_caller_location(source_info.span).load_scalar(fx);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -336,7 +336,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                     }
                     _ => {
                         let msg_str = msg.description();
-                        codegen_panic(fx, msg_str, source_info.span);
+                        codegen_panic(fx, msg_str, source_info);
                     }
                 }
             }
@@ -398,7 +398,13 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 from_hir_call: _,
             } => {
                 fx.tcx.sess.time("codegen call", || {
-                    crate::abi::codegen_terminator_call(fx, *fn_span, func, args, *destination)
+                    crate::abi::codegen_terminator_call(
+                        fx,
+                        mir::SourceInfo { span: *fn_span, ..source_info },
+                        func,
+                        args,
+                        *destination,
+                    )
                 });
             }
             TerminatorKind::InlineAsm {
@@ -450,7 +456,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             }
             TerminatorKind::Drop { place, target, unwind: _ } => {
                 let drop_place = codegen_place(fx, *place);
-                crate::abi::codegen_drop(fx, source_info.span, drop_place);
+                crate::abi::codegen_drop(fx, source_info, drop_place);
 
                 let target_block = fx.get_block(*target);
                 fx.bcx.ins().jump(target_block, &[]);
@@ -471,7 +477,7 @@ fn codegen_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(disabled)]
+    #[cfg(any())] // This is never true
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
@@ -898,14 +904,18 @@ pub(crate) fn codegen_operand<'tcx>(
     }
 }
 
-pub(crate) fn codegen_panic<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, msg_str: &str, span: Span) {
-    let location = fx.get_caller_location(span).load_scalar(fx);
+pub(crate) fn codegen_panic<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    msg_str: &str,
+    source_info: mir::SourceInfo,
+) {
+    let location = fx.get_caller_location(source_info).load_scalar(fx);
 
     let msg_ptr = fx.anonymous_str(msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len, location];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, span);
+    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, source_info.span);
 }
 
 pub(crate) fn codegen_panic_inner<'tcx>(

@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
@@ -22,35 +21,28 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(target_dir.join("lib")).unwrap();
 
     // Copy the backend
-    for file in ["cg_clif", "cg_clif_build_sysroot"] {
-        try_hard_link(
-            cg_clif_build_dir.join(get_file_name(file, "bin")),
-            target_dir.join("bin").join(get_file_name(file, "bin")),
-        );
-    }
-
     let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib");
-    try_hard_link(
-        cg_clif_build_dir.join(&cg_clif_dylib),
-        target_dir
-            .join(if cfg!(windows) {
-                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-                // binaries.
-                "bin"
-            } else {
-                "lib"
-            })
-            .join(cg_clif_dylib),
-    );
+    let cg_clif_dylib_path = target_dir
+        .join(if cfg!(windows) {
+            // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
+            // binaries.
+            "bin"
+        } else {
+            "lib"
+        })
+        .join(&cg_clif_dylib);
+    try_hard_link(cg_clif_build_dir.join(cg_clif_dylib), &cg_clif_dylib_path);
 
-    // Build and copy cargo wrapper
-    let mut build_cargo_wrapper_cmd = Command::new("rustc");
-    build_cargo_wrapper_cmd
-        .arg("scripts/cargo-clif.rs")
-        .arg("-o")
-        .arg(target_dir.join("cargo-clif"))
-        .arg("-g");
-    spawn_and_wait(build_cargo_wrapper_cmd);
+    // Build and copy rustc and cargo wrappers
+    for wrapper in ["rustc-clif", "cargo-clif"] {
+        let mut build_cargo_wrapper_cmd = Command::new("rustc");
+        build_cargo_wrapper_cmd
+            .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
+            .arg("-o")
+            .arg(target_dir.join(wrapper))
+            .arg("-g");
+        spawn_and_wait(build_cargo_wrapper_cmd);
+    }
 
     let default_sysroot = super::rustc_info::get_default_sysroot();
 
@@ -117,7 +109,13 @@ pub(crate) fn build_sysroot(
             }
         }
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(channel, target_dir, host_triple, None);
+            build_clif_sysroot_for_triple(
+                channel,
+                target_dir,
+                host_triple,
+                &cg_clif_dylib_path,
+                None,
+            );
 
             if host_triple != target_triple {
                 // When cross-compiling it is often necessary to manually pick the right linker
@@ -126,14 +124,21 @@ pub(crate) fn build_sysroot(
                 } else {
                     None
                 };
-                build_clif_sysroot_for_triple(channel, target_dir, target_triple, linker);
+                build_clif_sysroot_for_triple(
+                    channel,
+                    target_dir,
+                    target_triple,
+                    &cg_clif_dylib_path,
+                    linker,
+                );
             }
 
             // Copy std for the host to the lib dir. This is necessary for the jit mode to find
             // libstd.
             for file in fs::read_dir(host_rustlib_lib).unwrap() {
                 let file = file.unwrap().path();
-                if file.file_name().unwrap().to_str().unwrap().contains("std-") {
+                let filename = file.file_name().unwrap().to_str().unwrap();
+                if filename.contains("std-") && !filename.contains(".rlib") {
                     try_hard_link(&file, target_dir.join("lib").join(file.file_name().unwrap()));
                 }
             }
@@ -145,6 +150,7 @@ fn build_clif_sysroot_for_triple(
     channel: &str,
     target_dir: &Path,
     triple: &str,
+    cg_clif_dylib_path: &Path,
     linker: Option<&str>,
 ) {
     match fs::read_to_string(Path::new("build_sysroot").join("rustc_version")) {
@@ -168,18 +174,18 @@ fn build_clif_sysroot_for_triple(
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
     if !super::config::get_bool("keep_sysroot") {
-        // Cleanup the target dir with the exception of build scripts and the incremental cache
-        for dir in ["build", "deps", "examples", "native"] {
-            if build_dir.join(dir).exists() {
-                fs::remove_dir_all(build_dir.join(dir)).unwrap();
-            }
+        // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
+        // recompilation as they are not affected by changes in cg_clif.
+        if build_dir.join("deps").exists() {
+            fs::remove_dir_all(build_dir.join("deps")).unwrap();
         }
     }
 
     // Build sysroot
     let mut build_cmd = Command::new("cargo");
     build_cmd.arg("build").arg("--target").arg(triple).current_dir("build_sysroot");
-    let mut rustflags = "--clif -Zforce-unstable-if-unmarked".to_string();
+    let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
+    rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
     if channel == "release" {
         build_cmd.arg("--release");
         rustflags.push_str(" -Zmir-opt-level=3");
@@ -189,10 +195,6 @@ fn build_clif_sysroot_for_triple(
         write!(rustflags, " -Clinker={}", linker).unwrap();
     }
     build_cmd.env("RUSTFLAGS", rustflags);
-    build_cmd.env(
-        "RUSTC",
-        env::current_dir().unwrap().join(target_dir).join("bin").join("cg_clif_build_sysroot"),
-    );
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);
 

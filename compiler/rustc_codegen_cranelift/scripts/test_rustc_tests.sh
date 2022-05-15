@@ -101,10 +101,9 @@ rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
 rm src/test/ui/mir/ssa-analysis-regression-50041.rs # produces ICE
+rm src/test/ui/type-alias-impl-trait/assoc-projection-ice.rs # produces ICE
 
 rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
-
-rm src/test/ui/rfc-2091-track-caller/intrinsic-wrapper.rs # wrong result from `Location::caller()`
 
 # bugs in the test suite
 # ======================

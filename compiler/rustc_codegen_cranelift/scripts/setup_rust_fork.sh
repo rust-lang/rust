@@ -2,7 +2,6 @@
 set -e
 
 ./y.rs build --no-unstable-features
-source scripts/config.sh
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true
@@ -26,21 +25,6 @@ index d95b5b7f17f..00b6f0e3635 100644
  [dev-dependencies]
  rand = "0.7"
  rand_xorshift = "0.2"
-diff --git a/src/tools/compiletest/src/header.rs b/src/tools/compiletest/src/header.rs
-index 887d27fd6dca4..2c2239f2b83d1 100644
---- a/src/tools/compiletest/src/header.rs
-+++ b/src/tools/compiletest/src/header.rs
-@@ -806,8 +806,8 @@ pub fn make_test_description<R: Read>(
-     cfg: Option<&str>,
- ) -> test::TestDesc {
-     let mut ignore = false;
-     #[cfg(not(bootstrap))]
--    let ignore_message: Option<String> = None;
-+    let ignore_message: Option<&str> = None;
-     let mut should_fail = false;
-
-     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
-
 diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/runtest.rs
 index 8431aa7b818..a3ff7e68ce5 100644
 --- a/src/tools/compiletest/src/runtest.rs
@@ -67,7 +51,7 @@ changelog-seen = 2
 ninja = false
 
 [build]
-rustc = "$(pwd)/../build/bin/cg_clif"
+rustc = "$(pwd)/../build/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true
