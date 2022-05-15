@@ -5,7 +5,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 
 /* General structure and fonts */
 
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: #0f1419;
 	color: #c5c5c5;
 }
@@ -531,14 +531,18 @@ kbd {
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
-#theme-picker, #settings-menu, #help-button {
+#settings-menu > a, #help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
 	color: #fff;
 }
 
-#theme-picker > img, #settings-menu > img {
+#settings-menu > a img {
 	filter: invert(100);
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #5c6773;
 }
 
 #copy-path {
@@ -551,8 +555,7 @@ kbd {
 	filter: invert(100%);
 }
 
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
+#settings-menu > a:hover, #settings-menu > a:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #e0e0e0;
 }
@@ -568,12 +571,6 @@ kbd {
 
 #theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: rgba(110, 110, 110, 0.33);
-}
-
-@media (max-width: 700px) {
-	#theme-picker {
-		background: #0f1419;
-	}
 }
 
 .search-results .result-name span.alias {

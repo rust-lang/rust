@@ -1,12 +1,21 @@
 // Ensures that the theme change is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
-click: "#theme-picker"
-click: "#theme-choices > button:first-child"
-// should be the ayu theme so let's check the color
+local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
+reload:
+click: "#settings-menu"
+wait-for: "#theme-ayu"
+click: "#theme-ayu"
+// should be the ayu theme so let's check the color.
 wait-for-css: ("body", { "background-color": "rgb(15, 20, 25)" })
-click: "#theme-choices > button:last-child"
-// should be the light theme so let's check the color
+assert-local-storage: { "rustdoc-theme": "ayu" }
+click: "#theme-light"
+// should be the light theme so let's check the color.
 wait-for-css: ("body", { "background-color": "rgb(255, 255, 255)" })
+assert-local-storage: { "rustdoc-theme": "light" }
+click: "#theme-dark"
+// Should be the dark theme so let's check the color.
+wait-for-css: ("body", { "background-color": "rgb(53, 53, 53)" })
+assert-local-storage: { "rustdoc-theme": "dark" }
 
 goto: file://|DOC_PATH|/settings.html
 wait-for: "#settings"

@@ -1,4 +1,4 @@
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: #353535;
 	color: #ddd;
 }
@@ -408,16 +408,19 @@ kbd {
 	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
-#theme-picker, #settings-menu, #help-button {
+#settings-menu > a, #help-button {
 	border-color: #e0e0e0;
 	background: #f0f0f0;
 	color: #000;
 }
 
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
+#settings-menu > a:hover, #settings-menu > a:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #ffb900;
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #d2d2d2;
 }
 
 #copy-path {
@@ -441,12 +444,6 @@ kbd {
 
 #theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: #4e4e4e;
-}
-
-@media (max-width: 700px) {
-	#theme-picker {
-		background: #f0f0f0;
-	}
 }
 
 .search-results .result-name span.alias {

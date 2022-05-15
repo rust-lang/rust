@@ -108,13 +108,6 @@
                     {%- endif -%}
                 </a> {#- -#}
                 <nav class="sub"> {#- -#}
-                    <div class="theme-picker hidden"> {#- -#}
-                        <button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"> {#- -#}
-                            <img width="22" height="22" alt="Pick another theme!" {# -#}
-                             src="{{static_root_path|safe}}brush{{page.resource_suffix}}.svg"> {#- -#}
-                        </button> {#- -#}
-                        <div id="theme-choices" role="menu"></div> {#- -#}
-                    </div> {#- -#}
                     <form class="search-form"> {#- -#}
                         <div class="search-container"> {#- -#}
                             <span></span> {#- This empty span is a hacky fix for Safari - See #93184 -#}
@@ -126,10 +119,12 @@
                                 placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
                                 type="search"> {#- -#}
                             <button type="button" id="help-button" title="help">?</button> {#- -#}
-                            <a id="settings-menu" href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
-                                <img width="22" height="22" alt="Change settings" {# -#}
+                            <div id="settings-menu" tabindex="-1">
+                                <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
+                                    <img width="22" height="22" alt="Change settings" {# -#}
                                      src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
-                            </a> {#- -#}
+                                </a> {#- -#}
+                            </div>
                         </div> {#- -#}
                     </form> {#- -#}
                 </nav> {#- -#}

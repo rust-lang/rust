@@ -238,7 +238,6 @@ pub(super) fn write_shared(
         write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
         write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
     }
-    write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
     write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
     write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
     write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;

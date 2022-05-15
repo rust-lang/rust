@@ -1379,30 +1379,29 @@ pre.rust {
 	margin-bottom: 6px;
 }
 
-.theme-picker {
-	position: absolute;
-	left: -38px;
-	top: 4px;
-}
-
-.theme-picker button {
-	outline: none;
-}
-
 #settings-menu, #help-button {
 	margin-left: 4px;
 	outline: none;
 }
 
-#theme-picker, #copy-path {
+#copy-path {
 	height: 34px;
 }
-#theme-picker, #settings-menu, #help-button, #copy-path {
+#settings-menu > a, #help-button, #copy-path {
 	padding: 5px;
 	width: 33px;
 	border: 1px solid;
 	border-radius: 2px;
 	cursor: pointer;
+}
+#settings-menu {
+	padding: 0;
+}
+#settings-menu > a {
+	padding: 5px;
+	width: 100%;
+	height: 100%;
+	display: block;
 }
 
 @keyframes rotating {
@@ -1413,8 +1412,32 @@ pre.rust {
 		transform: rotate(360deg);
 	}
 }
-#settings-menu.rotate img {
+#settings-menu.rotate > a img {
 	animation: rotating 2s linear infinite;
+}
+#settings-menu #settings {
+	position: absolute;
+	right: 0;
+	z-index: 1;
+	display: block;
+	margin-top: 7px;
+	border-radius: 3px;
+	border: 1px solid;
+}
+#settings-menu #settings .setting-line {
+	margin: 0.6em;
+}
+/* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
+#settings-menu #settings::before {
+	content: '';
+	position: absolute;
+	right: 11px;
+	border: solid;
+	border-width: 1px 1px 0 0;
+	display: inline-block;
+	padding: 4px;
+	transform: rotate(-45deg);
+	top: -5px;
 }
 
 #help-button {
@@ -1836,12 +1859,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.source nav:not(.sidebar).sub {
 		margin-left: 32px;
-	}
-
-	/* Space is at a premium on mobile, so remove the theme-picker icon. */
-	#theme-picker {
-		display: none;
-		width: 0;
 	}
 
 	.content {
