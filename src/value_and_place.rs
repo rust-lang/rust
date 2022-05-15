@@ -828,6 +828,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b),
         _ => {
             assert_eq!(
                 from_ty, to_ty,
