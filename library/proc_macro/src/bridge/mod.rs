@@ -232,7 +232,9 @@ pub struct Bridge<'a> {
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
 
-    // Prevent Send and Sync impls
+    // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
+    // this, but that requires unstable features. rust-analyzer uses this code
+    // and avoids unstable features.
     _marker: marker::PhantomData<*mut ()>,
 }
 

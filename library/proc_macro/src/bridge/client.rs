@@ -49,7 +49,9 @@ macro_rules! define_handles {
             #[repr(C)]
             pub(crate) struct $oty {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls
+                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
+                // way of doing this, but that requires unstable features.
+                // rust-analyzer uses this code and avoids unstable features.
                 _marker: PhantomData<*mut ()>,
             }
 
@@ -133,7 +135,9 @@ macro_rules! define_handles {
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls
+                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
+                // way of doing this, but that requires unstable features.
+                // rust-analyzer uses this code and avoids unstable features.
                 _marker: PhantomData<*mut ()>,
             }
 
