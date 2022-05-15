@@ -116,12 +116,11 @@ def extract_instrinsics_from_llvmint(llvmint, intrinsics):
     ]
 
     json_file = os.path.join(llvmint, "target/doc/llvmint.json")
-    if not os.path.exists(json_file):
-        # We need to regenerate the documentation!
-        run_command(
-            ["cargo", "rustdoc", "--", "-Zunstable-options", "--output-format", "json"],
-            cwd=llvmint,
-        )
+    # We need to regenerate the documentation!
+    run_command(
+        ["cargo", "rustdoc", "--", "-Zunstable-options", "--output-format", "json"],
+        cwd=llvmint,
+    )
     with open(json_file, "r", encoding="utf8") as f:
         json_data = json.loads(f.read())
     for p in json_data["paths"]:
