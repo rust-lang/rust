@@ -159,8 +159,8 @@ impl Provenance for Tag {
         write!(f, "{:?}", tag.sb)
     }
 
-    fn get_alloc_id(self) -> AllocId {
-        self.alloc_id
+    fn get_alloc_id(self) -> Option<AllocId> {
+        Some(self.alloc_id)
     }
 }
 
@@ -608,11 +608,27 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn ptr_from_addr(
+    fn ptr_from_addr_cast(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> Pointer<Option<Self::PointerTag>> {
         intptrcast::GlobalStateInner::ptr_from_addr(addr, ecx)
+    }
+
+    #[inline(always)]
+    fn ptr_from_addr_transmute(
+        ecx: &MiriEvalContext<'mir, 'tcx>,
+        addr: u64,
+    ) -> Pointer<Option<Self::PointerTag>> {
+        Self::ptr_from_addr_cast(ecx, addr)
+    }
+
+    #[inline(always)]
+    fn expose_ptr(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        Ok(())
     }
 
     /// Convert a pointer with provenance into an allocation-offset pair,
@@ -620,9 +636,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn ptr_get_alloc(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         ptr: Pointer<Self::PointerTag>,
-    ) -> (AllocId, Size, Self::TagExtra) {
+    ) -> Option<(AllocId, Size, Self::TagExtra)> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
-        (ptr.provenance.alloc_id, rel, ptr.provenance.sb)
+        Some((ptr.provenance.alloc_id, rel, ptr.provenance.sb))
     }
 
     #[inline(always)]
