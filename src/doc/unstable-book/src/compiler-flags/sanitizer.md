@@ -22,7 +22,10 @@ This feature allows for use of one of following sanitizers:
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
 `-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
-`-Zsanitizer=memtag`, or `-Zsanitizer=thread`.
+`-Zsanitizer=memtag`, or `-Zsanitizer=thread`. You might also need the `--target` and `build-std` flags. Example:
+```shell
+$ RUSTFLAGS=-Zsanitizer=address cargo build -Zbuild-std --target x86_64-unknown-linux-gnu
+```
 
 # AddressSanitizer
 
