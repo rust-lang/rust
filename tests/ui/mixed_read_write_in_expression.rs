@@ -1,4 +1,4 @@
-#[warn(clippy::eval_order_dependence)]
+#[warn(clippy::mixed_read_write_in_expression)]
 #[allow(
     unused_assignments,
     unused_variables,

@@ -40,8 +40,8 @@ declare_clippy_lint! {
     /// let a = tmp + x;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub EVAL_ORDER_DEPENDENCE,
-    suspicious,
+    pub MIXED_READ_WRITE_IN_EXPRESSION,
+    restriction,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
@@ -73,7 +73,7 @@ declare_clippy_lint! {
     "whether an expression contains a diverging sub expression"
 }
 
-declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION]);
+declare_lint_pass!(EvalOrderDependence => [MIXED_READ_WRITE_IN_EXPRESSION, DIVERGING_SUB_EXPRESSION]);
 
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -303,7 +303,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             if !is_in_assignment_position(self.cx, expr) {
                 span_lint_and_note(
                     self.cx,
-                    EVAL_ORDER_DEPENDENCE,
+                    MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
                     &format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
                     Some(self.write_expr.span),

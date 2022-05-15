@@ -66,8 +66,13 @@ fn generate_lint_files(
         |res| {
             for lint in usable_lints
                 .iter()
-                .map(|l| &l.name)
-                .chain(deprecated_lints.iter().map(|l| &l.name))
+                .map(|l| &*l.name)
+                .chain(deprecated_lints.iter().map(|l| &*l.name))
+                .chain(
+                    renamed_lints
+                        .iter()
+                        .map(|l| l.old_name.strip_prefix("clippy::").unwrap_or(&l.old_name)),
+                )
                 .sorted()
             {
                 writeln!(res, "[`{}`]: {}#{}", lint, DOCS_LINK, lint).unwrap();

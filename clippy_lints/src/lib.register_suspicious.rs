@@ -15,7 +15,6 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(drop_forget_ref::DROP_NON_DROP),
     LintId::of(drop_forget_ref::FORGET_NON_DROP),
     LintId::of(duplicate_mod::DUPLICATE_MOD),
-    LintId::of(eval_order_dependence::EVAL_ORDER_DEPENDENCE),
     LintId::of(float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
     LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),
     LintId::of(formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
