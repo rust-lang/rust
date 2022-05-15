@@ -3,11 +3,19 @@
 use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
+use ide::TextRange;
 use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
-use crate::{lsp_ext, to_proto::url_from_abs_path};
+use crate::{
+    from_proto,
+    global_state::GlobalStateSnapshot,
+    line_index::OffsetEncoding,
+    lsp_ext,
+    to_proto::{self, url_from_abs_path},
+    Result,
+};
 
 use super::{DiagnosticsMapConfig, Fix};
 
@@ -57,23 +65,68 @@ fn location(
     config: &DiagnosticsMapConfig,
     workspace_root: &AbsPath,
     span: &DiagnosticSpan,
+    snap: &GlobalStateSnapshot,
 ) -> lsp_types::Location {
     let file_name = resolve_path(config, workspace_root, &span.file_name);
     let uri = url_from_abs_path(&file_name);
 
-    // FIXME: this doesn't handle UTF16 offsets correctly
-    let range = lsp_types::Range::new(
-        lsp_types::Position::new(
-            (span.line_start as u32).saturating_sub(1),
-            (span.column_start as u32).saturating_sub(1),
-        ),
-        lsp_types::Position::new(
-            (span.line_end as u32).saturating_sub(1),
-            (span.column_end as u32).saturating_sub(1),
-        ),
-    );
+    let range = range(span, snap, &uri).unwrap_or_else(|_| {
+        let offset_encoding = snap.config.offset_encoding();
+        lsp_types::Range::new(
+            position(&offset_encoding, span, span.line_start, span.column_start),
+            position(&offset_encoding, span, span.line_end, span.column_end),
+        )
+    });
+    lsp_types::Location::new(uri, range)
+}
 
-    lsp_types::Location { uri, range }
+fn range(
+    span: &DiagnosticSpan,
+    snap: &GlobalStateSnapshot,
+    uri: &lsp_types::Url,
+) -> Result<lsp_types::Range> {
+    let file_id = from_proto::file_id(snap, &uri)?;
+    let line_index = snap.file_line_index(file_id)?;
+    let range =
+        to_proto::range(&line_index, TextRange::new(span.byte_start.into(), span.byte_end.into()));
+    Ok(range)
+}
+
+fn position(
+    offset_encoding: &OffsetEncoding,
+    span: &DiagnosticSpan,
+    line_offset: usize,
+    column_offset: usize,
+) -> lsp_types::Position {
+    let line_index = line_offset - span.line_start;
+
+    let mut true_column_offset = column_offset;
+    if let Some(line) = span.text.get(line_index) {
+        if line.text.chars().count() == line.text.len() {
+            // all utf-8
+            return lsp_types::Position {
+                line: (line_offset as u32).saturating_sub(1),
+                character: (column_offset as u32).saturating_sub(1),
+            };
+        }
+        let mut char_offset = 0;
+        let len_func = match offset_encoding {
+            OffsetEncoding::Utf8 => char::len_utf8,
+            OffsetEncoding::Utf16 => char::len_utf16,
+        };
+        for c in line.text.chars() {
+            char_offset += 1;
+            if char_offset > column_offset {
+                break;
+            }
+            true_column_offset += len_func(c) - 1;
+        }
+    }
+
+    lsp_types::Position {
+        line: (line_offset as u32).saturating_sub(1),
+        character: (true_column_offset as u32).saturating_sub(1),
+    }
 }
 
 /// Extracts a suitable "primary" location from a rustc diagnostic.
@@ -84,18 +137,19 @@ fn primary_location(
     config: &DiagnosticsMapConfig,
     workspace_root: &AbsPath,
     span: &DiagnosticSpan,
+    snap: &GlobalStateSnapshot,
 ) -> lsp_types::Location {
     let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
     for span in span_stack.clone() {
         let abs_path = resolve_path(config, workspace_root, &span.file_name);
         if !is_dummy_macro_file(&span.file_name) && abs_path.starts_with(workspace_root) {
-            return location(config, workspace_root, span);
+            return location(config, workspace_root, span, snap);
         }
     }
 
     // Fall back to the outermost macro invocation if no suitable span comes up.
     let last_span = span_stack.last().unwrap();
-    location(config, workspace_root, last_span)
+    location(config, workspace_root, last_span, snap)
 }
 
 /// Converts a secondary Rust span to a LSP related information
@@ -105,9 +159,10 @@ fn diagnostic_related_information(
     config: &DiagnosticsMapConfig,
     workspace_root: &AbsPath,
     span: &DiagnosticSpan,
+    snap: &GlobalStateSnapshot,
 ) -> Option<lsp_types::DiagnosticRelatedInformation> {
     let message = span.label.clone()?;
-    let location = location(config, workspace_root, span);
+    let location = location(config, workspace_root, span, snap);
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
 }
 
@@ -142,6 +197,7 @@ fn map_rust_child_diagnostic(
     config: &DiagnosticsMapConfig,
     workspace_root: &AbsPath,
     rd: &flycheck::Diagnostic,
+    snap: &GlobalStateSnapshot,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if spans.is_empty() {
@@ -157,7 +213,7 @@ fn map_rust_child_diagnostic(
             if !suggested_replacement.is_empty() {
                 suggested_replacements.push(suggested_replacement);
             }
-            let location = location(config, workspace_root, span);
+            let location = location(config, workspace_root, span, snap);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
 
             // Only actually emit a quickfix if the suggestion is "valid enough".
@@ -186,7 +242,7 @@ fn map_rust_child_diagnostic(
     if edit_map.is_empty() {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: location(config, workspace_root, spans[0]),
+                location: location(config, workspace_root, spans[0], snap),
                 message,
             },
             suggested_fix: None,
@@ -194,13 +250,13 @@ fn map_rust_child_diagnostic(
     } else {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: location(config, workspace_root, spans[0]),
+                location: location(config, workspace_root, spans[0], snap),
                 message: message.clone(),
             },
             suggested_fix: Some(Fix {
                 ranges: spans
                     .iter()
-                    .map(|&span| location(config, workspace_root, span).range)
+                    .map(|&span| location(config, workspace_root, span, snap).range)
                     .collect(),
                 action: lsp_ext::CodeAction {
                     title: message,
@@ -242,6 +298,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     config: &DiagnosticsMapConfig,
     rd: &flycheck::Diagnostic,
     workspace_root: &AbsPath,
+    snap: &GlobalStateSnapshot,
 ) -> Vec<MappedRustDiagnostic> {
     let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if primary_spans.is_empty() {
@@ -266,7 +323,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     let mut tags = Vec::new();
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
-        let related = diagnostic_related_information(config, workspace_root, secondary_span);
+        let related = diagnostic_related_information(config, workspace_root, secondary_span, snap);
         if let Some(related) = related {
             subdiagnostics.push(SubDiagnostic { related, suggested_fix: None });
         }
@@ -274,7 +331,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let mut message = rd.message.clone();
     for child in &rd.children {
-        let child = map_rust_child_diagnostic(config, workspace_root, child);
+        let child = map_rust_child_diagnostic(config, workspace_root, child, snap);
         match child {
             MappedRustChildDiagnostic::SubDiagnostic(sub) => {
                 subdiagnostics.push(sub);
@@ -318,7 +375,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     primary_spans
         .iter()
         .flat_map(|primary_span| {
-            let primary_location = primary_location(config, workspace_root, primary_span);
+            let primary_location = primary_location(config, workspace_root, primary_span, snap);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -348,7 +405,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 // generated that code.
                 let is_in_macro_call = i != 0;
 
-                let secondary_location = location(config, workspace_root, span);
+                let secondary_location = location(config, workspace_root, span, snap);
                 if secondary_location == primary_location {
                     continue;
                 }
@@ -478,9 +535,12 @@ fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescript
 mod tests {
     use std::{convert::TryInto, path::Path};
 
+    use crate::{config::Config, global_state::GlobalState};
+
     use super::*;
 
     use expect_test::{expect_file, ExpectFile};
+    use lsp_types::ClientCapabilities;
 
     fn check(diagnostics_json: &str, expect: ExpectFile) {
         check_with_config(DiagnosticsMapConfig::default(), diagnostics_json, expect)
@@ -489,7 +549,13 @@ mod tests {
     fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
         let workspace_root: &AbsPath = Path::new("/test/").try_into().unwrap();
-        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root);
+        let (sender, _) = crossbeam_channel::unbounded();
+        let state = GlobalState::new(
+            sender,
+            Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
+        );
+        let snap = state.snapshot();
+        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
         expect.assert_debug_eq(&actual)
     }
 
@@ -1026,6 +1092,67 @@ mod tests {
     }"##,
             expect_file!["./test_data/clippy_pass_by_ref.txt"],
         );
+    }
+
+    #[test]
+    fn rustc_range_map_lsp_position() {
+        check(
+            r##"{
+            "message": "mismatched types",
+            "code": {
+                "code": "E0308",
+                "explanation": "Expected type did not match the received type.\n\nErroneous code examples:\n\n```compile_fail,E0308\nfn plus_one(x: i32) -> i32 {\n    x + 1\n}\n\nplus_one(\"Not a number\");\n//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`\n\nif \"Not a bool\" {\n// ^^^^^^^^^^^^ expected `bool`, found `&str`\n}\n\nlet x: f32 = \"Not a float\";\n//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`\n//     |\n//     expected due to this\n```\n\nThis error occurs when an expression was used in a place where the compiler\nexpected an expression of a different type. It can occur in several cases, the\nmost common being when calling a function and passing an argument which has a\ndifferent type than the matching type in the function declaration.\n"
+            },
+            "level": "error",
+            "spans": [
+                {
+                    "file_name": "crates/test_diagnostics/src/main.rs",
+                    "byte_start": 87,
+                    "byte_end": 105,
+                    "line_start": 4,
+                    "line_end": 4,
+                    "column_start": 18,
+                    "column_end": 24,
+                    "is_primary": true,
+                    "text": [
+                        {
+                            "text": "    let x: u32 = \"𐐀𐐀𐐀𐐀\"; // 17-23",
+                            "highlight_start": 18,
+                            "highlight_end": 24
+                        }
+                    ],
+                    "label": "expected `u32`, found `&str`",
+                    "suggested_replacement": null,
+                    "suggestion_applicability": null,
+                    "expansion": null
+                },
+                {
+                    "file_name": "crates/test_diagnostics/src/main.rs",
+                    "byte_start": 81,
+                    "byte_end": 84,
+                    "line_start": 4,
+                    "line_end": 4,
+                    "column_start": 12,
+                    "column_end": 15,
+                    "is_primary": false,
+                    "text": [
+                        {
+                            "text": "    let x: u32 = \"𐐀𐐀𐐀𐐀\"; // 17-23",
+                            "highlight_start": 12,
+                            "highlight_end": 15
+                        }
+                    ],
+                    "label": "expected due to this",
+                    "suggested_replacement": null,
+                    "suggestion_applicability": null,
+                    "expansion": null
+                }
+            ],
+            "children": [],
+            "rendered": "error[E0308]: mismatched types\n --> crates/test_diagnostics/src/main.rs:4:18\n  |\n4 |     let x: u32 = \"𐐀𐐀𐐀𐐀\"; // 17-23\n  |            ---   ^^^^^^ expected `u32`, found `&str`\n  |            |\n  |            expected due to this\n\n"
+        }"##,
+            expect_file!("./test_data/rustc_range_map_lsp_position.txt"),
+        )
     }
 
     #[test]

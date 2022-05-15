@@ -370,11 +370,13 @@ impl GlobalState {
                 loop {
                     match task {
                         flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
+                            let snap = self.snapshot();
                             let diagnostics =
                                 crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                                     &self.config.diagnostics_map(),
                                     &diagnostic,
                                     &workspace_root,
+                                    &snap,
                                 );
                             for diag in diagnostics {
                                 match url_to_file_id(&self.vfs.read().0, &diag.url) {
