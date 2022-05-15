@@ -10,12 +10,11 @@ mod no_escape {
     }
 }
 
-/// [before_but_limited_to_module] FIXME: This error should be reported
-// ERROR unresolved link to `before_but_limited_to_module`
-/// [after] FIXME: This error should be reported
-// ERROR unresolved link to `after`
-/// [str] FIXME: This error shouldn not be reported
-//~^ ERROR `str` is both a builtin type and a macro
+/// [before_but_limited_to_module]
+//~^ ERROR unresolved link to `before_but_limited_to_module`
+/// [after]
+//~^ ERROR unresolved link to `after`
+/// [str]
 fn check() {}
 
 macro_rules! after {
