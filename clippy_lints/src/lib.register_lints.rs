@@ -133,6 +133,7 @@ store.register_lints(&[
     drop_forget_ref::FORGET_NON_DROP,
     drop_forget_ref::FORGET_REF,
     drop_forget_ref::UNDROPPED_MANUALLY_DROPS,
+    duplicate_mod::DUPLICATE_MOD,
     duration_subsec::DURATION_SUBSEC,
     else_if_without_else::ELSE_IF_WITHOUT_ELSE,
     empty_drop::EMPTY_DROP,

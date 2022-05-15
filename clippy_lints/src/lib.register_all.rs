@@ -60,6 +60,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(drop_forget_ref::FORGET_NON_DROP),
     LintId::of(drop_forget_ref::FORGET_REF),
     LintId::of(drop_forget_ref::UNDROPPED_MANUALLY_DROPS),
+    LintId::of(duplicate_mod::DUPLICATE_MOD),
     LintId::of(duration_subsec::DURATION_SUBSEC),
     LintId::of(entry::MAP_ENTRY),
     LintId::of(enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT),

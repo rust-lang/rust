@@ -77,7 +77,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 pub fn span_lint_and_help<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
-    span: Span,
+    span: impl Into<MultiSpan>,
     msg: &str,
     help_span: Option<Span>,
     help: &str,
