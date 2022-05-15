@@ -790,6 +790,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #[warn(unused_macro_rules)]
     /// macro_rules! unused_empty {
     ///     (hello) => { println!("Hello, world!") }; // This rule is unused
     ///     () => { println!("empty") }; // This rule is used
@@ -814,7 +815,7 @@ declare_lint! {
     ///
     /// [`macro_export` attribute]: https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope
     pub UNUSED_MACRO_RULES,
-    Warn,
+    Allow,
     "detects macro rules that were not used"
 }
 
