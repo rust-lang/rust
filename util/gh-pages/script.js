@@ -215,20 +215,6 @@
                             default:
                                 return true
                         }
-
-                        let cmpFilter;
-                        if (filter === "≥") {
-                            cmpFilter = "≤";
-                        } else {
-                            cmpFilter = "≥";
-                        }
-
-                        if (filters[cmpFilter].enabled) {
-                            let cmpMinorVersion = filters[cmpFilter].minorVersion;
-                            return (cmpFilter === "≥") ? (lintMinorVersion >= cmpMinorVersion) : (lintMinorVersion <= cmpMinorVersion);
-                        }
-
-                        return true;
                     }
                 }
 

@@ -98,21 +98,25 @@ Otherwise, have a great day =^.^=
             }
         }
 
-        @media (min-width: 400px) {
+        @media (min-width: 405px) {
             #upper-filters {
                 display: flex;
             }
         }
 
-        @media (max-width: 412px) {
+        @media (max-width: 430px) {
+            /* Turn the version filter list to the left */
             #version-filter-selector {
                 right: 0;
                 left: auto;
             }
+        }
 
-            <!-- TODO -->
-            #version-filter-count {
-                display: none;
+        @media (max-width: 412px) {
+            #upper-filters,
+            .panel-body .search-control  {
+                padding-right: 8px;
+                padding-left: 8px;
             }
         }
 
