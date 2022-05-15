@@ -876,8 +876,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 fn layout_of_maybe_uninit<'tcx>(tcx: TyCtxtAt<'tcx>, param: Ty<'tcx>) -> TyAndLayout<'tcx> {
     let def_id = tcx.require_lang_item(LangItem::MaybeUninit, None);
-    let def_ty = tcx.type_of(def_id);
-    let ty = def_ty.subst(*tcx, &[param.into()]);
+    let ty = tcx.bound_type_of(def_id).subst(*tcx, &[param.into()]);
 
     let param_env = tcx.param_env(def_id);
     tcx.layout_of(param_env.and(ty)).unwrap()
