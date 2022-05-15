@@ -127,9 +127,7 @@ impl StoreBufferAlloc {
             }
             AccessType::ImperfectlyOverlapping(index_range) => {
                 // Accesses that imperfectly overlaps with existing atomic objects
-                // do not have well-defined behaviours. But we don't throw a UB here
-                // because we have (or will) checked that all bytes in the current
-                // access are non-racy.
+                // do not have well-defined behaviours.
                 // The behaviour here is that we delete all the existing objects this
                 // access touches, and allocate a new and empty one for the exact range.
                 // A read on an empty buffer returns None, which means the program will
