@@ -172,15 +172,18 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     Evaluator::late_init(&mut ecx, config)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel = ecx.resolve_path(&["core", "ascii", "escape_default"]);
-    if !tcx.is_mir_available(sentinel.def.def_id()) {
-        tcx.sess.fatal("the current sysroot was built without `-Zalways-encode-mir`. Use `cargo miri setup` to prepare a sysroot that is suitable for Miri.");
+    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"]);
+    if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
+        tcx.sess.fatal(
+            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
+            Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
+        );
     }
 
-    // Setup first stack-frame
+    // Setup first stack frame.
     let entry_instance = ty::Instance::mono(tcx, entry_id);
 
-    // First argument is constructed later, because its skipped if the entry function uses #[start]
+    // First argument is constructed later, because it's skipped if the entry function uses #[start].
 
     // Second argument (argc): length of `config.args`.
     let argc = Scalar::from_machine_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
