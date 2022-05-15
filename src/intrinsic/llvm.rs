@@ -107,43 +107,53 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
 
                     args = new_args.into();
                 },
-                    "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
-                        | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
-                        | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
-                        | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask" => {
-                        let mut new_args = args.to_vec();
-                        let last_arg = new_args.pop().expect("last arg");
-                        let arg3_type = gcc_func.get_param_type(2);
-                        let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
-                        new_args.push(undefined);
-                        let arg4_type = gcc_func.get_param_type(3);
-                        let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                        new_args.push(minus_one);
-                        new_args.push(last_arg);
-                        args = new_args.into();
-                    },
-                    "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
-                        let mut new_args = args.to_vec();
-                        let last_arg = new_args.pop().expect("last arg");
-                        let arg4_type = gcc_func.get_param_type(3);
-                        let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
-                        new_args.push(minus_one);
-                        new_args.push(last_arg);
-                        args = new_args.into();
-                    },
-                    "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask" => {
-                        let mut new_args = args.to_vec();
-                        let last_arg = new_args.pop().expect("last arg");
-                        let arg2_type = gcc_func.get_param_type(1);
-                        let undefined = builder.current_func().new_local(None, arg2_type, "undefined_for_intrinsic").to_rvalue();
-                        new_args.push(undefined);
-                        let arg3_type = gcc_func.get_param_type(2);
-                        let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
-                        new_args.push(minus_one);
-                        new_args.push(last_arg);
-                        args = new_args.into();
-                    },
-                    _ => (),
+                "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
+                    | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
+                    | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
+                    | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask" => {
+                    let mut new_args = args.to_vec();
+                    let last_arg = new_args.pop().expect("last arg");
+                    let arg3_type = gcc_func.get_param_type(2);
+                    let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
+                    new_args.push(undefined);
+                    let arg4_type = gcc_func.get_param_type(3);
+                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                    new_args.push(minus_one);
+                    new_args.push(last_arg);
+                    args = new_args.into();
+                },
+                "__builtin_ia32_prold512_mask" => {
+                    let mut new_args = args.to_vec();
+                    let arg3_type = gcc_func.get_param_type(2);
+                    let undefined = builder.current_func().new_local(None, arg3_type, "undefined_for_intrinsic").to_rvalue();
+                    new_args.push(undefined);
+                    let arg4_type = gcc_func.get_param_type(3);
+                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                    new_args.push(minus_one);
+                    args = new_args.into();
+                },
+                "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
+                    let mut new_args = args.to_vec();
+                    let last_arg = new_args.pop().expect("last arg");
+                    let arg4_type = gcc_func.get_param_type(3);
+                    let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
+                    new_args.push(minus_one);
+                    new_args.push(last_arg);
+                    args = new_args.into();
+                },
+                "__builtin_ia32_cvtdq2ps512_mask" | "__builtin_ia32_cvtudq2ps512_mask" => {
+                    let mut new_args = args.to_vec();
+                    let last_arg = new_args.pop().expect("last arg");
+                    let arg2_type = gcc_func.get_param_type(1);
+                    let undefined = builder.current_func().new_local(None, arg2_type, "undefined_for_intrinsic").to_rvalue();
+                    new_args.push(undefined);
+                    let arg3_type = gcc_func.get_param_type(2);
+                    let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                    new_args.push(minus_one);
+                    new_args.push(last_arg);
+                    args = new_args.into();
+                },
+                _ => (),
         }
     }
 
@@ -202,18 +212,10 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.sqrt.v2f64" => "__builtin_ia32_sqrtpd",
         "llvm.x86.avx512.pmul.dq.512" => "__builtin_ia32_pmuldq512_mask",
         "llvm.x86.avx512.pmulu.dq.512" => "__builtin_ia32_pmuludq512_mask",
-        "llvm.x86.avx512.mask.pmaxs.q.256" => "__builtin_ia32_pmaxsq256_mask",
-        "llvm.x86.avx512.mask.pmaxs.q.128" => "__builtin_ia32_pmaxsq128_mask",
         "llvm.x86.avx512.max.ps.512" => "__builtin_ia32_maxps512_mask",
         "llvm.x86.avx512.max.pd.512" => "__builtin_ia32_maxpd512_mask",
-        "llvm.x86.avx512.mask.pmaxu.q.256" => "__builtin_ia32_pmaxuq256_mask",
-        "llvm.x86.avx512.mask.pmaxu.q.128" => "__builtin_ia32_pmaxuq128_mask",
-        "llvm.x86.avx512.mask.pmins.q.256" => "__builtin_ia32_pminsq256_mask",
-        "llvm.x86.avx512.mask.pmins.q.128" => "__builtin_ia32_pminsq128_mask",
         "llvm.x86.avx512.min.ps.512" => "__builtin_ia32_minps512_mask",
         "llvm.x86.avx512.min.pd.512" => "__builtin_ia32_minpd512_mask",
-        "llvm.x86.avx512.mask.pminu.q.256" => "__builtin_ia32_pminuq256_mask",
-        "llvm.x86.avx512.mask.pminu.q.128" => "__builtin_ia32_pminuq128_mask",
         "llvm.fma.v16f32" => "__builtin_ia32_vfmaddps512_mask",
         "llvm.fma.v8f64" => "__builtin_ia32_vfmaddpd512_mask",
         "llvm.x86.avx512.vfmaddsub.ps.512" => "__builtin_ia32_vfmaddsubps512_mask",
@@ -236,46 +238,6 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.vfmadd.pd.512" => "__builtin_ia32_vfmaddpd512_mask",
         "llvm.x86.avx512.sitofp.round.v16f32.v16i32" => "__builtin_ia32_cvtdq2ps512_mask",
         "llvm.x86.avx512.uitofp.round.v16f32.v16i32" => "__builtin_ia32_cvtudq2ps512_mask",
-        "llvm.x86.avx512.mask.cvttps2dq.256" => "__builtin_ia32_cvttps2dq256_mask",
-        "llvm.x86.avx512.mask.cvttps2dq.128" => "__builtin_ia32_cvttps2dq128_mask",
-        "llvm.x86.avx512.mask.cvttpd2dq.256" => "__builtin_ia32_cvttpd2dq256_mask",
-        "llvm.x86.avx512.mask.compress.d.512" => "__builtin_ia32_compresssi512_mask",
-        "llvm.x86.avx512.mask.compress.d.256" => "__builtin_ia32_compresssi256_mask",
-        "llvm.x86.avx512.mask.compress.d.128" => "__builtin_ia32_compresssi128_mask",
-        "llvm.x86.avx512.mask.compress.q.512" => "__builtin_ia32_compressdi512_mask",
-        "llvm.x86.avx512.mask.compress.q.256" => "__builtin_ia32_compressdi256_mask",
-        "llvm.x86.avx512.mask.compress.q.128" => "__builtin_ia32_compressdi128_mask",
-        "llvm.x86.avx512.mask.compress.ps.512" => "__builtin_ia32_compresssf512_mask",
-        "llvm.x86.avx512.mask.compress.ps.256" => "__builtin_ia32_compresssf256_mask",
-        "llvm.x86.avx512.mask.compress.ps.128" => "__builtin_ia32_compresssf128_mask",
-        "llvm.x86.avx512.mask.compress.pd.512" => "__builtin_ia32_compressdf512_mask",
-        "llvm.x86.avx512.mask.compress.pd.256" => "__builtin_ia32_compressdf256_mask",
-        "llvm.x86.avx512.mask.compress.pd.128" => "__builtin_ia32_compressdf128_mask",
-        "llvm.x86.avx512.mask.compress.store.d.512" => "",
-        "llvm.x86.avx512.mask.compress.store.d.256" => "",
-        "llvm.x86.avx512.mask.compress.store.d.128" => "",
-        "llvm.x86.avx512.mask.compress.store.q.512" => "",
-        "llvm.x86.avx512.mask.compress.store.q.256" => "",
-        "llvm.x86.avx512.mask.compress.store.q.128" => "",
-        "llvm.x86.avx512.mask.compress.store.ps.512" => "",
-        "llvm.x86.avx512.mask.compress.store.ps.256" => "",
-        "llvm.x86.avx512.mask.compress.store.ps.128" => "",
-        "llvm.x86.avx512.mask.compress.store.pd.512" => "",
-        "llvm.x86.avx512.mask.compress.store.pd.256" => "",
-        "llvm.x86.avx512.mask.compress.store.pd.128" => "",
-        "llvm.x86.avx512.mask.expand.d.512" => "",
-        "llvm.x86.avx512.mask.expand.d.256" => "",
-        "llvm.x86.avx512.mask.expand.d.128" => "",
-        "llvm.x86.avx512.mask.expand.q.512" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
-        "" => "",
 
         // The above doc points to unknown builtins for the following, so override them:
         "llvm.x86.avx2.gather.d.d" => "__builtin_ia32_gathersiv4si",
