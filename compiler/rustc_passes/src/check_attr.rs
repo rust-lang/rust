@@ -2181,7 +2181,7 @@ impl CheckAttrVisitor<'_> {
                 attr.name_or_empty()
             )
         } else if attr.name_or_empty() == sym::default_method_body_is_const {
-            format!("`default_method_body_is_const` has been removed")
+            format!("`default_method_body_is_const` has been replaced with `#[const_trait]` on traits")
         } else {
             return;
         };
