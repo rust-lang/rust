@@ -80,7 +80,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub ONLY_USED_IN_RECURSION,
-    nursery,
+    complexity,
     "arguments that is only used in recursion can be removed"
 }
 impl_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION]);

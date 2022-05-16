@@ -252,6 +252,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
     LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
+    LintId::of(only_used_in_recursion::ONLY_USED_IN_RECURSION),
     LintId::of(operators::ABSURD_EXTREME_COMPARISONS),
     LintId::of(operators::ASSIGN_OP_PATTERN),
     LintId::of(operators::BAD_BIT_MASK),
