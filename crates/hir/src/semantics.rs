@@ -30,9 +30,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource, HirFileId, Impl,
-    InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path, ScopeDef,
-    ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
+    HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path,
+    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -334,6 +334,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
         self.imp.type_of_self(param)
+    }
+
+    pub fn pattern_adjustments(&self, pat: &ast::Pat) -> SmallVec<[Type; 1]> {
+        self.imp.pattern_adjustments(pat)
+    }
+
+    pub fn binding_mode_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingMode> {
+        self.imp.binding_mode_of_pat(pat)
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
@@ -949,6 +957,16 @@ impl<'db> SemanticsImpl<'db> {
 
     fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
         self.analyze(param.syntax())?.type_of_self(self.db, param)
+    }
+
+    fn pattern_adjustments(&self, pat: &ast::Pat) -> SmallVec<[Type; 1]> {
+        self.analyze(pat.syntax())
+            .and_then(|it| it.pattern_adjustments(self.db, pat))
+            .unwrap_or_default()
+    }
+
+    fn binding_mode_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingMode> {
+        self.analyze(pat.syntax())?.binding_mode_of_pat(self.db, pat)
     }
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {

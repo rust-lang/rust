@@ -47,7 +47,8 @@ pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
-    could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, InferenceDiagnostic, InferenceResult,
+    could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
+    InferenceResult,
 };
 pub use interner::Interner;
 pub use lower::{

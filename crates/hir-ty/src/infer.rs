@@ -297,7 +297,7 @@ pub struct InferenceResult {
     /// Interned Unknown to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub pat_adjustments: FxHashMap<PatId, Vec<Adjustment>>,
+    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
     pub pat_binding_modes: FxHashMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
 }
@@ -445,7 +445,7 @@ impl<'a> InferenceContext<'a> {
             adjustment.target = table.resolve_completely(adjustment.target.clone());
         }
         for adjustment in result.pat_adjustments.values_mut().flatten() {
-            adjustment.target = table.resolve_completely(adjustment.target.clone());
+            *adjustment = table.resolve_completely(adjustment.clone());
         }
         result
     }

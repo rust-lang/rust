@@ -114,6 +114,7 @@ impl StaticIndex<'_> {
                     reborrow_hints: crate::ReborrowHints::Never,
                     hide_named_constructor_hints: false,
                     param_names_for_lifetime_elision_hints: false,
+                    binding_mode_hints: false,
                     max_length: Some(25),
                 },
                 file_id,

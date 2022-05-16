@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
+use hir::{known, Callable, HasVisibility, HirDisplay, Mutability, Semantics, TypeInfo};
 use ide_db::{
     base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap,
     RootDatabase,
@@ -21,6 +21,7 @@ pub struct InlayHintsConfig {
     pub chaining_hints: bool,
     pub reborrow_hints: ReborrowHints,
     pub closure_return_type_hints: bool,
+    pub binding_mode_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
@@ -43,10 +44,11 @@ pub enum ReborrowHints {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
+    BindingModeHint,
     ChainingHint,
     ClosureReturnTypeHint,
     GenericParamListHint,
-    ImplicitReborrow,
+    ImplicitReborrowHint,
     LifetimeHint,
     ParameterHint,
     TypeHint,
@@ -135,8 +137,11 @@ fn hints(
             ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
             _ => None,
         };
-    } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
-        bind_pat_hints(hints, sema, config, &it);
+    } else if let Some(it) = ast::Pat::cast(node.clone()) {
+        binding_mode_hints(hints, sema, config, &it);
+        if let ast::Pat::IdentPat(it) = it {
+            bind_pat_hints(hints, sema, config, &it);
+        }
     } else if let Some(it) = ast::Fn::cast(node) {
         lifetime_hints(hints, config, it);
     }
@@ -383,7 +388,9 @@ fn reborrow_hints(
         return None;
     }
 
-    let mutability = sema.is_implicit_reborrow(expr)?;
+    let descended = sema.descend_node_into_attributes(expr.clone()).pop();
+    let desc_expr = descended.as_ref().unwrap_or(expr);
+    let mutability = sema.is_implicit_reborrow(desc_expr)?;
     let label = match mutability {
         hir::Mutability::Shared if config.reborrow_hints != ReborrowHints::MutableOnly => "&*",
         hir::Mutability::Mut => "&mut *",
@@ -391,7 +398,7 @@ fn reborrow_hints(
     };
     acc.push(InlayHint {
         range: expr.syntax().text_range(),
-        kind: InlayKind::ImplicitReborrow,
+        kind: InlayKind::ImplicitReborrowHint,
         label: SmolStr::new_inline(label),
     });
     Some(())
@@ -494,6 +501,51 @@ fn param_name_hints(
         });
 
     acc.extend(hints);
+    Some(())
+}
+
+fn binding_mode_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    config: &InlayHintsConfig,
+    pat: &ast::Pat,
+) -> Option<()> {
+    if !config.binding_mode_hints {
+        return None;
+    }
+
+    let range = pat.syntax().text_range();
+    sema.pattern_adjustments(&pat).iter().for_each(|ty| {
+        let reference = ty.is_reference();
+        let mut_reference = ty.is_mutable_reference();
+        let r = match (reference, mut_reference) {
+            (true, true) => "&mut",
+            (true, false) => "&",
+            _ => return,
+        };
+        acc.push(InlayHint {
+            range,
+            kind: InlayKind::BindingModeHint,
+            label: SmolStr::new_inline(r),
+        });
+    });
+    match pat {
+        ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
+            let bm = sema.binding_mode_of_pat(pat)?;
+            let bm = match bm {
+                hir::BindingMode::Move => return None,
+                hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
+                hir::BindingMode::Ref(Mutability::Shared) => "ref",
+            };
+            acc.push(InlayHint {
+                range,
+                kind: InlayKind::BindingModeHint,
+                label: SmolStr::new_inline(bm),
+            });
+        }
+        _ => (),
+    }
+
     Some(())
 }
 
@@ -681,6 +733,7 @@ fn should_not_display_type_hint(
         match_ast! {
             match node {
                 ast::LetStmt(it) => return it.ty().is_some(),
+                // FIXME: We might wanna show type hints in parameters for non-top level patterns as well
                 ast::Param(it) => return it.ty().is_some(),
                 ast::MatchArm(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
                 ast::LetExpr(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
@@ -866,9 +919,10 @@ mod tests {
         parameter_hints: false,
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
-        hide_named_constructor_hints: false,
         closure_return_type_hints: false,
         reborrow_hints: ReborrowHints::Always,
+        binding_mode_hints: false,
+        hide_named_constructor_hints: false,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
     };
@@ -878,6 +932,7 @@ mod tests {
         chaining_hints: true,
         reborrow_hints: ReborrowHints::Always,
         closure_return_type_hints: true,
+        binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
         ..DISABLED_CONFIG
     };
@@ -2190,6 +2245,51 @@ fn ref_mut_id(mut_ref: &mut ()) -> &mut () {
 }
 fn ref_id(shared_ref: &()) -> &() {
     shared_ref
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_binding_modes() {
+        check_with_config(
+            InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn __(
+    (x,): (u32,),
+    (x,): &(u32,),
+  //^^^^&
+   //^ ref
+    (x,): &mut (u32,)
+  //^^^^&mut
+   //^ ref mut
+) {
+    let (x,) = (0,);
+    let (x,) = &(0,);
+      //^^^^ &
+       //^ ref
+    let (x,) = &mut (0,);
+      //^^^^ &mut
+       //^ ref mut
+    let &mut (x,) = &mut (0,);
+    let (ref mut x,) = &mut (0,);
+      //^^^^^^^^^^^^ &mut
+    let &mut (ref mut x,) = &mut (0,);
+    let (mut x,) = &mut (0,);
+      //^^^^^^^^ &mut
+    match (0,) {
+        (x,) => ()
+    }
+    match &(0,) {
+        (x,) => ()
+      //^^^^ &
+       //^ ref
+    }
+    match &mut (0,) {
+        (x,) => ()
+      //^^^^ &mut
+       //^ ref mut
+    }
 }
 "#,
         );
