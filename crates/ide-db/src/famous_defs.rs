@@ -82,6 +82,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:ops:Deref")
     }
 
+    pub fn core_ops_DerefMut(&self) -> Option<Trait> {
+        self.find_trait("core:ops:DerefMut")
+    }
+
     pub fn core_convert_AsRef(&self) -> Option<Trait> {
         self.find_trait("core:convert:AsRef")
     }

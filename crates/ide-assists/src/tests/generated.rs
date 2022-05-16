@@ -799,6 +799,7 @@ fn doctest_generate_deref() {
     check_doc_test(
         "generate_deref",
         r#####"
+//- minicore: deref, deref_mut
 struct A;
 struct B {
    $0a: A
@@ -810,7 +811,7 @@ struct B {
    a: A
 }
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
