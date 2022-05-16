@@ -533,7 +533,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
         this.validate_atomic_store(dest, atomic)?;
-        this.buffered_atomic_write(val, dest, atomic)
+        // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
+        // side effects from a read the program did not perform. So we have to initialise
+        // the store buffer with the value currently being written
+        // ONCE this is fixed please remove the hack in buffered_atomic_write() in weak_memory.rs
+        this.buffered_atomic_write(val, dest, atomic, val)
     }
 
     /// Perform an atomic operation on a memory location.
@@ -556,7 +560,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(val.to_scalar_or_uninit(), place, atomic)?;
+        this.buffered_atomic_rmw(
+            val.to_scalar_or_uninit(),
+            place,
+            atomic,
+            old.to_scalar_or_uninit(),
+        )?;
         Ok(old)
     }
 
@@ -575,7 +584,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(new, place, atomic)?;
+        this.buffered_atomic_rmw(new, place, atomic, old)?;
         Ok(old)
     }
 
@@ -603,7 +612,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(new_val.to_scalar_or_uninit(), place, atomic)?;
+        this.buffered_atomic_rmw(
+            new_val.to_scalar_or_uninit(),
+            place,
+            atomic,
+            old.to_scalar_or_uninit(),
+        )?;
 
         // Return the old value.
         Ok(old)
@@ -654,14 +668,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if cmpxchg_success {
             this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
             this.validate_atomic_rmw(place, success)?;
-            this.buffered_atomic_rmw(new, place, success)?;
+            this.buffered_atomic_rmw(new, place, success, old.to_scalar_or_uninit())?;
         } else {
             this.validate_atomic_load(place, fail)?;
             // A failed compare exchange is equivalent to a load, reading from the latest store
             // in the modification order.
             // Since `old` is only a value and not the store element, we need to separately
             // find it in our store buffer and perform load_impl on it.
-            this.perform_read_on_buffered_latest(place, fail)?;
+            this.perform_read_on_buffered_latest(place, fail, old.to_scalar_or_uninit())?;
         }
 
         // Return the old value.

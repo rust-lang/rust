@@ -34,8 +34,6 @@ unsafe impl<T> Sync for EvilSend<T> {}
 // multiple times
 fn static_atomic(val: usize) -> &'static AtomicUsize {
     let ret = Box::leak(Box::new(AtomicUsize::new(val)));
-    // A workaround to put the initialisation value in the store buffer
-    ret.store(val, Relaxed);
     ret
 }
 
@@ -205,8 +203,19 @@ fn test_sc_store_buffering() {
     assert_ne!((a, b), (0, 0));
 }
 
+fn test_single_thread() {
+    let x = AtomicUsize::new(42);
+
+    assert_eq!(x.load(Relaxed), 42);
+
+    x.store(43, Relaxed);
+
+    assert_eq!(x.load(Relaxed), 43);
+}
+
 pub fn main() {
     for _ in 0..100 {
+        test_single_thread();
         test_mixed_access();
         test_load_buffering_acq_rel();
         test_message_passing();

@@ -22,9 +22,15 @@ unsafe impl<T> Sync for EvilSend<T> {}
 // multiple times
 fn static_atomic(val: usize) -> &'static AtomicUsize {
     let ret = Box::leak(Box::new(AtomicUsize::new(val)));
-    // A workaround to put the initialisation value in the store buffer
-    ret.store(val, Relaxed);
     ret
+}
+
+// Spins until it reads the given value
+fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
+    while loc.load(Relaxed) != val {
+        std::hint::spin_loop();
+    }
+    val
 }
 
 fn relaxed() -> bool {
@@ -64,6 +70,31 @@ fn seq_cst() -> bool {
     r3 == 1
 }
 
+fn initialization_write() -> bool {
+    let x = static_atomic(11);
+    assert_eq!(x.load(Relaxed), 11);
+
+    let wait = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(22, Relaxed);
+        // Relaxed is intentional. We want to test if the thread 2 reads the initialisation write
+        // after a relaxed write
+        wait.store(1, Relaxed);
+    });
+
+    let j2 = spawn(move || {
+        reads_value(wait, 1);
+        x.load(Relaxed)
+    });
+
+    j1.join().unwrap();
+    let r2 = j2.join().unwrap();
+
+    r2 == 11
+}
+
+
 // Asserts that the function returns true at least once in 100 runs
 macro_rules! assert_once {
     ($f:ident) => {
@@ -74,4 +105,5 @@ macro_rules! assert_once {
 pub fn main() {
     assert_once!(relaxed);
     assert_once!(seq_cst);
+    assert_once!(initialization_write);
 }
