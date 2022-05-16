@@ -122,11 +122,6 @@ impl<T> AllocationMap<T> {
             debug_assert!(range.end() <= self.v[index + 1].range.start);
         }
     }
-
-    /// Removes an object at given position
-    pub fn remove(&mut self, index: Position) -> T {
-        self.v.remove(index).data
-    }
 }
 
 impl<T> Index<Position> for AllocationMap<T> {

@@ -85,7 +85,7 @@ pub struct StoreBufferAlloc {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct StoreBuffer {
+struct StoreBuffer {
     // Stores to this location in modification order
     buffer: VecDeque<StoreElement>,
 }
@@ -115,7 +115,10 @@ impl StoreBufferAlloc {
     }
 
     /// Gets a store buffer associated with an atomic object in this allocation
-    fn get_store_buffer(&self, range: AllocRange) -> Ref<'_, StoreBuffer> {
+    fn get_store_buffer<'tcx>(
+        &self,
+        range: AllocRange,
+    ) -> InterpResult<'tcx, Ref<'_, StoreBuffer>> {
         let access_type = self.store_buffer.borrow().access_type(range);
         let index = match access_type {
             AccessType::PerfectlyOverlapping(index) => index,
@@ -128,23 +131,23 @@ impl StoreBufferAlloc {
             AccessType::ImperfectlyOverlapping(index_range) => {
                 // Accesses that imperfectly overlaps with existing atomic objects
                 // do not have well-defined behaviours.
-                // The behaviour here is that we delete all the existing objects this
-                // access touches, and allocate a new and empty one for the exact range.
-                // A read on an empty buffer returns None, which means the program will
-                // observe the latest value in modification order at every byte.
-                let mut buffer = self.store_buffer.borrow_mut();
-                for index in index_range.clone() {
-                    buffer.remove(index);
+                // FIXME: if this access happens before all previous accesses on every object it overlaps
+                // with, then we would like to tolerate it. However this is not easy to check.
+                if index_range.start + 1 == index_range.end {
+                    throw_ub_format!("mixed-size access on an existing atomic object");
+                } else {
+                    throw_ub_format!("access overlaps with multiple existing atomic objects");
                 }
-                buffer.insert(index_range.start, range, StoreBuffer::default());
-                index_range.start
             }
         };
-        Ref::map(self.store_buffer.borrow(), |buffer| &buffer[index])
+        Ok(Ref::map(self.store_buffer.borrow(), |buffer| &buffer[index]))
     }
 
     /// Gets a mutable store buffer associated with an atomic object in this allocation
-    fn get_store_buffer_mut(&mut self, range: AllocRange) -> &mut StoreBuffer {
+    fn get_store_buffer_mut<'tcx>(
+        &mut self,
+        range: AllocRange,
+    ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffer = self.store_buffer.get_mut();
         let access_type = buffer.access_type(range);
         let index = match access_type {
@@ -154,14 +157,14 @@ impl StoreBufferAlloc {
                 index
             }
             AccessType::ImperfectlyOverlapping(index_range) => {
-                for index in index_range.clone() {
-                    buffer.remove(index);
+                if index_range.start + 1 == index_range.end {
+                    throw_ub_format!("mixed-size access on an existing atomic object");
+                } else {
+                    throw_ub_format!("access overlaps with multiple existing atomic objects");
                 }
-                buffer.insert(index_range.start, range, StoreBuffer::default());
-                index_range.start
             }
         };
-        &mut buffer[index]
+        Ok(&mut buffer[index])
     }
 }
 
@@ -175,7 +178,7 @@ impl Default for StoreBuffer {
 
 impl<'mir, 'tcx: 'mir> StoreBuffer {
     /// Reads from the last store in modification order
-    pub(super) fn read_from_last_store(&self, global: &GlobalState) {
+    fn read_from_last_store(&self, global: &GlobalState) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
             let (index, clocks) = global.current_thread_state();
@@ -183,7 +186,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         }
     }
 
-    pub(super) fn buffered_read(
+    fn buffered_read(
         &self,
         global: &GlobalState,
         is_seqcst: bool,
@@ -214,7 +217,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         Ok(loaded)
     }
 
-    pub(super) fn buffered_write(
+    fn buffered_write(
         &mut self,
         val: ScalarMaybeUninit<Tag>,
         global: &GlobalState,
@@ -376,7 +379,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 global.sc_write();
             }
             let range = alloc_range(base_offset, place.layout.size);
-            let buffer = alloc_buffers.get_store_buffer_mut(range);
+            let buffer = alloc_buffers.get_store_buffer_mut(range)?;
             buffer.read_from_last_store(global);
             buffer.buffered_write(new_val, global, atomic == AtomicRwOp::SeqCst)?;
         }
@@ -399,7 +402,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 }
                 let mut rng = this.machine.rng.borrow_mut();
                 let buffer =
-                    alloc_buffers.get_store_buffer(alloc_range(base_offset, place.layout.size));
+                    alloc_buffers.get_store_buffer(alloc_range(base_offset, place.layout.size))?;
                 let loaded = buffer.buffered_read(
                     global,
                     atomic == AtomicReadOp::SeqCst,
@@ -433,7 +436,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 global.sc_write();
             }
             let buffer =
-                alloc_buffers.get_store_buffer_mut(alloc_range(base_offset, dest.layout.size));
+                alloc_buffers.get_store_buffer_mut(alloc_range(base_offset, dest.layout.size))?;
             buffer.buffered_write(val, global, atomic == AtomicWriteOp::SeqCst)?;
         }
 
@@ -458,7 +461,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             let size = place.layout.size;
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
-                let buffer = alloc_buffers.get_store_buffer(alloc_range(base_offset, size));
+                let buffer = alloc_buffers.get_store_buffer(alloc_range(base_offset, size))?;
                 buffer.read_from_last_store(global);
             }
         }
