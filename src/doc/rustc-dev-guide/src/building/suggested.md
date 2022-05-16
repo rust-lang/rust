@@ -3,16 +3,16 @@
 The full bootstrapping process takes quite a while. Here are some suggestions
 to make your life easier.
 
-## Installing a pre-commit hook
+## Installing a pre-push hook
 
 CI will automatically fail your build if it doesn't pass `tidy`, our
 internal tool for ensuring code quality. If you'd like, you can install a
 [Git hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-that will automatically run `./x.py test tidy --bless` on each commit, to ensure
+that will automatically run `./x.py test tidy --bless` on each push, to ensure
 your code is up to par. If you decide later that this behavior is
-undesirable, you can delete the `pre-commit` file in `.git/hooks`.
+undesirable, you can delete the `pre-push` file in `.git/hooks`.
 
-A prebuilt git hook lives at [`src/etc/pre-commit.sh`](https://github.com/rust-lang/rust/blob/master/src/etc/pre-commit.sh) which can be copied into your `.git/hooks` folder as `pre-commit` (without the `.sh` extension!).
+A prebuilt git hook lives at [`src/etc/pre-push.sh`](https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh) which can be copied into your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
 You can also install the hook as a step of running `./x.py setup`!
 

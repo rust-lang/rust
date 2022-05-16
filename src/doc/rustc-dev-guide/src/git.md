@@ -18,7 +18,7 @@ more in depth [book from Git].
 
 [book from Git]: https://git-scm.com/book/en/v2/
 [atlassian-git]: https://www.atlassian.com/git/tutorials/what-is-version-control
-[documentation]: https://docs.github.com/en/github/getting-started-with-github/set-up-git
+[documentation]: https://docs.github.com/en/get-started/quickstart/set-up-git
 [guides]: https://guides.github.com/introduction/git-handbook/
 
 ## Prerequisites

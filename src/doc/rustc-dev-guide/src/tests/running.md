@@ -211,7 +211,7 @@ See [Compare modes](compiletest.md#compare-modes) for more details.
 
 Sometimes it's easier and faster to just run the test by hand.
 Most tests are just `rs` files, so after
-[creating a rustup toolchain](/building/how-to-build-and-run.html#creating-a-rustup-toolchain),
+[creating a rustup toolchain](../building/how-to-build-and-run.md#creating-a-rustup-toolchain),
 you can do something like:
 
 ```bash

@@ -78,13 +78,12 @@ The value of a region can be thought of as a **set**. This set contains all
 points in the MIR where the region is valid along with any regions that are
 outlived by this region (e.g. if `'a: 'b`, then `end('b)` is in the set for
 `'a`); we call the domain of this set a `RegionElement`. In the code, the value
-for all regions is maintained in [the
-`rustc_mir::borrow_check::nll::region_infer` module][ri]. For each region we
-maintain a set storing what elements are present in its value (to make this
+for all regions is maintained in [the `rustc_borrowck::region_infer` module][ri].
+For each region we maintain a set storing what elements are present in its value (to make this
 efficient, we give each kind of element an index, the `RegionElementIndex`, and
 use sparse bitsets).
 
-[ri]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir/src/borrow_check/region_infer/
+[ri]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_borrowck/src/region_infer
 
 The kinds of region elements are as follows:
 

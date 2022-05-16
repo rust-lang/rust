@@ -67,8 +67,8 @@ where contributors push changes to their personal fork and create pull requests 
 bring those changes into the source repository. We have more info about how to use git
 when contributing to Rust under [the git section](./git.md).
 
-[about-pull-requests]: https://help.github.com/articles/about-pull-requests/
-[development-models]: https://help.github.com/articles/about-collaborative-development-models/
+[about-pull-requests]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests
+[development-models]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/about-collaborative-development-models#fork-and-pull-model
 
 ### r?
 
@@ -177,7 +177,7 @@ particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
 
 [labeling]: ./rustbot.md#issue-relabeling
-[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
+[closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
 
 ### External Dependencies (subtree)
 
