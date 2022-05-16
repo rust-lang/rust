@@ -72,11 +72,11 @@ impl base::AttrProcMacro for AttrProcMacro {
     }
 }
 
-pub struct ProcMacroDerive {
+pub struct DeriveProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
-impl MultiItemModifier for ProcMacroDerive {
+impl MultiItemModifier for DeriveProcMacro {
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
