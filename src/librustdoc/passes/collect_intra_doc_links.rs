@@ -443,21 +443,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
     }
 
-    /// HACK: Try to search the macro name in the list of all `macro_rules` items in the crate.
-    /// Used when nothing else works, may often give an incorrect result.
-    fn resolve_macro_rules(&self, path_str: &str, ns: Namespace) -> Option<Res> {
-        if ns != MacroNS {
-            return None;
-        }
-
-        self.cx
-            .resolver_caches
-            .all_macro_rules
-            .get(&Symbol::intern(path_str))
-            .copied()
-            .and_then(|res| res.try_into().ok())
-    }
-
     /// Convenience wrapper around `resolve_rustdoc_path`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -489,8 +474,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
             })
             .and_then(|res| res.try_into().ok())
-            .or_else(|| resolve_primitive(path_str, ns))
-            .or_else(|| self.resolve_macro_rules(path_str, ns));
+            .or_else(|| resolve_primitive(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         result
     }
@@ -1391,11 +1375,7 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
-                        // This could just be a normal link or a broken link
-                        // we could potentially check if something is
-                        // "intra-doc-link-like" and warn in that case.
-                        None
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err])
                     }
                 }
             }
@@ -1423,15 +1403,13 @@ impl LinkCollector<'_, '_> {
                 let len = candidates.iter().filter(|res| res.is_ok()).count();
 
                 if len == 0 {
-                    resolution_failure(
+                    return resolution_failure(
                         self,
                         diag,
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
-                    // this could just be a normal link
-                    return None;
                 }
 
                 if len == 1 {
@@ -1737,8 +1715,9 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
-) {
+) -> Option<(Res, Option<DefId>)> {
     let tcx = collector.cx.tcx;
+    let mut recovered_res = None;
     report_diagnostic(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
@@ -1826,11 +1805,22 @@ fn resolution_failure(
                             diag.note(&note);
                         }
 
-                        // If the link has `::` in it, assume it was meant to be an intra-doc link.
-                        // Otherwise, the `[]` might be unrelated.
-                        // FIXME: don't show this for autolinks (`<>`), `()` style links, or reference links
                         if !path_str.contains("::") {
-                            diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
+                            if disambiguator.map_or(true, |d| d.ns() == MacroNS)
+                                && let Some(&res) = collector.cx.resolver_caches.all_macro_rules
+                                                             .get(&Symbol::intern(path_str))
+                            {
+                                diag.note(format!(
+                                    "`macro_rules` named `{path_str}` exists in this crate, \
+                                     but it is not in scope at this link's location"
+                                ));
+                                recovered_res = res.try_into().ok().map(|res| (res, None));
+                            } else {
+                                // If the link has `::` in it, assume it was meant to be an
+                                // intra-doc link. Otherwise, the `[]` might be unrelated.
+                                diag.help("to escape `[` and `]` characters, \
+                                           add '\\' before them like `\\[` or `\\]`");
+                            }
                         }
 
                         continue;
@@ -1915,6 +1905,8 @@ fn resolution_failure(
             }
         },
     );
+
+    recovered_res
 }
 
 fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
