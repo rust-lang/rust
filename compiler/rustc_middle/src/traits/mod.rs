@@ -203,11 +203,11 @@ pub struct InternedObligationCauseCode<'tcx> {
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
 }
 
-impl<'tcx> From<ObligationCauseCode<'tcx>> for InternedObligationCauseCode<'tcx> {
+impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
-    fn from(code: ObligationCauseCode<'tcx>) -> Self {
-        Self {
-            code: if let MISC_OBLIGATION_CAUSE_CODE = code { None } else { Some(Lrc::new(code)) },
+    fn into(self) -> InternedObligationCauseCode<'tcx> {
+        InternedObligationCauseCode {
+            code: if let MISC_OBLIGATION_CAUSE_CODE = self { None } else { Some(Lrc::new(self)) },
         }
     }
 }
