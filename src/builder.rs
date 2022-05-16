@@ -286,10 +286,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
-            let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
             let func_name = format!("{:?}", func_ptr);
             let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
-            self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+            let return_value = self.cx.context.new_call_through_ptr(None, func_ptr, &args);
+            let return_value = llvm::adjust_intrinsic_return_value(&self, return_value, &func_name, &args);
+            let result = current_func.new_local(None, return_value.get_type(), &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+            self.block.add_assignment(None, result, return_value);
             result.to_rvalue()
         }
         else {
