@@ -19,7 +19,7 @@ help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     let x = if let Ok(x) = res { x } else { todo!() };
    |     ++++++++++                 ++++++++++++++++++++++
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variant that isn't matched
+help: alternatively, you might want to use let else to handle the variant that isn't matched
    |
 LL |     let Ok(x) = res else { todo!() };
    |                     ++++++++++++++++
