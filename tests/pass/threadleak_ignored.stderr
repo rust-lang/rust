@@ -1,3 +1,3 @@
-warning: thread support is experimental and incomplete: weak memory effects are not emulated.
+warning: thread support is experimental: weak memory effects are not fully compatible with the Rust atomics memory model.
 
 Dropping 0

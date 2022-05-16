@@ -1,4 +1,4 @@
-warning: thread support is experimental and incomplete: weak memory effects are not emulated.
+warning: thread support is experimental: weak memory effects are not fully compatible with the Rust atomics memory model.
 
 thread '<unnamed>' panicked at 'Hello!', $DIR/simple.rs:LL:CC
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
