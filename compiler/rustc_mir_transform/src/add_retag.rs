@@ -15,13 +15,9 @@ pub struct AddRetag;
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
 fn is_stable(place: PlaceRef<'_>) -> bool {
-    if place.has_deref() {
-        // Which place this evaluates to can change with any memory write,
-        // so cannot assume deref to be stable.
-        return false;
-    } else {
-        return true;
-    }
+    // Which place this evaluates to can change with any memory write,
+    // so cannot assume deref to be stable.
+    !place.has_deref()
 }
 
 /// Determine whether this type may contain a reference (or box), and thus needs retagging.
@@ -82,8 +78,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         };
         let place_base_raw = |place: &Place<'tcx>| {
             // If this is a `Deref`, get the type of what we are deref'ing.
-            if place.ret_deref().is_some() {
-                let ty = place.ty(local_decls, tcx).ty;
+            if place.has_deref() {
+                let ty = &local_decls[place.local].ty;
                 ty.is_unsafe_ptr()
             } else {
                 // Not a deref, and thus not raw.
