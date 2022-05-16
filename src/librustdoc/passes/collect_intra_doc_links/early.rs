@@ -172,15 +172,26 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
     }
 
     fn resolve_doc_links_extern_impl(&mut self, def_id: DefId, is_inherent: bool) {
-        self.resolve_doc_links_extern_outer(def_id, def_id);
+        self.resolve_doc_links_extern_outer_fixme(def_id, def_id);
         let assoc_item_def_ids = Vec::from_iter(
             self.resolver.cstore().associated_item_def_ids_untracked(def_id, self.sess),
         );
         for assoc_def_id in assoc_item_def_ids {
             if !is_inherent || self.resolver.cstore().visibility_untracked(assoc_def_id).is_public()
             {
-                self.resolve_doc_links_extern_outer(assoc_def_id, def_id);
+                self.resolve_doc_links_extern_outer_fixme(assoc_def_id, def_id);
             }
+        }
+    }
+
+    // FIXME: replace all uses with `resolve_doc_links_extern_outer` to actually resolve links, not
+    // just add traits in scope. This may be expensive and require benchmarking and optimization.
+    fn resolve_doc_links_extern_outer_fixme(&mut self, def_id: DefId, scope_id: DefId) {
+        if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
+            return;
+        }
+        if let Some(parent_id) = self.resolver.opt_parent(scope_id) {
+            self.add_traits_in_scope(parent_id);
         }
     }
 
@@ -188,18 +199,23 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
             return;
         }
-        // FIXME: actually resolve links, not just add traits in scope.
-        if let Some(parent_id) = self.resolver.opt_parent(scope_id) {
-            self.add_traits_in_scope(parent_id);
-        }
+        let attrs = Vec::from_iter(self.resolver.cstore().item_attrs_untracked(def_id, self.sess));
+        let parent_scope = ParentScope::module(
+            self.resolver.get_nearest_non_block_module(
+                self.resolver.opt_parent(scope_id).unwrap_or(scope_id),
+            ),
+            self.resolver,
+        );
+        self.resolve_doc_links(doc_attrs(attrs.iter()), parent_scope);
     }
 
     fn resolve_doc_links_extern_inner(&mut self, def_id: DefId) {
         if !self.resolver.cstore().may_have_doc_links_untracked(def_id) {
             return;
         }
-        // FIXME: actually resolve links, not just add traits in scope.
-        self.add_traits_in_scope(def_id);
+        let attrs = Vec::from_iter(self.resolver.cstore().item_attrs_untracked(def_id, self.sess));
+        let parent_scope = ParentScope::module(self.resolver.expect_module(def_id), self.resolver);
+        self.resolve_doc_links(doc_attrs(attrs.iter()), parent_scope);
     }
 
     fn resolve_doc_links_local(&mut self, attrs: &[ast::Attribute]) {
@@ -253,9 +269,16 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                         }
                     }
 
-                    // FIXME: Resolve all prefixes for type-relative resolution or for diagnostics.
-                    if (need_assoc || !any_resolved) && pinfo.path_str.contains("::") {
-                        need_traits_in_scope = true;
+                    // Resolve all prefixes for type-relative resolution or for diagnostics.
+                    if need_assoc || !any_resolved {
+                        let mut path = &pinfo.path_str[..];
+                        while let Some(idx) = path.rfind("::") {
+                            path = &path[..idx];
+                            need_traits_in_scope = true;
+                            for ns in [TypeNS, ValueNS, MacroNS] {
+                                self.resolve_and_cache(path, ns, &parent_scope);
+                            }
+                        }
                     }
                 }
             }
