@@ -716,6 +716,8 @@ impl<T> [T] {
 
     /// Returns an iterator over the slice.
     ///
+    /// The iterator yields all items from start to end.
+    ///
     /// # Examples
     ///
     /// ```
@@ -734,6 +736,8 @@ impl<T> [T] {
     }
 
     /// Returns an iterator that allows modifying each value.
+    ///
+    /// The iterator yields all items from start to end.
     ///
     /// # Examples
     ///
