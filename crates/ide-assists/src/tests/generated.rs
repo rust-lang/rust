@@ -1036,7 +1036,6 @@ struct Person {
 }
 
 impl Person {
-    /// Get a reference to the person's name.
     #[must_use]
     fn $0name(&self) -> &str {
         self.name.as_ref()
@@ -1061,7 +1060,6 @@ struct Person {
 }
 
 impl Person {
-    /// Get a mutable reference to the person's name.
     #[must_use]
     fn $0name_mut(&mut self) -> &mut String {
         &mut self.name

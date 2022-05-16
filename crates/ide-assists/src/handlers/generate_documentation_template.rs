@@ -60,7 +60,7 @@ pub(crate) fn generate_documentation_template(
         text_range,
         |builder| {
             // Introduction / short function description before the sections
-            let mut doc_lines = vec![introduction_builder(&ast_func, ctx)];
+            let mut doc_lines = vec![introduction_builder(&ast_func, ctx).unwrap_or(".".into())];
             // Then come the sections
             if let Some(mut lines) = examples_builder(&ast_func, ctx) {
                 doc_lines.push("".into());
@@ -78,26 +78,64 @@ pub(crate) fn generate_documentation_template(
 }
 
 /// Builds an introduction, trying to be smart if the function is `::new()`
-fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> String {
-    || -> Option<String> {
-        let hir_func = ctx.sema.to_def(ast_func)?;
-        let container = hir_func.as_assoc_item(ctx.db())?.container(ctx.db());
-        if let hir::AssocItemContainer::Impl(implementation) = container {
-            let ret_ty = hir_func.ret_type(ctx.db());
-            let self_ty = implementation.self_ty(ctx.db());
+fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
+    let hir_func = ctx.sema.to_def(ast_func)?;
+    let container = hir_func.as_assoc_item(ctx.db())?.container(ctx.db());
+    if let hir::AssocItemContainer::Impl(imp) = container {
+        let ret_ty = hir_func.ret_type(ctx.db());
+        let self_ty = imp.self_ty(ctx.db());
+        let name = ast_func.name()?.to_string();
 
-            let is_new = ast_func.name()?.to_string() == "new";
-            match is_new && ret_ty == self_ty {
-                true => {
-                    Some(format!("Creates a new [`{}`].", self_type_without_lifetimes(ast_func)?))
-                }
-                false => None,
+        let intro_for_new = || {
+            let is_new = name == "new";
+            if is_new && ret_ty == self_ty {
+                Some(format!("Creates a new [`{}`].", self_type_without_lifetimes(ast_func)?))
+            } else {
+                None
             }
-        } else {
-            None
+        };
+
+        let intro_for_getter = || match (
+            hir_func.self_param(ctx.sema.db),
+            &*hir_func.params_without_self(ctx.sema.db),
+        ) {
+            (Some(self_param), []) if self_param.access(ctx.sema.db) != hir::Access::Owned => {
+                if name.starts_with("as_") || name.starts_with("to_") || name == "get" {
+                    return None;
+                }
+                let what = name.trim_end_matches("_mut").replace('_', " ");
+                let reference = if ret_ty.is_mutable_reference() {
+                    " a mutable reference to"
+                } else if ret_ty.is_reference() {
+                    " a reference to"
+                } else {
+                    ""
+                };
+                Some(format!("Returns{reference} the {what}."))
+            }
+            _ => None,
+        };
+
+        let intro_for_setter = || {
+            if !name.starts_with("set_") {
+                return None;
+            }
+
+            let what = name.trim_start_matches("set_").replace('_', " ");
+            Some(format!("Sets the {what}."))
+        };
+
+        if let Some(intro) = intro_for_new() {
+            return Some(intro);
         }
-    }()
-    .unwrap_or_else(|| ".".into())
+        if let Some(intro) = intro_for_getter() {
+            return Some(intro);
+        }
+        if let Some(intro) = intro_for_setter() {
+            return Some(intro);
+        }
+    }
+    None
 }
 
 /// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
@@ -1219,6 +1257,197 @@ impl<T> MyGenericStruct<T> {
     pub fn modify(&mut self, new_value: T) {
         self.x = new_value;
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generates_intro_for_getters() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn speed$0(&self) -> f32 { 0.0 }
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Returns the speed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let s = ;
+    /// assert_eq!(s.speed(), );
+    /// ```
+    pub fn speed(&self) -> f32 { 0.0 }
+}
+"#,
+        );
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn data$0(&self) -> &[u8] { &[] }
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Returns a reference to the data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let s = ;
+    /// assert_eq!(s.data(), );
+    /// ```
+    pub fn data(&self) -> &[u8] { &[] }
+}
+"#,
+        );
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn data$0(&mut self) -> &mut [u8] { &mut [] }
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Returns a mutable reference to the data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let mut s = ;
+    /// assert_eq!(s.data(), );
+    /// assert_eq!(s, );
+    /// ```
+    pub fn data(&mut self) -> &mut [u8] { &mut [] }
+}
+"#,
+        );
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn data_mut$0(&mut self) -> &mut [u8] { &mut [] }
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Returns a mutable reference to the data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let mut s = ;
+    /// assert_eq!(s.data_mut(), );
+    /// assert_eq!(s, );
+    /// ```
+    pub fn data_mut(&mut self) -> &mut [u8] { &mut [] }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_getter_intro_for_prefixed_methods() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn as_bytes$0(&self) -> &[u8] { &[] }
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let s = ;
+    /// assert_eq!(s.as_bytes(), );
+    /// ```
+    pub fn as_bytes(&self) -> &[u8] { &[] }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generates_intro_for_setters() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn set_data$0(&mut self, data: Vec<u8>) {}
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Sets the data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let mut s = ;
+    /// s.set_data(data);
+    /// assert_eq!(s, );
+    /// ```
+    pub fn set_data(&mut self, data: Vec<u8>) {}
+}
+"#,
+        );
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub struct S;
+impl S {
+    pub fn set_domain_name$0(&mut self, name: String) {}
+}
+"#,
+            r#"
+pub struct S;
+impl S {
+    /// Sets the domain name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::S;
+    ///
+    /// let mut s = ;
+    /// s.set_domain_name(name);
+    /// assert_eq!(s, );
+    /// ```
+    pub fn set_domain_name(&mut self, name: String) {}
 }
 "#,
         );

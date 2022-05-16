@@ -1466,6 +1466,7 @@ impl Function {
 }
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Access {
     Shared,
     Exclusive,
