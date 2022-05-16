@@ -5,22 +5,24 @@ use super::*;
 // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
 use super::client::HandleStore;
 
-/// Declare an associated item of one of the traits below, optionally
-/// adjusting it (i.e., adding bounds to types and default bodies to methods).
-macro_rules! associated_item {
-    (type FreeFunctions) => (type FreeFunctions: 'static;);
-    (type TokenStream) => (type TokenStream: 'static + Clone;);
-    (type TokenStreamBuilder) => (type TokenStreamBuilder: 'static;);
-    (type TokenStreamIter) => (type TokenStreamIter: 'static + Clone;);
-    (type Group) => (type Group: 'static + Clone;);
-    (type Punct) => (type Punct: 'static + Copy + Eq + Hash;);
-    (type Ident) => (type Ident: 'static + Copy + Eq + Hash;);
-    (type Literal) => (type Literal: 'static + Clone;);
-    (type SourceFile) => (type SourceFile: 'static + Clone;);
-    (type MultiSpan) => (type MultiSpan: 'static;);
-    (type Diagnostic) => (type Diagnostic: 'static;);
-    (type Span) => (type Span: 'static + Copy + Eq + Hash;);
+pub trait Types {
+    type FreeFunctions: 'static;
+    type TokenStream: 'static + Clone;
+    type TokenStreamBuilder: 'static;
+    type TokenStreamIter: 'static + Clone;
+    type Group: 'static + Clone;
+    type Punct: 'static + Copy + Eq + Hash;
+    type Ident: 'static + Copy + Eq + Hash;
+    type Literal: 'static + Clone;
+    type SourceFile: 'static + Clone;
+    type MultiSpan: 'static;
+    type Diagnostic: 'static;
+    type Span: 'static + Copy + Eq + Hash;
+}
 
+/// Declare an associated fn of one of the traits below, adding necessary
+/// default bodies.
+macro_rules! associated_fn {
     (fn drop(&mut self, $arg:ident: $arg_ty:ty)) =>
         (fn drop(&mut self, $arg: $arg_ty) { mem::drop($arg) });
 
@@ -34,12 +36,8 @@ macro_rules! declare_server_traits {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
-        pub trait Types {
-            $(associated_item!(type $name);)*
-        }
-
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+            $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
