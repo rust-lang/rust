@@ -3,18 +3,15 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
 use rustc_expand::module::DirOwnership;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{self, new_parser_from_file};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
-use rustc_span::{self, FileName, Pos, Span};
+use rustc_span::{self, Pos, Span};
 
 use smallvec::SmallVec;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 // These macros all relate to the file system; they either return
@@ -224,42 +221,5 @@ pub fn expand_include_bytes(
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)
         }
-    }
-}
-
-/// Resolves a `path` mentioned inside Rust code, returning an absolute path.
-///
-/// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(
-    parse_sess: &ParseSess,
-    path: impl Into<PathBuf>,
-    span: Span,
-) -> PResult<'_, PathBuf> {
-    let path = path.into();
-
-    // Relative paths are resolved relative to the file in which they are found
-    // after macro expansion (that is, they are unhygienic).
-    if !path.is_absolute() {
-        let callsite = span.source_callsite();
-        let mut result = match parse_sess.source_map().span_to_filename(callsite) {
-            FileName::Real(name) => name
-                .into_local_path()
-                .expect("attempting to resolve a file path in an external file"),
-            FileName::DocTest(path, _) => path,
-            other => {
-                return Err(parse_sess.span_diagnostic.struct_span_err(
-                    span,
-                    &format!(
-                        "cannot resolve relative path in non-file source `{}`",
-                        parse_sess.source_map().filename_for_diagnostics(&other)
-                    ),
-                ));
-            }
-        };
-        result.pop();
-        result.push(path);
-        Ok(result)
-    } else {
-        Ok(path)
     }
 }

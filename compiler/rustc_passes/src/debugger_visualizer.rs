@@ -1,8 +1,8 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use hir::CRATE_HIR_ID;
-use rustc_builtin_macros::source_util::resolve_path;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_expand::base::resolve_path;
 use rustc_hir as hir;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
