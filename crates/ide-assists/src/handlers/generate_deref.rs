@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use hir::{ModPath, ModuleDef};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::{
     ast::{self, HasName},
@@ -17,6 +18,7 @@ use crate::{
 // Generate `Deref` impl using the given struct field.
 //
 // ```
+// # //- minicore: deref, deref_mut
 // struct A;
 // struct B {
 //    $0a: A
@@ -29,7 +31,7 @@ use crate::{
 //    a: A
 // }
 //
-// impl std::ops::Deref for B {
+// impl core::ops::Deref for B {
 //     type Target = A;
 //
 //     fn deref(&self) -> &Self::Target {
@@ -45,19 +47,36 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::RecordField>()?;
 
-    if existing_deref_impl(&ctx.sema, &strukt).is_some() {
-        cov_mark::hit!(test_add_record_deref_impl_already_exists);
-        return None;
-    }
+    let deref_type_to_generate = match existing_deref_impl(&ctx.sema, &strukt) {
+        None => DerefType::Deref,
+        Some(DerefType::Deref) => DerefType::DerefMut,
+        Some(DerefType::DerefMut) => {
+            cov_mark::hit!(test_add_record_deref_impl_already_exists);
+            return None;
+        }
+    };
+
+    let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
+    let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
+    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
 
     let field_type = field.ty()?;
     let field_name = field.name()?;
     let target = field.syntax().text_range();
     acc.add(
         AssistId("generate_deref", AssistKind::Generate),
-        format!("Generate `Deref` impl using `{}`", field_name),
+        format!("Generate `{:?}` impl using `{}`", deref_type_to_generate, field_name),
         target,
-        |edit| generate_edit(edit, strukt, field_type.syntax(), field_name.syntax()),
+        |edit| {
+            generate_edit(
+                edit,
+                strukt,
+                field_type.syntax(),
+                field_name.syntax(),
+                deref_type_to_generate,
+                trait_path,
+            )
+        },
     )
 }
 
@@ -68,18 +87,35 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let field_list_index =
         field_list.syntax().children().into_iter().position(|s| &s == field.syntax())?;
 
-    if existing_deref_impl(&ctx.sema, &strukt).is_some() {
-        cov_mark::hit!(test_add_field_deref_impl_already_exists);
-        return None;
-    }
+    let deref_type_to_generate = match existing_deref_impl(&ctx.sema, &strukt) {
+        None => DerefType::Deref,
+        Some(DerefType::Deref) => DerefType::DerefMut,
+        Some(DerefType::DerefMut) => {
+            cov_mark::hit!(test_add_field_deref_impl_already_exists);
+            return None;
+        }
+    };
+
+    let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
+    let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
+    let trait_path = module.find_use_path(ctx.db(), ModuleDef::Trait(trait_))?;
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
     acc.add(
         AssistId("generate_deref", AssistKind::Generate),
-        format!("Generate `Deref` impl using `{}`", field.syntax()),
+        format!("Generate `{:?}` impl using `{}`", deref_type_to_generate, field.syntax()),
         target,
-        |edit| generate_edit(edit, strukt, field_type.syntax(), field_list_index),
+        |edit| {
+            generate_edit(
+                edit,
+                strukt,
+                field_type.syntax(),
+                field_list_index,
+                deref_type_to_generate,
+                trait_path,
+            )
+        },
     )
 }
 
@@ -88,35 +124,69 @@ fn generate_edit(
     strukt: ast::Struct,
     field_type_syntax: &SyntaxNode,
     field_name: impl Display,
+    deref_type: DerefType,
+    trait_path: ModPath,
 ) {
     let start_offset = strukt.syntax().text_range().end();
-    let impl_code = format!(
-        r#"    type Target = {0};
+    let impl_code = match deref_type {
+        DerefType::Deref => format!(
+            r#"    type Target = {0};
 
     fn deref(&self) -> &Self::Target {{
         &self.{1}
     }}"#,
-        field_type_syntax, field_name
-    );
+            field_type_syntax, field_name
+        ),
+        DerefType::DerefMut => format!(
+            r#"    fn deref_mut(&mut self) -> &mut Self::Target {{
+        &mut self.{}
+    }}"#,
+            field_name
+        ),
+    };
     let strukt_adt = ast::Adt::Struct(strukt);
-    let deref_impl = generate_trait_impl_text(&strukt_adt, "std::ops::Deref", &impl_code);
+    let deref_impl = generate_trait_impl_text(&strukt_adt, &trait_path.to_string(), &impl_code);
     edit.insert(start_offset, deref_impl);
 }
 
 fn existing_deref_impl(
-    sema: &'_ hir::Semantics<'_, RootDatabase>,
+    sema: &hir::Semantics<'_, RootDatabase>,
     strukt: &ast::Struct,
-) -> Option<()> {
+) -> Option<DerefType> {
     let strukt = sema.to_def(strukt)?;
     let krate = strukt.module(sema.db).krate();
 
     let deref_trait = FamousDefs(sema, krate).core_ops_Deref()?;
+    let deref_mut_trait = FamousDefs(sema, krate).core_ops_DerefMut()?;
     let strukt_type = strukt.ty(sema.db);
 
     if strukt_type.impls_trait(sema.db, deref_trait, &[]) {
-        Some(())
+        if strukt_type.impls_trait(sema.db, deref_mut_trait, &[]) {
+            Some(DerefType::DerefMut)
+        } else {
+            Some(DerefType::Deref)
+        }
     } else {
         None
+    }
+}
+
+#[derive(Debug)]
+enum DerefType {
+    Deref,
+    DerefMut,
+}
+
+impl DerefType {
+    fn to_trait(
+        &self,
+        sema: &hir::Semantics<'_, RootDatabase>,
+        krate: hir::Crate,
+    ) -> Option<hir::Trait> {
+        match self {
+            DerefType::Deref => FamousDefs(sema, krate).core_ops_Deref(),
+            DerefType::DerefMut => FamousDefs(sema, krate).core_ops_DerefMut(),
+        }
     }
 }
 
@@ -130,12 +200,39 @@ mod tests {
     fn test_generate_record_deref() {
         check_assist(
             generate_deref,
-            r#"struct A { }
+            r#"
+//- minicore: deref
+struct A { }
 struct B { $0a: A }"#,
-            r#"struct A { }
+            r#"
+struct A { }
 struct B { a: A }
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
+    type Target = A;
+
+    fn deref(&self) -> &Self::Target {
+        &self.a
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_record_deref_short_path() {
+        check_assist(
+            generate_deref,
+            r#"
+//- minicore: deref
+use core::ops::Deref;
+struct A { }
+struct B { $0a: A }"#,
+            r#"
+use core::ops::Deref;
+struct A { }
+struct B { a: A }
+
+impl Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
@@ -149,12 +246,15 @@ impl std::ops::Deref for B {
     fn test_generate_field_deref_idx_0() {
         check_assist(
             generate_deref,
-            r#"struct A { }
+            r#"
+//- minicore: deref
+struct A { }
 struct B($0A);"#,
-            r#"struct A { }
+            r#"
+struct A { }
 struct B(A);
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
@@ -167,12 +267,15 @@ impl std::ops::Deref for B {
     fn test_generate_field_deref_idx_1() {
         check_assist(
             generate_deref,
-            r#"struct A { }
+            r#"
+//- minicore: deref
+struct A { }
 struct B(u8, $0A);"#,
-            r#"struct A { }
+            r#"
+struct A { }
 struct B(u8, A);
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
@@ -183,22 +286,42 @@ impl std::ops::Deref for B {
     }
 
     #[test]
+    fn test_generates_derefmut_when_deref_present() {
+        check_assist(
+            generate_deref,
+            r#"
+//- minicore: deref, deref_mut
+struct B { $0a: u8 }
+
+impl core::ops::Deref for B {}
+"#,
+            r#"
+struct B { a: u8 }
+
+impl core::ops::DerefMut for B {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.a
+    }
+}
+
+impl core::ops::Deref for B {}
+"#,
+        );
+    }
+
+    #[test]
     fn test_generate_record_deref_not_applicable_if_already_impl() {
         cov_mark::check!(test_add_record_deref_impl_already_exists);
         check_assist_not_applicable(
             generate_deref,
             r#"
-//- minicore: deref
+//- minicore: deref, deref_mut
 struct A { }
 struct B { $0a: A }
 
-impl core::ops::Deref for B {
-    type Target = A;
-
-    fn deref(&self) -> &Self::Target {
-        &self.a
-    }
-}"#,
+impl core::ops::Deref for B {}
+impl core::ops::DerefMut for B {}
+"#,
         )
     }
 
@@ -208,17 +331,13 @@ impl core::ops::Deref for B {
         check_assist_not_applicable(
             generate_deref,
             r#"
-//- minicore: deref
+//- minicore: deref, deref_mut
 struct A { }
 struct B($0A)
 
-impl core::ops::Deref for B {
-    type Target = A;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}"#,
+impl core::ops::Deref for B {}
+impl core::ops::DerefMut for B {}
+"#,
         )
     }
 }
