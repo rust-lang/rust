@@ -1158,7 +1158,6 @@ struct Person {
 }
 
 impl Person {
-    /// Set the person's name.
     fn set_name(&mut self, name: String) {
         self.name = name;
     }

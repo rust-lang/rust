@@ -22,7 +22,6 @@ use crate::{
 // }
 //
 // impl Person {
-//     /// Set the person's name.
 //     fn set_name(&mut self, name: String) {
 //         self.name = name;
 //     }
@@ -32,7 +31,6 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::RecordField>()?;
 
-    let strukt_name = strukt.name()?;
     let field_name = field.name()?;
     let field_ty = field.ty()?;
 
@@ -53,10 +51,6 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<
         |builder| {
             let mut buf = String::with_capacity(512);
 
-            let fn_name_spaced = fn_name.replace('_', " ");
-            let strukt_name_spaced =
-                to_lower_snake_case(&strukt_name.to_string()).replace('_', " ");
-
             if impl_def.is_some() {
                 buf.push('\n');
             }
@@ -64,12 +58,9 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<
             let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
             format_to!(
                 buf,
-                "    /// Set the {}'s {}.
-    {}fn set_{}(&mut self, {}: {}) {{
+                "    {}fn set_{}(&mut self, {}: {}) {{
         self.{} = {};
     }}",
-                strukt_name_spaced,
-                fn_name_spaced,
                 vis,
                 fn_name,
                 fn_name,
@@ -114,7 +105,6 @@ struct Person<T: Clone> {
 }
 
 impl<T: Clone> Person<T> {
-    /// Set the person's data.
     fn set_data(&mut self, data: T) {
         self.data = data;
     }
@@ -152,7 +142,6 @@ pub(crate) struct Person<T: Clone> {
 }
 
 impl<T: Clone> Person<T> {
-    /// Set the person's data.
     pub(crate) fn set_data(&mut self, data: T) {
         self.data = data;
     }
@@ -171,7 +160,6 @@ struct Context<T: Clone> {
 }
 
 impl<T: Clone> Context<T> {
-    /// Set the context's data.
     fn set_data(&mut self, data: T) {
         self.data = data;
     }
@@ -183,12 +171,10 @@ struct Context<T: Clone> {
 }
 
 impl<T: Clone> Context<T> {
-    /// Set the context's data.
     fn set_data(&mut self, data: T) {
         self.data = data;
     }
 
-    /// Set the context's count.
     fn set_count(&mut self, count: usize) {
         self.count = count;
     }
