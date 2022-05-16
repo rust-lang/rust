@@ -209,6 +209,14 @@ fn closing_brace_hints(
                 _ => return None,
             }
         }
+    } else if let Some(mac) = ast::MacroCall::cast(node.clone()) {
+        let last_token = mac.syntax().last_token()?;
+        if last_token.kind() != T![;] && last_token.kind() != SyntaxKind::R_CURLY {
+            return None;
+        }
+        closing_token = last_token;
+
+        format!("{}!", mac.path()?)
     } else {
         return None;
     };
@@ -2433,6 +2441,22 @@ const _: () = {
 mod m {
   }
 //^ mod m
+
+m! {}
+m!();
+m!(
+ );
+//^ m!
+
+m! {
+  }
+//^ m!
+
+fn f() {
+    let v = vec![
+    ];
+  }
+//^ fn f
 "#,
         );
     }
