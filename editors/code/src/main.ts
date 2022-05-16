@@ -160,6 +160,8 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
     ctx.registerCommand("resolveCodeAction", commands.resolveCodeAction);
     ctx.registerCommand("applyActionGroup", commands.applyActionGroup);
     ctx.registerCommand("gotoLocation", commands.gotoLocation);
+
+    ctx.registerCommand("linkToCommand", commands.linkToCommand);
 }
 
 export async function deactivate() {

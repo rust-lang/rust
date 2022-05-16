@@ -11,6 +11,7 @@ import { AstInspector } from "./ast_inspector";
 import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
+import { LINKED_COMMANDS } from "./client";
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -926,5 +927,15 @@ export function newDebugConfig(ctx: Ctx): Cmd {
         if (!item) return;
 
         await makeDebugConfig(ctx, item.runnable);
+    };
+}
+
+export function linkToCommand(ctx: Ctx): Cmd {
+    return async (commandId: string) => {
+        const link = LINKED_COMMANDS.get(commandId);
+        if (ctx.client && link) {
+            const { command, arguments: args = [] } = link;
+            await vscode.commands.executeCommand(command, ...args);
+        }
     };
 }
