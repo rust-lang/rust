@@ -1463,11 +1463,11 @@ impl<'tcx> Place<'tcx> {
 
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
-    pub fn ret_deref(&self) -> Option<PlaceElem<'tcx>> {
+    pub fn has_deref(&self) -> bool {
         if !self.projection.is_empty() && self.projection[0] == PlaceElem::Deref {
-            return Some(self.projection[0]);
+            true
         } else {
-            None
+            false
         }
     }
 
@@ -1545,11 +1545,11 @@ impl<'tcx> PlaceRef<'tcx> {
 
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
-    pub fn ret_deref(&self) -> Option<PlaceElem<'tcx>> {
+    pub fn has_deref(&self) -> bool {
         if !self.projection.is_empty() && self.projection[0] == PlaceElem::Deref {
-            return Some(self.projection[0]);
+            true
         } else {
-            None
+            false
         }
     }
 
