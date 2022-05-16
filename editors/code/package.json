@@ -792,6 +792,17 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.closingBraceHints.enable": {
+                    "markdownDescription": "Whether to show inlay hints after a closing `}` to indicate what item it belongs to.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.inlayHints.closingBraceHints.minLines": {
+                    "markdownDescription": "Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1\nto always show them).",
+                    "default": 25,
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "rust-analyzer.inlayHints.closureReturnTypeHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for return types of closures with blocks.",
                     "default": false,

@@ -355,6 +355,17 @@ Whether to show inlay type hints for binding modes.
 --
 Whether to show inlay type hints for method chains.
 --
+[[rust-analyzer.inlayHints.closingBraceHints.enable]]rust-analyzer.inlayHints.closingBraceHints.enable (default: `true`)::
++
+--
+Whether to show inlay hints after a closing `}` to indicate what item it belongs to.
+--
+[[rust-analyzer.inlayHints.closingBraceHints.minLines]]rust-analyzer.inlayHints.closingBraceHints.minLines (default: `25`)::
++
+--
+Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
+to always show them).
+--
 [[rust-analyzer.inlayHints.closureReturnTypeHints.enable]]rust-analyzer.inlayHints.closureReturnTypeHints.enable (default: `false`)::
 +
 --

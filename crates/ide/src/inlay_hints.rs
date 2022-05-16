@@ -26,6 +26,7 @@ pub struct InlayHintsConfig {
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
+    pub closing_brace_hints_min_lines: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,6 +53,7 @@ pub enum InlayKind {
     LifetimeHint,
     ParameterHint,
     TypeHint,
+    ClosingBraceHint,
 }
 
 #[derive(Debug)]
@@ -104,7 +106,7 @@ pub(crate) fn inlay_hints(
             NodeOrToken::Token(_) => return acc,
             NodeOrToken::Node(n) => n
                 .descendants()
-                .filter(|descendant| range.contains_range(descendant.text_range()))
+                .filter(|descendant| range.intersect(descendant.text_range()).is_some())
                 .for_each(hints),
         },
         None => file.descendants().for_each(hints),
@@ -123,6 +125,8 @@ fn hints(
         Some(it) => FamousDefs(sema, it.krate()),
         None => return,
     };
+
+    closing_brace_hints(hints, sema, config, node.clone());
 
     if let Some(expr) = ast::Expr::cast(node.clone()) {
         chaining_hints(hints, sema, &famous_defs, config, &expr);
@@ -145,6 +149,104 @@ fn hints(
     } else if let Some(it) = ast::Fn::cast(node) {
         lifetime_hints(hints, config, it);
     }
+}
+
+fn closing_brace_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    config: &InlayHintsConfig,
+    node: SyntaxNode,
+) -> Option<()> {
+    let min_lines = config.closing_brace_hints_min_lines?;
+
+    let mut closing_token;
+    let label = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
+        closing_token = item_list.r_curly_token()?;
+
+        let parent = item_list.syntax().parent()?;
+        match_ast! {
+            match parent {
+                ast::Impl(imp) => {
+                    let imp = sema.to_def(&imp)?;
+                    let ty = imp.self_ty(sema.db);
+                    let trait_ = imp.trait_(sema.db);
+
+                    match trait_ {
+                        Some(tr) => format!("impl {} for {}", tr.name(sema.db), ty.display_truncated(sema.db, config.max_length)),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
+                    }
+                },
+                ast::Trait(tr) => {
+                    format!("trait {}", tr.name()?)
+                },
+                _ => return None,
+            }
+        }
+    } else if let Some(list) = ast::ItemList::cast(node.clone()) {
+        closing_token = list.r_curly_token()?;
+
+        let module = ast::Module::cast(list.syntax().parent()?)?;
+        format!("mod {}", module.name()?)
+    } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
+        closing_token = block.stmt_list()?.r_curly_token()?;
+
+        let parent = block.syntax().parent()?;
+        match_ast! {
+            match parent {
+                ast::Fn(it) => {
+                    // FIXME: this could include parameters, but `HirDisplay` prints too much info
+                    // and doesn't respect the max length either, so the hints end up way too long
+                    format!("fn {}", it.name()?)
+                },
+                ast::Static(it) => format!("static {}", it.name()?),
+                ast::Const(it) => {
+                    if it.underscore_token().is_some() {
+                        "const _".into()
+                    } else {
+                        format!("const {}", it.name()?)
+                    }
+                },
+                _ => return None,
+            }
+        }
+    } else if let Some(mac) = ast::MacroCall::cast(node.clone()) {
+        let last_token = mac.syntax().last_token()?;
+        if last_token.kind() != T![;] && last_token.kind() != SyntaxKind::R_CURLY {
+            return None;
+        }
+        closing_token = last_token;
+
+        format!("{}!", mac.path()?)
+    } else {
+        return None;
+    };
+
+    if let Some(mut next) = closing_token.next_token() {
+        if next.kind() == T![;] {
+            if let Some(tok) = next.next_token() {
+                closing_token = next;
+                next = tok;
+            }
+        }
+        if !(next.kind() == SyntaxKind::WHITESPACE && next.text().contains('\n')) {
+            // Only display the hint if the `}` is the last token on the line
+            return None;
+        }
+    }
+
+    let mut lines = 1;
+    node.text().for_each_chunk(|s| lines += s.matches('\n').count());
+    if lines < min_lines {
+        return None;
+    }
+
+    acc.push(InlayHint {
+        range: closing_token.text_range(),
+        kind: InlayKind::ClosingBraceHint,
+        label: label.into(),
+    });
+
+    None
 }
 
 fn lifetime_hints(
@@ -925,6 +1027,7 @@ mod tests {
         hide_named_constructor_hints: false,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
+        closing_brace_hints_min_lines: None,
     };
     const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
@@ -1422,10 +1525,10 @@ fn main() {
             let foo = foo();
             let foo = foo1();
             let foo = foo2();
+             // ^^^ impl Fn(f64, f64)
             let foo = foo3();
              // ^^^ impl Fn(f64, f64) -> u32
             let foo = foo4();
-             // ^^^ &dyn Fn(f64, f64) -> u32
             let foo = foo5();
             let foo = foo6();
             let foo = foo7();
@@ -2290,7 +2393,70 @@ fn __(
       //^^^^ &mut
        //^ ref mut
     }
-}
+}"#,
+        );
+    }
+
+    #[test]
+    fn hints_closing_brace() {
+        check_with_config(
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
+            r#"
+fn a() {}
+
+fn f() {
+} // no hint unless `}` is the last token on the line
+
+fn g() {
+  }
+//^ fn g
+
+fn h<T>(with: T, arguments: u8, ...) {
+  }
+//^ fn h
+
+trait Tr {
+    fn f();
+    fn g() {
+    }
+  //^ fn g
+  }
+//^ trait Tr
+impl Tr for () {
+  }
+//^ impl Tr for ()
+impl dyn Tr {
+  }
+//^ impl dyn Tr
+
+static S0: () = 0;
+static S1: () = {};
+static S2: () = {
+ };
+//^ static S2
+const _: () = {
+ };
+//^ const _
+
+mod m {
+  }
+//^ mod m
+
+m! {}
+m!();
+m!(
+ );
+//^ m!
+
+m! {
+  }
+//^ m!
+
+fn f() {
+    let v = vec![
+    ];
+  }
+//^ fn f
 "#,
         );
     }
