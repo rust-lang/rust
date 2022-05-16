@@ -1,4 +1,5 @@
 // See the cfg-if crate.
+#[allow(unused_macro_rules)]
 macro_rules! cfg_if {
     // match if/else chains with a final `else`
     ($(
