@@ -61,7 +61,7 @@ fn bad_path_expr_1() {
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
         let tts: Vec<_> =
-            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
+            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).into_trees().collect();
         let tts: &[TokenTree] = &tts[..];
 
         match tts {
@@ -293,7 +293,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let tts: Vec<_> = match expr.kind {
-            ast::ExprKind::MacCall(ref mac) => mac.args.inner_tokens().trees().collect(),
+            ast::ExprKind::MacCall(ref mac) => mac.args.inner_tokens().into_trees().collect(),
             _ => panic!("not a macro"),
         };
 

@@ -442,8 +442,8 @@ impl TokenStream {
         }
     }
 
-    pub fn trees(&self) -> Cursor {
-        self.clone().into_trees()
+    pub fn trees(&self) -> CursorRef<'_> {
+        CursorRef::new(self)
     }
 
     pub fn into_trees(self) -> Cursor {
@@ -538,11 +538,20 @@ pub struct CursorRef<'t> {
 }
 
 impl<'t> CursorRef<'t> {
+    fn new(stream: &'t TokenStream) -> Self {
+        CursorRef { stream, index: 0 }
+    }
+
+    #[inline]
     fn next_with_spacing(&mut self) -> Option<&'t TreeAndSpacing> {
         self.stream.0.get(self.index).map(|tree| {
             self.index += 1;
             tree
         })
+    }
+
+    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.0[self.index..].get(n).map(|(tree, _)| tree)
     }
 }
 

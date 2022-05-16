@@ -108,7 +108,7 @@ impl<'a> FlattenNonterminals<'a> {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
                 TokenTree::Token(token) => !matches!(token.kind, token::Interpolated(_)),
-                TokenTree::Delimited(_, _, inner) => can_skip(&inner),
+                TokenTree::Delimited(_, _, inner) => can_skip(inner),
             })
         }
 
