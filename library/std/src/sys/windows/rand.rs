@@ -83,5 +83,5 @@ fn fallback_rng() -> Result<(u64, u64), io::Error> {
 /// We can't use RtlGenRandom with UWP, so there is no fallback
 #[cfg(target_vendor = "uwp")]
 fn fallback_rng() -> Result<(u64, u64), io::Error> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "unsupported on UWP"))
+    Err(io::const_io_error!(io::ErrorKind::Unsupported, "RtlGenRandom() not supported on UWP"))
 }
