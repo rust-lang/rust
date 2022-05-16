@@ -1,7 +1,7 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use rustc_infer::traits::query::OutlivesBound;
-use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct ImpliedOutlivesBounds<'tcx> {
@@ -13,9 +13,16 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
     fn try_fast_path(
         _tcx: TyCtxt<'tcx>,
-        _key: &ParamEnvAnd<'tcx, Self>,
+        key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        None
+        // Don't go into the query for things that can't possibly have lifetimes.
+        match key.value.ty.kind() {
+            ty::Tuple(elems) if elems.is_empty() => Some(vec![]),
+            ty::Never | ty::Str | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+                Some(vec![])
+            }
+            _ => None,
+        }
     }
 
     fn perform_query(
