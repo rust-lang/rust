@@ -1045,7 +1045,11 @@ pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
-    simd_select(transmute::<_, int64x1_t>(a), b, c)
+    let not = int64x1_t(-1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
 }
 /// Bitwise Select.
 #[inline]
@@ -1053,7 +1057,11 @@ pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_t {
-    simd_select(transmute::<_, int64x1_t>(a), b, c)
+    let not = int64x1_t(-1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
 }
 /// Bitwise Select. (128-bit)
 #[inline]
@@ -1061,7 +1069,11 @@ pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbslq_f64(a: uint64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
-    simd_select(transmute::<_, int64x2_t>(a), b, c)
+    let not = int64x2_t(-1, -1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
 }
 /// Bitwise Select. (128-bit)
 #[inline]
@@ -1069,7 +1081,11 @@ pub unsafe fn vbslq_f64(a: uint64x2_t, b: float64x2_t, c: float64x2_t) -> float6
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbslq_p64(a: poly64x2_t, b: poly64x2_t, c: poly64x2_t) -> poly64x2_t {
-    simd_select(transmute::<_, int64x2_t>(a), b, c)
+    let not = int64x2_t(-1, -1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
 }
 
 /// Signed saturating Accumulate of Unsigned value.
@@ -5136,37 +5152,37 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vbsl_f64() {
-        let a = u64x1::new(u64::MAX);
-        let b = f64x1::new(f64::MAX);
-        let c = f64x1::new(f64::MIN);
-        let e = f64x1::new(f64::MAX);
+        let a = u64x1::new(0x8000000000000000);
+        let b = f64x1::new(-1.23f64);
+        let c = f64x1::new(2.34f64);
+        let e = f64x1::new(-2.34f64);
         let r: f64x1 = transmute(vbsl_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vbsl_p64() {
-        let a = u64x1::new(u64::MAX);
+        let a = u64x1::new(1);
         let b = u64x1::new(u64::MAX);
         let c = u64x1::new(u64::MIN);
-        let e = u64x1::new(u64::MAX);
+        let e = u64x1::new(1);
         let r: u64x1 = transmute(vbsl_p64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vbslq_f64() {
-        let a = u64x2::new(u64::MAX, 0);
-        let b = f64x2::new(f64::MAX, f64::MAX);
-        let c = f64x2::new(f64::MIN, f64::MIN);
-        let e = f64x2::new(f64::MAX, f64::MIN);
+        let a = u64x2::new(1, 0x8000000000000000);
+        let b = f64x2::new(f64::MAX, -1.23f64);
+        let c = f64x2::new(f64::MIN, 2.34f64);
+        let e = f64x2::new(f64::MIN, -2.34f64);
         let r: f64x2 = transmute(vbslq_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vbslq_p64() {
-        let a = u64x2::new(u64::MAX, 0);
+        let a = u64x2::new(u64::MAX, 1);
         let b = u64x2::new(u64::MAX, u64::MAX);
         let c = u64x2::new(u64::MIN, u64::MIN);
-        let e = u64x2::new(u64::MAX, u64::MIN);
+        let e = u64x2::new(u64::MAX, 1);
         let r: u64x2 = transmute(vbslq_p64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
