@@ -120,27 +120,27 @@ impl StoreBufferAlloc {
         range: AllocRange,
     ) -> InterpResult<'tcx, Ref<'_, StoreBuffer>> {
         let access_type = self.store_buffer.borrow().access_type(range);
-        let index = match access_type {
-            AccessType::PerfectlyOverlapping(index) => index,
-            AccessType::Empty(index) => {
+        let pos = match access_type {
+            AccessType::PerfectlyOverlapping(pos) => pos,
+            AccessType::Empty(pos) => {
                 // First atomic access on this range, allocate a new StoreBuffer
                 let mut buffer = self.store_buffer.borrow_mut();
-                buffer.insert(index, range, StoreBuffer::default());
-                index
+                buffer.insert_at_pos(pos, range, StoreBuffer::default());
+                pos
             }
-            AccessType::ImperfectlyOverlapping(index_range) => {
+            AccessType::ImperfectlyOverlapping(pos_range) => {
                 // Accesses that imperfectly overlaps with existing atomic objects
                 // do not have well-defined behaviours.
                 // FIXME: if this access happens before all previous accesses on every object it overlaps
                 // with, then we would like to tolerate it. However this is not easy to check.
-                if index_range.start + 1 == index_range.end {
+                if pos_range.start + 1 == pos_range.end {
                     throw_ub_format!("mixed-size access on an existing atomic object");
                 } else {
                     throw_ub_format!("access overlaps with multiple existing atomic objects");
                 }
             }
         };
-        Ok(Ref::map(self.store_buffer.borrow(), |buffer| &buffer[index]))
+        Ok(Ref::map(self.store_buffer.borrow(), |buffer| &buffer[pos]))
     }
 
     /// Gets a mutable store buffer associated with an atomic object in this allocation
@@ -150,21 +150,21 @@ impl StoreBufferAlloc {
     ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffer = self.store_buffer.get_mut();
         let access_type = buffer.access_type(range);
-        let index = match access_type {
-            AccessType::PerfectlyOverlapping(index) => index,
-            AccessType::Empty(index) => {
-                buffer.insert(index, range, StoreBuffer::default());
-                index
+        let pos = match access_type {
+            AccessType::PerfectlyOverlapping(pos) => pos,
+            AccessType::Empty(pos) => {
+                buffer.insert_at_pos(pos, range, StoreBuffer::default());
+                pos
             }
-            AccessType::ImperfectlyOverlapping(index_range) => {
-                if index_range.start + 1 == index_range.end {
+            AccessType::ImperfectlyOverlapping(pos_range) => {
+                if pos_range.start + 1 == pos_range.end {
                     throw_ub_format!("mixed-size access on an existing atomic object");
                 } else {
                     throw_ub_format!("access overlaps with multiple existing atomic objects");
                 }
             }
         };
-        Ok(&mut buffer[index])
+        Ok(&mut buffer[pos])
     }
 }
 

@@ -49,7 +49,7 @@ impl<T> AllocationMap<T> {
         loop {
             if left == right {
                 // No element contains the given offset. But the
-                // index is where such element should be placed at.
+                // position is where such element should be placed at.
                 return Err(left);
             }
             let candidate = left.checked_add(right).unwrap() / 2;
@@ -73,53 +73,56 @@ impl<T> AllocationMap<T> {
     /// an existing allocation
     pub fn access_type(&self, range: AllocRange) -> AccessType {
         match self.find_offset(range.start) {
-            Ok(index) => {
+            Ok(pos) => {
                 // Start of the range belongs to an existing object, now let's check the overlapping situation
-                let elem = &self.v[index];
+                let elem = &self.v[pos];
                 // FIXME: derive Eq for AllocRange in rustc
                 if elem.range.start == range.start && elem.range.size == range.size {
                     // Happy case: perfectly overlapping access
-                    AccessType::PerfectlyOverlapping(index)
+                    AccessType::PerfectlyOverlapping(pos)
                 } else {
                     // FIXME: add a last() method to AllocRange that returns the last inclusive offset (end() is exclusive)
-                    let end_index = match self.find_offset(range.end() - Size::from_bytes(1)) {
-                        // If the end lands in an existing object, add one to get the exclusive index
-                        Ok(inclusive) => inclusive + 1,
-                        Err(exclusive) => exclusive,
+                    let end_pos = match self.find_offset(range.end() - Size::from_bytes(1)) {
+                        // If the end lands in an existing object, add one to get the exclusive position
+                        Ok(inclusive_pos) => inclusive_pos + 1,
+                        Err(exclusive_pos) => exclusive_pos,
                     };
 
-                    AccessType::ImperfectlyOverlapping(index..end_index)
+                    AccessType::ImperfectlyOverlapping(pos..end_pos)
                 }
             }
-            Err(index) => {
+            Err(pos) => {
                 // Start of the range doesn't belong to an existing object
                 match self.find_offset(range.end() - Size::from_bytes(1)) {
                     // Neither does the end
-                    Err(end_index) =>
-                        if index == end_index {
+                    Err(end_pos) =>
+                        if pos == end_pos {
                             // There's nothing between the start and the end, so the range thing is empty
-                            AccessType::Empty(index)
+                            AccessType::Empty(pos)
                         } else {
                             // Otherwise we have entirely covered an existing object
-                            AccessType::ImperfectlyOverlapping(index..end_index)
+                            AccessType::ImperfectlyOverlapping(pos..end_pos)
                         },
                     // Otherwise at least part of it overlaps with something else
-                    Ok(end_index) => AccessType::ImperfectlyOverlapping(index..end_index + 1),
+                    Ok(end_pos) => AccessType::ImperfectlyOverlapping(pos..end_pos + 1),
                 }
             }
         }
     }
 
     /// Inserts an object and its occupied range at given position
-    pub fn insert(&mut self, index: Position, range: AllocRange, data: T) {
-        self.v.insert(index, Elem { range, data });
+    // The Position can be calculated from AllocRange, but the only user of AllocationMap
+    // always calls access_type before calling insert/index/index_mut, and we don't
+    // want to repeat the binary search on each time, so we ask the caller to supply Position
+    pub fn insert_at_pos(&mut self, pos: Position, range: AllocRange, data: T) {
+        self.v.insert(pos, Elem { range, data });
         // If we aren't the first element, then our start must be greater than the preivous element's end
-        if index > 0 {
-            debug_assert!(self.v[index - 1].range.end() <= range.start);
+        if pos > 0 {
+            debug_assert!(self.v[pos - 1].range.end() <= range.start);
         }
         // If we aren't the last element, then our end must be smaller than next element's start
-        if index < self.v.len() - 1 {
-            debug_assert!(range.end() <= self.v[index + 1].range.start);
+        if pos < self.v.len() - 1 {
+            debug_assert!(range.end() <= self.v[pos + 1].range.start);
         }
     }
 }
@@ -127,14 +130,14 @@ impl<T> AllocationMap<T> {
 impl<T> Index<Position> for AllocationMap<T> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.v[index].data
+    fn index(&self, pos: Position) -> &Self::Output {
+        &self.v[pos].data
     }
 }
 
 impl<T> IndexMut<Position> for AllocationMap<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.v[index].data
+    fn index_mut(&mut self, pos: Position) -> &mut Self::Output {
+        &mut self.v[pos].data
     }
 }
 
@@ -150,10 +153,10 @@ mod tests {
         let four = Size::from_bytes(4);
         let map = AllocationMap::<()>::new();
 
-        // Correctly tells where we should insert the first element (at index 0)
+        // Correctly tells where we should insert the first element (at position 0)
         assert_eq!(map.find_offset(Size::from_bytes(3)), Err(0));
 
-        // Correctly tells the access type along with the supposed index
+        // Correctly tells the access type along with the supposed position
         assert_eq!(map.access_type(alloc_range(Size::ZERO, four)), AccessType::Empty(0));
     }
 
@@ -166,10 +169,10 @@ mod tests {
 
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d
-        map.insert(0, alloc_range(four, four), "#");
+        map.insert_at_pos(0, alloc_range(four, four), "#");
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 ^ ^ ^ ^ 5 6 7 8 9 a b c d
-        map.insert(0, alloc_range(Size::from_bytes(1), four), "@");
+        map.insert_at_pos(0, alloc_range(Size::from_bytes(1), four), "@");
     }
 
     #[test]
@@ -180,7 +183,7 @@ mod tests {
 
         // |#|#|#|#|_|_|...
         //  0 1 2 3 4 5
-        map.insert(0, alloc_range(Size::ZERO, four), "#");
+        map.insert_at_pos(0, alloc_range(Size::ZERO, four), "#");
         // |#|#|#|#|_|_|...
         //  0 1 2 3 ^ 5
         assert_eq!(map.find_offset(four), Err(1));
@@ -191,7 +194,7 @@ mod tests {
         let eight = Size::from_bytes(8);
         // |#|#|#|#|_|_|_|_|@|@|@|@|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d
-        map.insert(1, alloc_range(eight, four), "@");
+        map.insert_at_pos(1, alloc_range(eight, four), "@");
         // |#|#|#|#|_|_|_|_|@|@|@|@|_|_|...
         //  0 1 2 3 4 5 6 ^ 8 9 a b c d
         assert_eq!(map.find_offset(Size::from_bytes(7)), Err(1));
@@ -208,7 +211,7 @@ mod tests {
 
         // |#|#|#|#|_|_|...
         //  0 1 2 3 4 5
-        map.insert(0, alloc_range(Size::ZERO, four), "#");
+        map.insert_at_pos(0, alloc_range(Size::ZERO, four), "#");
         // |#|#|#|#|_|_|...
         //  ^ ^ ^ ^ 4 5
         assert_eq!(map.find_offset(Size::ZERO), Ok(0));
@@ -219,7 +222,7 @@ mod tests {
 
         // |#|#|#|#|@|@|@|@|_|...
         //  0 1 2 3 4 5 6 7 8
-        map.insert(1, alloc_range(four, four), "@");
+        map.insert_at_pos(1, alloc_range(four, four), "@");
         // |#|#|#|#|@|@|@|@|_|...
         //  0 1 2 3 ^ ^ ^ ^ 8
         assert_eq!(map.find_offset(four), Ok(1));
@@ -234,7 +237,7 @@ mod tests {
 
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d
-        map.insert(0, alloc_range(four, four), "#");
+        map.insert_at_pos(0, alloc_range(four, four), "#");
         // |_|_|_|_|#|#|#|#|_|_|_|_|...
         //  0 1 ^ ^ ^ ^ 6 7 8 9 a b c d
         assert_eq!(
@@ -256,7 +259,7 @@ mod tests {
 
         // |_|_|_|_|#|#|#|#|_|_|@|@|_|_|...
         //  0 1 2 3 4 5 6 7 8 9 a b c d
-        map.insert(1, alloc_range(Size::from_bytes(10), Size::from_bytes(2)), "@");
+        map.insert_at_pos(1, alloc_range(Size::from_bytes(10), Size::from_bytes(2)), "@");
         // |_|_|_|_|#|#|#|#|_|_|@|@|_|_|...
         //  0 1 2 3 4 5 ^ ^ ^ ^ ^ ^ ^ ^
         assert_eq!(
