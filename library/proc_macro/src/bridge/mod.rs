@@ -254,7 +254,6 @@ mod api_tags {
                 rpc_encode_decode!(enum $name { $($method),* });
             )*
 
-
             pub(super) enum Method {
                 $($name($name)),*
             }
