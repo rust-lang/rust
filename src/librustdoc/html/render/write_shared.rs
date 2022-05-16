@@ -438,7 +438,13 @@ pub(super) fn write_shared(
     write_crate("search-index.js", &|| {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
-        v.push_str("\\\n}');\nif (window.initSearch) {window.initSearch(searchIndex)};");
+        v.push_str(
+            r#"\
+}');
+if (typeof window !== 'undefined' && window.initSearch) {window.initSearch(searchIndex)};
+if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
+"#,
+        );
         Ok(v.into_bytes())
     })?;
 
