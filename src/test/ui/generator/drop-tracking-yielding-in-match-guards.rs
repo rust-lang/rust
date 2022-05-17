@@ -14,20 +14,8 @@
 #![feature(generators)]
 
 fn main() {
-    let _a = static |x: u8| match x {
+    let _ = static |x: u8| match x {
         y if { yield } == y + 1 => (),
-        _ => (),
-    };
-
-    static STATIC: u8 = 42;
-    let _b = static |x: u8| match x {
-        y if { yield } == STATIC + 1 => (),
-        _ => (),
-    };
-
-    let upvar = 42u8;
-    let _c = static |x: u8| match x {
-        y if { yield } == upvar + 1 => (),
         _ => (),
     };
 }
