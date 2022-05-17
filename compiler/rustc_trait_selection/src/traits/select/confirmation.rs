@@ -17,17 +17,15 @@ use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
-use crate::traits::select::TraitObligationExt;
 use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
 use crate::traits::{
-    BuiltinDerivedObligation, DerivedObligationCause, ImplDerivedObligation,
-    ImplDerivedObligationCause, ImplSource, ImplSourceAutoImplData, ImplSourceBuiltinData,
-    ImplSourceClosureData, ImplSourceConstDestructData, ImplSourceDiscriminantKindData,
-    ImplSourceFnPointerData, ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData,
-    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
-    ObjectCastObligation, Obligation, ObligationCause, OutputTypeParameterMismatch,
-    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, TraitObligation,
-    Unimplemented, VtblSegment,
+    BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
+    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
+    ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
+    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
+    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
+    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
+    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented, VtblSegment,
 };
 
 use super::BuiltinImplConditions;
@@ -1128,21 +1126,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let substs = self.rematch_impl(impl_def_id, &new_obligation);
                 debug!(?substs, "impl substs");
 
-                let derived = DerivedObligationCause {
-                    parent_trait_pred: obligation.predicate,
-                    parent_code: obligation.cause.clone_code(),
-                };
-                let derived_code = ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
-                    derived,
-                    impl_def_id,
-                    span: obligation.cause.span,
-                }));
-
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    derived_code,
-                );
+                let cause = obligation.derived_cause(|derived| {
+                    ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                        derived,
+                        impl_def_id,
+                        span: obligation.cause.span,
+                    }))
+                });
                 ensure_sufficient_stack(|| {
                     self.vtable_impl(
                         impl_def_id,

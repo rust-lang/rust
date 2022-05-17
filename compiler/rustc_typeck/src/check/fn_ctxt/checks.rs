@@ -12,7 +12,6 @@ use crate::check::{
 use crate::structured_errors::StructuredDiagnostic;
 
 use rustc_ast as ast;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1596,24 +1595,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Peel derived obligation, because it's the type that originally
             // started this inference chain that matters, not the one we wound
             // up with at the end.
-            fn unpeel_to_top(
-                mut code: Lrc<ObligationCauseCode<'_>>,
-            ) -> Lrc<ObligationCauseCode<'_>> {
-                let mut result_code = code.clone();
+            fn unpeel_to_top<'a, 'tcx>(
+                mut code: &'a ObligationCauseCode<'tcx>,
+            ) -> &'a ObligationCauseCode<'tcx> {
+                let mut result_code = code;
                 loop {
-                    let parent = match &*code {
-                        ObligationCauseCode::ImplDerivedObligation(c) => {
-                            c.derived.parent_code.clone()
-                        }
+                    let parent = match code {
+                        ObligationCauseCode::ImplDerivedObligation(c) => &c.derived.parent_code,
                         ObligationCauseCode::BuiltinDerivedObligation(c)
-                        | ObligationCauseCode::DerivedObligation(c) => c.parent_code.clone(),
-                        _ => break,
+                        | ObligationCauseCode::DerivedObligation(c) => &c.parent_code,
+                        _ => break result_code,
                     };
-                    result_code = std::mem::replace(&mut code, parent);
+                    (result_code, code) = (code, parent);
                 }
-                result_code
             }
-            let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(error.obligation.cause.clone_code()) {
+            let self_: ty::subst::GenericArg<'_> = match unpeel_to_top(error.obligation.cause.code()) {
                 ObligationCauseCode::BuiltinDerivedObligation(code) |
                 ObligationCauseCode::DerivedObligation(code) => {
                     code.parent_trait_pred.self_ty().skip_binder().into()
@@ -1663,13 +1659,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We make sure that only *one* argument matches the obligation failure
                 // and we assign the obligation's span to its expression's.
                 error.obligation.cause.span = args[ref_in].span;
-                let parent_code = error.obligation.cause.clone_code();
-                *error.obligation.cause.make_mut_code() =
+                error.obligation.cause.map_code(|parent_code| {
                     ObligationCauseCode::FunctionArgumentObligation {
                         arg_hir_id: args[ref_in].hir_id,
                         call_hir_id: expr.hir_id,
                         parent_code,
-                    };
+                    }
+                });
             } else if error.obligation.cause.span == call_sp {
                 // Make function calls point at the callee, not the whole thing.
                 if let hir::ExprKind::Call(callee, _) = expr.kind {

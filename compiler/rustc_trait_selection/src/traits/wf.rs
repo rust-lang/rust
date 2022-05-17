@@ -294,30 +294,22 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
 
         debug!("compute_trait_ref obligations {:?}", obligations);
-        let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
         let depth = self.recursion_depth;
 
         let item = self.item;
 
-        let extend = |obligation: traits::PredicateObligation<'tcx>| {
-            let mut cause = cause.clone();
-            if let Some(parent_trait_pred) = obligation.predicate.to_opt_poly_trait_pred() {
-                let derived_cause = traits::DerivedObligationCause {
+        let extend = |traits::PredicateObligation { predicate, mut cause, .. }| {
+            if let Some(parent_trait_pred) = predicate.to_opt_poly_trait_pred() {
+                cause = cause.derived_cause(
                     parent_trait_pred,
-                    parent_code: obligation.cause.clone_code(),
-                };
-                *cause.make_mut_code() =
-                    traits::ObligationCauseCode::DerivedObligation(derived_cause);
+                    traits::ObligationCauseCode::DerivedObligation,
+                );
             }
             extend_cause_with_original_assoc_item_obligation(
-                tcx,
-                trait_ref,
-                item,
-                &mut cause,
-                obligation.predicate,
+                tcx, trait_ref, item, &mut cause, predicate,
             );
-            traits::Obligation::with_depth(cause, depth, param_env, obligation.predicate)
+            traits::Obligation::with_depth(cause, depth, param_env, predicate)
         };
 
         if let Elaborate::All = elaborate {
@@ -339,17 +331,17 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 })
                 .filter(|(_, arg)| !arg.has_escaping_bound_vars())
                 .map(|(i, arg)| {
-                    let mut new_cause = cause.clone();
+                    let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
                     // The first subst is the self ty - use the correct span for it.
                     if i == 0 {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)
                         {
-                            new_cause.span = self_ty.span;
+                            cause.span = self_ty.span;
                         }
                     }
                     traits::Obligation::with_depth(
-                        new_cause,
+                        cause,
                         depth,
                         param_env,
                         ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(tcx),

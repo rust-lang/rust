@@ -2,11 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    DerivedObligationCause, EvaluationResult, FulfillmentContext, FulfillmentError,
-    FulfillmentErrorCode, ImplDerivedObligationCause, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, OnUnimplementedDirective, OnUnimplementedNote,
-    OutputTypeParameterMismatch, Overflow, PredicateObligation, SelectionContext, SelectionError,
-    TraitNotObjectSafe,
+    EvaluationResult, FulfillmentContext, FulfillmentError, FulfillmentErrorCode,
+    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
+    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
+    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -684,42 +683,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 let mut code = obligation.cause.code();
                                 let mut trait_pred = trait_predicate;
                                 let mut peeled = false;
-                                loop {
-                                    match &*code {
-                                        ObligationCauseCode::FunctionArgumentObligation {
-                                            parent_code,
-                                            ..
-                                        } => {
-                                            code = &parent_code;
-                                        }
-                                        ObligationCauseCode::ImplDerivedObligation(
-                                            box ImplDerivedObligationCause {
-                                                derived:
-                                                    DerivedObligationCause {
-                                                        parent_code,
-                                                        parent_trait_pred,
-                                                    },
-                                                ..
-                                            },
-                                        )
-                                        | ObligationCauseCode::BuiltinDerivedObligation(
-                                            DerivedObligationCause {
-                                                parent_code,
-                                                parent_trait_pred,
-                                            },
-                                        )
-                                        | ObligationCauseCode::DerivedObligation(
-                                            DerivedObligationCause {
-                                                parent_code,
-                                                parent_trait_pred,
-                                            },
-                                        ) => {
-                                            peeled = true;
-                                            code = &parent_code;
-                                            trait_pred = *parent_trait_pred;
-                                        }
-                                        _ => break,
-                                    };
+                                while let Some((parent_code, parent_trait_pred)) = code.parent() {
+                                    code = parent_code;
+                                    if let Some(parent_trait_pred) = parent_trait_pred {
+                                        trait_pred = parent_trait_pred;
+                                        peeled = true;
+                                    }
                                 }
                                 let def_id = trait_pred.def_id();
                                 // Mention *all* the `impl`s for the *top most* obligation, the

@@ -14,9 +14,9 @@ use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
 use super::{
-    DerivedObligationCause, ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause,
-    Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitObligation, TraitQueryMode,
+    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
+    ObligationCause, ObligationCauseCode, Overflow, PredicateObligation, Selection, SelectionError,
+    SelectionResult, TraitObligation, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -2314,17 +2314,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?predicates);
         assert_eq!(predicates.parent, None);
         let mut obligations = Vec::with_capacity(predicates.predicates.len());
-        let parent_code = cause.clone_code();
         for (predicate, span) in predicates.predicates {
             let span = *span;
-            let derived =
-                DerivedObligationCause { parent_trait_pred, parent_code: parent_code.clone() };
-            let code = ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
-                derived,
-                impl_def_id: def_id,
-                span,
-            }));
-            let cause = ObligationCause::new(cause.span, cause.body_id, code);
+            let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
+                ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                    derived,
+                    impl_def_id: def_id,
+                    span,
+                }))
+            });
             let predicate = normalize_with_depth_to(
                 self,
                 param_env,
@@ -2337,42 +2335,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         obligations
-    }
-}
-
-trait TraitObligationExt<'tcx> {
-    fn derived_cause(
-        &self,
-        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
-    ) -> ObligationCause<'tcx>;
-}
-
-impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
-    fn derived_cause(
-        &self,
-        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
-    ) -> ObligationCause<'tcx> {
-        /*!
-         * Creates a cause for obligations that are derived from
-         * `obligation` by a recursive search (e.g., for a builtin
-         * bound, or eventually a `auto trait Foo`). If `obligation`
-         * is itself a derived obligation, this is just a clone, but
-         * otherwise we create a "derived obligation" cause so as to
-         * keep track of the original root obligation for error
-         * reporting.
-         */
-
-        let obligation = self;
-
-        // NOTE(flaper87): As of now, it keeps track of the whole error
-        // chain. Ideally, we should have a way to configure this either
-        // by using -Z verbose or just a CLI argument.
-        let derived_cause = DerivedObligationCause {
-            parent_trait_pred: obligation.predicate,
-            parent_code: obligation.cause.clone_code(),
-        };
-        let derived_code = variant(derived_cause);
-        ObligationCause::new(obligation.cause.span, obligation.cause.body_id, derived_code)
     }
 }
 

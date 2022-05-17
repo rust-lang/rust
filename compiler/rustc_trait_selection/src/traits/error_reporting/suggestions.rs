@@ -1,6 +1,6 @@
 use super::{
-    DerivedObligationCause, EvaluationResult, ImplDerivedObligationCause, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionContext,
+    EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::autoderef::Autoderef;
@@ -623,28 +623,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
         let mut real_trait_pred = trait_pred;
         let mut code = obligation.cause.code();
-        loop {
-            match &code {
-                ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                    code = &parent_code;
-                }
-                ObligationCauseCode::ImplDerivedObligation(box ImplDerivedObligationCause {
-                    derived: DerivedObligationCause { parent_code, parent_trait_pred },
-                    ..
-                })
-                | ObligationCauseCode::BuiltinDerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                })
-                | ObligationCauseCode::DerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                }) => {
-                    code = &parent_code;
-                    real_trait_pred = *parent_trait_pred;
-                }
-                _ => break,
-            };
+        while let Some((parent_code, parent_trait_pred)) = code.parent() {
+            code = parent_code;
+            if let Some(parent_trait_pred) = parent_trait_pred {
+                real_trait_pred = parent_trait_pred;
+            }
             let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
                 continue;
             };
@@ -1669,7 +1652,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
                 ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                    next_code = Some(parent_code.as_ref());
+                    next_code = Some(parent_code);
                 }
                 ObligationCauseCode::ImplDerivedObligation(cause) => {
                     let ty = cause.derived.parent_trait_pred.skip_binder().self_ty();
@@ -1700,7 +1683,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => {}
                     }
 
-                    next_code = Some(cause.derived.parent_code.as_ref());
+                    next_code = Some(&cause.derived.parent_code);
                 }
                 ObligationCauseCode::DerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
@@ -1732,7 +1715,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => {}
                     }
 
-                    next_code = Some(derived_obligation.parent_code.as_ref());
+                    next_code = Some(&derived_obligation.parent_code);
                 }
                 _ => break,
             }
@@ -2382,8 +2365,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
                 } else {
-                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data) =
-                        *data.parent_code
+                    if let ObligationCauseCode::BuiltinDerivedObligation(data) = &*data.parent_code
                     {
                         let parent_trait_ref =
                             self.resolve_vars_if_possible(data.parent_trait_pred);
@@ -2428,7 +2410,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err,
                             &parent_predicate,
                             param_env,
-                            &cause_code.peel_derives(),
+                            cause_code.peel_derives(),
                             obligated_types,
                             seen_requirements,
                         )
