@@ -79,6 +79,9 @@ pub struct Flags {
     //
     // llvm_out/build/profiles/ is the location this writes to.
     pub llvm_profile_generate: bool,
+
+    pub libstd_profile_use: Option<String>,
+    pub libstd_profile_generate: Option<String>,
 }
 
 #[cfg_attr(test, derive(Clone))]
@@ -247,6 +250,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optopt("", "rust-profile-use", "use PGO profile for rustc build", "PROFILE");
         opts.optflag("", "llvm-profile-generate", "generate PGO profile with llvm built for rustc");
         opts.optopt("", "llvm-profile-use", "use PGO profile for llvm build", "PROFILE");
+        opts.optopt(
+            "",
+            "libstd-profile-generate",
+            "generate PGO profile with libstd build",
+            "PROFILE",
+        );
+        opts.optopt("", "libstd-profile-use", "use PGO profile for libstd build", "PROFILE");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -676,6 +686,8 @@ Arguments:
             rust_profile_generate: matches.opt_str("rust-profile-generate"),
             llvm_profile_use: matches.opt_str("llvm-profile-use"),
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
+            libstd_profile_use: matches.opt_str("libstd-profile-use"),
+            libstd_profile_generate: matches.opt_str("libstd-profile-generate"),
         }
     }
 }

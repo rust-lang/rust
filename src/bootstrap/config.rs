@@ -156,6 +156,8 @@ pub struct Config {
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub libstd_profile_use: Option<String>,
+    pub libstd_profile_generate: Option<String>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -797,6 +799,8 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.libstd_profile_use = flags.libstd_profile_use;
+        config.libstd_profile_generate = flags.libstd_profile_generate;
 
         let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));

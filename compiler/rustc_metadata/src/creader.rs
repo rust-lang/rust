@@ -772,6 +772,11 @@ impl<'a> CrateLoader<'a> {
 
         info!("loading profiler");
 
+        let local_crate_name = self.local_crate_name.as_str();
+        if std::env::var("RUST_LIBSTD_PGO").is_ok() && local_crate_name != "std" {
+            return;
+        }
+
         let name = Symbol::intern(&self.sess.opts.debugging_opts.profiler_runtime);
         if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
             self.sess.err(

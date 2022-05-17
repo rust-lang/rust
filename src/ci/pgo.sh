@@ -120,6 +120,26 @@ du -sh ${RUSTC_PROFILE_DIRECTORY_ROOT}
 echo "Profile file count"
 find ${RUSTC_PROFILE_DIRECTORY_ROOT} -type f | wc -l
 
+rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
+
+python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
+    --stage 2 library/std \
+    --rust-profile-use=/tmp/rustc-pgo.profdata \
+    --libstd-profile-generate=/tmp/libstd-pgo
+
+# Here we're profiling the `rustc` frontend, so we also include `Check`.
+# The benchmark set includes various stress tests that put the frontend under pressure.
+LLVM_PROFILE_FILE=/tmp/libstd-pgo/default_%m_%p.profraw gather_profiles "Check,Debug,Opt" "All" \
+  "externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress"
+
+# Merge the profile data we gathered
+./build/$PGO_HOST/llvm/bin/llvm-profdata \
+    merge -o /tmp/libstd-pgo.profdata /tmp/libstd-pgo
+
+echo "libstd PGO statistics"
+./build/$PGO_HOST/llvm/bin/llvm-profdata \
+    show /tmp/libstd-pgo.profdata --all-functions
+
 # Rustbuild currently doesn't support rebuilding LLVM when PGO options
 # change (or any other llvm-related options); so just clear out the relevant
 # directories ourselves.
@@ -129,4 +149,5 @@ rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
 # collected profiling data.
 $@ \
     --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
-    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE} \
+    --libstd-profile-use=/tmp/libstd-pgo.profdata
