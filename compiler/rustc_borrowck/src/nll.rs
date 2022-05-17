@@ -108,7 +108,7 @@ fn populate_polonius_move_facts(
                     // We are at the terminator of an init that has a panic path,
                     // and where the init should not happen on panic
 
-                    for &successor in block_data.terminator().successors() {
+                    for successor in block_data.terminator().successors() {
                         if body[successor].is_cleanup {
                             continue;
                         }
