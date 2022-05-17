@@ -74,11 +74,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
+    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
     Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
     TraitRef, TyKind, UnOp,
 };
@@ -2068,35 +2067,6 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-struct TestItemNamesVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    names: Vec<Symbol>,
-}
-
-impl<'hir> ItemLikeVisitor<'hir> for TestItemNamesVisitor<'hir> {
-    fn visit_item(&mut self, item: &Item<'_>) {
-        if let ItemKind::Const(ty, _body) = item.kind {
-            if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
-                // We could also check for the type name `test::TestDescAndFn`
-                if let Res::Def(DefKind::Struct, _) = path.res {
-                    let has_test_marker = self
-                        .tcx
-                        .hir()
-                        .attrs(item.hir_id())
-                        .iter()
-                        .any(|a| a.has_name(sym::rustc_test_marker));
-                    if has_test_marker {
-                        self.names.push(item.ident.name);
-                    }
-                }
-            }
-        }
-    }
-    fn visit_trait_item(&mut self, _: &TraitItem<'_>) {}
-    fn visit_impl_item(&mut self, _: &ImplItem<'_>) {}
-    fn visit_foreign_item(&mut self, _: &ForeignItem<'_>) {}
-}
-
 static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = SyncOnceCell::new();
 
 fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
@@ -2105,10 +2075,28 @@ fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(
     match map.entry(module) {
         Entry::Occupied(entry) => f(entry.get()),
         Entry::Vacant(entry) => {
-            let mut visitor = TestItemNamesVisitor { tcx, names: Vec::new() };
-            tcx.hir().visit_item_likes_in_module(module, &mut visitor);
-            visitor.names.sort_unstable();
-            f(&*entry.insert(visitor.names))
+            let mut names = Vec::new();
+            for id in tcx.hir().module_items(module) {
+                if matches!(tcx.def_kind(id.def_id), DefKind::Const)
+                    && let item = tcx.hir().item(id)
+                    && let ItemKind::Const(ty, _body) = item.kind {
+                    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+                        // We could also check for the type name `test::TestDescAndFn`
+                        if let Res::Def(DefKind::Struct, _) = path.res {
+                            let has_test_marker = tcx
+                                .hir()
+                                .attrs(item.hir_id())
+                                .iter()
+                                .any(|a| a.has_name(sym::rustc_test_marker));
+                            if has_test_marker {
+                                names.push(item.ident.name);
+                            }
+                        }
+                    }
+                }
+            }
+            names.sort_unstable();
+            f(&*entry.insert(names))
         },
     }
 }
