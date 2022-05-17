@@ -433,24 +433,6 @@ pub(crate) fn inlay_hint(
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
-            _ => inlay_hint.label.to_string(),
-        }),
-        kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
-                Some(lsp_types::InlayHintKind::TYPE)
-            }
-            InlayKind::BindingModeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrowHint
-            | InlayKind::ClosingBraceHint => None,
-        },
-        tooltip: None,
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
@@ -471,7 +453,25 @@ pub(crate) fn inlay_hint(
             InlayKind::BindingModeHint => inlay_hint.label != "&",
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
+        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
+            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
+            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
+            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
+            _ => inlay_hint.label,
+        }),
+        kind: match inlay_hint.kind {
+            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
+                Some(lsp_types::InlayHintKind::TYPE)
+            }
+            InlayKind::BindingModeHint
+            | InlayKind::GenericParamListHint
+            | InlayKind::LifetimeHint
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::ClosingBraceHint => None,
+        },
         text_edits: None,
+        tooltip: None,
         data: None,
     }
 }

@@ -8,7 +8,7 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
-    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, TextRange, T,
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, T,
 };
 
 use crate::FileId;
@@ -60,7 +60,7 @@ pub enum InlayKind {
 pub struct InlayHint {
     pub range: TextRange,
     pub kind: InlayKind,
-    pub label: SmolStr,
+    pub label: String,
 }
 
 // Feature: Inlay Hints
@@ -248,7 +248,7 @@ fn closing_brace_hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label: label.into(),
+        label,
     });
 
     None
@@ -262,6 +262,13 @@ fn lifetime_fn_hints(
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
     }
+
+    let mk_lt_hint = |t: SyntaxToken, label| InlayHint {
+        range: t.text_range(),
+        kind: InlayKind::LifetimeHint,
+        label,
+    };
+
     let param_list = func.param_list()?;
     let generic_param_list = func.generic_param_list();
     let ret_type = func.ret_type();
@@ -378,11 +385,7 @@ fn lifetime_fn_hints(
                 ast::Type::RefType(ty) if ty.lifetime().is_none() => {
                     if let Some(amp) = ty.amp_token() {
                         is_trivial = false;
-                        acc.push(InlayHint {
-                            range: amp.text_range(),
-                            kind: InlayKind::LifetimeHint,
-                            label: output_lt.clone(),
-                        });
+                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
                     }
                 }
                 _ => (),
@@ -398,8 +401,8 @@ fn lifetime_fn_hints(
     for (_, amp_token, _, is_elided) in potential_lt_refs {
         if is_elided {
             let t = amp_token?;
-            let lt = a.next()?.clone();
-            acc.push(InlayHint { range: t.text_range(), kind: InlayKind::LifetimeHint, label: lt });
+            let lt = a.next()?;
+            acc.push(mk_lt_hint(t, lt.to_string()));
         }
     }
 
@@ -409,16 +412,14 @@ fn lifetime_fn_hints(
         (Some(gpl), allocated_lifetimes) => {
             let angle_tok = gpl.l_angle_token()?;
             let is_empty = gpl.generic_params().next().is_none();
-            acc.push(InlayHint {
-                range: angle_tok.text_range(),
-                kind: InlayKind::GenericParamListHint,
-                label: format!(
+            acc.push(mk_lt_hint(
+                angle_tok,
+                format!(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
                     if is_empty { "" } else { ", " }
-                )
-                .into(),
-            });
+                ),
+            ));
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
@@ -456,7 +457,7 @@ fn closure_ret_hints(
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string()),
     });
     Some(())
 }
@@ -482,7 +483,7 @@ fn reborrow_hints(
     acc.push(InlayHint {
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrowHint,
-        label: SmolStr::new_inline(label),
+        label: label.to_string(),
     });
     Some(())
 }
@@ -539,7 +540,7 @@ fn chaining_hints(
                 range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
-                    ty.display_truncated(sema.db, config.max_length).to_string().into()
+                    ty.display_truncated(sema.db, config.max_length).to_string()
                 }),
             });
         }
@@ -606,11 +607,7 @@ fn binding_mode_hints(
             (true, false) => "&",
             _ => return,
         };
-        acc.push(InlayHint {
-            range,
-            kind: InlayKind::BindingModeHint,
-            label: SmolStr::new_inline(r),
-        });
+        acc.push(InlayHint { range, kind: InlayKind::BindingModeHint, label: r.to_string() });
     });
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
@@ -620,11 +617,7 @@ fn binding_mode_hints(
                 hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
                 hir::BindingMode::Ref(Mutability::Shared) => "ref",
             };
-            acc.push(InlayHint {
-                range,
-                kind: InlayKind::BindingModeHint,
-                label: SmolStr::new_inline(bm),
-            });
+            acc.push(InlayHint { range, kind: InlayKind::BindingModeHint, label: bm.to_string() });
         }
         _ => (),
     }
@@ -663,7 +656,7 @@ fn bind_pat_hints(
             {
                 return None;
             }
-            ty_name.into()
+            ty_name
         }
     };
 
@@ -738,7 +731,7 @@ fn hint_iterator(
     famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
     ty: &hir::Type,
-) -> Option<SmolStr> {
+) -> Option<String> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate();
@@ -775,7 +768,7 @@ fn hint_iterator(
                     )
                     .to_string()
                 });
-            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into());
+            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END));
         }
     }
 
