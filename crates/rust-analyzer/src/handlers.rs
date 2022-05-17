@@ -1360,46 +1360,34 @@ pub(crate) fn handle_inlay_hints_resolve(
     mut hint: InlayHint,
 ) -> Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
-    let succ = (|| {
-        let data = match hint.data.take() {
-            Some(it) => it,
-            None => return Ok(None),
-        };
+    let data = match hint.data.take() {
+        Some(it) => it,
+        None => return Ok(hint),
+    };
 
-        let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
 
-        let file_range = from_proto::file_range(
-            &snap,
-            resolve_data.position.text_document,
-            Range::new(resolve_data.position.position, resolve_data.position.position),
-        )?;
-        let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
-            None => return Ok(None),
-            Some(info) => info,
-        };
+    let file_range = from_proto::file_range(
+        &snap,
+        resolve_data.text_document,
+        match resolve_data.position {
+            PositionOrRange::Position(pos) => Range::new(pos, pos),
+            PositionOrRange::Range(range) => range,
+        },
+    )?;
+    let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
+        None => return Ok(hint),
+        Some(info) => info,
+    };
 
-        let markup_kind =
-            snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
+    let markup_kind =
+        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
 
-        // FIXME: hover actions?
-        hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
-            info.info.markup,
-            markup_kind,
-        )));
-        Result::<_, crate::Error>::Ok(Some(()))
-    })()?
-    .is_some();
-
-    if !succ {
-        if let lsp_types::InlayHintLabel::String(s) = &hint.label {
-            hint.tooltip =
-                Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
-                    kind: lsp_types::MarkupKind::PlainText,
-                    value: s.clone(),
-                }));
-        }
-    }
-
+    // FIXME: hover actions?
+    hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
+        info.info.markup,
+        markup_kind,
+    )));
     Ok(hint)
 }
 

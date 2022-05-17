@@ -48,7 +48,7 @@ pub enum ReborrowHints {
 pub enum InlayKind {
     BindingModeHint,
     ChainingHint,
-    ClosingBraceHint(Option<TextSize>),
+    ClosingBraceHint,
     ClosureReturnTypeHint,
     GenericParamListHint,
     ImplicitReborrowHint,
@@ -57,11 +57,19 @@ pub enum InlayKind {
     TypeHint,
 }
 
+// FIXME: This should live somewhere more general
+#[derive(Debug)]
+pub enum RangeOrOffset {
+    Range(TextRange),
+    Offset(TextSize),
+}
+
 #[derive(Debug)]
 pub struct InlayHint {
     pub range: TextRange,
     pub kind: InlayKind,
     pub label: String,
+    pub hover_trigger: Option<RangeOrOffset>,
 }
 
 // Feature: Inlay Hints
@@ -253,8 +261,9 @@ fn closing_brace_hints(
 
     acc.push(InlayHint {
         range: closing_token.text_range(),
-        kind: InlayKind::ClosingBraceHint(name_offset),
+        kind: InlayKind::ClosingBraceHint,
         label,
+        hover_trigger: name_offset.map(RangeOrOffset::Offset),
     });
 
     None
@@ -273,6 +282,7 @@ fn lifetime_fn_hints(
         range: t.text_range(),
         kind: InlayKind::LifetimeHint,
         label,
+        hover_trigger: None,
     };
 
     let param_list = func.param_list()?;
@@ -431,6 +441,7 @@ fn lifetime_fn_hints(
             range: func.name()?.syntax().text_range(),
             kind: InlayKind::GenericParamListHint,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
+            hover_trigger: None,
         }),
     }
     Some(())
@@ -464,6 +475,7 @@ fn closure_ret_hints(
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
             .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string()),
+        hover_trigger: None,
     });
     Some(())
 }
@@ -490,6 +502,7 @@ fn reborrow_hints(
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrowHint,
         label: label.to_string(),
+        hover_trigger: None,
     });
     Some(())
 }
@@ -548,6 +561,7 @@ fn chaining_hints(
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
                     ty.display_truncated(sema.db, config.max_length).to_string()
                 }),
+                hover_trigger: Some(RangeOrOffset::Range(expr.syntax().text_range())),
             });
         }
     }
@@ -588,6 +602,8 @@ fn param_name_hints(
             range,
             kind: InlayKind::ParameterHint,
             label: param_name.into(),
+            // FIXME: Show hover for parameter
+            hover_trigger: None,
         });
 
     acc.extend(hints);
@@ -613,7 +629,12 @@ fn binding_mode_hints(
             (true, false) => "&",
             _ => return,
         };
-        acc.push(InlayHint { range, kind: InlayKind::BindingModeHint, label: r.to_string() });
+        acc.push(InlayHint {
+            range,
+            kind: InlayKind::BindingModeHint,
+            label: r.to_string(),
+            hover_trigger: None,
+        });
     });
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
@@ -623,7 +644,12 @@ fn binding_mode_hints(
                 hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
                 hir::BindingMode::Ref(Mutability::Shared) => "ref",
             };
-            acc.push(InlayHint { range, kind: InlayKind::BindingModeHint, label: bm.to_string() });
+            acc.push(InlayHint {
+                range,
+                kind: InlayKind::BindingModeHint,
+                label: bm.to_string(),
+                hover_trigger: None,
+            });
         }
         _ => (),
     }
@@ -673,6 +699,7 @@ fn bind_pat_hints(
         },
         kind: InlayKind::TypeHint,
         label,
+        hover_trigger: pat.name().map(|it| it.syntax().text_range()).map(RangeOrOffset::Range),
     });
 
     Some(())

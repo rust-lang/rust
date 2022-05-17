@@ -520,7 +520,8 @@ pub struct CompletionResolveData {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
-    pub position: lsp_types::TextDocumentPositionParams,
+    pub text_document: TextDocumentIdentifier,
+    pub position: PositionOrRange,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
