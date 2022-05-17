@@ -123,7 +123,7 @@
                     output += `<label for="${js_data_name}-${option}" class="choice">\
                            <input type="radio" name="${js_data_name}" \
                                 id="${js_data_name}-${option}" value="${option}"${checked}>\
-                           ${option}\
+                           <span>${option}</span>\
                          </label>`;
                 });
                 output += "</div></div>";
