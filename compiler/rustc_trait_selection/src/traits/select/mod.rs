@@ -16,10 +16,10 @@ use super::wf;
 use super::{
     DerivedObligationCause, ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause,
     Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitObligation, TraitQueryMode,
+    Selection, SelectionError, SelectionResult, TraitObligation,
 };
 
-use crate::infer::{InferCtxt, InferOk, TypeFreshener};
+use crate::infer::{InferCtxt, InferOk, TraitQueryMode, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;

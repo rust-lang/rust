@@ -2,9 +2,10 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
+use rustc_trait_selection::infer::TraitQueryMode;
 use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
 use rustc_trait_selection::traits::{
-    EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
+    EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext,
 };
 
 crate fn provide(p: &mut Providers) {

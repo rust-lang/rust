@@ -1,5 +1,6 @@
 pub mod on_unimplemented;
 pub mod suggestions;
+pub mod warnings;
 
 use super::{
     DerivedObligationCause, EvaluationResult, FulfillmentContext, FulfillmentError,
@@ -2068,7 +2069,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 let mut selcx = SelectionContext::with_query_mode(
                     &self,
-                    crate::traits::TraitQueryMode::Standard,
+                    crate::infer::TraitQueryMode::Standard,
                 );
                 match selcx.select_from_obligation(&obligation) {
                     Err(SelectionError::Ambiguous(impls)) if impls.len() > 1 => {

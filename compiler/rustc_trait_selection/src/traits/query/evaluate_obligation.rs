@@ -1,10 +1,8 @@
 use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
-use crate::infer::InferCtxt;
-use crate::traits::{
-    EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
-};
+use crate::infer::{InferCtxt, TraitQueryMode};
+use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
