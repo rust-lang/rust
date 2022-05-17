@@ -1042,8 +1042,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::InlineAsm { .. } => {}
+            | TerminatorKind::FalseUnwind { .. } => {}
 
             // Resume will *continue* unwinding, but if there's no other unwinding terminator it
             // will never be reached.
@@ -1057,6 +1056,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
         }
     }
