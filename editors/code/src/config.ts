@@ -172,7 +172,7 @@ export async function updateConfig(config: vscode.WorkspaceConfiguration) {
         ["hoverActions.run", "hover.actions.run.enable",],
         ["inlayHints.chainingHints", "inlayHints.chainingHints.enable",],
         ["inlayHints.closureReturnTypeHints", "inlayHints.closureReturnTypeHints.enable",],
-        ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructorHints",],
+        ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructor",],
         ["inlayHints.parameterHints", "inlayHints.parameterHints.enable",],
         ["inlayHints.reborrowHints", "inlayHints.reborrowHints.enable",],
         ["inlayHints.typeHints", "inlayHints.typeHints.enable",],
