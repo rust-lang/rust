@@ -385,6 +385,26 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_let_else_to_match() {
+    check_doc_test(
+        "convert_let_else_to_match",
+        r#####"
+fn main() {
+    let Ok(mut x) = f() else$0 { return };
+}
+"#####,
+        r#####"
+fn main() {
+    let mut x = match f() {
+        Ok(x) => x,
+        _ => return,
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",

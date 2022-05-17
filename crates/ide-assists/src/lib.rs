@@ -117,6 +117,7 @@ mod handlers {
     mod convert_integer_literal;
     mod convert_into_to_from;
     mod convert_iter_for_each_to_for;
+    mod convert_let_else_to_match;
     mod convert_tuple_struct_to_named_struct;
     mod convert_to_guarded_return;
     mod convert_while_to_loop;
@@ -206,6 +207,7 @@ mod handlers {
             convert_into_to_from::convert_into_to_from,
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_iter_for_each_to_for::convert_for_loop_with_for_each,
+            convert_let_else_to_match::convert_let_else_to_match,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             convert_while_to_loop::convert_while_to_loop,
