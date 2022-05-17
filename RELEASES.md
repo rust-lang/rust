@@ -22,7 +22,7 @@ Libraries
 
 - [`ManuallyDrop<T>` is now documented to have the same layout as `T`][88375]
 - [`#[ignore = "…"]` messages are printed when running tests][92714]
-- [Consistently present absent stdio handles on Windows as NULL handles][93263]
+- [Consistently show absent stdio handles on Windows as NULL handles][93263]
 - [Make `std::io::stdio::lock()` return `'static` handles.][93965] Previously, the creation of locked handles to stdin/stdout/stderr would borrow the handles being locked, which prevented writing `let out = std::io::stdout().lock();` because `out` would outlive the return value of `stdout()`. Such code now works, eliminating a common pitfall that affected many Rust users.
 - [`Vec::from_raw_parts` is now less restrictive about its inputs][95016]
 - [`std::thread::available_parallelism` now takes cgroup quotas into account.][92697] Since `available_parallelism` is often used to create a thread pool for parallel computation, which may be CPU-bound for performance, `available_parallelism` will return a value consistent with the ability to use that many threads continuously, if possible. For instance, in a container with 8 virtual CPUs but quotas only allowing for 50% usage, `available_parallelism` will return 4.
