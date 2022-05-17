@@ -254,23 +254,23 @@ struct AmbiguousPlus {
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0178", slug = "parser-maybe-recover-from-bad-type-plus")]
-struct BadTypePlus<'a> {
+struct BadTypePlus {
     pub ty: String,
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: BadTypePlusSub<'a>,
+    pub sub: BadTypePlusSub,
 }
 
-#[derive(SessionSubdiagnostic, Clone, Copy)]
-pub enum BadTypePlusSub<'a> {
+#[derive(SessionSubdiagnostic)]
+pub enum BadTypePlusSub {
     #[suggestion(
         slug = "parser-add-paren",
         code = "{sum_with_parens}",
         applicability = "machine-applicable"
     )]
     AddParen {
-        sum_with_parens: &'a str,
+        sum_with_parens: String,
         #[primary_span]
         span: Span,
     },
@@ -1289,11 +1289,9 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
-        let sum_with_parens: String;
-
         let sub = match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
-                sum_with_parens = pprust::to_string(|s| {
+                let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
                     s.print_mutability(mut_ty.mutbl, false);
@@ -1303,7 +1301,7 @@ impl<'a> Parser<'a> {
                     s.pclose()
                 });
 
-                BadTypePlusSub::AddParen { sum_with_parens: &sum_with_parens, span: sum_span }
+                BadTypePlusSub::AddParen { sum_with_parens, span: sum_span }
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => BadTypePlusSub::ForgotParen { span: sum_span },
             _ => BadTypePlusSub::ExpectPath { span: sum_span },

@@ -71,30 +71,45 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     }
                 };
 
+                // Keep track of which fields are subdiagnostics
+                let mut subdiagnostics = std::collections::HashSet::new();
+
                 // Generates calls to `span_label` and similar functions based on the attributes
                 // on fields. Code for suggestions uses formatting machinery and the value of
                 // other fields - because any given field can be referenced multiple times, it
                 // should be accessed through a borrow. When passing fields to `set_arg` (which
                 // happens below) for Fluent, we want to move the data, so that has to happen
                 // in a separate pass over the fields.
-                let attrs = structure.each(|field_binding| {
-                    let field = field_binding.ast();
-                    let result = field.attrs.iter().map(|attr| {
-                        builder
-                            .generate_field_attr_code(
-                                attr,
-                                FieldInfo {
-                                    vis: &field.vis,
-                                    binding: field_binding,
-                                    ty: &field.ty,
-                                    span: &field.span(),
-                                },
-                            )
-                            .unwrap_or_else(|v| v.to_compile_error())
-                    });
+                let attrs = structure
+                    .clone()
+                    // Remove the fields that have a `subdiagnostic` attribute.
+                    .filter(|field_binding| {
+                        field_binding.ast().attrs.iter().all(|attr| {
+                            "subdiagnostic" != attr.path.segments.last().unwrap().ident.to_string()
+                                || {
+                                    subdiagnostics.insert(field_binding.binding.clone());
+                                    false
+                                }
+                        })
+                    })
+                    .each(|field_binding| {
+                        let field = field_binding.ast();
+                        let result = field.attrs.iter().map(|attr| {
+                            builder
+                                .generate_field_attr_code(
+                                    attr,
+                                    FieldInfo {
+                                        vis: &field.vis,
+                                        binding: field_binding,
+                                        ty: &field.ty,
+                                        span: &field.span(),
+                                    },
+                                )
+                                .unwrap_or_else(|v| v.to_compile_error())
+                        });
 
-                    quote! { #(#result);* }
-                });
+                        quote! { #(#result);* }
+                    });
 
                 // When generating `set_arg` calls, move data rather than borrow it to avoid
                 // requiring clones - this must therefore be the last use of each field (for
@@ -107,7 +122,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     // need to be passed as an argument to the diagnostic. But when a field has no
                     // attributes then it must be passed as an argument to the diagnostic so that
                     // it can be referred to by Fluent messages.
-                    if field.attrs.is_empty() {
+                    let tokens = if field.attrs.is_empty() {
                         let diag = &builder.diag;
                         let ident = field_binding.ast().ident.as_ref().unwrap();
                         quote! {
@@ -118,6 +133,27 @@ impl<'a> SessionDiagnosticDerive<'a> {
                         }
                     } else {
                         quote! {}
+                    };
+                    // If this field had a subdiagnostic attribute, we generate the code here to
+                    // avoid binding it twice.
+                    if subdiagnostics.contains(&field_binding.binding) {
+                        let result = field.attrs.iter().map(|attr| {
+                            builder
+                                .generate_field_attr_code(
+                                    attr,
+                                    FieldInfo {
+                                        vis: &field.vis,
+                                        binding: field_binding,
+                                        ty: &field.ty,
+                                        span: &field.span(),
+                                    },
+                                )
+                                .unwrap_or_else(|v| v.to_compile_error())
+                        });
+
+                        quote! { #(#result);* #tokens }
+                    } else {
+                        tokens
                     }
                 });
 
@@ -359,6 +395,8 @@ impl SessionDiagnosticDeriveBuilder {
         let (binding, needs_destructure) = match (name.as_str(), &inner_ty) {
             // `primary_span` can accept a `Vec<Span>` so don't destructure that.
             ("primary_span", FieldInnerTy::Vec(_)) => (quote! { #field_binding.clone() }, false),
+            // `subdiagnostics` are not derefed because they are bound by value.
+            ("subdiagnostic", _) => (quote! { #field_binding }, true),
             _ => (quote! { *#field_binding }, true),
         };
 
