@@ -175,6 +175,30 @@ macro_rules! with_api {
     };
 }
 
+// Similar to `with_api`, but only lists the types, and they are divided into
+// the two storage categories.
+macro_rules! with_api_types {
+    ($m:ident) => {
+        $m! {
+            'owned:
+            FreeFunctions,
+            TokenStream,
+            TokenStreamBuilder,
+            TokenStreamIter,
+            Group,
+            Literal,
+            SourceFile,
+            MultiSpan,
+            Diagnostic,
+
+            'interned:
+            Punct,
+            Ident,
+            Span,
+        }
+    };
+}
+
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
 // to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {

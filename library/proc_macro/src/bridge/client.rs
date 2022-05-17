@@ -11,9 +11,9 @@ macro_rules! define_handles {
     ) => {
         #[repr(C)]
         #[allow(non_snake_case)]
-        pub struct HandleCounters {
-            $($oty: AtomicUsize,)*
-            $($ity: AtomicUsize,)*
+        pub(super) struct HandleCounters {
+            $(pub(super) $oty: AtomicUsize,)*
+            $(pub(super) $ity: AtomicUsize,)*
         }
 
         impl HandleCounters {
@@ -25,23 +25,6 @@ macro_rules! define_handles {
                     $($ity: AtomicUsize::new(1),)*
                 };
                 &COUNTERS
-            }
-        }
-
-        // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
-        #[repr(C)]
-        #[allow(non_snake_case)]
-        pub(super) struct HandleStore<S: server::Types> {
-            $($oty: handle::OwnedStore<S::$oty>,)*
-            $($ity: handle::InternedStore<S::$ity>,)*
-        }
-
-        impl<S: server::Types> HandleStore<S> {
-            pub(super) fn new(handle_counters: &'static HandleCounters) -> Self {
-                HandleStore {
-                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
-                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
-                }
             }
         }
 
@@ -73,50 +56,15 @@ macro_rules! define_handles {
                 }
             }
 
-            impl<S: server::Types> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
-                for Marked<S::$oty, $oty>
-            {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
-                    s.$oty.take(handle::Handle::decode(r, &mut ()))
-                }
-            }
-
             impl<S> Encode<S> for &$oty {
                 fn encode(self, w: &mut Writer, s: &mut S) {
                     self.handle.encode(w, s);
                 }
             }
 
-            impl<'s, S: server::Types> Decode<'_, 's, HandleStore<server::MarkedTypes<S>>>
-                for &'s Marked<S::$oty, $oty>
-            {
-                fn decode(r: &mut Reader<'_>, s: &'s HandleStore<server::MarkedTypes<S>>) -> Self {
-                    &s.$oty[handle::Handle::decode(r, &mut ())]
-                }
-            }
-
             impl<S> Encode<S> for &mut $oty {
                 fn encode(self, w: &mut Writer, s: &mut S) {
                     self.handle.encode(w, s);
-                }
-            }
-
-            impl<'s, S: server::Types> DecodeMut<'_, 's, HandleStore<server::MarkedTypes<S>>>
-                for &'s mut Marked<S::$oty, $oty>
-            {
-                fn decode(
-                    r: &mut Reader<'_>,
-                    s: &'s mut HandleStore<server::MarkedTypes<S>>
-                ) -> Self {
-                    &mut s.$oty[handle::Handle::decode(r, &mut ())]
-                }
-            }
-
-            impl<S: server::Types> Encode<HandleStore<server::MarkedTypes<S>>>
-                for Marked<S::$oty, $oty>
-            {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
-                    s.$oty.alloc(self).encode(w, s);
                 }
             }
 
@@ -147,22 +95,6 @@ macro_rules! define_handles {
                 }
             }
 
-            impl<S: server::Types> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
-                for Marked<S::$ity, $ity>
-            {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
-                    s.$ity.copy(handle::Handle::decode(r, &mut ()))
-                }
-            }
-
-            impl<S: server::Types> Encode<HandleStore<server::MarkedTypes<S>>>
-                for Marked<S::$ity, $ity>
-            {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
-                    s.$ity.alloc(self).encode(w, s);
-                }
-            }
-
             impl<S> DecodeMut<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity {
@@ -174,23 +106,7 @@ macro_rules! define_handles {
         )*
     }
 }
-define_handles! {
-    'owned:
-    FreeFunctions,
-    TokenStream,
-    TokenStreamBuilder,
-    TokenStreamIter,
-    Group,
-    Literal,
-    SourceFile,
-    MultiSpan,
-    Diagnostic,
-
-    'interned:
-    Punct,
-    Ident,
-    Span,
-}
+with_api_types!(define_handles);
 
 // FIXME(eddyb) generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`
