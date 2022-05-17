@@ -1343,21 +1343,63 @@ pub(crate) fn handle_inlay_hints(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
-            .map(|it| to_proto::inlay_hint(inlay_hints_config.render_colons, &line_index, it))
+            .map(|it| {
+                to_proto::inlay_hint(
+                    &line_index,
+                    &params.text_document,
+                    inlay_hints_config.render_colons,
+                    it,
+                )
+            })
             .collect(),
     ))
 }
 
 pub(crate) fn handle_inlay_hints_resolve(
-    _snap: GlobalStateSnapshot,
+    snap: GlobalStateSnapshot,
     mut hint: InlayHint,
 ) -> Result<InlayHint> {
-    if let lsp_types::InlayHintLabel::String(s) = &hint.label {
-        hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
-            kind: lsp_types::MarkupKind::PlainText,
-            value: s.clone(),
-        }));
+    let _p = profile::span("handle_inlay_hints_resolve");
+    let succ = (|| {
+        let data = match hint.data.take() {
+            Some(it) => it,
+            None => return Ok(None),
+        };
+
+        let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+
+        let file_range = from_proto::file_range(
+            &snap,
+            resolve_data.position.text_document,
+            Range::new(resolve_data.position.position, resolve_data.position.position),
+        )?;
+        let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
+            None => return Ok(None),
+            Some(info) => info,
+        };
+
+        let markup_kind =
+            snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
+
+        // FIXME: hover actions?
+        hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
+            info.info.markup,
+            markup_kind,
+        )));
+        Result::<_, crate::Error>::Ok(Some(()))
+    })()?
+    .is_some();
+
+    if !succ {
+        if let lsp_types::InlayHintLabel::String(s) = &hint.label {
+            hint.tooltip =
+                Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                    kind: lsp_types::MarkupKind::PlainText,
+                    value: s.clone(),
+                }));
+        }
     }
+
     Ok(hint)
 }
 

@@ -415,8 +415,9 @@ pub(crate) fn signature_help(
 }
 
 pub(crate) fn inlay_hint(
-    render_colons: bool,
     line_index: &LineIndex,
+    text_document: &lsp_types::TextDocumentIdentifier,
+    render_colons: bool,
     inlay_hint: InlayHint,
 ) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
@@ -431,11 +432,11 @@ pub(crate) fn inlay_hint(
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
-            | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
+            | InlayKind::ClosingBraceHint(_) => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
-            InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
+            InlayKind::ChainingHint | InlayKind::ClosingBraceHint(_) => true,
             InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
@@ -449,7 +450,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::GenericParamListHint
             | InlayKind::ImplicitReborrowHint
             | InlayKind::TypeHint
-            | InlayKind::ClosingBraceHint => false,
+            | InlayKind::ClosingBraceHint(_) => false,
             InlayKind::BindingModeHint => inlay_hint.label != "&",
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
@@ -468,11 +469,22 @@ pub(crate) fn inlay_hint(
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
             | InlayKind::ImplicitReborrowHint
-            | InlayKind::ClosingBraceHint => None,
+            | InlayKind::ClosingBraceHint(_) => None,
         },
         text_edits: None,
         tooltip: None,
-        data: None,
+        data: match inlay_hint.kind {
+            InlayKind::ClosingBraceHint(Some(offset)) => Some(
+                to_value(lsp_ext::InlayHintResolveData {
+                    position: lsp_types::TextDocumentPositionParams {
+                        text_document: text_document.clone(),
+                        position: position(line_index, offset),
+                    },
+                })
+                .unwrap(),
+            ),
+            _ => None,
+        },
     }
 }
 

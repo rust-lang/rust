@@ -519,6 +519,11 @@ pub struct CompletionResolveData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct InlayHintResolveData {
+    pub position: lsp_types::TextDocumentPositionParams,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
     pub imported_name: String,

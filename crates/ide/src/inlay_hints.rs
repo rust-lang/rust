@@ -8,7 +8,8 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
-    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, T,
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
+    TextSize, T,
 };
 
 use crate::FileId;
@@ -47,7 +48,7 @@ pub enum ReborrowHints {
 pub enum InlayKind {
     BindingModeHint,
     ChainingHint,
-    ClosingBraceHint,
+    ClosingBraceHint(Option<TextSize>),
     ClosureReturnTypeHint,
     GenericParamListHint,
     ImplicitReborrowHint,
@@ -164,8 +165,10 @@ fn closing_brace_hints(
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
+    let name = |it: ast::Name| it.syntax().text_range().start();
+
     let mut closing_token;
-    let label = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
+    let (label, name_offset) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
 
         let parent = item_list.syntax().parent()?;
@@ -176,13 +179,13 @@ fn closing_brace_hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
 
-                    match trait_ {
+                    (match trait_ {
                         Some(tr) => format!("impl {} for {}", tr.name(sema.db), ty.display_truncated(sema.db, config.max_length)),
                         None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
-                    }
+                    }, None)
                 },
                 ast::Trait(tr) => {
-                    format!("trait {}", tr.name()?)
+                    (format!("trait {}", tr.name()?), tr.name().map(name))
                 },
                 _ => return None,
             }
@@ -191,7 +194,7 @@ fn closing_brace_hints(
         closing_token = list.r_curly_token()?;
 
         let module = ast::Module::cast(list.syntax().parent()?)?;
-        format!("mod {}", module.name()?)
+        (format!("mod {}", module.name()?), module.name().map(name))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
 
@@ -201,14 +204,14 @@ fn closing_brace_hints(
                 ast::Fn(it) => {
                     // FIXME: this could include parameters, but `HirDisplay` prints too much info
                     // and doesn't respect the max length either, so the hints end up way too long
-                    format!("fn {}", it.name()?)
+                    (format!("fn {}", it.name()?), it.name().map(name))
                 },
-                ast::Static(it) => format!("static {}", it.name()?),
+                ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
                 ast::Const(it) => {
                     if it.underscore_token().is_some() {
-                        "const _".into()
+                        ("const _".into(), None)
                     } else {
-                        format!("const {}", it.name()?)
+                        (format!("const {}", it.name()?), it.name().map(name))
                     }
                 },
                 _ => return None,
@@ -221,7 +224,10 @@ fn closing_brace_hints(
         }
         closing_token = last_token;
 
-        format!("{}!", mac.path()?)
+        (
+            format!("{}!", mac.path()?),
+            mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range().start()),
+        )
     } else {
         return None;
     };
@@ -247,7 +253,7 @@ fn closing_brace_hints(
 
     acc.push(InlayHint {
         range: closing_token.text_range(),
-        kind: InlayKind::ClosingBraceHint,
+        kind: InlayKind::ClosingBraceHint(name_offset),
         label,
     });
 
