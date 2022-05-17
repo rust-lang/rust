@@ -484,17 +484,17 @@ fn bcb_filtered_successors<'a, 'tcx>(
     body: &'tcx &'a mir::Body<'tcx>,
     term_kind: &'tcx TerminatorKind<'tcx>,
 ) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
-    let mut successors = term_kind.successors();
     Box::new(
         match &term_kind {
             // SwitchInt successors are never unwind, and all of them should be traversed.
-            TerminatorKind::SwitchInt { .. } => successors,
+            TerminatorKind::SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(targets.all_targets().into_iter().copied())
+            }
             // For all other kinds, return only the first successor, if any, and ignore unwinds.
             // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
             // `next().into_iter()`) into the `mir::Successors` aliased type.
-            _ => successors.next().into_iter().chain(&[]),
+            _ => term_kind.successors().next().into_iter().chain((&[]).into_iter().copied()),
         }
-        .copied()
         .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable),
     )
 }

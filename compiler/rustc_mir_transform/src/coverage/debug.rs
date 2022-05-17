@@ -701,7 +701,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
         edge_labels.retain(|label| label != "unreachable");
         let edge_counters = from_terminator
             .successors()
-            .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
+            .map(|successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
         iter::zip(&edge_labels, edge_counters)
             .map(|(label, some_counter)| {
                 if let Some(counter) = some_counter {

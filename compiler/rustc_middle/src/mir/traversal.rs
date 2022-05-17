@@ -180,7 +180,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // two iterations yield `C` and finally `A` for a final traversal of [E, D, B, C, A]
         loop {
             let bb = if let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() {
-                if let Some(&bb) = iter.next() {
+                if let Some(bb) = iter.next() {
                     bb
                 } else {
                     break;

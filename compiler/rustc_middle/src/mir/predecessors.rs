@@ -43,7 +43,7 @@ impl PredecessorCache {
             let mut preds = IndexVec::from_elem(SmallVec::new(), basic_blocks);
             for (bb, data) in basic_blocks.iter_enumerated() {
                 if let Some(term) = &data.terminator {
-                    for &succ in term.successors() {
+                    for succ in term.successors() {
                         preds[succ].push(bb);
                     }
                 }
