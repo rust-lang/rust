@@ -1318,6 +1318,7 @@ impl Clone for BorrowRef<'_> {
 pub struct Ref<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
     // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
+    // `NonNull` is also covariant over `T`, just like we would have with `&T`.
     value: NonNull<T>,
     borrow: BorrowRef<'b>,
 }
@@ -1704,7 +1705,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
     // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
     value: NonNull<T>,
     borrow: BorrowRefMut<'b>,
-    // NonNull is covariant over T, so we need to reintroduce invariance.
+    // `NonNull` is covariant over `T`, so we need to reintroduce invariance.
     marker: PhantomData<&'b mut T>,
 }
 
