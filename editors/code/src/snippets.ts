@@ -11,7 +11,7 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
     }
     for (const [uri, edits] of edit.entries()) {
         const editor = await editorFromUri(uri);
-        if (editor)
+        if (editor) {
             await editor.edit((builder) => {
                 for (const indel of edits) {
                     assert(
@@ -21,6 +21,7 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
                     builder.replace(indel.range, indel.newText);
                 }
             });
+        }
     }
 }
 

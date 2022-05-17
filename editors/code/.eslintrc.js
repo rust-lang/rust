@@ -14,6 +14,7 @@ module.exports = {
     rules: {
         camelcase: ["error"],
         eqeqeq: ["error", "always", { null: "ignore" }],
+        curly: ["error", "multi-line"],
         "no-console": ["error", { allow: ["warn", "error"] }],
         "prefer-const": "error",
         "@typescript-eslint/member-delimiter-style": [

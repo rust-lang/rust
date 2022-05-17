@@ -101,8 +101,9 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
         doc: vscode.TextDocument,
         pos: vscode.Position
     ): vscode.ProviderResult<vscode.DefinitionLink[]> {
-        if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString())
+        if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString()) {
             return;
+        }
 
         const astEditor = this.findAstTextEditor();
         if (!astEditor) return;
