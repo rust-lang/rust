@@ -592,7 +592,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => unimplemented!(),
             InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),
             InlineAsmRegClass::X86(
-                X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg,
+                X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg | X86InlineAsmRegClass::tmm_reg,
             ) => unreachable!("clobber-only"),
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("GCC backend does not support SPIR-V")
@@ -656,6 +656,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg) => unimplemented!(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => cx.type_i16(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => cx.type_i16(),
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::tmm_reg) => unimplemented!(),
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
@@ -787,7 +788,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => None,
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg) => {
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg | X86InlineAsmRegClass::tmm_reg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),
