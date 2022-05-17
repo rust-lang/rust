@@ -1,11 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::last_path_segment;
-use clippy_utils::macros::{root_macro_call_first_node, MacroCall};
+use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::source::{indent_of, snippet};
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,27 +49,76 @@ declare_lint_pass!(RcCloneInVecInit => [RC_CLONE_IN_VEC_INIT]);
 impl LateLintPass<'_> for RcCloneInVecInit {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return; };
-        let Some(VecArgs::Repeat(elem, _)) = VecArgs::hir(cx, expr) else { return; };
+        let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else { return; };
         let Some(symbol) = new_reference_call(cx, elem) else { return; };
 
-        emit_lint(cx, symbol, &macro_call);
+        emit_lint(cx, symbol, macro_call.span, elem, len);
     }
 }
 
-fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, macro_call: &MacroCall) {
+fn elem_snippet(cx: &LateContext<'_>, elem: &Expr<'_>, symbol_name: &str) -> String {
+    let elem_snippet = snippet(cx, elem.span, "..").to_string();
+    if elem_snippet.contains('\n') {
+        // This string must be found in `elem_snippet`, otherwise we won't be constructing
+        // the snippet in the first place.
+        let reference_creation = format!("{symbol_name}::new");
+        let (code_until_reference_creation, _right) = elem_snippet.split_once(&reference_creation).unwrap();
+
+        return format!("{code_until_reference_creation}{reference_creation}(..)");
+    }
+
+    elem_snippet
+}
+
+fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
+    format!(
+        r#"{{
+{indent}    let mut v = Vec::with_capacity({len});
+{indent}    (0..{len}).for_each(|_| v.push({elem}));
+{indent}    v
+{indent}}}"#
+    )
+}
+
+fn extract_suggestion(elem: &str, len: &str, indent: &str) -> String {
+    format!(
+        "{{
+{indent}    let data = {elem};
+{indent}    vec![data; {len}]
+{indent}}}"
+    )
+}
+
+fn emit_lint(cx: &LateContext<'_>, symbol: Symbol, lint_span: Span, elem: &Expr<'_>, len: &Expr<'_>) {
     let symbol_name = symbol.as_str();
 
     span_lint_and_then(
         cx,
         RC_CLONE_IN_VEC_INIT,
-        macro_call.span,
+        lint_span,
         &format!("calling `{symbol_name}::new` in `vec![elem; len]`"),
         |diag| {
+            let len_snippet = snippet(cx, len.span, "..");
+            let elem_snippet = elem_snippet(cx, elem, symbol_name);
+            let indentation = " ".repeat(indent_of(cx, lint_span).unwrap_or(0));
+            let loop_init_suggestion = loop_init_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
+            let extract_suggestion = extract_suggestion(&elem_snippet, len_snippet.as_ref(), &indentation);
+
             diag.note(format!("each element will point to the same `{symbol_name}` instance"));
-            diag.help(format!(
-                "if this is intentional, consider extracting the `{symbol_name}` initialization to a variable"
-            ));
-            diag.help("or if not, initialize each element individually");
+            diag.span_suggestion(
+                lint_span,
+                format!("consider initializing each `{symbol_name}` element individually"),
+                loop_init_suggestion,
+                Applicability::Unspecified,
+            );
+            diag.span_suggestion(
+                lint_span,
+                format!(
+                    "or if this is intentional, consider extracting the `{symbol_name}` initialization to a variable"
+                ),
+                extract_suggestion,
+                Applicability::Unspecified,
+            );
         },
     );
 }

@@ -8,9 +8,28 @@ fn should_warn_simple_case() {
     let v = vec![Rc::new("x".to_string()); 2];
 }
 
+fn should_warn_simple_case_with_big_indentation() {
+    if true {
+        let k = 1;
+        dbg!(k);
+        if true {
+            let v = vec![Rc::new("x".to_string()); 2];
+        }
+    }
+}
+
 fn should_warn_complex_case() {
     let v = vec![
         std::rc::Rc::new(Mutex::new({
+            let x = 1;
+            dbg!(x);
+            x
+        }));
+        2
+    ];
+
+    let v1 = vec![
+        Rc::new(Mutex::new({
             let x = 1;
             dbg!(x);
             x
