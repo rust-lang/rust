@@ -82,7 +82,11 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
 
 # Here we're profiling the `rustc` frontend, so we also include `Check`.
 # The benchmark set includes various stress tests that put the frontend under pressure.
-gather_profiles "Check,Debug,Opt" "All" \
+# The profile data is written into a single filepath that is being repeatedly merged when each
+# rustc invocation ends. Empirically, this can result in some profiling data being lost.
+# That's why we override the profile path to include the PID. This will produce many more profiling
+# files, but the resulting profile will produce a slightly faster rustc binary.
+LLVM_PROFILE_FILE=/tmp/rustc-pgo/default_%m_%p.profraw gather_profiles "Check,Debug,Opt" "All" \
   "externs,ctfe-stress-4,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress"
 
 # Merge the profile data we gathered
