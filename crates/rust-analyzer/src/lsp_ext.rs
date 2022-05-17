@@ -519,6 +519,12 @@ pub struct CompletionResolveData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct InlayHintResolveData {
+    pub text_document: TextDocumentIdentifier,
+    pub position: PositionOrRange,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
     pub imported_name: String,

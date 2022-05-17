@@ -8,7 +8,8 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
-    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, TextRange, T,
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
+    TextSize, T,
 };
 
 use crate::FileId;
@@ -56,11 +57,19 @@ pub enum InlayKind {
     TypeHint,
 }
 
+// FIXME: This should live somewhere more general
+#[derive(Debug)]
+pub enum RangeOrOffset {
+    Range(TextRange),
+    Offset(TextSize),
+}
+
 #[derive(Debug)]
 pub struct InlayHint {
     pub range: TextRange,
     pub kind: InlayKind,
-    pub label: SmolStr,
+    pub label: String,
+    pub hover_trigger: Option<RangeOrOffset>,
 }
 
 // Feature: Inlay Hints
@@ -164,8 +173,10 @@ fn closing_brace_hints(
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
+    let name = |it: ast::Name| it.syntax().text_range().start();
+
     let mut closing_token;
-    let label = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
+    let (label, name_offset) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
 
         let parent = item_list.syntax().parent()?;
@@ -176,13 +187,13 @@ fn closing_brace_hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
 
-                    match trait_ {
+                    (match trait_ {
                         Some(tr) => format!("impl {} for {}", tr.name(sema.db), ty.display_truncated(sema.db, config.max_length)),
                         None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
-                    }
+                    }, None)
                 },
                 ast::Trait(tr) => {
-                    format!("trait {}", tr.name()?)
+                    (format!("trait {}", tr.name()?), tr.name().map(name))
                 },
                 _ => return None,
             }
@@ -191,7 +202,7 @@ fn closing_brace_hints(
         closing_token = list.r_curly_token()?;
 
         let module = ast::Module::cast(list.syntax().parent()?)?;
-        format!("mod {}", module.name()?)
+        (format!("mod {}", module.name()?), module.name().map(name))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
 
@@ -201,14 +212,14 @@ fn closing_brace_hints(
                 ast::Fn(it) => {
                     // FIXME: this could include parameters, but `HirDisplay` prints too much info
                     // and doesn't respect the max length either, so the hints end up way too long
-                    format!("fn {}", it.name()?)
+                    (format!("fn {}", it.name()?), it.name().map(name))
                 },
-                ast::Static(it) => format!("static {}", it.name()?),
+                ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
                 ast::Const(it) => {
                     if it.underscore_token().is_some() {
-                        "const _".into()
+                        ("const _".into(), None)
                     } else {
-                        format!("const {}", it.name()?)
+                        (format!("const {}", it.name()?), it.name().map(name))
                     }
                 },
                 _ => return None,
@@ -221,7 +232,10 @@ fn closing_brace_hints(
         }
         closing_token = last_token;
 
-        format!("{}!", mac.path()?)
+        (
+            format!("{}!", mac.path()?),
+            mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range().start()),
+        )
     } else {
         return None;
     };
@@ -248,7 +262,8 @@ fn closing_brace_hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label: label.into(),
+        label,
+        hover_trigger: name_offset.map(RangeOrOffset::Offset),
     });
 
     None
@@ -262,6 +277,14 @@ fn lifetime_fn_hints(
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
     }
+
+    let mk_lt_hint = |t: SyntaxToken, label| InlayHint {
+        range: t.text_range(),
+        kind: InlayKind::LifetimeHint,
+        label,
+        hover_trigger: None,
+    };
+
     let param_list = func.param_list()?;
     let generic_param_list = func.generic_param_list();
     let ret_type = func.ret_type();
@@ -378,11 +401,7 @@ fn lifetime_fn_hints(
                 ast::Type::RefType(ty) if ty.lifetime().is_none() => {
                     if let Some(amp) = ty.amp_token() {
                         is_trivial = false;
-                        acc.push(InlayHint {
-                            range: amp.text_range(),
-                            kind: InlayKind::LifetimeHint,
-                            label: output_lt.clone(),
-                        });
+                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
                     }
                 }
                 _ => (),
@@ -398,8 +417,8 @@ fn lifetime_fn_hints(
     for (_, amp_token, _, is_elided) in potential_lt_refs {
         if is_elided {
             let t = amp_token?;
-            let lt = a.next()?.clone();
-            acc.push(InlayHint { range: t.text_range(), kind: InlayKind::LifetimeHint, label: lt });
+            let lt = a.next()?;
+            acc.push(mk_lt_hint(t, lt.to_string()));
         }
     }
 
@@ -409,21 +428,20 @@ fn lifetime_fn_hints(
         (Some(gpl), allocated_lifetimes) => {
             let angle_tok = gpl.l_angle_token()?;
             let is_empty = gpl.generic_params().next().is_none();
-            acc.push(InlayHint {
-                range: angle_tok.text_range(),
-                kind: InlayKind::GenericParamListHint,
-                label: format!(
+            acc.push(mk_lt_hint(
+                angle_tok,
+                format!(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
                     if is_empty { "" } else { ", " }
-                )
-                .into(),
-            });
+                ),
+            ));
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
             kind: InlayKind::GenericParamListHint,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
+            hover_trigger: None,
         }),
     }
     Some(())
@@ -456,7 +474,8 @@ fn closure_ret_hints(
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string()),
+        hover_trigger: None,
     });
     Some(())
 }
@@ -482,7 +501,8 @@ fn reborrow_hints(
     acc.push(InlayHint {
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrowHint,
-        label: SmolStr::new_inline(label),
+        label: label.to_string(),
+        hover_trigger: None,
     });
     Some(())
 }
@@ -539,8 +559,9 @@ fn chaining_hints(
                 range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
-                    ty.display_truncated(sema.db, config.max_length).to_string().into()
+                    ty.display_truncated(sema.db, config.max_length).to_string()
                 }),
+                hover_trigger: Some(RangeOrOffset::Range(expr.syntax().text_range())),
             });
         }
     }
@@ -581,6 +602,8 @@ fn param_name_hints(
             range,
             kind: InlayKind::ParameterHint,
             label: param_name.into(),
+            // FIXME: Show hover for parameter
+            hover_trigger: None,
         });
 
     acc.extend(hints);
@@ -609,7 +632,8 @@ fn binding_mode_hints(
         acc.push(InlayHint {
             range,
             kind: InlayKind::BindingModeHint,
-            label: SmolStr::new_inline(r),
+            label: r.to_string(),
+            hover_trigger: None,
         });
     });
     match pat {
@@ -623,7 +647,8 @@ fn binding_mode_hints(
             acc.push(InlayHint {
                 range,
                 kind: InlayKind::BindingModeHint,
-                label: SmolStr::new_inline(bm),
+                label: bm.to_string(),
+                hover_trigger: None,
             });
         }
         _ => (),
@@ -663,7 +688,7 @@ fn bind_pat_hints(
             {
                 return None;
             }
-            ty_name.into()
+            ty_name
         }
     };
 
@@ -674,6 +699,7 @@ fn bind_pat_hints(
         },
         kind: InlayKind::TypeHint,
         label,
+        hover_trigger: pat.name().map(|it| it.syntax().text_range()).map(RangeOrOffset::Range),
     });
 
     Some(())
@@ -738,7 +764,7 @@ fn hint_iterator(
     famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
     ty: &hir::Type,
-) -> Option<SmolStr> {
+) -> Option<String> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate();
@@ -775,7 +801,7 @@ fn hint_iterator(
                     )
                     .to_string()
                 });
-            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END).into());
+            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END));
         }
     }
 
@@ -1986,11 +2012,21 @@ fn main() {
                         range: 147..172,
                         kind: ChainingHint,
                         label: "B",
+                        hover_trigger: Some(
+                            Range(
+                                147..172,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 147..154,
                         kind: ChainingHint,
                         label: "A",
+                        hover_trigger: Some(
+                            Range(
+                                147..154,
+                            ),
+                        ),
                     },
                 ]
             "#]],
@@ -2041,11 +2077,21 @@ fn main() {
                         range: 143..190,
                         kind: ChainingHint,
                         label: "C",
+                        hover_trigger: Some(
+                            Range(
+                                143..190,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 143..179,
                         kind: ChainingHint,
                         label: "B",
+                        hover_trigger: Some(
+                            Range(
+                                143..179,
+                            ),
+                        ),
                     },
                 ]
             "#]],
@@ -2081,11 +2127,21 @@ fn main() {
                         range: 246..283,
                         kind: ChainingHint,
                         label: "B<X<i32, bool>>",
+                        hover_trigger: Some(
+                            Range(
+                                246..283,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 246..265,
                         kind: ChainingHint,
                         label: "A<X<i32, bool>>",
+                        hover_trigger: Some(
+                            Range(
+                                246..265,
+                            ),
+                        ),
                     },
                 ]
             "#]],
@@ -2123,21 +2179,41 @@ fn main() {
                         range: 174..241,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
+                        hover_trigger: Some(
+                            Range(
+                                174..241,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 174..224,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
+                        hover_trigger: Some(
+                            Range(
+                                174..224,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 174..206,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
+                        hover_trigger: Some(
+                            Range(
+                                174..206,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
+                        hover_trigger: Some(
+                            Range(
+                                174..189,
+                            ),
+                        ),
                     },
                 ]
             "#]],
@@ -2172,21 +2248,37 @@ fn main() {
                         range: 124..130,
                         kind: TypeHint,
                         label: "Struct",
+                        hover_trigger: Some(
+                            Range(
+                                124..130,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 145..185,
                         kind: ChainingHint,
                         label: "Struct",
+                        hover_trigger: Some(
+                            Range(
+                                145..185,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 145..168,
                         kind: ChainingHint,
                         label: "Struct",
+                        hover_trigger: Some(
+                            Range(
+                                145..168,
+                            ),
+                        ),
                     },
                     InlayHint {
                         range: 222..228,
                         kind: ParameterHint,
                         label: "self",
+                        hover_trigger: None,
                     },
                 ]
             "#]],

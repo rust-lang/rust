@@ -415,8 +415,9 @@ pub(crate) fn signature_help(
 }
 
 pub(crate) fn inlay_hint(
-    render_colons: bool,
     line_index: &LineIndex,
+    text_document: &lsp_types::TextDocumentIdentifier,
+    render_colons: bool,
     inlay_hint: InlayHint,
 ) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
@@ -433,24 +434,6 @@ pub(crate) fn inlay_hint(
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
-            _ => inlay_hint.label.to_string(),
-        }),
-        kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
-                Some(lsp_types::InlayHintKind::TYPE)
-            }
-            InlayKind::BindingModeHint
-            | InlayKind::GenericParamListHint
-            | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrowHint
-            | InlayKind::ClosingBraceHint => None,
-        },
-        tooltip: None,
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
@@ -471,8 +454,39 @@ pub(crate) fn inlay_hint(
             InlayKind::BindingModeHint => inlay_hint.label != "&",
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
+        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
+            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
+            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
+            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
+            _ => inlay_hint.label.clone(),
+        }),
+        kind: match inlay_hint.kind {
+            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
+            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
+                Some(lsp_types::InlayHintKind::TYPE)
+            }
+            InlayKind::BindingModeHint
+            | InlayKind::GenericParamListHint
+            | InlayKind::LifetimeHint
+            | InlayKind::ImplicitReborrowHint
+            | InlayKind::ClosingBraceHint => None,
+        },
         text_edits: None,
-        data: None,
+        tooltip: Some(lsp_types::InlayHintTooltip::String(inlay_hint.label)),
+        data: inlay_hint.hover_trigger.map(|range_or_offset| {
+            to_value(lsp_ext::InlayHintResolveData {
+                text_document: text_document.clone(),
+                position: match range_or_offset {
+                    ide::RangeOrOffset::Offset(offset) => {
+                        lsp_ext::PositionOrRange::Position(position(line_index, offset))
+                    }
+                    ide::RangeOrOffset::Range(text_range) => {
+                        lsp_ext::PositionOrRange::Range(range(line_index, text_range))
+                    }
+                },
+            })
+            .unwrap()
+        }),
     }
 }
 

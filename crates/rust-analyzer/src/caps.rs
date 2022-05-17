@@ -4,7 +4,8 @@ use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DeclarationCapability,
     DocumentOnTypeFormattingOptions, FileOperationFilter, FileOperationPattern,
     FileOperationPatternKind, FileOperationRegistrationOptions, FoldingRangeProviderCapability,
-    HoverProviderCapability, ImplementationProviderCapability, OneOf, RenameOptions, SaveOptions,
+    HoverProviderCapability, ImplementationProviderCapability, InlayHintOptions,
+    InlayHintServerCapabilities, OneOf, RenameOptions, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensFullOptions, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
@@ -112,7 +113,12 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             .into(),
         ),
         moniker_provider: None,
-        inlay_hint_provider: Some(OneOf::Left(true)),
+        inlay_hint_provider: Some(OneOf::Right(InlayHintServerCapabilities::Options(
+            InlayHintOptions {
+                work_done_progress_options: Default::default(),
+                resolve_provider: Some(true),
+            },
+        ))),
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,

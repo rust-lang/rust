@@ -1343,9 +1343,52 @@ pub(crate) fn handle_inlay_hints(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
             .into_iter()
-            .map(|it| to_proto::inlay_hint(inlay_hints_config.render_colons, &line_index, it))
+            .map(|it| {
+                to_proto::inlay_hint(
+                    &line_index,
+                    &params.text_document,
+                    inlay_hints_config.render_colons,
+                    it,
+                )
+            })
             .collect(),
     ))
+}
+
+pub(crate) fn handle_inlay_hints_resolve(
+    snap: GlobalStateSnapshot,
+    mut hint: InlayHint,
+) -> Result<InlayHint> {
+    let _p = profile::span("handle_inlay_hints_resolve");
+    let data = match hint.data.take() {
+        Some(it) => it,
+        None => return Ok(hint),
+    };
+
+    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
+
+    let file_range = from_proto::file_range(
+        &snap,
+        resolve_data.text_document,
+        match resolve_data.position {
+            PositionOrRange::Position(pos) => Range::new(pos, pos),
+            PositionOrRange::Range(range) => range,
+        },
+    )?;
+    let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
+        None => return Ok(hint),
+        Some(info) => info,
+    };
+
+    let markup_kind =
+        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
+
+    // FIXME: hover actions?
+    hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
+        info.info.markup,
+        markup_kind,
+    )));
+    Ok(hint)
 }
 
 pub(crate) fn handle_call_hierarchy_prepare(
