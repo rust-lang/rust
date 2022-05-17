@@ -7,15 +7,15 @@
     </Expand>
   </Type>
   <Type Name="core::cell::Ref&lt;*&gt;">
-    <DisplayString>{value}</DisplayString>
+    <DisplayString>{value.pointer}</DisplayString>
     <Expand>
-      <ExpandedItem>value</ExpandedItem>
+      <ExpandedItem>value.pointer</ExpandedItem>
     </Expand>
   </Type>
   <Type Name="core::cell::RefMut&lt;*&gt;">
-    <DisplayString>{value}</DisplayString>
+    <DisplayString>{value.pointer}</DisplayString>
     <Expand>
-      <ExpandedItem>value</ExpandedItem>
+      <ExpandedItem>value.pointer</ExpandedItem>
     </Expand>
   </Type>
   <Type Name="core::cell::RefCell&lt;*&gt;">
