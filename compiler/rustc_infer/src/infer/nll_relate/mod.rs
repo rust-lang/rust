@@ -859,7 +859,7 @@ where
 
     delegate: &'me mut D,
 
-    /// After we generalize this type, we are going to relative it to
+    /// After we generalize this type, we are going to relate it to
     /// some other type. What will be the variance at this point?
     ambient_variance: ty::Variance,
 
