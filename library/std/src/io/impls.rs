@@ -3,6 +3,7 @@ mod tests;
 
 use crate::alloc::Allocator;
 use crate::cmp;
+use crate::collections::VecDeque;
 use crate::fmt;
 use crate::io::{
     self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
@@ -402,6 +403,53 @@ impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend_from_slice(buf);
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
+#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
+impl<A: Allocator> Read for VecDeque<u8, A> {
+    /// Fill `buf` with the contents of the "front" slice as returned by
+    /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
+    /// discontiguous, multiple calls to `read` will be needed to read the entire content.
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let (ref mut front, _) = self.as_slices();
+        let n = Read::read(front, buf)?;
+        self.drain(..n);
+        Ok(n)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        let (ref mut front, _) = self.as_slices();
+        let n = cmp::min(buf.remaining(), front.len());
+        Read::read_buf(front, buf)?;
+        self.drain(..n);
+        Ok(())
+    }
+}
+
+/// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
+#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
+impl<A: Allocator> Write for VecDeque<u8, A> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.reserve(buf.len());
+        self.extend(buf);
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.reserve(buf.len());
+        self.extend(buf);
         Ok(())
     }
 
