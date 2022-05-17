@@ -6,7 +6,7 @@
 
 use std::arch::asm;
 
-// CHECK-LABEL: @avx512_clobber
+// CHECK-LABEL: @amx_clobber
 // base: call void asm sideeffect inteldialect "", "~{tmm0}"()
 #[no_mangle]
 pub unsafe fn amx_clobber() {
