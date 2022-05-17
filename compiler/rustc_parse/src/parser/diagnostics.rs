@@ -1286,14 +1286,13 @@ impl<'a> Parser<'a> {
         }
 
         self.bump(); // `+`
+        let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
         let sum_with_parens: String;
 
         let sub = match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
-                let bounds = self.parse_generic_bounds(None)?;
-
                 sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
