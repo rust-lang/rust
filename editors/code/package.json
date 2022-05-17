@@ -4,7 +4,7 @@
     "description": "Rust language support for Visual Studio Code",
     "private": true,
     "icon": "icon.png",
-    "version": "0.4.0-dev",
+    "version": "0.5.0-dev",
     "releaseTag": null,
     "publisher": "rust-lang",
     "repository": {
