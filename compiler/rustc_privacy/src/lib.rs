@@ -775,7 +775,14 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         }
                         // Corner case: if the variant is reachable, but its
                         // enum is not, make the enum reachable as well.
-                        self.update(item.def_id, variant_level);
+                        self.reach(item.def_id, variant_level).ty();
+                    }
+                    if let Some(hir_id) = variant.data.ctor_hir_id() {
+                        let ctor_def_id = self.tcx.hir().local_def_id(hir_id);
+                        let ctor_level = self.get(ctor_def_id);
+                        if ctor_level.is_some() {
+                            self.reach(item.def_id, ctor_level).ty();
+                        }
                     }
                 }
             }
@@ -801,6 +808,13 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         if field_level.is_some() {
                             self.reach(def_id, field_level).ty();
                         }
+                    }
+                }
+                if let Some(hir_id) = struct_def.ctor_hir_id() {
+                    let ctor_def_id = self.tcx.hir().local_def_id(hir_id);
+                    let ctor_level = self.get(ctor_def_id);
+                    if ctor_level.is_some() {
+                        self.reach(item.def_id, ctor_level).ty();
                     }
                 }
             }
