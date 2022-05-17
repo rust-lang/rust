@@ -452,8 +452,8 @@ impl<T> NonNull<[T]> {
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[stable(feature = "slice_ptr_len_nonnull", since = "1.61.0")]
-    #[rustc_const_stable(feature = "const_slice_ptr_len_nonnull", since = "1.61.0")]
+    #[stable(feature = "slice_ptr_len_nonnull", since = "1.63.0")]
+    #[rustc_const_stable(feature = "const_slice_ptr_len_nonnull", since = "1.63.0")]
     #[rustc_allow_const_fn_unstable(const_slice_ptr_len)]
     #[must_use]
     #[inline]
