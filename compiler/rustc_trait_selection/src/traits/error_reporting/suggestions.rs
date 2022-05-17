@@ -628,15 +628,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let Some(parent_trait_pred) = parent_trait_pred {
                 real_trait_pred = parent_trait_pred;
             }
-            let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
-                continue;
-            };
+
+            // Skipping binder here, remapping below
+            let real_ty = real_trait_pred.self_ty().skip_binder();
 
             if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
                 let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
                     let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+
+                    // Remapping bound vars here
                     let real_trait_pred_and_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
                     let obligation = self
@@ -661,6 +663,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 } else if real_trait_pred != trait_pred {
                     // This branch addresses #87437.
+
+                    // Remapping bound vars here
                     let real_trait_pred_and_base_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, base_ty));
                     let obligation = self.mk_trait_obligation_with_new_self_ty(
@@ -723,6 +727,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        // Skipping binder here, remapping below
         let self_ty = trait_pred.self_ty().skip_binder();
 
         let (def_id, output_ty, callable) = match *self_ty.kind() {
@@ -732,8 +737,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let msg = format!("use parentheses to call the {}", callable);
 
+        // "We should really create a single list of bound vars from the combined vars
+        // from the predicate and function, but instead we just liberate the function bound vars"
         let output_ty = self.tcx.liberate_late_bound_regions(def_id, output_ty);
 
+        // Remapping bound vars here
         let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, output_ty));
 
         let new_obligation =
@@ -876,12 +884,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Because of this, we modify the error to refer to the original obligation and
                         // return early in the caller.
 
-                        let msg = format!(
-                            "the trait bound `{}: {}` is not satisfied",
-                            // Safe to skip binder here
-                            old_pred.self_ty().skip_binder(),
-                            old_pred.print_modifiers_and_trait_path(),
-                        );
+                        let msg = format!("the trait bound `{}` is not satisfied", old_pred);
                         if has_custom_message {
                             err.note(&msg);
                         } else {
@@ -997,7 +1000,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return false;
             }
 
-            // We skip binder here
+            // Skipping binder here, remapping below
             let mut suggested_ty = trait_pred.self_ty().skip_binder();
 
             for refs_remaining in 0..refs_number {
@@ -1006,7 +1009,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 };
                 suggested_ty = *inner_ty;
 
-                // We remap bounds here
+                // Remapping bound vars here
                 let trait_pred_and_suggested_ty =
                     trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
 
@@ -1132,22 +1135,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
+            // Skipping binder here, remapping below
             if let ty::Ref(region, t_type, mutability) = *trait_pred.skip_binder().self_ty().kind()
             {
-                if region.is_late_bound() || t_type.has_escaping_bound_vars() {
-                    // Avoid debug assertion in `mk_obligation_for_def_id`.
-                    //
-                    // If the self type has escaping bound vars then it's not
-                    // going to be the type of an expression, so the suggestion
-                    // probably won't apply anyway.
-                    return;
-                }
-
                 let suggested_ty = match mutability {
                     hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
                     hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
                 };
 
+                // Remapping bound vars here
                 let trait_pred_and_suggested_ty =
                     trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
 
