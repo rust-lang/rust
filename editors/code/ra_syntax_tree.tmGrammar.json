@@ -25,7 +25,5 @@
             "name": "string"
         }
     },
-    "fileTypes": [
-        "rast"
-    ]
+    "fileTypes": ["rast"]
 }

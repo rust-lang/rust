@@ -3,9 +3,7 @@
         "module": "commonjs",
         "target": "es2021",
         "outDir": "out",
-        "lib": [
-            "es2021"
-        ],
+        "lib": ["es2021"],
         "sourceMap": true,
         "rootDir": ".",
         "strict": true,
@@ -16,12 +14,6 @@
         "noFallthroughCasesInSwitch": true,
         "newLine": "LF"
     },
-    "exclude": [
-        "node_modules",
-        ".vscode-test"
-    ],
-    "include": [
-        "src",
-        "tests"
-    ]
+    "exclude": ["node_modules", ".vscode-test"],
+    "include": ["src", "tests"]
 }

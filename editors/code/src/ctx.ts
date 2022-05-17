@@ -1,20 +1,20 @@
-import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient/node';
-import * as ra from './lsp_ext';
+import * as vscode from "vscode";
+import * as lc from "vscode-languageclient/node";
+import * as ra from "./lsp_ext";
 
-import { Config } from './config';
-import { createClient } from './client';
-import { isRustEditor, RustEditor } from './util';
-import { ServerStatusParams } from './lsp_ext';
+import { Config } from "./config";
+import { createClient } from "./client";
+import { isRustEditor, RustEditor } from "./util";
+import { ServerStatusParams } from "./lsp_ext";
 
 export type Workspace =
-    {
-        kind: 'Workspace Folder';
-    }
     | {
-        kind: 'Detached Files';
-        files: vscode.TextDocument[];
-    };
+          kind: "Workspace Folder";
+      }
+    | {
+          kind: "Detached Files";
+          files: vscode.TextDocument[];
+      };
 
 export class Ctx {
     private constructor(
@@ -22,16 +22,14 @@ export class Ctx {
         private readonly extCtx: vscode.ExtensionContext,
         readonly client: lc.LanguageClient,
         readonly serverPath: string,
-        readonly statusBar: vscode.StatusBarItem,
-    ) {
-
-    }
+        readonly statusBar: vscode.StatusBarItem
+    ) {}
 
     static async create(
         config: Config,
         extCtx: vscode.ExtensionContext,
         serverPath: string,
-        workspace: Workspace,
+        workspace: Workspace
     ): Promise<Ctx> {
         const client = await createClient(serverPath, workspace, config.serverExtraEnv);
 
@@ -52,9 +50,7 @@ export class Ctx {
 
     get activeRustEditor(): RustEditor | undefined {
         const editor = vscode.window.activeTextEditor;
-        return editor && isRustEditor(editor)
-            ? editor
-            : undefined;
+        return editor && isRustEditor(editor) ? editor : undefined;
     }
 
     get visibleRustEditors(): RustEditor[] {

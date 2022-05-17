@@ -1,13 +1,16 @@
-import path = require('path');
-import * as vscode from 'vscode';
-import { Env } from './client';
+import path = require("path");
+import * as vscode from "vscode";
+import { Env } from "./client";
 import { log } from "./util";
 
 export type UpdatesChannel = "stable" | "nightly";
 
 const NIGHTLY_TAG = "nightly";
 
-export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
+export type RunnableEnvCfg =
+    | undefined
+    | Record<string, string>
+    | { mask?: string; env: Record<string, string> }[];
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
@@ -20,8 +23,7 @@ export class Config {
         "procMacro",
         "files",
         "lens", // works as lens.*
-    ]
-        .map(opt => `${this.rootSection}.${opt}`);
+    ].map((opt) => `${this.rootSection}.${opt}`);
 
     readonly package: {
         version: string;
@@ -33,7 +35,11 @@ export class Config {
 
     constructor(ctx: vscode.ExtensionContext) {
         this.globalStorageUri = ctx.globalStorageUri;
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
+        vscode.workspace.onDidChangeConfiguration(
+            this.onDidChangeConfiguration,
+            this,
+            ctx.subscriptions
+        );
         this.refreshLogging();
     }
 
@@ -48,8 +54,8 @@ export class Config {
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
         this.refreshLogging();
 
-        const requiresReloadOpt = this.requiresReloadOpts.find(
-            opt => event.affectsConfiguration(opt)
+        const requiresReloadOpt = this.requiresReloadOpts.find((opt) =>
+            event.affectsConfiguration(opt)
         );
 
         if (!requiresReloadOpt) return;
@@ -94,8 +100,12 @@ export class Config {
     get serverPath() {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
     }
-    get serverExtraEnv() { return this.get<Env | null>("server.extraEnv") ?? {}; }
-    get traceExtension() { return this.get<boolean>("trace.extension"); }
+    get serverExtraEnv() {
+        return this.get<Env | null>("server.extraEnv") ?? {};
+    }
+    get traceExtension() {
+        return this.get<boolean>("trace.extension");
+    }
 
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
@@ -109,7 +119,8 @@ export class Config {
         let sourceFileMap = this.get<Record<string, string> | "auto">("debug.sourceFileMap");
         if (sourceFileMap !== "auto") {
             // "/rustc/<id>" used by suggestions only.
-            const { ["/rustc/<id>"]: _, ...trimmed } = this.get<Record<string, string>>("debug.sourceFileMap");
+            const { ["/rustc/<id>"]: _, ...trimmed } =
+                this.get<Record<string, string>>("debug.sourceFileMap");
             sourceFileMap = trimmed;
         }
 
@@ -117,7 +128,7 @@ export class Config {
             engine: this.get<string>("debug.engine"),
             engineSettings: this.get<object>("debug.engineSettings"),
             openDebugPane: this.get<boolean>("debug.openDebugPane"),
-            sourceFileMap: sourceFileMap
+            sourceFileMap: sourceFileMap,
         };
     }
 
@@ -139,57 +150,69 @@ export class Config {
 
 export async function updateConfig(config: vscode.WorkspaceConfiguration) {
     const renames = [
-        ["assist.allowMergingIntoGlobImports", "imports.merge.glob",],
-        ["assist.exprFillDefault", "assist.expressionFillDefault",],
-        ["assist.importEnforceGranularity", "imports.granularity.enforce",],
-        ["assist.importGranularity", "imports.granularity.group",],
-        ["assist.importMergeBehavior", "imports.granularity.group",],
-        ["assist.importMergeBehaviour", "imports.granularity.group",],
-        ["assist.importGroup", "imports.group.enable",],
-        ["assist.importPrefix", "imports.prefix",],
-        ["primeCaches.enable", "cachePriming.enable",],
-        ["cache.warmup", "cachePriming.enable",],
-        ["cargo.loadOutDirsFromCheck", "cargo.buildScripts.enable",],
-        ["cargo.runBuildScripts", "cargo.buildScripts.enable",],
-        ["cargo.runBuildScriptsCommand", "cargo.buildScripts.overrideCommand",],
-        ["cargo.useRustcWrapperForBuildScripts", "cargo.buildScripts.useRustcWrapper",],
-        ["completion.snippets", "completion.snippets.custom",],
-        ["diagnostics.enableExperimental", "diagnostics.experimental.enable",],
-        ["experimental.procAttrMacros", "procMacro.attributes.enable",],
-        ["highlighting.strings", "semanticHighlighting.strings.enable",],
-        ["highlightRelated.breakPoints", "highlightRelated.breakPoints.enable",],
-        ["highlightRelated.exitPoints", "highlightRelated.exitPoints.enable",],
-        ["highlightRelated.yieldPoints", "highlightRelated.yieldPoints.enable",],
-        ["highlightRelated.references", "highlightRelated.references.enable",],
-        ["hover.documentation", "hover.documentation.enable",],
-        ["hover.linksInHover", "hover.links.enable",],
-        ["hoverActions.linksInHover", "hover.links.enable",],
-        ["hoverActions.debug", "hover.actions.debug.enable",],
-        ["hoverActions.enable", "hover.actions.enable.enable",],
-        ["hoverActions.gotoTypeDef", "hover.actions.gotoTypeDef.enable",],
-        ["hoverActions.implementations", "hover.actions.implementations.enable",],
-        ["hoverActions.references", "hover.actions.references.enable",],
-        ["hoverActions.run", "hover.actions.run.enable",],
-        ["inlayHints.chainingHints", "inlayHints.chainingHints.enable",],
-        ["inlayHints.closureReturnTypeHints", "inlayHints.closureReturnTypeHints.enable",],
-        ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructor",],
-        ["inlayHints.parameterHints", "inlayHints.parameterHints.enable",],
-        ["inlayHints.reborrowHints", "inlayHints.reborrowHints.enable",],
-        ["inlayHints.typeHints", "inlayHints.typeHints.enable",],
-        ["lruCapacity", "lru.capacity",],
-        ["runnables.cargoExtraArgs", "runnables.extraArgs",],
-        ["runnables.overrideCargo", "runnables.command",],
-        ["rustcSource", "rustc.source",],
-        ["rustfmt.enableRangeFormatting", "rustfmt.rangeFormatting.enable"]
+        ["assist.allowMergingIntoGlobImports", "imports.merge.glob"],
+        ["assist.exprFillDefault", "assist.expressionFillDefault"],
+        ["assist.importEnforceGranularity", "imports.granularity.enforce"],
+        ["assist.importGranularity", "imports.granularity.group"],
+        ["assist.importMergeBehavior", "imports.granularity.group"],
+        ["assist.importMergeBehaviour", "imports.granularity.group"],
+        ["assist.importGroup", "imports.group.enable"],
+        ["assist.importPrefix", "imports.prefix"],
+        ["primeCaches.enable", "cachePriming.enable"],
+        ["cache.warmup", "cachePriming.enable"],
+        ["cargo.loadOutDirsFromCheck", "cargo.buildScripts.enable"],
+        ["cargo.runBuildScripts", "cargo.buildScripts.enable"],
+        ["cargo.runBuildScriptsCommand", "cargo.buildScripts.overrideCommand"],
+        ["cargo.useRustcWrapperForBuildScripts", "cargo.buildScripts.useRustcWrapper"],
+        ["completion.snippets", "completion.snippets.custom"],
+        ["diagnostics.enableExperimental", "diagnostics.experimental.enable"],
+        ["experimental.procAttrMacros", "procMacro.attributes.enable"],
+        ["highlighting.strings", "semanticHighlighting.strings.enable"],
+        ["highlightRelated.breakPoints", "highlightRelated.breakPoints.enable"],
+        ["highlightRelated.exitPoints", "highlightRelated.exitPoints.enable"],
+        ["highlightRelated.yieldPoints", "highlightRelated.yieldPoints.enable"],
+        ["highlightRelated.references", "highlightRelated.references.enable"],
+        ["hover.documentation", "hover.documentation.enable"],
+        ["hover.linksInHover", "hover.links.enable"],
+        ["hoverActions.linksInHover", "hover.links.enable"],
+        ["hoverActions.debug", "hover.actions.debug.enable"],
+        ["hoverActions.enable", "hover.actions.enable.enable"],
+        ["hoverActions.gotoTypeDef", "hover.actions.gotoTypeDef.enable"],
+        ["hoverActions.implementations", "hover.actions.implementations.enable"],
+        ["hoverActions.references", "hover.actions.references.enable"],
+        ["hoverActions.run", "hover.actions.run.enable"],
+        ["inlayHints.chainingHints", "inlayHints.chainingHints.enable"],
+        ["inlayHints.closureReturnTypeHints", "inlayHints.closureReturnTypeHints.enable"],
+        ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructor"],
+        ["inlayHints.parameterHints", "inlayHints.parameterHints.enable"],
+        ["inlayHints.reborrowHints", "inlayHints.reborrowHints.enable"],
+        ["inlayHints.typeHints", "inlayHints.typeHints.enable"],
+        ["lruCapacity", "lru.capacity"],
+        ["runnables.cargoExtraArgs", "runnables.extraArgs"],
+        ["runnables.overrideCargo", "runnables.command"],
+        ["rustcSource", "rustc.source"],
+        ["rustfmt.enableRangeFormatting", "rustfmt.rangeFormatting.enable"],
     ];
 
     for (const [oldKey, newKey] of renames) {
         const inspect = config.inspect(oldKey);
         if (inspect !== undefined) {
             const valMatrix = [
-                { val: inspect.globalValue, langVal: inspect.globalLanguageValue, target: vscode.ConfigurationTarget.Global },
-                { val: inspect.workspaceFolderValue, langVal: inspect.workspaceFolderLanguageValue, target: vscode.ConfigurationTarget.WorkspaceFolder },
-                { val: inspect.workspaceValue, langVal: inspect.workspaceLanguageValue, target: vscode.ConfigurationTarget.Workspace }
+                {
+                    val: inspect.globalValue,
+                    langVal: inspect.globalLanguageValue,
+                    target: vscode.ConfigurationTarget.Global,
+                },
+                {
+                    val: inspect.workspaceFolderValue,
+                    langVal: inspect.workspaceFolderLanguageValue,
+                    target: vscode.ConfigurationTarget.WorkspaceFolder,
+                },
+                {
+                    val: inspect.workspaceValue,
+                    langVal: inspect.workspaceLanguageValue,
+                    target: vscode.ConfigurationTarget.Workspace,
+                },
             ];
             for (const { val, langVal, target } of valMatrix) {
                 const pred = (val: unknown) => {
@@ -197,7 +220,14 @@ export async function updateConfig(config: vscode.WorkspaceConfiguration) {
                     // that means on the next run we would find these again, but as objects with
                     // these properties causing us to destroy the config
                     // so filter those already updated ones out
-                    return val !== undefined && !(typeof val === "object" && val !== null && (val.hasOwnProperty("enable") || val.hasOwnProperty("custom")));
+                    return (
+                        val !== undefined &&
+                        !(
+                            typeof val === "object" &&
+                            val !== null &&
+                            (val.hasOwnProperty("enable") || val.hasOwnProperty("custom"))
+                        )
+                    );
                 };
                 if (pred(val)) {
                     await config.update(newKey, val, target, false);
@@ -216,48 +246,50 @@ export function substituteVariablesInEnv(env: Env): Env {
     const missingDeps = new Set<string>();
     // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
     // to follow the same convention for our dependency tracking
-    const definedEnvKeys = new Set(Object.keys(env).map(key => `env:${key}`));
-    const envWithDeps = Object.fromEntries(Object.entries(env).map(([key, value]) => {
-        const deps = new Set<string>();
-        const depRe = new RegExp(/\${(?<depName>.+?)}/g);
-        let match = undefined;
-        while ((match = depRe.exec(value))) {
-            const depName = match.groups!.depName;
-            deps.add(depName);
-            // `depName` at this point can have a form of `expression` or
-            // `prefix:expression`
-            if (!definedEnvKeys.has(depName)) {
-                missingDeps.add(depName);
+    const definedEnvKeys = new Set(Object.keys(env).map((key) => `env:${key}`));
+    const envWithDeps = Object.fromEntries(
+        Object.entries(env).map(([key, value]) => {
+            const deps = new Set<string>();
+            const depRe = new RegExp(/\${(?<depName>.+?)}/g);
+            let match = undefined;
+            while ((match = depRe.exec(value))) {
+                const depName = match.groups!.depName;
+                deps.add(depName);
+                // `depName` at this point can have a form of `expression` or
+                // `prefix:expression`
+                if (!definedEnvKeys.has(depName)) {
+                    missingDeps.add(depName);
+                }
             }
-        }
-        return [`env:${key}`, { deps: [...deps], value }];
-    }));
+            return [`env:${key}`, { deps: [...deps], value }];
+        })
+    );
 
     const resolved = new Set<string>();
     for (const dep of missingDeps) {
         const match = /(?<prefix>.*?):(?<body>.+)/.exec(dep);
         if (match) {
             const { prefix, body } = match.groups!;
-            if (prefix === 'env') {
+            if (prefix === "env") {
                 const envName = body;
                 envWithDeps[dep] = {
-                    value: process.env[envName] ?? '',
-                    deps: []
+                    value: process.env[envName] ?? "",
+                    deps: [],
                 };
                 resolved.add(dep);
             } else {
                 // we can't handle other prefixes at the moment
                 // leave values as is, but still mark them as resolved
                 envWithDeps[dep] = {
-                    value: '${' + dep + '}',
-                    deps: []
+                    value: "${" + dep + "}",
+                    deps: [],
                 };
                 resolved.add(dep);
             }
         } else {
             envWithDeps[dep] = {
                 value: computeVscodeVar(dep),
-                deps: []
+                deps: [],
             };
         }
     }
@@ -267,11 +299,13 @@ export function substituteVariablesInEnv(env: Env): Env {
     do {
         leftToResolveSize = toResolve.size;
         for (const key of toResolve) {
-            if (envWithDeps[key].deps.every(dep => resolved.has(dep))) {
+            if (envWithDeps[key].deps.every((dep) => resolved.has(dep))) {
                 envWithDeps[key].value = envWithDeps[key].value.replace(
-                    /\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
+                    /\${(?<depName>.+?)}/g,
+                    (_wholeMatch, depName) => {
                         return envWithDeps[depName].value;
-                    });
+                    }
+                );
                 resolved.add(key);
                 toResolve.delete(key);
             }
@@ -302,16 +336,16 @@ function computeVscodeVar(varName: string): string {
                 return folders[0].uri.fsPath;
             } else {
                 // no workspace opened
-                return '';
+                return "";
             }
         },
 
         workspaceFolderBasename: () => {
-            const workspaceFolder = computeVscodeVar('workspaceFolder');
+            const workspaceFolder = computeVscodeVar("workspaceFolder");
             if (workspaceFolder) {
                 return path.basename(workspaceFolder);
             } else {
-                return '';
+                return "";
             }
         },
 
@@ -323,13 +357,13 @@ function computeVscodeVar(varName: string): string {
         // https://github.com/microsoft/vscode/blob/29eb316bb9f154b7870eb5204ec7f2e7cf649bec/src/vs/server/node/remoteTerminalChannel.ts#L56
         execPath: () => process.env.VSCODE_EXEC_PATH ?? process.execPath,
 
-        pathSeparator: () => path.sep
+        pathSeparator: () => path.sep,
     };
 
     if (varName in supportedVariables) {
         return supportedVariables[varName]();
     } else {
         // can't resolve, keep the expression as is
-        return '${' + varName + '}';
+        return "${" + varName + "}";
     }
 }
