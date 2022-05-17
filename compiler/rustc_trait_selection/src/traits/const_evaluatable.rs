@@ -108,6 +108,9 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     }
 
     let future_compat_lint = || {
+        if tcx.features().generic_const_exprs {
+            return;
+        }
         if let Some(local_def_id) = uv.def.did.as_local() {
             infcx.tcx.struct_span_lint_hir(
                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
