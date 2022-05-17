@@ -1,5 +1,7 @@
-#![crate_type = "lib"]
+// ignore-wasm32 compiled with panic=abort by default
+// needs-unwind
 
+#![crate_type = "lib"]
 pub trait Factory<T> {
     type Item;
 }
