@@ -467,7 +467,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     block
                         .terminator()
                         .successors()
-                        .map(|bb| Location { statement_index: 0, block: *bb })
+                        .map(|bb| Location { statement_index: 0, block: bb })
                         .filter(|s| visited_locations.insert(*s))
                         .map(|s| {
                             if self.is_back_edge(location, s) {
@@ -526,7 +526,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             } else {
                 for bb in block.terminator().successors() {
-                    let successor = Location { statement_index: 0, block: *bb };
+                    let successor = Location { statement_index: 0, block: bb };
 
                     if !visited_locations.contains(&successor)
                         && self.find_loop_head_dfs(successor, loop_head, visited_locations)

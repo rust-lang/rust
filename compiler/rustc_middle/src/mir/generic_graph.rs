@@ -24,7 +24,7 @@ pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Grap
         let terminator = body[source].terminator();
         let labels = terminator.kind.fmt_successor_labels();
 
-        for (&target, label) in terminator.successors().zip(labels) {
+        for (target, label) in terminator.successors().zip(labels) {
             let src = node(def_id, source);
             let trg = node(def_id, target);
             edges.push(Edge::new(src, trg, label.to_string()));

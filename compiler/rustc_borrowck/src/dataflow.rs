@@ -199,7 +199,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                 // Add successor BBs to the work list, if necessary.
                 let bb_data = &self.body[bb];
                 debug_assert!(hi == bb_data.statements.len());
-                for &succ_bb in bb_data.terminator().successors() {
+                for succ_bb in bb_data.terminator().successors() {
                     if !self.visited.insert(succ_bb) {
                         if succ_bb == location.block && first_lo > 0 {
                             // `succ_bb` has been seen before. If it wasn't

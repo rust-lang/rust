@@ -416,32 +416,36 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Return
             | Unreachable
             | Call { destination: None, cleanup: None, .. }
-            | InlineAsm { destination: None, cleanup: None, .. } => None.into_iter().chain(&[]),
-            Goto { target: ref t }
-            | Call { destination: None, cleanup: Some(ref t), .. }
-            | Call { destination: Some((_, ref t)), cleanup: None, .. }
-            | Yield { resume: ref t, drop: None, .. }
-            | DropAndReplace { target: ref t, unwind: None, .. }
-            | Drop { target: ref t, unwind: None, .. }
-            | Assert { target: ref t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref t, unwind: None }
-            | InlineAsm { destination: Some(ref t), cleanup: None, .. }
-            | InlineAsm { destination: None, cleanup: Some(ref t), .. } => {
-                Some(t).into_iter().chain(&[])
+            | InlineAsm { destination: None, cleanup: None, .. } => {
+                None.into_iter().chain((&[]).into_iter().copied())
             }
-            Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. }
-            | Yield { resume: ref t, drop: Some(ref u), .. }
-            | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
-            | Drop { target: ref t, unwind: Some(ref u), .. }
-            | Assert { target: ref t, cleanup: Some(ref u), .. }
-            | FalseUnwind { real_target: ref t, unwind: Some(ref u) }
-            | InlineAsm { destination: Some(ref t), cleanup: Some(ref u), .. } => {
-                Some(t).into_iter().chain(slice::from_ref(u))
+            Goto { target: t }
+            | Call { destination: None, cleanup: Some(t), .. }
+            | Call { destination: Some((_, t)), cleanup: None, .. }
+            | Yield { resume: t, drop: None, .. }
+            | DropAndReplace { target: t, unwind: None, .. }
+            | Drop { target: t, unwind: None, .. }
+            | Assert { target: t, cleanup: None, .. }
+            | FalseUnwind { real_target: t, unwind: None }
+            | InlineAsm { destination: Some(t), cleanup: None, .. }
+            | InlineAsm { destination: None, cleanup: Some(t), .. } => {
+                Some(t).into_iter().chain((&[]).into_iter().copied())
             }
-            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets.targets),
-            FalseEdge { ref real_target, ref imaginary_target } => {
-                Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
+            Call { destination: Some((_, t)), cleanup: Some(ref u), .. }
+            | Yield { resume: t, drop: Some(ref u), .. }
+            | DropAndReplace { target: t, unwind: Some(ref u), .. }
+            | Drop { target: t, unwind: Some(ref u), .. }
+            | Assert { target: t, cleanup: Some(ref u), .. }
+            | FalseUnwind { real_target: t, unwind: Some(ref u) }
+            | InlineAsm { destination: Some(t), cleanup: Some(ref u), .. } => {
+                Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied())
             }
+            SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(targets.targets.iter().copied())
+            }
+            FalseEdge { real_target, ref imaginary_target } => Some(real_target)
+                .into_iter()
+                .chain(slice::from_ref(imaginary_target).into_iter().copied()),
         }
     }
 
