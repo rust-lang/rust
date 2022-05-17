@@ -866,6 +866,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
 
+            self.report_ambiguous_type_parameter(&mut err, arg);
             err.span_label(
                 span,
                 arg_data.cannot_infer_msg(use_diag.filter(|d| d.applies_to(span))),
@@ -929,6 +930,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    fn report_ambiguous_type_parameter(&self, err: &mut Diagnostic, arg: GenericArg<'tcx>) {
+        if let GenericArgKind::Type(ty) = arg.unpack()
+            && let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind()
+        {
+            let mut inner = self.inner.borrow_mut();
+            let ty_vars = &inner.type_variables();
+            let var_origin = ty_vars.var_origin(ty_vid);
+            if let TypeVariableOriginKind::TypeParameterDefinition(name, Some(def_id)) =
+                var_origin.kind
+                && let Some(parent_def_id) = self.tcx.parent(def_id).as_local()
+                && let Some(hir::Node::Item(item)) = self.tcx.hir().find_by_def_id(parent_def_id)
+                && let hir::ItemKind::Impl(impl_item) = item.kind
+                && let Some(trait_ref) = &impl_item.of_trait
+                && let Some(did) = trait_ref.trait_def_id()
+                && self.tcx.generics_of(did).params.iter().any(|param| param.name == name)
+            {
+                err.span_help(self.tcx.def_span(def_id), "type parameter declared here");
             }
         }
     }
