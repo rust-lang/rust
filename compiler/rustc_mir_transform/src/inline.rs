@@ -449,7 +449,7 @@ impl<'tcx> Inliner<'tcx> {
             }
 
             if !is_drop {
-                for &succ in term.successors() {
+                for succ in term.successors() {
                     work_list.push(succ);
                 }
             }

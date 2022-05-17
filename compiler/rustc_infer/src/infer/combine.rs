@@ -776,21 +776,6 @@ pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
     fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
 }
 
-pub trait RelateResultCompare<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T>
-    where
-        F: FnOnce() -> TypeError<'tcx>;
-}
-
-impl<'tcx, T: Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T>
-    where
-        F: FnOnce() -> TypeError<'tcx>,
-    {
-        self.clone().and_then(|s| if s == t { self.clone() } else { Err(f()) })
-    }
-}
-
 pub fn const_unification_error<'tcx>(
     a_is_expected: bool,
     (a, b): (ty::Const<'tcx>, ty::Const<'tcx>),

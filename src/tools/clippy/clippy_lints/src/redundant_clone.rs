@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             // Give up on loops
-            if terminator.successors().any(|s| *s == bb) {
+            if terminator.successors().any(|s| s == bb) {
                 continue;
             }
 
@@ -440,7 +440,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
             // Short-circuit
             if (usage.cloned_used && usage.clone_consumed_or_mutated) ||
                 // Give up on loops
-                tdata.terminator().successors().any(|s| *s == bb)
+                tdata.terminator().successors().any(|s| s == bb)
             {
                 return CloneUsage {
                     cloned_used: true,

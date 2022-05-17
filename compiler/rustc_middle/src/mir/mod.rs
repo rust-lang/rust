@@ -1355,10 +1355,7 @@ pub enum InlineAsmOperand<'tcx> {
 /// Type for MIR `Assert` terminator error messages.
 pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 
-// FIXME: Change `Successors` to `impl Iterator<Item = BasicBlock>`.
-#[allow(rustc::pass_by_value)]
-pub type Successors<'a> =
-    iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
+pub type Successors<'a> = impl Iterator<Item = BasicBlock> + 'a;
 pub type SuccessorsMut<'a> =
     iter::Chain<option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
@@ -3434,13 +3431,13 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     #[inline]
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
-        self.basic_blocks[node].terminator().successors().cloned()
+        self.basic_blocks[node].terminator().successors()
     }
 }
 
 impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Item = BasicBlock;
-    type Iter = iter::Cloned<Successors<'b>>;
+    type Iter = Successors<'b>;
 }
 
 impl<'tcx, 'graph> graph::GraphPredecessors<'graph> for Body<'tcx> {

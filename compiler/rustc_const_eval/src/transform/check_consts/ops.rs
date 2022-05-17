@@ -89,7 +89,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn")
+        ccx.tcx.sess.struct_span_err(
+            span,
+            &format!("function pointer calls are not allowed in {}s", ccx.const_kind()),
+        )
     }
 }
 

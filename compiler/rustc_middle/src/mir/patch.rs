@@ -166,9 +166,7 @@ impl<'tcx> MirPatch<'tcx> {
             // get terminator's targets and apply the statement to all of them.
             if loc.statement_index > body[loc.block].statements.len() {
                 let term = body[loc.block].terminator();
-                let successors = term.successors().clone();
-
-                for i in successors {
+                for i in term.successors() {
                     stmts_and_targets
                         .push((Statement { source_info, kind: stmt.clone() }, i.clone()));
                 }
