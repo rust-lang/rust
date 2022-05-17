@@ -1654,6 +1654,7 @@ rustc_queries! {
     /// Returns the debugger visualizers defined for this crate.
     query debugger_visualizers(_: CrateNum) -> Vec<rustc_span::DebuggerVisualizerFile> {
         storage(ArenaCacheSelector<'tcx>)
+        eval_always
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
     }
