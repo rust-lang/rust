@@ -21,6 +21,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
+use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::{fmt, iter};
 
@@ -1195,6 +1196,12 @@ pub fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
 }
 
+/// Determines whether an item is an intrinsic by Abi.
+pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    matches!(tcx.fn_sig(def_id).abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { normalize_opaque_types, is_doc_hidden, ..*providers }
+    *providers =
+        ty::query::Providers { normalize_opaque_types, is_doc_hidden, is_intrinsic, ..*providers }
 }

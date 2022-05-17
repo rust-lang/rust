@@ -1318,6 +1318,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+            if tcx.is_intrinsic(def_id) {
+                self.tables.is_intrinsic.set(def_id.index, ());
+            }
         }
     }
 
@@ -1562,6 +1565,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         if let hir::ItemKind::Fn(..) = item.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+            if tcx.is_intrinsic(def_id) {
+                self.tables.is_intrinsic.set(def_id.index, ());
+            }
         }
         if let hir::ItemKind::Impl { .. } = item.kind {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
@@ -1958,6 +1964,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+            if tcx.is_intrinsic(def_id) {
+                self.tables.is_intrinsic.set(def_id.index, ());
+            }
         }
     }
 }

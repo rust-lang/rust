@@ -1601,6 +1601,11 @@ rustc_queries! {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
     }
+    /// Whether the function is an intrinsic
+    query is_intrinsic(def_id: DefId) -> bool {
+        desc { |tcx| "is_intrinsic({})", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
     /// Returns the lang items defined in another crate by loading it from metadata.
     query get_lang_items(_: ()) -> LanguageItems {
         storage(ArenaCacheSelector<'tcx>)

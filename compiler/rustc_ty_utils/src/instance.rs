@@ -5,7 +5,6 @@ use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::{sym, DUMMY_SP};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
 
@@ -155,12 +154,7 @@ fn inner_resolve_instance<'tcx>(
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
 
         let def = match *item_type.kind() {
-            ty::FnDef(..)
-                if {
-                    let f = item_type.fn_sig(tcx);
-                    f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
-                } =>
-            {
+            ty::FnDef(def_id, ..) if tcx.is_intrinsic(def_id) => {
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def.did)
             }

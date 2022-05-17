@@ -6,7 +6,6 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
 pub struct LowerIntrinsics;
 
@@ -139,8 +138,7 @@ fn resolve_rust_intrinsic<'tcx>(
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, SubstsRef<'tcx>)> {
     if let ty::FnDef(def_id, substs) = *func_ty.kind() {
-        let fn_sig = func_ty.fn_sig(tcx);
-        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
+        if tcx.is_intrinsic(def_id) {
             return Some((tcx.item_name(def_id), substs));
         }
     }

@@ -14,7 +14,6 @@ use rustc_session::lint;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
-use rustc_target::spec::abi::Abi::RustIntrinsic;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx });
@@ -63,8 +62,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 
 impl<'tcx> ExprVisitor<'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        self.tcx.fn_sig(def_id).abi() == RustIntrinsic
-            && self.tcx.item_name(def_id) == sym::transmute
+        self.tcx.is_intrinsic(def_id) && self.tcx.item_name(def_id) == sym::transmute
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {

@@ -224,6 +224,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
+    is_intrinsic => { cdata.get_is_intrinsic(def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }

@@ -702,8 +702,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        use rustc_target::spec::abi::Abi::RustIntrinsic;
-
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
@@ -885,7 +883,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
+                let is_intrinsic = tcx.is_intrinsic(callee);
 
                 if !tcx.is_const_fn_raw(callee) {
                     if tcx.trait_of_item(callee).is_some() {
