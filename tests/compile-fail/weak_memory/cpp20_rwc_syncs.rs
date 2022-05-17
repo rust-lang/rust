@@ -9,13 +9,13 @@
 // so we have to stick to C++11 emulation from exiting research.
 
 use std::sync::atomic::Ordering::*;
-use std::thread::{spawn, yield_now};
+use std::thread::spawn;
 use std::sync::atomic::{fence, AtomicUsize};
 
-// Spins and yields until until it reads value
+// Spins until it reads value
 fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Relaxed) != val {
-        yield_now();
+        std::hint::spin_loop();
     }
     val
 }

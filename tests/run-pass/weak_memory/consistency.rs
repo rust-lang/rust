@@ -22,7 +22,7 @@
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::*;
-use std::thread::{spawn, yield_now};
+use std::thread::spawn;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -37,10 +37,10 @@ fn static_atomic(val: usize) -> &'static AtomicUsize {
     ret
 }
 
-// Spins and yields until until acquires a pre-determined value
+// Spins until acquires a pre-determined value
 fn acquires_value(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Acquire) != val {
-        yield_now();
+        std::hint::spin_loop();
     }
     val
 }
