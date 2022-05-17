@@ -50,7 +50,6 @@ rustc-dep-of-std = [
     "rustc-internal-api",
 ]
 raw = []
-map-inner = ["raw"]
 
 # Enables usage of `#[inline]` on far more functions than by default in this
 # crate. This may lead to a performance increase but often comes at a compile

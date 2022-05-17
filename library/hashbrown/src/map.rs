@@ -186,15 +186,8 @@ pub enum DefaultHashBuilder {}
 /// // use the values stored in map
 /// ```
 pub struct HashMap<K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
-    #[cfg(any(feature = "rustc-internal-api", not(feature = "map-inner")))]
     pub(crate) hash_builder: S,
-    #[cfg(any(feature = "rustc-internal-api", not(feature = "map-inner")))]
     pub(crate) table: RawTable<(K, V), A>,
-
-    #[cfg(all(feature = "map-inner", not(feature = "rustc-internal-api")))]
-    pub hash_builder: S,
-    #[cfg(all(feature = "map-inner", not(feature = "rustc-internal-api")))]
-    pub table: RawTable<(K, V), A>,
 }
 
 impl<K: Clone, V: Clone, S: Clone, A: Allocator + Clone> Clone for HashMap<K, V, S, A> {
@@ -2018,6 +2011,67 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S, A> {
         RawEntryBuilder { map: self }
+    }
+
+    /// Returns a mutable reference to the [`RawTable`] used underneath [`HashMap`].
+    /// This function is only available if the `raw` feature of the crate is enabled.
+    ///
+    /// # Note
+    ///
+    /// Calling the function safe, but using raw hash table API's may require
+    /// unsafe functions or blocks.
+    ///
+    /// `RawTable` API gives the lowest level of control under the map that can be useful
+    /// for extending the HashMap's API, but may lead to *[undefined behavior]*.
+    ///
+    /// [`HashMap`]: struct.HashMap.html
+    /// [`RawTable`]: raw/struct.RawTable.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.extend([("a", 10), ("b", 20), ("c", 30)]);
+    /// assert_eq!(map.len(), 3);
+    ///
+    /// // Let's imagine that we have a value and a hash of the key, but not the key itself.
+    /// // However, if you want to remove the value from the map by hash and value, and you
+    /// // know exactly that the value is unique, then you can create a function like this:
+    /// fn remove_by_hash<K, V, S, F>(
+    ///     map: &mut HashMap<K, V, S>,
+    ///     hash: u64,
+    ///     is_match: F,
+    /// ) -> Option<(K, V)>
+    /// where
+    ///     F: Fn(&K, &V) -> bool,
+    /// {
+    ///     let raw_table = map.raw_table();
+    ///     match raw_table.find(hash, |(k, v)| is_match(k, v)) {
+    ///         Some(bucket) => Some(unsafe { raw_table.remove(bucket) }),
+    ///         None => None,
+    ///     }
+    /// }
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let hash = compute_hash(map.hasher(), "a");
+    /// assert_eq!(remove_by_hash(&mut map, hash, |_, v| *v == 10), Some(("a", 10)));
+    /// assert_eq!(map.get(&"a"), None);
+    /// assert_eq!(map.len(), 2);
+    /// ```
+    #[cfg(feature = "raw")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn raw_table(&mut self) -> &mut RawTable<(K, V), A> {
+        &mut self.table
     }
 }
 
