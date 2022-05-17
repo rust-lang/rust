@@ -106,6 +106,8 @@ mod handlers {
     mod add_explicit_type;
     mod add_lifetime_to_type;
     mod add_missing_impl_members;
+    mod add_missing_match_arms;
+    mod add_attribute;
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
@@ -125,7 +127,6 @@ mod handlers {
     mod extract_struct_from_enum_variant;
     mod extract_type_alias;
     mod extract_variable;
-    mod add_missing_match_arms;
     mod fix_visibility;
     mod flip_binexpr;
     mod flip_comma;
@@ -134,7 +135,6 @@ mod handlers {
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
     mod generate_deref;
-    mod generate_derive;
     mod generate_documentation_template;
     mod generate_enum_is_method;
     mod generate_enum_projection_method;
@@ -190,6 +190,7 @@ mod handlers {
     pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
+            add_attribute::add_attribute,
             add_explicit_type::add_explicit_type,
             add_missing_match_arms::add_missing_match_arms,
             add_lifetime_to_type::add_lifetime_to_type,
@@ -219,7 +220,6 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
-            generate_derive::generate_derive,
             generate_documentation_template::generate_documentation_template,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,

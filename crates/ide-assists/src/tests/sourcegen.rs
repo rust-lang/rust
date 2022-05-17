@@ -31,7 +31,7 @@ r#####"
 }}
 "######,
                     &test_id,
-                    &assist.id,
+                    &section.assist_id,
                     reveal_hash_comments(&section.before),
                     reveal_hash_comments(&section.after)
                 );
@@ -61,6 +61,7 @@ r#####"
 }
 #[derive(Debug)]
 struct Section {
+    assist_id: String,
     doc: String,
     before: String,
     after: String,
@@ -111,11 +112,13 @@ impl Assist {
 
                     let before = take_until(lines.by_ref(), "```");
 
-                    assert_eq!(lines.next().unwrap().as_str(), "->");
+                    let arrow = lines.next().unwrap();
+                    assert!(arrow.starts_with("->"));
+                    let id = if arrow[2..].is_empty() { &assist.id } else { &arrow[2..] };
                     assert_eq!(lines.next().unwrap().as_str(), "```");
                     let after = take_until(lines.by_ref(), "```");
 
-                    assist.sections.push(Section { doc, before, after });
+                    assist.sections.push(Section { assist_id: id.to_string(), doc, before, after });
                 }
 
                 acc.push(assist)
