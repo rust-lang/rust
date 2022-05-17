@@ -44,3 +44,7 @@ rustup override set miri
 
 # Cleanup.
 cargo clean
+
+# Call 'cargo metadata' on the sources in case that changes the lockfile
+# (which fails under soem setups when it is done from inside vscode).
+cargo metadata --format-version 1 --manifest-path "$(rustc --print sysroot)/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml" >/dev/null
