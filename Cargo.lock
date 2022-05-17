@@ -364,7 +364,7 @@ dependencies = [
  "tar",
  "tempfile",
  "termcolor",
- "toml_edit 0.14.3",
+ "toml_edit",
  "unicode-width",
  "unicode-xid",
  "url 2.2.2",
@@ -451,7 +451,7 @@ dependencies = [
  "snapbox",
  "tar",
  "termcolor",
- "toml_edit 0.14.3",
+ "toml_edit",
  "url 2.2.2",
 ]
 
@@ -2043,15 +2043,6 @@ dependencies = [
 
 [[package]]
 name = "kstring"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b310ccceade8121d7d77fee406160e457c2f4e7c7982d589da3499bc7ea4526"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "kstring"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec3066350882a1cd6d950d055997f379ac37fd39f81cd4d8ed186032eb3c5747"
@@ -3003,8 +2994,6 @@ dependencies = [
 [[package]]
 name = "racer"
 version = "2.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64954e44fc0d1dcc64e0b9f2b155249ad62849eba25354b76ae1598d1e8f0fa0"
 dependencies = [
  "bitflags",
  "clap 2.34.0",
@@ -3012,8 +3001,26 @@ dependencies = [
  "env_logger 0.7.1",
  "humantime 2.0.1",
  "lazy_static",
+ "lazycell",
  "log",
+ "racer-cargo-metadata",
  "rls-span",
+]
+
+[[package]]
+name = "racer-cargo-metadata"
+version = "0.1.2"
+dependencies = [
+ "racer-interner",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "racer-interner"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -3246,7 +3253,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "toml",
- "toml_edit 0.13.4",
+ "toml_edit",
  "url 2.2.2",
  "walkdir",
 ]
@@ -5322,19 +5329,6 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "744e9ed5b352340aa47ce033716991b5589e23781acb97cad37d4ea70560f55b"
-dependencies = [
- "combine",
- "indexmap",
- "itertools",
- "kstring 1.0.6",
- "serde",
-]
-
-[[package]]
-name = "toml_edit"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba98375fd631b83696f87c64e4ed8e29e6a1f3404d6aed95fa95163bad38e705"
@@ -5342,7 +5336,7 @@ dependencies = [
  "combine",
  "indexmap",
  "itertools",
- "kstring 2.0.0",
+ "kstring",
  "serde",
 ]
 
