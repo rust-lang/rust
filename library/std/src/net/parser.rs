@@ -285,8 +285,8 @@ impl FromStr for IpAddr {
 impl FromStr for Ipv4Addr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
-        // don't try to parse if too long
-        if s.len() > 15 {
+        // don't try to parse if too long or too short
+        if s.len() < 7 || s.len() > 15 {
             Err(AddrParseError(AddrKind::Ipv4))
         } else {
             Parser::new(s).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
