@@ -1,15 +1,22 @@
-import * as vscode from 'vscode';
-import * as lc from 'vscode-languageclient';
-import * as ra from './lsp_ext';
-import * as tasks from './tasks';
+import * as vscode from "vscode";
+import * as lc from "vscode-languageclient";
+import * as ra from "./lsp_ext";
+import * as tasks from "./tasks";
 
-import { Ctx } from './ctx';
-import { makeDebugConfig } from './debug';
-import { Config, RunnableEnvCfg } from './config';
+import { Ctx } from "./ctx";
+import { makeDebugConfig } from "./debug";
+import { Config, RunnableEnvCfg } from "./config";
 
-const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
+const quickPickButtons = [
+    { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." },
+];
 
-export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick, debuggeeOnly = false, showButtons: boolean = true): Promise<RunnableQuickPick | undefined> {
+export async function selectRunnable(
+    ctx: Ctx,
+    prevRunnable?: RunnableQuickPick,
+    debuggeeOnly = false,
+    showButtons: boolean = true
+): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
     const client = ctx.client;
     if (!editor || !client) return;
@@ -20,23 +27,18 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
 
     const runnables = await client.sendRequest(ra.runnables, {
         textDocument,
-        position: client.code2ProtocolConverter.asPosition(
-            editor.selection.active,
-        ),
+        position: client.code2ProtocolConverter.asPosition(editor.selection.active),
     });
     const items: RunnableQuickPick[] = [];
     if (prevRunnable) {
         items.push(prevRunnable);
     }
     for (const r of runnables) {
-        if (
-            prevRunnable &&
-            JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)
-        ) {
+        if (prevRunnable && JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)) {
             continue;
         }
 
-        if (debuggeeOnly && (r.label.startsWith('doctest') || r.label.startsWith('cargo'))) {
+        if (debuggeeOnly && (r.label.startsWith("doctest") || r.label.startsWith("cargo"))) {
             continue;
         }
         items.push(new RunnableQuickPick(r));
@@ -53,7 +55,7 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
         const disposables: vscode.Disposable[] = [];
         const close = (result?: RunnableQuickPick) => {
             resolve(result);
-            disposables.forEach(d => d.dispose());
+            disposables.forEach((d) => d.dispose());
         };
 
         const quickPick = vscode.window.createQuickPick<RunnableQuickPick>();
@@ -71,7 +73,7 @@ export async function selectRunnable(ctx: Ctx, prevRunnable?: RunnableQuickPick,
             }),
             quickPick.onDidChangeActive((active) => {
                 if (showButtons && active.length > 0) {
-                    if (active[0].label.startsWith('cargo')) {
+                    if (active[0].label.startsWith("cargo")) {
                         // save button makes no sense for `cargo test` or `cargo check`
                         quickPick.buttons = [];
                     } else if (quickPick.buttons.length === 0) {
@@ -96,8 +98,11 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareEnv(runnable: ra.Runnable, runnableEnvCfg: RunnableEnvCfg): Record<string, string> {
-    const env: Record<string, string> = { "RUST_BACKTRACE": "short" };
+export function prepareEnv(
+    runnable: ra.Runnable,
+    runnableEnvCfg: RunnableEnvCfg
+): Record<string, string> {
+    const env: Record<string, string> = { RUST_BACKTRACE: "short" };
 
     if (runnable.args.expectTest) {
         env["UPDATE_EXPECT"] = "1";
@@ -141,7 +146,14 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
-    const cargoTask = await tasks.buildCargoTask(target, definition, runnable.label, args, config.cargoRunner, true);
+    const cargoTask = await tasks.buildCargoTask(
+        target,
+        definition,
+        runnable.label,
+        args,
+        config.cargoRunner,
+        true
+    );
 
     cargoTask.presentationOptions.clear = true;
     // Sadly, this doesn't prevent focus stealing if the terminal is currently
@@ -157,7 +169,7 @@ export function createArgs(runnable: ra.Runnable): string[] {
         args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
     }
     if (runnable.args.executableArgs.length > 0) {
-        args.push('--', ...runnable.args.executableArgs);
+        args.push("--", ...runnable.args.executableArgs);
     }
     return args;
 }

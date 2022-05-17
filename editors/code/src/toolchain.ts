@@ -1,9 +1,9 @@
-import * as cp from 'child_process';
-import * as os from 'os';
-import * as path from 'path';
-import * as readline from 'readline';
-import * as vscode from 'vscode';
-import { execute, log, memoizeAsync } from './util';
+import * as cp from "child_process";
+import * as os from "os";
+import * as path from "path";
+import * as readline from "readline";
+import * as vscode from "vscode";
+import { execute, log, memoizeAsync } from "./util";
 
 interface CompilationArtifact {
     fileName: string;
@@ -18,7 +18,7 @@ export interface ArtifactSpec {
 }
 
 export class Cargo {
-    constructor(readonly rootFolder: string, readonly output: vscode.OutputChannel) { }
+    constructor(readonly rootFolder: string, readonly output: vscode.OutputChannel) {}
 
     // Made public for testing purposes
     static artifactSpec(args: readonly string[]): ArtifactSpec {
@@ -27,7 +27,9 @@ export class Cargo {
         // arguments for a runnable from the quick pick should be updated.
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_code_lens
         switch (cargoArgs[0]) {
-            case "run": cargoArgs[0] = "build"; break;
+            case "run":
+                cargoArgs[0] = "build";
+                break;
             case "test": {
                 if (!cargoArgs.includes("--no-run")) {
                     cargoArgs.push("--no-run");
@@ -40,7 +42,7 @@ export class Cargo {
         if (cargoArgs[0] === "test") {
             // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
             // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
-            result.filter = (artifacts) => artifacts.filter(it => it.isTest);
+            result.filter = (artifacts) => artifacts.filter((it) => it.isTest);
         }
 
         return result;
@@ -50,24 +52,25 @@ export class Cargo {
         const artifacts: CompilationArtifact[] = [];
 
         try {
-            await this.runCargo(spec.cargoArgs,
-                message => {
-                    if (message.reason === 'compiler-artifact' && message.executable) {
-                        const isBinary = message.target.crate_types.includes('bin');
-                        const isBuildScript = message.target.kind.includes('custom-build');
+            await this.runCargo(
+                spec.cargoArgs,
+                (message) => {
+                    if (message.reason === "compiler-artifact" && message.executable) {
+                        const isBinary = message.target.crate_types.includes("bin");
+                        const isBuildScript = message.target.kind.includes("custom-build");
                         if ((isBinary && !isBuildScript) || message.profile.test) {
                             artifacts.push({
                                 fileName: message.executable,
                                 name: message.target.name,
                                 kind: message.target.kind[0],
-                                isTest: message.profile.test
+                                isTest: message.profile.test,
                             });
                         }
-                    } else if (message.reason === 'compiler-message') {
+                    } else if (message.reason === "compiler-message") {
                         this.output.append(message.message.rendered);
                     }
                 },
-                stderr => this.output.append(stderr),
+                (stderr) => this.output.append(stderr)
             );
         } catch (err) {
             this.output.show(true);
@@ -81,9 +84,9 @@ export class Cargo {
         const artifacts = await this.getArtifacts(Cargo.artifactSpec(args));
 
         if (artifacts.length === 0) {
-            throw new Error('No compilation artifacts');
+            throw new Error("No compilation artifacts");
         } else if (artifacts.length > 1) {
-            throw new Error('Multiple compilation artifacts are not supported.');
+            throw new Error("Multiple compilation artifacts are not supported.");
         }
 
         return artifacts[0].fileName;
@@ -97,25 +100,23 @@ export class Cargo {
         const path = await cargoPath();
         return await new Promise((resolve, reject) => {
             const cargo = cp.spawn(path, cargoArgs, {
-                stdio: ['ignore', 'pipe', 'pipe'],
-                cwd: this.rootFolder
+                stdio: ["ignore", "pipe", "pipe"],
+                cwd: this.rootFolder,
             });
 
-            cargo.on('error', err => reject(new Error(`could not launch cargo: ${err}`)));
+            cargo.on("error", (err) => reject(new Error(`could not launch cargo: ${err}`)));
 
-            cargo.stderr.on('data', chunk => onStderrString(chunk.toString()));
+            cargo.stderr.on("data", (chunk) => onStderrString(chunk.toString()));
 
             const rl = readline.createInterface({ input: cargo.stdout });
-            rl.on('line', line => {
+            rl.on("line", (line) => {
                 const message = JSON.parse(line);
                 onStdoutJson(message);
             });
 
-            cargo.on('exit', (exitCode, _) => {
-                if (exitCode === 0)
-                    resolve(exitCode);
-                else
-                    reject(new Error(`exit code: ${exitCode}.`));
+            cargo.on("exit", (exitCode, _) => {
+                if (exitCode === 0) resolve(exitCode);
+                else reject(new Error(`exit code: ${exitCode}.`));
             });
         });
     }
@@ -158,7 +159,12 @@ export const getPathForExecutable = memoizeAsync(
         try {
             // hmm, `os.homedir()` seems to be infallible
             // it is not mentioned in docs and cannot be infered by the type signature...
-            const standardPath = vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo", "bin", executableName);
+            const standardPath = vscode.Uri.joinPath(
+                vscode.Uri.file(os.homedir()),
+                ".cargo",
+                "bin",
+                executableName
+            );
 
             if (await isFileAtUri(standardPath)) return standardPath.fsPath;
         } catch (err) {
@@ -169,13 +175,11 @@ export const getPathForExecutable = memoizeAsync(
 );
 
 async function lookupInPath(exec: string): Promise<boolean> {
-    const paths = process.env.PATH ?? "";;
+    const paths = process.env.PATH ?? "";
 
-    const candidates = paths.split(path.delimiter).flatMap(dirInPath => {
+    const candidates = paths.split(path.delimiter).flatMap((dirInPath) => {
         const candidate = path.join(dirInPath, exec);
-        return os.type() === "Windows_NT"
-            ? [candidate, `${candidate}.exe`]
-            : [candidate];
+        return os.type() === "Windows_NT" ? [candidate, `${candidate}.exe`] : [candidate];
     });
 
     for await (const isFile of candidates.map(isFileAtPath)) {

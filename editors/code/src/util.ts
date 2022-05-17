@@ -13,7 +13,7 @@ export function assert(condition: boolean, explanation: string): asserts conditi
     }
 }
 
-export const log = new class {
+export const log = new (class {
     private enabled = true;
     private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client");
 
@@ -55,21 +55,20 @@ export const log = new class {
             depth: 6, // heuristic
         });
     }
-};
+})();
 
 export async function sendRequestWithRetry<TParam, TRet>(
     client: lc.LanguageClient,
     reqType: lc.RequestType<TParam, TRet, unknown>,
     param: TParam,
-    token?: vscode.CancellationToken,
+    token?: vscode.CancellationToken
 ): Promise<TRet> {
     // The sequence is `10 * (2 ** (2 * n))` where n is 1, 2, 3...
     for (const delay of [40, 160, 640, 2560, 10240, null]) {
         try {
             return await (token
                 ? client.sendRequest(reqType, param, token)
-                : client.sendRequest(reqType, param)
-            );
+                : client.sendRequest(reqType, param));
         } catch (error) {
             if (delay === null) {
                 log.warn("LSP request timed out", { method: reqType.method, param, error });
@@ -86,11 +85,11 @@ export async function sendRequestWithRetry<TParam, TRet>(
             await sleep(delay);
         }
     }
-    throw 'unreachable';
+    throw "unreachable";
 }
 
 export function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export type RustDocument = vscode.TextDocument & { languageId: "rust" };
@@ -101,12 +100,12 @@ export function isRustDocument(document: vscode.TextDocument): document is RustD
     // by allowing only `file` schemes
     // unfortunately extensions that use diff views not always set this
     // to something different than 'file' (see ongoing bug: #4608)
-    return document.languageId === 'rust' && document.uri.scheme === 'file';
+    return document.languageId === "rust" && document.uri.scheme === "file";
 }
 
 export function isCargoTomlDocument(document: vscode.TextDocument): document is RustDocument {
     // ideally `document.languageId` should be 'toml' but user maybe not have toml extension installed
-    return document.uri.scheme === 'file' && document.fileName.endsWith('Cargo.toml');
+    return document.uri.scheme === "file" && document.fileName.endsWith("Cargo.toml");
 }
 
 export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
@@ -116,9 +115,9 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
 export function isValidExecutable(path: string): boolean {
     log.debug("Checking availability of a binary at", path);
 
-    const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
+    const res = spawnSync(path, ["--version"], { encoding: "utf8" });
 
-    const printOutput = res.error && (res.error as any).code !== 'ENOENT' ? log.warn : log.debug;
+    const printOutput = res.error && (res.error as any).code !== "ENOENT" ? log.warn : log.debug;
     printOutput(path, "--version:", res);
 
     return res.status === 0;
@@ -126,17 +125,19 @@ export function isValidExecutable(path: string): boolean {
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */
 export function setContextValue(key: string, value: any): Thenable<void> {
-    return vscode.commands.executeCommand('setContext', key, value);
+    return vscode.commands.executeCommand("setContext", key, value);
 }
 
 /**
  * Returns a higher-order function that caches the results of invoking the
  * underlying async function.
  */
-export function memoizeAsync<Ret, TThis, Param extends string>(func: (this: TThis, arg: Param) => Promise<Ret>) {
+export function memoizeAsync<Ret, TThis, Param extends string>(
+    func: (this: TThis, arg: Param) => Promise<Ret>
+) {
     const cache = new Map<string, Ret>();
 
-    return async function(this: TThis, arg: Param) {
+    return async function (this: TThis, arg: Param) {
         const cached = cache.get(arg);
         if (cached) return cached;
 

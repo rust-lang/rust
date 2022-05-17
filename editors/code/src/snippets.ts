@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { assert } from './util';
+import { assert } from "./util";
 
 export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
     if (edit.entries().length === 1) {
@@ -11,12 +11,17 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
     }
     for (const [uri, edits] of edit.entries()) {
         const editor = await editorFromUri(uri);
-        if (editor) await editor.edit((builder) => {
-            for (const indel of edits) {
-                assert(!parseSnippet(indel.newText), `bad ws edit: snippet received with multiple edits: ${JSON.stringify(edit)}`);
-                builder.replace(indel.range, indel.newText);
-            }
-        });
+        if (editor) {
+            await editor.edit((builder) => {
+                for (const indel of edits) {
+                    assert(
+                        !parseSnippet(indel.newText),
+                        `bad ws edit: snippet received with multiple edits: ${JSON.stringify(edit)}`
+                    );
+                    builder.replace(indel.range, indel.newText);
+                }
+            });
+        }
     }
 }
 
@@ -25,7 +30,9 @@ async function editorFromUri(uri: vscode.Uri): Promise<vscode.TextEditor | undef
         // `vscode.window.visibleTextEditors` only contains editors whose contents are being displayed
         await vscode.window.showTextDocument(uri, {});
     }
-    return vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
+    return vscode.window.visibleTextEditors.find(
+        (it) => it.document.uri.toString() === uri.toString()
+    );
 }
 
 export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vscode.TextEdit[]) {
@@ -37,22 +44,26 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
             if (parsed) {
                 const [newText, [placeholderStart, placeholderLength]] = parsed;
                 const prefix = newText.substr(0, placeholderStart);
-                const lastNewline = prefix.lastIndexOf('\n');
+                const lastNewline = prefix.lastIndexOf("\n");
 
                 const startLine = indel.range.start.line + lineDelta + countLines(prefix);
-                const startColumn = lastNewline === -1 ?
-                    indel.range.start.character + placeholderStart
-                    : prefix.length - lastNewline - 1;
+                const startColumn =
+                    lastNewline === -1
+                        ? indel.range.start.character + placeholderStart
+                        : prefix.length - lastNewline - 1;
                 const endColumn = startColumn + placeholderLength;
-                selections.push(new vscode.Selection(
-                    new vscode.Position(startLine, startColumn),
-                    new vscode.Position(startLine, endColumn),
-                ));
+                selections.push(
+                    new vscode.Selection(
+                        new vscode.Position(startLine, startColumn),
+                        new vscode.Position(startLine, endColumn)
+                    )
+                );
                 builder.replace(indel.range, newText);
             } else {
                 builder.replace(indel.range, indel.newText);
             }
-            lineDelta += countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
+            lineDelta +=
+                countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
         }
     });
     if (selections.length > 0) editor.selections = selections;
@@ -65,8 +76,7 @@ function parseSnippet(snip: string): [string, [number, number]] | undefined {
     const m = snip.match(/\$(0|\{0:([^}]*)\})/);
     if (!m) return undefined;
     const placeholder = m[2] ?? "";
-    if (m.index == null)
-        return undefined;
+    if (m.index == null) return undefined;
     const range: [number, number] = [m.index, placeholder.length];
     const insert = snip.replace(m[0], placeholder);
     return [insert, range];

@@ -29,8 +29,8 @@
         "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --target=node16",
         "build": "npm run build-base -- --sourcemap",
         "watch": "npm run build-base -- --sourcemap --watch",
-        "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src ./tests",
-        "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
+        "lint": "prettier --check . && eslint -c .eslintrc.js --ext ts ./src ./tests",
+        "fix": "prettier --write . && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
         "pretest": "tsc && npm run build",
         "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
     },
@@ -48,9 +48,10 @@
         "cross-env": "^7.0.3",
         "esbuild": "^0.14.27",
         "eslint": "^8.11.0",
+        "eslint-config-prettier": "^8.5.0",
+        "prettier": "^2.6.2",
         "tslib": "^2.3.0",
         "typescript": "^4.6.3",
-        "typescript-formatter": "^7.2.2",
         "vsce": "^2.7.0"
     },
     "activationEvents": [

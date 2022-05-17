@@ -1,13 +1,13 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { Ctx, Disposable } from './ctx';
-import { RustEditor, isRustEditor } from './util';
+import { Ctx, Disposable } from "./ctx";
+import { RustEditor, isRustEditor } from "./util";
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
 export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, Disposable {
     private readonly astDecorationType = vscode.window.createTextEditorDecorationType({
-        borderColor: new vscode.ThemeColor('rust_analyzer.syntaxTreeBorder'),
+        borderColor: new vscode.ThemeColor("rust_analyzer.syntaxTreeBorder"),
         borderStyle: "solid",
         borderWidth: "2px",
     });
@@ -35,11 +35,23 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     });
 
     constructor(ctx: Ctx) {
-        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: 'rust-analyzer' }, this));
+        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: "rust-analyzer" }, this));
         ctx.pushCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
-        vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, ctx.subscriptions);
-        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
-        vscode.window.onDidChangeVisibleTextEditors(this.onDidChangeVisibleTextEditors, this, ctx.subscriptions);
+        vscode.workspace.onDidCloseTextDocument(
+            this.onDidCloseTextDocument,
+            this,
+            ctx.subscriptions
+        );
+        vscode.workspace.onDidChangeTextDocument(
+            this.onDidChangeTextDocument,
+            this,
+            ctx.subscriptions
+        );
+        vscode.window.onDidChangeVisibleTextEditors(
+            this.onDidChangeVisibleTextEditors,
+            this,
+            ctx.subscriptions
+        );
 
         ctx.pushCleanup(this);
     }
@@ -48,7 +60,10 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     }
 
     private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
-        if (this.rustEditor && event.document.uri.toString() === this.rustEditor.document.uri.toString()) {
+        if (
+            this.rustEditor &&
+            event.document.uri.toString() === this.rustEditor.document.uri.toString()
+        ) {
             this.rust2Ast.reset();
         }
     }
@@ -68,7 +83,9 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     }
 
     private findAstTextEditor(): undefined | vscode.TextEditor {
-        return vscode.window.visibleTextEditors.find(it => it.document.uri.scheme === 'rust-analyzer');
+        return vscode.window.visibleTextEditors.find(
+            (it) => it.document.uri.scheme === "rust-analyzer"
+        );
     }
 
     private setRustEditor(newRustEditor: undefined | RustEditor) {
@@ -80,13 +97,20 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     }
 
     // additional positional params are omitted
-    provideDefinition(doc: vscode.TextDocument, pos: vscode.Position): vscode.ProviderResult<vscode.DefinitionLink[]> {
-        if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString()) return;
+    provideDefinition(
+        doc: vscode.TextDocument,
+        pos: vscode.Position
+    ): vscode.ProviderResult<vscode.DefinitionLink[]> {
+        if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString()) {
+            return;
+        }
 
         const astEditor = this.findAstTextEditor();
         if (!astEditor) return;
 
-        const rust2AstRanges = this.rust2Ast.get()?.find(([rustRange, _]) => rustRange.contains(pos));
+        const rust2AstRanges = this.rust2Ast
+            .get()
+            ?.find(([rustRange, _]) => rustRange.contains(pos));
         if (!rust2AstRanges) return;
 
         const [rustFileRange, astFileRange] = rust2AstRanges;
@@ -94,16 +118,21 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
         astEditor.revealRange(astFileRange);
         astEditor.selection = new vscode.Selection(astFileRange.start, astFileRange.end);
 
-        return [{
-            targetRange: astFileRange,
-            targetUri: astEditor.document.uri,
-            originSelectionRange: rustFileRange,
-            targetSelectionRange: astFileRange,
-        }];
+        return [
+            {
+                targetRange: astFileRange,
+                targetUri: astEditor.document.uri,
+                originSelectionRange: rustFileRange,
+                targetSelectionRange: astFileRange,
+            },
+        ];
     }
 
     // additional positional params are omitted
-    provideHover(doc: vscode.TextDocument, hoverPosition: vscode.Position): vscode.ProviderResult<vscode.Hover> {
+    provideHover(
+        doc: vscode.TextDocument,
+        hoverPosition: vscode.Position
+    ): vscode.ProviderResult<vscode.Hover> {
         if (!this.rustEditor) return;
 
         const astFileLine = doc.lineAt(hoverPosition.line);
@@ -127,13 +156,14 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
         return new vscode.Range(begin, end);
     }
 
-    private parseRustTextRange(doc: vscode.TextDocument, astLine: string): undefined | vscode.Range {
+    private parseRustTextRange(
+        doc: vscode.TextDocument,
+        astLine: string
+    ): undefined | vscode.Range {
         const parsedRange = /(\d+)\.\.(\d+)/.exec(astLine);
         if (!parsedRange) return;
 
-        const [begin, end] = parsedRange
-            .slice(1)
-            .map(off => this.positionAt(doc, +off));
+        const [begin, end] = parsedRange.slice(1).map((off) => this.positionAt(doc, +off));
 
         return new vscode.Range(begin, end);
     }
@@ -173,7 +203,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
 class Lazy<T> {
     val: undefined | T;
 
-    constructor(private readonly compute: () => undefined | T) { }
+    constructor(private readonly compute: () => undefined | T) {}
 
     get() {
         return this.val ?? (this.val = this.compute());

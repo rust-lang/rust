@@ -1,5 +1,5 @@
-import { readdir } from 'fs/promises';
-import * as path from 'path';
+import { readdir } from "fs/promises";
+import * as path from "path";
 
 class Test {
     readonly name: string;
@@ -59,7 +59,9 @@ export class Context {
 export async function run(): Promise<void> {
     const context = new Context();
 
-    const testFiles = (await readdir(path.resolve(__dirname))).filter(name => name.endsWith('.test.js'));
+    const testFiles = (await readdir(path.resolve(__dirname))).filter((name) =>
+        name.endsWith(".test.js")
+    );
     for (const testFile of testFiles) {
         try {
             const testModule = require(path.resolve(__dirname, testFile));
