@@ -2047,10 +2047,10 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///     is_match: F,
     /// ) -> Option<(K, V)>
     /// where
-    ///     F: Fn(&K, &V) -> bool,
+    ///     F: Fn(&(K, V)) -> bool,
     /// {
     ///     let raw_table = map.raw_table();
-    ///     match raw_table.find(hash, |(k, v)| is_match(k, v)) {
+    ///     match raw_table.find(hash, is_match) {
     ///         Some(bucket) => Some(unsafe { raw_table.remove(bucket) }),
     ///         None => None,
     ///     }
@@ -2064,7 +2064,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// }
     ///
     /// let hash = compute_hash(map.hasher(), "a");
-    /// assert_eq!(remove_by_hash(&mut map, hash, |_, v| *v == 10), Some(("a", 10)));
+    /// assert_eq!(remove_by_hash(&mut map, hash, |(_, v)| *v == 10), Some(("a", 10)));
     /// assert_eq!(map.get(&"a"), None);
     /// assert_eq!(map.len(), 2);
     /// ```
