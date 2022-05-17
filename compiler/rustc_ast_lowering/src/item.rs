@@ -262,7 +262,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
-                        this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, ret_id)
+                        this.lower_fn_decl(
+                            &decl,
+                            Some(id),
+                            FnDeclKind::Fn,
+                            &generics.params,
+                            ret_id,
+                        )
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -652,7 +658,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.lower_generics(generics, i.id, itctx, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
-                                this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
+                                this.lower_fn_decl(
+                                    fdec,
+                                    None,
+                                    FnDeclKind::ExternFn,
+                                    &generics.params,
+                                    None,
+                                ),
                                 this.lower_fn_params_to_names(fdec),
                             )
                         });
@@ -1230,7 +1242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, Some(id), kind, is_async)
+            this.lower_fn_decl(&sig.decl, Some(id), kind, &generics.params, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1295,7 +1307,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         parent_node_id: NodeId,
-        itctx: ImplTraitContext,
+        mut itctx: ImplTraitContext<'_>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
         debug_assert!(self.impl_trait_defs.is_empty());
@@ -1351,7 +1363,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 param.id,
                 &param.kind,
                 &param.bounds,
-                itctx,
+                itctx.reborrow(),
                 PredicateOrigin::GenericParam,
             )
         }));
@@ -1400,7 +1412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: &GenericParamKind,
         bounds: &[GenericBound],
-        itctx: ImplTraitContext,
+        itctx: ImplTraitContext<'_>,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
