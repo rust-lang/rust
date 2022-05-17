@@ -5,3 +5,12 @@ parser-struct-literal-body-without-path =
 parser-maybe-report-ambiguous-plus =
     ambiguous `+` in a type
     .suggestion = use parentheses to disambiguate
+
+parser-maybe-recover-from-bad-type-plus =
+    expected a path on the left-hand side of `+`, not `{$ty}`
+
+parser-add-paren = try adding parentheses
+
+parser-forgot-paren = perhaps you forgot parentheses?
+
+parser-expect-path = expected a path

@@ -21,7 +21,7 @@ use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, Er
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -250,6 +250,40 @@ struct AmbiguousPlus {
     #[primary_span]
     #[suggestion(code = "({sum_ty})")]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0178", slug = "parser-maybe-recover-from-bad-type-plus")]
+struct BadTypePlus<'a> {
+    pub ty: String,
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: BadTypePlusSub<'a>,
+}
+
+#[derive(SessionSubdiagnostic, Clone, Copy)]
+pub enum BadTypePlusSub<'a> {
+    #[suggestion(
+        slug = "parser-add-paren",
+        code = "{sum_with_parens}",
+        applicability = "machine-applicable"
+    )]
+    AddParen {
+        sum_with_parens: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(slug = "parser-forgot-paren")]
+    ForgotParen {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(slug = "parser-expect-path")]
+    ExpectPath {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 // SnapshotParser is used to create a snapshot of the parser
@@ -1255,17 +1289,11 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
-        let mut err = struct_span_err!(
-            self.sess.span_diagnostic,
-            sum_span,
-            E0178,
-            "expected a path on the left-hand side of `+`, not `{}`",
-            pprust::ty_to_string(ty)
-        );
+        let sum_with_parens: String;
 
-        match ty.kind {
+        let sub = match ty.kind {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
-                let sum_with_parens = pprust::to_string(|s| {
+                sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
                     s.print_mutability(mut_ty.mutbl, false);
@@ -1274,21 +1302,15 @@ impl<'a> Parser<'a> {
                     s.print_type_bounds(" +", &bounds);
                     s.pclose()
                 });
-                err.span_suggestion(
-                    sum_span,
-                    "try adding parentheses",
-                    sum_with_parens,
-                    Applicability::MachineApplicable,
-                );
+
+                BadTypePlusSub::AddParen { sum_with_parens: &sum_with_parens, span: sum_span }
             }
-            TyKind::Ptr(..) | TyKind::BareFn(..) => {
-                err.span_label(sum_span, "perhaps you forgot parentheses?");
-            }
-            _ => {
-                err.span_label(sum_span, "expected a path");
-            }
-        }
-        err.emit();
+            TyKind::Ptr(..) | TyKind::BareFn(..) => BadTypePlusSub::ForgotParen { span: sum_span },
+            _ => BadTypePlusSub::ExpectPath { span: sum_span },
+        };
+
+        self.sess.emit_err(BadTypePlus { ty: pprust::ty_to_string(ty), span: sum_span, sub });
+
         Ok(())
     }
 
