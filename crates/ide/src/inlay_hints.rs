@@ -47,13 +47,13 @@ pub enum ReborrowHints {
 pub enum InlayKind {
     BindingModeHint,
     ChainingHint,
+    ClosingBraceHint,
     ClosureReturnTypeHint,
     GenericParamListHint,
     ImplicitReborrowHint,
     LifetimeHint,
     ParameterHint,
     TypeHint,
-    ClosingBraceHint,
 }
 
 #[derive(Debug)]
@@ -127,28 +127,33 @@ fn hints(
     };
 
     closing_brace_hints(hints, sema, config, node.clone());
-
-    if let Some(expr) = ast::Expr::cast(node.clone()) {
-        chaining_hints(hints, sema, &famous_defs, config, &expr);
-        match expr {
-            ast::Expr::CallExpr(it) => param_name_hints(hints, sema, config, ast::Expr::from(it)),
-            ast::Expr::MethodCallExpr(it) => {
-                param_name_hints(hints, sema, config, ast::Expr::from(it))
-            }
-            ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, it),
-            // We could show reborrows for all expressions, but usually that is just noise to the user
-            // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
-            ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
-            _ => None,
-        };
-    } else if let Some(it) = ast::Pat::cast(node.clone()) {
-        binding_mode_hints(hints, sema, config, &it);
-        if let ast::Pat::IdentPat(it) = it {
-            bind_pat_hints(hints, sema, config, &it);
+    match_ast! {
+        match node {
+            ast::Expr(expr) => {
+                chaining_hints(hints, sema, &famous_defs, config, &expr);
+                match expr {
+                    ast::Expr::CallExpr(it) => param_name_hints(hints, sema, config, ast::Expr::from(it)),
+                    ast::Expr::MethodCallExpr(it) => {
+                        param_name_hints(hints, sema, config, ast::Expr::from(it))
+                    }
+                    ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, it),
+                    // We could show reborrows for all expressions, but usually that is just noise to the user
+                    // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
+                    ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
+                    _ => None,
+                }
+            },
+            ast::Pat(it) => {
+                binding_mode_hints(hints, sema, config, &it);
+                if let ast::Pat::IdentPat(it) = it {
+                    bind_pat_hints(hints, sema, config, &it);
+                }
+                Some(())
+            },
+            ast::Fn(it) => lifetime_fn_hints(hints, config, it),
+            _ => Some(()),
         }
-    } else if let Some(it) = ast::Fn::cast(node) {
-        lifetime_hints(hints, config, it);
-    }
+    };
 }
 
 fn closing_brace_hints(
@@ -249,7 +254,7 @@ fn closing_brace_hints(
     None
 }
 
-fn lifetime_hints(
+fn lifetime_fn_hints(
     acc: &mut Vec<InlayHint>,
     config: &InlayHintsConfig,
     func: ast::Fn,
@@ -262,15 +267,41 @@ fn lifetime_hints(
     let ret_type = func.ret_type();
     let self_param = param_list.self_param().filter(|it| it.amp_token().is_some());
 
-    let mut used_names: FxHashMap<SmolStr, usize> = generic_param_list
-        .iter()
-        .filter(|_| config.param_names_for_lifetime_elision_hints)
-        .flat_map(|gpl| gpl.lifetime_params())
-        .filter_map(|param| param.lifetime())
-        .filter_map(|lt| Some((SmolStr::from(lt.text().as_str().get(1..)?), 0)))
-        .collect();
+    let is_elided = |lt: &Option<ast::Lifetime>| match lt {
+        Some(lt) => matches!(lt.text().as_str(), "'_"),
+        None => true,
+    };
 
-    let mut allocated_lifetimes = vec![];
+    let potential_lt_refs = {
+        let mut acc: Vec<_> = vec![];
+        if let Some(self_param) = &self_param {
+            let lifetime = self_param.lifetime();
+            let is_elided = is_elided(&lifetime);
+            acc.push((None, self_param.amp_token(), lifetime, is_elided));
+        }
+        param_list.params().filter_map(|it| Some((it.pat(), it.ty()?))).for_each(|(pat, ty)| {
+            // FIXME: check path types
+            walk_ty(&ty, &mut |ty| match ty {
+                ast::Type::RefType(r) => {
+                    let lifetime = r.lifetime();
+                    let is_elided = is_elided(&lifetime);
+                    acc.push((
+                        pat.as_ref().and_then(|it| match it {
+                            ast::Pat::IdentPat(p) => p.name(),
+                            _ => None,
+                        }),
+                        r.amp_token(),
+                        lifetime,
+                        is_elided,
+                    ))
+                }
+                _ => (),
+            })
+        });
+        acc
+    };
+
+    // allocate names
     let mut gen_idx_name = {
         let mut gen = (0u8..).map(|idx| match idx {
             idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
@@ -278,64 +309,33 @@ fn lifetime_hints(
         });
         move || gen.next().unwrap_or_default()
     };
+    let mut allocated_lifetimes = vec![];
 
-    let mut potential_lt_refs: Vec<_> = vec![];
-    param_list
-        .params()
-        .filter_map(|it| {
-            Some((
-                config.param_names_for_lifetime_elision_hints.then(|| it.pat()).flatten(),
-                it.ty()?,
-            ))
-        })
-        .for_each(|(pat, ty)| {
-            // FIXME: check path types
-            walk_ty(&ty, &mut |ty| match ty {
-                ast::Type::RefType(r) => potential_lt_refs.push((
-                    pat.as_ref().and_then(|it| match it {
-                        ast::Pat::IdentPat(p) => p.name(),
-                        _ => None,
-                    }),
-                    r,
-                )),
-                _ => (),
-            })
-        });
-
-    enum LifetimeKind {
-        Elided,
-        Named(SmolStr),
-        Static,
-    }
-
-    let fetch_lt_text = |lt: Option<ast::Lifetime>| match lt {
-        Some(lt) => match lt.text().as_str() {
-            "'_" => LifetimeKind::Elided,
-            "'static" => LifetimeKind::Static,
-            name => LifetimeKind::Named(name.into()),
-        },
-        None => LifetimeKind::Elided,
-    };
-    let is_elided = |lt: Option<ast::Lifetime>| match lt {
-        Some(lt) => matches!(lt.text().as_str(), "'_"),
-        None => true,
-    };
-
-    // allocate names
-    if let Some(self_param) = &self_param {
-        if is_elided(self_param.lifetime()) {
-            allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
-                // self can't be used as a lifetime, so no need to check for collisions
-                "'self".into()
-            } else {
-                gen_idx_name()
-            });
+    let mut used_names: FxHashMap<SmolStr, usize> =
+        match config.param_names_for_lifetime_elision_hints {
+            true => generic_param_list
+                .iter()
+                .flat_map(|gpl| gpl.lifetime_params())
+                .filter_map(|param| param.lifetime())
+                .filter_map(|lt| Some((SmolStr::from(lt.text().as_str().get(1..)?), 0)))
+                .collect(),
+            false => Default::default(),
+        };
+    {
+        let mut potential_lt_refs = potential_lt_refs.iter().filter(|&&(.., is_elided)| is_elided);
+        if let Some(_) = &self_param {
+            if let Some(_) = potential_lt_refs.next() {
+                allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
+                    // self can't be used as a lifetime, so no need to check for collisions
+                    "'self".into()
+                } else {
+                    gen_idx_name()
+                });
+            }
         }
-    }
-    potential_lt_refs.iter().for_each(|(name, it)| {
-        if is_elided(it.lifetime()) {
+        potential_lt_refs.for_each(|(name, ..)| {
             let name = match name {
-                Some(it) => {
+                Some(it) if config.param_names_for_lifetime_elision_hints => {
                     if let Some(c) = used_names.get_mut(it.text().as_str()) {
                         *c += 1;
                         SmolStr::from(format!("'{text}{c}", text = it.text().as_str()))
@@ -347,26 +347,22 @@ fn lifetime_hints(
                 _ => gen_idx_name(),
             };
             allocated_lifetimes.push(name);
-        }
-    });
+        });
+    }
 
     // fetch output lifetime if elision rule applies
-
-    let output = if let Some(self_param) = &self_param {
-        match fetch_lt_text(self_param.lifetime()) {
-            LifetimeKind::Elided => allocated_lifetimes.get(0).cloned(),
-            LifetimeKind::Named(name) => Some(name),
-            LifetimeKind::Static => None,
+    let output = match potential_lt_refs.as_slice() {
+        [(_, _, lifetime, _), ..] if self_param.is_some() || potential_lt_refs.len() == 1 => {
+            match lifetime {
+                Some(lt) => match lt.text().as_str() {
+                    "'_" => allocated_lifetimes.get(0).cloned(),
+                    "'static" => None,
+                    name => Some(name.into()),
+                },
+                None => allocated_lifetimes.get(0).cloned(),
+            }
         }
-    } else {
-        match potential_lt_refs.as_slice() {
-            [(_, r)] => match fetch_lt_text(r.lifetime()) {
-                LifetimeKind::Elided => allocated_lifetimes.get(0).cloned(),
-                LifetimeKind::Named(name) => Some(name),
-                LifetimeKind::Static => None,
-            },
-            [..] => None,
-        }
+        [..] => None,
     };
 
     if allocated_lifetimes.is_empty() && output.is_none() {
@@ -398,27 +394,12 @@ fn lifetime_hints(
         return None;
     }
 
-    let mut idx = match &self_param {
-        Some(self_param) if is_elided(self_param.lifetime()) => {
-            if let Some(amp) = self_param.amp_token() {
-                let lt = allocated_lifetimes[0].clone();
-                acc.push(InlayHint {
-                    range: amp.text_range(),
-                    kind: InlayKind::LifetimeHint,
-                    label: lt,
-                });
-            }
-            1
-        }
-        _ => 0,
-    };
-
-    for (_, p) in potential_lt_refs.iter() {
-        if is_elided(p.lifetime()) {
-            let t = p.amp_token()?;
-            let lt = allocated_lifetimes[idx].clone();
+    let mut a = allocated_lifetimes.iter();
+    for (_, amp_token, _, is_elided) in potential_lt_refs {
+        if is_elided {
+            let t = amp_token?;
+            let lt = a.next()?.clone();
             acc.push(InlayHint { range: t.text_range(), kind: InlayKind::LifetimeHint, label: lt });
-            idx += 1;
         }
     }
 
