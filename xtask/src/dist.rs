@@ -10,6 +10,10 @@ use xshell::{cmd, Shell};
 
 use crate::{date_iso, flags, project_root};
 
+const VERSION_STABLE: &str = "0.3";
+const VERSION_NIGHTLY: &str = "0.4";
+const VERSION_DEV: &str = "0.5"; // keep this one in sync with `package.json`
+
 impl flags::Dist {
     pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
         let stable = sh.var("GITHUB_REF").unwrap_or_default().as_str() == "refs/heads/release";
@@ -25,10 +29,10 @@ impl flags::Dist {
 
         if let Some(patch_version) = self.client_patch_version {
             let version = if stable {
-                format!("0.2.{}", patch_version)
+                format!("{}.{}", VERSION_STABLE, patch_version)
             } else {
                 // A hack to make VS Code prefer nightly over stable.
-                format!("0.3.{}", patch_version)
+                format!("{}.{}", VERSION_NIGHTLY, patch_version)
             };
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_string() };
             dist_client(sh, &version, &release_tag, &target)?;
@@ -54,7 +58,10 @@ fn dist_client(
 
     let mut patch = Patch::new(sh, "./package.json")?;
     patch
-        .replace(r#""version": "0.4.0-dev""#, &format!(r#""version": "{}""#, version))
+        .replace(
+            &format!(r#""version": "{}.0-dev""#, VERSION_DEV),
+            &format!(r#""version": "{}""#, version),
+        )
         .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
         .replace(r#""$generated-start": {},"#, "")
         .replace(",\n                \"$generated-end\": {}", "")
