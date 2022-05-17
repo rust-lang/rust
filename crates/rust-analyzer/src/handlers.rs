@@ -1348,6 +1348,19 @@ pub(crate) fn handle_inlay_hints(
     ))
 }
 
+pub(crate) fn handle_inlay_hints_resolve(
+    _snap: GlobalStateSnapshot,
+    mut hint: InlayHint,
+) -> Result<InlayHint> {
+    if let lsp_types::InlayHintLabel::String(s) = &hint.label {
+        hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+            kind: lsp_types::MarkupKind::PlainText,
+            value: s.clone(),
+        }));
+    }
+    Ok(hint)
+}
+
 pub(crate) fn handle_call_hierarchy_prepare(
     snap: GlobalStateSnapshot,
     params: CallHierarchyPrepareParams,
