@@ -1418,10 +1418,17 @@ impl<T> Option<T> {
     where
         T: ~const Destruct,
     {
-        *self = Some(value);
-
-        // SAFETY: the code above just filled the option
-        unsafe { self.as_mut().unwrap_unchecked() }
+        match *self {
+            Some(ref mut x) => {
+                *x = value;
+                x
+            }
+            None => {
+                *self = Some(value);
+                // SAFETY: the code above just filled the option
+                unsafe { self.as_mut().unwrap_unchecked() }
+            }
+        }
     }
 
     /// Inserts `value` into the option if it is [`None`], then
