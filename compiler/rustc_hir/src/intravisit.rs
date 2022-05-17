@@ -1,7 +1,40 @@
 //! HIR walker for walking the contents of nodes.
 //!
-//! **For an overview of the visitor strategy, see the docs on the
-//! `super::itemlikevisit::ItemLikeVisitor` trait.**
+//! Here are the three available patterns for the visitor strategy,
+//! in roughly the order of desirability:
+//!
+//! 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
+//!    - Example: find all items with a `#[foo]` attribute on them.
+//!    - How: Use the `hir_crate_items` or `hir_module_items` query to traverse over item-like ids
+//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir().item*(id)` to filter and
+//!       access actual item-like thing, respectively.
+//!    - Pro: Efficient; just walks the lists of item ids and gives users control whether to access
+//!       the hir_owners themselves or not.
+//!    - Con: Don't get information about nesting
+//!    - Con: Don't have methods for specific bits of HIR, like "on
+//!      every expr, do this".
+//! 2. **Deep visit**: Want to scan for specific kinds of HIR nodes within
+//!    an item, but don't care about how item-like things are nested
+//!    within one another.
+//!    - Example: Examine each expression to look for its type and do some check or other.
+//!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
+//!      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
+//!      `tcx.hir().deep_visit_all_item_likes(&mut visitor)`. Within your
+//!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
+//!      `intravisit::walk_expr()` to keep walking the subparts).
+//!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
+//!    - Pro: Integrates well into dependency tracking.
+//!    - Con: Don't get information about nesting between items
+//! 3. **Nested visit**: Want to visit the whole HIR and you care about the nesting between
+//!    item-like things.
+//!    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
+//!      impl into scope while visiting the impl-items, and then back out again.
+//!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
+//!      `nested_filter::All` (and implement `nested_visit_map`). Walk your crate with
+//!      `tcx.hir().walk_toplevel_module(visitor)` invoked on `tcx.hir().krate()`.
+//!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
+//!    - Pro: Preserves nesting information
+//!    - Con: Does not integrate well into dependency tracking.
 //!
 //! If you have decided to use this visitor, here are some general
 //! notes on how to do so:
@@ -32,42 +65,11 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use crate::itemlikevisit::ParItemLikeVisitor;
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
-
-pub struct DeepVisitor<'v, V> {
-    visitor: &'v mut V,
-}
-
-impl<'v, V> DeepVisitor<'v, V> {
-    pub fn new(base: &'v mut V) -> Self {
-        DeepVisitor { visitor: base }
-    }
-}
-
-impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
-where
-    V: Visitor<'hir>,
-{
-    fn visit_item(&mut self, item: &'hir Item<'hir>) {
-        self.visitor.visit_item(item);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
-        self.visitor.visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
-        self.visitor.visit_impl_item(impl_item);
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.visitor.visit_foreign_item(foreign_item);
-    }
-}
 
 pub trait IntoVisitor<'hir> {
     type Visitor: Visitor<'hir>;
@@ -313,16 +315,6 @@ pub trait Visitor<'v>: Sized {
 
     fn visit_body(&mut self, b: &'v Body<'v>) {
         walk_body(self, b);
-    }
-
-    /// When invoking `visit_all_item_likes()`, you need to supply an
-    /// item-like visitor. This method converts an "intra-visit"
-    /// visitor into an item-like visitor that walks the entire tree.
-    /// If you use this, you probably don't want to process the
-    /// contents of nested item-like things, since the outer loop will
-    /// visit them as well.
-    fn as_deep_visitor(&mut self) -> DeepVisitor<'_, Self> {
-        DeepVisitor::new(self)
     }
 
     ///////////////////////////////////////////////////////////////////////////

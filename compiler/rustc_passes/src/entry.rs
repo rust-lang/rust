@@ -1,8 +1,8 @@
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, ImplItem, Item, ItemKind, Node, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::config::{CrateType, EntryFnType};
@@ -25,25 +25,6 @@ struct EntryContext<'tcx> {
     non_main_fns: Vec<Span>,
 }
 
-impl<'tcx> ItemLikeVisitor<'tcx> for EntryContext<'tcx> {
-    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        let at_root = self.tcx.opt_local_parent(item.def_id) == Some(CRATE_DEF_ID);
-        find_item(item, self, at_root);
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem<'tcx>) {
-        // Entry fn is never a trait item.
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem<'tcx>) {
-        // Entry fn is never a trait item.
-    }
-
-    fn visit_foreign_item(&mut self, _: &'tcx ForeignItem<'tcx>) {
-        // Entry fn is never a foreign item.
-    }
-}
-
 fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let any_exe = tcx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
     if !any_exe {
@@ -59,28 +40,35 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let mut ctxt =
         EntryContext { tcx, attr_main_fn: None, start_fn: None, non_main_fns: Vec::new() };
 
-    tcx.hir().visit_all_item_likes(&mut ctxt);
+    for id in tcx.hir().items() {
+        find_item(id, &mut ctxt);
+    }
 
     configure_main(tcx, &ctxt)
 }
 
 // Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
 // (with `ast::Item`), so make sure to keep them in sync.
-fn entry_point_type(ctxt: &EntryContext<'_>, item: &Item<'_>, at_root: bool) -> EntryPointType {
-    let attrs = ctxt.tcx.hir().attrs(item.hir_id());
+// A small optimization was added so that hir::Item is fetched only when needed.
+// An equivalent optimization was not applied to the duplicated code in test_harness.rs.
+fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> EntryPointType {
+    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
     if ctxt.tcx.sess.contains_name(attrs, sym::start) {
         EntryPointType::Start
     } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
         EntryPointType::MainAttr
-    } else if item.ident.name == sym::main {
-        if at_root {
-            // This is a top-level function so can be `main`.
-            EntryPointType::MainNamed
-        } else {
-            EntryPointType::OtherMain
-        }
     } else {
-        EntryPointType::None
+        if let Some(name) = ctxt.tcx.opt_item_name(id.def_id.to_def_id())
+            && name == sym::main {
+            if at_root {
+                // This is a top-level function so can be `main`.
+                EntryPointType::MainNamed
+            } else {
+                EntryPointType::OtherMain
+            }
+        } else {
+            EntryPointType::None
+        }
     }
 }
 
@@ -89,11 +77,13 @@ fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
         .emit();
 }
 
-fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_>, at_root: bool) {
-    match entry_point_type(ctxt, item, at_root) {
+fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
+    let at_root = ctxt.tcx.opt_local_parent(id.def_id) == Some(CRATE_DEF_ID);
+
+    match entry_point_type(ctxt, id, at_root) {
         EntryPointType::None => (),
-        _ if !matches!(item.kind, ItemKind::Fn(..)) => {
-            let attrs = ctxt.tcx.hir().attrs(item.hir_id());
+        _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
+            let attrs = ctxt.tcx.hir().attrs(id.hir_id());
             if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.tcx.sess, attr.span, "start");
             }
@@ -103,31 +93,39 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_>, at_root: bool) {
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push(item.span);
+            ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
         }
         EntryPointType::MainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.def_id, item.span));
+                ctxt.attr_main_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
             } else {
                 struct_span_err!(
                     ctxt.tcx.sess,
-                    item.span,
+                    ctxt.tcx.def_span(id.def_id.to_def_id()),
                     E0137,
                     "multiple functions with a `#[main]` attribute"
                 )
-                .span_label(item.span, "additional `#[main]` function")
+                .span_label(
+                    ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    "additional `#[main]` function",
+                )
                 .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
                 .emit();
             }
         }
         EntryPointType::Start => {
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.def_id, item.span));
+                ctxt.start_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
             } else {
-                struct_span_err!(ctxt.tcx.sess, item.span, E0138, "multiple `start` functions")
-                    .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
-                    .span_label(item.span, "multiple `start` functions")
-                    .emit();
+                struct_span_err!(
+                    ctxt.tcx.sess,
+                    ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    E0138,
+                    "multiple `start` functions"
+                )
+                .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
+                .span_label(ctxt.tcx.def_span(id.def_id.to_def_id()), "multiple `start` functions")
+                .emit();
             }
         }
     }

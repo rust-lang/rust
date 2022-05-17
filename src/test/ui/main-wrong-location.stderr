@@ -8,7 +8,7 @@ note: here is a function named `main`
   --> $DIR/main-wrong-location.rs:4:5
    |
 LL |     fn main() { }
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^
    = note: you have one or more functions named `main` not defined at the crate level
    = help: consider moving the `main` function definitions
 

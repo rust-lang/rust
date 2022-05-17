@@ -14,7 +14,6 @@ use rustc_hir::def_id::{
 };
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
@@ -453,7 +452,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
 
-        self.tcx.hir().visit_all_item_likes(&mut self.as_deep_visitor());
+        self.tcx.hir().deep_visit_all_item_likes(self);
     }
 
     fn encode_def_path_table(&mut self) {
@@ -2243,26 +2242,16 @@ pub fn provide(providers: &mut Providers) {
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
 
-            #[derive(Default)]
-            struct TraitsVisitor {
-                traits: Vec<DefId>,
-            }
-            impl ItemLikeVisitor<'_> for TraitsVisitor {
-                fn visit_item(&mut self, item: &hir::Item<'_>) {
-                    if let hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) = item.kind {
-                        self.traits.push(item.def_id.to_def_id());
-                    }
+            let mut traits = Vec::new();
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                    traits.push(id.def_id.to_def_id())
                 }
-                fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-                fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
-                fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
             }
 
-            let mut visitor = TraitsVisitor::default();
-            tcx.hir().visit_all_item_likes(&mut visitor);
             // Bring everything into deterministic order.
-            visitor.traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
-            tcx.arena.alloc_slice(&visitor.traits)
+            traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            tcx.arena.alloc_slice(&traits)
         },
 
         ..*providers

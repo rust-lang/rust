@@ -57,89 +57,71 @@ impl NonConstExpr {
 
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckConstTraitVisitor::new(tcx));
+    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut vis);
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_const_bodies, ..*providers };
 }
 
-struct CheckConstTraitVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
+fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+    let _: Option<_> = try {
+        if let hir::ItemKind::Impl(ref imp) = item.kind && let hir::Constness::Const = imp.constness {
+            let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
+            let ancestors = tcx
+                .trait_def(trait_def_id)
+                .ancestors(tcx, item.def_id.to_def_id())
+                .ok()?;
+            let mut to_implement = Vec::new();
 
-impl<'tcx> CheckConstTraitVisitor<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
-        CheckConstTraitVisitor { tcx }
-    }
-}
-
-impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<'tcx> {
-    /// check for const trait impls, and errors if the impl uses provided/default functions
-    /// of the trait being implemented; as those provided functions can be non-const.
-    fn visit_item<'hir>(&mut self, item: &'hir hir::Item<'hir>) {
-        let _: Option<_> = try {
-            if let hir::ItemKind::Impl(ref imp) = item.kind && let hir::Constness::Const = imp.constness {
-                    let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
-                    let ancestors = self
-                        .tcx
-                        .trait_def(trait_def_id)
-                        .ancestors(self.tcx, item.def_id.to_def_id())
-                        .ok()?;
-                    let mut to_implement = Vec::new();
-
-                    for trait_item in self.tcx.associated_items(trait_def_id).in_definition_order()
+            for trait_item in tcx.associated_items(trait_def_id).in_definition_order()
+            {
+                if let ty::AssocItem {
+                    kind: ty::AssocKind::Fn,
+                    defaultness,
+                    def_id: trait_item_id,
+                    ..
+                } = *trait_item
+                {
+                    // we can ignore functions that do not have default bodies:
+                    // if those are unimplemented it will be caught by typeck.
+                    if !defaultness.has_value()
+                        || tcx
+                        .has_attr(trait_item_id, sym::default_method_body_is_const)
                     {
-                        if let ty::AssocItem {
-                            kind: ty::AssocKind::Fn,
-                            defaultness,
-                            def_id: trait_item_id,
-                            ..
-                        } = *trait_item
-                        {
-                            // we can ignore functions that do not have default bodies:
-                            // if those are unimplemented it will be caught by typeck.
-                            if !defaultness.has_value()
-                                || self
-                                    .tcx
-                                    .has_attr(trait_item_id, sym::default_method_body_is_const)
-                            {
-                                continue;
-                            }
-
-                            let is_implemented = ancestors
-                                .leaf_def(self.tcx, trait_item_id)
-                                .map(|node_item| !node_item.defining_node.is_from_trait())
-                                .unwrap_or(false);
-
-                            if !is_implemented {
-                                to_implement.push(self.tcx.item_name(trait_item_id).to_string());
-                            }
-                        }
+                        continue;
                     }
 
-                    // all nonconst trait functions (not marked with #[default_method_body_is_const])
-                    // must be implemented
-                    if !to_implement.is_empty() {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                item.span,
-                                "const trait implementations may not use non-const default functions",
-                            )
-                            .note(&format!("`{}` not implemented", to_implement.join("`, `")))
-                            .emit();
+                    let is_implemented = ancestors
+                        .leaf_def(tcx, trait_item_id)
+                        .map(|node_item| !node_item.defining_node.is_from_trait())
+                        .unwrap_or(false);
+
+                    if !is_implemented {
+                        to_implement.push(trait_item_id);
                     }
+                }
             }
-        };
-    }
 
-    fn visit_trait_item<'hir>(&mut self, _: &'hir hir::TraitItem<'hir>) {}
-
-    fn visit_impl_item<'hir>(&mut self, _: &'hir hir::ImplItem<'hir>) {}
-
-    fn visit_foreign_item<'hir>(&mut self, _: &'hir hir::ForeignItem<'hir>) {}
+            // all nonconst trait functions (not marked with #[default_method_body_is_const])
+            // must be implemented
+            if !to_implement.is_empty() {
+                let not_implemented = to_implement
+                    .into_iter()
+                    .map(|did| tcx.item_name(did).to_string())
+                    .collect::<Vec<_>>()
+                    .join("`, `");
+                tcx
+                    .sess
+                    .struct_span_err(
+                        item.span,
+                        "const trait implementations may not use non-const default functions",
+                    )
+                    .note(&format!("`{}` not implemented", not_implemented))
+                    .emit();
+            }
+        }
+    };
 }
 
 #[derive(Copy, Clone)]
@@ -268,6 +250,11 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        intravisit::walk_item(self, item);
+        check_item(self.tcx, item);
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {

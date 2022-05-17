@@ -21,7 +21,7 @@ extern crate rustc_session;
 use rustc_borrowck::consumers::BodyWithBorrowckFacts;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::def::DefKind;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
 use rustc_middle::ty::query::query_values::mir_borrowck;
@@ -65,11 +65,34 @@ impl rustc_driver::Callbacks for CompilerCalls {
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             // Collect definition ids of MIR bodies.
             let hir = tcx.hir();
-            let mut visitor = HirVisitor { bodies: Vec::new() };
-            hir.visit_all_item_likes(&mut visitor);
+            let mut bodies = Vec::new();
+
+            let crate_items = tcx.hir_crate_items(());
+            for id in crate_items.items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::Fn) {
+                    bodies.push(id.def_id);
+                }
+            }
+
+            for id in crate_items.trait_items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::AssocFn) {
+                    let trait_item = hir.trait_item(id);
+                    if let rustc_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
+                        if let rustc_hir::TraitFn::Provided(_) = trait_fn {
+                            bodies.push(trait_item.def_id);
+                        }
+                    }
+                }
+            }
+
+            for id in crate_items.impl_items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::AssocFn) {
+                    bodies.push(id.def_id);
+                }
+            }
 
             // Trigger borrow checking of all bodies.
-            for def_id in visitor.bodies {
+            for def_id in bodies {
                 let _ = tcx.optimized_mir(def_id);
             }
 
@@ -119,35 +142,6 @@ fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> mir_borrowck<'tc
     rustc_borrowck::provide(&mut providers);
     let original_mir_borrowck = providers.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
-}
-
-/// Visitor that collects all body definition ids mentioned in the program.
-struct HirVisitor {
-    bodies: Vec<LocalDefId>,
-}
-
-impl<'tcx> ItemLikeVisitor<'tcx> for HirVisitor {
-    fn visit_item(&mut self, item: &rustc_hir::Item) {
-        if let rustc_hir::ItemKind::Fn(..) = item.kind {
-            self.bodies.push(item.def_id);
-        }
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &rustc_hir::TraitItem) {
-        if let rustc_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
-            if let rustc_hir::TraitFn::Provided(_) = trait_fn {
-                self.bodies.push(trait_item.def_id);
-            }
-        }
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &rustc_hir::ImplItem) {
-        if let rustc_hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.bodies.push(impl_item.def_id);
-        }
-    }
-
-    fn visit_foreign_item(&mut self, _foreign_item: &rustc_hir::ForeignItem) {}
 }
 
 /// Pull MIR bodies stored in the thread-local.

@@ -303,7 +303,7 @@ crate fn run(
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
-        tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
+        tcx.hir().deep_visit_all_item_likes(&mut finder);
 
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {

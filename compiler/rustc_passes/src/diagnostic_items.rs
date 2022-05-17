@@ -10,49 +10,22 @@
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
 use rustc_ast as ast;
-use rustc_hir as hir;
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 
-struct DiagnosticItemCollector<'tcx> {
+fn observe_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    diagnostic_items: DiagnosticItems,
-}
-
-impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.observe_item(item.def_id);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        self.observe_item(trait_item.def_id);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.observe_item(impl_item.def_id);
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
-        self.observe_item(foreign_item.def_id);
-    }
-}
-
-impl<'tcx> DiagnosticItemCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> DiagnosticItemCollector<'tcx> {
-        DiagnosticItemCollector { tcx, diagnostic_items: DiagnosticItems::default() }
-    }
-
-    fn observe_item(&mut self, def_id: LocalDefId) {
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
-        if let Some(name) = extract(attrs) {
-            // insert into our table
-            collect_item(self.tcx, &mut self.diagnostic_items, name, def_id.to_def_id());
-        }
+    diagnostic_items: &mut DiagnosticItems,
+    def_id: LocalDefId,
+) {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let attrs = tcx.hir().attrs(hir_id);
+    if let Some(name) = extract(attrs) {
+        // insert into our table
+        collect_item(tcx, diagnostic_items, name, def_id.to_def_id());
     }
 }
 
@@ -95,12 +68,28 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> DiagnosticItems 
     assert_eq!(cnum, LOCAL_CRATE);
 
     // Initialize the collector.
-    let mut collector = DiagnosticItemCollector::new(tcx);
+    let mut diagnostic_items = DiagnosticItems::default();
 
     // Collect diagnostic items in this crate.
-    tcx.hir().visit_all_item_likes(&mut collector);
+    let crate_items = tcx.hir_crate_items(());
 
-    collector.diagnostic_items
+    for id in crate_items.items() {
+        observe_item(tcx, &mut diagnostic_items, id.def_id);
+    }
+
+    for id in crate_items.trait_items() {
+        observe_item(tcx, &mut diagnostic_items, id.def_id);
+    }
+
+    for id in crate_items.impl_items() {
+        observe_item(tcx, &mut diagnostic_items, id.def_id);
+    }
+
+    for id in crate_items.foreign_items() {
+        observe_item(tcx, &mut diagnostic_items, id.def_id);
+    }
+
+    diagnostic_items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.

@@ -9,7 +9,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
@@ -159,6 +158,10 @@ impl<'hir> Map<'hir> {
 
     pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_crate_items(()).items.iter().copied()
+    }
+
+    pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
+        self.tcx.hir_module_items(module).items()
     }
 
     pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
@@ -603,16 +606,16 @@ impl<'hir> Map<'hir> {
     }
 
     /// Visits all items in the crate in some deterministic (but
-    /// unspecified) order. If you just need to process every item,
-    /// but don't care about nesting, this method is the best choice.
+    /// unspecified) order. If you need to process every item,
+    /// and care about nesting -- usually because your algorithm
+    /// follows lexical scoping rules -- then this method is the best choice.
+    /// If you don't care about nesting, you should use the `tcx.hir_crate_items()` query
+    /// or `items()` instead.
     ///
-    /// If you do care about nesting -- usually because your algorithm
-    /// follows lexical scoping rules -- then you want a different
-    /// approach. You should override `visit_nested_item` in your
-    /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_item_likes<V>(self, visitor: &mut V)
+    /// Please see the notes in `intravisit.rs` for more information.
+    pub fn deep_visit_all_item_likes<V>(self, visitor: &mut V)
     where
-        V: itemlikevisit::ItemLikeVisitor<'hir>,
+        V: Visitor<'hir>,
     {
         let krate = self.krate();
         for owner in krate.owners.iter().filter_map(|i| i.as_owner()) {
@@ -643,9 +646,12 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
+    /// If you don't care about nesting, you should use the
+    /// `tcx.hir_module_items()` query or `module_items()` instead.
+    /// Please see notes in `deep_visit_all_item_likes`.
+    pub fn deep_visit_item_likes_in_module<V>(self, module: LocalDefId, visitor: &mut V)
     where
-        V: ItemLikeVisitor<'hir>,
+        V: Visitor<'hir>,
     {
         let module = self.tcx.hir_module_items(module);
 
@@ -666,7 +672,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn for_each_module(self, f: impl Fn(LocalDefId)) {
+    pub fn for_each_module(self, mut f: impl FnMut(LocalDefId)) {
         let crate_items = self.tcx.hir_crate_items(());
         for module in crate_items.submodules.iter() {
             f(*module)

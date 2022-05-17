@@ -31,9 +31,9 @@ struct CheckLoopVisitor<'a, 'hir> {
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(
+    tcx.hir().deep_visit_item_likes_in_module(
         module_def_id,
-        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal }.as_deep_visitor(),
+        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal },
     );
 }
 
