@@ -1738,7 +1738,7 @@ function initSearch(rawSearchIndex) {
 
         let output = "<div id=\"search-settings\">" +
             `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
-            `${typeFilter}</h1> in ${crates} </div>`;
+            `${typeFilter}</h1>${crates}</div>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
             output += "<div id=\"titles\">" +
