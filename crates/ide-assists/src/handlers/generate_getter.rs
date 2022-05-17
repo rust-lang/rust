@@ -38,7 +38,6 @@ use crate::{
 // }
 //
 // impl Person {
-//     #[must_use]
 //     fn $0name(&self) -> &str {
 //         self.name.as_ref()
 //     }
@@ -64,7 +63,6 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
 // }
 //
 // impl Person {
-//     #[must_use]
 //     fn $0name_mut(&mut self) -> &mut String {
 //         &mut self.name
 //     }
@@ -133,8 +131,7 @@ pub(crate) fn generate_getter_impl(
 
             format_to!(
                 buf,
-                "    #[must_use]
-    {}fn {}(&{}self) -> {} {{
+                "    {}fn {}(&{}self) -> {} {{
         {}
     }}",
                 vis,
@@ -182,7 +179,6 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn $0data(&self) -> &Data {
         &self.data
     }
@@ -203,7 +199,6 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn $0data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
@@ -237,7 +232,6 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
@@ -261,7 +255,6 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    #[must_use]
     pub(crate) fn $0data(&self) -> &Data {
         &self.data
     }
@@ -281,7 +274,6 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn data(&self) -> &Data {
         &self.data
     }
@@ -294,12 +286,10 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn data(&self) -> &Data {
         &self.data
     }
 
-    #[must_use]
     fn $0count(&self) -> &usize {
         &self.count
     }
@@ -325,7 +315,6 @@ pub struct String;
 struct S { foo: String }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> &String {
         &self.foo
     }
@@ -349,7 +338,6 @@ struct S { foo: $0bool }
 struct S { foo: bool }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> bool {
         self.foo
     }
@@ -382,7 +370,6 @@ impl AsRef<str> for String {
 struct S { foo: String }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> &str {
         self.foo.as_ref()
     }
@@ -419,7 +406,6 @@ impl<T> AsRef<T> for Box<T> {
 struct S { foo: Box<Sweets> }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> &Sweets {
         self.foo.as_ref()
     }
@@ -452,7 +438,6 @@ impl<T> AsRef<[T]> for Vec<T> {
 struct S { foo: Vec<()> }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> &[()] {
         self.foo.as_ref()
     }
@@ -475,7 +460,6 @@ struct Failure;
 struct S { foo: Option<Failure> }
 
 impl S {
-    #[must_use]
     fn $0foo(&self) -> Option<&Failure> {
         self.foo.as_ref()
     }
@@ -498,7 +482,6 @@ struct Context {
 }
 
 impl Context {
-    #[must_use]
     fn $0data(&self) -> Result<&bool, &i32> {
         self.data.as_ref()
     }
