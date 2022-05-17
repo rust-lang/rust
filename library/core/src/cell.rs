@@ -1520,7 +1520,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     where
         F: FnOnce(&mut T) -> &mut U,
     {
-        // FIXME(nll-rfc#40): fix borrow-check
         let value = NonNull::from(f(&mut *orig));
         RefMut { value, borrow: orig.borrow, marker: PhantomData }
     }
@@ -1561,7 +1560,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
     {
-        // FIXME(nll-rfc#40): fix borrow-check
         // SAFETY: function holds onto an exclusive reference for the duration
         // of its call through `orig`, and the pointer is only de-referenced
         // inside of the function call never allowing the exclusive reference to
