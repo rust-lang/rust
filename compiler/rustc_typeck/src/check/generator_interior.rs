@@ -285,14 +285,13 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         self.visit_pat(pat);
         if let Some(ref g) = guard {
             self.guard_bindings.push(<_>::default());
-            ArmPatCollector {
-                guard_bindings_set: &mut self.guard_bindings_set,
-                guard_bindings: self
-                    .guard_bindings
-                    .last_mut()
-                    .expect("should have pushed at least one earlier"),
+            {
+                ArmPatCollector {
+                    interior_visitor: self,
+                    scope: Scope { id: g.body().hir_id.local_id, data: ScopeData::Node },
+                }
+                .visit_pat(pat);
             }
-            .visit_pat(pat);
 
             match g {
                 Guard::If(ref e) => {
@@ -459,17 +458,31 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 }
 
-struct ArmPatCollector<'a> {
-    guard_bindings_set: &'a mut HirIdSet,
-    guard_bindings: &'a mut SmallVec<[HirId; 4]>,
+struct ArmPatCollector<'a, 'b, 'tcx> {
+    interior_visitor: &'a mut InteriorVisitor<'b, 'tcx>,
+    scope: Scope,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for ArmPatCollector<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         intravisit::walk_pat(self, pat);
         if let PatKind::Binding(_, id, ..) = pat.kind {
-            self.guard_bindings.push(id);
-            self.guard_bindings_set.insert(id);
+            self.interior_visitor
+                .guard_bindings
+                .last_mut()
+                .expect("should have pushed at least one earlier")
+                .push(id);
+            self.interior_visitor.guard_bindings_set.insert(id);
+
+            let ty = self.interior_visitor.fcx.typeck_results.borrow().node_type(id);
+            let ty = self.interior_visitor.fcx.tcx.mk_ref(
+                // Use `ReErased` as `resolve_interior` is going to replace all the regions anyway.
+                self.interior_visitor.fcx.tcx.mk_region(ty::ReErased),
+                ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
+            );
+            // FIXME: use the right span
+            let span = rustc_span::DUMMY_SP;
+            self.interior_visitor.record(ty, id, Some(self.scope), None, span, true);
         }
     }
 }
