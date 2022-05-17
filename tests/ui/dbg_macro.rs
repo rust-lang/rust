@@ -46,3 +46,15 @@ mod issue7274 {
 pub fn issue8481() {
     dbg!(1);
 }
+
+#[cfg(test)]
+fn foo2() {
+    dbg!(1);
+}
+
+#[cfg(test)]
+mod mod1 {
+    fn func() {
+        dbg!(1);
+    }
+}
