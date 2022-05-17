@@ -45,3 +45,6 @@ goto: file://|DOC_PATH|/test_docs/index.html?search=test&filter-crate=lib2
 wait-for: "#crate-search"
 assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"
+
+// Checking that the text for the "title" is correct (the "All" comes from the "<select>").
+assert-text: ("#search-settings", "Results for test in All", STARTS_WITH)
