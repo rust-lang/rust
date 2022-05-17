@@ -17,7 +17,7 @@ fn binders_in_pat(
             let ident = p.name()?;
             let ismut = p.ref_token().is_none() && p.mut_token().is_some();
             // check for const reference
-            if !(p.is_simple_ident() && sem.resolve_bind_pat_to_const(p).is_some()) {
+            if sem.resolve_bind_pat_to_const(p).is_none() {
                 acc.push((ident, ismut));
             }
             if let Some(inner) = p.pat() {
