@@ -54,7 +54,8 @@ impl DocFS {
     where
         E: PathError,
     {
-        if !self.sync_only && cfg!(windows) {
+        #[cfg(windows)]
+        if !self.sync_only {
             // A possible future enhancement after more detailed profiling would
             // be to create the file sync so errors are reported eagerly.
             let sender = self.errors.clone().expect("can't write after closing");
@@ -68,6 +69,10 @@ impl DocFS {
         } else {
             fs::write(&path, contents).map_err(|e| E::new(e, path))?;
         }
+
+        #[cfg(not(windows))]
+        fs::write(&path, contents).map_err(|e| E::new(e, path))?;
+
         Ok(())
     }
 }
