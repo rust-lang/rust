@@ -3140,7 +3140,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
     ///
     /// ```
     /// use hashbrown::HashMap;
-    /// 
+    ///
     /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
     /// let key = "a";
     /// assert_eq!(map.raw_entry().from_key(&key), Some((&"a", &100)));
