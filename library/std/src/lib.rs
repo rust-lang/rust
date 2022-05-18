@@ -485,7 +485,9 @@ pub use core::u8;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;
 #[unstable(feature = "system", issue = "97148")]
-pub use crate::sys as system;
+pub mod system {
+  pub use crate::sys::*;
+}
 
 pub mod f32;
 pub mod f64;
