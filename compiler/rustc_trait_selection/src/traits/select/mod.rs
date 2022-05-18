@@ -33,7 +33,6 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
@@ -212,6 +211,122 @@ enum BuiltinImplConditions<'tcx> {
     None,
     /// It is unknown whether there is an impl.
     Ambiguous,
+}
+
+fn tys_may_be_equivalent<'tcx>(oblig_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
+    let k = impl_ty.kind();
+
+    // First, look for obvious equivalences, e.g. the types are equal. The most
+    // common case is to find such an equivalence trivially, e.g. `ty::Bool`
+    // and `ty::Bool`.
+    let mut maybe_equiv = match oblig_ty.kind() {
+        ty::Bool => matches!(k, ty::Bool),
+        ty::Char => matches!(k, ty::Char),
+        ty::Int(ity) => matches!(k, ty::Int(ity2) if ity == ity2),
+        ty::Uint(uty) => matches!(k, ty::Uint(uty2) if uty == uty2),
+        ty::Float(fty) => matches!(k, ty::Float(fty2) if fty == fty2),
+        ty::Adt(def_id, substs1) => match k {
+            ty::Adt(def_id2, substs2) => {
+                def_id == def_id2 && {
+                    // Check for cases like `Foo<3>` vs `Foo<4>`, which are hot
+                    // in crates such as `bitmaps` and `nalgebra`.
+                    let differ_by_single_const_arg = if
+                        substs1.len() == 1
+                        && substs2.len() == 1
+                        && let ty::subst::GenericArgKind::Const(c1) = substs1[0].unpack()
+                        && let ty::subst::GenericArgKind::Const(c2) = substs2[0].unpack()
+                        && let Some(s1) = c1.val().try_to_scalar_int()
+                        && let Some(s2) = c2.val().try_to_scalar_int()
+                        && s1 != s2
+                    {
+                        true
+                    } else {
+                        false
+                    };
+                    !differ_by_single_const_arg
+                }
+            }
+            _ => false,
+        },
+        ty::Str => matches!(k, ty::Str),
+        ty::Array(..) => matches!(k, ty::Array(..)),
+        ty::Slice(..) => matches!(k, ty::Slice(..)),
+        ty::RawPtr(ptr) => matches!(k, ty::RawPtr(ptr2) if ptr.mutbl == ptr2.mutbl),
+        ty::Dynamic(trait_info, ..) => {
+            matches!(k, ty::Dynamic(trait_info2, ..) if
+                trait_info.principal_def_id() == trait_info2.principal_def_id()
+            )
+        }
+        ty::Ref(_, _, mutbl) => matches!(k, ty::Ref(_, _, mutbl2) if mutbl == mutbl2),
+        ty::FnDef(def_id, _) => matches!(k, ty::FnDef(def_id2, _) if def_id == def_id2),
+        ty::Closure(def_id, _) => matches!(k, ty::Closure(def_id2, _) if def_id == def_id2),
+        ty::Generator(def_id, ..) => {
+            matches!(k, ty::Generator(def_id2, ..) if def_id == def_id2)
+        }
+        ty::Never => matches!(k, ty::Never),
+        ty::Tuple(tys) => matches!(k, ty::Tuple(tys2) if tys.len() == tys2.len()),
+        ty::FnPtr(tys) => {
+            matches!(
+                k,
+                ty::FnPtr(tys2)
+                    if tys.skip_binder().inputs().len() == tys2.skip_binder().inputs().len()
+            )
+        }
+        ty::Opaque(def_id, _) => matches!(k, ty::Opaque(def_id2, _) if def_id == def_id2),
+        ty::Foreign(def_id) => matches!(k, ty::Foreign(def_id2) if def_id == def_id2),
+        ty::Param(_) => {
+            // Note, we simplify parameters for the obligation but not the impl
+            // so that we do not reject a blanket impl but do reject more
+            // concrete impls if we're searching for `T: Trait`.
+            matches!(k, ty::Placeholder(..))
+        }
+        ty::Projection(_) => {
+            // When treating `ty::Param` as a placeholder, projections also
+            // don't unify with anything else as long as they are fully normalized.
+            //
+            // We will have to be careful with lazy normalization here.
+            oblig_ty.has_infer_types_or_consts() || matches!(k, ty::Placeholder(..))
+        }
+        ty::Infer(_) => true,
+
+        ty::GeneratorWitness(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Error(_) => {
+            unreachable!()
+        }
+    };
+
+    // Next, if necessary, look for less obvious sources of equivalence.
+    maybe_equiv = maybe_equiv
+        || match impl_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Dynamic(..)
+            | ty::Ref(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::FnPtr(..)
+            | ty::Foreign(..) => false,
+
+            ty::Param(_) | ty::Projection(_) | ty::Error(_) => true,
+
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Placeholder(..)
+            | ty::Opaque(..)
+            | ty::Bound(..)
+            | ty::Infer(_) => unreachable!(),
+        };
+
+    maybe_equiv
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -2142,20 +2257,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             |(obligation_arg, impl_arg)| {
                 match (obligation_arg.unpack(), impl_arg.unpack()) {
                     (GenericArgKind::Type(obligation_ty), GenericArgKind::Type(impl_ty)) => {
-                        // Note, we simplify parameters for the obligation but not the
-                        // impl so that we do not reject a blanket impl but do reject
-                        // more concrete impls if we're searching for `T: Trait`.
-                        let simplified_obligation_ty = fast_reject::simplify_type(
-                            self.tcx(),
-                            obligation_ty,
-                            TreatParams::AsPlaceholder,
-                        );
-                        let simplified_impl_ty =
-                            fast_reject::simplify_type(self.tcx(), impl_ty, TreatParams::AsInfer);
-
-                        simplified_obligation_ty.is_some()
-                            && simplified_impl_ty.is_some()
-                            && simplified_obligation_ty != simplified_impl_ty
+                        let tys_definitely_differ = !tys_may_be_equivalent(obligation_ty, impl_ty);
+                        tys_definitely_differ
                     }
                     (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => {
                         // Lifetimes can never cause a rejection.
