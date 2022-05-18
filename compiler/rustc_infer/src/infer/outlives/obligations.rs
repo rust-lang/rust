@@ -68,6 +68,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -325,6 +326,29 @@ where
         region: ty::Region<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) {
+        self.generic_must_outlive(
+            origin,
+            region,
+            GenericKind::Projection(projection_ty),
+            projection_ty.item_def_id,
+            projection_ty.substs,
+            |ty| match ty.kind() {
+                ty::Projection(projection_ty) => (projection_ty.item_def_id, projection_ty.substs),
+                _ => bug!("expected only projection types from env, not {:?}", ty),
+            },
+        );
+    }
+
+    #[instrument(level = "debug", skip(self, filter))]
+    fn generic_must_outlive(
+        &mut self,
+        origin: infer::SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+        generic: GenericKind<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        filter: impl Fn(Ty<'tcx>) -> (DefId, SubstsRef<'tcx>),
+    ) {
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
         // doesn't like choice (the current region inference in
@@ -342,12 +366,9 @@ where
         // Compute the bounds we can derive from the trait definition.
         // These are guaranteed to apply, no matter the inference
         // results.
-        let trait_bounds: Vec<_> =
-            self.verify_bound.bounds(projection_ty.item_def_id, projection_ty.substs).collect();
+        let trait_bounds: Vec<_> = self.verify_bound.bounds(def_id, substs).collect();
 
         debug!(?trait_bounds);
-
-        let generic = GenericKind::Projection(projection_ty);
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
@@ -367,14 +388,8 @@ where
             // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
             // will be invoked with `['b => ^1]` and so we will get `^1` returned.
             let bound = bound_outlives.skip_binder();
-            match *bound.0.kind() {
-                ty::Projection(projection_ty) => self
-                    .verify_bound
-                    .bounds(projection_ty.item_def_id, projection_ty.substs)
-                    .all(|r| r != bound.1),
-
-                _ => panic!("expected only projection types from env, not {:?}", bound.0),
-            }
+            let (def_id, substs) = filter(bound.0);
+            self.verify_bound.bounds(def_id, substs).all(|r| r != bound.1)
         });
 
         // If declared bounds list is empty, the only applicable rule is
@@ -391,11 +406,11 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = projection_ty.needs_infer();
+        let needs_infer = substs.needs_infer();
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("no declared bounds");
 
-            self.substs_must_outlive(projection_ty.substs, origin, region);
+            self.substs_must_outlive(substs, origin, region);
 
             return;
         }
