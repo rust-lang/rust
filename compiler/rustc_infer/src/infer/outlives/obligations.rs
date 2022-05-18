@@ -71,7 +71,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -352,7 +352,7 @@ where
         // may not apply.
         let mut approx_env_bounds =
             self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty);
-        debug!("projection_must_outlive: approx_env_bounds={:?}", approx_env_bounds);
+        debug!(?approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
         // which are also deducible from the trait. This arises (cc
@@ -392,27 +392,9 @@ where
         // edges, which winds up enforcing the same condition.
         let needs_infer = projection_ty.needs_infer();
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
-            debug!("projection_must_outlive: no declared bounds");
+            debug!("no declared bounds");
 
-            let constraint = origin.to_constraint_category();
-            for k in projection_ty.substs {
-                match k.unpack() {
-                    GenericArgKind::Lifetime(lt) => {
-                        self.delegate.push_sub_region_constraint(
-                            origin.clone(),
-                            region,
-                            lt,
-                            constraint,
-                        );
-                    }
-                    GenericArgKind::Type(ty) => {
-                        self.type_must_outlive(origin.clone(), ty, region, constraint);
-                    }
-                    GenericArgKind::Const(_) => {
-                        // Const parameters don't impose constraints.
-                    }
-                }
-            }
+            self.substs_must_outlive(projection_ty.substs, origin, region);
 
             return;
         }
@@ -442,8 +424,8 @@ where
                 .all(|b| b == Some(trait_bounds[0]))
         {
             let unique_bound = trait_bounds[0];
-            debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
-            debug!("projection_must_outlive: unique declared bound appears in trait ref");
+            debug!(?unique_bound);
+            debug!("unique declared bound appears in trait ref");
             let category = origin.to_constraint_category();
             self.delegate.push_sub_region_constraint(origin, region, unique_bound, category);
             return;
@@ -458,6 +440,33 @@ where
         let verify_bound = self.verify_bound.generic_bound(generic);
         debug!("projection_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, generic, region, verify_bound);
+    }
+
+    fn substs_must_outlive(
+        &mut self,
+        substs: SubstsRef<'tcx>,
+        origin: infer::SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+    ) {
+        let constraint = origin.to_constraint_category();
+        for k in substs {
+            match k.unpack() {
+                GenericArgKind::Lifetime(lt) => {
+                    self.delegate.push_sub_region_constraint(
+                        origin.clone(),
+                        region,
+                        lt,
+                        constraint,
+                    );
+                }
+                GenericArgKind::Type(ty) => {
+                    self.type_must_outlive(origin.clone(), ty, region, constraint);
+                }
+                GenericArgKind::Const(_) => {
+                    // Const parameters don't impose constraints.
+                }
+            }
+        }
     }
 }
 
