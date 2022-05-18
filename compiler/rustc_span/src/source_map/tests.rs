@@ -313,82 +313,169 @@ impl SourceMapExtension for SourceMap {
     }
 }
 
-fn map_path_prefix(mapping: &FilePathMapping, path: &str) -> String {
+// Takes a unix-style path and returns a platform specific path.
+fn path(p: &str) -> PathBuf {
+    path_str(p).into()
+}
+
+// Takes a unix-style path and returns a platform specific path.
+fn path_str(p: &str) -> String {
+    #[cfg(not(windows))]
+    {
+        return p.into();
+    }
+
+    #[cfg(windows)]
+    {
+        let mut path = p.replace('/', "\\");
+        if let Some(rest) = path.strip_prefix('\\') {
+            path = ["X:\\", rest].concat();
+        }
+
+        path
+    }
+}
+
+fn map_path_prefix(mapping: &FilePathMapping, p: &str) -> String {
     // It's important that we convert to a string here because that's what
     // later stages do too (e.g. in the backend), and comparing `Path` values
     // won't catch some differences at the string level, e.g. "abc" and "abc/"
     // compare as equal.
-    mapping.map_prefix(path.into()).0.to_string_lossy().to_string()
+    mapping.map_prefix(path(p)).0.to_string_lossy().to_string()
 }
 
-#[cfg(unix)]
 #[test]
 fn path_prefix_remapping() {
     // Relative to relative
     {
-        let mapping = &FilePathMapping::new(vec![("abc/def".into(), "foo".into())]);
+        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("foo"))]);
 
-        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), "foo/src/main.rs");
-        assert_eq!(map_path_prefix(mapping, "abc/def"), "foo");
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("foo"));
     }
 
     // Relative to absolute
     {
-        let mapping = &FilePathMapping::new(vec![("abc/def".into(), "/foo".into())]);
+        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("/foo"))]);
 
-        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), "/foo/src/main.rs");
-        assert_eq!(map_path_prefix(mapping, "abc/def"), "/foo");
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("/foo"));
     }
 
     // Absolute to relative
     {
-        let mapping = &FilePathMapping::new(vec![("/abc/def".into(), "foo".into())]);
+        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("foo"))]);
 
-        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), "foo/src/main.rs");
-        assert_eq!(map_path_prefix(mapping, "/abc/def"), "foo");
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("foo"));
     }
 
     // Absolute to absolute
     {
-        let mapping = &FilePathMapping::new(vec![("/abc/def".into(), "/foo".into())]);
+        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("/foo"))]);
 
-        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), "/foo/src/main.rs");
-        assert_eq!(map_path_prefix(mapping, "/abc/def"), "/foo");
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("/foo"));
     }
 }
 
-#[cfg(windows)]
 #[test]
-fn path_prefix_remapping_from_relative2() {
-    // Relative to relative
-    {
-        let mapping = &FilePathMapping::new(vec![("abc\\def".into(), "foo".into())]);
+fn path_prefix_remapping_expand_to_absolute() {
+    // "virtual" working directory is relative path
+    let mapping =
+        &FilePathMapping::new(vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))]);
+    let working_directory = path("/foo");
+    let working_directory = RealFileName::Remapped {
+        local_path: Some(working_directory.clone()),
+        virtual_name: mapping.map_prefix(working_directory).0,
+    };
 
-        assert_eq!(map_path_prefix(mapping, "abc\\def\\src\\main.rs"), "foo\\src\\main.rs");
-        assert_eq!(map_path_prefix(mapping, "abc\\def"), "foo");
-    }
+    assert_eq!(working_directory.remapped_path_if_available(), path("FOO"));
 
-    // Relative to absolute
-    {
-        let mapping = &FilePathMapping::new(vec![("abc\\def".into(), "X:\\foo".into())]);
+    // Unmapped absolute path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/foo/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
 
-        assert_eq!(map_path_prefix(mapping, "abc\\def\\src\\main.rs"), "X:\\foo\\src\\main.rs");
-        assert_eq!(map_path_prefix(mapping, "abc\\def"), "X:\\foo");
-    }
+    // Unmapped absolute path with unrelated working directory
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/bar/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
+    );
 
-    // Absolute to relative
-    {
-        let mapping = &FilePathMapping::new(vec![("X:\\abc\\def".into(), "foo".into())]);
+    // Unmapped absolute path that does not match any prefix
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/quux/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::LocalPath(path("/quux/src/main.rs")),
+    );
 
-        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def\\src\\main.rs"), "foo\\src\\main.rs");
-        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def"), "foo");
-    }
+    // Unmapped relative path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
 
-    // Absolute to absolute
-    {
-        let mapping = &FilePathMapping::new(vec![("X:\\abc\\def".into(), "X:\\foo".into())]);
+    // Unmapped relative path with `./`
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("./src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
 
-        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def\\src\\main.rs"), "X:\\foo\\src\\main.rs");
-        assert_eq!(map_path_prefix(mapping, "X:\\abc\\def"), "X:\\foo");
-    }
+    // Unmapped relative path that does not match any prefix
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("quux/src/main.rs")),
+            &RealFileName::LocalPath(path("/abc")),
+        ),
+        RealFileName::LocalPath(path("/abc/quux/src/main.rs")),
+    );
+
+    // Already remapped absolute path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped {
+                local_path: Some(path("/foo/src/main.rs")),
+                virtual_name: path("FOO/src/main.rs"),
+            },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
+
+    // Already remapped absolute path, with unrelated working directory
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped {
+                local_path: Some(path("/bar/src/main.rs")),
+                virtual_name: path("BAR/src/main.rs"),
+            },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
+    );
+
+    // Already remapped relative path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
+    );
 }

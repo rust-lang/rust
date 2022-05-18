@@ -36,20 +36,21 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, AdtKind, Instance, ParamEnv, Ty, TyCtxt, COMMON_VTABLE_ENTRIES};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
+use rustc_span::FileName;
 use rustc_span::FileNameDisplayPreference;
-use rustc_span::{self, SourceFile, SourceFileHash};
+use rustc_span::{self, SourceFile};
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;
 use tracing::debug;
 
 use libc::{c_longlong, c_uint};
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::ptr;
+use tracing::instrument;
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -527,76 +528,103 @@ fn hex_encode(data: &[u8]) -> String {
 }
 
 pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
-    debug!("file_metadata: file_name: {:?}", source_file.name);
+    let cache_key = Some((source_file.name_hash, source_file.src_hash));
+    return debug_context(cx)
+        .created_files
+        .borrow_mut()
+        .entry(cache_key)
+        .or_insert_with(|| alloc_new_file_metadata(cx, source_file));
 
-    let hash = Some(&source_file.src_hash);
-    let file_name = Some(source_file.name.prefer_remapped().to_string());
-    let directory = if source_file.is_real_file() && !source_file.is_imported() {
-        Some(
-            cx.sess()
-                .opts
-                .working_dir
-                .to_string_lossy(FileNameDisplayPreference::Remapped)
-                .to_string(),
-        )
-    } else {
-        // If the path comes from an upstream crate we assume it has been made
-        // independent of the compiler's working directory one way or another.
-        None
-    };
-    file_metadata_raw(cx, file_name, directory, hash)
+    #[instrument(skip(cx, source_file), level = "debug")]
+    fn alloc_new_file_metadata<'ll>(
+        cx: &CodegenCx<'ll, '_>,
+        source_file: &SourceFile,
+    ) -> &'ll DIFile {
+        debug!(?source_file.name);
+
+        let (directory, file_name) = match &source_file.name {
+            FileName::Real(filename) => {
+                let working_directory = &cx.sess().opts.working_dir;
+                debug!(?working_directory);
+
+                let filename = cx
+                    .sess()
+                    .source_map()
+                    .path_mapping()
+                    .to_embeddable_absolute_path(filename.clone(), working_directory);
+
+                // Construct the absolute path of the file
+                let abs_path = filename.remapped_path_if_available();
+                debug!(?abs_path);
+
+                if let Ok(rel_path) =
+                    abs_path.strip_prefix(working_directory.remapped_path_if_available())
+                {
+                    // If the compiler's working directory (which also is the DW_AT_comp_dir of
+                    // the compilation unit) is a prefix of the path we are about to emit, then
+                    // only emit the part relative to the working directory.
+                    // Because of path remapping we sometimes see strange things here: `abs_path`
+                    // might actually look like a relative path
+                    // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
+                    // taking the working directory into account, downstream tooling will
+                    // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
+                    // which makes no sense. Usually in such cases the working directory will also
+                    // be remapped to `<crate-name-and-version>` or some other prefix of the path
+                    // we are remapping, so we end up with
+                    // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
+                    // By moving the working directory portion into the `directory` part of the
+                    // DIFile, we allow LLVM to emit just the relative path for DWARF, while
+                    // still emitting the correct absolute path for CodeView.
+                    (
+                        working_directory.to_string_lossy(FileNameDisplayPreference::Remapped),
+                        rel_path.to_string_lossy().into_owned(),
+                    )
+                } else {
+                    ("".into(), abs_path.to_string_lossy().into_owned())
+                }
+            }
+            other => ("".into(), other.prefer_remapped().to_string_lossy().into_owned()),
+        };
+
+        let hash_kind = match source_file.src_hash.kind {
+            rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
+            rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
+            rustc_span::SourceFileHashAlgorithm::Sha256 => llvm::ChecksumKind::SHA256,
+        };
+        let hash_value = hex_encode(source_file.src_hash.hash_bytes());
+
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateFile(
+                DIB(cx),
+                file_name.as_ptr().cast(),
+                file_name.len(),
+                directory.as_ptr().cast(),
+                directory.len(),
+                hash_kind,
+                hash_value.as_ptr().cast(),
+                hash_value.len(),
+            )
+        }
+    }
 }
 
 pub fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, None, None, None)
-}
+    debug_context(cx).created_files.borrow_mut().entry(None).or_insert_with(|| unsafe {
+        let file_name = "<unknown>";
+        let directory = "";
+        let hash_value = "";
 
-fn file_metadata_raw<'ll>(
-    cx: &CodegenCx<'ll, '_>,
-    file_name: Option<String>,
-    directory: Option<String>,
-    hash: Option<&SourceFileHash>,
-) -> &'ll DIFile {
-    let key = (file_name, directory);
-
-    match debug_context(cx).created_files.borrow_mut().entry(key) {
-        Entry::Occupied(o) => o.get(),
-        Entry::Vacant(v) => {
-            let (file_name, directory) = v.key();
-            debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
-
-            let file_name = file_name.as_deref().unwrap_or("<unknown>");
-            let directory = directory.as_deref().unwrap_or("");
-
-            let (hash_kind, hash_value) = match hash {
-                Some(hash) => {
-                    let kind = match hash.kind {
-                        rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
-                        rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
-                        rustc_span::SourceFileHashAlgorithm::Sha256 => llvm::ChecksumKind::SHA256,
-                    };
-                    (kind, hex_encode(hash.hash_bytes()))
-                }
-                None => (llvm::ChecksumKind::None, String::new()),
-            };
-
-            let file_metadata = unsafe {
-                llvm::LLVMRustDIBuilderCreateFile(
-                    DIB(cx),
-                    file_name.as_ptr().cast(),
-                    file_name.len(),
-                    directory.as_ptr().cast(),
-                    directory.len(),
-                    hash_kind,
-                    hash_value.as_ptr().cast(),
-                    hash_value.len(),
-                )
-            };
-
-            v.insert(file_metadata);
-            file_metadata
-        }
-    }
+        llvm::LLVMRustDIBuilderCreateFile(
+            DIB(cx),
+            file_name.as_ptr().cast(),
+            file_name.len(),
+            directory.as_ptr().cast(),
+            directory.len(),
+            llvm::ChecksumKind::None,
+            hash_value.as_ptr().cast(),
+            hash_value.len(),
+        )
+    })
 }
 
 trait MsvcBasicName {

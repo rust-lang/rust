@@ -335,8 +335,8 @@ impl fmt::Display for FileNameDisplay<'_> {
     }
 }
 
-impl FileNameDisplay<'_> {
-    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+impl<'a> FileNameDisplay<'a> {
+    pub fn to_string_lossy(&self) -> Cow<'a, str> {
         match self.inner {
             FileName::Real(ref inner) => inner.to_string_lossy(self.display_pref),
             _ => Cow::from(format!("{}", self)),
@@ -1153,7 +1153,7 @@ impl FromStr for SourceFileHashAlgorithm {
 }
 
 /// The hash of the on-disk source file used for debug info.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct SourceFileHash {
     pub kind: SourceFileHashAlgorithm,
