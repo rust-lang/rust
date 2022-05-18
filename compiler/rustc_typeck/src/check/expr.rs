@@ -51,6 +51,7 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -836,6 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
         op_span: Span,
+        adjust_err: impl FnOnce(&mut DiagnosticBuilder<'tcx, ErrorGuaranteed>),
     ) {
         if lhs.is_syntactic_place_expr() {
             return;
@@ -857,6 +859,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         });
+
+        adjust_err(&mut err);
 
         err.emit();
     }
@@ -1050,10 +1054,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", span);
-
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
+
+        let suggest_deref_binop = |err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+                                   rhs_ty: Ty<'tcx>| {
+            if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
+                // Can only assign if the type is sized, so if `DerefMut` yields a type that is
+                // unsized, do not suggest dereferencing it.
+                let lhs_deref_ty_is_sized = self
+                    .infcx
+                    .type_implements_trait(
+                        self.tcx.lang_items().sized_trait().unwrap(),
+                        lhs_deref_ty,
+                        ty::List::empty(),
+                        self.param_env,
+                    )
+                    .may_apply();
+                if lhs_deref_ty_is_sized && self.can_coerce(rhs_ty, lhs_deref_ty) {
+                    err.span_suggestion_verbose(
+                        lhs.span.shrink_to_lo(),
+                        "consider dereferencing here to assign to the mutably borrowed value",
+                        "*".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        };
+
+        self.check_lhs_assignable(lhs, "E0070", span, |err| {
+            let rhs_ty = self.check_expr(&rhs);
+            suggest_deref_binop(err, rhs_ty);
+        });
+
+        // This is (basically) inlined `check_expr_coercable_to_type`, but we want
+        // to suggest an additional fixup here in `suggest_deref_binop`.
+        let rhs_ty = self.check_expr_with_hint(&rhs, lhs_ty);
+        if let (_, Some(mut diag)) =
+            self.demand_coerce_diag(rhs, rhs_ty, lhs_ty, Some(lhs), AllowTwoPhase::No)
+        {
+            suggest_deref_binop(&mut diag, rhs_ty);
+            diag.emit();
+        }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 

@@ -696,28 +696,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
 
                         if let Some(hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Assign(left_expr, ..),
+                            kind: hir::ExprKind::Assign(..),
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
                             if mutability == hir::Mutability::Mut {
-                                // Found the following case:
-                                // fn foo(opt: &mut Option<String>){ opt = None }
-                                //                                   ---   ^^^^
-                                //                                   |     |
-                                //    consider dereferencing here: `*opt`  |
-                                // expected mutable reference, found enum `Option`
-                                if sm.span_to_snippet(left_expr.span).is_ok() {
-                                    return Some((
-                                        left_expr.span.shrink_to_lo(),
-                                        "consider dereferencing here to assign to the mutable \
-                                         borrowed piece of memory"
-                                            .to_string(),
-                                        "*".to_string(),
-                                        Applicability::MachineApplicable,
-                                        true,
-                                    ));
-                                }
+                                // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
+                                return None;
                             }
                         }
 

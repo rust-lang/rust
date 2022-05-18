@@ -1764,7 +1764,7 @@ impl ExitCode {
     ///     code.exit_process()
     /// }
     /// ```
-    #[unstable(feature = "exitcode_exit_method", issue = "none")]
+    #[unstable(feature = "exitcode_exit_method", issue = "97100")]
     pub fn exit_process(self) -> ! {
         exit(self.to_i32())
     }

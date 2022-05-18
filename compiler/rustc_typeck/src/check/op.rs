@@ -41,7 +41,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", op.span);
+        self.check_lhs_assignable(lhs, "E0067", op.span, |err| {
+            if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
+                if self
+                    .lookup_op_method(
+                        lhs_deref_ty,
+                        Some(rhs_ty),
+                        Some(rhs),
+                        Op::Binary(op, IsAssign::Yes),
+                    )
+                    .is_ok()
+                {
+                    // Suppress this error, since we already emitted
+                    // a deref suggestion in check_overloaded_binop
+                    err.delay_as_bug();
+                }
+            }
+        });
 
         ty
     }
@@ -404,16 +420,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, missing_trait, use_output)
                     }
                 };
-                if let Ref(_, rty, _) = lhs_ty.kind() {
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span)
-                        && self
-                            .lookup_op_method(
-                                *rty,
-                                Some(rhs_ty),
-                                Some(rhs_expr),
-                                Op::Binary(op, is_assign),
-                            )
-                            .is_ok()
+
+                let mut suggest_deref_binop = |lhs_deref_ty: Ty<'tcx>| {
+                    if self
+                        .lookup_op_method(
+                            lhs_deref_ty,
+                            Some(rhs_ty),
+                            Some(rhs_expr),
+                            Op::Binary(op, is_assign),
+                        )
+                        .is_ok()
                     {
                         if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                             let msg = &format!(
@@ -423,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     IsAssign::Yes => "=",
                                     IsAssign::No => "",
                                 },
-                                rty.peel_refs(),
+                                lhs_deref_ty.peel_refs(),
                                 lstring,
                             );
                             err.span_suggestion_verbose(
@@ -433,6 +449,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 rustc_errors::Applicability::MachineApplicable,
                             );
                         }
+                    }
+                };
+
+                // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
+                // `a += b` => `*a += b` if a is a mut ref.
+                if is_assign == IsAssign::Yes
+                    && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
+                        suggest_deref_binop(lhs_deref_ty);
+                } else if is_assign == IsAssign::No
+                    && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind() {
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty, lhs_expr.span) {
+                        suggest_deref_binop(*lhs_deref_ty);
                     }
                 }
                 if let Some(missing_trait) = missing_trait {

@@ -1384,8 +1384,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitPredicate<'tcx>,
-        new_self_ty: Ty<'tcx>,
+        trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx>;
 
     fn maybe_report_ambiguity(
@@ -1923,14 +1922,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitPredicate<'tcx>,
-        new_self_ty: Ty<'tcx>,
+        trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx> {
-        assert!(!new_self_ty.has_escaping_bound_vars());
-
-        let trait_pred = trait_ref.map_bound_ref(|tr| ty::TraitPredicate {
+        let trait_pred = trait_ref_and_ty.map_bound_ref(|(tr, new_self_ty)| ty::TraitPredicate {
             trait_ref: ty::TraitRef {
-                substs: self.tcx.mk_substs_trait(new_self_ty, &tr.trait_ref.substs[1..]),
+                substs: self.tcx.mk_substs_trait(*new_self_ty, &tr.trait_ref.substs[1..]),
                 ..tr.trait_ref
             },
             ..*tr

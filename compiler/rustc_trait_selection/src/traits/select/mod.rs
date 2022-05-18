@@ -103,22 +103,31 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// require themselves.
     freshener: TypeFreshener<'cx, 'tcx>,
 
-    /// If `true`, indicates that the evaluation should be conservative
-    /// and consider the possibility of types outside this crate.
+    /// During coherence we have to assume that other crates may add
+    /// additional impls which we currently don't know about.
+    ///
+    /// To deal with this evaluation should be conservative
+    /// and consider the possibility of impls from outside this crate.
     /// This comes up primarily when resolving ambiguity. Imagine
     /// there is some trait reference `$0: Bar` where `$0` is an
     /// inference variable. If `intercrate` is true, then we can never
     /// say for sure that this reference is not implemented, even if
     /// there are *no impls at all for `Bar`*, because `$0` could be
     /// bound to some type that in a downstream crate that implements
-    /// `Bar`. This is the suitable mode for coherence. Elsewhere,
-    /// though, we set this to false, because we are only interested
-    /// in types that the user could actually have written --- in
-    /// other words, we consider `$0: Bar` to be unimplemented if
+    /// `Bar`.
+    ///
+    /// Outside of coherence we set this to false because we are only
+    /// interested in types that the user could actually have written.
+    /// In other words, we consider `$0: Bar` to be unimplemented if
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     intercrate: bool,
-
+    /// If `intercrate` is set, we remember predicates which were
+    /// considered ambiguous because of impls potentially added in other crates.
+    /// This is used in coherence to give improved diagnostics.
+    /// We don't do his until we detect a coherence error because it can
+    /// lead to false overflow results (#47139) and because always
+    /// computing it may negatively impact performance.
     intercrate_ambiguity_causes: Option<Vec<IntercrateAmbiguityCause>>,
 
     /// The mode that trait queries run in, which informs our error handling
@@ -240,11 +249,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Enables tracking of intercrate ambiguity causes. These are
-    /// used in coherence to give improved diagnostics. We don't do
-    /// this until we detect a coherence error because it can lead to
-    /// false overflow results (#47139) and because it costs
-    /// computation time.
+    /// Enables tracking of intercrate ambiguity causes. See
+    /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
         assert!(self.intercrate);
         assert!(self.intercrate_ambiguity_causes.is_none());

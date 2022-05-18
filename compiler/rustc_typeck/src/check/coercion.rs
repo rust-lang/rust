@@ -58,7 +58,8 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use smallvec::{smallvec, SmallVec};
@@ -615,7 +616,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         )];
 
         let mut has_unsized_tuple_coercion = false;
-        let mut has_trait_upcasting_coercion = false;
+        let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -635,7 +636,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             && data_a.principal_def_id() != data_b.principal_def_id()
                         {
                             debug!("coerce_unsized: found trait upcasting coercion");
-                            has_trait_upcasting_coercion = true;
+                            has_trait_upcasting_coercion = Some((self_ty, unsize_ty));
                         }
                         if let ty::Tuple(..) = unsize_ty.kind() {
                             debug!("coerce_unsized: found unsized tuple coercion");
@@ -706,14 +707,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             .emit();
         }
 
-        if has_trait_upcasting_coercion && !self.tcx().features().trait_upcasting {
-            feature_err(
+        if let Some((sub, sup)) = has_trait_upcasting_coercion
+            && !self.tcx().features().trait_upcasting
+        {
+            // Renders better when we erase regions, since they're not really the point here.
+            let (sub, sup) = self.tcx.erase_regions((sub, sup));
+            let mut err = feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::trait_upcasting,
                 self.cause.span,
-                "trait upcasting coercion is experimental",
-            )
-            .emit();
+                &format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
+            );
+            err.note(&format!("required when coercing `{source}` into `{target}`"));
+            err.emit();
         }
 
         Ok(coercion)
@@ -960,6 +966,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coerce
             .autoderef(rustc_span::DUMMY_SP, expr_ty)
             .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
+    }
+
+    /// Given a type, this function will calculate and return the type given
+    /// for `<Ty as Deref>::Target` only if `Ty` also implements `DerefMut`.
+    ///
+    /// This function is for diagnostics only, since it does not register
+    /// trait or region sub-obligations. (presumably we could, but it's not
+    /// particularly important for diagnostics...)
+    pub fn deref_once_mutably_for_diagnostic(&self, expr_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        self.autoderef(rustc_span::DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
+            self.infcx
+                .type_implements_trait(
+                    self.infcx.tcx.lang_items().deref_mut_trait()?,
+                    expr_ty,
+                    ty::List::empty(),
+                    self.param_env,
+                )
+                .may_apply()
+                .then(|| deref_ty)
+        })
     }
 
     /// Given some expressions, their known unified type and another expression,

@@ -8,7 +8,7 @@ LL |     opt = None;
    |
    = note: expected mutable reference `&mut Option<String>`
                            found enum `Option<_>`
-help: consider dereferencing here to assign to the mutable borrowed piece of memory
+help: consider dereferencing here to assign to the mutably borrowed value
    |
 LL |     *opt = None;
    |     +
@@ -34,7 +34,7 @@ LL |     opt = Some(String::new())
    |
    = note: expected mutable reference `&mut Option<String>`
                            found enum `Option<String>`
-help: consider dereferencing here to assign to the mutable borrowed piece of memory
+help: consider dereferencing here to assign to the mutably borrowed value
    |
 LL |     *opt = Some(String::new())
    |     +
