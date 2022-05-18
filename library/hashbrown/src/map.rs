@@ -2990,12 +2990,53 @@ pub struct RawVacantEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
+///
+/// # Examples
+///
+/// ```
+/// use hashbrown::hash_map::{HashMap, RawEntryBuilder};
+/// use core::hash::{BuildHasher, Hash};
+///
+/// let mut map = HashMap::new();
+/// map.extend([(1, 10), (2, 20), (3, 30)]);
+///
+/// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+///     use core::hash::Hasher;
+///     let mut state = hash_builder.build_hasher();
+///     key.hash(&mut state);
+///     state.finish()
+/// }
+///
+/// for k in 0..6 {
+///     let hash = compute_hash(map.hasher(), &k);
+///     let v = map.get(&k).cloned();
+///     let kv = v.as_ref().map(|v| (&k, v));
+///
+///     println!("Key: {} and value: {:?}", k, v);
+///     let builder: RawEntryBuilder<_, _, _> = map.raw_entry();
+///     assert_eq!(builder.from_key(&k), kv);
+///     assert_eq!(map.raw_entry().from_hash(hash, |q| *q == k), kv);
+///     assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
+/// }
+/// ```
 pub struct RawEntryBuilder<'a, K, V, S, A: Allocator + Clone = Global> {
     map: &'a HashMap<K, V, S, A>,
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     /// Creates a `RawEntryMut` from the given key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_key(&key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
@@ -3009,6 +3050,27 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     }
 
     /// Creates a `RawEntryMut` from the given key and its hash.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_key_hashed_nocheck(hash, &key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
@@ -3021,7 +3083,28 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
-    /// Creates a `RawEntryMut` from the given hash.
+    /// Creates a `RawEntryMut` from the given hash and matching function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::hash_map::{HashMap, RawEntryMut};
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// let entry: RawEntryMut<&str, u32, _> = map.raw_entry_mut().from_hash(hash, |k| k == &key);
+    /// entry.insert(key, 100);
+    /// assert_eq!(map[&"a"], 100);
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S, A>
@@ -3051,7 +3134,17 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
 }
 
 impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
-    /// Access an entry by key.
+    /// Access an immutable entry by key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// 
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// assert_eq!(map.raw_entry().from_key(&key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
@@ -3064,7 +3157,26 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
         self.from_key_hashed_nocheck(hash, k)
     }
 
-    /// Access an entry by a key and its hash.
+    /// Access an immutable entry by a key and its hash.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::HashMap;
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
@@ -3086,7 +3198,26 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
         }
     }
 
-    /// Access an entry by hash.
+    /// Access an immutable entry by hash and matching function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::HashMap;
+    ///
+    /// fn compute_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let map: HashMap<&str, u32> = [("a", 100), ("b", 200)].into();
+    /// let key = "a";
+    /// let hash = compute_hash(map.hasher(), &key);
+    /// assert_eq!(map.raw_entry().from_hash(hash, |k| k == &key), Some((&"a", &100)));
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
