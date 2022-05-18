@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_middle::mir::Field;
+use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
@@ -22,7 +22,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(super) fn const_to_pat(
         &self,
-        cv: ty::Const<'tcx>,
+        cv: mir::ConstantKind<'tcx>,
         id: hir::HirId,
         span: Span,
         mir_structural_match_violation: bool,
@@ -152,7 +152,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
-    fn to_pat(&mut self, cv: ty::Const<'tcx>, mir_structural_match_violation: bool) -> Pat<'tcx> {
+    fn to_pat(
+        &mut self,
+        cv: mir::ConstantKind<'tcx>,
+        mir_structural_match_violation: bool,
+    ) -> Pat<'tcx> {
         trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
@@ -246,7 +250,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn field_pats(
         &self,
-        vals: impl Iterator<Item = ty::Const<'tcx>>,
+        vals: impl Iterator<Item = mir::ConstantKind<'tcx>>,
     ) -> Result<Vec<FieldPat<'tcx>>, FallbackToConstRef> {
         vals.enumerate()
             .map(|(idx, val)| {
@@ -257,9 +261,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
+    #[instrument(skip(self), level = "debug")]
     fn recur(
         &self,
-        cv: ty::Const<'tcx>,
+        cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
     ) -> Result<Pat<'tcx>, FallbackToConstRef> {
         let id = self.id;
@@ -365,7 +370,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let destructured = tcx.destructure_const(param_env.and(cv));
+                let destructured = tcx.destructure_mir_constant(param_env, cv);
                 PatKind::Variant {
                     adt_def: *adt_def,
                     substs,
@@ -376,12 +381,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 }
             }
             ty::Tuple(_) | ty::Adt(_, _) => {
-                let destructured = tcx.destructure_const(param_env.and(cv));
+                let destructured = tcx.destructure_mir_constant(param_env, cv);
                 PatKind::Leaf { subpatterns: self.field_pats(destructured.fields.iter().copied())? }
             }
             ty::Array(..) => PatKind::Array {
                 prefix: tcx
-                    .destructure_const(param_env.and(cv))
+                    .destructure_mir_constant(param_env, cv)
                     .fields
                     .iter()
                     .map(|val| self.recur(*val, false))
@@ -412,12 +417,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // arrays.
                 ty::Array(..) if !self.treat_byte_string_as_slice => {
                     let old = self.behind_reference.replace(true);
-                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
                         subpattern: Pat {
                             kind: Box::new(PatKind::Array {
                                 prefix: tcx
-                                    .destructure_const(param_env.and(array))
+                                    .destructure_mir_constant(param_env, array)
                                     .fields
                                     .iter()
                                     .map(|val| self.recur(*val, false))
@@ -438,12 +443,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // pattern.
                 ty::Slice(elem_ty) => {
                     let old = self.behind_reference.replace(true);
-                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
                         subpattern: Pat {
                             kind: Box::new(PatKind::Slice {
                                 prefix: tcx
-                                    .destructure_const(param_env.and(array))
+                                    .destructure_mir_constant(param_env, array)
                                     .fields
                                     .iter()
                                     .map(|val| self.recur(*val, false))
@@ -512,7 +517,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         // we fall back to a const pattern. If we do not do this, we may end up with
                         // a !structural-match constant that is not of reference type, which makes it
                         // very hard to invoke `PartialEq::eq` on it as a fallback.
-                        let val = match self.recur(tcx.deref_const(self.param_env.and(cv)), false) {
+                        let val = match self.recur(tcx.deref_mir_constant(self.param_env.and(cv)), false) {
                             Ok(subpattern) => PatKind::Deref { subpattern },
                             Err(_) => PatKind::Constant { value: cv },
                         };

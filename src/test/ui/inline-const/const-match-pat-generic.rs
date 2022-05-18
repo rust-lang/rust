@@ -6,7 +6,8 @@
 fn foo<const V: usize>() {
     match 0 {
         const { V } => {},
-        //~^ ERROR const parameters cannot be referenced in patterns [E0158]
+        //~^ ERROR constant pattern depends on a generic parameter
+        //~| ERROR constant pattern depends on a generic parameter
         _ => {},
     }
 }

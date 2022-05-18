@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<ty::Const<'tcx>, u128>,
+        options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
             return false;
@@ -366,7 +366,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: ty::Const<'tcx>,
+        value: ConstantKind<'tcx>,
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
@@ -760,7 +760,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
     }
 
-    fn const_range_contains(&self, range: PatRange<'tcx>, value: ty::Const<'tcx>) -> Option<bool> {
+    fn const_range_contains(
+        &self,
+        range: PatRange<'tcx>,
+        value: ConstantKind<'tcx>,
+    ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
         let tcx = self.tcx;
@@ -777,7 +781,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        options: &FxIndexMap<ty::Const<'tcx>, u128>,
+        options: &FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {

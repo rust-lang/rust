@@ -228,9 +228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) =
-                        (lo.val().try_to_bits(sz), hi.val().try_to_bits(sz))
-                    {
+                    if let (Some(lo), Some(hi)) = (lo.try_to_bits(sz), hi.try_to_bits(sz)) {
                         // We want to compare ranges numerically, but the order of the bitwise
                         // representation of signed integers does not match their numeric order.
                         // Thus, to correct the ordering, we need to shift the range of signed

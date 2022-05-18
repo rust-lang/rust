@@ -52,7 +52,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::Field;
+use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
@@ -133,23 +133,35 @@ impl IntRange {
     }
 
     #[inline]
-    fn from_const<'tcx>(
+    fn from_constant<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: ty::Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
             let val = (|| {
-                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val() {
-                    // For this specific pattern we can skip a lot of effort and go
-                    // straight to the result, after doing a bit of checking. (We
-                    // could remove this branch and just fall through, which
-                    // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size).unwrap() {
-                        return Some(bits);
+                match value {
+                    mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) => {
+                        // For this specific pattern we can skip a lot of effort and go
+                        // straight to the result, after doing a bit of checking. (We
+                        // could remove this branch and just fall through, which
+                        // is more general but much slower.)
+                        if let Ok(Ok(bits)) = scalar.to_bits_or_ptr_internal(target_size) {
+                            return Some(bits);
+                        } else {
+                            return None;
+                        }
                     }
+                    mir::ConstantKind::Ty(c) => match c.val() {
+                        ty::ConstKind::Value(_) => bug!(
+                            "encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val"
+                        ),
+                        _ => {}
+                    },
+                    _ => {}
                 }
+
                 // This is a more general form of the previous case.
                 value.try_eval_bits(tcx, param_env, ty)
             })()?;
@@ -234,8 +246,8 @@ impl IntRange {
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
-        let lo_const = ty::Const::from_bits(tcx, lo, env);
-        let hi_const = ty::Const::from_bits(tcx, hi, env);
+        let lo_const = mir::ConstantKind::from_bits(tcx, lo, env);
+        let hi_const = mir::ConstantKind::from_bits(tcx, hi, env);
 
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
@@ -635,9 +647,9 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(ty::Const<'tcx>, ty::Const<'tcx>, RangeEnd),
+    FloatRange(mir::ConstantKind<'tcx>, mir::ConstantKind<'tcx>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(ty::Const<'tcx>),
+    Str(mir::ConstantKind<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black
@@ -1376,7 +1388,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             PatKind::Constant { value } => {
-                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, *value) {
+                if let Some(int_range) = IntRange::from_constant(cx.tcx, cx.param_env, *value) {
                     ctor = IntRange(int_range);
                     fields = Fields::empty();
                 } else {

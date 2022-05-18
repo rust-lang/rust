@@ -110,11 +110,22 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
     }
 
-    /// Destructure a constant ADT or array into its variant index and its field values.
+    /// Destructure a type-level constant ADT or array into its variant index and its field values.
+    /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
     pub fn destructure_const(
         self,
         param_env_and_val: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>,
     ) -> mir::DestructuredConst<'tcx> {
         self.try_destructure_const(param_env_and_val).unwrap()
+    }
+
+    /// Destructure a mir constant ADT or array into its variant index and its field values.
+    /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
+    pub fn destructure_mir_constant(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        constant: mir::ConstantKind<'tcx>,
+    ) -> mir::DestructuredMirConstant<'tcx> {
+        self.try_destructure_mir_constant(param_env.and(constant)).unwrap()
     }
 }

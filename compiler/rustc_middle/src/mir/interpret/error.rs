@@ -1,7 +1,7 @@
 use super::{AllocId, ConstAlloc, Pointer, Scalar};
 
 use crate::mir::interpret::ConstValue;
-use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty};
+use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
@@ -35,6 +35,7 @@ TrivialTypeFoldableAndLiftImpls! {
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
 pub fn struct_error<'tcx>(
     tcx: TyCtxtAt<'tcx>,
