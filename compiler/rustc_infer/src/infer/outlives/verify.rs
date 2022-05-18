@@ -124,13 +124,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         self.declared_projection_bounds_from_trait(projection_ty)
     }
 
-    pub fn projection_bound(
+    #[instrument(level = "debug", skip(self, visited))]
+    fn projection_bound(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
-        debug!("projection_bound(projection_ty={:?})", projection_ty);
-
         let projection_ty_as_ty =
             self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
