@@ -26,7 +26,7 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 // pub struct S;
 // impl S {
-//     /// Sets the length.
+//     /// Sets the length of this [`S`].
 //     ///
 //     /// # Errors
 //     ///
@@ -183,11 +183,13 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
         let ret_ty = hir_func.ret_type(ctx.db());
         let self_ty = imp.self_ty(ctx.db());
         let name = ast_func.name()?.to_string();
+        let linkable_self_ty = self_type_without_lifetimes(ast_func);
+        let linkable_self_ty = linkable_self_ty.as_deref();
 
         let intro_for_new = || {
             let is_new = name == "new";
             if is_new && ret_ty == self_ty {
-                Some(format!("Creates a new [`{}`].", self_type_without_lifetimes(ast_func)?))
+                Some(format!("Creates a new [`{}`].", linkable_self_ty?))
             } else {
                 None
             }
@@ -204,7 +206,7 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
                 let mut what = name.trim_end_matches("_mut").replace('_', " ");
                 if what == "len" {
                     what = "length".into()
-                };
+                }
                 let reference = if ret_ty.is_mutable_reference() {
                     " a mutable reference to"
                 } else if ret_ty.is_reference() {
@@ -212,7 +214,7 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
                 } else {
                     ""
                 };
-                Some(format!("Returns{reference} the {what}."))
+                Some(format!("Returns{reference} the {what} of this [`{}`].", linkable_self_ty?))
             }
             _ => None,
         };
@@ -226,7 +228,7 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
             if what == "len" {
                 what = "length".into()
             };
-            Some(format!("Sets the {what}."))
+            Some(format!("Sets the {what} of this [`{}`].", linkable_self_ty?))
         };
 
         if let Some(intro) = intro_for_new() {
@@ -325,11 +327,11 @@ fn self_type_without_lifetimes(ast_func: &ast::Fn) -> Option<String> {
         _ => return None,
     };
     let mut name = path_segment.name_ref()?.to_string();
-    let generics = path_segment
-        .generic_arg_list()?
-        .generic_args()
-        .filter(|generic| matches!(generic, ast::GenericArg::TypeArg(_)))
-        .map(|generic| generic.to_string());
+    let generics = path_segment.generic_arg_list().into_iter().flat_map(|list| {
+        list.generic_args()
+            .filter(|generic| matches!(generic, ast::GenericArg::TypeArg(_)))
+            .map(|generic| generic.to_string())
+    });
     let generics: String = generics.format(", ").to_string();
     if !generics.is_empty() {
         name.push('<');
@@ -970,6 +972,26 @@ pub trait MyTrait {
         check_assist(
             generate_documentation_template,
             r#"
+pub struct String(u8);
+impl String {
+    pub fn new$0(x: u8) -> String {
+        String(x)
+    }
+}
+"#,
+            r#"
+pub struct String(u8);
+impl String {
+    /// Creates a new [`String`].
+    pub fn new(x: u8) -> String {
+        String(x)
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_documentation_template,
+            r#"
 #[derive(Debug, PartialEq)]
 pub struct MyGenericStruct<T> {
     pub x: T,
@@ -1193,7 +1215,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Returns the speed.
+    /// Returns the speed of this [`S`].
     pub fn speed(&self) -> f32 { 0.0 }
 }
 "#,
@@ -1209,7 +1231,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Returns a reference to the data.
+    /// Returns a reference to the data of this [`S`].
     pub fn data(&self) -> &[u8] { &[] }
 }
 "#,
@@ -1225,7 +1247,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Returns a mutable reference to the data.
+    /// Returns a mutable reference to the data of this [`S`].
     pub fn data(&mut self) -> &mut [u8] { &mut [] }
 }
 "#,
@@ -1241,7 +1263,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Returns a mutable reference to the data.
+    /// Returns a mutable reference to the data of this [`S`].
     pub fn data_mut(&mut self) -> &mut [u8] { &mut [] }
 }
 "#,
@@ -1281,7 +1303,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Sets the data.
+    /// Sets the data of this [`S`].
     pub fn set_data(&mut self, data: Vec<u8>) {}
 }
 "#,
@@ -1297,7 +1319,7 @@ impl S {
             r#"
 pub struct S;
 impl S {
-    /// Sets the domain name.
+    /// Sets the domain name of this [`S`].
     pub fn set_domain_name(&mut self, name: String) {}
 }
 "#,

@@ -900,7 +900,7 @@ impl S {
         r#####"
 pub struct S;
 impl S {
-    /// Sets the length.
+    /// Sets the length of this [`S`].
     ///
     /// # Errors
     ///
