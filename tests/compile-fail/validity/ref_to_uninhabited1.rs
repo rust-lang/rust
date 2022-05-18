@@ -1,6 +1,7 @@
 #![feature(never_type)]
-use std::mem::transmute;
+use std::mem::{transmute, forget};
 
 fn main() { unsafe {
-    let _x: &! = transmute(&42); //~ERROR encountered a reference pointing to uninhabited type !
+    let x: Box<!> = transmute(&mut 42); //~ERROR encountered a box pointing to uninhabited type !
+    forget(x);
 } }
