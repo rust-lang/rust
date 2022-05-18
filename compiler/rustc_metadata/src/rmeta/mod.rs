@@ -217,7 +217,7 @@ pub(crate) struct CrateRoot {
     extra_filename: String,
     hash: Svh,
     stable_crate_id: StableCrateId,
-    panic_strategy: PanicStrategy,
+    panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,

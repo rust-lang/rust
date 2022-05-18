@@ -944,6 +944,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             if !tcx.sess.opts.debugging_opts.thir_unsafeck {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
+            tcx.ensure().has_ffi_unwind_calls(def_id);
 
             if tcx.hir().body_const_context(def_id).is_some() {
                 tcx.ensure()

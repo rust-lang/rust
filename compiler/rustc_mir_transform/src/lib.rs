@@ -57,6 +57,7 @@ mod dest_prop;
 pub mod dump_mir;
 mod early_otherwise_branch;
 mod elaborate_drops;
+mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
 mod inline;
@@ -96,6 +97,7 @@ pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
     check_packed_ref::provide(providers);
     coverage::query::provide(providers);
+    ffi_unwind_calls::provide(providers);
     shim::provide(providers);
     *providers = Providers {
         mir_keys,
@@ -220,6 +222,9 @@ fn mir_const<'tcx>(
             tcx.ensure().unsafety_check_result(def.did);
         }
     }
+
+    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+    tcx.ensure().has_ffi_unwind_calls(def.did);
 
     let mut body = tcx.mir_built(def).steal();
 

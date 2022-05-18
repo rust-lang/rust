@@ -60,7 +60,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc_target::spec::PanicStrategy;
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
@@ -367,7 +366,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                     prev_name, cur_name
                 ));
             }
-            panic_runtime = Some((cnum, tcx.panic_strategy(cnum)));
+            panic_runtime = Some((cnum, tcx.panic_strategy(cnum).unwrap()));
         }
     }
 
@@ -397,18 +396,14 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             if let Linkage::NotLinked = *linkage {
                 continue;
             }
-            if desired_strategy == PanicStrategy::Abort {
-                continue;
-            }
             let cnum = CrateNum::new(i + 1);
             if tcx.is_compiler_builtins(cnum) {
                 continue;
             }
 
-            let found_strategy = tcx.panic_strategy(cnum);
-            if desired_strategy != found_strategy {
+            if let Some(found_strategy) = tcx.panic_strategy(cnum) && desired_strategy != found_strategy {
                 sess.err(&format!(
-                    "the crate `{}` is compiled with the \
+                    "the crate `{}` requires \
                                panic strategy `{}` which is \
                                incompatible with this crate's \
                                strategy of `{}`",

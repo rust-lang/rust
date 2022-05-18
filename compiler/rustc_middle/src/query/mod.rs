@@ -1365,9 +1365,16 @@ rustc_queries! {
         desc { "query a crate is `#![profiler_runtime]`" }
         separate_provide_extern
     }
-    query panic_strategy(_: CrateNum) -> PanicStrategy {
+    query has_ffi_unwind_calls(key: LocalDefId) -> bool {
+        desc { |tcx| "check if `{}` contains FFI-unwind calls", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if { true }
+    }
+    query required_panic_strategy(_: ()) -> Option<PanicStrategy> {
+        desc { "compute the required panic strategy for the current crate" }
+    }
+    query panic_strategy(_: CrateNum) -> Option<PanicStrategy> {
         fatal_cycle
-        desc { "query a crate's configured panic strategy" }
+        desc { "query a crate's required panic strategy" }
         separate_provide_extern
     }
     query panic_in_drop_strategy(_: CrateNum) -> PanicStrategy {

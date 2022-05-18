@@ -3230,6 +3230,7 @@ declare_lint_pass! {
         UNEXPECTED_CFGS,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         TEST_UNSTABLE_LINT,
+        FFI_UNWIND_CALLS,
     ]
 }
 
@@ -3894,4 +3895,43 @@ declare_lint! {
     Deny,
     "this unstable lint is only for testing",
     @feature_gate = sym::test_unstable_lint;
+}
+
+declare_lint! {
+    /// The `ffi_unwind_calls` lint detects calls to foreign functions or function pointers with
+    /// `C-unwind` or other FFI-unwind ABIs.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (need FFI)
+    /// #![feature(ffi_unwind_calls)]
+    /// #![feature(c_unwind)]
+    ///
+    /// # mod impl {
+    /// #     #[no_mangle]
+    /// #     pub fn "C-unwind" fn foo() {}
+    /// # }
+    ///
+    /// extern "C-unwind" {
+    ///     fn foo();
+    /// }
+    ///
+    /// fn bar() {
+    ///     unsafe { foo(); }
+    ///     let ptr: unsafe extern "C-unwind" fn() = foo;
+    ///     unsafe { ptr(); }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// For crates containing such calls, if they are compiled with `-C panic=unwind` then the
+    /// produced library cannot be linked with crates compiled with `-C panic=abort`. For crates
+    /// that desire this ability it is therefore necessary to avoid such calls.
+    pub FFI_UNWIND_CALLS,
+    Allow,
+    "call to foreign functions or function pointers with FFI-unwind ABI",
+    @feature_gate = sym::c_unwind;
 }
