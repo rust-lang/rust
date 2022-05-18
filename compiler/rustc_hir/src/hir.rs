@@ -1320,8 +1320,7 @@ pub struct Let<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
-    // FIXME use hir::Let for this.
-    IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
+    IfLet(&'hir Let<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]

@@ -1225,9 +1225,8 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     if let Some(ref g) = arm.guard {
         match g {
             Guard::If(ref e) => visitor.visit_expr(e),
-            Guard::IfLet(ref pat, ref e) => {
-                visitor.visit_pat(pat);
-                visitor.visit_expr(e);
+            Guard::IfLet(ref l) => {
+                visitor.visit_let_expr(l);
             }
         }
     }

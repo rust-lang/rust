@@ -173,10 +173,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         for arm in hir_arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat, Refutable);
-            if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
-                self.check_patterns(pat, Refutable);
-                let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-                self.check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
+            if let Some(hir::Guard::IfLet(ref let_expr)) = arm.guard {
+                self.check_patterns(let_expr.pat, Refutable);
+                let tpat = self.lower_pattern(&mut cx, let_expr.pat, &mut false);
+                self.check_let_reachability(&mut cx, let_expr.pat.hir_id, tpat, tpat.span());
             }
         }
 
@@ -1108,9 +1108,9 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
 
     match parent_node {
         hir::Node::Arm(hir::Arm {
-            guard: Some(hir::Guard::IfLet(&hir::Pat { hir_id, .. }, _)),
+            guard: Some(hir::Guard::IfLet(&hir::Let { pat: hir::Pat { hir_id, .. }, .. })),
             ..
-        }) if Some(hir_id) == pat_id => {
+        }) if Some(*hir_id) == pat_id => {
             return LetSource::IfLetGuard;
         }
         hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {

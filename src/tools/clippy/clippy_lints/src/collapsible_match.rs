@@ -5,7 +5,7 @@ use clippy_utils::{is_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_s
 use if_chain::if_chain;
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, Guard, HirId, Pat, PatKind};
+use rustc_hir::{Arm, Expr, Guard, HirId, Let, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -109,7 +109,7 @@ fn check_arm<'tcx>(
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         };
         // the binding must not be used in the if guard
-        if outer_guard.map_or(true, |(Guard::If(e) | Guard::IfLet(_, e))| !is_local_used(cx, *e, binding_id));
+        if outer_guard.map_or(true, |(Guard::If(e) | Guard::IfLet(Let { init: e, .. }))| !is_local_used(cx, *e, binding_id));
         // ...or anywhere in the inner expression
         if match inner {
             IfLetOrMatch::IfLet(_, _, body, els) => {

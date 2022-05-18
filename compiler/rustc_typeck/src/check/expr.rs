@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>) -> Ty<'tcx> {
+    pub(super) fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>) -> Ty<'tcx> {
         // for let statements, this is done in check_stmt
         let init = let_expr.init;
         self.warn_if_unreachable(init.hir_id, init.span, "block in `let` expression");
