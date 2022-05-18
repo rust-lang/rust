@@ -11,3 +11,4 @@ fn main() {
 }
 
 // EMIT_MIR tls_access.main.SimplifyCfg-final.after.mir
+// compile-flags: -Zmir-opt-level=0
