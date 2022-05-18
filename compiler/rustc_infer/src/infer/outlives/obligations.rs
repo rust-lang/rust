@@ -343,7 +343,7 @@ where
         // These are guaranteed to apply, no matter the inference
         // results.
         let trait_bounds: Vec<_> =
-            self.verify_bound.projection_declared_bounds_from_trait(projection_ty).collect();
+            self.verify_bound.bounds(projection_ty.item_def_id, projection_ty.substs).collect();
 
         debug!(?trait_bounds);
 
@@ -369,7 +369,7 @@ where
             match *bound.0.kind() {
                 ty::Projection(projection_ty) => self
                     .verify_bound
-                    .projection_declared_bounds_from_trait(projection_ty)
+                    .bounds(projection_ty.item_def_id, projection_ty.substs)
                     .all(|r| r != bound.1),
 
                 _ => panic!("expected only projection types from env, not {:?}", bound.0),

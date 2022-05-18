@@ -6,7 +6,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, SubstsRef, Ty, TyCtxt};
 
 use smallvec::smallvec;
 
@@ -114,16 +114,6 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         self.declared_generic_bounds_from_env_for_erased_ty(erased_projection_ty)
     }
 
-    /// Searches the where-clauses in scope for regions that
-    /// `projection_ty` is known to outlive. Currently requires an
-    /// exact match.
-    pub fn projection_declared_bounds_from_trait(
-        &self,
-        projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
-        self.declared_projection_bounds_from_trait(projection_ty)
-    }
-
     #[instrument(level = "debug", skip(self, visited))]
     fn projection_bound(
         &self,
@@ -151,7 +141,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // Extend with bounds that we can find from the trait.
         let trait_bounds = self
-            .projection_declared_bounds_from_trait(projection_ty)
+            .bounds(projection_ty.item_def_id, projection_ty.substs)
             .map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
@@ -294,15 +284,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// then this function would return `'x`. This is subject to the
     /// limitations around higher-ranked bounds described in
-    /// `region_bounds_declared_on_associated_item`.
-    fn declared_projection_bounds_from_trait(
+    /// `declared_region_bounds`.
+    #[instrument(level = "debug", skip(self))]
+    pub fn bounds(
         &self,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
-        debug!("projection_bounds(projection_ty={:?})", projection_ty);
         let tcx = self.tcx;
-        self.region_bounds_declared_on_associated_item(projection_ty.item_def_id)
-            .map(move |r| EarlyBinder(r).subst(tcx, projection_ty.substs))
+        self.declared_region_bounds(def_id).map(move |r| EarlyBinder(r).subst(tcx, substs))
     }
 
     /// Given the `DefId` of an associated item, returns any region
@@ -335,12 +325,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// This is for simplicity, and because we are not really smart
     /// enough to cope with such bounds anywhere.
-    fn region_bounds_declared_on_associated_item(
-        &self,
-        assoc_item_def_id: DefId,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> {
+    fn declared_region_bounds(&self, def_id: DefId) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.item_bounds(assoc_item_def_id);
+        let bounds = tcx.item_bounds(def_id);
+        trace!("{:#?}", bounds);
         bounds
             .into_iter()
             .filter_map(|p| p.to_opt_type_outlives())
