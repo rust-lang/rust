@@ -63,7 +63,6 @@ fn main() {
 
 unsafe fn generic<T>() {
     asm!("{}", sym generic::<T>);
-    //~^ generic parameters may not be used in const operations
 }
 
 // Const operands must be integers and must be constants.

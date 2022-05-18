@@ -326,7 +326,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
-        ItemKind::GlobalAsm(ref asm) => walk_inline_asm(visitor, asm),
+        ItemKind::GlobalAsm(ref asm) => visitor.visit_inline_asm(asm),
         ItemKind::TyAlias(box TyAlias { ref generics, ref bounds, ref ty, .. }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
@@ -897,7 +897,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::MacCall(ref mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
-        ExprKind::InlineAsm(ref asm) => walk_inline_asm(visitor, asm),
+        ExprKind::InlineAsm(ref asm) => visitor.visit_inline_asm(asm),
         ExprKind::Yield(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

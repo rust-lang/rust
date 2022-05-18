@@ -918,6 +918,29 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.diagnostic_metadata.current_where_predicate = previous_value;
     }
 
+    fn visit_inline_asm(&mut self, asm: &'ast InlineAsm) {
+        for (op, _) in &asm.operands {
+            match op {
+                InlineAsmOperand::In { expr, .. }
+                | InlineAsmOperand::Out { expr: Some(expr), .. }
+                | InlineAsmOperand::InOut { expr, .. } => self.visit_expr(expr),
+                InlineAsmOperand::Out { expr: None, .. } => {}
+                InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    self.visit_expr(in_expr);
+                    if let Some(out_expr) = out_expr {
+                        self.visit_expr(out_expr);
+                    }
+                }
+                InlineAsmOperand::Const { anon_const, .. } => {
+                    // Although this is `DefKind::AnonConst`, it is allowed to reference outer
+                    // generic parameters like an inline const.
+                    self.resolve_inline_const(anon_const);
+                }
+                InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
+            }
+        }
+    }
+
     fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
         // This is similar to the code for AnonConst.
         self.with_rib(ValueNS, InlineAsmSymRibKind, |this| {
