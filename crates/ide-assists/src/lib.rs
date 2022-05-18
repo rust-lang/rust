@@ -223,6 +223,7 @@ mod handlers {
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
             generate_documentation_template::generate_documentation_template,
+            generate_documentation_template::generate_doc_example,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,
             generate_enum_projection_method::generate_enum_try_into_method,
