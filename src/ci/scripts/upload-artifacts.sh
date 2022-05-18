@@ -38,4 +38,5 @@ if [[ "${DEPLOY_ALT-0}" -eq "1" ]]; then
 fi
 deploy_url="s3://${DEPLOY_BUCKET}/${deploy_dir}/$(ciCommit)"
 
-retry aws s3 cp --no-progress --recursive --acl public-read "${upload_dir}" "${deploy_url}"
+retry aws s3 cp --storage-class INTELLIGENT_TIERING \
+    --no-progress --recursive --acl public-read "${upload_dir}" "${deploy_url}"
