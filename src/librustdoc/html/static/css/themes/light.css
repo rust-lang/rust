@@ -209,9 +209,9 @@ details.undocumented > summary::before {
 }
 
 #crate-search, .search-input {
-	color: #555;
 	background-color: white;
-	border-color: #e0e0e0;
+	/* Without the `!important`, the border-color is ignored for `<select>`... */
+	border-color: #e0e0e0 !important;
 }
 
 .search-input:focus {

@@ -17,6 +17,7 @@ def_reg_class! {
         kreg0,
         mmx_reg,
         x87_reg,
+        tmm_reg,
     }
 }
 
@@ -41,6 +42,7 @@ impl X86InlineAsmRegClass {
             Self::xmm_reg | Self::ymm_reg | Self::zmm_reg => &['x', 'y', 'z'],
             Self::kreg | Self::kreg0 => &[],
             Self::mmx_reg | Self::x87_reg => &[],
+            Self::tmm_reg => &[],
         }
     }
 
@@ -80,6 +82,7 @@ impl X86InlineAsmRegClass {
             },
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
+            Self::tmm_reg => None,
         }
     }
 
@@ -98,6 +101,7 @@ impl X86InlineAsmRegClass {
             Self::zmm_reg => Some(('z', "zmm0")),
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
+            Self::tmm_reg => None,
         }
     }
 
@@ -135,6 +139,7 @@ impl X86InlineAsmRegClass {
             },
             Self::kreg0 => &[],
             Self::mmx_reg | Self::x87_reg => &[],
+            Self::tmm_reg => &[],
         }
     }
 }
@@ -320,6 +325,14 @@ def_regs! {
         st5: x87_reg = ["st(5)"],
         st6: x87_reg = ["st(6)"],
         st7: x87_reg = ["st(7)"],
+        tmm0: tmm_reg = ["tmm0"] % x86_64_only,
+        tmm1: tmm_reg = ["tmm1"] % x86_64_only,
+        tmm2: tmm_reg = ["tmm2"] % x86_64_only,
+        tmm3: tmm_reg = ["tmm3"] % x86_64_only,
+        tmm4: tmm_reg = ["tmm4"] % x86_64_only,
+        tmm5: tmm_reg = ["tmm5"] % x86_64_only,
+        tmm6: tmm_reg = ["tmm6"] % x86_64_only,
+        tmm7: tmm_reg = ["tmm7"] % x86_64_only,
         #error = ["bp", "bpl", "ebp", "rbp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
         #error = ["sp", "spl", "esp", "rsp"] =>

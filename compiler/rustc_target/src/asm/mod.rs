@@ -912,6 +912,7 @@ impl InlineAsmClobberAbi {
 
                     mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
                     st0, st1, st2, st3, st4, st5, st6, st7,
+                    tmm0, tmm1, tmm2, tmm3, tmm4, tmm5, tmm6, tmm7,
                 }
             },
             InlineAsmClobberAbi::X86_64Win => clobbered_regs! {
@@ -931,6 +932,7 @@ impl InlineAsmClobberAbi {
 
                     mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
                     st0, st1, st2, st3, st4, st5, st6, st7,
+                    tmm0, tmm1, tmm2, tmm3, tmm4, tmm5, tmm6, tmm7,
                 }
             },
             InlineAsmClobberAbi::AArch64 => clobbered_regs! {

@@ -1,0 +1,122 @@
+error: unused import: `std::io::BufRead`
+  --> $DIR/unused-imports-in-test-mode.rs:5:5
+   |
+LL | use std::io::BufRead;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-imports-in-test-mode.rs:3:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:11:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:14:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:19:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:22:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:27:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:30:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:35:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:38:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:43:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:46:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:51:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:54:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:59:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:62:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:68:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:71:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-mode.rs:77:9
+   |
+LL |     use super::a;
+   |         ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:80:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: aborting due to 19 previous errors
+

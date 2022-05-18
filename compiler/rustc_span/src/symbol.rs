@@ -1408,6 +1408,7 @@ symbols! {
         thread_local_macro,
         thumb2,
         thumb_mode: "thumb-mode",
+        tmm_reg,
         todo_macro,
         tool_attributes,
         tool_lints,

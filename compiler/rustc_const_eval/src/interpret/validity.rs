@@ -412,22 +412,27 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             self.path,
             err_ub!(AlignmentCheckFailed { required, has }) =>
                 {
-                    "an unaligned {} (required {} byte alignment but found {})",
-                    kind,
+                    "an unaligned {kind} (required {} byte alignment but found {})",
                     required.bytes(),
                     has.bytes()
                 },
             err_ub!(DanglingIntPointer(0, _)) =>
-                { "a null {}", kind },
+                { "a null {kind}" },
             err_ub!(DanglingIntPointer(i, _)) =>
-                { "a dangling {} (address 0x{:x} is unallocated)", kind, i },
+                { "a dangling {kind} (address 0x{i:x} is unallocated)" },
             err_ub!(PointerOutOfBounds { .. }) =>
-                { "a dangling {} (going beyond the bounds of its allocation)", kind },
+                { "a dangling {kind} (going beyond the bounds of its allocation)" },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
             err_ub!(PointerUseAfterFree(..)) =>
-                { "a dangling {} (use-after-free)", kind },
+                { "a dangling {kind} (use-after-free)" },
         );
+        // Do not allow pointers to uninhabited types.
+        if place.layout.abi.is_uninhabited() {
+            throw_validation_failure!(self.path,
+                { "a {kind} pointing to uninhabited type {}", place.layout.ty }
+            )
+        }
         // Recursive checking
         if let Some(ref mut ref_tracking) = self.ref_tracking {
             // Proceed recursively even for ZST, no reason to skip them!
