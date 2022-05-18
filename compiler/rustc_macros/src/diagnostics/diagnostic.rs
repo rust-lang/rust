@@ -360,10 +360,10 @@ impl SessionDiagnosticDeriveBuilder {
         Ok(tokens.drain(..).collect())
     }
 
-    fn generate_field_attrs_code<'a>(
-        &'a mut self,
-        attrs: &'a [syn::Attribute],
-        info: FieldInfo<'a>,
+    fn generate_field_attrs_code(
+        &mut self,
+        attrs: &[syn::Attribute],
+        info: FieldInfo<'_>,
     ) -> TokenStream {
         let field_binding = &info.binding.binding;
 
