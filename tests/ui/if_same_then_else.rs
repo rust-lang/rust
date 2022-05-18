@@ -126,6 +126,9 @@ fn if_same_then_else() {
             _ => 4,
         };
     }
+
+    // Issue #8836
+    if true { todo!() } else { todo!() }
 }
 
 // Issue #2423. This was causing an ICE.

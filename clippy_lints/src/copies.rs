@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{sym, BytePos, Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -365,6 +365,21 @@ fn eq_stmts(
         .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
 }
 
+fn block_contains_todo_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
+    dbg!(block);
+    if let Some(macro_def_id) = block.span.ctxt().outer_expn_data().macro_def_id {
+        dbg!(macro_def_id);
+        if let Some(diagnostic_name) = cx.tcx.get_diagnostic_name(macro_def_id) {
+            dbg!(diagnostic_name);
+            diagnostic_name == sym::todo_macro
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
 fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
     let mut eq = SpanlessEq::new(cx);
     let mut eq = eq.inter_expr();
@@ -398,6 +413,7 @@ fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'
             moved_locals,
         };
     }
+
     let end_search_start = block.stmts[start_end_eq..]
         .iter()
         .rev()
