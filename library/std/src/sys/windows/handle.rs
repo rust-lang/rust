@@ -221,11 +221,6 @@ impl Handle {
         Ok(Self(self.0.duplicate(access, inherit, options)?))
     }
 
-    #[cfg(not(target_vendor = "uwp"))]
-    pub(crate) fn set_inheritable(&self) -> io::Result<()> {
-        self.0.set_inheritable()
-    }
-
     /// Performs a synchronous read.
     ///
     /// If the handle is opened for asynchronous I/O then this abort the process.
