@@ -25,6 +25,7 @@ clippy_lints = { path = "clippy_lints" }
 semver = "1.0"
 rustc_tools_util = { path = "rustc_tools_util" }
 tempfile = { version = "3.2", optional = true }
+termize = "0.1"
 
 [dev-dependencies]
 compiletest_rs = { version = "0.7.1", features = ["tmp"] }

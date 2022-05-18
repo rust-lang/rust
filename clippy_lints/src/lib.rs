@@ -419,7 +419,7 @@ mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;
-use crate::utils::conf::TryConf;
+use crate::utils::conf::{format_error, TryConf};
 
 /// Register all pre expansion lints
 ///
@@ -464,7 +464,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         sess.struct_err(&format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
-            error
+            format_error(error)
         ))
         .emit();
     }
