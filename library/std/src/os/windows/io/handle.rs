@@ -204,19 +204,6 @@ impl OwnedHandle {
         })?;
         unsafe { Ok(Self::from_raw_handle(ret)) }
     }
-
-    /// Allow child processes to inherit the handle.
-    #[cfg(not(target_vendor = "uwp"))]
-    pub(crate) fn set_inheritable(&self) -> io::Result<()> {
-        cvt(unsafe {
-            c::SetHandleInformation(
-                self.as_raw_handle(),
-                c::HANDLE_FLAG_INHERIT,
-                c::HANDLE_FLAG_INHERIT,
-            )
-        })?;
-        Ok(())
-    }
 }
 
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
