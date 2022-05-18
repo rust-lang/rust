@@ -258,6 +258,27 @@
                 return true;
             }
 
+            $scope.copyToClipboard = function (lint) {
+                const clipboard = document.getElementById("clipboard-" + lint.id);
+                if (clipboard) {
+                    let resetClipboardTimeout = null;
+                    let resetClipboardIcon = clipboard.innerHTML;
+
+                    function resetClipboard() {
+                        resetClipboardTimeout = null;
+                        clipboard.innerHTML = resetClipboardIcon;
+                    }
+
+                    navigator.clipboard.writeText("clippy::" + lint.id);
+
+                    clipboard.innerHTML = "&#10003;";
+                    if (resetClipboardTimeout !== null) {
+                        clearTimeout(resetClipboardTimeout);
+                    }
+                    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
+                }
+            }
+
             // Get data
             $scope.open = {};
             $scope.loading = true;
