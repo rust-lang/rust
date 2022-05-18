@@ -80,15 +80,15 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
-            fn dispatch(&mut self, b: Buffer) -> Buffer;
+            fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
-            fn dispatch(&mut self, mut b: Buffer) -> Buffer {
+            fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
-                let mut reader = &b[..];
+                let mut reader = &buf[..];
                 match api_tags::Method::decode(&mut reader, &mut ()) {
                     $(api_tags::Method::$name(m) => match m {
                         $(api_tags::$name::$method => {
@@ -107,12 +107,12 @@ macro_rules! define_dispatcher_impl {
                                     .map_err(PanicMessage::from)
                             };
 
-                            b.clear();
-                            r.encode(&mut b, handle_store);
+                            buf.clear();
+                            r.encode(&mut buf, handle_store);
                         })*
                     }),*
                 }
-                b
+                buf
             }
         }
     }
@@ -141,7 +141,7 @@ impl ExecutionStrategy for SameThread {
         client_data: D,
         force_show_panics: bool,
     ) -> Buffer {
-        let mut dispatch = |b| dispatcher.dispatch(b);
+        let mut dispatch = |buf| dispatcher.dispatch(buf);
 
         run_client(
             Bridge {
@@ -175,8 +175,8 @@ impl ExecutionStrategy for CrossThread1 {
         let (res_tx, res_rx) = channel();
 
         let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
-                req_tx.send(b).unwrap();
+            let mut dispatch = |buf| {
+                req_tx.send(buf).unwrap();
                 res_rx.recv().unwrap()
             };
 
@@ -283,18 +283,18 @@ fn run_server<
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
-    let mut b = Buffer::new();
-    input.encode(&mut b, &mut dispatcher.handle_store);
+    let mut buf = Buffer::new();
+    input.encode(&mut buf, &mut dispatcher.handle_store);
 
-    b = strategy.run_bridge_and_client(
+    buf = strategy.run_bridge_and_client(
         &mut dispatcher,
-        b,
+        buf,
         run_client,
         client_data,
         force_show_panics,
     );
 
-    Result::decode(&mut &b[..], &mut dispatcher.handle_store)
+    Result::decode(&mut &buf[..], &mut dispatcher.handle_store)
 }
 
 impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {

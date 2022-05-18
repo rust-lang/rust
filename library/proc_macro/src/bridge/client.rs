@@ -254,17 +254,17 @@ macro_rules! define_client_side {
         $(impl $name {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
                 Bridge::with(|bridge| {
-                    let mut b = bridge.cached_buffer.take();
+                    let mut buf = bridge.cached_buffer.take();
 
-                    b.clear();
-                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-                    reverse_encode!(b; $($arg),*);
+                    buf.clear();
+                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
+                    reverse_encode!(buf; $($arg),*);
 
-                    b = bridge.dispatch.call(b);
+                    buf = bridge.dispatch.call(buf);
 
-                    let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
+                    let r = Result::<_, PanicMessage>::decode(&mut &buf[..], &mut ());
 
-                    bridge.cached_buffer = b;
+                    bridge.cached_buffer = buf;
 
                     r.unwrap_or_else(|e| panic::resume_unwind(e.into()))
                 })
@@ -383,20 +383,20 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     f: impl FnOnce(A) -> R,
 ) -> Buffer {
     // The initial `cached_buffer` contains the input.
-    let mut b = bridge.cached_buffer.take();
+    let mut buf = bridge.cached_buffer.take();
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         bridge.enter(|| {
-            let reader = &mut &b[..];
+            let reader = &mut &buf[..];
             let input = A::decode(reader, &mut ());
 
             // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = b.take());
+            Bridge::with(|bridge| bridge.cached_buffer = buf.take());
 
             let output = f(input);
 
             // Take the `cached_buffer` back out, for the output value.
-            b = Bridge::with(|bridge| bridge.cached_buffer.take());
+            buf = Bridge::with(|bridge| bridge.cached_buffer.take());
 
             // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
             // from encoding a panic (`Err(e: PanicMessage)`) to avoid
@@ -407,16 +407,16 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
             // this is defensively trying to avoid any accidental panicking
             // reaching the `extern "C"` (which should `abort` but might not
             // at the moment, so this is also potentially preventing UB).
-            b.clear();
-            Ok::<_, ()>(output).encode(&mut b, &mut ());
+            buf.clear();
+            Ok::<_, ()>(output).encode(&mut buf, &mut ());
         })
     }))
     .map_err(PanicMessage::from)
     .unwrap_or_else(|e| {
-        b.clear();
-        Err::<(), _>(e).encode(&mut b, &mut ());
+        buf.clear();
+        Err::<(), _>(e).encode(&mut buf, &mut ());
     });
-    b
+    buf
 }
 
 impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
