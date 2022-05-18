@@ -363,7 +363,7 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
         None => return (file, None),
     };
     let before = &slice[..i];
-    let after = &slice[i + 1..];
+    let after = &slice[i..];
     unsafe { (u8_slice_as_os_str(before), Some(u8_slice_as_os_str(after))) }
 }
 
@@ -2392,6 +2392,8 @@ impl Path {
     /// # See Also
     /// This method is similar to [`Path::file_stem`], which extracts the portion of the file name
     /// before the *last* `.`
+    /// This method is the prefix-analog of [`Path::file_suffix`], which extracts the portion of the file name
+    /// before the *first* `.`
     ///
     /// [`Path::file_stem`]: Path::file_stem
     ///
@@ -2399,6 +2401,42 @@ impl Path {
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
+    }
+
+    /// Extracts the suffix of [`self.file_name`].
+    ///
+    /// The suffix is:
+    ///
+    /// * [`None`], if there is no file name;
+    /// * [`None`] if there is no embedded `.`;
+    /// * The portion of the file name after and including the first non-beginning `.`;
+    /// * [`None`] if the file name begins with `.` and has no other `.`s within;
+    /// * The portion of the file name after the second `.` if the file name begins with `.`
+    ///
+    /// [`self.file_name`]: Path::file_name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(path_file_suffix)]
+    /// use std::path::Path;
+    ///
+    /// assert_eq!(".rs", Path::new("foo.rs").file_suffix().unwrap());
+    /// assert_eq!(".tar.gz", Path::new("foo.tar.gz").file_suffix().unwrap());
+    /// ```
+    ///
+    /// # See Also
+    /// This method is similar to [`Path::extension`], which extracts the portion of the file name
+    /// after the *last* `.`
+    /// This method is the suffix-analog of [`Path::file_prefix`], which extracts the portion of the file name
+    /// before the *first* `.`
+    ///
+    /// [`Path::extension`]: Path::extension
+    ///
+    #[unstable(feature = "path_file_suffix", issue = "86319")]
+    #[must_use]
+    pub fn file_suffix(&self) -> Option<&OsStr> {
+        self.file_name().map(split_file_at_dot).and_then(|(_before, after)| after)
     }
 
     /// Extracts the extension of [`self.file_name`], if possible.
