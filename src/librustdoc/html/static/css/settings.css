@@ -73,16 +73,7 @@
 	width: 19px;
 	left: 4px;
 	bottom: 4px;
-	background-color: white;
 	transition: .3s;
-}
-
-input:checked + .slider {
-	background-color: #2196F3;
-}
-
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
 input:checked + .slider:before {

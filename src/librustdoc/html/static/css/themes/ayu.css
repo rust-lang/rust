@@ -29,6 +29,19 @@ body, #settings-menu #settings, #settings-menu #settings::before {
 	border-color: #ffb454 !important;
 }
 
+.slider {
+	background-color: #ccc;
+}
+.slider:before {
+	background-color: white;
+}
+input:checked + .slider {
+	background-color: #ffb454;
+}
+input:focus + .slider {
+	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
+}
+
 h1, h2, h3, h4 {
 	color: white;
 }
@@ -620,13 +633,6 @@ div.files > .selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-.setting-line > .title {
-	border-bottom-color: #5c6773;
-}
-input:checked + .slider {
-	background-color: #ffb454 !important;
-}
-
 
 .scraped-example-list .scrape-help {
 	border-color: #aaa;
