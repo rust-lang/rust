@@ -4016,7 +4016,6 @@ impl<T> [T] {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl<T, const N: usize> [[T; N]] {
     /// Takes a `&[[T; N]]`, and flattens it to a `&[T]`.
     ///
