@@ -206,22 +206,8 @@
         ];
 
         // Then we build the DOM.
-        let innerHTML = "";
-        let elementKind = "div";
-
-        if (isSettingsPage) {
-            elementKind = "section";
-            innerHTML = `<div class="main-heading">
-                <h1 class="fqn">
-                    <span class="in-band">Rustdoc settings</span>
-                </h1>
-                <span class="out-of-band">
-                    <a id="back" href="javascript:void(0)" onclick="history.back();">Back</a>
-                </span>
-                </div>`;
-        }
-        innerHTML += `<div class="settings">${buildSettingsPageSections(settings)}</div>`;
-
+        const elementKind = isSettingsPage ? "section" : "div";
+        const innerHTML = `<div class="settings">${buildSettingsPageSections(settings)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
         el.innerHTML = innerHTML;
