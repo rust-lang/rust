@@ -301,7 +301,9 @@ impl HirEqInterExpr<'_, '_, '_> {
     fn eq_guard(&mut self, left: &Guard<'_>, right: &Guard<'_>) -> bool {
         match (left, right) {
             (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
-            (Guard::IfLet(lp, le), Guard::IfLet(rp, re)) => self.eq_pat(lp, rp) && self.eq_expr(le, re),
+            (Guard::IfLet(l), Guard::IfLet(r)) => {
+                self.eq_pat(l.pat, r.pat) && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && self.eq_expr(l.init, r.init)
+            },
             _ => false,
         }
     }
@@ -894,7 +896,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_guard(&mut self, g: &Guard<'_>) {
         match g {
-            Guard::If(expr) | Guard::IfLet(_, expr) => {
+            Guard::If(expr) | Guard::IfLet(Let { init: expr, .. }) => {
                 self.hash_expr(expr);
             },
         }
