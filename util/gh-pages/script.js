@@ -262,11 +262,11 @@
                 const clipboard = document.getElementById("clipboard-" + lint.id);
                 if (clipboard) {
                     let resetClipboardTimeout = null;
-                    let resetClipboardIcon = clipboard.innerHTML;
+                    let resetClipboardIcon = clipboard.textContent;
 
                     function resetClipboard() {
                         resetClipboardTimeout = null;
-                        clipboard.innerHTML = resetClipboardIcon;
+                        clipboard.textContent = resetClipboardIcon;
                     }
 
                     navigator.clipboard.writeText("clippy::" + lint.id);
