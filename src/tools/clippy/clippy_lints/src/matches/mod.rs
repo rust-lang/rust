@@ -606,7 +606,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub NEEDLESS_MATCH,
-    complexity,
+    nursery,
     "`match` or match-like `if let` that are unnecessary"
 }
 

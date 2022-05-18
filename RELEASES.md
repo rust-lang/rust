@@ -22,7 +22,7 @@ Libraries
 
 - [`ManuallyDrop<T>` is now documented to have the same layout as `T`][88375]
 - [`#[ignore = "…"]` messages are printed when running tests][92714]
-- [Consistently present absent stdio handles on Windows as NULL handles][93263]
+- [Consistently show absent stdio handles on Windows as NULL handles][93263]
 - [Make `std::io::stdio::lock()` return `'static` handles.][93965] Previously, the creation of locked handles to stdin/stdout/stderr would borrow the handles being locked, which prevented writing `let out = std::io::stdout().lock();` because `out` would outlive the return value of `stdout()`. Such code now works, eliminating a common pitfall that affected many Rust users.
 - [`Vec::from_raw_parts` is now less restrictive about its inputs][95016]
 - [`std::thread::available_parallelism` now takes cgroup quotas into account.][92697] Since `available_parallelism` is often used to create a thread pool for parallel computation, which may be CPU-bound for performance, `available_parallelism` will return a value consistent with the ability to use that many threads continuously, if possible. For instance, in a container with 8 virtual CPUs but quotas only allowing for 50% usage, `available_parallelism` will return 4.
@@ -41,15 +41,15 @@ Stabilized APIs
 
 These APIs are now usable in const contexts:
 
-- [`*const T::offset` and `*mut T::offset`][ptr-offset]
-- [`*const T::wrapping_offset` and `*mut T::wrapping_offset`][ptr-wrapping_offset]
-- [`*const T::add` and `*mut T::add`][ptr-add]
-- [`*const T::sub` and `*mut T::sub`][ptr-sub]
-- [`*const T::wrapping_add` and `*mut T::wrapping_add`][ptr-wrapping_add]
-- [`*const T::wrapping_sub` and `*mut T::wrapping_sub`][ptr-wrapping_sub]
-- [`[T]::as_mut_ptr`][slice-as_mut_ptr]
-- [`[T]::as_ptr_range`][slice-as_ptr_range]
-- [`[T]::as_mut_ptr_range`][slice-as_mut_ptr_range]
+- [`<*const T>::offset` and `<*mut T>::offset`][ptr-offset]
+- [`<*const T>::wrapping_offset` and `<*mut T>::wrapping_offset`][ptr-wrapping_offset]
+- [`<*const T>::add` and `<*mut T>::add`][ptr-add]
+- [`<*const T>::sub` and `<*mut T>::sub`][ptr-sub]
+- [`<*const T>::wrapping_add` and `<*mut T>::wrapping_add`][ptr-wrapping_add]
+- [`<*const T>::wrapping_sub` and `<*mut T>::wrapping_sub`][ptr-wrapping_sub]
+- [`<[T]>::as_mut_ptr`][slice-as_mut_ptr]
+- [`<[T]>::as_ptr_range`][slice-as_ptr_range]
+- [`<[T]>::as_mut_ptr_range`][slice-as_mut_ptr_range]
 
 Cargo
 -----
@@ -85,28 +85,21 @@ and related tools.
 [90621]: https://github.com/rust-lang/rust/pull/90621/
 [92285]: https://github.com/rust-lang/rust/pull/92285/
 [92472]: https://github.com/rust-lang/rust/pull/92472/
-[92663]: https://github.com/rust-lang/rust/pull/92663/
 [92697]: https://github.com/rust-lang/rust/pull/92697/
 [92714]: https://github.com/rust-lang/rust/pull/92714/
 [92911]: https://github.com/rust-lang/rust/pull/92911/
 [93263]: https://github.com/rust-lang/rust/pull/93263/
-[93580]: https://github.com/rust-lang/rust/pull/93580/
 [93745]: https://github.com/rust-lang/rust/pull/93745/
 [93827]: https://github.com/rust-lang/rust/pull/93827/
-[93840]: https://github.com/rust-lang/rust/pull/93840/
 [93901]: https://github.com/rust-lang/rust/pull/93901/
 [93913]: https://github.com/rust-lang/rust/pull/93913/
-[93957]: https://github.com/rust-lang/rust/pull/93957/
 [93965]: https://github.com/rust-lang/rust/pull/93965/
 [94081]: https://github.com/rust-lang/rust/pull/94081/
 [94261]: https://github.com/rust-lang/rust/pull/94261/
 [94295]: https://github.com/rust-lang/rust/pull/94295/
-[94356]: https://github.com/rust-lang/rust/pull/94356/
 [94832]: https://github.com/rust-lang/rust/pull/94832/
 [95016]: https://github.com/rust-lang/rust/pull/95016/
-[95130]: https://github.com/rust-lang/rust/pull/95130/
 [95251]: https://github.com/rust-lang/rust/pull/95251/
-[95491]: https://github.com/rust-lang/rust/pull/95491/
 [`+whole-archive`]: https://doc.rust-lang.org/stable/rustc/command-line-arguments.html#linking-modifiers-whole-archive
 [`Pin::static_mut`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_mut
 [`Pin::static_ref`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_ref
