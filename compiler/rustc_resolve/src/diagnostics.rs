@@ -4,7 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -1886,20 +1886,15 @@ impl<'a> Resolver<'a> {
             }))
         }
 
-        // We sort names here to ensure that the suggestion is deterministic.
-        // (Notice that there may be a pair of TypoSuggestions whose Symbols
-        // are same but Res are different.)
-        names.sort_by_key(|name| (name.candidate, name.res));
-        names.dedup();
+        // Make sure the suggestion is deterministic.
+        names.sort_by(|a, b| a.candidate.as_str().partial_cmp(b.candidate.as_str()).unwrap());
         let symbols = names.iter().map(|sugg| sugg.candidate).collect::<Vec<Symbol>>();
-        let typo_suggestions: FxHashMap<Symbol, TypoSuggestion> =
-            names.into_iter().map(|typo_sugg| (typo_sugg.candidate, typo_sugg)).collect();
 
         match find_best_match_for_name(&symbols, ident, None) {
             Some(sugg) if sugg == ident => None,
             sugg => sugg,
         }
-        .map(|sugg| typo_suggestions.get(&sugg).unwrap().clone())
+        .and_then(|sugg| names.into_iter().find(|name| name.candidate == sugg))
     }
 
     pub(crate) fn report_path_resolution_error(
