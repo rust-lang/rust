@@ -52,7 +52,6 @@
 use crate::simplify;
 use crate::util::expand_aggregate;
 use crate::MirPass;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitMatrix, BitSet};
@@ -217,8 +216,7 @@ struct TransformVisitor<'tcx> {
     discr_ty: Ty<'tcx>,
 
     // Mapping from Local to (type of local, generator struct index)
-    // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
-    remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
+    remap: IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, usize)>>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
@@ -301,7 +299,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
-        assert_eq!(self.remap.get(local), None);
+        assert_eq!(self.remap[*local], None);
     }
 
     fn visit_place(
@@ -311,7 +309,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         _location: Location,
     ) {
         // Replace an Local in the remap with a generator struct access
-        if let Some(&(ty, variant_index, idx)) = self.remap.get(&place.local) {
+        if let Some((ty, variant_index, idx)) = self.remap[place.local] {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
         }
     }
@@ -320,7 +318,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         // Remove StorageLive and StorageDead statements for remapped locals
         data.retain_statements(|s| match s.kind {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                !self.remap.contains_key(&l)
+                self.remap[l].is_none()
             }
             _ => true,
         });
@@ -348,13 +346,12 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
                 // The resume arg target location might itself be remapped if its base local is
                 // live across a yield.
-                let resume_arg =
-                    if let Some(&(ty, variant, idx)) = self.remap.get(&resume_arg.local) {
-                        replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
-                        resume_arg
-                    } else {
-                        resume_arg
-                    };
+                let resume_arg = if let Some((ty, variant, idx)) = self.remap[resume_arg.local] {
+                    replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
+                    resume_arg
+                } else {
+                    resume_arg
+                };
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
@@ -766,7 +763,7 @@ fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &mut Body<'tcx>,
 ) -> (
-    FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
+    IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, usize)>>,
     GeneratorLayout<'tcx>,
     IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
@@ -805,7 +802,7 @@ fn compute_layout<'tcx>(
     // Create a map from local indices to generator struct indices.
     let mut variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>> =
         iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
-    let mut remap = FxHashMap::default();
+    let mut remap = IndexVec::from_elem(None, body.local_decls());
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
         let variant_index = VariantIdx::from(RESERVED_VARIANTS + suspension_point_idx);
         let mut fields = IndexVec::new();
@@ -815,7 +812,7 @@ fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside generators, so it doesn't matter which variant
             // index we access them by.
-            remap.entry(locals[saved_local]).or_insert((tys[saved_local], variant_index, idx));
+            remap[locals[saved_local]].get_or_insert((tys[saved_local], variant_index, idx));
         }
         variant_fields.push(fields);
         variant_source_info.push(source_info_at_suspension_points[suspension_point_idx]);
@@ -1197,7 +1194,7 @@ fn create_cases<'tcx>(
 
                     let l = Local::new(i);
                     let needs_storage_live = point.storage_liveness.contains(l)
-                        && !transform.remap.contains_key(&l)
+                        && transform.remap[l].is_none()
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
                         statements
