@@ -39,12 +39,19 @@ gather_profiles () {
 
 rm -rf /tmp/rustc-pgo
 
+# This path has to be absolute
+LLVM_PROFILE_DIRECTORY_ROOT=/tmp/llvm-pgo
+
 # We collect LLVM profiling information and rustc profiling information in
 # separate phases. This increases build time -- though not by a huge amount --
 # but prevents any problems from arising due to different profiling runtimes
 # being simultaneously linked in.
-
-python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
+# LLVM IR PGO does not respect LLVM_PROFILE_FILE, so we have to set the profiling file
+# path through our custom environment variable. We include the PID in the directory path
+# to avoid updates to profile files being lost because of race conditions.
+LLVM_PROFILE_DIR=${LLVM_PROFILE_DIRECTORY_ROOT}/prof-%p python3 ../x.py build \
+    --target=$PGO_HOST \
+    --host=$PGO_HOST \
     --stage 2 library/std \
     --llvm-profile-generate
 
@@ -64,11 +71,18 @@ RUSTC_BOOTSTRAP=1 \
 gather_profiles "Debug,Opt" "Full" \
 "syn-1.0.89,cargo-0.60.0,serde-1.0.136,ripgrep-13.0.0,regex-1.5.5,clap-3.1.6,hyper-0.14.18"
 
+LLVM_PROFILE_MERGED_FILE=/tmp/llvm-pgo.profdata
+
 # Merge the profile data we gathered for LLVM
 # Note that this uses the profdata from the clang we used to build LLVM,
 # which likely has a different version than our in-tree clang.
-/rustroot/bin/llvm-profdata \
-    merge -o /tmp/llvm-pgo.profdata ./build/$PGO_HOST/llvm/build/profiles
+/rustroot/bin/llvm-profdata merge -o ${LLVM_PROFILE_MERGED_FILE} ${LLVM_PROFILE_DIRECTORY_ROOT}
+
+echo "LLVM PGO statistics"
+du -sh ${LLVM_PROFILE_MERGED_FILE}
+du -sh ${LLVM_PROFILE_DIRECTORY_ROOT}
+echo "Profile file count"
+find ${LLVM_PROFILE_DIRECTORY_ROOT} -type f | wc -l
 
 # Rustbuild currently doesn't support rebuilding LLVM when PGO options
 # change (or any other llvm-related options); so just clear out the relevant
@@ -77,9 +91,12 @@ rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
 
 # Okay, LLVM profiling is done, switch to rustc PGO.
 
+# The path has to be absolute
+RUSTC_PROFILE_DIRECTORY_ROOT=/tmp/rustc-pgo
+
 python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --stage 2 library/std \
-    --rust-profile-generate=/tmp/rustc-pgo
+    --rust-profile-generate=${RUSTC_PROFILE_DIRECTORY_ROOT}
 
 # Here we're profiling the `rustc` frontend, so we also include `Check`.
 # The benchmark set includes various stress tests that put the frontend under pressure.
@@ -87,12 +104,21 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
 # rustc invocation ends. Empirically, this can result in some profiling data being lost.
 # That's why we override the profile path to include the PID. This will produce many more profiling
 # files, but the resulting profile will produce a slightly faster rustc binary.
-LLVM_PROFILE_FILE=/tmp/rustc-pgo/default_%m_%p.profraw gather_profiles "Check,Debug,Opt" "All" \
-"externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
+LLVM_PROFILE_FILE=${RUSTC_PROFILE_DIRECTORY_ROOT}/default_%m_%p.profraw gather_profiles \
+  "Check,Debug,Opt" "All" \
+  "externs,ctfe-stress-5,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress,diesel-1.4.8,bitmaps-3.1.0"
+
+RUSTC_PROFILE_MERGED_FILE=/tmp/rustc-pgo.profdata
 
 # Merge the profile data we gathered
 ./build/$PGO_HOST/llvm/bin/llvm-profdata \
-    merge -o /tmp/rustc-pgo.profdata /tmp/rustc-pgo
+    merge -o ${RUSTC_PROFILE_MERGED_FILE} ${RUSTC_PROFILE_DIRECTORY_ROOT}
+
+echo "Rustc PGO statistics"
+du -sh ${RUSTC_PROFILE_MERGED_FILE}
+du -sh ${RUSTC_PROFILE_DIRECTORY_ROOT}
+echo "Profile file count"
+find ${RUSTC_PROFILE_DIRECTORY_ROOT} -type f | wc -l
 
 # Rustbuild currently doesn't support rebuilding LLVM when PGO options
 # change (or any other llvm-related options); so just clear out the relevant
@@ -102,5 +128,5 @@ rm -r ./build/$PGO_HOST/llvm ./build/$PGO_HOST/lld
 # This produces the actual final set of artifacts, using both the LLVM and rustc
 # collected profiling data.
 $@ \
-    --rust-profile-use=/tmp/rustc-pgo.profdata \
-    --llvm-profile-use=/tmp/llvm-pgo.profdata
+    --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
+    --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
