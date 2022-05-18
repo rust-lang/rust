@@ -1,10 +1,11 @@
 use hir::{AsAssocItem, HasVisibility, ModuleDef, Visibility};
 use ide_db::assists::{AssistId, AssistKind};
 use itertools::Itertools;
-use stdx::to_lower_snake_case;
+use stdx::{format_to, to_lower_snake_case};
 use syntax::{
+    algo::skip_whitespace_token,
     ast::{self, edit::IndentLevel, HasDocComments, HasName},
-    AstNode,
+    match_ast, AstNode, AstToken,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -14,27 +15,29 @@ use crate::assist_context::{AssistContext, Assists};
 // Adds a documentation template above a function definition / declaration.
 //
 // ```
-// pub fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
-//     unimplemented!()
+// pub struct S;
+// impl S {
+//     pub unsafe fn set_len$0(&mut self, len: usize) -> Result<(), std::io::Error> {
+//         /* ... */
+//     }
 // }
 // ```
 // ->
 // ```
-// /// .
-// ///
-// /// # Examples
-// ///
-// /// ```
-// /// use test::my_func;
-// ///
-// /// assert_eq!(my_func(a, b), );
-// /// ```
-// ///
-// /// # Errors
-// ///
-// /// This function will return an error if .
-// pub fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
-//     unimplemented!()
+// pub struct S;
+// impl S {
+//     /// Sets the length.
+//     ///
+//     /// # Errors
+//     ///
+//     /// This function will return an error if .
+//     ///
+//     /// # Safety
+//     ///
+//     /// .
+//     pub unsafe fn set_len(&mut self, len: usize) -> Result<(), std::io::Error> {
+//         /* ... */
+//     }
 // }
 // ```
 pub(crate) fn generate_documentation_template(
@@ -43,10 +46,7 @@ pub(crate) fn generate_documentation_template(
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
-    if is_in_trait_impl(&ast_func, ctx)
-        || !is_public(&ast_func, ctx)?
-        || ast_func.doc_comments().next().is_some()
-    {
+    if is_in_trait_impl(&ast_func, ctx) || ast_func.doc_comments().next().is_some() {
         return None;
     }
 
@@ -62,10 +62,6 @@ pub(crate) fn generate_documentation_template(
             // Introduction / short function description before the sections
             let mut doc_lines = vec![introduction_builder(&ast_func, ctx).unwrap_or(".".into())];
             // Then come the sections
-            if let Some(mut lines) = examples_builder(&ast_func, ctx) {
-                doc_lines.push("".into());
-                doc_lines.append(&mut lines);
-            }
             for section_builder in [panics_builder, errors_builder, safety_builder] {
                 if let Some(mut lines) = section_builder(&ast_func) {
                     doc_lines.push("".into());
@@ -77,7 +73,109 @@ pub(crate) fn generate_documentation_template(
     )
 }
 
-/// Builds an introduction, trying to be smart if the function is `::new()`
+// Assist: generate_doc_example
+//
+// Generates a rustdoc example when editing an item's documentation.
+//
+// ```
+// /// Adds two numbers.$0
+// pub fn add(a: i32, b: i32) -> i32 { a + b }
+// ```
+// ->
+// ```
+// /// Adds two numbers.
+// ///
+// /// # Examples
+// ///
+// /// ```
+// /// use test::add;
+// ///
+// /// assert_eq!(add(a, b), );
+// /// ```
+// pub fn add(a: i32, b: i32) -> i32 { a + b }
+// ```
+pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let tok: ast::Comment = ctx.find_token_at_offset()?;
+    let node = tok.syntax().parent()?;
+    let last_doc_token =
+        ast::AnyHasDocComments::cast(node.clone())?.doc_comments().last()?.syntax().clone();
+    let next_token = skip_whitespace_token(last_doc_token.next_token()?, syntax::Direction::Next)?;
+
+    let example = match_ast! {
+        match node {
+            ast::Fn(it) => make_example_for_fn(&it, ctx)?,
+            _ => return None,
+        }
+    };
+
+    let mut lines = string_vec_from(&["", "# Examples", "", "```"]);
+    lines.extend(example.lines().map(String::from));
+    lines.push("```".into());
+    let indent_level = IndentLevel::from_node(&node);
+
+    acc.add(
+        AssistId("generate_doc_example", AssistKind::Generate),
+        "Generate a documentation example",
+        node.text_range(),
+        |builder| {
+            builder.insert(
+                next_token.text_range().start(),
+                documentation_from_lines(lines, indent_level),
+            );
+        },
+    )
+}
+
+fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
+    if !is_public(ast_func, ctx)? {
+        // Doctests for private items can't actually name the item, so they're pretty useless.
+        return None;
+    }
+
+    if is_in_trait_def(ast_func, ctx) {
+        // This is not yet implemented.
+        return None;
+    }
+
+    let mut example = String::new();
+
+    let is_unsafe = ast_func.unsafe_token().is_some();
+    let param_list = ast_func.param_list()?;
+    let ref_mut_params = ref_mut_params(&param_list);
+    let self_name = self_name(ast_func);
+
+    format_to!(example, "use {};\n\n", build_path(ast_func, ctx)?);
+    if let Some(self_name) = &self_name {
+        if let Some(mtbl) = is_ref_mut_self(ast_func) {
+            let mtbl = if mtbl == true { " mut" } else { "" };
+            format_to!(example, "let{} {} = ;\n", mtbl, self_name);
+        }
+    }
+    for param_name in &ref_mut_params {
+        format_to!(example, "let mut {} = ;\n", param_name);
+    }
+    // Call the function, check result
+    let function_call = function_call(ast_func, &param_list, self_name.as_deref(), is_unsafe)?;
+    if returns_a_value(ast_func, ctx) {
+        if count_parameters(&param_list) < 3 {
+            format_to!(example, "assert_eq!({}, );\n", function_call);
+        } else {
+            format_to!(example, "let result = {};\n", function_call);
+            example.push_str("assert_eq!(result, );\n");
+        }
+    } else {
+        format_to!(example, "{};\n", function_call);
+    }
+    // Check the mutated values
+    if is_ref_mut_self(ast_func) == Some(true) {
+        format_to!(example, "assert_eq!({}, );", self_name?);
+    }
+    for param_name in &ref_mut_params {
+        format_to!(example, "assert_eq!({}, );", param_name);
+    }
+    Some(example)
+}
+
 fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
     let hir_func = ctx.sema.to_def(ast_func)?;
     let container = hir_func.as_assoc_item(ctx.db())?.container(ctx.db());
@@ -103,7 +201,10 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
                 if name.starts_with("as_") || name.starts_with("to_") || name == "get" {
                     return None;
                 }
-                let what = name.trim_end_matches("_mut").replace('_', " ");
+                let mut what = name.trim_end_matches("_mut").replace('_', " ");
+                if what == "len" {
+                    what = "length".into()
+                };
                 let reference = if ret_ty.is_mutable_reference() {
                     " a mutable reference to"
                 } else if ret_ty.is_reference() {
@@ -121,7 +222,10 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
                 return None;
             }
 
-            let what = name.trim_start_matches("set_").replace('_', " ");
+            let mut what = name.trim_start_matches("set_").replace('_', " ");
+            if what == "len" {
+                what = "length".into()
+            };
             Some(format!("Sets the {what}."))
         };
 
@@ -136,19 +240,6 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Strin
         }
     }
     None
-}
-
-/// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
-fn examples_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let mut lines = string_vec_from(&["# Examples", "", "```"]);
-    if is_in_trait_def(ast_func, ctx) {
-        lines.push("// Example template not implemented for trait functions".into());
-    } else {
-        lines.append(&mut gen_ex_template(ast_func, ctx)?)
-    };
-
-    lines.push("```".into());
-    Some(lines)
 }
 
 /// Builds an optional `# Panics` section
@@ -174,44 +265,6 @@ fn safety_builder(ast_func: &ast::Fn) -> Option<Vec<String>> {
         true => Some(string_vec_from(&["# Safety", "", "."])),
         false => None,
     }
-}
-
-/// Generates an example template
-fn gen_ex_template(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let mut lines = Vec::new();
-    let is_unsafe = ast_func.unsafe_token().is_some();
-    let param_list = ast_func.param_list()?;
-    let ref_mut_params = ref_mut_params(&param_list);
-    let self_name: Option<String> = self_name(ast_func);
-
-    lines.push(format!("use {};", build_path(ast_func, ctx)?));
-    lines.push("".into());
-    if let Some(self_definition) = self_definition(ast_func, self_name.as_deref()) {
-        lines.push(self_definition);
-    }
-    for param_name in &ref_mut_params {
-        lines.push(format!("let mut {} = ;", param_name))
-    }
-    // Call the function, check result
-    let function_call = function_call(ast_func, &param_list, self_name.as_deref(), is_unsafe)?;
-    if returns_a_value(ast_func, ctx) {
-        if count_parameters(&param_list) < 3 {
-            lines.push(format!("assert_eq!({}, );", function_call));
-        } else {
-            lines.push(format!("let result = {};", function_call));
-            lines.push("assert_eq!(result, );".into());
-        }
-    } else {
-        lines.push(format!("{};", function_call));
-    }
-    // Check the mutated values
-    if is_ref_mut_self(ast_func) == Some(true) {
-        lines.push(format!("assert_eq!({}, );", self_name?));
-    }
-    for param_name in &ref_mut_params {
-        lines.push(format!("assert_eq!({}, );", param_name));
-    }
-    Some(lines)
 }
 
 /// Checks if the function is public / exported
@@ -317,15 +370,6 @@ fn is_in_trait_def(ast_func: &ast::Fn, ctx: &AssistContext) -> bool {
 fn is_ref_mut_self(ast_func: &ast::Fn) -> Option<bool> {
     let self_param = ast_func.param_list()?.self_param()?;
     Some(self_param.mut_token().is_some() && self_param.amp_token().is_some())
-}
-
-/// Helper function to define an variable to be the `self` argument
-fn self_definition(ast_func: &ast::Fn, self_name: Option<&str>) -> Option<String> {
-    let definition = match is_ref_mut_self(ast_func)? {
-        true => format!("let mut {} = ;", self_name?),
-        false => format!("let {} = ;", self_name?),
-    };
-    Some(definition)
 }
 
 /// Helper function to determine if a parameter is `&mut`
@@ -476,54 +520,6 @@ impl MyTrait for MyStruct {
     }
 
     #[test]
-    fn not_applicable_if_function_is_private() {
-        check_assist_not_applicable(generate_documentation_template, r#"fn priv$0ate() {}"#);
-    }
-
-    #[test]
-    fn not_applicable_if_function_is_pub_crate() {
-        check_assist_not_applicable(
-            generate_documentation_template,
-            r#"pub(crate) fn pri$0vate() {}"#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_if_function_is_in_private_mod() {
-        check_assist_not_applicable(
-            generate_documentation_template,
-            r#"
-mod PrivateModule {
-    pub fn pri$0vate() {}
-}"#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_if_function_is_in_pub_crate_mod() {
-        check_assist_not_applicable(
-            generate_documentation_template,
-            r#"
-pub(crate) mod PrivateModule {
-    pub fn pr$0ivate() {}
-}"#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_if_function_is_in_non_public_mod_is_recursive() {
-        check_assist_not_applicable(
-            generate_documentation_template,
-            r#"
-mod ParentPrivateModule {
-    pub mod PrivateModule {
-        pub fn pr$0ivate() {}
-    }
-}"#,
-        );
-    }
-
-    #[test]
     fn not_applicable_if_function_already_documented() {
         check_assist_not_applicable(
             generate_documentation_template,
@@ -543,15 +539,32 @@ pub fn no$0op() {}
 "#,
             r#"
 /// .
-///
-/// # Examples
-///
-/// ```
-/// use test::noop;
-///
-/// noop();
-/// ```
 pub fn noop() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn is_applicable_if_function_is_private() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+fn priv$0ate() {}
+"#,
+            r#"
+/// .
+fn private() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_doc_example_for_private_fn() {
+        check_assist_not_applicable(
+            generate_doc_example,
+            r#"
+///$0
+fn private() {}
 "#,
         );
     }
@@ -559,9 +572,10 @@ pub fn noop() {}
     #[test]
     fn supports_a_parameter() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
-pub fn no$0op_with_param(_a: i32) {}
+/// $0.
+pub fn noop_with_param(_a: i32) {}
 "#,
             r#"
 /// .
@@ -588,6 +602,29 @@ pub unsafe fn no$0op_unsafe() {}
             r#"
 /// .
 ///
+/// # Safety
+///
+/// .
+pub unsafe fn noop_unsafe() {}
+"#,
+        );
+        check_assist(
+            generate_doc_example,
+            r#"
+/// .
+///
+/// # Safety$0
+///
+/// .
+pub unsafe fn noop_unsafe() {}
+"#,
+            r#"
+/// .
+///
+/// # Safety
+///
+/// .
+///
 /// # Examples
 ///
 /// ```
@@ -595,10 +632,6 @@ pub unsafe fn no$0op_unsafe() {}
 ///
 /// unsafe { noop_unsafe() };
 /// ```
-///
-/// # Safety
-///
-/// .
 pub unsafe fn noop_unsafe() {}
 "#,
         );
@@ -617,14 +650,6 @@ pub fn panic$0s_if(a: bool) {
 "#,
             r#"
 /// .
-///
-/// # Examples
-///
-/// ```
-/// use test::panics_if;
-///
-/// panics_if(a);
-/// ```
 ///
 /// # Panics
 ///
@@ -650,14 +675,6 @@ pub fn $0panics_if_not(a: bool) {
             r#"
 /// .
 ///
-/// # Examples
-///
-/// ```
-/// use test::panics_if_not;
-///
-/// panics_if_not(a);
-/// ```
-///
 /// # Panics
 ///
 /// Panics if .
@@ -679,14 +696,6 @@ pub fn $0panics_if_none(a: Option<()>) {
 "#,
             r#"
 /// .
-///
-/// # Examples
-///
-/// ```
-/// use test::panics_if_none;
-///
-/// panics_if_none(a);
-/// ```
 ///
 /// # Panics
 ///
@@ -710,14 +719,6 @@ pub fn $0panics_if_none2(a: Option<()>) {
             r#"
 /// .
 ///
-/// # Examples
-///
-/// ```
-/// use test::panics_if_none2;
-///
-/// panics_if_none2(a);
-/// ```
-///
 /// # Panics
 ///
 /// Panics if .
@@ -731,14 +732,15 @@ pub fn panics_if_none2(a: Option<()>) {
     #[test]
     fn checks_output_in_example() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
+///$0
 pub fn returns_a_value$0() -> i32 {
     0
 }
 "#,
             r#"
-/// .
+///
 ///
 /// # Examples
 ///
@@ -766,14 +768,6 @@ pub fn returns_a_result$0() -> Result<i32, std::io::Error> {
             r#"
 /// .
 ///
-/// # Examples
-///
-/// ```
-/// use test::returns_a_result;
-///
-/// assert_eq!(returns_a_result(), );
-/// ```
-///
 /// # Errors
 ///
 /// This function will return an error if .
@@ -787,14 +781,15 @@ pub fn returns_a_result() -> Result<i32, std::io::Error> {
     #[test]
     fn checks_ref_mut_in_example() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
+///$0
 pub fn modifies_a_value$0(a: &mut i32) {
     *a = 0;
 }
 "#,
             r#"
-/// .
+///
 ///
 /// # Examples
 ///
@@ -815,14 +810,15 @@ pub fn modifies_a_value(a: &mut i32) {
     #[test]
     fn stores_result_if_at_least_3_params() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
+///$0
 pub fn sum3$0(a: i32, b: i32, c: i32) -> i32 {
     a + b + c
 }
 "#,
             r#"
-/// .
+///
 ///
 /// # Examples
 ///
@@ -842,18 +838,19 @@ pub fn sum3(a: i32, b: i32, c: i32) -> i32 {
     #[test]
     fn supports_fn_in_mods() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
 pub mod a {
     pub mod b {
-        pub fn no$0op() {}
+        ///$0
+        pub fn noop() {}
     }
 }
 "#,
             r#"
 pub mod a {
     pub mod b {
-        /// .
+        ///
         ///
         /// # Examples
         ///
@@ -872,17 +869,18 @@ pub mod a {
     #[test]
     fn supports_fn_in_impl() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
 pub struct MyStruct;
 impl MyStruct {
-    pub fn no$0op() {}
+    ///$0
+    pub fn noop() {}
 }
 "#,
             r#"
 pub struct MyStruct;
 impl MyStruct {
-    /// .
+    ///
     ///
     /// # Examples
     ///
@@ -892,30 +890,6 @@ impl MyStruct {
     /// MyStruct::noop();
     /// ```
     pub fn noop() {}
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn supports_fn_in_trait() {
-        check_assist(
-            generate_documentation_template,
-            r#"
-pub trait MyTrait {
-    fn fun$0ction_trait();
-}
-"#,
-            r#"
-pub trait MyTrait {
-    /// .
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// // Example template not implemented for trait functions
-    /// ```
-    fn function_trait();
 }
 "#,
         );
@@ -933,12 +907,6 @@ pub trait MyTrait {
             r#"
 pub trait MyTrait {
     /// .
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// // Example template not implemented for trait functions
-    /// ```
     ///
     /// # Safety
     ///
@@ -964,12 +932,6 @@ pub trait MyTrait {
 pub trait MyTrait {
     /// .
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// // Example template not implemented for trait functions
-    /// ```
-    ///
     /// # Panics
     ///
     /// Panics if .
@@ -993,12 +955,6 @@ pub trait MyTrait {
             r#"
 pub trait MyTrait {
     /// .
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// // Example template not implemented for trait functions
-    /// ```
     ///
     /// # Errors
     ///
@@ -1031,14 +987,6 @@ pub struct MyGenericStruct<T> {
 }
 impl<T> MyGenericStruct<T> {
     /// Creates a new [`MyGenericStruct<T>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::MyGenericStruct;
-    ///
-    /// assert_eq!(MyGenericStruct::new(x), );
-    /// ```
     pub fn new(x: T) -> MyGenericStruct<T> {
         MyGenericStruct { x }
     }
@@ -1069,14 +1017,6 @@ pub struct MyGenericStruct<'a, T> {
 }
 impl<'a, T> MyGenericStruct<'a, T> {
     /// Creates a new [`MyGenericStruct<T>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::MyGenericStruct;
-    ///
-    /// assert_eq!(MyGenericStruct::new(x), );
-    /// ```
     pub fn new(x: &'a T) -> Self {
         MyGenericStruct { x }
     }
@@ -1109,14 +1049,6 @@ pub struct MyGenericStruct<'a, 'b, T> {
 }
 impl<'a, 'b, T> MyGenericStruct<'a, 'b, T> {
     /// Creates a new [`MyGenericStruct<T>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::MyGenericStruct;
-    ///
-    /// assert_eq!(MyGenericStruct::new(x, y), );
-    /// ```
     pub fn new(x: &'a T, y: &'b T) -> Self {
         MyGenericStruct { x, y }
     }
@@ -1149,14 +1081,6 @@ pub struct MyGenericStruct<'a, 'b> {
 }
 impl<'a, 'b> MyGenericStruct<'a, 'b> {
     /// Creates a new [`MyGenericStruct`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::MyGenericStruct;
-    ///
-    /// assert_eq!(MyGenericStruct::new(x, y), );
-    /// ```
     pub fn new(x: &'a usize, y: &'b usize) -> Self {
         MyGenericStruct { x, y }
     }
@@ -1187,14 +1111,6 @@ pub struct MyGenericStruct2<T> {
 }
 impl<T> MyGenericStruct2<T> {
     /// Creates a new [`MyGenericStruct2<T>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::MyGenericStruct2;
-    ///
-    /// assert_eq!(MyGenericStruct2::new(x), );
-    /// ```
     pub fn new(x: T) -> Self {
         MyGenericStruct2 { x }
     }
@@ -1206,15 +1122,16 @@ impl<T> MyGenericStruct2<T> {
     #[test]
     fn supports_method_call() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
 impl<T> MyGenericStruct<T> {
-    pub fn co$0nsume(self) {}
+    ///$0
+    pub fn consume(self) {}
 }
 "#,
             r#"
 impl<T> MyGenericStruct<T> {
-    /// .
+    ///
     ///
     /// # Examples
     ///
@@ -1233,17 +1150,18 @@ impl<T> MyGenericStruct<T> {
     #[test]
     fn checks_modified_self_param() {
         check_assist(
-            generate_documentation_template,
+            generate_doc_example,
             r#"
 impl<T> MyGenericStruct<T> {
-    pub fn modi$0fy(&mut self, new_value: T) {
+    ///$0
+    pub fn modify(&mut self, new_value: T) {
         self.x = new_value;
     }
 }
 "#,
             r#"
 impl<T> MyGenericStruct<T> {
-    /// .
+    ///
     ///
     /// # Examples
     ///
@@ -1276,15 +1194,6 @@ impl S {
 pub struct S;
 impl S {
     /// Returns the speed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let s = ;
-    /// assert_eq!(s.speed(), );
-    /// ```
     pub fn speed(&self) -> f32 { 0.0 }
 }
 "#,
@@ -1301,15 +1210,6 @@ impl S {
 pub struct S;
 impl S {
     /// Returns a reference to the data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let s = ;
-    /// assert_eq!(s.data(), );
-    /// ```
     pub fn data(&self) -> &[u8] { &[] }
 }
 "#,
@@ -1326,16 +1226,6 @@ impl S {
 pub struct S;
 impl S {
     /// Returns a mutable reference to the data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let mut s = ;
-    /// assert_eq!(s.data(), );
-    /// assert_eq!(s, );
-    /// ```
     pub fn data(&mut self) -> &mut [u8] { &mut [] }
 }
 "#,
@@ -1352,16 +1242,6 @@ impl S {
 pub struct S;
 impl S {
     /// Returns a mutable reference to the data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let mut s = ;
-    /// assert_eq!(s.data_mut(), );
-    /// assert_eq!(s, );
-    /// ```
     pub fn data_mut(&mut self) -> &mut [u8] { &mut [] }
 }
 "#,
@@ -1382,15 +1262,6 @@ impl S {
 pub struct S;
 impl S {
     /// .
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let s = ;
-    /// assert_eq!(s.as_bytes(), );
-    /// ```
     pub fn as_bytes(&self) -> &[u8] { &[] }
 }
 "#,
@@ -1411,16 +1282,6 @@ impl S {
 pub struct S;
 impl S {
     /// Sets the data.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let mut s = ;
-    /// s.set_data(data);
-    /// assert_eq!(s, );
-    /// ```
     pub fn set_data(&mut self, data: Vec<u8>) {}
 }
 "#,
@@ -1437,16 +1298,6 @@ impl S {
 pub struct S;
 impl S {
     /// Sets the domain name.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use test::S;
-    ///
-    /// let mut s = ;
-    /// s.set_domain_name(name);
-    /// assert_eq!(s, );
-    /// ```
     pub fn set_domain_name(&mut self, name: String) {}
 }
 "#,

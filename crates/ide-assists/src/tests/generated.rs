@@ -863,30 +863,55 @@ impl core::ops::Deref for B {
 }
 
 #[test]
-fn doctest_generate_documentation_template() {
+fn doctest_generate_doc_example() {
     check_doc_test(
-        "generate_documentation_template",
+        "generate_doc_example",
         r#####"
-pub fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
-    unimplemented!()
-}
+/// Adds two numbers.$0
+pub fn add(a: i32, b: i32) -> i32 { a + b }
 "#####,
         r#####"
-/// .
+/// Adds two numbers.
 ///
 /// # Examples
 ///
 /// ```
-/// use test::my_func;
+/// use test::add;
 ///
-/// assert_eq!(my_func(a, b), );
+/// assert_eq!(add(a, b), );
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if .
-pub fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
-    unimplemented!()
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_documentation_template() {
+    check_doc_test(
+        "generate_documentation_template",
+        r#####"
+pub struct S;
+impl S {
+    pub unsafe fn set_len$0(&mut self, len: usize) -> Result<(), std::io::Error> {
+        /* ... */
+    }
+}
+"#####,
+        r#####"
+pub struct S;
+impl S {
+    /// Sets the length.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    ///
+    /// # Safety
+    ///
+    /// .
+    pub unsafe fn set_len(&mut self, len: usize) -> Result<(), std::io::Error> {
+        /* ... */
+    }
 }
 "#####,
     )

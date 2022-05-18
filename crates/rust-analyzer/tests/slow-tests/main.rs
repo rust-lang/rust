@@ -494,7 +494,7 @@ fn main() {}
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
-            range: Range::new(Position::new(2, 4), Position::new(2, 7)),
+            range: Range::new(Position::new(2, 8), Position::new(2, 8)),
             context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
@@ -578,7 +578,7 @@ fn main() {{}}
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
-            range: Range::new(Position::new(2, 4), Position::new(2, 7)),
+            range: Range::new(Position::new(2, 8), Position::new(2, 8)),
             context: CodeActionContext::default(),
             partial_result_params: PartialResultParams::default(),
             work_done_progress_params: WorkDoneProgressParams::default(),
