@@ -72,7 +72,7 @@ macro_rules! print {
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`)).
 ///
-/// Use the [`format!`] syntax to write data to the standard output.
+/// This macro uses the same syntax as [`format!`], but writes to the standard output instead.
 /// See [`std::fmt`] for more information.
 ///
 /// Use `println!` only for the primary output of your program. Use
