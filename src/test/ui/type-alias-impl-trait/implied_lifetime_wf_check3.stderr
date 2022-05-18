@@ -1,0 +1,38 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/implied_lifetime_wf_check3.rs:6:22
+   |
+LL |     fn assert_static<'a: 'static>() {}
+   |                      ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/implied_lifetime_wf_check3.rs:14:22
+   |
+LL |     fn assert_static<'a: 'static>() {}
+   |                      ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/implied_lifetime_wf_check3.rs:20:22
+   |
+LL |     fn assert_static<'a: 'static>() {}
+   |                      ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check3.rs:35:18
+   |
+LL |     type Ty<A> = impl Sized + 'static;
+   |                  ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     type Ty<A: 'static> = impl Sized + 'static;
+   |              +++++++++
+
+error: aborting due to previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0310`.

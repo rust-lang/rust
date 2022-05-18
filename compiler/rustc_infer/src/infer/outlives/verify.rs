@@ -47,6 +47,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             GenericKind::Projection(projection_ty) => {
                 self.projection_bound(projection_ty, &mut visited)
             }
+            GenericKind::Opaque(def_id, substs) => self.opaque_bound(def_id, substs),
         }
     }
 
@@ -155,6 +156,20 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
     }
 
+    fn opaque_bound(&self, def_id: DefId, substs: SubstsRef<'tcx>) -> VerifyBound<'tcx> {
+        let bounds: Vec<_> =
+            self.bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r)).collect();
+        trace!("{:#?}", bounds);
+        if bounds.is_empty() {
+            // No bounds means the value must not have any lifetimes.
+            // FIXME: should we implicitly add 'static to `tcx.item_bounds` for opaque types, just
+            // like we add `Sized`?
+            VerifyBound::OutlivedBy(self.tcx.lifetimes.re_static)
+        } else {
+            VerifyBound::AnyBound(bounds)
+        }
+    }
+
     fn bound_from_components(
         &self,
         components: &[Component<'tcx>],
@@ -184,6 +199,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
             Component::Param(param_ty) => self.param_bound(param_ty),
+            Component::Opaque(did, substs) => self.opaque_bound(did, substs),
             Component::Projection(projection_ty) => self.projection_bound(projection_ty, visited),
             Component::EscapingProjection(ref components) => {
                 self.bound_from_components(components, visited)

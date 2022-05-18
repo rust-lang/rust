@@ -284,6 +284,9 @@ where
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
                 }
+                Component::Opaque(def_id, substs) => {
+                    self.opaque_must_outlive(*def_id, substs, origin, region)
+                }
                 Component::Projection(projection_ty) => {
                     self.projection_must_outlive(origin, region, *projection_ty);
                 }
@@ -317,6 +320,27 @@ where
         let generic = GenericKind::Param(param_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
         self.delegate.push_verify(origin, generic, region, verify_bound);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn opaque_must_outlive(
+        &mut self,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        origin: infer::SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+    ) {
+        self.generic_must_outlive(
+            origin,
+            region,
+            GenericKind::Opaque(def_id, substs),
+            def_id,
+            substs,
+            |ty| match *ty.kind() {
+                ty::Opaque(def_id, substs) => (def_id, substs),
+                _ => bug!("expected only projection types from env, not {:?}", ty),
+            },
+        );
     }
 
     #[instrument(level = "debug", skip(self))]
