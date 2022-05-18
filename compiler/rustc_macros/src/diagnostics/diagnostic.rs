@@ -110,10 +110,6 @@ impl<'a> SessionDiagnosticDerive<'a> {
                         )
                     });
 
-                // When generating `set_arg` or `add_subdiagnostic` calls, move data rather than
-                // borrow it to avoid requiring clones - this must therefore be the last use of
-                // each field (for example, any formatting machinery that might refer to a field
-                // should be generated already).
                 structure.bind_with(|_| synstructure::BindStyle::Move);
                 // When a field has attributes like `#[label]` or `#[note]` then it doesn't
                 // need to be passed as an argument to the diagnostic. But when a field has no
@@ -373,6 +369,10 @@ impl SessionDiagnosticDeriveBuilder {
 
         let inner_ty = FieldInnerTy::from_type(&info.ty);
 
+        // When generating `set_arg` or `add_subdiagnostic` calls, move data rather than
+        // borrow it to avoid requiring clones - this must therefore be the last use of
+        // each field (for example, any formatting machinery that might refer to a field
+        // should be generated already).
         if attrs.is_empty() {
             let diag = &self.diag;
             let ident = info.binding.ast().ident.as_ref().unwrap();
