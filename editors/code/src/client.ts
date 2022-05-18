@@ -7,14 +7,46 @@ import { WorkspaceEdit } from "vscode";
 import { Workspace } from "./ctx";
 import { updateConfig } from "./config";
 import { substituteVariablesInEnv } from "./config";
+import { randomUUID } from "crypto";
 
 export interface Env {
     [name: string]: string;
 }
 
-function renderCommand(cmd: ra.CommandLink) {
-    return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(
-        JSON.stringify(cmd.arguments)
+// Command URIs have a form of command:command-name?arguments, where
+// arguments is a percent-encoded array of data we want to pass along to
+// the command function. For "Show References" this is a list of all file
+// URIs with locations of every reference, and it can get quite long.
+//
+// To work around it we use an intermediary linkToCommand command. When
+// we render a command link, a reference to a command with all its arguments
+// is stored in a map, and instead a linkToCommand link is rendered
+// with the key to that map.
+export const LINKED_COMMANDS = new Map<string, ra.CommandLink>();
+
+// For now the map is cleaned up periodically (I've set it to every
+// 10 minutes). In general case we'll probably need to introduce TTLs or
+// flags to denote ephemeral links (like these in hover popups) and
+// persistent links and clean those separately. But for now simply keeping
+// the last few links in the map should be good enough. Likewise, we could
+// add code to remove a target command from the map after the link is
+// clicked, but assuming most links in hover sheets won't be clicked anyway
+// this code won't change the overall memory use much.
+setInterval(function cleanupOlderCommandLinks() {
+    // keys are returned in insertion order, we'll keep a few
+    // of recent keys available, and clean the rest
+    const keys = [...LINKED_COMMANDS.keys()];
+    const keysToRemove = keys.slice(0, keys.length - 10);
+    for (const key of keysToRemove) {
+        LINKED_COMMANDS.delete(key);
+    }
+}, 10 * 60 * 1000);
+
+function renderCommand(cmd: ra.CommandLink): string {
+    const commandId = randomUUID();
+    LINKED_COMMANDS.set(commandId, cmd);
+    return `[${cmd.title}](command:rust-analyzer.linkToCommand?${encodeURIComponent(
+        JSON.stringify([commandId])
     )} '${cmd.tooltip}')`;
 }
 
