@@ -9,9 +9,10 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         pub use futex::Parker;
-    } else if #[cfg(windows)] {
-        pub use crate::sys::thread_parker::Parker;
-    } else if #[cfg(target_family = "unix")] {
+    } else if #[cfg(target_os = "solid_asp3")] {
+        mod wait_flag;
+        pub use wait_flag::Parker;
+    } else if #[cfg(any(windows, target_family = "unix"))] {
         pub use crate::sys::thread_parker::Parker;
     } else {
         mod generic;
