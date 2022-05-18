@@ -347,11 +347,12 @@ where
 
         debug!(?trait_bounds);
 
+        let generic = GenericKind::Projection(projection_ty);
+
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds =
-            self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty);
+        let mut approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(generic);
         debug!(?approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
@@ -436,7 +437,6 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
         debug!("projection_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, generic, region, verify_bound);

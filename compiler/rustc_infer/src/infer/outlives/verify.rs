@@ -105,11 +105,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// the clause from the environment only applies if `'0 = 'a`,
     /// which we don't know yet. But we would still include `'b` in
     /// this list.
-    pub fn projection_approx_declared_bounds_from_env(
+    pub fn approx_declared_bounds_from_env(
         &self,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        generic: GenericKind<'tcx>,
     ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
-        let projection_ty = GenericKind::Projection(projection_ty).to_ty(self.tcx);
+        let projection_ty = generic.to_ty(self.tcx);
         let erased_projection_ty = self.tcx.erase_regions(projection_ty);
         self.declared_generic_bounds_from_env_for_erased_ty(erased_projection_ty)
     }
@@ -125,7 +125,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self
-            .projection_approx_declared_bounds_from_env(projection_ty)
+            .approx_declared_bounds_from_env(GenericKind::Projection(projection_ty))
             .into_iter()
             .map(|binder| {
                 if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == projection_ty_as_ty {
