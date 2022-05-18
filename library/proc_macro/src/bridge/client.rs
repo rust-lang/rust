@@ -323,27 +323,6 @@ impl Bridge<'_> {
         })
     }
 
-    fn enter<R>(self, f: impl FnOnce() -> R) -> R {
-        let force_show_panics = self.force_show_panics;
-        // Hide the default panic output within `proc_macro` expansions.
-        // NB. the server can't do this because it may use a different libstd.
-        static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
-        HIDE_PANICS_DURING_EXPANSION.call_once(|| {
-            let prev = panic::take_hook();
-            panic::set_hook(Box::new(move |info| {
-                let show = BridgeState::with(|state| match state {
-                    BridgeState::NotConnected => true,
-                    BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
-                });
-                if show {
-                    prev(info)
-                }
-            }));
-        });
-
-        BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
-    }
-
     fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
         BridgeState::with(|state| match state {
             BridgeState::NotConnected => {
@@ -388,7 +367,6 @@ impl<I, O> Clone for Client<I, O> {
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
-// FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     mut bridge: Bridge<'_>,
     f: impl FnOnce(A) -> R,
@@ -397,29 +375,48 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     let mut buf = bridge.cached_buffer.take();
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        bridge.enter(|| {
-            let reader = &mut &buf[..];
-            let input = A::decode(reader, &mut ());
+        let force_show_panics = bridge.force_show_panics;
+        // Hide the default panic output within `proc_macro` expansions.
+        // NB. the server can't do this because it may use a different libstd.
+        static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
+        HIDE_PANICS_DURING_EXPANSION.call_once(|| {
+            let prev = panic::take_hook();
+            panic::set_hook(Box::new(move |info| {
+                let show = BridgeState::with(|state| match state {
+                    BridgeState::NotConnected => true,
+                    BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
+                });
+                if show {
+                    prev(info)
+                }
+            }));
+        });
 
-            // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = buf.take());
+        BRIDGE_STATE.with(|state| {
+            state.set(BridgeState::Connected(bridge), || {
+                let reader = &mut &buf[..];
+                let input = A::decode(reader, &mut ());
 
-            let output = f(input);
+                // Put the `cached_buffer` back in the `Bridge`, for requests.
+                Bridge::with(|bridge| bridge.cached_buffer = buf.take());
 
-            // Take the `cached_buffer` back out, for the output value.
-            buf = Bridge::with(|bridge| bridge.cached_buffer.take());
+                let output = f(input);
 
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-            // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-            // having handles outside the `bridge.enter(|| ...)` scope, and
-            // to catch panics that could happen while encoding the success.
-            //
-            // Note that panics should be impossible beyond this point, but
-            // this is defensively trying to avoid any accidental panicking
-            // reaching the `extern "C"` (which should `abort` but might not
-            // at the moment, so this is also potentially preventing UB).
-            buf.clear();
-            Ok::<_, ()>(output).encode(&mut buf, &mut ());
+                // Take the `cached_buffer` back out, for the output value.
+                buf = Bridge::with(|bridge| bridge.cached_buffer.take());
+
+                // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+                // from encoding a panic (`Err(e: PanicMessage)`) to avoid
+                // having handles outside the `bridge.enter(|| ...)` scope, and
+                // to catch panics that could happen while encoding the success.
+                //
+                // Note that panics should be impossible beyond this point, but
+                // this is defensively trying to avoid any accidental panicking
+                // reaching the `extern "C"` (which should `abort` but might not
+                // at the moment, so this is also potentially preventing UB).
+                buf.clear();
+                Ok::<_, ()>(output).encode(&mut buf, &mut ());
+            })
         })
     }))
     .map_err(PanicMessage::from)
