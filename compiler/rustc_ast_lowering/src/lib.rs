@@ -849,6 +849,81 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    /// Collect a "to be lowered" copy of each type and const argument, skipping lifetimes.
+    #[instrument(level = "debug", skip(self))]
+    fn collect_type_const_args(&mut self, params: &[GenericParam]) -> Vec<hir::GenericArg<'hir>> {
+        params
+            .iter()
+            .filter(|param| {
+                matches!(param.kind, GenericParamKind::Const { .. } | GenericParamKind::Type { .. })
+            })
+            .map(|param| {
+                let span = param.span();
+                let local_def_id = self.local_def_id(param.id);
+                let def_id = local_def_id.to_def_id();
+
+                match param.kind {
+                    GenericParamKind::Lifetime => {
+                        unreachable!("Lifetimes should have been filtered at this point.")
+                    }
+                    GenericParamKind::Type { .. } => hir::GenericArg::Type(hir::Ty {
+                        hir_id: self.next_id(),
+                        span,
+                        kind: hir::TyKind::Path(hir::QPath::Resolved(
+                            None,
+                            self.arena.alloc(hir::Path {
+                                res: Res::Def(
+                                    DefKind::TyParam,
+                                    def_id,
+                                ),
+                                span,
+                                segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(param.ident))],
+                            }),
+                        )),
+                    }),
+                    GenericParamKind::Const { .. } => {
+                        let parent_def_id = self.current_hir_id_owner;
+                        let node_id = self.next_node_id();
+
+                        self.create_def(
+                            parent_def_id,
+                            node_id,
+                            DefPathData::AnonConst,
+                        );
+                        let hir_id = self.lower_node_id(node_id);
+
+                        let span = self.lower_span(span);
+                        let ct = hir::AnonConst {
+                            hir_id,
+                            body: self.lower_body(|this| {
+                                (
+                                    &[],
+                                    hir::Expr {
+                                        hir_id: this.next_id(),
+                                        kind: hir::ExprKind::Path(hir::QPath::Resolved(
+                                            None,
+                                            this.arena.alloc(hir::Path {
+                                                res: Res::Def(
+                                                    DefKind::ConstParam,
+                                                    def_id,
+                                                ),
+                                                span,
+                                                segments: arena_vec![this; hir::PathSegment::from_ident(this.lower_ident(param.ident))],
+                                            }),
+                                        )),
+                                        span,
+                                    },
+                                )
+                            }),
+                        };
+
+                        hir::GenericArg::Const(hir::ConstArg { value: ct, span })
+                    }
+                }
+            })
+            .collect()
+    }
+
     /// Lowers a lifetime binder that defines `generic_params`, returning the corresponding HIR
     /// nodes. The returned list includes any "extra" lifetime parameters that were added by the
     /// name resolver owing to lifetime elision; this also populates the resolver's node-id->def-id
@@ -1724,8 +1799,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
         // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetimes =
-            self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(|(_, lifetime)| {
+        let lifetimes: Vec<_> = collected_lifetimes
+            .into_iter()
+            .map(|(_, lifetime)| {
                 let id = self.next_node_id();
                 let span = lifetime.ident.span;
 
@@ -1737,11 +1813,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let l = self.new_named_lifetime(lifetime.id, id, span, ident);
                 hir::GenericArg::Lifetime(l)
-            }));
+            })
+            .collect();
         debug!(?lifetimes);
 
+        let type_const_args = self.collect_type_const_args(ast_generic_params);
+
+        let generic_args =
+            self.arena.alloc_from_iter(lifetimes.into_iter().chain(type_const_args.into_iter()));
+
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
+        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args)
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and
