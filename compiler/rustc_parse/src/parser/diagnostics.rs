@@ -1449,10 +1449,9 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
-        allow_recovery: bool,
     ) -> PResult<'a, P<T>> {
         // Do not add `::` to expected tokens.
-        if allow_recovery && self.token == token::ModSep {
+        if self.token == token::ModSep {
             if let Some(ty) = base.to_ty() {
                 return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
             }
@@ -1598,7 +1597,7 @@ impl<'a> Parser<'a> {
             _ => ExprKind::Await(expr),
         };
         let expr = self.mk_expr(lo.to(sp), kind, attrs);
-        self.maybe_recover_from_bad_qpath(expr, true)
+        self.maybe_recover_from_bad_qpath(expr)
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {

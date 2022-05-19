@@ -408,7 +408,7 @@ impl<'a> Parser<'a> {
         };
 
         let pat = self.mk_pat(lo.to(self.prev_token.span), pat);
-        let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
+        let pat = self.maybe_recover_from_bad_qpath(pat)?;
         let pat = self.recover_intersection_pat(pat)?;
 
         if !allow_range_pat {

@@ -318,7 +318,7 @@ impl<'a> Parser<'a> {
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
         let ty = self.maybe_recover_from_question_mark(ty, recover_question_mark);
-        self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
+        if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }
 
     /// Parses either:
