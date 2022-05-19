@@ -354,7 +354,8 @@ impl SessionDiagnosticDeriveBuilder {
                 );
             }
         } else {
-            field.attrs
+            field
+                .attrs
                 .iter()
                 .map(move |attr| {
                     let name = attr.path.segments.last().unwrap().ident.to_string();
