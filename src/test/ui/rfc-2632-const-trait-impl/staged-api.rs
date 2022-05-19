@@ -15,6 +15,7 @@ pub struct Foo;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(unstable, rustc_const_unstable(feature = "foo", issue = "none"))]
+#[cfg_attr(stable, rustc_const_stable(feature = "foo", since = "1.0.0"))]
 impl const MyTrait for Foo {
     //[stable]~^ ERROR trait implementations cannot be const stable yet
     fn func() {}

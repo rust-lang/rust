@@ -1,11 +1,13 @@
-error: implementation has missing const stability attribute
-  --> $DIR/staged-api.rs:18:1
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:19:1
    |
 LL | / impl const MyTrait for Foo {
 LL | |
 LL | |     fn func() {}
 LL | | }
    | |_^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
 error: aborting due to previous error
 

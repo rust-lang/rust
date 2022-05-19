@@ -1,5 +1,5 @@
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:34:5
+  --> $DIR/staged-api.rs:35:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     Foo::func();
    = help: add `#![feature(foo)]` to the crate attributes to enable
 
 error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:42:5
+  --> $DIR/staged-api.rs:43:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
