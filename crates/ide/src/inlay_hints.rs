@@ -592,23 +592,35 @@ fn param_name_hints(
         .filter_map(|((param, _ty), arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let (param_name, param_syntax) = match param.as_ref()? {
-                Either::Left(pat) => ("self".to_string(), pat.syntax()),
+            let (param_name, name_syntax) = match param.as_ref()? {
+                Either::Left(pat) => ("self".to_string(), pat.name()),
                 Either::Right(pat) => match pat {
-                    ast::Pat::IdentPat(it) => (it.name()?.to_string(), pat.syntax()),
+                    ast::Pat::IdentPat(it) => (it.name()?.to_string(), it.name()),
                     _ => return None,
                 },
             };
-            Some((sema.original_range_opt(param_syntax), param_name, arg, range))
+            Some((name_syntax, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {
             !should_hide_param_name_hint(sema, &callable, param_name, arg)
         })
-        .map(|(param_range, param_name, _, FileRange { range, .. })| InlayHint {
-            range,
-            kind: InlayKind::ParameterHint,
-            label: param_name,
-            tooltip: param_range.map(|it| InlayTooltip::HoverOffset(it.file_id, it.range.start())),
+        .map(|(param, param_name, _, FileRange { range, .. })| {
+            let mut tooltip = None;
+            if let Some(name) = param {
+                if let hir::CallableKind::Function(f) = callable.kind() {
+                    // assert the file is cached so we can map out of macros
+                    if let Some(_) = sema.source(f) {
+                        tooltip = sema.original_range_opt(name.syntax());
+                    }
+                }
+            }
+
+            InlayHint {
+                range,
+                kind: InlayKind::ParameterHint,
+                label: param_name,
+                tooltip: tooltip.map(|it| InlayTooltip::HoverOffset(it.file_id, it.range.start())),
+            }
         });
 
     acc.extend(hints);
