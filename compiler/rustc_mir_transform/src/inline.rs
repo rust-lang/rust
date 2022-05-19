@@ -554,7 +554,8 @@ impl<'tcx> Inliner<'tcx> {
                     new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
                     new_blocks: BasicBlock::new(caller_body.basic_blocks().len())..,
                     destination: dest,
-                    return_block: callsite.target,
+                    callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
+                    callsite,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
@@ -565,31 +566,6 @@ impl<'tcx> Inliner<'tcx> {
                 // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
                 // (or existing ones, in a few special cases) in the caller.
                 integrator.visit_body(&mut callee_body);
-
-                for scope in &mut callee_body.source_scopes {
-                    // FIXME(eddyb) move this into a `fn visit_scope_data` in `Integrator`.
-                    if scope.parent_scope.is_none() {
-                        let callsite_scope = &caller_body.source_scopes[callsite.source_info.scope];
-
-                        // Attach the outermost callee scope as a child of the callsite
-                        // scope, via the `parent_scope` and `inlined_parent_scope` chains.
-                        scope.parent_scope = Some(callsite.source_info.scope);
-                        assert_eq!(scope.inlined_parent_scope, None);
-                        scope.inlined_parent_scope = if callsite_scope.inlined.is_some() {
-                            Some(callsite.source_info.scope)
-                        } else {
-                            callsite_scope.inlined_parent_scope
-                        };
-
-                        // Mark the outermost callee scope as an inlined one.
-                        assert_eq!(scope.inlined, None);
-                        scope.inlined = Some((callsite.callee, callsite.source_info.span));
-                    } else if scope.inlined_parent_scope.is_none() {
-                        // Make it easy to find the scope with `inlined` set above.
-                        scope.inlined_parent_scope =
-                            Some(integrator.map_scope(OUTERMOST_SOURCE_SCOPE));
-                    }
-                }
 
                 // If there are any locals without storage markers, give them storage only for the
                 // duration of the call.
@@ -786,7 +762,8 @@ struct Integrator<'a, 'tcx> {
     new_scopes: RangeFrom<SourceScope>,
     new_blocks: RangeFrom<BasicBlock>,
     destination: Place<'tcx>,
-    return_block: Option<BasicBlock>,
+    callsite_scope: SourceScopeData<'tcx>,
+    callsite: &'a CallSite<'tcx>,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
@@ -830,6 +807,28 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, _ctxt: PlaceContext, _location: Location) {
         *local = self.map_local(*local);
+    }
+
+    fn visit_source_scope_data(&mut self, scope_data: &mut SourceScopeData<'tcx>) {
+        self.super_source_scope_data(scope_data);
+        if scope_data.parent_scope.is_none() {
+            // Attach the outermost callee scope as a child of the callsite
+            // scope, via the `parent_scope` and `inlined_parent_scope` chains.
+            scope_data.parent_scope = Some(self.callsite.source_info.scope);
+            assert_eq!(scope_data.inlined_parent_scope, None);
+            scope_data.inlined_parent_scope = if self.callsite_scope.inlined.is_some() {
+                Some(self.callsite.source_info.scope)
+            } else {
+                self.callsite_scope.inlined_parent_scope
+            };
+
+            // Mark the outermost callee scope as an inlined one.
+            assert_eq!(scope_data.inlined, None);
+            scope_data.inlined = Some((self.callsite.callee, self.callsite.source_info.span));
+        } else if scope_data.inlined_parent_scope.is_none() {
+            // Make it easy to find the scope with `inlined` set above.
+            scope_data.inlined_parent_scope = Some(self.map_scope(OUTERMOST_SOURCE_SCOPE));
+        }
     }
 
     fn visit_source_scope(&mut self, scope: &mut SourceScope) {
@@ -938,7 +937,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 }
             }
             TerminatorKind::Return => {
-                terminator.kind = if let Some(tgt) = self.return_block {
+                terminator.kind = if let Some(tgt) = self.callsite.target {
                     TerminatorKind::Goto { target: tgt }
                 } else {
                     TerminatorKind::Unreachable
