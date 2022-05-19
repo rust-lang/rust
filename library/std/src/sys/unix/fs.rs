@@ -10,7 +10,7 @@ use crate::ptr;
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 use crate::sys::time::SystemTime;
-use crate::sys::{cvt, cvt_r};
+use crate::sys::{cvt, cvt_p, cvt_r};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[cfg(any(
@@ -75,7 +75,7 @@ use libc::{
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
-#[cfg(not(any(target_os = "redox", target_os = "espidf")))]
+#[cfg(not(any(target_os = "redox", target_os = "espidf", miri)))]
 mod dir_fd;
 
 // Modern implementation using openat(), unlinkat() and fdopendir()
@@ -1207,8 +1207,8 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
     let p = cstr(p)?;
     unsafe {
-        let ptr = libc::opendir(p.as_ptr());
-        if ptr.is_null() { Err(Error::last_os_error()) } else { Ok(ReadDir::new(Dir(ptr), root)) }
+        let ptr = cvt_p(libc::opendir(p.as_ptr()))?;
+        Ok(ReadDir::new(Dir(ptr), root))
     }
 }
 
