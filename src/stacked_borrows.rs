@@ -731,7 +731,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             alloc_history.log_creation(
                 Some(orig_tag),
                 new_tag,
-                alloc_range(base_offset, base_offset + size),
+                alloc_range(base_offset, size),
                 &this.machine.threads,
             );
             if protect {
