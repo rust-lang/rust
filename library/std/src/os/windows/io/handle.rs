@@ -189,7 +189,7 @@ impl OwnedHandle {
         access: c::DWORD,
         inherit: bool,
         options: c::DWORD,
-    ) -> io::Result<Self> {
+    ) -> io::Result<OwnedHandle> {
         let handle = self.as_raw_handle();
 
         // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
@@ -197,7 +197,7 @@ impl OwnedHandle {
         // if we passed it a null handle, but we can treat null as a valid
         // handle which doesn't do any I/O, and allow it to be duplicated.
         if handle.is_null() {
-            return unsafe { Ok(Self::from_raw_handle(handle)) };
+            return unsafe { Ok(OwnedHandle::from_raw_handle(handle)) };
         }
 
         let mut ret = ptr::null_mut();
@@ -213,7 +213,7 @@ impl OwnedHandle {
                 options,
             )
         })?;
-        unsafe { Ok(Self::from_raw_handle(ret)) }
+        unsafe { Ok(OwnedHandle::from_raw_handle(ret)) }
     }
 }
 

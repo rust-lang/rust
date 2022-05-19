@@ -36,6 +36,12 @@
 //! dynamic lifetime of the resource without ending the lifetime of the
 //! handle or socket.
 //!
+//! `BorrowedHandle` and `BorrowedSocket` values may be used in APIs which
+//! provide safe access to `DuplicateHandle` and `WSADuplicateSocketW` and
+//! related functions, so types implementing `AsHandle`, `AsSocket`,
+//! `From<OwnedHandle>`, or `From<OwnedSocket>` should not assume they always
+//! have exclusive access to the underlying object.
+//!
 //! Like boxes, `OwnedHandle` and `OwnedSocket` values conceptually own the
 //! resource they point to, and free (close) it when they are dropped.
 //!

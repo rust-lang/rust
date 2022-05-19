@@ -26,20 +26,30 @@
 //! that they don't outlive the resource they point to. These are safe to
 //! use. `BorrowedFd` values may be used in APIs which provide safe access to
 //! any system call except for:
+//!
 //!  - `close`, because that would end the dynamic lifetime of the resource
 //!    without ending the lifetime of the file descriptor.
+//!
 //!  - `dup2`/`dup3`, in the second argument, because this argument is
 //!    closed and assigned a new resource, which may break the assumptions
 //!    other code using that file descriptor.
-//! This list doesn't include `mmap`, since `mmap` does do a proper borrow of
-//! its file descriptor argument. That said, `mmap` is unsafe for other
-//! reasons: it operates on raw pointers, and it can have undefined behavior if
-//! the underlying storage is mutated. Mutations may come from other processes,
-//! or from the same process if the API provides `BorrowedFd` access, since as
-//! mentioned earlier, `BorrowedFd` values may be used in APIs which provide
-//! safe access to any system call. Consequently, code using `mmap` and
-//! presenting a safe API must take full responsibility for ensuring that safe
-//! Rust code cannot evoke undefined behavior through it.
+//!
+//! `BorrowedFd` values may be used in APIs which provide safe access to `dup`
+//! system calls, so types implementing `AsFd` or `From<OwnedFd>` should not
+//! assume they always have exclusive access to the underlying file
+//! description.
+//!
+//! `BorrowedFd` values may also be used with `mmap`, since `mmap` uses the
+//! provided file descriptor in a manner similar to `dup` and does not require
+//! the `BorrowedFd` passed to it to live for the lifetime of the resulting
+//! mapping. That said, `mmap` is unsafe for other reasons: it operates on raw
+//! pointers, and it can have undefined behavior if the underlying storage is
+//! mutated. Mutations may come from other processes, or from the same process
+//! if the API provides `BorrowedFd` access, since as mentioned earlier,
+//! `BorrowedFd` values may be used in APIs which provide safe access to any
+//! system call. Consequently, code using `mmap` and presenting a safe API must
+//! take full responsibility for ensuring that safe Rust code cannot evoke
+//! undefined behavior through it.
 //!
 //! Like boxes, `OwnedFd` values conceptually own the resource they point to,
 //! and free (close) it when they are dropped.

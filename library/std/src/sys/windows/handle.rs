@@ -218,7 +218,7 @@ impl Handle {
         inherit: bool,
         options: c::DWORD,
     ) -> io::Result<Self> {
-        Ok(Self(self.0.duplicate(access, inherit, options)?))
+        Ok(Self(self.0.as_handle().duplicate(access, inherit, options)?))
     }
 
     /// Performs a synchronous read.
