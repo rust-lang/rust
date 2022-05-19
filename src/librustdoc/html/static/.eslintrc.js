@@ -34,5 +34,9 @@ module.exports = {
             "1tbs",
             { "allowSingleLine": false }
         ],
+        "keyword-spacing": [
+            "error",
+            { "before": true, "after": true }
+        ],
     }
 };
