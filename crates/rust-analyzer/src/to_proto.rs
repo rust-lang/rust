@@ -415,8 +415,8 @@ pub(crate) fn signature_help(
 }
 
 pub(crate) fn inlay_hint(
+    snap: &GlobalStateSnapshot,
     line_index: &LineIndex,
-    text_document: &lsp_types::TextDocumentIdentifier,
     render_colons: bool,
     inlay_hint: InlayHint,
 ) -> lsp_types::InlayHint {
@@ -472,20 +472,33 @@ pub(crate) fn inlay_hint(
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,
-        tooltip: Some(lsp_types::InlayHintTooltip::String(inlay_hint.label)),
-        data: inlay_hint.hover_trigger.map(|range_or_offset| {
-            to_value(lsp_ext::InlayHintResolveData {
-                text_document: text_document.clone(),
-                position: match range_or_offset {
-                    ide::RangeOrOffset::Offset(offset) => {
-                        lsp_ext::PositionOrRange::Position(position(line_index, offset))
-                    }
-                    ide::RangeOrOffset::Range(text_range) => {
-                        lsp_ext::PositionOrRange::Range(range(line_index, text_range))
-                    }
-                },
-            })
-            .unwrap()
+        data: (|| match inlay_hint.tooltip {
+            Some(ide::InlayTooltip::HoverOffset(file_id, offset)) => {
+                let uri = url(snap, file_id);
+                let line_index = snap.file_line_index(file_id).ok()?;
+
+                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                to_value(lsp_ext::InlayHintResolveData {
+                    text_document,
+                    position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
+                })
+                .ok()
+            }
+            Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
+                let uri = url(snap, file_id);
+                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let line_index = snap.file_line_index(file_id).ok()?;
+                to_value(lsp_ext::InlayHintResolveData {
+                    text_document,
+                    position: lsp_ext::PositionOrRange::Range(range(&line_index, text_range)),
+                })
+                .ok()
+            }
+            _ => None,
+        })(),
+        tooltip: Some(match inlay_hint.tooltip {
+            Some(ide::InlayTooltip::String(s)) => lsp_types::InlayHintTooltip::String(s),
+            _ => lsp_types::InlayHintTooltip::String(inlay_hint.label),
         }),
     }
 }
