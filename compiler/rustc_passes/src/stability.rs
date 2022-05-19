@@ -745,7 +745,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                     // needs to have an error emitted.
                     if features.const_trait_impl
-                        && constness == hir::Constness::Const
+                        && *constness == hir::Constness::Const
                         && const_stab.map_or(false, |(stab, _)| stab.is_const_stable())
                     {
                         self.tcx
