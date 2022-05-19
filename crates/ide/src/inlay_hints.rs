@@ -463,6 +463,10 @@ fn closure_ret_hints(
         return None;
     }
 
+    if closure.ret_type().is_some() {
+        return None;
+    }
+
     let param_list = match closure.body() {
         Some(ast::Expr::BlockExpr(_)) => closure.param_list()?,
         _ => return None,
