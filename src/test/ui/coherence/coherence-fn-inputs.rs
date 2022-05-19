@@ -9,17 +9,11 @@
 //
 // * `'c` can be the intersection of `'a` and `'b` (and there is always an intersection)
 // * `'a` and `'b` can both be equal to `'c`
+//
+// check-pass
 
 trait Trait {}
 impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}
-impl Trait for for<'c> fn(&'c u32, &'c u32) {
-    //~^ ERROR conflicting implementations
-    //
-    // Note in particular that we do NOT get a future-compatibility warning
-    // here. This is because the new leak-check proposed in [MCP 295] does not
-    // "error" when these two types are equated.
-    //
-    // [MCP 295]: https://github.com/rust-lang/compiler-team/issues/295
-}
+impl Trait for for<'c> fn(&'c u32, &'c u32) {}
 
 fn main() {}

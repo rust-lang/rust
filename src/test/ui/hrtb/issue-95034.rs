@@ -1,22 +1,7 @@
-// known-bug
-// failure-status: 101
 // compile-flags: --edition=2021 --crate-type=lib
-// rustc-env:RUST_BACKTRACE=0
-
-// normalize-stderr-test "thread 'rustc' panicked.*" -> "thread 'rustc' panicked"
-// normalize-stderr-test "note:.*RUST_BACKTRACE=1.*\n" -> ""
-// normalize-stderr-test "\nerror: internal compiler error.*\n\n" -> ""
-// normalize-stderr-test "note:.*unexpectedly panicked.*\n\n" -> ""
-// normalize-stderr-test "note: we would appreciate a bug report.*\n\n" -> ""
-// normalize-stderr-test "note: compiler flags.*\n\n" -> ""
-// normalize-stderr-test "note: rustc.*running on.*\n\n" -> ""
-// normalize-stderr-test "query stack during panic:\n" -> ""
-// normalize-stderr-test "we're just showing a limited slice of the query stack\n" -> ""
-// normalize-stderr-test "end of query stack\n" -> ""
-// normalize-stderr-test "#.*\n" -> ""
-
-// This should not ICE.
-
+//
+// check-pass
+//
 // Refer to the issue for more minimized versions.
 
 use std::{

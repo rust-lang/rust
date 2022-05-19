@@ -6,6 +6,8 @@
 // for `&A` (borrow).
 //
 // c.f. #56105
+//
+// check-pass
 
 #![deny(coherence_leak_check)]
 
@@ -29,9 +31,6 @@ impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn for<'x> Fn(&'x A) -> R + 'b)
 where
     A: RefFromWasmAbi,
     R: ReturnWasmAbi,
-{
-    //~^^^^^ ERROR conflicting implementation
-    //~| WARNING this was previously accepted
-}
+{}
 
 fn main() {}

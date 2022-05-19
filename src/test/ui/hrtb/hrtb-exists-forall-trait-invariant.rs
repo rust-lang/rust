@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Test an `exists<'a> { forall<'b> { 'a = 'b } }` pattern -- which should not compile!
 //
 // In particular, we test this pattern in trait solving, where it is not connected
@@ -29,5 +25,5 @@ fn main() {
     //     yielding `fn(&!b u32)`, in a fresh universe U1
     //   - So we get `?a = !b` but the universe U0 assigned to `?a` cannot name `!b`.
 
-    foo::<()>(); //~ ERROR implementation of `Trait` is not general enough
+    foo::<()>(); //~ ERROR the trait bound `(): Trait<for<'b> fn(Cell<&'b u32>)>` is not satisfied
 }

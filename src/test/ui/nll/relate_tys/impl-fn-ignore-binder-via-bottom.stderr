@@ -1,20 +1,16 @@
-error: implementation of `Y` is not general enough
-  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:14
+error[E0599]: no function or associated item named `make_f` found for fn pointer `for<'r> fn(&'r ())` in the current scope
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:25
    |
 LL |     let _x = <fn(&())>::make_f();
-   |              ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |                         ^^^^^^ function or associated item not found in `for<'r> fn(&'r ())`
    |
-   = note: `Y` would have to be implemented for the type `for<'r> fn(&'r ())`
-   = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
-
-error: implementation of `Y` is not general enough
-  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:14
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Y` defines an item `make_f`, perhaps you need to implement it
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:18:1
    |
-LL |     let _x = <fn(&())>::make_f();
-   |              ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
-   |
-   = note: `Y` would have to be implemented for the type `for<'r> fn(&'r ())`
-   = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+LL | trait Y {
+   | ^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

@@ -115,9 +115,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(
-        [ty::BoundVariableKind::Region(ty::BrAnon(0)), ty::BoundVariableKind::Region(ty::BrEnv)]
-            .iter()
-            .copied(),
+        [
+            ty::BoundVariableKind::Region(ty::BrAnon(0)),
+            ty::BoundVariableKind::Region(ty::BrAnon(1)),
+            ty::BoundVariableKind::Region(ty::BrEnv),
+        ]
+        .iter()
+        .copied(),
     );
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
@@ -127,7 +131,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             ));
             let env_region = tcx.mk_region(ty::ReLateBound(
                 ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
+                ty::BoundRegion { var: ty::BoundVar::from_u32(2), kind: ty::BrEnv },
             ));
             let va_list_ty = tcx.bound_type_of(did).subst(tcx, &[region.into()]);
             (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
@@ -391,9 +395,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::raw_eq => {
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) };
-                let param_ty =
+                let param_ty_lhs =
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
-                (1, vec![param_ty; 2], tcx.types.bool)
+                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon(1) };
+                let param_ty_rhs =
+                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
+                (1, vec![param_ty_lhs, param_ty_rhs], tcx.types.bool)
             }
 
             sym::black_box => (1, vec![param(0)], param(0)),

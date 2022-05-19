@@ -749,9 +749,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,
@@ -980,9 +978,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,

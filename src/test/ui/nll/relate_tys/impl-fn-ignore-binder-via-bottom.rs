@@ -30,6 +30,5 @@ impl<T> Y for fn(T) {
 
 fn main() {
     let _x = <fn(&())>::make_f();
-    //~^ ERROR implementation of `Y` is not general enough
-    //~| ERROR implementation of `Y` is not general enough
+    //~^ ERROR no function or associated item named `make_f`
 }

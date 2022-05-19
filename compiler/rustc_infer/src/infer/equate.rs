@@ -1,6 +1,7 @@
 use super::combine::{CombineFields, ConstEquateRelation, RelationDir};
 use super::Subtype;
 
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::TyVar;
@@ -151,13 +152,16 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
-            self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-            self.fields.higher_ranked_sub(b, a, self.a_is_expected)
+        let a = self.tcx().anonymize_late_bound_regions(a);
+        let b = self.tcx().anonymize_late_bound_regions(b);
+        if a.bound_vars() == b.bound_vars() {
+            let (a, b) = self
+                .fields
+                .infcx
+                .replace_bound_vars_with_placeholders(a.map_bound(|a| (a, b.skip_binder())));
+            Ok(ty::Binder::dummy(self.relate(a, b)?))
         } else {
-            // Fast path for the common case.
-            self.relate(a.skip_binder(), b.skip_binder())?;
-            Ok(a)
+            Err(TypeError::Mismatch)
         }
     }
 }

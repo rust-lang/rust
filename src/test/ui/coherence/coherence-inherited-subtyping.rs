@@ -3,15 +3,14 @@
 //
 // Note: This scenario is currently accepted, but as part of the
 // universe transition (#56105) may eventually become an error.
-
-// revisions: old re
-
+//
+// check-pass
 struct Foo<T> {
     t: T,
 }
 
 impl Foo<for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8> {
-    fn method1(&self) {} //~ ERROR duplicate definitions with name `method1`
+    fn method1(&self) {}
 }
 
 impl Foo<for<'a> fn(&'a u8, &'a u8) -> &'a u8> {

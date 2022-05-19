@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // Regression test for #46989:
 //
 // In the move to universes, this test started passing.
@@ -40,5 +36,5 @@ fn assert_foo<T: Foo>() {}
 
 fn main() {
     assert_foo::<fn(&i32)>();
-    //~^ ERROR implementation of `Foo` is not general enough
+    //~^ ERROR the trait bound `for<'r> fn(&'r i32): Foo` is not satisfied
 }

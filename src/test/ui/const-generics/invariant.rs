@@ -16,8 +16,6 @@ impl SadBee for for<'a> fn(&'a ()) {
     const ASSOC: usize = 0;
 }
 impl SadBee for fn(&'static ()) {
-    //~^ WARNING conflicting implementations of trait
-    //~| WARNING this was previously accepted
     const ASSOC: usize = 100;
 }
 

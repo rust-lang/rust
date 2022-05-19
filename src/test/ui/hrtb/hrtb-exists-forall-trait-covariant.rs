@@ -2,8 +2,6 @@
 //
 // In particular, we test this pattern in trait solving, where it is not connected
 // to any part of the source code.
-//
-// check-pass
 
 trait Trait<T> {}
 
@@ -34,4 +32,5 @@ fn main() {
     //   This is because we can use `'static`.
 
     foo::<()>();
+    //~^ ERROR the trait bound `(): Trait<for<'b> fn(for<'b> fn(&'b u32))>` is not satisfied
 }

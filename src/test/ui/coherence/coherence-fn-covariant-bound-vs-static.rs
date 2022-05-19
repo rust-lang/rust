@@ -10,12 +10,14 @@
 //   * true if `exists<'r> { 'r: 'static }` (obviously true)
 // * `fn(fn(&'static u32)) <: for<'r> fn(fn(&'r u32))`
 //   * true if `forall<'r> { 'static: 'r }` (also true)
+//
+// check-pass
+
 
 trait Trait {}
 
 impl Trait for for<'r> fn(fn(&'r ())) {}
 impl<'a> Trait for fn(fn(&'a ())) {}
-//~^ ERROR conflicting implementations
 //
 // Note in particular that we do NOT get a future-compatibility warning
 // here. This is because the new leak-check proposed in [MCP 295] does not

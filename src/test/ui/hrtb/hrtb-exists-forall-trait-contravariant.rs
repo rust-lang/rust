@@ -36,5 +36,5 @@ fn main() {
     // NB. *However*, the reinstated leak-check gives an error here.
 
     foo::<()>();
-    //~^ ERROR implementation of `Trait` is not general enough
+    //~^ ERROR the trait bound `(): Trait<for<'b> fn(&'b u32)>` is not satisfied
 }
