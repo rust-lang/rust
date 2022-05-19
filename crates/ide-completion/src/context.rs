@@ -802,9 +802,19 @@ impl<'a> CompletionContext<'a> {
                             )
                         }
                     },
+                    // match foo { $0 }
+                    // match foo { ..., pat => $0 }
                     ast::MatchExpr(it) => {
-                        cov_mark::hit!(expected_type_match_arm_without_leading_char);
-                        let ty = it.expr().and_then(|e| self.sema.type_of_expr(&e)).map(TypeInfo::original);
+                        let ty = if self.previous_token_is(T![=>]) {
+                            // match foo { ..., pat => $0 }
+                            cov_mark::hit!(expected_type_match_arm_body_without_leading_char);
+                            cov_mark::hit!(expected_type_match_arm_body_with_leading_char);
+                            self.sema.type_of_expr(&it.into())
+                        } else {
+                            // match foo { $0 }
+                            cov_mark::hit!(expected_type_match_arm_without_leading_char);
+                            it.expr().and_then(|e| self.sema.type_of_expr(&e))
+                        }.map(TypeInfo::original);
                         (ty, None)
                     },
                     ast::IfExpr(it) => {
@@ -1586,6 +1596,36 @@ fn foo() {
 }
 "#,
             expect![[r#"ty: E, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_match_arm_body_without_leading_char() {
+        cov_mark::check!(expected_type_match_arm_body_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+struct Foo;
+enum E { X }
+fn foo() -> Foo {
+   match E::X { E::X => $0 }
+}
+"#,
+            expect![[r#"ty: Foo, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_match_body_arm_with_leading_char() {
+        cov_mark::check!(expected_type_match_arm_body_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+struct Foo;
+enum E { X }
+fn foo() -> Foo {
+   match E::X { E::X => c$0 }
+}
+"#,
+            expect![[r#"ty: Foo, name: ?"#]],
         );
     }
 
