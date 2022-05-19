@@ -894,7 +894,7 @@ fn should_hide_param_name_hint(
     // These are to be tested in the `parameter_hint_heuristics` test
     // hide when:
     // - the parameter name is a suffix of the function's name
-    // - the argument is an enum whose name is equal to the parameter
+    // - the argument is a qualified constructing or call expression where the qualifier is an ADT
     // - exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
     //   of argument with _ splitting it off
     // - param starts with `ra_fixture`
@@ -915,10 +915,10 @@ fn should_hide_param_name_hint(
     };
     let fn_name = fn_name.as_deref();
     is_param_name_suffix_of_fn_name(param_name, callable, fn_name)
-        || is_enum_name_similar_to_param_name(sema, argument, param_name)
         || is_argument_similar_to_param_name(argument, param_name)
         || param_name.starts_with("ra_fixture")
         || (callable.n_params() == 1 && is_obvious_param(param_name))
+        || is_adt_constructor_similar_to_param_name(sema, argument, param_name)
 }
 
 fn is_argument_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
@@ -974,17 +974,43 @@ fn is_param_name_suffix_of_fn_name(
     }
 }
 
-fn is_enum_name_similar_to_param_name(
+fn is_adt_constructor_similar_to_param_name(
     sema: &Semantics<RootDatabase>,
     argument: &ast::Expr,
     param_name: &str,
 ) -> bool {
-    match sema.type_of_expr(argument).and_then(|t| t.original.as_adt()) {
-        Some(hir::Adt::Enum(e)) => {
-            to_lower_snake_case(&e.name(sema.db).to_smol_str()) == param_name
+    let path = match argument {
+        ast::Expr::CallExpr(c) => c.expr().and_then(|e| match e {
+            ast::Expr::PathExpr(p) => p.path(),
+            _ => None,
+        }),
+        ast::Expr::PathExpr(p) => p.path(),
+        ast::Expr::RecordExpr(r) => r.path(),
+        _ => return false,
+    };
+    let path = match path {
+        Some(it) => it,
+        None => return false,
+    };
+    (|| match sema.resolve_path(&path)? {
+        hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
+            Some(to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name)
         }
-        _ => false,
-    }
+        hir::PathResolution::Def(hir::ModuleDef::Function(_) | hir::ModuleDef::Variant(_)) => {
+            if to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name {
+                return Some(true);
+            }
+            let qual = path.qualifier()?;
+            match sema.resolve_path(&qual)? {
+                hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
+                    Some(to_lower_snake_case(&qual.segment()?.name_ref()?.text()) == param_name)
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    })()
+    .unwrap_or(false)
 }
 
 fn get_string_representation(expr: &ast::Expr) -> Option<String> {
@@ -1309,7 +1335,6 @@ fn main() {
                //^^ self  ^^^^ param
     Test::from_syntax(
         FileId {},
-      //^^^^^^^^^ file_id
         "impl".into(),
       //^^^^^^^^^^^^^ name
         None,
