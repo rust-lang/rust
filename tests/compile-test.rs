@@ -1,5 +1,6 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
+#![feature(is_sorted)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -162,8 +163,8 @@ fn base_config(test_dir: &str) -> compiletest::Config {
 }
 
 fn run_ui() {
-    let config = base_config("ui");
-    // use tests/clippy.toml
+    let mut config = base_config("ui");
+    config.rustfix_coverage = true;
     let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
     let _threads = VarGuard::set(
         "RUST_TEST_THREADS",
@@ -175,6 +176,7 @@ fn run_ui() {
         }),
     );
     compiletest::run_tests(&config);
+    check_rustfix_coverage();
 }
 
 fn run_internal_tests() {
@@ -335,6 +337,82 @@ fn compile_test() {
     run_ui_toml();
     run_ui_cargo();
     run_internal_tests();
+}
+
+const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
+    "assign_ops2.rs",
+    "cast_size_32bit.rs",
+    "char_lit_as_u8.rs",
+    "cmp_owned/without_suggestion.rs",
+    "crashes/ice-6250.rs",
+    "crashes/ice-6251.rs",
+    "dbg_macro.rs",
+    "deref_addrof_double_trigger.rs",
+    "doc/unbalanced_ticks.rs",
+    "eprint_with_newline.rs",
+    "explicit_counter_loop.rs",
+    "iter_skip_next_unfixable.rs",
+    "let_and_return.rs",
+    "literals.rs",
+    "map_flatten.rs",
+    "map_unwrap_or.rs",
+    "match_bool.rs",
+    "mem_replace_macro.rs",
+    "needless_arbitrary_self_type_unfixable.rs",
+    "needless_borrow_pat.rs",
+    "needless_for_each_unfixable.rs",
+    "nonminimal_bool.rs",
+    "print_literal.rs",
+    "print_with_newline.rs",
+    "redundant_static_lifetimes_multiple.rs",
+    "ref_binding_to_reference.rs",
+    "repl_uninit.rs",
+    "result_map_unit_fn_unfixable.rs",
+    "search_is_some.rs",
+    "single_component_path_imports_nested_first.rs",
+    "string_add.rs",
+    "toplevel_ref_arg_non_rustfix.rs",
+    "unit_arg.rs",
+    "unnecessary_clone.rs",
+    "unnecessary_lazy_eval_unfixable.rs",
+    "write_literal.rs",
+    "write_literal_2.rs",
+    "write_with_newline.rs",
+];
+
+fn check_rustfix_coverage() {
+    let missing_coverage_path = Path::new("target/debug/test/ui/rustfix_missing_coverage.txt");
+
+    if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
+        assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.is_sorted());
+
+        for rs_path in missing_coverage_contents.lines() {
+            let filename = rs_path.strip_prefix("tests/ui/").unwrap();
+            assert!(
+                RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.binary_search(&filename).is_ok(),
+                "`{}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation",
+                rs_path,
+            );
+        }
+    }
+}
+
+#[test]
+fn rustfix_coverage_known_exceptions_accuracy() {
+    for filename in RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS {
+        let rs_path = Path::new("tests/ui").join(filename);
+        assert!(
+            rs_path.exists(),
+            "`{}` does not exists",
+            rs_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+        let fixed_path = rs_path.with_extension("fixed");
+        assert!(
+            !fixed_path.exists(),
+            "`{}` exists",
+            fixed_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+    }
 }
 
 /// Restores an env var on drop

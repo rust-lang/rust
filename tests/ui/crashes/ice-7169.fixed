@@ -8,5 +8,5 @@ struct A<T> {
 }
 
 fn main() {
-    if let Ok(_) = Ok::<_, ()>(A::<String>::default()) {}
+    if Ok::<_, ()>(A::<String>::default()).is_ok() {}
 }

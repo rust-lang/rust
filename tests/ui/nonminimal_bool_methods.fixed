@@ -6,19 +6,19 @@ fn methods_with_negation() {
     let a: Option<i32> = unimplemented!();
     let b: Result<i32, i32> = unimplemented!();
     let _ = a.is_some();
-    let _ = !a.is_some();
     let _ = a.is_none();
-    let _ = !a.is_none();
+    let _ = a.is_none();
+    let _ = a.is_some();
     let _ = b.is_err();
-    let _ = !b.is_err();
     let _ = b.is_ok();
-    let _ = !b.is_ok();
+    let _ = b.is_ok();
+    let _ = b.is_err();
     let c = false;
-    let _ = !(a.is_some() && !c);
-    let _ = !(a.is_some() || !c);
-    let _ = !(!c ^ c) || !a.is_some();
-    let _ = (!c ^ c) || !a.is_some();
-    let _ = !c ^ c || !a.is_some();
+    let _ = a.is_none() || c;
+    let _ = a.is_none() && c;
+    let _ = !(!c ^ c) || a.is_none();
+    let _ = (!c ^ c) || a.is_none();
+    let _ = !c ^ c || a.is_none();
 }
 
 // Simplified versions of https://github.com/rust-lang/rust-clippy/issues/2638
@@ -90,12 +90,12 @@ fn dont_warn_for_custom_methods_with_negation() {
 // Only Built-in Result and Some types should suggest the negated alternative
 fn warn_for_built_in_methods_with_negation() {
     let res: Result<usize, usize> = Ok(1);
-    if !res.is_ok() {}
-    if !res.is_err() {}
+    if res.is_err() {}
+    if res.is_ok() {}
 
     let res = Some(1);
-    if !res.is_some() {}
-    if !res.is_none() {}
+    if res.is_none() {}
+    if res.is_some() {}
 }
 
 #[allow(clippy::neg_cmp_op_on_partial_ord)]
