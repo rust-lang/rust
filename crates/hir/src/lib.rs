@@ -62,9 +62,9 @@ use hir_ty::{
     subst_prefix,
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, GenericArgData, InEnvironment, Interner, ParamKind, QuantifiedWhereClause,
-    Scalar, Solution, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt,
-    TyKind, TyVariableKind, WhereClause,
+    ClosureId, DebruijnIndex, GenericArgData, InEnvironment, Interner, ParamKind,
+    QuantifiedWhereClause, Scalar, Solution, Substitution, TraitEnvironment, TraitRefExt, Ty,
+    TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -2819,10 +2819,14 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let def = self.ty.callable_def(db);
+        let callee = match self.ty.kind(Interner) {
+            TyKind::Closure(id, _) => Callee::Closure(*id),
+            TyKind::Function(_) => Callee::FnPtr,
+            _ => Callee::Def(self.ty.callable_def(db)?),
+        };
 
         let sig = self.ty.callable_sig(db)?;
-        Some(Callable { ty: self.clone(), sig, def, is_bound_method: false })
+        Some(Callable { ty: self.clone(), sig, callee, is_bound_method: false })
     }
 
     pub fn is_closure(&self) -> bool {
@@ -3265,13 +3269,19 @@ impl Type {
     }
 }
 
-// FIXME: closures
 #[derive(Debug)]
 pub struct Callable {
     ty: Type,
     sig: CallableSig,
-    def: Option<CallableDefId>,
+    callee: Callee,
     pub(crate) is_bound_method: bool,
+}
+
+#[derive(Debug)]
+enum Callee {
+    Def(CallableDefId),
+    Closure(ClosureId),
+    FnPtr,
 }
 
 pub enum CallableKind {
@@ -3279,20 +3289,23 @@ pub enum CallableKind {
     TupleStruct(Struct),
     TupleEnumVariant(Variant),
     Closure,
+    FnPtr,
 }
 
 impl Callable {
     pub fn kind(&self) -> CallableKind {
-        match self.def {
-            Some(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
-            Some(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
-            Some(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
-            None => CallableKind::Closure,
+        use Callee::*;
+        match self.callee {
+            Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
+            Def(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
+            Def(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
+            Closure(_) => CallableKind::Closure,
+            FnPtr => CallableKind::FnPtr,
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {
-        let func = match self.def {
-            Some(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
+        let func = match self.callee {
+            Callee::Def(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
         let src = func.lookup(db.upcast()).source(db.upcast());
@@ -3312,8 +3325,9 @@ impl Callable {
             .iter()
             .skip(if self.is_bound_method { 1 } else { 0 })
             .map(|ty| self.ty.derived(ty.clone()));
-        let patterns = match self.def {
-            Some(CallableDefId::FunctionId(func)) => {
+        let map_param = |it: ast::Param| it.pat().map(Either::Right);
+        let patterns = match self.callee {
+            Callee::Def(CallableDefId::FunctionId(func)) => {
                 let src = func.lookup(db.upcast()).source(db.upcast());
                 src.value.param_list().map(|param_list| {
                     param_list
@@ -3321,15 +3335,38 @@ impl Callable {
                         .map(|it| Some(Either::Left(it)))
                         .filter(|_| !self.is_bound_method)
                         .into_iter()
-                        .chain(param_list.params().map(|it| it.pat().map(Either::Right)))
+                        .chain(param_list.params().map(map_param))
                 })
             }
+            Callee::Closure(closure_id) => match closure_source(db, closure_id) {
+                Some(src) => src.param_list().map(|param_list| {
+                    param_list
+                        .self_param()
+                        .map(|it| Some(Either::Left(it)))
+                        .filter(|_| !self.is_bound_method)
+                        .into_iter()
+                        .chain(param_list.params().map(map_param))
+                }),
+                None => None,
+            },
             _ => None,
         };
         patterns.into_iter().flatten().chain(iter::repeat(None)).zip(types).collect()
     }
     pub fn return_type(&self) -> Type {
         self.ty.derived(self.sig.ret().clone())
+    }
+}
+
+fn closure_source(db: &dyn HirDatabase, closure: ClosureId) -> Option<ast::ClosureExpr> {
+    let (owner, expr_id) = db.lookup_intern_closure(closure.into());
+    let (_, source_map) = db.body_with_source_map(owner);
+    let ast = source_map.expr_syntax(expr_id).ok()?;
+    let root = ast.file_syntax(db.upcast());
+    let expr = ast.value.to_node(&root);
+    match expr {
+        ast::Expr::ClosureExpr(it) => Some(it),
+        _ => None,
     }
 }
 
