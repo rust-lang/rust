@@ -82,8 +82,8 @@ impl BorrowedSocket<'_> {
 }
 
 impl OwnedSocket {
-    /// Creates a new `OwnedSocket` instance that shares the same underlying socket
-    /// as the existing `OwnedSocket` instance.
+    /// Creates a new `OwnedSocket` instance that shares the same underlying
+    /// object as the existing `OwnedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> io::Result<Self> {
         self.as_socket().try_clone_to_owned()

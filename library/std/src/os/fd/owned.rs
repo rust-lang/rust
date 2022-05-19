@@ -77,8 +77,8 @@ impl BorrowedFd<'_> {
 }
 
 impl OwnedFd {
-    /// Creates a new `OwnedFd` instance that shares the same underlying file handle
-    /// as the existing `OwnedFd` instance.
+    /// Creates a new `OwnedFd` instance that shares the same underlying file
+    /// description as the existing `OwnedFd` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
         self.as_fd().try_clone_to_owned()
@@ -108,6 +108,8 @@ impl BorrowedFd<'_> {
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
+    /// Creates a new `OwnedFd` instance that shares the same underlying file
+    /// description as the existing `BorrowedFd` instance.
     #[cfg(target_arch = "wasm32")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {

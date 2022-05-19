@@ -177,8 +177,8 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 }
 
 impl OwnedHandle {
-    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
-    /// as the existing `OwnedHandle` instance.
+    /// Creates a new `OwnedHandle` instance that shares the same underlying
+    /// object as the existing `OwnedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
         self.as_handle().try_clone_to_owned()
