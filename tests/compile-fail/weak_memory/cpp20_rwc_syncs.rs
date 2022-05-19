@@ -4,15 +4,15 @@
 // https://plv.mpi-sws.org/scfix/paper.pdf
 // 2.2 Second Problem: SC Fences are Too Weak
 // This test should pass under the C++20 model Rust is using.
-// Unfortunately, Miri's weak memory emulation only follows C++11 model
+// Unfortunately, Miri's weak memory emulation only follows the C++11 model
 // as we don't know how to correctly emulate C++20's revised SC semantics,
-// so we have to stick to C++11 emulation from exiting research.
+// so we have to stick to C++11 emulation from existing research.
 
 use std::sync::atomic::Ordering::*;
 use std::thread::spawn;
 use std::sync::atomic::{fence, AtomicUsize};
 
-// Spins until it reads value
+// Spins until it reads the given value
 fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Relaxed) != val {
         std::hint::spin_loop();
@@ -24,7 +24,7 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
 // multiple tests
 fn static_atomic(val: usize) -> &'static AtomicUsize {
     let ret = Box::leak(Box::new(AtomicUsize::new(val)));
-    // A workaround to put the initialisation value in the store buffer
+    // A workaround to put the initialization value in the store buffer.
     ret.store(val, Relaxed);
     ret
 }

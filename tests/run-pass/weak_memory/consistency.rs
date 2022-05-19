@@ -37,7 +37,7 @@ fn static_atomic(val: usize) -> &'static AtomicUsize {
     ret
 }
 
-// Spins until acquires a pre-determined value
+// Spins until it acquires a pre-determined value.
 fn acquires_value(loc: &AtomicUsize, val: usize) -> usize {
     while loc.load(Acquire) != val {
         std::hint::spin_loop();

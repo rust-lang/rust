@@ -6,7 +6,7 @@
 // This is scheduler and pseudo-RNG dependent, so each test is
 // run multiple times until one try returns true.
 // Spurious failure is possible, if you are really unlucky with
-// the RNG.
+// the RNG and always read the latest value from the store buffer.
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::*;

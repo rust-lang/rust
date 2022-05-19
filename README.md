@@ -21,7 +21,7 @@ for example:
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
 * **Experimental**: Data races
-* **Experimental**: Weak memory emulation
+* **Experimental**: Emulation of weak memory effects (i.e., reads can return outdated values)
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable
