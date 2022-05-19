@@ -181,6 +181,14 @@ impl OwnedHandle {
     /// as the existing `OwnedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
+        self.as_handle().try_clone_to_owned()
+    }
+}
+
+impl BorrowedHandle<'_> {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying
+    /// object as the existing `BorrowedHandle` instance.
+    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedHandle> {
         self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
     }
 
