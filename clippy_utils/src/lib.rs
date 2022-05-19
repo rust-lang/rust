@@ -2146,6 +2146,27 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     })
 }
 
+/// Checks if the item containing the given `HirId` has `#[cfg(test)]` attribute applied
+///
+/// Note: Add `// compile-flags: --test` to UI tests with a `#[cfg(test)]` function
+pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+    fn is_cfg_test(attr: &Attribute) -> bool {
+        if attr.has_name(sym::cfg)
+            && let Some(items) = attr.meta_item_list()
+            && let [item] = &*items
+            && item.has_name(sym::test)
+        {
+            true
+        } else {
+            false
+        }
+    }
+    tcx.hir()
+        .parent_iter(id)
+        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id))
+        .any(is_cfg_test)
+}
+
 /// Checks whether item either has `test` attribute applied, or
 /// is a module with `test` in its name.
 ///
