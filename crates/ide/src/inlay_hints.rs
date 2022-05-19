@@ -1170,6 +1170,23 @@ fn main() {
     }
 
     #[test]
+    fn param_hints_on_closure() {
+        check_params(
+            r#"
+fn main() {
+    let clo = |a: u8, b: u8| a + b;
+    clo(
+        1,
+      //^ a
+        2,
+      //^ b
+    );
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn param_name_similar_to_fn_name_still_hints() {
         check_params(
             r#"
@@ -2000,7 +2017,8 @@ fn main() {
 
     ;
 
-    let _: i32 = multiply(1, 2);
+    let _: i32 = multiply(1,  2);
+                        //^ a ^ b
     let multiply_ref = &multiply;
       //^^^^^^^^^^^^ &|i32, i32| -> i32
 

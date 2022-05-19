@@ -149,7 +149,7 @@ fn signature_help_for_call(
                 variant.name(db)
             );
         }
-        hir::CallableKind::Closure => (),
+        hir::CallableKind::Closure | hir::CallableKind::FnPtr => (),
     }
 
     res.signature.push('(');
@@ -189,7 +189,7 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) if callable.return_type().contains_unknown() => {
             render(func.ret_type(db))
         }
-        hir::CallableKind::Function(_) | hir::CallableKind::Closure => {
+        hir::CallableKind::Function(_) | hir::CallableKind::Closure | hir::CallableKind::FnPtr => {
             render(callable.return_type())
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
@@ -914,8 +914,8 @@ fn main() {
 }
         "#,
             expect![[r#"
-                (S) -> i32
-                 ^
+                (s: S) -> i32
+                 ^^^^
             "#]],
         )
     }
