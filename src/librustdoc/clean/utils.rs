@@ -112,8 +112,8 @@ fn external_generic_args(
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
-                _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
+                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect::<Vec<_>>().into(),
+                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
             };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -123,7 +123,7 @@ fn external_generic_args(
         // };
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args, bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
     }
 }
 
@@ -148,7 +148,7 @@ pub(super) fn external_path(
 /// Remove the generic arguments from a path.
 pub(crate) fn strip_path_generics(mut path: Path) -> Path {
     for ps in path.segments.iter_mut() {
-        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: ThinVec::new() }
+        ps.args = GenericArgs::AngleBracketed { args: Default::default(), bindings: ThinVec::new() }
     }
 
     path

@@ -457,7 +457,7 @@ impl clean::GenericArgs {
                             f.write_str("&lt;")?;
                         }
                         let mut comma = false;
-                        for arg in args {
+                        for arg in &args[..] {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -468,7 +468,7 @@ impl clean::GenericArgs {
                                 write!(f, "{}", arg.print(cx))?;
                             }
                         }
-                        for binding in bindings {
+                        for binding in &bindings[..] {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -489,7 +489,7 @@ impl clean::GenericArgs {
                 clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
                     let mut comma = false;
-                    for ty in inputs {
+                    for ty in &inputs[..] {
                         if comma {
                             f.write_str(", ")?;
                         }
