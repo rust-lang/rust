@@ -1,0 +1,16 @@
+//! Tests that unwinding from an asm block is caught and forced to abort
+//! when `-C panic=abort`.
+
+// min-llvm-version: 13.0.0
+// only-x86_64
+// compile-flags: -C panic=abort
+// no-prefer-dynamic
+
+#![feature(asm_unwind)]
+
+// EMIT_MIR asm_unwind_panic_abort.main.AbortUnwindingCalls.after.mir
+fn main() {
+    unsafe {
+        std::arch::asm!("", options(may_unwind));
+    }
+}

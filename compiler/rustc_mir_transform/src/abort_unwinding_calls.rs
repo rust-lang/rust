@@ -1,4 +1,5 @@
 use crate::MirPass;
+use rustc_ast::InlineAsmOptions;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
@@ -84,6 +85,12 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
                     layout::fn_can_unwind(tcx, None, Abi::Rust)
+                }
+                TerminatorKind::InlineAsm { options, .. } => {
+                    options.contains(InlineAsmOptions::MAY_UNWIND)
+                }
+                _ if terminator.unwind().is_some() => {
+                    span_bug!(span, "unexpected terminator that may unwind {:?}", terminator)
                 }
                 _ => continue,
             };
