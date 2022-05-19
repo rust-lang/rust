@@ -118,8 +118,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     }
 
     pub fn deref<Cx: LayoutTypeMethods<'tcx>>(self, cx: &Cx) -> PlaceRef<'tcx, V> {
-        if self.layout.ty.is_box() && !self.layout.abi.is_scalar() {
-            bug!("dereferencing non-scalar box ({:?}) in codegen", self.layout.ty);
+        if self.layout.ty.is_box() {
+            bug!("dereferencing {:?} in codegen", self.layout.ty);
         }
 
         let projected_ty = self
