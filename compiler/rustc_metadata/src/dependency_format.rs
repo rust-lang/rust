@@ -366,14 +366,19 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                     prev_name, cur_name
                 ));
             }
-            panic_runtime = Some((cnum, tcx.panic_strategy(cnum).unwrap()));
+            panic_runtime = Some((
+                cnum,
+                tcx.panic_strategy(cnum).unwrap_or_else(|| {
+                    bug!("cannot determine panic strategy of a panic runtime");
+                }),
+            ));
         }
     }
 
     // If we found a panic runtime, then we know by this point that it's the
     // only one, but we perform validation here that all the panic strategy
     // compilation modes for the whole DAG are valid.
-    if let Some((cnum, found_strategy)) = panic_runtime {
+    if let Some((runtime_cnum, found_strategy)) = panic_runtime {
         let desired_strategy = sess.panic_strategy();
 
         // First up, validate that our selected panic runtime is indeed exactly
@@ -383,7 +388,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 "the linked panic runtime `{}` is \
                                not compiled with this crate's \
                                panic strategy `{}`",
-                tcx.crate_name(cnum),
+                tcx.crate_name(runtime_cnum),
                 desired_strategy.desc()
             ));
         }
@@ -397,7 +402,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 continue;
             }
             let cnum = CrateNum::new(i + 1);
-            if tcx.is_compiler_builtins(cnum) {
+            if cnum == runtime_cnum || tcx.is_compiler_builtins(cnum) {
                 continue;
             }
 

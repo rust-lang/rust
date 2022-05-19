@@ -1,5 +1,5 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::query::Providers;
@@ -129,6 +129,10 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 }
 
 fn required_panic_strategy(tcx: TyCtxt<'_>, (): ()) -> Option<PanicStrategy> {
+    if tcx.is_panic_runtime(LOCAL_CRATE) {
+        return Some(tcx.sess.panic_strategy());
+    }
+
     if tcx.sess.panic_strategy() == PanicStrategy::Abort {
         return Some(PanicStrategy::Abort);
     }
