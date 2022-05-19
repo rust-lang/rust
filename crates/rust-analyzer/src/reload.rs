@@ -319,8 +319,13 @@ impl GlobalState {
         // Create crate graph from all the workspaces
         let crate_graph = {
             let proc_macro_client = self.proc_macro_client.as_ref();
-            let mut load_proc_macro = move |path: &AbsPath, dummy_replace: &_| {
-                load_proc_macro(proc_macro_client, path, dummy_replace)
+            let dummy_replacements = self.config.dummy_replacements();
+            let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
+                load_proc_macro(
+                    proc_macro_client,
+                    path,
+                    dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
+                )
             };
 
             let vfs = &mut self.vfs.write().0;
@@ -342,11 +347,7 @@ impl GlobalState {
 
             let mut crate_graph = CrateGraph::default();
             for ws in self.workspaces.iter() {
-                crate_graph.extend(ws.to_crate_graph(
-                    self.config.dummy_replacements(),
-                    &mut load_proc_macro,
-                    &mut load,
-                ));
+                crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
             }
             crate_graph
         };
