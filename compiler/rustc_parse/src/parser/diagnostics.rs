@@ -1,7 +1,7 @@
 use super::pat::Expected;
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverComma, Restrictions, SemiColonMode,
+    SeqSep, TokenExpectType, TokenType,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -2444,10 +2444,9 @@ impl<'a> Parser<'a> {
     crate fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: P<Pat>,
-        ra: RecoverColon,
         expected: Expected,
     ) -> P<Pat> {
-        if RecoverColon::Yes != ra || token::Colon != self.token.kind {
+        if token::Colon != self.token.kind {
             return first_pat;
         }
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
