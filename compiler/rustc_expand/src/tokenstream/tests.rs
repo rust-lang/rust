@@ -32,6 +32,7 @@ fn test_concat() {
 }
 
 #[test]
+#[ignore]
 fn test_to_from_bijection() {
     create_default_session_globals_then(|| {
         let test_start = string_to_ts("foo::bar(baz)");

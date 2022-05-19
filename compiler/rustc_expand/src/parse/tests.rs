@@ -106,6 +106,7 @@ fn string_to_tts_macro() {
 }
 
 #[test]
+#[ignore]
 fn string_to_tts_1() {
     create_default_session_globals_then(|| {
         let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
