@@ -191,6 +191,13 @@ mod remove_dir_all_xat {
             }
             Ok(())
         }
+
+        fn is_open(&self) -> bool {
+            match self {
+                LazyReadDir::OpenReadDir(_, _) => true,
+                _ => false,
+            }
+        }
     }
 
     impl AsFd for LazyReadDir<'_> {
@@ -307,30 +314,28 @@ mod remove_dir_all_xat {
                     let parent_readdir = match readdir_cache.pop_back() {
                         Some(readdir) => readdir,
                         None => {
-                            // cache is empty - reopen parent and grandparent fd
-
+                            // cache is empty - reopen parent
                             let parent_readdir = current_readdir.get_parent()?;
                             parent_component.verify_dev_ino(parent_readdir.as_fd())?;
-
-                            // We are about to delete the now empty "child directory".
-                            // To make sure the that the child directory was not moved somewhere
-                            // else and that the parent just happens to have the same reused
-                            // (dev, inode) pair, that we found descending, we verify the
-                            // grandparent directory (dev, inode) as well.
-                            let grandparent_readdir = parent_readdir.get_parent()?;
-                            if let Some(grandparent_component) = path_components.last() {
-                                grandparent_component
-                                    .verify_dev_ino(grandparent_readdir.as_fd())?;
-                                readdir_cache.push_back(grandparent_readdir);
-                            } else {
-                                // verify parent of the deletion root directory
-                                root_parent_component
-                                    .verify_dev_ino(grandparent_readdir.as_fd())?;
-                            }
-
                             parent_readdir
                         }
                     };
+
+                    // If `parent_readdir` was now or previously opened via `get_parent()`
+                    // we need to verify the grandparent (dev, inode) pair as well to protect
+                    // against the situation that the child directory was moved somewhere
+                    // else and that the parent just happens to have the same reused
+                    // (dev, inode) pair, that we found descending.
+                    if !parent_readdir.is_open() && readdir_cache.is_empty() {
+                        let grandparent_readdir = parent_readdir.get_parent()?;
+                        if let Some(grandparent_component) = path_components.last() {
+                            grandparent_component.verify_dev_ino(grandparent_readdir.as_fd())?;
+                            readdir_cache.push_back(grandparent_readdir);
+                        } else {
+                            // verify parent of the deletion root directory
+                            root_parent_component.verify_dev_ino(grandparent_readdir.as_fd())?;
+                        }
+                    }
 
                     // remove now empty directory
                     cvt(unsafe {
