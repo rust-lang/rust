@@ -57,19 +57,19 @@ pub enum InlayKind {
     TypeHint,
 }
 
-// FIXME: This should live somewhere more general
-#[derive(Debug)]
-pub enum RangeOrOffset {
-    Range(TextRange),
-    Offset(TextSize),
-}
-
 #[derive(Debug)]
 pub struct InlayHint {
     pub range: TextRange,
     pub kind: InlayKind,
     pub label: String,
-    pub hover_trigger: Option<RangeOrOffset>,
+    pub tooltip: Option<InlayTooltip>,
+}
+
+#[derive(Debug)]
+pub enum InlayTooltip {
+    String(String),
+    HoverRanged(FileId, TextRange),
+    HoverOffset(FileId, TextSize),
 }
 
 // Feature: Inlay Hints
@@ -109,7 +109,7 @@ pub(crate) fn inlay_hints(
 
     let mut acc = Vec::new();
 
-    let hints = |node| hints(&mut acc, &sema, config, node);
+    let hints = |node| hints(&mut acc, &sema, config, file_id, node);
     match range_limit {
         Some(FileRange { range, .. }) => match file.covering_element(range) {
             NodeOrToken::Token(_) => return acc,
@@ -128,6 +128,7 @@ fn hints(
     hints: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: FileId,
     node: SyntaxNode,
 ) {
     let famous_defs = match sema.scope(&node) {
@@ -135,17 +136,17 @@ fn hints(
         None => return,
     };
 
-    closing_brace_hints(hints, sema, config, node.clone());
+    closing_brace_hints(hints, sema, config, file_id, node.clone());
     match_ast! {
         match node {
             ast::Expr(expr) => {
-                chaining_hints(hints, sema, &famous_defs, config, &expr);
+                chaining_hints(hints, sema, &famous_defs, config, file_id, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name_hints(hints, sema, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
                         param_name_hints(hints, sema, config, ast::Expr::from(it))
                     }
-                    ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, it),
+                    ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, file_id, it),
                     // We could show reborrows for all expressions, but usually that is just noise to the user
                     // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
                     ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
@@ -155,7 +156,7 @@ fn hints(
             ast::Pat(it) => {
                 binding_mode_hints(hints, sema, config, &it);
                 if let ast::Pat::IdentPat(it) = it {
-                    bind_pat_hints(hints, sema, config, &it);
+                    bind_pat_hints(hints, sema, config, file_id, &it);
                 }
                 Some(())
             },
@@ -169,6 +170,7 @@ fn closing_brace_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: FileId,
     node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
@@ -263,7 +265,7 @@ fn closing_brace_hints(
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
         label,
-        hover_trigger: name_offset.map(RangeOrOffset::Offset),
+        tooltip: name_offset.map(|it| InlayTooltip::HoverOffset(file_id, it)),
     });
 
     None
@@ -282,7 +284,7 @@ fn lifetime_fn_hints(
         range: t.text_range(),
         kind: InlayKind::LifetimeHint,
         label,
-        hover_trigger: None,
+        tooltip: Some(InlayTooltip::String("Elided lifetime".into())),
     };
 
     let param_list = func.param_list()?;
@@ -428,20 +430,22 @@ fn lifetime_fn_hints(
         (Some(gpl), allocated_lifetimes) => {
             let angle_tok = gpl.l_angle_token()?;
             let is_empty = gpl.generic_params().next().is_none();
-            acc.push(mk_lt_hint(
-                angle_tok,
-                format!(
+            acc.push(InlayHint {
+                range: angle_tok.text_range(),
+                kind: InlayKind::LifetimeHint,
+                label: format!(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
                     if is_empty { "" } else { ", " }
                 ),
-            ));
+                tooltip: Some(InlayTooltip::String("Elided lifetimes".into())),
+            });
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
             kind: InlayKind::GenericParamListHint,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
-            hover_trigger: None,
+            tooltip: Some(InlayTooltip::String("Elided lifetimes".into())),
         }),
     }
     Some(())
@@ -452,6 +456,7 @@ fn closure_ret_hints(
     sema: &Semantics<RootDatabase>,
     famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
+    file_id: FileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if !config.closure_return_type_hints {
@@ -475,7 +480,7 @@ fn closure_ret_hints(
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
             .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string()),
-        hover_trigger: None,
+        tooltip: Some(InlayTooltip::HoverRanged(file_id, param_list.syntax().text_range())),
     });
     Some(())
 }
@@ -502,7 +507,7 @@ fn reborrow_hints(
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrowHint,
         label: label.to_string(),
-        hover_trigger: None,
+        tooltip: Some(InlayTooltip::String("Compiler inserted reborrow".into())),
     });
     Some(())
 }
@@ -512,6 +517,7 @@ fn chaining_hints(
     sema: &Semantics<RootDatabase>,
     famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
+    file_id: FileId,
     expr: &ast::Expr,
 ) -> Option<()> {
     if !config.chaining_hints {
@@ -561,7 +567,7 @@ fn chaining_hints(
                 label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
                     ty.display_truncated(sema.db, config.max_length).to_string()
                 }),
-                hover_trigger: Some(RangeOrOffset::Range(expr.syntax().text_range())),
+                tooltip: Some(InlayTooltip::HoverRanged(file_id, expr.syntax().text_range())),
             });
         }
     }
@@ -586,24 +592,23 @@ fn param_name_hints(
         .filter_map(|((param, _ty), arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let param_name = match param? {
-                Either::Left(_) => "self".to_string(),
+            let (param_name, param_syntax) = match param.as_ref()? {
+                Either::Left(pat) => ("self".to_string(), pat.syntax()),
                 Either::Right(pat) => match pat {
-                    ast::Pat::IdentPat(it) => it.name()?.to_string(),
+                    ast::Pat::IdentPat(it) => (it.name()?.to_string(), pat.syntax()),
                     _ => return None,
                 },
             };
-            Some((param_name, arg, range))
+            Some((sema.original_range_opt(param_syntax), param_name, arg, range))
         })
-        .filter(|(param_name, arg, _)| {
+        .filter(|(_, param_name, arg, _)| {
             !should_hide_param_name_hint(sema, &callable, param_name, arg)
         })
-        .map(|(param_name, _, FileRange { range, .. })| InlayHint {
+        .map(|(param_range, param_name, _, FileRange { range, .. })| InlayHint {
             range,
             kind: InlayKind::ParameterHint,
-            label: param_name.into(),
-            // FIXME: Show hover for parameter
-            hover_trigger: None,
+            label: param_name,
+            tooltip: param_range.map(|it| InlayTooltip::HoverOffset(it.file_id, it.range.start())),
         });
 
     acc.extend(hints);
@@ -633,7 +638,7 @@ fn binding_mode_hints(
             range,
             kind: InlayKind::BindingModeHint,
             label: r.to_string(),
-            hover_trigger: None,
+            tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
         });
     });
     match pat {
@@ -648,7 +653,7 @@ fn binding_mode_hints(
                 range,
                 kind: InlayKind::BindingModeHint,
                 label: bm.to_string(),
-                hover_trigger: None,
+                tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
             });
         }
         _ => (),
@@ -661,6 +666,7 @@ fn bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: FileId,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -699,7 +705,10 @@ fn bind_pat_hints(
         },
         kind: InlayKind::TypeHint,
         label,
-        hover_trigger: pat.name().map(|it| it.syntax().text_range()).map(RangeOrOffset::Range),
+        tooltip: pat
+            .name()
+            .map(|it| it.syntax().text_range())
+            .map(|it| InlayTooltip::HoverRanged(file_id, it)),
     });
 
     Some(())
