@@ -1158,7 +1158,7 @@ impl str {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
-    /// Returns the byte index for the first character of the rightmost match of the pattern in
+    /// Returns the byte index for the first character of the last match of the pattern in
     /// this string slice.
     ///
     /// Returns [`None`] if the pattern doesn't match.
