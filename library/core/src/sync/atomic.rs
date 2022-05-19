@@ -2830,7 +2830,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
 /// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
 /// exist operations X and Y, both operating on some atomic object 'M' such
-/// that A is sequenced before X, Y is synchronized before B and Y observes
+/// that A is sequenced before X, Y is sequenced before B and Y observes
 /// the change to M. This provides a happens-before dependence between A and B.
 ///
 /// ```text
