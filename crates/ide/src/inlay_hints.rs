@@ -2033,8 +2033,11 @@ fn main() {
                         range: 147..172,
                         kind: ChainingHint,
                         label: "B",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 147..172,
                             ),
                         ),
@@ -2043,8 +2046,11 @@ fn main() {
                         range: 147..154,
                         kind: ChainingHint,
                         label: "A",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 147..154,
                             ),
                         ),
@@ -2098,8 +2104,11 @@ fn main() {
                         range: 143..190,
                         kind: ChainingHint,
                         label: "C",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 143..190,
                             ),
                         ),
@@ -2108,8 +2117,11 @@ fn main() {
                         range: 143..179,
                         kind: ChainingHint,
                         label: "B",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 143..179,
                             ),
                         ),
@@ -2148,8 +2160,11 @@ fn main() {
                         range: 246..283,
                         kind: ChainingHint,
                         label: "B<X<i32, bool>>",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 246..283,
                             ),
                         ),
@@ -2158,8 +2173,11 @@ fn main() {
                         range: 246..265,
                         kind: ChainingHint,
                         label: "A<X<i32, bool>>",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 246..265,
                             ),
                         ),
@@ -2200,8 +2218,11 @@ fn main() {
                         range: 174..241,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 174..241,
                             ),
                         ),
@@ -2210,8 +2231,11 @@ fn main() {
                         range: 174..224,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 174..224,
                             ),
                         ),
@@ -2220,8 +2244,11 @@ fn main() {
                         range: 174..206,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 174..206,
                             ),
                         ),
@@ -2230,8 +2257,11 @@ fn main() {
                         range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 174..189,
                             ),
                         ),
@@ -2269,8 +2299,11 @@ fn main() {
                         range: 124..130,
                         kind: TypeHint,
                         label: "Struct",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 124..130,
                             ),
                         ),
@@ -2279,8 +2312,11 @@ fn main() {
                         range: 145..185,
                         kind: ChainingHint,
                         label: "Struct",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 145..185,
                             ),
                         ),
@@ -2289,8 +2325,11 @@ fn main() {
                         range: 145..168,
                         kind: ChainingHint,
                         label: "Struct",
-                        hover_trigger: Some(
-                            Range(
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
                                 145..168,
                             ),
                         ),
@@ -2299,7 +2338,14 @@ fn main() {
                         range: 222..228,
                         kind: ParameterHint,
                         label: "self",
-                        hover_trigger: None,
+                        tooltip: Some(
+                            HoverOffset(
+                                FileId(
+                                    0,
+                                ),
+                                42,
+                            ),
+                        ),
                     },
                 ]
             "#]],
