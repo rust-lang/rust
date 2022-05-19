@@ -550,9 +550,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
         let mut iter = tts.trees().peekable();
         while let Some(tt) = iter.next() {
-            self.print_tt(&tt, convert_dollar_crate);
+            self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
-                if tt_prepend_space(next, &tt) {
+                if tt_prepend_space(next, tt) {
                     self.space();
                 }
             }

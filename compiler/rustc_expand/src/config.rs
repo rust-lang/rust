@@ -400,7 +400,7 @@ impl<'a> StripUnconfigured<'a> {
 
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
-        let mut orig_trees = orig_tokens.trees();
+        let mut orig_trees = orig_tokens.into_trees();
         let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }) = orig_trees.next().unwrap() else {
             panic!("Bad tokens for attribute {:?}", attr);
         };

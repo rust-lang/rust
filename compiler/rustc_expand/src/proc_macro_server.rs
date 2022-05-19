@@ -484,7 +484,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         tree.to_internal()
     }
     fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        TokenStreamIter { cursor: stream.trees(), stack: vec![] }
+        TokenStreamIter { cursor: stream.into_trees(), stack: vec![] }
     }
 }
 

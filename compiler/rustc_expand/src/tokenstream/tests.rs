@@ -35,7 +35,7 @@ fn test_concat() {
 fn test_to_from_bijection() {
     create_default_session_globals_then(|| {
         let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().collect();
+        let test_end = test_start.trees().cloned().collect();
         assert_eq!(test_start, test_end)
     })
 }

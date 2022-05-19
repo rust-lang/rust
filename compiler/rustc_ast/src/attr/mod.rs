@@ -552,7 +552,7 @@ impl MetaItemKind {
     ) -> Option<MetaItemKind> {
         match tokens.next() {
             Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
-                MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
+                MetaItemKind::name_value_from_tokens(&mut inner_tokens.into_trees())
             }
             Some(TokenTree::Token(token)) => {
                 Lit::from_token(&token).ok().map(MetaItemKind::NameValue)

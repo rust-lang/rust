@@ -226,7 +226,7 @@ fn rewrite_macro_inner(
     }
     // Format well-known macros which cannot be parsed as a valid AST.
     if macro_name == "lazy_static!" && !has_comment {
-        if let success @ Some(..) = format_lazy_static(context, shape, ts.trees().collect()) {
+        if let success @ Some(..) = format_lazy_static(context, shape, ts.clone()) {
             return success;
         }
     }
@@ -855,7 +855,7 @@ impl MacroArgParser {
 
     /// Returns a collection of parsed macro def's arguments.
     fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
-        let mut iter = tokens.trees();
+        let mut iter = tokens.into_trees();
 
         while let Some(tok) = iter.next() {
             match tok {
