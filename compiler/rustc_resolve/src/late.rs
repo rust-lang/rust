@@ -182,7 +182,7 @@ impl RibKind<'_> {
 /// stack. This may be, for example, a `let` statement (because it introduces variables), a macro,
 /// etc.
 ///
-/// Different [rib kinds](enum.RibKind) are transparent for different names.
+/// Different [rib kinds](enum@RibKind) are transparent for different names.
 ///
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
