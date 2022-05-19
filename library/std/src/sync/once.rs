@@ -470,8 +470,8 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
         let exchange_result = state_and_queue.compare_exchange(
             current_state,
             me.with_addr(me.addr() | RUNNING),
-            Ordering::Release,
-            Ordering::Relaxed,
+            Ordering::AcqRel,
+            Ordering::Acquire,
         );
         if let Err(old) = exchange_result {
             current_state = old;
