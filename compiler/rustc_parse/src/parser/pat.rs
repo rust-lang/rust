@@ -101,7 +101,9 @@ impl<'a> Parser<'a> {
 
         // Parse the first pattern (`p_0`).
         let mut first_pat = self.parse_pat_no_top_alt(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, rc, rt)?;
+        if rc == RecoverComma::Yes {
+            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
+        }
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -141,7 +143,9 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, rc, rt)?;
+            if rc == RecoverComma::Yes {
+                self.maybe_recover_unexpected_comma(pat.span, rt)?;
+            }
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_token.span);

@@ -1,7 +1,7 @@
 use super::pat::Expected;
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverComma, Restrictions, SemiColonMode,
-    SeqSep, TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep,
+    TokenExpectType, TokenType,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -2580,10 +2580,9 @@ impl<'a> Parser<'a> {
     crate fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
-        rc: RecoverComma,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
-        if rc == RecoverComma::No || self.token != token::Comma {
+        if self.token != token::Comma {
             return Ok(());
         }
 
