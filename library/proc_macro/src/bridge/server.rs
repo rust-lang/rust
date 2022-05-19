@@ -7,6 +7,18 @@ macro_rules! define_handles {
         'owned: $($oty:ident,)*
         'interned: $($ity:ident,)*
     ) => {
+        static COUNTERS: HandleCounters = HandleCounters {
+            $($oty: AtomicUsize::new(1),)*
+            $($ity: AtomicUsize::new(1),)*
+        };
+
+        #[repr(C)]
+        #[allow(non_snake_case)]
+        struct HandleCounters {
+            $($oty: AtomicUsize,)*
+            $($ity: AtomicUsize,)*
+        }
+
         #[repr(C)]
         #[allow(non_snake_case)]
         struct HandleStore<S: Types> {
@@ -15,10 +27,10 @@ macro_rules! define_handles {
         }
 
         impl<S: Types> HandleStore<S> {
-            fn new(handle_counters: &'static client::HandleCounters) -> Self {
+            fn new() -> Self {
                 HandleStore {
-                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
-                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
+                    $($oty: handle::OwnedStore::new(&COUNTERS.$oty),)*
+                    $($ity: handle::InternedStore::new(&COUNTERS.$ity),)*
                 }
             }
         }
@@ -330,14 +342,13 @@ fn run_server<
     O: for<'a, 's> DecodeMut<'a, 's, HandleStore<MarkedTypes<S>>>,
 >(
     strategy: &impl ExecutionStrategy,
-    handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
     run_client: extern "C" fn(Bridge<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
-        Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
+        Dispatcher { handle_store: HandleStore::new(), server: MarkedTypes(server) };
 
     let mut buf = Buffer::new();
     input.encode(&mut buf, &mut dispatcher.handle_store);
@@ -355,10 +366,9 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         input: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
             server,
             <MarkedTypes<S> as Types>::TokenStream::mark(input),
             run,
@@ -377,10 +387,9 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         input2: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
             server,
             (
                 <MarkedTypes<S> as Types>::TokenStream::mark(input),

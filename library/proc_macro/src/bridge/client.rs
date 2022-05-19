@@ -9,25 +9,6 @@ macro_rules! define_handles {
         'owned: $($oty:ident,)*
         'interned: $($ity:ident,)*
     ) => {
-        #[repr(C)]
-        #[allow(non_snake_case)]
-        pub(super) struct HandleCounters {
-            $(pub(super) $oty: AtomicUsize,)*
-            $(pub(super) $ity: AtomicUsize,)*
-        }
-
-        impl HandleCounters {
-            // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
-            // a wrapper `fn` pointer, once `const fn` can reference `static`s.
-            extern "C" fn get() -> &'static Self {
-                static COUNTERS: HandleCounters = HandleCounters {
-                    $($oty: AtomicUsize::new(1),)*
-                    $($ity: AtomicUsize::new(1),)*
-                };
-                &COUNTERS
-            }
-        }
-
         $(
             #[repr(C)]
             pub(crate) struct $oty {
@@ -265,10 +246,6 @@ impl Bridge<'_> {
 /// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
 #[repr(C)]
 pub struct Client<I, O> {
-    // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
-    // a wrapper `fn` pointer, once `const fn` can reference `static`s.
-    pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-
     pub(super) run: extern "C" fn(Bridge<'_>) -> Buffer,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
@@ -346,7 +323,6 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
 impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
-            get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(crate::TokenStream(input)).0)
             }),
@@ -360,7 +336,6 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         Client {
-            get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
                     f(crate::TokenStream(input), crate::TokenStream(input2)).0
