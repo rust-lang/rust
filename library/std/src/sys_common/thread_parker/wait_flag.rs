@@ -2,7 +2,7 @@
 //!
 //! Some operating systems provide low-level parking primitives like wait counts,
 //! event flags or semaphores which are not susceptible to race conditions (meaning
-//! the wakeup can occure before the wait operation). To implement the `std` thread
+//! the wakeup can occur before the wait operation). To implement the `std` thread
 //! parker on top of these primitives, we only have to ensure that parking is fast
 //! when the thread token is available, the atomic ordering guarantees are maintained
 //! and spurious wakeups are minimized.
@@ -73,10 +73,10 @@ impl Parker {
             _ => panic!("inconsistent park state"),
         }
 
-        self.wait_flag.wait_timeout(dur);
+        let wakeup = self.wait_flag.wait_timeout(dur);
         let state = self.state.swap(EMPTY, SeqCst);
-        if state == NOTIFIED {
-            // The token was made available after the timeout occurred, but before
+        if state == NOTIFIED && !wakeup {
+            // The token was made available after the wait timed out, but before
             // we reset the state, so we need to reset the wait flag to avoid
             // spurious wakeups. This wait has no timeout, but we know it will
             // return quickly, as the unparking thread will definitely raise the

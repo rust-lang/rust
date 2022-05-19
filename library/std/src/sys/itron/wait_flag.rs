@@ -42,13 +42,18 @@ impl WaitFlag {
     }
 
     /// Wait for the wait flag to be raised or the timeout to occur.
-    pub fn wait_timeout(&self, dur: Duration) {
+    ///
+    /// Returns whether the flag was raised (`true`) or the operation timed out (`false`).
+    pub fn wait_timeout(&self, dur: Duration) -> bool {
         let mut token = MaybeUninit::uninit();
-        let er = with_tmos(dur, |tmout| unsafe {
+        let res = with_tmos(dur, |tmout| unsafe {
             abi::twai_flg(self.flag, RAISED, abi::TWF_ORW, token.as_mut_ptr(), tmout)
         });
-        if er != abi::E_OK && er != abi::E_TMOUT {
-            fail(er, &"twai_flg");
+
+        match res {
+            abi::E_OK => true,
+            abi::E_TMOUT => false,
+            error => fail(error, &"twai_flg"),
         }
     }
 
