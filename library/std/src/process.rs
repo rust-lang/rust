@@ -1038,6 +1038,15 @@ impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
+    ///
+    /// The default format approximates a shell invocation of the program along with its
+    /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
+    /// (e.g. due to lack of shell-escaping or differences in path resolution)
+    /// On some platforms you can use [the alternate syntax] to show more fields.
+    ///
+    /// Note that the debug implementation is platform-specific.
+    ///
+    /// [the alternate syntax]: fmt#sign0
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
