@@ -681,7 +681,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
-        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsPlaceholders) else {
+        let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsInfer) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
         for &impl_def_id in self.tcx.incoherent_impls(simp) {

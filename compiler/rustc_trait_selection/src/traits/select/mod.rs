@@ -2148,13 +2148,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let simplified_obligation_ty = fast_reject::simplify_type(
                             self.tcx(),
                             obligation_ty,
-                            TreatParams::AsBoundTypes,
+                            TreatParams::AsPlaceholder,
                         );
-                        let simplified_impl_ty = fast_reject::simplify_type(
-                            self.tcx(),
-                            impl_ty,
-                            TreatParams::AsPlaceholders,
-                        );
+                        let simplified_impl_ty =
+                            fast_reject::simplify_type(self.tcx(), impl_ty, TreatParams::AsInfer);
 
                         simplified_obligation_ty.is_some()
                             && simplified_impl_ty.is_some()

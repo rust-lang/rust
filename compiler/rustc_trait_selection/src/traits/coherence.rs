@@ -88,8 +88,8 @@ where
         impl2_ref.iter().flat_map(|tref| tref.substs.types()),
     )
     .any(|(ty1, ty2)| {
-        let t1 = fast_reject::simplify_type(tcx, ty1, TreatParams::AsPlaceholders);
-        let t2 = fast_reject::simplify_type(tcx, ty2, TreatParams::AsPlaceholders);
+        let t1 = fast_reject::simplify_type(tcx, ty1, TreatParams::AsInfer);
+        let t2 = fast_reject::simplify_type(tcx, ty2, TreatParams::AsInfer);
 
         if let (Some(t1), Some(t2)) = (t1, t2) {
             // Simplified successfully
