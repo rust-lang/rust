@@ -245,7 +245,7 @@ mod remove_dir_all_xat {
             let mut stat = unsafe { mem::zeroed() };
             cvt(unsafe { fstat(fd.as_raw_fd(), &mut stat) })?;
             // Make sure that the reopened directory has the same inode as when we visited it descending
-            // the directory tree. More detailed risk analysis TBD.
+            // the directory tree.
             if self.dev != stat.st_dev || self.ino != stat.st_ino {
                 return Err(io::Error::new(
                     io::ErrorKind::Uncategorized,
