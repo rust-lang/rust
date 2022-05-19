@@ -318,7 +318,7 @@ where
         );
 
         let generic = GenericKind::Param(param_ty);
-        let verify_bound = self.verify_bound.generic_bound(generic);
+        let verify_bound = self.verify_bound.param_bound(param_ty);
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
@@ -476,7 +476,12 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.verify_bound.generic_bound(generic);
+        let verify_bound = self.verify_bound.projection_opaque_bounds(
+            generic,
+            def_id,
+            substs,
+            &mut Default::default(),
+        );
         debug!("projection_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }

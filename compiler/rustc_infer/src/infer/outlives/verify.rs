@@ -38,21 +38,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         Self { tcx, region_bound_pairs, implicit_region_bound, param_env }
     }
 
-    /// Returns a "verify bound" that encodes what we know about
-    /// `generic` and the regions it outlives.
-    pub fn generic_bound(&self, generic: GenericKind<'tcx>) -> VerifyBound<'tcx> {
-        let mut visited = SsoHashSet::new();
-        match generic {
-            GenericKind::Param(param_ty) => self.param_bound(param_ty),
-            GenericKind::Projection(projection_ty) => {
-                self.projection_bound(projection_ty, &mut visited)
-            }
-            GenericKind::Opaque(def_id, substs) => self.opaque_bound(def_id, substs),
-        }
-    }
-
     #[instrument(level = "debug", skip(self))]
-    fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    pub fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
@@ -116,20 +103,21 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, visited))]
-    fn projection_bound(
+    pub fn projection_opaque_bounds(
         &self,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        generic: GenericKind<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
-        let projection_ty_as_ty =
-            self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
+        let generic_ty = generic.to_ty(self.tcx);
 
         // Search the env for where clauses like `P: 'a`.
-        let env_bounds = self
-            .approx_declared_bounds_from_env(GenericKind::Projection(projection_ty))
+        let projection_opaque_bounds = self
+            .approx_declared_bounds_from_env(generic)
             .into_iter()
             .map(|binder| {
-                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == projection_ty_as_ty {
+                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == generic_ty {
                     // Micro-optimize if this is an exact match (this
                     // occurs often when there are no region variables
                     // involved).
@@ -139,35 +127,18 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     VerifyBound::IfEq(verify_if_eq_b)
                 }
             });
-
         // Extend with bounds that we can find from the trait.
-        let trait_bounds = self
-            .bounds(projection_ty.item_def_id, projection_ty.substs)
-            .map(|r| VerifyBound::OutlivedBy(r));
+        let trait_bounds = self.bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
-            compute_components_recursive(self.tcx, ty.into(), &mut components, visited);
+            compute_components_recursive(self.tcx, generic_ty.into(), &mut components, visited);
             self.bound_from_components(&components, visited)
         };
 
-        VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
-    }
-
-    fn opaque_bound(&self, def_id: DefId, substs: SubstsRef<'tcx>) -> VerifyBound<'tcx> {
-        let bounds: Vec<_> =
-            self.bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r)).collect();
-        trace!("{:#?}", bounds);
-        if bounds.is_empty() {
-            // No bounds means the value must not have any lifetimes.
-            // FIXME: should we implicitly add 'static to `tcx.item_bounds` for opaque types, just
-            // like we add `Sized`?
-            VerifyBound::OutlivedBy(self.tcx.lifetimes.re_static)
-        } else {
-            VerifyBound::AnyBound(bounds)
-        }
+        VerifyBound::AnyBound(projection_opaque_bounds.chain(trait_bounds).collect())
+            .or(recursive_bound)
     }
 
     fn bound_from_components(
@@ -199,8 +170,18 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
             Component::Param(param_ty) => self.param_bound(param_ty),
-            Component::Opaque(did, substs) => self.opaque_bound(did, substs),
-            Component::Projection(projection_ty) => self.projection_bound(projection_ty, visited),
+            Component::Opaque(did, substs) => self.projection_opaque_bounds(
+                GenericKind::Opaque(did, substs),
+                did,
+                substs,
+                visited,
+            ),
+            Component::Projection(projection_ty) => self.projection_opaque_bounds(
+                GenericKind::Projection(projection_ty),
+                projection_ty.item_def_id,
+                projection_ty.substs,
+                visited,
+            ),
             Component::EscapingProjection(ref components) => {
                 self.bound_from_components(components, visited)
             }
