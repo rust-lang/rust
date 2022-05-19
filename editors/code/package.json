@@ -388,7 +388,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cachePriming.numThreads": {
-                    "markdownDescription": "How many worker threads to to handle priming caches. The default `0` means to pick automatically.",
+                    "markdownDescription": "How many worker threads to handle priming caches. The default `0` means to pick automatically.",
                     "default": 0,
                     "type": "number",
                     "minimum": 0,

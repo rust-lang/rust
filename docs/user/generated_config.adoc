@@ -11,7 +11,7 @@ Warm up caches on project load.
 [[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `0`)::
 +
 --
-How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+How many worker threads to handle priming caches. The default `0` means to pick automatically.
 --
 [[rust-analyzer.cargo.autoreload]]rust-analyzer.cargo.autoreload (default: `true`)::
 +

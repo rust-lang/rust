@@ -59,7 +59,7 @@ config_data! {
 
         /// Warm up caches on project load.
         cachePriming_enable: bool = "true",
-        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+        /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: ParallelCachePrimingNumThreads = "0",
 
         /// Automatically refresh project info via `cargo metadata` on
