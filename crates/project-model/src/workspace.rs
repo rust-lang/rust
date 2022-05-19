@@ -389,14 +389,10 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        dummy_replace: &FxHashMap<Box<str>, Box<[Box<str>]>>,
-        load_proc_macro: &mut dyn FnMut(&AbsPath, &[Box<str>]) -> Vec<ProcMacro>,
+        load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> Vec<ProcMacro>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
-        let load_proc_macro = &mut |crate_name: &_, path: &_| {
-            load_proc_macro(path, dummy_replace.get(crate_name).map(|it| &**it).unwrap_or_default())
-        };
 
         let mut crate_graph = match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => project_json_to_crate_graph(

@@ -66,8 +66,7 @@ pub fn load_workspace(
     };
 
     let crate_graph = ws.to_crate_graph(
-        &Default::default(),
-        &mut |path: &AbsPath, _| load_proc_macro(proc_macro_client.as_ref(), path, &[]),
+        &mut |_, path: &AbsPath| load_proc_macro(proc_macro_client.as_ref(), path, &[]),
         &mut |path: &AbsPath| {
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
