@@ -329,6 +329,33 @@ impl u8 {
         *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
     }
 
+    /// Returns the ASCII digit formed by the u8.
+    ///
+    /// # Errors
+    /// Returns `None` if the `char` does not refer to a digit in the given radix.
+    ///
+    /// # Panics
+    /// Panics if given a radix larger than 36.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_digit_conversion_on_u8)]
+    /// let one = b'1';
+    /// let fifteen = b'F';
+    ///
+    /// assert_eq!(one.from_ascii_to_digit(10), Some(1));
+    /// assert_eq!(fifteen.from_ascii_to_digit(16), Some(15));
+    /// ```
+    #[unstable(
+        feature = "ascii_digit_conversion_on_u8",
+        reason = "Newly introduced.",
+        issue = "95969"
+    )]
+    pub const fn from_ascii_to_digit(self, radix: u8) -> Option<u8> {
+        if let Some(n) = (self as char).to_digit(radix.into()) { Some(n as u8) } else { None }
+    }
+
     /// Assumes self is ascii
     #[inline]
     pub(crate) const fn ascii_change_case_unchecked(&self) -> u8 {
