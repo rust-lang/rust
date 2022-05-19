@@ -13,7 +13,7 @@ use quote::{format_ident, quote};
 use std::collections::HashMap;
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, Type};
-use synstructure::Structure;
+use synstructure::{BindingInfo, Structure};
 
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
 pub(crate) struct SessionDiagnosticDerive<'a> {
@@ -95,20 +95,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                                 false
                             }
                     })
-                    .each(|field_binding| {
-                        let field = field_binding.ast();
-                        let field_span = field.span();
-
-                        builder.generate_field_attrs_code(
-                            &field.attrs,
-                            FieldInfo {
-                                vis: &field.vis,
-                                binding: field_binding,
-                                ty: &field.ty,
-                                span: &field_span,
-                            },
-                        )
-                    });
+                    .each(|field_binding| builder.generate_field_attrs_code(field_binding));
 
                 structure.bind_with(|_| synstructure::BindStyle::Move);
                 // When a field has attributes like `#[label]` or `#[note]` then it doesn't
@@ -119,20 +106,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     .filter(|field_binding| {
                         subdiagnostics_or_empty.contains(&field_binding.binding)
                     })
-                    .each(|field_binding| {
-                        let field = field_binding.ast();
-                        let field_span = field.span();
-
-                        builder.generate_field_attrs_code(
-                            &field.attrs,
-                            FieldInfo {
-                                vis: &field.vis,
-                                binding: field_binding,
-                                ty: &field.ty,
-                                span: &field_span,
-                            },
-                        )
-                    });
+                    .each(|field_binding| builder.generate_field_attrs_code(field_binding));
 
                 let span = ast.span().unwrap();
                 let (diag, sess) = (&builder.diag, &builder.sess);
@@ -360,22 +334,19 @@ impl SessionDiagnosticDeriveBuilder {
         Ok(tokens.drain(..).collect())
     }
 
-    fn generate_field_attrs_code(
-        &mut self,
-        attrs: &[syn::Attribute],
-        info: FieldInfo<'_>,
-    ) -> TokenStream {
-        let field_binding = &info.binding.binding;
+    fn generate_field_attrs_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
+        let field = binding_info.ast();
+        let field_binding = &binding_info.binding;
 
-        let inner_ty = FieldInnerTy::from_type(&info.ty);
+        let inner_ty = FieldInnerTy::from_type(&field.ty);
 
         // When generating `set_arg` or `add_subdiagnostic` calls, move data rather than
         // borrow it to avoid requiring clones - this must therefore be the last use of
         // each field (for example, any formatting machinery that might refer to a field
         // should be generated already).
-        if attrs.is_empty() {
+        if field.attrs.is_empty() {
             let diag = &self.diag;
-            let ident = info.binding.ast().ident.as_ref().unwrap();
+            let ident = field.ident.as_ref().unwrap();
             quote! {
                 #diag.set_arg(
                     stringify!(#ident),
@@ -383,7 +354,7 @@ impl SessionDiagnosticDeriveBuilder {
                 );
             }
         } else {
-            attrs
+            field.attrs
                 .iter()
                 .map(move |attr| {
                     let name = attr.path.segments.last().unwrap().ident.to_string();
@@ -401,10 +372,9 @@ impl SessionDiagnosticDeriveBuilder {
                         .generate_inner_field_code(
                             attr,
                             FieldInfo {
-                                vis: info.vis,
-                                binding: info.binding,
-                                ty: inner_ty.inner_type().unwrap_or(&info.ty),
-                                span: info.span,
+                                binding: binding_info,
+                                ty: inner_ty.inner_type().unwrap_or(&field.ty),
+                                span: &field.span(),
                             },
                             binding,
                         )
