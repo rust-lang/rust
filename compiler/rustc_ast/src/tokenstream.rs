@@ -302,7 +302,7 @@ pub struct AttributesData {
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatibility.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
+#[derive(Clone, Debug, Default, Encodable, Decodable, PartialEq)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
@@ -383,12 +383,6 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 }
 
 impl Eq for TokenStream {}
-
-impl PartialEq<TokenStream> for TokenStream {
-    fn eq(&self, other: &TokenStream) -> bool {
-        self.trees().eq(other.trees())
-    }
-}
 
 impl TokenStream {
     pub fn new(streams: Vec<TreeAndSpacing>) -> TokenStream {
