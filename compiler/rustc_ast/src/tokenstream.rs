@@ -107,8 +107,9 @@ where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        for sub_tt in self.trees() {
-            sub_tt.hash_stable(hcx, hasher);
+        for (tt, spacing) in self.0.iter() {
+            tt.hash_stable(hcx, hasher);
+            spacing.hash_stable(hcx, hasher);
         }
     }
 }
@@ -315,6 +316,15 @@ rustc_data_structures::static_assert_size!(TokenStream, 8);
 pub enum Spacing {
     Alone,
     Joint,
+}
+
+impl<CTX> HashStable<CTX> for Spacing
+where
+    CTX: crate::HashStableContext,
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
 }
 
 impl TokenStream {
