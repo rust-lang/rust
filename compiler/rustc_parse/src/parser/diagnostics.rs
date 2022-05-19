@@ -1,5 +1,5 @@
 use super::pat::Expected;
-use super::ty::{AllowPlus, RecoverQuestionMark};
+use super::ty::AllowPlus;
 use super::{
     BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType,
@@ -1248,14 +1248,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(
-        &mut self,
-        ty: P<Ty>,
-        recover_question_mark: RecoverQuestionMark,
-    ) -> P<Ty> {
-        if let RecoverQuestionMark::No = recover_question_mark {
-            return ty;
-        }
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
         if self.token == token::Question {
             self.bump();
             self.struct_span_err(self.prev_token.span, "invalid `?` in type")
