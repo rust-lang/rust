@@ -2153,8 +2153,8 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     fn is_cfg_test(attr: &Attribute) -> bool {
         if attr.has_name(sym::cfg)
             && let Some(items) = attr.meta_item_list()
-            && items.len() == 1
-            && items[0].has_name(sym::test)
+            && let [item] = &*items
+            && item.has_name(sym::test)
         {
             true
         } else {
@@ -2163,7 +2163,8 @@ pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
     tcx.hir()
         .parent_iter(id)
-        .any(|(parent_id, _)| tcx.hir().attrs(parent_id).iter().any(is_cfg_test))
+        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id))
+        .any(is_cfg_test)
 }
 
 /// Checks whether item either has `test` attribute applied, or
