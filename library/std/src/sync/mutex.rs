@@ -387,14 +387,19 @@ impl<T: ?Sized> Mutex<T> {
     ///     panic!(); // the mutex gets poisoned
     /// }).join();
     ///
-    /// let guard = mutex.lock().unwrap_err().into_inner();
-    /// Mutex::clear_poison(&guard);
+    /// assert_eq!(mutex.is_poisoned(), true);
+    /// let x = mutex.lock().unwrap_or_else(|mut e| {
+    ///     **e.get_mut() = 1;
+    ///     mutex.clear_poison();
+    ///     e.into_inner()
+    /// });
     /// assert_eq!(mutex.is_poisoned(), false);
+    /// assert_eq!(*x, 1);
     /// ```
     #[inline]
     #[unstable(feature = "mutex_unpoison", issue = "96469")]
-    pub fn clear_poison(guard: &MutexGuard<'_, T>) {
-        guard.lock.poison.clear();
+    pub fn clear_poison(&self) {
+        self.poison.clear();
     }
 
     /// Consumes this mutex, returning the underlying data.

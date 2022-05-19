@@ -390,14 +390,19 @@ impl<T: ?Sized> RwLock<T> {
     ///     panic!(); // the mutex gets poisoned
     /// }).join();
     ///
-    /// let guard = lock.write().unwrap_err().into_inner();
-    /// RwLock::clear_poison(&guard);
+    /// assert_eq!(lock.is_poisoned(), true);
+    /// let guard = lock.write().unwrap_or_else(|mut e| {
+    ///     **e.get_mut() = 1;
+    ///     lock.clear_poison();
+    ///     e.into_inner()
+    /// });
     /// assert_eq!(lock.is_poisoned(), false);
+    /// assert_eq!(*guard, 1);
     /// ```
     #[inline]
     #[unstable(feature = "mutex_unpoison", issue = "96469")]
-    pub fn clear_poison(guard: &RwLockWriteGuard<'_, T>) {
-        guard.lock.poison.clear();
+    pub fn clear_poison(&self) {
+        self.poison.clear();
     }
 
     /// Consumes this `RwLock`, returning the underlying data.
