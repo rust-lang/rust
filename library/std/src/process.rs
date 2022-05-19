@@ -2136,7 +2136,7 @@ pub trait Termination {
 impl Termination for () {
     #[inline]
     fn report(self) -> ExitCode {
-        ExitCode::SUCCESS.report()
+        ExitCode::SUCCESS
     }
 }
 
@@ -2162,7 +2162,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> ExitCode {
         let Err(err) = self;
         eprintln!("Error: {err:?}");
-        ExitCode::FAILURE.report()
+        ExitCode::FAILURE
     }
 }
 
