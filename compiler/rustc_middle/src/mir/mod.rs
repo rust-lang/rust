@@ -176,9 +176,8 @@ pub enum MirPhase {
     DropsLowered = 3,
     /// After this projections may only contain deref projections as the first element.
     Derefered = 4,
-    /// Beginning with this phase, the following variants are disallowed:
+    /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
-    /// * [`ProjectionElem::Deref`] of `Box`
     ///
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]
@@ -196,6 +195,7 @@ pub enum MirPhase {
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
     /// * [`TerminatorKind::GeneratorDrop`](terminator::TerminatorKind::GeneratorDrop)
+    /// * [`ProjectionElem::Deref`] of `Box`
     GeneratorsLowered = 6,
     Optimized = 7,
 }
