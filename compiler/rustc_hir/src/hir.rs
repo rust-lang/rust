@@ -1332,7 +1332,7 @@ impl<'hir> Guard<'hir> {
     /// - `if let x = e`
     pub fn body(&self) -> &'hir Expr<'hir> {
         match self {
-            Guard::If(e) | Guard::IfLet(_, e) => e,
+            Guard::If(e) | Guard::IfLet(Let { init: e, .. }) => e,
         }
     }
 }
