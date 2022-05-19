@@ -315,8 +315,11 @@ impl<'a> Parser<'a> {
         let mut ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
-        self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
-        self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
+        if matches!(allow_plus, AllowPlus::Yes) {
+            self.maybe_recover_from_bad_type_plus(&ty)?;
+        } else {
+            self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty);
+        }
         if let RecoverQuestionMark::Yes = recover_question_mark {
             ty = self.maybe_recover_from_question_mark(ty);
         }
