@@ -1,6 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::io::ErrorKind;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
@@ -49,6 +49,10 @@ cfg_if::cfg_if! {
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
     stack_overflow::init();
+
+    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+    // exists, we have to call it ourselves.
+    thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
 }
 
 // SAFETY: must be called only once during runtime cleanup.
