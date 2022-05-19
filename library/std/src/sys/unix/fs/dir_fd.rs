@@ -134,8 +134,14 @@ mod remove_dir_all_xat {
     }
 
     enum LazyReadDir<'a> {
-        Fd(Option<OwnedFd>), // only Fd(None) temporarily in ensure_open()
-        OpenReadDir(ReadDir, BorrowedFd<'a>), // also store the fd to avoid having to call dirfd(3)
+        /// Contains the file descriptor of the directory, while it has not been opened for reading.
+        /// It is only `Fd(None)` temporarily in `ensure_open()`.
+        Fd(Option<OwnedFd>),
+
+        // Contains the `ReadDir` for the directory while it is being read. The ReadDir does not contain
+        // a valid `root` path, because it is not needed. It also contains the file descriptor of the
+        // directory to avoid calls to dirfd(3).
+        OpenReadDir(ReadDir, BorrowedFd<'a>),
     }
 
     impl LazyReadDir<'_> {
