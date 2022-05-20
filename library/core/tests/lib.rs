@@ -35,7 +35,7 @@
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
 #![feature(future_poll_fn)]
-#![feature(array_from_fn)]
+#![feature(array_try_from_fn)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
