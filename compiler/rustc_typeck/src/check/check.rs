@@ -725,11 +725,18 @@ fn check_opaque_meets_bounds<'tcx>(
     let hidden_type = tcx.bound_type_of(def_id.to_def_id()).subst(tcx, substs);
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let defining_use_anchor = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
-        hir::OpaqueTyOrigin::TyAlias => def_id,
+    let (param_env_did, defining_use_anchor) = match *origin {
+        hir::OpaqueTyOrigin::FnReturn(did) => {
+            if tcx.sess.features_untracked().return_position_impl_trait_v2 {
+                (def_id, did)
+            } else {
+                (did, did)
+            }
+        }
+        hir::OpaqueTyOrigin::AsyncFn(did) => (did, did),
+        hir::OpaqueTyOrigin::TyAlias => (def_id, def_id),
     };
-    let param_env = tcx.param_env(defining_use_anchor);
+    let param_env = tcx.param_env(param_env_did);
 
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor)).enter(
         move |infcx| {
