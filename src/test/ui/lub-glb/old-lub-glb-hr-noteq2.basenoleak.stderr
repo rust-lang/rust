@@ -1,5 +1,5 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/old-lub-glb-hr-noteq2.rs:21:14
+  --> $DIR/old-lub-glb-hr-noteq2.rs:28:14
    |
 LL |       let z = match 22 {
    |  _____________-
@@ -7,6 +7,9 @@ LL | |         0 => y,
    | |              - this is found to be of type `for<'a> fn(&'a u8, &'a u8) -> &'a u8`
 LL | |         _ => x,
    | |              ^ one type is more general than the other
+LL | |
+LL | |
+LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |

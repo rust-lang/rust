@@ -96,6 +96,7 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     crate fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,

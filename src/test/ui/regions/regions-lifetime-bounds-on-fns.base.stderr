@@ -8,7 +8,7 @@ LL |     *x = *y;
    |          ^^ ...but data from `y` flows into `x` here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-lifetime-bounds-on-fns.rs:20:7
+  --> $DIR/regions-lifetime-bounds-on-fns.rs:19:7
    |
 LL | fn c<'a,'b>(x: &mut &'a isize, y: &mut &'b isize) {
    |                     ---------          --------- these two types are declared with different lifetimes...
@@ -17,13 +17,13 @@ LL |     a(x, y);
    |       ^ ...but data from `y` flows into `x` here
 
 error[E0308]: mismatched types
-  --> $DIR/regions-lifetime-bounds-on-fns.rs:28:43
+  --> $DIR/regions-lifetime-bounds-on-fns.rs:26:43
    |
 LL |     let _: fn(&mut &isize, &mut &isize) = a;
    |                                           ^ one type is more general than the other
    |
    = note: expected fn pointer `for<'r, 's, 't0, 't1> fn(&'r mut &'s isize, &'t0 mut &'t1 isize)`
-              found fn pointer `for<'r, 's> fn(&'r mut &isize, &'s mut &isize)`
+                 found fn item `for<'r, 's> fn(&'r mut &isize, &'s mut &isize) {a::<'_, '_>}`
 
 error: aborting due to 3 previous errors
 

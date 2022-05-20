@@ -129,6 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
+    #[tracing::instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'tcx>,
@@ -150,7 +151,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
-        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
+        let is_insufficiently_polymorphic =
+            matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));
+
+        // FIXME(#73154): For now, we do leak check when coercing function
+        // pointers in typeck, instead of only during borrowck. This can lead
+        // to these `RegionsInsufficientlyPolymorphic` errors that aren't helpful.
+        if !is_insufficiently_polymorphic {
+            self.emit_coerce_suggestions(
+                &mut err,
+                expr,
+                expr_ty,
+                expected,
+                expected_ty_expr,
+                Some(e),
+            );
+        }
 
         (expected, Some(err))
     }
