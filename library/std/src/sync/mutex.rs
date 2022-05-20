@@ -364,6 +364,45 @@ impl<T: ?Sized> Mutex<T> {
         self.poison.get()
     }
 
+    /// Clear the poisoned state from a mutex
+    ///
+    /// If the mutex is poisoned, it will remain poisoned until this function is called. This
+    /// allows recovering from a poisoned state and marking that it has recovered. For example, if
+    /// the value is overwritten by a known-good value, then the mutex can be marked as
+    /// un-poisoned. Or possibly, the value could be inspected to determine if it is in a
+    /// consistent state, and if so the poison is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mutex_unpoison)]
+    ///
+    /// use std::sync::{Arc, Mutex};
+    /// use std::thread;
+    ///
+    /// let mutex = Arc::new(Mutex::new(0));
+    /// let c_mutex = Arc::clone(&mutex);
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_mutex.lock().unwrap();
+    ///     panic!(); // the mutex gets poisoned
+    /// }).join();
+    ///
+    /// assert_eq!(mutex.is_poisoned(), true);
+    /// let x = mutex.lock().unwrap_or_else(|mut e| {
+    ///     **e.get_mut() = 1;
+    ///     mutex.clear_poison();
+    ///     e.into_inner()
+    /// });
+    /// assert_eq!(mutex.is_poisoned(), false);
+    /// assert_eq!(*x, 1);
+    /// ```
+    #[inline]
+    #[unstable(feature = "mutex_unpoison", issue = "96469")]
+    pub fn clear_poison(&self) {
+        self.poison.clear();
+    }
+
     /// Consumes this mutex, returning the underlying data.
     ///
     /// # Errors

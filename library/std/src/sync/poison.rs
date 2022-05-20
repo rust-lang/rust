@@ -40,6 +40,11 @@ impl Flag {
     pub fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
     }
+
+    #[inline]
+    pub fn clear(&self) {
+        self.failed.store(false, Ordering::Relaxed)
+    }
 }
 
 pub struct Guard {
