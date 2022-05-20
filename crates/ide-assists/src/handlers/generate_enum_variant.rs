@@ -42,7 +42,7 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext) -> O
 
     let name_ref = path.segment()?.name_ref()?;
     if name_ref.text().as_str().chars().next()?.is_ascii_lowercase() {
-        // No need to generate anything if the name starts with a lowercase letter
+        // Don't suggest generating variant if the name starts with a lowercase letter
         return None;
     }
 

@@ -72,7 +72,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
                 if let hir::Adt::Enum(_) = adt {
-                    return None;
+                    // Don't suggest generating function if the name starts with an uppercase letter
+                    if name_ref.text().chars().next()?.is_uppercase() {
+                        return None;
+                    }
                 }
 
                 let current_module = ctx.sema.scope(call.syntax())?.module();
@@ -1754,5 +1757,31 @@ fn main() {
 }
 ",
         );
+    }
+
+    #[test]
+    fn applicable_for_enum_method() {
+        check_assist(
+            generate_function,
+            r"
+enum Foo {}
+fn main() {
+    Foo::new$0();
+}
+",
+            r"
+enum Foo {}
+fn main() {
+    Foo::new();
+}
+impl Foo {
+
+
+fn new() ${0:-> _} {
+    todo!()
+}
+}
+",
+        )
     }
 }
