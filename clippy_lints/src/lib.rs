@@ -242,7 +242,6 @@ mod from_over_into;
 mod from_str_radix_10;
 mod functions;
 mod future_not_send;
-mod get_last_with_len;
 mod identity_op;
 mod if_let_mutex;
 mod if_not_else;
@@ -652,7 +651,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(strings::StringLitAsBytes));
     store.register_late_pass(|| Box::new(derive::Derive));
     store.register_late_pass(|| Box::new(derivable_impls::DerivableImpls));
-    store.register_late_pass(|| Box::new(get_last_with_len::GetLastWithLen));
     store.register_late_pass(|| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|| Box::new(absurd_extreme_comparisons::AbsurdExtremeComparisons));
