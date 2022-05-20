@@ -191,12 +191,7 @@ impl OsString {
     /// OS strings without reallocating. If `capacity` is 0, the string will not
     /// allocate.
     ///
-    /// See main `OsString` documentation information about encoding.
-    ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -239,12 +234,7 @@ impl OsString {
 
     /// Returns the capacity this `OsString` can hold without reallocating.
     ///
-    /// See `OsString` introduction for information about encoding.
-    ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -265,6 +255,8 @@ impl OsString {
     /// in the given `OsString`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -287,10 +279,7 @@ impl OsString {
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
     ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Errors
     ///
@@ -333,10 +322,7 @@ impl OsString {
     ///
     /// [`reserve`]: OsString::reserve
     ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -365,10 +351,7 @@ impl OsString {
     ///
     /// [`try_reserve`]: OsString::try_reserve
     ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Errors
     ///
@@ -403,6 +386,8 @@ impl OsString {
 
     /// Shrinks the capacity of the `OsString` to match its length.
     ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
+    ///
     /// # Examples
     ///
     /// ```
@@ -429,10 +414,7 @@ impl OsString {
     ///
     /// If the current capacity is less than the lower limit, this is a no-op.
     ///
-    /// # Notes
-    ///
-    /// Capacity means UTF-8 byte size for OS strings which created from
-    /// valid unicode, and not otherwise specified for other contents.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -807,6 +789,8 @@ impl OsStr {
     ///
     /// This number is simply useful for passing to other methods, like
     /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
