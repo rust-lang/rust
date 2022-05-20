@@ -1,4 +1,4 @@
-# Codegen options
+# Codegen Options
 
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
