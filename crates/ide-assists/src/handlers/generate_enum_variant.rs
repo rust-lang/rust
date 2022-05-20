@@ -59,7 +59,7 @@ fn add_variant_to_accumulator(
     adt: hir::Enum,
     name_ref: &ast::NameRef,
 ) -> Option<()> {
-    let adt_ast = get_enum_ast(ctx, adt)?;
+    let adt_ast = adt.source(ctx.db())?.original_ast_node(ctx.db())?.value;
 
     let enum_indent_level = IndentLevel::from_node(&adt_ast.syntax());
 
@@ -78,15 +78,6 @@ fn add_variant_to_accumulator(
         target,
         |builder| builder.insert(offset, text),
     )
-}
-
-fn get_enum_ast(ctx: &AssistContext, adt: hir::Enum) -> Option<ast::Enum> {
-    let range = adt.source(ctx.db())?.syntax().original_file_range(ctx.db());
-    let file = ctx.sema.parse(range.file_id);
-    let adt_ast: ast::Enum =
-        ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-
-    Some(adt_ast)
 }
 
 #[cfg(test)]
