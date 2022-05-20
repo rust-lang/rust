@@ -1,0 +1,15 @@
+error[E0282]: type annotations needed
+  --> $DIR/ambiguous_type_parameter.rs:16:19
+   |
+LL |     InMemoryStore.get_raw(&String::default());
+   |                   ^^^^^^^ cannot infer type for type parameter `K`
+   |
+help: type parameter declared here
+  --> $DIR/ambiguous_type_parameter.rs:9:6
+   |
+LL | impl<K> Store<String, HashMap<K, String>> for InMemoryStore {
+   |      ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

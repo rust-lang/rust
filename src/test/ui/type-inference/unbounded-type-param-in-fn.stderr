@@ -3,6 +3,12 @@ error[E0282]: type annotations needed
    |
 LL |     foo();
    |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |
+help: type parameter declared here
+  --> $DIR/unbounded-type-param-in-fn.rs:1:8
+   |
+LL | fn foo<T>() -> T {
+   |        ^
 
 error: aborting due to previous error
 
