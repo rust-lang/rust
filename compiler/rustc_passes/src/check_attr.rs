@@ -832,7 +832,7 @@ impl CheckAttrVisitor<'_> {
             let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
             let containing_item = self.tcx.hir().expect_item(parent_hir_id);
 
-            if Target::from_item(containing_item) == Target::Impl {
+            if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = containing_item.kind {
                 let meta_items = attr.meta_item_list().unwrap();
 
                 let (span, replacement_span) = if meta_items.len() == 1 {
