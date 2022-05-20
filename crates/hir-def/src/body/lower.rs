@@ -452,7 +452,12 @@ impl ExprCollector<'_> {
                     .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(
-                    Expr::Lambda { args: args.into(), arg_types: arg_types.into(), ret_type, body },
+                    Expr::Closure {
+                        args: args.into(),
+                        arg_types: arg_types.into(),
+                        ret_type,
+                        body,
+                    },
                     syntax_ptr,
                 )
             }

@@ -218,7 +218,7 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            Expr::Lambda { body, args, ret_type, arg_types } => {
+            Expr::Closure { body, args, ret_type, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::new();
@@ -1058,7 +1058,7 @@ impl<'a> InferenceContext<'a> {
             for (idx, ((&arg, param_ty), expected_ty)) in
                 args.iter().zip(param_iter).zip(expected_iter).enumerate()
             {
-                let is_closure = matches!(&self.body[arg], Expr::Lambda { .. });
+                let is_closure = matches!(&self.body[arg], Expr::Closure { .. });
                 if is_closure != check_closures {
                     continue;
                 }
