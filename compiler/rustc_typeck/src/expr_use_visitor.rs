@@ -17,6 +17,7 @@ use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, AdtKind, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use ty::BorrowKind::ImmBorrow;
 
 use crate::mem_categorization as mc;
 
@@ -621,7 +622,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             FakeReadCause::ForMatchedPlace(closure_def_id),
             discr_place.hir_id,
         );
-        self.walk_pat(discr_place, arm.pat);
+        self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
         if let Some(hir::Guard::If(e)) = arm.guard {
             self.consume_expr(e)
@@ -645,12 +646,17 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             FakeReadCause::ForLet(closure_def_id),
             discr_place.hir_id,
         );
-        self.walk_pat(discr_place, pat);
+        self.walk_pat(discr_place, pat, false);
     }
 
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
-        debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
+    fn walk_pat(
+        &mut self,
+        discr_place: &PlaceWithHirId<'tcx>,
+        pat: &hir::Pat<'_>,
+        has_guard: bool,
+    ) {
+        debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
@@ -669,6 +675,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     let def = Res::Local(canonical_id);
                     if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
                         delegate.bind(binding_place, binding_place.hir_id);
+                    }
+
+                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                    // binding when lowering pattern guards to ensure that the guard does not
+                    // modify the scrutinee.
+                    if has_guard {
+                        delegate.borrow(place, discr_place.hir_id, ImmBorrow);
                     }
 
                     // It is also a borrow or copy/move of the value being matched.

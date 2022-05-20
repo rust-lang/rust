@@ -1323,6 +1323,20 @@ pub enum Guard<'hir> {
     IfLet(&'hir Let<'hir>),
 }
 
+impl<'hir> Guard<'hir> {
+    /// Returns the body of the guard
+    ///
+    /// In other words, returns the e in either of the following:
+    ///
+    /// - `if e`
+    /// - `if let x = e`
+    pub fn body(&self) -> &'hir Expr<'hir> {
+        match self {
+            Guard::If(e) | Guard::IfLet(Let { init: e, .. }) => e,
+        }
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub struct ExprField<'hir> {
     #[stable_hasher(ignore)]
