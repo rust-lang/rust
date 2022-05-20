@@ -924,10 +924,15 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
         self.read_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size))
     }
 
-    pub fn check_bytes(&self, range: AllocRange, allow_uninit_and_ptr: bool) -> InterpResult<'tcx> {
+    pub fn check_bytes(
+        &self,
+        range: AllocRange,
+        allow_uninit: bool,
+        allow_ptr: bool,
+    ) -> InterpResult<'tcx> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit_and_ptr)
+            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit, allow_ptr)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 }
@@ -1144,11 +1149,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Err(ptr) => ptr.into(),
                 Ok(bits) => {
                     let addr = u64::try_from(bits).unwrap();
-                    let ptr = M::ptr_from_addr_transmute(&self, addr);
-                    if addr == 0 {
-                        assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
-                    }
-                    ptr
+                    M::ptr_from_addr_transmute(&self, addr)
                 }
             },
         )

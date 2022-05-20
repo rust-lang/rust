@@ -133,9 +133,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether to enforce validity (e.g., initialization and not having ptr provenance)
-    /// of integers and floats.
-    fn enforce_number_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Whether to enforce integers and floats being initialized.
+    fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
+    /// Whether to enforce integers and floats not having provenance.
+    fn enforce_number_no_provenance(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether function calls should be [ABI](Abi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -453,7 +455,12 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn enforce_number_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+    fn enforce_number_init(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        true
+    }
+
+    #[inline(always)]
+    fn enforce_number_no_provenance(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         true
     }
 

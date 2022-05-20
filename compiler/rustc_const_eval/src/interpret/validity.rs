@@ -536,15 +536,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                if M::enforce_number_validity(self.ecx) {
-                    // Integers/floats with number validity: Must be scalar bits, pointers are dangerous.
+                if M::enforce_number_init(self.ecx) {
+                    try_validation!(
+                        value.check_init(),
+                        self.path,
+                        err_ub!(InvalidUninitBytes(..)) =>
+                            { "{:x}", value } expected { "initialized bytes" }
+                    );
+                }
+                if M::enforce_number_no_provenance(self.ecx) {
                     // As a special exception we *do* match on a `Scalar` here, since we truly want
                     // to know its underlying representation (and *not* cast it to an integer).
-                    let is_bits =
-                        value.check_init().map_or(false, |v| matches!(v, Scalar::Int(..)));
-                    if !is_bits {
+                    let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
+                    if is_ptr {
                         throw_validation_failure!(self.path,
-                            { "{:x}", value } expected { "initialized plain (non-pointer) bytes" }
+                            { "{:x}", value } expected { "plain (non-pointer) bytes" }
                         )
                     }
                 }
@@ -651,7 +657,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size = scalar_layout.size(self.ecx);
         let is_full_range = match scalar_layout {
             ScalarAbi::Initialized { .. } => {
-                if M::enforce_number_validity(self.ecx) {
+                if M::enforce_number_init(self.ecx) {
                     false // not "full" since uninit is not accepted
                 } else {
                     scalar_layout.is_always_valid(self.ecx)
@@ -910,10 +916,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 };
 
-                let allow_uninit_and_ptr = !M::enforce_number_validity(self.ecx);
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
-                    allow_uninit_and_ptr,
+                    /*allow_uninit*/ !M::enforce_number_init(self.ecx),
+                    /*allow_ptr*/ !M::enforce_number_no_provenance(self.ecx),
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
