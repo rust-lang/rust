@@ -2518,7 +2518,6 @@ fn test_slice_from_ptr_range() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 #[should_panic = "slice len overflow"]
 fn test_flatten_size_overflow() {
     let x = &[[(); usize::MAX]; 2][..];
@@ -2526,7 +2525,6 @@ fn test_flatten_size_overflow() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 #[should_panic = "slice len overflow"]
 fn test_flatten_mut_size_overflow() {
     let x = &mut [[(); usize::MAX]; 2][..];
