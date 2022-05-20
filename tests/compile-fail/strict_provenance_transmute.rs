@@ -7,7 +7,7 @@ use std::mem;
 // <https://github.com/rust-lang/unsafe-code-guidelines/issues/286#issuecomment-1085144431>.
 
 unsafe fn deref(left: *const u8, right: *const u8) {
-    let left_int: usize = mem::transmute(left); //~ERROR expected initialized plain (non-pointer) bytes
+    let left_int: usize = mem::transmute(left); //~ERROR expected plain (non-pointer) bytes
     let right_int: usize = mem::transmute(right);
     if left_int == right_int {
         // The compiler is allowed to replace `left_int` by `right_int` here...
