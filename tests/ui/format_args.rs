@@ -122,3 +122,27 @@ fn issue8643(vendor_id: usize, product_id: usize, name: &str) {
         name
     );
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/8855
+mod issue_8855 {
+    #![allow(dead_code)]
+
+    struct A {}
+
+    impl std::fmt::Display for A {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "test")
+        }
+    }
+
+    fn main() {
+        let a = A {};
+        let b = A {};
+
+        let x = format!("{} {}", a, b.to_string());
+        dbg!(x);
+
+        let x = format!("{:>6} {:>6}", a, b.to_string());
+        dbg!(x);
+    }
+}
