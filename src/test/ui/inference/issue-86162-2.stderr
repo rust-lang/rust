@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
    |     ^^^^^^^^ cannot infer type for type parameter `impl Clone` declared on the associated function `bar`
    |
+help: type parameter declared here
+  --> $DIR/issue-86162-2.rs:8:15
+   |
+LL |     fn bar(x: impl Clone) {}
+   |               ^^^^^^^^^^
    = note: cannot satisfy `_: Clone`
 note: required by a bound in `Foo::bar`
   --> $DIR/issue-86162-2.rs:8:20

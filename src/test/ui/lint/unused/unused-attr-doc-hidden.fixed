@@ -1,5 +1,7 @@
-#![deny(unused_attributes)]
+#![feature(inherent_associated_types)]
+#![allow(dead_code, incomplete_features)]
 #![crate_type = "lib"]
+#![deny(unused_attributes)]
 // run-rustfix
 
 pub trait Trait {
@@ -11,6 +13,17 @@ pub trait Trait {
 }
 
 pub struct Implementor;
+
+impl Implementor {
+    #[doc(hidden)] // no error
+    type Inh = ();
+
+    #[doc(hidden)] // no error
+    const INH: () = ();
+
+    #[doc(hidden)] // no error
+    fn inh() {}
+}
 
 impl Trait for Implementor {
     

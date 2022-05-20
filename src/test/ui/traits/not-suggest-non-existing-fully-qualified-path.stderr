@@ -16,6 +16,11 @@ LL |     a.method();
    |     | cannot infer type for type parameter `U`
    |     this method call resolves to `U`
    |
+help: type parameter declared here
+  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:12:9
+   |
+LL | impl<T, U> V<U> for A<T>
+   |         ^
 note: multiple `impl`s satisfying `B: I<_>` found
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1
    |
