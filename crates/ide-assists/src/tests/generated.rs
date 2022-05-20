@@ -1007,6 +1007,32 @@ impl Value {
 }
 
 #[test]
+fn doctest_generate_enum_variant() {
+    check_doc_test(
+        "generate_enum_variant",
+        r#####"
+enum Countries {
+    Ghana,
+}
+
+fn main() {
+    let country = Countries::Lesotho$0;
+}
+"#####,
+        r#####"
+enum Countries {
+    Ghana,
+    Lesotho,
+}
+
+fn main() {
+    let country = Countries::Lesotho;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_from_impl_for_enum() {
     check_doc_test(
         "generate_from_impl_for_enum",
