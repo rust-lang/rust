@@ -796,7 +796,6 @@ impl<'tcx> AttributeMap<'tcx> {
 /// Map of all HIR nodes inside the current owner.
 /// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
 /// The HIR tree, including bodies, is pre-hashed.
-#[derive(Debug)]
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
     pub hash_including_bodies: Fingerprint,
@@ -819,6 +818,18 @@ impl<'tcx> OwnerNodes<'tcx> {
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         node
+    }
+}
+
+impl fmt::Debug for OwnerNodes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OwnerNodes")
+            .field("node", &self.nodes[ItemLocalId::from_u32(0)])
+            .field("bodies", &self.bodies)
+            .field("local_id_to_def_id", &self.local_id_to_def_id)
+            .field("hash_without_bodies", &self.hash_without_bodies)
+            .field("hash_including_bodies", &self.hash_including_bodies)
+            .finish()
     }
 }
 
