@@ -194,6 +194,28 @@ for seed in $({ echo obase=16; seq 255; } | bc); do
 done
 ```
 
+### Supported targets
+
+Miri does not support all targets supported by Rust. The good news, however, is
+that no matter your host OS/platform, it is easy to run code for *any* target
+using `--target`!
+
+The following targets are tested on CI and thus should always work (to the
+degree documented below):
+
+- The best-supported target is `x86_64-unknown-linux-gnu`. Miri releases are
+  blocked on things working with this target. Most other Linux targets should
+  also work well; we do run the test suite on `i686-unknown-linux-gnu` as a
+  32bit target and `mips64-unknown-linux-gnuabi64` as a big-endian target.
+- `x86_64-apple-darwin` should work basically as well as Linux. We also test
+  `aarch64-apple-darwin`. However, we might ship Miri with a nightly even when
+  some features on these targets regress.
+- `x86_64-pc-windows-msvc` works, but supports fewer features than the Linux and
+  Apple targets. For example, file system access and concurrency are not
+  supported on Windows. We also test `i686-pc-windows-msvc`, with the same
+  reduced feature set. We might ship Miri with a nightly even when some features
+  on these targets regress.
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
