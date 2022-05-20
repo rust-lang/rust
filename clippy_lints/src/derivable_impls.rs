@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{is_automatically_derived, is_default_equivalent, peel_blocks};
+use clippy_utils::{is_default_equivalent, peel_blocks};
 use rustc_hir::{
     def::{DefKind, Res},
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
@@ -71,8 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                 self_ty,
                 ..
             }) = item.kind;
-            if let attrs = cx.tcx.hir().attrs(item.hir_id());
-            if !is_automatically_derived(attrs);
+            if !cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
             if !item.span.from_expansion();
             if let Some(def_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Default, def_id);
@@ -81,6 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
             if let Some(adt_def) = cx.tcx.type_of(item.def_id).ty_adt_def();
+            if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
             if !child_attrs.iter().any(|attr| attr.doc_str().is_some());

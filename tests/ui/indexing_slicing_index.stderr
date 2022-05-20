@@ -1,4 +1,4 @@
-error[E0080]: evaluation of `main::{constant#3}::<&i32>` failed
+error[E0080]: evaluation of `main::{constant#3}` failed
   --> $DIR/indexing_slicing_index.rs:31:14
    |
 LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.

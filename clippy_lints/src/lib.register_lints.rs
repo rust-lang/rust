@@ -473,6 +473,7 @@ store.register_lints(&[
     shadow::SHADOW_REUSE,
     shadow::SHADOW_SAME,
     shadow::SHADOW_UNRELATED,
+    significant_drop_in_scrutinee::SIGNIFICANT_DROP_IN_SCRUTINEE,
     single_char_lifetime_names::SINGLE_CHAR_LIFETIME_NAMES,
     single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
     size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,

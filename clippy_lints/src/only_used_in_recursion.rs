@@ -596,7 +596,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
                 let mut vars = std::mem::take(&mut self.ret_vars);
                 let _ = arm.guard.as_ref().map(|guard| {
                     self.visit_expr(match guard {
-                        Guard::If(expr) | Guard::IfLet(_, expr) => expr,
+                        Guard::If(expr) | Guard::IfLet(Let { init: expr, .. }) => expr,
                     });
                     vars.append(&mut self.ret_vars);
                 });

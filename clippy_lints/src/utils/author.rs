@@ -315,11 +315,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 out!("if let Some(Guard::If({expr})) = {arm}.guard;");
                 self.expr(expr);
             },
-            Some(hir::Guard::IfLet(pat, expr)) => {
-                bind!(self, pat, expr);
-                out!("if let Some(Guard::IfLet({pat}, {expr}) = {arm}.guard;");
-                self.pat(pat);
-                self.expr(expr);
+            Some(hir::Guard::IfLet(let_expr)) => {
+                bind!(self, let_expr);
+                out!("if let Some(Guard::IfLet({let_expr}) = {arm}.guard;");
+                self.pat(field!(let_expr.pat));
+                self.expr(field!(let_expr.init));
             },
         }
         self.expr(field!(arm.body));
