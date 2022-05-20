@@ -441,6 +441,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         msg,
                     })
                 }
+                // Ensure we never consider the null pointer dereferencable.
+                if M::PointerTag::OFFSET_IS_ADDR {
+                    assert_ne!(ptr.addr(), Size::ZERO);
+                }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
