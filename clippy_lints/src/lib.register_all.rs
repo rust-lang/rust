@@ -278,6 +278,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(self_assignment::SELF_ASSIGNMENT),
     LintId::of(self_named_constructors::SELF_NAMED_CONSTRUCTORS),
     LintId::of(serde_api::SERDE_API_MISUSE),
+    LintId::of(significant_drop_in_scrutinee::SIGNIFICANT_DROP_IN_SCRUTINEE),
     LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
     LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
