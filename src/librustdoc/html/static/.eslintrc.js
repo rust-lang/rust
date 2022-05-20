@@ -42,5 +42,9 @@ module.exports = {
             "error",
             { "before": true, "after": true }
         ],
+        "key-spacing": [
+            "error",
+            { "beforeColon": false, "afterColon": true, "mode": "strict" }
+        ],
     }
 };
