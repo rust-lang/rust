@@ -868,6 +868,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.typeHints.hideClosureInitialization": {
+                    "markdownDescription": "Whether to hide inlay type hints for `let` statements that initialize to a closure.\nOnly applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.typeHints.hideNamedConstructor": {
                     "markdownDescription": "Whether to hide inlay type hints for constructors.",
                     "default": false,

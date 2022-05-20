@@ -113,6 +113,7 @@ impl StaticIndex<'_> {
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     reborrow_hints: crate::ReborrowHints::Never,
                     hide_named_constructor_hints: false,
+                    hide_closure_initialization_hints: false,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
                     max_length: Some(25),

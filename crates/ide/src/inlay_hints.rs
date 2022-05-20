@@ -26,6 +26,7 @@ pub struct InlayHintsConfig {
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
+    pub hide_closure_initialization_hints: bool,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
 }
@@ -467,10 +468,11 @@ fn closure_ret_hints(
         return None;
     }
 
-    let param_list = match closure.body() {
-        Some(ast::Expr::BlockExpr(_)) => closure.param_list()?,
-        _ => return None,
-    };
+    if !closure_has_block_body(&closure) {
+        return None;
+    }
+
+    let param_list = closure.param_list()?;
 
     let closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
     let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(closure))?.adjusted();
@@ -693,7 +695,7 @@ fn bind_pat_hints(
     let desc_pat = descended.as_ref().unwrap_or(pat);
     let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
 
-    if should_not_display_type_hint(sema, pat, &ty) {
+    if should_not_display_type_hint(sema, config, pat, &ty) {
         return None;
     }
 
@@ -848,6 +850,7 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
 
 fn should_not_display_type_hint(
     sema: &Semantics<RootDatabase>,
+    config: &InlayHintsConfig,
     bind_pat: &ast::IdentPat,
     pat_ty: &hir::Type,
 ) -> bool {
@@ -860,6 +863,18 @@ fn should_not_display_type_hint(
     if let Some(hir::Adt::Struct(s)) = pat_ty.as_adt() {
         if s.fields(db).is_empty() && s.name(db).to_smol_str() == bind_pat.to_string() {
             return true;
+        }
+    }
+
+    if config.hide_closure_initialization_hints {
+        if let Some(parent) = bind_pat.syntax().parent() {
+            if let Some(it) = ast::LetStmt::cast(parent.clone()) {
+                if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
+                    if closure_has_block_body(&closure) {
+                        return true;
+                    }
+                }
+            }
         }
     }
 
@@ -887,6 +902,10 @@ fn should_not_display_type_hint(
         }
     }
     false
+}
+
+fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
+    matches!(closure.body(), Some(ast::Expr::BlockExpr(_)))
 }
 
 fn should_hide_param_name_hint(
@@ -1083,6 +1102,7 @@ mod tests {
         reborrow_hints: ReborrowHints::Always,
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
+        hide_closure_initialization_hints: false,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
         closing_brace_hints_min_lines: None,
@@ -2031,6 +2051,53 @@ fn main() {
       || { 42 };
     //^^ i32
 }"#,
+        );
+    }
+
+    #[test]
+    fn skip_closure_type_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_closure_initialization_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let multiple_2 = |x: i32| { x * 2 };
+
+    let multiple_2 = |x: i32| x * 2;
+    //  ^^^^^^^^^^ |i32| -> i32
+
+    let (not) = (|x: bool| { !x });
+    //   ^^^ |bool| -> bool
+
+    let (is_zero, _b) = (|x: usize| { x == 0 }, false);
+    //   ^^^^^^^ |usize| -> bool
+    //            ^^ bool
+
+    let plus_one = |x| { x + 1 };
+    //              ^ u8
+    foo(plus_one);
+
+    let add_mul = bar(|x: u8| { x + 1 });
+    //  ^^^^^^^ impl FnOnce(u8) -> u8 + ?Sized
+
+    let closure = if let Some(6) = add_mul(2).checked_sub(1) {
+    //  ^^^^^^^ fn(i32) -> i32
+        |x: i32| { x * 2 }
+    } else {
+        |x: i32| { x * 3 }
+    };
+}
+
+fn foo(f: impl FnOnce(u8) -> u8) {}
+
+fn bar(f: impl FnOnce(u8) -> u8) -> impl FnOnce(u8) -> u8 {
+    move |x: u8| f(x) * 2
+}
+"#,
         );
     }
 

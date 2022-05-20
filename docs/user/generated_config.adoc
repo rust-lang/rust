@@ -407,6 +407,12 @@ Whether to render leading colons for type hints, and trailing colons for paramet
 --
 Whether to show inlay type hints for variables.
 --
+[[rust-analyzer.inlayHints.typeHints.hideClosureInitialization]]rust-analyzer.inlayHints.typeHints.hideClosureInitialization (default: `false`)::
++
+--
+Whether to hide inlay type hints for `let` statements that initialize to a closure.
+Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
+--
 [[rust-analyzer.inlayHints.typeHints.hideNamedConstructor]]rust-analyzer.inlayHints.typeHints.hideNamedConstructor (default: `false`)::
 +
 --
