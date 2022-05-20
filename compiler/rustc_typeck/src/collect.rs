@@ -2157,6 +2157,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     *generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
+                    ref generics,
                     origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
                     ..
                 }) => {
@@ -2174,7 +2175,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     // is from the return type of the containing function,
                     // which will ensure that the function's predicates
                     // hold.
-                    return ty::GenericPredicates { parent: None, predicates: &[] };
+                    if !tcx.sess.features_untracked().return_position_impl_trait_v2 {
+                        return ty::GenericPredicates { parent: None, predicates: &[] };
+                    }
+
+                    generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
