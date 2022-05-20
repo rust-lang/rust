@@ -62,7 +62,6 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_xor<T>(x: T, y: T) -> T;
 
     /// getelementptr (without inbounds)
-    #[cfg(not(bootstrap))]
     pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
 
     /// fptoui/fptosi/uitofp/sitofp
