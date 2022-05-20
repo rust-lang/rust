@@ -5,6 +5,12 @@ LL |     let _ = f;
    |         -   ^ cannot infer type for type parameter `A` declared on the function `f`
    |         |
    |         consider giving this pattern the explicit type `fn() -> A`, where the type parameter `A` is specified
+   |
+help: type parameter declared here
+  --> $DIR/fn-needing-specified-return-type-param.rs:1:6
+   |
+LL | fn f<A>() -> A { unimplemented!() }
+   |      ^
 
 error: aborting due to previous error
 

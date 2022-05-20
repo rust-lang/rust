@@ -3,12 +3,24 @@ error[E0282]: type annotations needed
    |
 LL |     A = foo(),
    |         ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |
+help: type parameter declared here
+  --> $DIR/issue-64662.rs:6:14
+   |
+LL | const fn foo<T>() -> isize {
+   |              ^
 
 error[E0282]: type annotations needed
   --> $DIR/issue-64662.rs:3:9
    |
 LL |     B = foo(),
    |         ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |
+help: type parameter declared here
+  --> $DIR/issue-64662.rs:6:14
+   |
+LL | const fn foo<T>() -> isize {
+   |              ^
 
 error: aborting due to 2 previous errors
 

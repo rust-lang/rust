@@ -941,15 +941,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let mut inner = self.inner.borrow_mut();
             let ty_vars = &inner.type_variables();
             let var_origin = ty_vars.var_origin(ty_vid);
-            if let TypeVariableOriginKind::TypeParameterDefinition(name, Some(def_id)) =
+            if let TypeVariableOriginKind::TypeParameterDefinition(_, Some(def_id)) =
                 var_origin.kind
                 && let Some(parent_def_id) = self.tcx.parent(def_id).as_local()
-                && let Some(hir::Node::Item(item)) = self.tcx.hir().find_by_def_id(parent_def_id)
-                && let hir::ItemKind::Impl(impl_item) = item.kind
-                && let Some(trait_ref) = &impl_item.of_trait
-                && let Some(did) = trait_ref.trait_def_id()
-                && self.tcx.generics_of(did).params.iter().any(|param| param.name == name)
+                && let Some(node) = self.tcx.hir().find_by_def_id(parent_def_id)
             {
+                match node {
+                    hir::Node::Item(item) if matches!(item.kind, hir::ItemKind::Impl(_) | hir::ItemKind::Fn(..)) => (),
+                    hir::Node::ImplItem(impl_item) if matches!(impl_item.kind, hir::ImplItemKind::Fn(..)) => (),
+                    _ => return,
+                }
                 err.span_help(self.tcx.def_span(def_id), "type parameter declared here");
             }
         }
