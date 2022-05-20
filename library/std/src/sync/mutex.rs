@@ -365,11 +365,11 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Clear the poisoned state from a mutex
     ///
-    /// If the mutex is poisoned, it will remain poisoned until this function is called
-    /// with a mutex guard. This allows recovering from a poisoned state and marking
-    /// that it has recovered. For example, if the value is overwritten by a known-good value,
-    /// then the mutex can be marked as un-poisoned. Or possibly, the value could be inspected to
-    /// determine if it is in a consistent state, and if so the poison is removed.
+    /// If the mutex is poisoned, it will remain poisoned until this function is called. This
+    /// allows recovering from a poisoned state and marking that it has recovered. For example, if
+    /// the value is overwritten by a known-good value, then the mutex can be marked as
+    /// un-poisoned. Or possibly, the value could be inspected to determine if it is in a
+    /// consistent state, and if so the poison is removed.
     ///
     /// # Examples
     ///
