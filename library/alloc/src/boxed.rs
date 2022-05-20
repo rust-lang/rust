@@ -122,7 +122,21 @@
 //! definition is just using `T*` can lead to undefined behavior, as
 //! described in [rust-lang/unsafe-code-guidelines#198][ucg#198].
 //!
+//! # Considerations for unsafe code
+//!
+//! **Warning: This section is not normative and is subject to change, possibly
+//! being relaxed in the future! It is a simplified summary of the rules
+//! currently implemented in the compiler.**
+//!
+//! The aliasing rules for `Box<T>` are the same as for `&mut T`. `Box<T>`
+//! asserts uniqeness over its content. Using raw pointers derived from a box
+//! after that box has been mutated through, moved or borrowed as `&mut T`
+//! is not allowed. For more guidance on working with box from unsafe code, see
+//! [rust-lang/unsafe-code-guidelines#326][ucg#326].
+//!
+//!
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
+//! [ucg#326]: https://github.com/rust-lang/unsafe-code-guidelines/issues/326
 //! [dereferencing]: core::ops::Deref
 //! [`Box::<T>::from_raw(value)`]: Box::from_raw
 //! [`Global`]: crate::alloc::Global
