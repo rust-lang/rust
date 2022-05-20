@@ -268,6 +268,15 @@ direct_serialize_impls! {
     char emit_char read_char
 }
 
+impl<S: Encoder, T: ?Sized> Encodable<S> for &T
+where
+    T: Encodable<S>,
+{
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
+
 impl<S: Encoder> Encodable<S> for ! {
     fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
         unreachable!()
@@ -293,12 +302,6 @@ impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
 }
 
 impl<S: Encoder> Encodable<S> for str {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self)
-    }
-}
-
-impl<S: Encoder> Encodable<S> for &str {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(self)
     }
