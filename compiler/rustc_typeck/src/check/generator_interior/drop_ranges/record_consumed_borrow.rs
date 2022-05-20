@@ -211,8 +211,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             "fake_read place_with_id={place_with_id:?}; cause={cause:?}; diag_expr_id={diag_expr_id:?}"
         );
 
-        // fake reads happen in places like the scrutinee of a match expression, so we can treat
-        // these as a borrow.
+        // fake reads happen in places like the scrutinee of a match expression.
+        // we treat those as a borrow, much like a copy: the idea is that we are
+        // transiently creating a `&T` ref that we can read from to observe the current
+        // value (this `&T` is immediately dropped afterwards).
         self.borrow_place(place_with_id);
     }
 }
