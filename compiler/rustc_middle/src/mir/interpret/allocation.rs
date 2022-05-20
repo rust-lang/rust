@@ -350,19 +350,22 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 /// Reading and writing.
 impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
-    /// relocation. If `allow_uninit_and_ptr` is `false`, also enforces that the memory in the
-    /// given range contains neither relocations nor uninitialized bytes.
+    /// relocation. If `allow_uninit`/`allow_ptr` is `false`, also enforces that the memory in the
+    /// given range contains no uninitialized bytes/relocations.
     pub fn check_bytes(
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-        allow_uninit_and_ptr: bool,
+        allow_uninit: bool,
+        allow_ptr: bool,
     ) -> AllocResult {
         // Check bounds and relocations on the edges.
         self.get_bytes_with_uninit_and_ptr(cx, range)?;
         // Check uninit and ptr.
-        if !allow_uninit_and_ptr {
+        if !allow_uninit {
             self.check_init(range)?;
+        }
+        if !allow_ptr {
             self.check_relocations(cx, range)?;
         }
         Ok(())

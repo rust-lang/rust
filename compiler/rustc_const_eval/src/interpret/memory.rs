@@ -924,10 +924,15 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
         self.read_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size))
     }
 
-    pub fn check_bytes(&self, range: AllocRange, allow_uninit_and_ptr: bool) -> InterpResult<'tcx> {
+    pub fn check_bytes(
+        &self,
+        range: AllocRange,
+        allow_uninit: bool,
+        allow_ptr: bool,
+    ) -> InterpResult<'tcx> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit_and_ptr)
+            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit, allow_ptr)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 }
