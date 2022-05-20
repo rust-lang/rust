@@ -1,5 +1,6 @@
 //! Builtin derives.
 
+use base_db::{CrateOrigin, LangCrateOrigin};
 use tracing::debug;
 
 use syntax::{
@@ -160,14 +161,11 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
     let cg = db.crate_graph();
     let krate = db.lookup_intern_macro_call(id).krate;
 
-    // XXX
-    //  All crates except core itself should have a dependency on core,
-    //  We detect `core` by seeing whether it doesn't have such a dependency.
-    let tt = if cg[krate].dependencies.iter().any(|dep| &*dep.name == "core") {
-        quote! { core }
-    } else {
+    let tt = if matches!(cg[krate].origin, CrateOrigin::Lang(LangCrateOrigin::Core)) {
         cov_mark::hit!(test_copy_expand_in_core);
         quote! { crate }
+    } else {
+        quote! { core }
     };
 
     tt.token_trees[0].clone()
