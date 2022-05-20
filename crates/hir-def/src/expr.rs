@@ -165,7 +165,7 @@ pub enum Expr {
         base: ExprId,
         index: ExprId,
     },
-    Lambda {
+    Closure {
         args: Box<[PatId]>,
         arg_types: Box<[Option<Interned<TypeRef>>]>,
         ret_type: Option<Interned<TypeRef>>,
@@ -286,7 +286,7 @@ impl Expr {
                     f(expr);
                 }
             }
-            Expr::Lambda { body, .. } => {
+            Expr::Closure { body, .. } => {
                 f(*body);
             }
             Expr::BinaryOp { lhs, rhs, .. } => {
