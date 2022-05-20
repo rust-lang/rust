@@ -17,7 +17,6 @@ use rustc_middle::ty;
 use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
-use std::convert::TryInto;
 use std::fmt::{Display, Write as _};
 use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
@@ -50,7 +49,7 @@ impl Display for Sugg<'_> {
     }
 }
 
-#[allow(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
+#[expect(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
@@ -318,7 +317,6 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    #[allow(dead_code)]
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
@@ -886,7 +884,6 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    #[allow(clippy::too_many_lines)]
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {
             let map = self.cx.tcx.hir();

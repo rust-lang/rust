@@ -72,7 +72,7 @@ declare_clippy_lint! {
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for EqOp {
-    #[allow(clippy::similar_names, clippy::too_many_lines)]
+    #[expect(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let Some((macro_call, macro_name)) = first_node_macro_backtrace(cx, e).find_map(|macro_call| {
@@ -138,7 +138,6 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                 },
             };
             if let Some(trait_id) = trait_id {
-                #[allow(clippy::match_same_arms)]
                 match (&left.kind, &right.kind) {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},

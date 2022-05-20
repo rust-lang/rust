@@ -15,9 +15,9 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'_>,
     self_arg: &'tcx Expr<'_>,
     radix: &'tcx Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
-    if !meets_msrv(msrv, &msrvs::IS_ASCII_DIGIT) {
+    if !meets_msrv(msrv, msrvs::IS_ASCII_DIGIT) {
         return;
     }
 

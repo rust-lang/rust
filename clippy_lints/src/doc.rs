@@ -198,7 +198,7 @@ declare_clippy_lint! {
     "presence of `fn main() {` in code examples"
 }
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
     valid_idents: FxHashSet<String>,
@@ -373,7 +373,7 @@ fn lint_for_missing_headers<'tcx>(
 /// `rustc_ast::parse::lexer::comments::strip_doc_comment_decoration` because we
 /// need to keep track of
 /// the spans but this function is inspired from the later.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 #[must_use]
 pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
@@ -428,7 +428,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
     /// point to a fake address.
-    #[allow(clippy::unnecessary_wraps)] // we're following a type signature
+    #[expect(clippy::unnecessary_wraps)] // we're following a type signature
     fn fake_broken_link_callback<'a>(_: BrokenLink<'_>) -> Option<(CowStr<'a>, CowStr<'a>)> {
         Some(("fake".into(), "fake".into()))
     }

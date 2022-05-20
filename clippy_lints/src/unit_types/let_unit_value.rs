@@ -3,6 +3,7 @@ use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::visitors::for_each_value_source;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -71,14 +72,18 @@ fn needs_inferred_result_ty(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 ..
             },
             _,
-        ) => cx.qpath_res(path, *hir_id).opt_def_id(),
-        ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(e.hir_id),
+        ) => match cx.qpath_res(path, *hir_id) {
+            Res::Def(DefKind::AssocFn | DefKind::Fn, id) => id,
+            _ => return false,
+        },
+        ExprKind::MethodCall(..) => match cx.typeck_results().type_dependent_def_id(e.hir_id) {
+            Some(id) => id,
+            None => return false,
+        },
         _ => return false,
     };
-    if let Some(id) = id
-        && let sig = cx.tcx.fn_sig(id).skip_binder()
-        && let ty::Param(output_ty) = *sig.output().kind()
-    {
+    let sig = cx.tcx.fn_sig(id).skip_binder();
+    if let ty::Param(output_ty) = *sig.output().kind() {
         sig.inputs().iter().all(|&ty| !ty_contains_param(ty, output_ty.index))
     } else {
         false

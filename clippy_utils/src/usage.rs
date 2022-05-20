@@ -44,7 +44,6 @@ struct MutVarsDelegate {
 }
 
 impl<'tcx> MutVarsDelegate {
-    #[allow(clippy::similar_names)]
     fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
         match cat.place.base {
             PlaceBase::Local(id) => {

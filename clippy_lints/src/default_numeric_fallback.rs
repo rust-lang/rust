@@ -116,7 +116,6 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
-    #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             ExprKind::Call(func, args) => {

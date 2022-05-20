@@ -57,7 +57,7 @@ impl BorrowAsPtr {
 
 impl<'tcx> LateLintPass<'tcx> for BorrowAsPtr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::BORROW_AS_PTR) {
+        if !meets_msrv(self.msrv, msrvs::BORROW_AS_PTR) {
             return;
         }
 

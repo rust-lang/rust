@@ -76,7 +76,8 @@ fn main() {
         },
         ("lint", Some(matches)) => {
             let path = matches.value_of("path").unwrap();
-            lint::run(path);
+            let args = matches.values_of("args").into_iter().flatten();
+            lint::run(path, args);
         },
         ("rename_lint", Some(matches)) => {
             let old_name = matches.value_of("old_name").unwrap();
@@ -123,7 +124,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                  * the lint count in README.md is correct\n \
                  * the changelog contains markdown link references at the bottom\n \
                  * all lint groups include the correct lints\n \
-                 * lint modules in `clippy_lints/*` are visible in `src/lifb.rs` via `pub mod`\n \
+                 * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod`\n \
                  * all lints are registered in the lint store",
                 )
                 .arg(Arg::with_name("print-only").long("print-only").help(
@@ -278,11 +279,44 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         Lint a package directory:
                             cargo dev lint tests/ui-cargo/wildcard_dependencies/fail
                             cargo dev lint ~/my-project
+
+                        Run rustfix:
+                            cargo dev lint ~/my-project -- --fix
+
+                        Set lint levels:
+                            cargo dev lint file.rs -- -W clippy::pedantic
+                            cargo dev lint ~/my-project -- -- -W clippy::pedantic
                 "})
                 .arg(
                     Arg::with_name("path")
                         .required(true)
                         .help("The path to a file or package directory to lint"),
+                )
+                .arg(
+                    Arg::with_name("args")
+                        .multiple(true)
+                        .help("Pass extra arguments to cargo/clippy-driver"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("rename_lint")
+                .about("Renames the given lint")
+                .arg(
+                    Arg::with_name("old_name")
+                        .index(1)
+                        .required(true)
+                        .help("The name of the lint to rename"),
+                )
+                .arg(
+                    Arg::with_name("new_name")
+                        .index(2)
+                        .required_unless("uplift")
+                        .help("The new name of the lint"),
+                )
+                .arg(
+                    Arg::with_name("uplift")
+                        .long("uplift")
+                        .help("This lint will be uplifted into rustc"),
                 ),
         )
         .subcommand(

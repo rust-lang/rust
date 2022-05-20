@@ -2,6 +2,7 @@
 #![feature(control_flow_enum)]
 #![feature(let_else)]
 #![feature(let_chains)]
+#![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
@@ -35,7 +36,6 @@ extern crate rustc_typeck;
 #[macro_use]
 pub mod sym_helper;
 
-#[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
 pub mod comparisons;
@@ -67,6 +67,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
+use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
@@ -77,9 +78,9 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
-    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
-    TraitRef, TyKind, UnOp,
+    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
+    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -116,8 +117,8 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
     None
 }
 
-pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
-    msrv.map_or(true, |msrv| msrv.meets(*lint_msrv))
+pub fn meets_msrv(msrv: Option<RustcVersion>, lint_msrv: RustcVersion) -> bool {
+    msrv.map_or(true, |msrv| msrv.meets(lint_msrv))
 }
 
 #[macro_export]
@@ -1554,14 +1555,14 @@ pub fn int_bits(tcx: TyCtxt<'_>, ity: rustc_ty::IntTy) -> u64 {
     Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
-#[allow(clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
 pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
-#[allow(clippy::cast_sign_loss)]
+#[expect(clippy::cast_sign_loss)]
 /// clip unused bytes
 pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: rustc_ty::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
@@ -2121,6 +2122,27 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
                 false
             })
     })
+}
+
+/// Checks if the item containing the given `HirId` has `#[cfg(test)]` attribute applied
+///
+/// Note: Add `// compile-flags: --test` to UI tests with a `#[cfg(test)]` function
+pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+    fn is_cfg_test(attr: &Attribute) -> bool {
+        if attr.has_name(sym::cfg)
+            && let Some(items) = attr.meta_item_list()
+            && let [item] = &*items
+            && item.has_name(sym::test)
+        {
+            true
+        } else {
+            false
+        }
+    }
+    tcx.hir()
+        .parent_iter(id)
+        .flat_map(|(parent_id, _)| tcx.hir().attrs(parent_id))
+        .any(is_cfg_test)
 }
 
 /// Checks whether item either has `test` attribute applied, or

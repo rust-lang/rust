@@ -35,7 +35,8 @@ struct PathAndSpan {
     span: Span,
 }
 
-/// `MacroRefData` includes the name of the macro.
+/// `MacroRefData` includes the name of the macro
+/// and the path from `SourceMap::span_to_filename`.
 #[derive(Debug, Clone)]
 pub struct MacroRefData {
     name: String,
@@ -48,7 +49,7 @@ impl MacroRefData {
 }
 
 #[derive(Default)]
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub struct MacroUseImports {
     /// the actual import path used and the span of the attribute above it.
     imports: Vec<(String, Span)>,
@@ -134,7 +135,6 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }
     }
-    #[allow(clippy::too_many_lines)]
     fn check_crate_post(&mut self, cx: &LateContext<'_>) {
         let mut used = FxHashMap::default();
         let mut check_dup = vec![];
