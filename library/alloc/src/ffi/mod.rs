@@ -80,9 +80,6 @@
 
 #![unstable(feature = "alloc_ffi", issue = "94079")]
 
-#[cfg(bootstrap)]
-#[unstable(feature = "cstr_internals", issue = "none")]
-pub use self::c_str::CStrExt;
 #[unstable(feature = "alloc_c_string", issue = "94079")]
 pub use self::c_str::FromVecWithNulError;
 #[unstable(feature = "alloc_c_string", issue = "94079")]

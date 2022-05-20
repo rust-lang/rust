@@ -29,7 +29,6 @@
 #![feature(backtrace)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
-#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(get_mut_unchecked)]

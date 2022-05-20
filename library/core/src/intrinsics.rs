@@ -1908,7 +1908,6 @@ extern "rust-intrinsic" {
 
     /// See documentation of `<*const T>::sub_ptr` for details.
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
-    #[cfg(not(bootstrap))]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
@@ -2392,12 +2391,4 @@ where
     G: FnOnce<ARG, Output = RET> + ~const Destruct,
 {
     called_in_const.call_once(arg)
-}
-
-/// Bootstrap polyfill
-#[cfg(bootstrap)]
-pub const unsafe fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize {
-    // SAFETY: we have stricter preconditions than `ptr_offset_from`, so can
-    // call it, and its output has to be positive, so we can just cast.
-    unsafe { ptr_offset_from(ptr, base) as _ }
 }
