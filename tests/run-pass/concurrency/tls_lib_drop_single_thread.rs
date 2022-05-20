@@ -8,7 +8,7 @@ struct TestCell {
 
 impl Drop for TestCell {
     fn drop(&mut self) {
-        eprintln!("Dropping: {}", self.value.borrow())
+        eprintln!("Dropping: {}", *self.value.borrow())
     }
 }
 

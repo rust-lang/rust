@@ -10,7 +10,7 @@ struct TestCell {
 impl Drop for TestCell {
     fn drop(&mut self) {
         for _ in 0..10 { thread::yield_now(); }
-        println!("Dropping: {} (should be before 'Continue main 1').", self.value.borrow())
+        println!("Dropping: {} (should be before 'Continue main 1').", *self.value.borrow())
     }
 }
 
