@@ -25,6 +25,7 @@ fn test_copy_expand_in_core() {
     cov_mark::check!(test_copy_expand_in_core);
     check(
         r#"
+//- /lib.rs crate:core
 #[rustc_builtin_macro]
 macro derive {}
 #[rustc_builtin_macro]

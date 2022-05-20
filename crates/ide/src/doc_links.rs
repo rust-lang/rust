@@ -293,7 +293,7 @@ fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<
 fn get_doc_link(db: &RootDatabase, def: Definition) -> Option<String> {
     let (target, file, frag) = filename_and_frag_for_def(db, def)?;
 
-    let krate = crate_of_def(db, target)?;
+    let krate = target.krate(db)?;
     let mut url = get_doc_base_url(db, krate)?;
 
     if let Some(path) = mod_path_of_def(db, target) {
@@ -315,7 +315,7 @@ fn rewrite_intra_doc_link(
     let (link, ns) = parse_intra_doc_link(target);
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let krate = crate_of_def(db, resolved)?;
+    let krate = resolved.krate(db)?;
     let mut url = get_doc_base_url(db, krate)?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
@@ -335,7 +335,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
         return None;
     }
 
-    let krate = crate_of_def(db, def)?;
+    let krate = def.krate(db)?;
     let mut url = get_doc_base_url(db, krate)?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
@@ -346,15 +346,6 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
     url = url.join(&file).ok()?;
     url.set_fragment(frag.as_deref());
     url.join(target).ok().map(Into::into)
-}
-
-fn crate_of_def(db: &RootDatabase, def: Definition) -> Option<Crate> {
-    let krate = match def {
-        // Definition::module gives back the parent module, we don't want that as it fails for root modules
-        Definition::Module(module) => module.krate(),
-        def => def.module(db)?.krate(),
-    };
-    Some(krate)
 }
 
 fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {

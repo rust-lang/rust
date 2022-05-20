@@ -466,10 +466,7 @@ fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definit
         Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
     };
 
-    let def_crate = def.module(db).map(hir::Module::krate).or_else(|| match def {
-        Definition::Module(module) => Some(module.krate()),
-        _ => None,
-    });
+    let def_crate = def.krate(db);
     let is_from_other_crate = def_crate != Some(krate);
     let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
     let is_builtin_type = matches!(def, Definition::BuiltinType(_));
