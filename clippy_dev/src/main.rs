@@ -319,26 +319,5 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .help("This lint will be uplifted into rustc"),
                 ),
         )
-        .subcommand(
-            SubCommand::with_name("rename_lint")
-                .about("Renames the given lint")
-                .arg(
-                    Arg::with_name("old_name")
-                        .index(1)
-                        .required(true)
-                        .help("The name of the lint to rename"),
-                )
-                .arg(
-                    Arg::with_name("new_name")
-                        .index(2)
-                        .required_unless("uplift")
-                        .help("The new name of the lint"),
-                )
-                .arg(
-                    Arg::with_name("uplift")
-                        .long("uplift")
-                        .help("This lint will be uplifted into rustc"),
-                ),
-        )
         .get_matches()
 }
