@@ -404,6 +404,7 @@ impl GlobalState {
             Some(it) => it,
             None => {
                 self.flycheck = Vec::new();
+                self.diagnostics.clear_check();
                 return;
             }
         };
