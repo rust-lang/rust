@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token::{self, Delimiter};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
 use rustc_expand::module::DirOwnership;
@@ -69,8 +69,17 @@ pub fn expand_file(
 pub fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    mut tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
+    // `stringify!` is nearly always called on `macro_rules` meta-variables and the intent is to
+    // stringify the underlying tokens without meta-variable's own invisible delimiters, so we
+    // are stripping such delimiters here (possibly multiple layers of them).
+    while let [TokenTree::Delimited(_, Delimiter::Invisible, inner_tts)] =
+        &mut tts.clone().into_trees().collect::<Vec<_>>()[..]
+    {
+        tts = inner_tts.clone();
+    }
+
     let sp = cx.with_def_site_ctxt(sp);
     let s = pprust::tts_to_string(&tts);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
