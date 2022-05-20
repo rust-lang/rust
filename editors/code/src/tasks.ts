@@ -32,6 +32,7 @@ class CargoTaskProvider implements vscode.TaskProvider {
         const defs = [
             { command: "build", group: vscode.TaskGroup.Build },
             { command: "check", group: vscode.TaskGroup.Build },
+            { command: "clippy", group: vscode.TaskGroup.Build },
             { command: "test", group: vscode.TaskGroup.Test },
             { command: "clean", group: vscode.TaskGroup.Clean },
             { command: "run", group: undefined },
