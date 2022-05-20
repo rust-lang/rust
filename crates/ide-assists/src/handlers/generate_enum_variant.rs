@@ -41,6 +41,10 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext) -> O
     }
 
     let name_ref = path.segment()?.name_ref()?;
+    if name_ref.text().as_str().chars().next()?.is_ascii_lowercase() {
+        // No need to generate anything if the name starts with a lowercase letter
+        return None;
+    }
 
     if let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e)))) =
         ctx.sema.resolve_path(&path.qualifier()?)
@@ -141,6 +145,21 @@ enum Foo {
 }
 fn main() {
     Foo::Bar$0
+}
+",
+        )
+    }
+
+    #[test]
+    fn not_applicable_for_lowercase() {
+        check_assist_not_applicable(
+            generate_enum_variant,
+            r"
+enum Foo {
+    Bar,
+}
+fn main() {
+    Foo::new$0
 }
 ",
         )
