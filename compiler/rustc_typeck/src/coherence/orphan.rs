@@ -5,10 +5,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -325,51 +325,6 @@ fn emit_orphan_check_error<'tcx>(
     })
 }
 
-#[derive(Default)]
-struct AreUniqueParamsVisitor {
-    seen: GrowableBitSet<u32>,
-}
-
-#[derive(Copy, Clone)]
-enum NotUniqueParam<'tcx> {
-    DuplicateParam(GenericArg<'tcx>),
-    NotParam(GenericArg<'tcx>),
-}
-
-impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
-    type BreakTy = NotUniqueParam<'tcx>;
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match t.kind() {
-            ty::Param(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(t.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(t.into())),
-        }
-    }
-    fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // We don't drop candidates during candidate assembly because of region
-        // constraints, so the behavior for impls only constrained by regions
-        // will not change.
-        ControlFlow::CONTINUE
-    }
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val() {
-            ty::ConstKind::Param(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(c.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(c.into())),
-        }
-    }
-}
-
 /// Lint impls of auto traits if they are likely to have
 /// unsound or surprising effects on auto impls.
 fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDefId]) {
@@ -400,9 +355,9 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
         // Impls which completely cover a given root type are fine as they
         // disable auto impls entirely. So only lint if the substs
         // are not a permutation of the identity substs.
-        match substs.visit_with(&mut AreUniqueParamsVisitor::default()) {
-            ControlFlow::Continue(()) => {} // ok
-            ControlFlow::Break(arg) => {
+        match tcx.uses_unique_generic_params(substs, IgnoreRegions::Yes) {
+            Ok(()) => {} // ok
+            Err(arg) => {
                 // Ideally:
                 //
                 // - compute the requirements for the auto impl candidate
@@ -429,13 +384,21 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
             tcx.hir().local_def_id_to_hir_id(impl_def_id),
             tcx.def_span(impl_def_id),
             |err| {
+                let item_span = tcx.def_span(self_type_did);
+                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
                 let mut err = err.build(&format!(
                     "cross-crate traits with a default impl, like `{}`, \
                          should not be specialized",
                     tcx.def_path_str(trait_def_id),
                 ));
-                let item_span = tcx.def_span(self_type_did);
-                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+                match arg {
+                    ty::util::NotUniqueParam::DuplicateParam(arg) => {
+                        err.note(&format!("`{}` is mentioned multiple times", arg));
+                    }
+                    ty::util::NotUniqueParam::NotParam(arg) => {
+                        err.note(&format!("`{}` is not a generic parameter", arg));
+                    }
+                }
                 err.span_note(
                     item_span,
                     &format!(
@@ -443,14 +406,6 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
                         self_descr,
                     ),
                 );
-                match arg {
-                    NotUniqueParam::DuplicateParam(arg) => {
-                        err.note(&format!("`{}` is mentioned multiple times", arg));
-                    }
-                    NotUniqueParam::NotParam(arg) => {
-                        err.note(&format!("`{}` is not a generic parameter", arg));
-                    }
-                }
                 err.emit();
             },
         );
