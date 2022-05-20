@@ -28,7 +28,7 @@ use super::{potentially_plural_count, FnCtxt, Inherited};
 /// - `impl_m_span`: span to use for reporting errors
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-crate fn compare_impl_method<'tcx>(
+pub(crate) fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     impl_m_span: Span,
@@ -1038,7 +1038,7 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-crate fn compare_const_impl<'tcx>(
+pub(crate) fn compare_const_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_c: &ty::AssocItem,
     impl_c_span: Span,
@@ -1144,7 +1144,7 @@ crate fn compare_const_impl<'tcx>(
     });
 }
 
-crate fn compare_ty_impl<'tcx>(
+pub(crate) fn compare_ty_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,

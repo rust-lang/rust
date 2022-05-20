@@ -409,7 +409,7 @@ pub struct CReaderCacheKey {
 ///   of the relevant methods.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[allow(rustc::usage_of_ty_tykind)]
-crate struct TyS<'tcx> {
+pub(crate) struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
     /// Use `Ty::kind()` instead.
     kind: TyKind<'tcx>,
@@ -500,7 +500,7 @@ impl ty::EarlyBoundRegion {
 /// See comments on `TyS`, which apply here too (albeit for
 /// `PredicateS`/`Predicate` rather than `TyS`/`Ty`).
 #[derive(Debug)]
-crate struct PredicateS<'tcx> {
+pub(crate) struct PredicateS<'tcx> {
     kind: Binder<'tcx, PredicateKind<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].

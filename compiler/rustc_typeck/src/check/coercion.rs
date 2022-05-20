@@ -1351,7 +1351,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
     #[instrument(skip(self, fcx, augment_error, label_expression_as_expected), level = "debug")]
-    crate fn coerce_inner<'a>(
+    pub(crate) fn coerce_inner<'a>(
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,

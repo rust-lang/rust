@@ -2116,7 +2116,7 @@ fn assoc_def(
     }
 }
 
-crate trait ProjectionCacheKeyExt<'cx, 'tcx>: Sized {
+pub(crate) trait ProjectionCacheKeyExt<'cx, 'tcx>: Sized {
     fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
         predicate: ty::PolyProjectionPredicate<'tcx>,

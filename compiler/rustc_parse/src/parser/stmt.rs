@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
 
     /// If `force_capture` is true, forces collection of tokens regardless of whether
     /// or not we have attributes
-    crate fn parse_stmt_without_recovery(
+    pub(crate) fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
@@ -500,7 +500,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    crate fn parse_block_tail(
+    pub(crate) fn parse_block_tail(
         &mut self,
         lo: Span,
         s: BlockCheckMode,

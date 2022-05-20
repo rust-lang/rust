@@ -503,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    crate fn maybe_get_struct_pattern_shorthand_field(
+    pub(crate) fn maybe_get_struct_pattern_shorthand_field(
         &self,
         expr: &hir::Expr<'_>,
     ) -> Option<Symbol> {
@@ -539,7 +539,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
-    crate fn maybe_get_block_expr(&self, expr: &hir::Expr<'tcx>) -> Option<&'tcx hir::Expr<'tcx>> {
+    pub(crate) fn maybe_get_block_expr(
+        &self,
+        expr: &hir::Expr<'tcx>,
+    ) -> Option<&'tcx hir::Expr<'tcx>> {
         match expr {
             hir::Expr { kind: hir::ExprKind::Block(block, ..), .. } => block.expr,
             _ => None,
@@ -547,7 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns whether the given expression is an `else if`.
-    crate fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
+    pub(crate) fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::If(..) = expr.kind {
             let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
             if let Some(Node::Expr(hir::Expr {

@@ -46,7 +46,6 @@
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
-#![feature(crate_visibility_modifier)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(half_open_range_patterns)]

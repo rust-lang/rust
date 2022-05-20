@@ -39,33 +39,33 @@ impl fmt::Debug for Type {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    crate fn type_named_struct(&self, name: &str) -> &'ll Type {
+    pub(crate) fn type_named_struct(&self, name: &str) -> &'ll Type {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr()) }
     }
 
-    crate fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
+    pub(crate) fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
         unsafe { llvm::LLVMStructSetBody(ty, els.as_ptr(), els.len() as c_uint, packed as Bool) }
     }
 
-    crate fn type_void(&self) -> &'ll Type {
+    pub(crate) fn type_void(&self) -> &'ll Type {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx) }
     }
 
-    crate fn type_metadata(&self) -> &'ll Type {
+    pub(crate) fn type_metadata(&self) -> &'ll Type {
         unsafe { llvm::LLVMRustMetadataTypeInContext(self.llcx) }
     }
 
     ///x Creates an integer type with the given number of bits, e.g., i24
-    crate fn type_ix(&self, num_bits: u64) -> &'ll Type {
+    pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
         unsafe { llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint) }
     }
 
-    crate fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+    pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
-    crate fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+    pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
             let mut args = Vec::with_capacity(n_args);
@@ -75,11 +75,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    crate fn type_bool(&self) -> &'ll Type {
+    pub(crate) fn type_bool(&self) -> &'ll Type {
         self.type_i8()
     }
 
-    crate fn type_int_from_ty(&self, t: ty::IntTy) -> &'ll Type {
+    pub(crate) fn type_int_from_ty(&self, t: ty::IntTy) -> &'ll Type {
         match t {
             ty::IntTy::Isize => self.type_isize(),
             ty::IntTy::I8 => self.type_i8(),
@@ -90,7 +90,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    crate fn type_uint_from_ty(&self, t: ty::UintTy) -> &'ll Type {
+    pub(crate) fn type_uint_from_ty(&self, t: ty::UintTy) -> &'ll Type {
         match t {
             ty::UintTy::Usize => self.type_isize(),
             ty::UintTy::U8 => self.type_i8(),
@@ -101,14 +101,14 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    crate fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
+    pub(crate) fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
         match t {
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
         }
     }
 
-    crate fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
+    pub(crate) fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
         let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
@@ -116,7 +116,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
-    crate fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
+    pub(crate) fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
         let unit = Integer::approximate_align(self, align);
         let size = size.bytes();
         let unit_size = unit.size().bytes();
@@ -124,11 +124,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 
-    crate fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
+    pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
 
-    crate fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+    pub(crate) fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMRustArrayType(ty, len) }
     }
 }

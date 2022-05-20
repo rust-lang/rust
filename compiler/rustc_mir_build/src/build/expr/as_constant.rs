@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt};
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
-    crate fn as_constant(&mut self, expr: &Expr<'tcx>) -> Constant<'tcx> {
+    pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> Constant<'tcx> {
         let create_uneval_from_def_id =
             |tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>, substs: SubstsRef<'tcx>| {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);

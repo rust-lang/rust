@@ -17,7 +17,7 @@ pub struct FulfillmentContext<'tcx> {
 }
 
 impl FulfillmentContext<'_> {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         FulfillmentContext {
             obligations: FxIndexSet::default(),
             relationships: FxHashMap::default(),

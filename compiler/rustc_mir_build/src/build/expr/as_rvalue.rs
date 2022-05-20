@@ -21,7 +21,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The operand returned from this function will *not be valid* after
     /// an ExprKind::Scope is passed, so please do *not* return it from
     /// functions to avoid bad miscompiles.
-    crate fn as_local_rvalue(
+    pub(crate) fn as_local_rvalue(
         &mut self,
         block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -31,7 +31,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    crate fn as_rvalue(
+    pub(crate) fn as_rvalue(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
@@ -416,7 +416,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn build_binary_op(
+    pub(crate) fn build_binary_op(
         &mut self,
         mut block: BasicBlock,
         op: BinOp,

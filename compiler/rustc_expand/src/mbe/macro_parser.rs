@@ -70,8 +70,8 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-crate use NamedMatch::*;
-crate use ParseResult::*;
+pub(crate) use NamedMatch::*;
+pub(crate) use ParseResult::*;
 
 use crate::mbe::{KleeneOp, TokenTree};
 
@@ -262,7 +262,7 @@ enum EofMatcherPositions {
 }
 
 /// Represents the possible results of an attempted parse.
-crate enum ParseResult<T> {
+pub(crate) enum ParseResult<T> {
     /// Parsed successfully.
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
@@ -276,7 +276,7 @@ crate enum ParseResult<T> {
 /// A `ParseResult` where the `Success` variant contains a mapping of
 /// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
 /// of metavars to the token trees they bind to.
-crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
+pub(crate) type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
 
 /// Count how many metavars declarations are in `matcher`.
 pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
@@ -340,7 +340,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 /// ])
 /// ```
 #[derive(Debug, Clone)]
-crate enum NamedMatch {
+pub(crate) enum NamedMatch {
     MatchedSeq(Vec<NamedMatch>),
 
     // A metavar match of type `tt`.

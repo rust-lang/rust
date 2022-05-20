@@ -1343,7 +1343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    crate fn note_unmet_impls_on_type(
+    pub(crate) fn note_unmet_impls_on_type(
         &self,
         err: &mut Diagnostic,
         errors: Vec<FulfillmentError<'tcx>>,

@@ -22,7 +22,7 @@ use crate::region_infer::values::RegionElement;
 use crate::MirBorrowckCtxt;
 
 #[derive(Clone)]
-crate struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
+pub(crate) struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
 
 /// What operation a universe was created for.
 #[derive(Clone)]
@@ -36,15 +36,15 @@ enum UniverseInfoInner<'tcx> {
 }
 
 impl<'tcx> UniverseInfo<'tcx> {
-    crate fn other() -> UniverseInfo<'tcx> {
+    pub(crate) fn other() -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::Other)
     }
 
-    crate fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
+    pub(crate) fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
     }
 
-    crate fn report_error(
+    pub(crate) fn report_error(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -76,7 +76,7 @@ impl<'tcx> UniverseInfo<'tcx> {
     }
 }
 
-crate trait ToUniverseInfo<'tcx> {
+pub(crate) trait ToUniverseInfo<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx>;
 }
 

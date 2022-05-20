@@ -12,7 +12,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
-crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
+pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
     for id in tcx.hir().items() {
         collector.process_item(id);
@@ -21,7 +21,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     collector.libs
 }
 
-crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
+pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,

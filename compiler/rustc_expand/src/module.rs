@@ -26,7 +26,7 @@ pub struct ModulePathSuccess {
     pub dir_ownership: DirOwnership,
 }
 
-crate struct ParsedExternalMod {
+pub(crate) struct ParsedExternalMod {
     pub items: Vec<P<Item>>,
     pub spans: ModSpans,
     pub file_path: PathBuf,
@@ -42,7 +42,7 @@ pub enum ModError<'a> {
     ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
 }
 
-crate fn parse_external_mod(
+pub(crate) fn parse_external_mod(
     sess: &Session,
     ident: Ident,
     span: Span, // The span to blame on errors.
@@ -78,7 +78,7 @@ crate fn parse_external_mod(
     ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership }
 }
 
-crate fn mod_dir_path(
+pub(crate) fn mod_dir_path(
     sess: &Session,
     ident: Ident,
     attrs: &[Attribute],

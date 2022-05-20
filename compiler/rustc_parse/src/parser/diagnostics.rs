@@ -132,7 +132,7 @@ impl RecoverQPath for Expr {
 }
 
 /// Control whether the closing delimiter should be consumed when calling `Parser::consume_block`.
-crate enum ConsumeClosingDelim {
+pub(crate) enum ConsumeClosingDelim {
     Yes,
     No,
 }
@@ -2459,7 +2459,7 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    crate fn maybe_recover_colon_colon_in_pat_typo(
+    pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: P<Pat>,
         ra: RecoverColon,
@@ -2575,7 +2575,7 @@ impl<'a> Parser<'a> {
         first_pat
     }
 
-    crate fn maybe_recover_unexpected_block_label(&mut self) -> bool {
+    pub(crate) fn maybe_recover_unexpected_block_label(&mut self) -> bool {
         let Some(label) = self.eat_label().filter(|_| {
             self.eat(&token::Colon) && self.token.kind == token::OpenDelim(Delimiter::Brace)
         }) else {
@@ -2596,7 +2596,7 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    crate fn maybe_recover_unexpected_comma(
+    pub(crate) fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
         rc: RecoverComma,
@@ -2643,7 +2643,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
+    pub(crate) fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
         let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
         let qself_position = qself.as_ref().map(|qself| qself.position);
         for (i, segments) in path.segments.windows(2).enumerate() {

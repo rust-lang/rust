@@ -70,7 +70,7 @@ pub enum LoadedMacro {
     ProcMacro(SyntaxExtension),
 }
 
-crate struct Library {
+pub(crate) struct Library {
     pub source: CrateSource,
     pub metadata: MetadataBlob,
 }
@@ -82,7 +82,7 @@ enum LoadResult {
 
 /// A reference to `CrateMetadata` that can also give access to whole crate store when necessary.
 #[derive(Clone, Copy)]
-crate struct CrateMetadataRef<'a> {
+pub(crate) struct CrateMetadataRef<'a> {
     pub cdata: &'a CrateMetadata,
     pub cstore: &'a CStore,
 }
@@ -133,7 +133,7 @@ impl CStore {
         CrateNum::new(self.metas.len() - 1)
     }
 
-    crate fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
+    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
         let cdata = self.metas[cnum]
             .as_ref()
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum));
@@ -145,7 +145,7 @@ impl CStore {
         self.metas[cnum] = Some(Lrc::new(data));
     }
 
-    crate fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
+    pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
         self.metas
             .iter_enumerated()
             .filter_map(|(cnum, data)| data.as_ref().map(|data| (cnum, &**data)))
@@ -164,7 +164,7 @@ impl CStore {
         }
     }
 
-    crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = Vec::new();
         if cnum == LOCAL_CRATE {
             for (cnum, _) in self.iter_crate_data() {
@@ -182,15 +182,15 @@ impl CStore {
         deps
     }
 
-    crate fn injected_panic_runtime(&self) -> Option<CrateNum> {
+    pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
         self.injected_panic_runtime
     }
 
-    crate fn allocator_kind(&self) -> Option<AllocatorKind> {
+    pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
     }
 
-    crate fn has_global_allocator(&self) -> bool {
+    pub(crate) fn has_global_allocator(&self) -> bool {
         self.has_global_allocator
     }
 

@@ -513,26 +513,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
+    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         self.universal_regions.annotate(tcx, err)
     }
 
     /// Returns `true` if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
-    crate fn region_contains(&self, r: impl ToRegionVid, p: impl ToElementIndex) -> bool {
+    pub(crate) fn region_contains(&self, r: impl ToRegionVid, p: impl ToElementIndex) -> bool {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         self.scc_values.contains(scc, p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
-    crate fn region_value_str(&self, r: RegionVid) -> String {
+    pub(crate) fn region_value_str(&self, r: RegionVid) -> String {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         self.scc_values.region_value_str(scc)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
-    crate fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
+    pub(crate) fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         self.scc_universes[scc]
     }
@@ -1693,7 +1693,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   that cannot be named by `fr1`; in that case, we will require
     ///   that `fr1: 'static` because it is the only way to `fr1: r` to
     ///   be satisfied. (See `add_incompatible_universe`.)
-    crate fn provides_universal_region(
+    pub(crate) fn provides_universal_region(
         &self,
         r: RegionVid,
         fr1: RegionVid,
@@ -1712,7 +1712,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// If `r2` represents a placeholder region, then this returns
     /// `true` if `r1` cannot name that placeholder in its
     /// value; otherwise, returns `false`.
-    crate fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
+    pub(crate) fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
         debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
 
         match self.definitions[r2].origin {
@@ -1731,7 +1731,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    crate fn retrieve_closure_constraint_info(
+    pub(crate) fn retrieve_closure_constraint_info(
         &self,
         _body: &Body<'tcx>,
         constraint: &OutlivesConstraint<'tcx>,
@@ -1766,7 +1766,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Finds a good `ObligationCause` to blame for the fact that `fr1` outlives `fr2`.
-    crate fn find_outlives_blame_span(
+    pub(crate) fn find_outlives_blame_span(
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
@@ -1788,7 +1788,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Returns: a series of constraints as well as the region `R`
     /// that passed the target test.
-    crate fn find_constraint_paths_between_regions(
+    pub(crate) fn find_constraint_paths_between_regions(
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
@@ -1882,7 +1882,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
     #[instrument(skip(self), level = "trace")]
-    crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
@@ -1919,7 +1919,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Get the region outlived by `longer_fr` and live at `element`.
-    crate fn region_from_element(
+    pub(crate) fn region_from_element(
         &self,
         longer_fr: RegionVid,
         element: &RegionElement,
@@ -1939,17 +1939,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Get the region definition of `r`.
-    crate fn region_definition(&self, r: RegionVid) -> &RegionDefinition<'tcx> {
+    pub(crate) fn region_definition(&self, r: RegionVid) -> &RegionDefinition<'tcx> {
         &self.definitions[r]
     }
 
     /// Check if the SCC of `r` contains `upper`.
-    crate fn upper_bound_in_region_scc(&self, r: RegionVid, upper: RegionVid) -> bool {
+    pub(crate) fn upper_bound_in_region_scc(&self, r: RegionVid, upper: RegionVid) -> bool {
         let r_scc = self.constraint_sccs.scc(r);
         self.scc_values.contains(r_scc, upper)
     }
 
-    crate fn universal_regions(&self) -> &UniversalRegions<'tcx> {
+    pub(crate) fn universal_regions(&self) -> &UniversalRegions<'tcx> {
         self.universal_regions.as_ref()
     }
 
@@ -1959,7 +1959,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// creating a constraint path that forces `R` to outlive
     /// `from_region`, and then finding the best choices within that
     /// path to blame.
-    crate fn best_blame_constraint(
+    pub(crate) fn best_blame_constraint(
         &self,
         body: &Body<'tcx>,
         from_region: RegionVid,
@@ -2171,7 +2171,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         categorized_path.remove(0)
     }
 
-    crate fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+    pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         self.universe_causes[&universe].clone()
     }
 }

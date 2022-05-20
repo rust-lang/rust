@@ -110,7 +110,7 @@ pub struct ItemCtxt<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-crate struct HirPlaceholderCollector(crate Vec<Span>);
+pub(crate) struct HirPlaceholderCollector(pub(crate) Vec<Span>);
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
@@ -144,7 +144,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
 /// and suggest adding type parameters in the appropriate place, taking into consideration any and
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
-crate fn placeholder_type_error<'tcx>(
+pub(crate) fn placeholder_type_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,
@@ -160,7 +160,7 @@ crate fn placeholder_type_error<'tcx>(
         .emit();
 }
 
-crate fn placeholder_type_error_diag<'tcx>(
+pub(crate) fn placeholder_type_error_diag<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,

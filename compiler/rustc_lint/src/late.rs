@@ -34,7 +34,7 @@ use tracing::debug;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
-crate fn unerased_lint_store(tcx: TyCtxt<'_>) -> &LintStore {
+pub(crate) fn unerased_lint_store(tcx: TyCtxt<'_>) -> &LintStore {
     let store: &dyn Any = &*tcx.lint_store;
     store.downcast_ref().unwrap()
 }

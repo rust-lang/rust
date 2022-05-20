@@ -37,7 +37,7 @@ use std::mem::{replace, take};
 use tracing::debug;
 
 mod diagnostics;
-crate mod lifetimes;
+pub(crate) mod lifetimes;
 
 type Res = def::Res<NodeId>;
 
@@ -90,7 +90,7 @@ enum PatBoundCtx {
 
 /// Does this the item (from the item rib scope) allow generic parameters?
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-crate enum HasGenericParams {
+pub(crate) enum HasGenericParams {
     Yes,
     No,
 }
@@ -102,7 +102,7 @@ impl HasGenericParams {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-crate enum ConstantItemKind {
+pub(crate) enum ConstantItemKind {
     Const,
     Static,
 }
@@ -110,7 +110,7 @@ crate enum ConstantItemKind {
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
-crate enum RibKind<'a> {
+pub(crate) enum RibKind<'a> {
     /// No restriction needs to be applied.
     NormalRibKind,
 
@@ -159,7 +159,7 @@ crate enum RibKind<'a> {
 impl RibKind<'_> {
     /// Whether this rib kind contains generic parameters, as opposed to local
     /// variables.
-    crate fn contains_params(&self) -> bool {
+    pub(crate) fn contains_params(&self) -> bool {
         match self {
             NormalRibKind
             | ClosureOrAsyncRibKind
@@ -187,7 +187,7 @@ impl RibKind<'_> {
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
-crate struct Rib<'a, R = Res> {
+pub(crate) struct Rib<'a, R = Res> {
     pub bindings: IdentMap<R>,
     pub kind: RibKind<'a>,
 }
@@ -278,13 +278,13 @@ impl LifetimeRib {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-crate enum AliasPossibility {
+pub(crate) enum AliasPossibility {
     No,
     Maybe,
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum PathSource<'a> {
+pub(crate) enum PathSource<'a> {
     // Type paths `Path`.
     Type,
     // Trait paths in bounds or impls.
@@ -366,7 +366,7 @@ impl<'a> PathSource<'a> {
         matches!(self, PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })))
     }
 
-    crate fn is_expected(self, res: Res) -> bool {
+    pub(crate) fn is_expected(self, res: Res) -> bool {
         match self {
             PathSource::Type => matches!(
                 res,

@@ -44,7 +44,7 @@ fn numeric_intrinsic<Tag>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<T
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
 /// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
-crate fn eval_nullary_intrinsic<'tcx>(
+pub(crate) fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,

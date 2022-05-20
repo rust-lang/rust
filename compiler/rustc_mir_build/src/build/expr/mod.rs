@@ -60,7 +60,7 @@
 //! basically the point where the "by value" operations are bridged
 //! over to the "by reference" mode (`as_place`).
 
-crate mod as_constant;
+pub(crate) mod as_constant;
 mod as_operand;
 pub mod as_place;
 mod as_rvalue;

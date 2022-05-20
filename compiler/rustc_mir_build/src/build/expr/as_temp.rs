@@ -10,7 +10,7 @@ use rustc_middle::thir::*;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    crate fn as_temp(
+    pub(crate) fn as_temp(
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,

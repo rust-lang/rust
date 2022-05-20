@@ -36,7 +36,7 @@ use std::num::NonZeroUsize;
 
 pub use decoder::provide_extern;
 use decoder::DecodeContext;
-crate use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 use encoder::EncodeContext;
 pub use encoder::{encode_metadata, EncodedMetadata};
 use rustc_span::hygiene::SyntaxContextData;
@@ -46,7 +46,7 @@ mod def_path_hash_map;
 mod encoder;
 mod table;
 
-crate fn rustc_version() -> String {
+pub(crate) fn rustc_version() -> String {
     format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
@@ -169,7 +169,7 @@ type ExpnDataTable = Lazy<Table<ExpnIndex, Lazy<ExpnData>>>;
 type ExpnHashTable = Lazy<Table<ExpnIndex, Lazy<ExpnHash>>>;
 
 #[derive(MetadataEncodable, MetadataDecodable)]
-crate struct ProcMacroData {
+pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
     stability: Option<attr::Stability>,
     macros: Lazy<[DefIndex]>,
@@ -192,7 +192,7 @@ crate struct ProcMacroData {
 /// a normal crate, much of what we serialized would be unusable in addition
 /// to being unused.
 #[derive(MetadataEncodable, MetadataDecodable)]
-crate struct CrateRoot<'tcx> {
+pub(crate) struct CrateRoot<'tcx> {
     name: Symbol,
     triple: TargetTriple,
     extra_filename: String,
@@ -245,7 +245,7 @@ crate struct CrateRoot<'tcx> {
 /// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
 /// representation and the compilation session.
 #[derive(Copy, Clone)]
-crate struct RawDefId {
+pub(crate) struct RawDefId {
     krate: u32,
     index: u32,
 }
@@ -265,7 +265,7 @@ impl RawDefId {
 }
 
 #[derive(Encodable, Decodable)]
-crate struct CrateDep {
+pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
@@ -274,13 +274,13 @@ crate struct CrateDep {
 }
 
 #[derive(MetadataEncodable, MetadataDecodable)]
-crate struct TraitImpls {
+pub(crate) struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: Lazy<[(DefIndex, Option<SimplifiedType>)]>,
 }
 
 #[derive(MetadataEncodable, MetadataDecodable)]
-crate struct IncoherentImpls {
+pub(crate) struct IncoherentImpls {
     self_ty: SimplifiedType,
     impls: Lazy<[DefIndex]>,
 }
@@ -289,7 +289,7 @@ crate struct IncoherentImpls {
 macro_rules! define_tables {
     ($($name:ident: Table<$IDX:ty, $T:ty>),+ $(,)?) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
-        crate struct LazyTables<'tcx> {
+        pub(crate) struct LazyTables<'tcx> {
             $($name: Lazy!(Table<$IDX, $T>)),+
         }
 

@@ -214,7 +214,7 @@ pub enum SupportsMacroExpansion {
 }
 
 impl AstFragmentKind {
-    crate fn dummy(self, span: Span) -> AstFragment {
+    pub(crate) fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 

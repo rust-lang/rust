@@ -19,7 +19,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
-crate fn thir_body<'tcx>(
+pub(crate) fn thir_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
 ) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
@@ -33,7 +33,7 @@ crate fn thir_body<'tcx>(
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
-crate fn thir_tree<'tcx>(
+pub(crate) fn thir_tree<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
 ) -> String {
@@ -47,10 +47,10 @@ struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: Thir<'tcx>,
 
-    crate param_env: ty::ParamEnv<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
 
-    crate region_scope_tree: &'tcx region::ScopeTree,
-    crate typeck_results: &'tcx ty::TypeckResults<'tcx>,
+    pub(crate) region_scope_tree: &'tcx region::ScopeTree,
+    pub(crate) typeck_results: &'tcx ty::TypeckResults<'tcx>,
 
     /// When applying adjustments to the expression
     /// with the given `HirId`, use the given `Span`,
@@ -79,7 +79,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    crate fn const_eval_literal(
+    pub(crate) fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
         ty: Ty<'tcx>,
@@ -96,7 +96,7 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
-    crate fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
+    pub(crate) fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),

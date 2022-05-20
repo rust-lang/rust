@@ -58,10 +58,10 @@ impl ConstraintDescription for ConstraintCategory {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-crate type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
+pub(crate) type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
 
 #[derive(Clone, Debug)]
-crate enum RegionErrorKind<'tcx> {
+pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
 

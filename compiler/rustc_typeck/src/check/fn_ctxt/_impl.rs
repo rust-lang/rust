@@ -1486,7 +1486,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
-    crate fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
+    pub(crate) fn add_required_obligations(
+        &self,
+        span: Span,
+        def_id: DefId,
+        substs: &SubstsRef<'tcx>,
+    ) {
         self.add_required_obligations_with_code(
             span,
             def_id,

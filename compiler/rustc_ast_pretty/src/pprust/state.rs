@@ -95,7 +95,7 @@ pub struct State<'a> {
     ann: &'a (dyn PpAnn + 'a),
 }
 
-crate const INDENT_UNIT: isize = 4;
+pub(crate) const INDENT_UNIT: isize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
@@ -955,8 +955,13 @@ impl<'a> State<'a> {
         State { s: pp::Printer::new(), comments: None, ann: &NoAnn }
     }
 
-    crate fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)
-    where
+    pub(crate) fn commasep_cmnt<T, F, G>(
+        &mut self,
+        b: Breaks,
+        elts: &[T],
+        mut op: F,
+        mut get_span: G,
+    ) where
         F: FnMut(&mut State<'_>, &T),
         G: FnMut(&T) -> rustc_span::Span,
     {
@@ -976,7 +981,7 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    crate fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<ast::Expr>]) {
+    pub(crate) fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<ast::Expr>]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
@@ -1109,7 +1114,7 @@ impl<'a> State<'a> {
         self.print_trait_ref(&t.trait_ref)
     }
 
-    crate fn print_stmt(&mut self, st: &ast::Stmt) {
+    pub(crate) fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
             ast::StmtKind::Local(ref loc) => {
@@ -1164,19 +1169,19 @@ impl<'a> State<'a> {
         self.maybe_print_trailing_comment(st.span, None)
     }
 
-    crate fn print_block(&mut self, blk: &ast::Block) {
+    pub(crate) fn print_block(&mut self, blk: &ast::Block) {
         self.print_block_with_attrs(blk, &[])
     }
 
-    crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block) {
+    pub(crate) fn print_block_unclosed_indent(&mut self, blk: &ast::Block) {
         self.print_block_maybe_unclosed(blk, &[], false)
     }
 
-    crate fn print_block_with_attrs(&mut self, blk: &ast::Block, attrs: &[ast::Attribute]) {
+    pub(crate) fn print_block_with_attrs(&mut self, blk: &ast::Block, attrs: &[ast::Attribute]) {
         self.print_block_maybe_unclosed(blk, attrs, true)
     }
 
-    crate fn print_block_maybe_unclosed(
+    pub(crate) fn print_block_maybe_unclosed(
         &mut self,
         blk: &ast::Block,
         attrs: &[ast::Attribute],
@@ -1210,7 +1215,7 @@ impl<'a> State<'a> {
     }
 
     /// Print a `let pat = expr` expression.
-    crate fn print_let(&mut self, pat: &ast::Pat, expr: &ast::Expr) {
+    pub(crate) fn print_let(&mut self, pat: &ast::Pat, expr: &ast::Expr) {
         self.word("let ");
         self.print_pat(pat);
         self.space();
@@ -1219,7 +1224,7 @@ impl<'a> State<'a> {
         self.print_expr_cond_paren(expr, Self::cond_needs_par(expr) || npals())
     }
 
-    crate fn print_mac(&mut self, m: &ast::MacCall) {
+    pub(crate) fn print_mac(&mut self, m: &ast::MacCall) {
         self.print_mac_common(
             Some(MacHeader::Path(&m.path)),
             true,
@@ -1360,7 +1365,7 @@ impl<'a> State<'a> {
         self.pclose();
     }
 
-    crate fn print_local_decl(&mut self, loc: &ast::Local) {
+    pub(crate) fn print_local_decl(&mut self, loc: &ast::Local) {
         self.print_pat(&loc.pat);
         if let Some(ref ty) = loc.ty {
             self.word_space(":");
@@ -1368,7 +1373,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_name(&mut self, name: Symbol) {
+    pub(crate) fn print_name(&mut self, name: Symbol) {
         self.word(name.to_string());
         self.ann.post(self, AnnNode::Name(&name))
     }
@@ -1392,7 +1397,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_pat(&mut self, pat: &ast::Pat) {
+    pub(crate) fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
         /* Pat isn't normalized, but the beauty of it
@@ -1551,7 +1556,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_asyncness(&mut self, asyncness: ast::Async) {
+    pub(crate) fn print_asyncness(&mut self, asyncness: ast::Async) {
         if asyncness.is_async() {
             self.word_nbsp("async");
         }
@@ -1584,11 +1589,11 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_lifetime(&mut self, lifetime: ast::Lifetime) {
+    pub(crate) fn print_lifetime(&mut self, lifetime: ast::Lifetime) {
         self.print_name(lifetime.ident.name)
     }
 
-    crate fn print_lifetime_bounds(
+    pub(crate) fn print_lifetime_bounds(
         &mut self,
         lifetime: ast::Lifetime,
         bounds: &ast::GenericBounds,
@@ -1608,7 +1613,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_generic_params(&mut self, generic_params: &[ast::GenericParam]) {
+    pub(crate) fn print_generic_params(&mut self, generic_params: &[ast::GenericParam]) {
         if generic_params.is_empty() {
             return;
         }
@@ -1662,12 +1667,12 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
+    pub(crate) fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
         self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 
-    crate fn print_param(&mut self, input: &ast::Param, is_closure: bool) {
+    pub(crate) fn print_param(&mut self, input: &ast::Param, is_closure: bool) {
         self.ibox(INDENT_UNIT);
 
         self.print_outer_attributes_inline(&input.attrs);
@@ -1695,7 +1700,7 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    crate fn print_fn_ret_ty(&mut self, fn_ret_ty: &ast::FnRetTy) {
+    pub(crate) fn print_fn_ret_ty(&mut self, fn_ret_ty: &ast::FnRetTy) {
         if let ast::FnRetTy::Ty(ty) = fn_ret_ty {
             self.space_if_not_bol();
             self.ibox(INDENT_UNIT);
@@ -1706,7 +1711,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_ty_fn(
+    pub(crate) fn print_ty_fn(
         &mut self,
         ext: ast::Extern,
         unsafety: ast::Unsafe,
@@ -1730,7 +1735,7 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    crate fn print_fn_header_info(&mut self, header: ast::FnHeader) {
+    pub(crate) fn print_fn_header_info(&mut self, header: ast::FnHeader) {
         self.print_constness(header.constness);
         self.print_asyncness(header.asyncness);
         self.print_unsafety(header.unsafety);
@@ -1750,21 +1755,21 @@ impl<'a> State<'a> {
         self.word("fn")
     }
 
-    crate fn print_unsafety(&mut self, s: ast::Unsafe) {
+    pub(crate) fn print_unsafety(&mut self, s: ast::Unsafe) {
         match s {
             ast::Unsafe::No => {}
             ast::Unsafe::Yes(_) => self.word_nbsp("unsafe"),
         }
     }
 
-    crate fn print_constness(&mut self, s: ast::Const) {
+    pub(crate) fn print_constness(&mut self, s: ast::Const) {
         match s {
             ast::Const::No => {}
             ast::Const::Yes(_) => self.word_nbsp("const"),
         }
     }
 
-    crate fn print_is_auto(&mut self, s: ast::IsAuto) {
+    pub(crate) fn print_is_auto(&mut self, s: ast::IsAuto) {
         match s {
             ast::IsAuto::Yes => self.word_nbsp("auto"),
             ast::IsAuto::No => {}

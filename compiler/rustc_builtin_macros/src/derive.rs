@@ -10,7 +10,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
-crate struct Expander;
+pub(crate) struct Expander;
 
 impl MultiItemModifier for Expander {
     fn expand(

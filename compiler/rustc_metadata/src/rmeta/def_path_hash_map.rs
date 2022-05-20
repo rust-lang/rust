@@ -6,7 +6,7 @@ use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
-crate enum DefPathHashMapRef<'tcx> {
+pub(crate) enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwningRef<MetadataBlob, [u8]>>),
     BorrowedFromTcx(&'tcx DefPathHashMap),
 }

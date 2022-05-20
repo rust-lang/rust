@@ -414,7 +414,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
     }
 }
 
-crate struct AllocMap<'tcx> {
+pub(crate) struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
 
@@ -430,7 +430,7 @@ crate struct AllocMap<'tcx> {
 }
 
 impl<'tcx> AllocMap<'tcx> {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         AllocMap {
             alloc_map: Default::default(),
             dedup: Default::default(),

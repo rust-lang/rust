@@ -352,7 +352,7 @@ pub struct HygieneData {
 }
 
 impl HygieneData {
-    crate fn new(edition: Edition) -> Self {
+    pub(crate) fn new(edition: Edition) -> Self {
         let root_data = ExpnData::default(
             ExpnKind::Root,
             DUMMY_SP,
@@ -668,17 +668,17 @@ impl SyntaxContext {
     }
 
     #[inline]
-    crate fn as_u32(self) -> u32 {
+    pub(crate) fn as_u32(self) -> u32 {
         self.0
     }
 
     #[inline]
-    crate fn from_u32(raw: u32) -> SyntaxContext {
+    pub(crate) fn from_u32(raw: u32) -> SyntaxContext {
         SyntaxContext(raw)
     }
 
     /// Extend a syntax context with a given expansion and transparency.
-    crate fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
+    pub(crate) fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
 

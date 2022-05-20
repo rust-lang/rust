@@ -38,8 +38,8 @@ pub mod partial_ord;
 
 pub mod generic;
 
-crate struct BuiltinDerive(
-    crate fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable)),
+pub(crate) struct BuiltinDerive(
+    pub(crate) fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable)),
 );
 
 impl MultiItemModifier for BuiltinDerive {

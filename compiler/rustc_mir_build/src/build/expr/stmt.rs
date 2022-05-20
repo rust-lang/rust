@@ -10,7 +10,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
     /// span of that statement (including its semicolon, if any).
     /// The scope is used if a statement temporary must be dropped.
-    crate fn stmt_expr(
+    pub(crate) fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,

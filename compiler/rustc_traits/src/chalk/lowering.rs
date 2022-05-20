@@ -44,7 +44,7 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::ops::ControlFlow;
 
 /// Essentially an `Into` with a `&RustInterner` parameter
-crate trait LowerInto<'tcx, T> {
+pub(crate) trait LowerInto<'tcx, T> {
     /// Lower a rustc construct (e.g., `ty::TraitPredicate`) to a chalk type, consuming `self`.
     fn lower_into(self, interner: RustInterner<'tcx>) -> T;
 }
@@ -836,7 +836,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
 /// It's important to note that because of prior substitution, we may have
 /// late-bound regions, even outside of fn contexts, since this is the best way
 /// to prep types for chalk lowering.
-crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
+pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
     interner: RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: Binder<'tcx, T>,
@@ -870,14 +870,14 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
     (new_ty, binders, named_parameters)
 }
 
-crate struct BoundVarsCollector<'tcx> {
+pub(crate) struct BoundVarsCollector<'tcx> {
     binder_index: ty::DebruijnIndex,
-    crate parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
-    crate named_parameters: Vec<DefId>,
+    pub(crate) parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
+    pub(crate) named_parameters: Vec<DefId>,
 }
 
 impl<'tcx> BoundVarsCollector<'tcx> {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         BoundVarsCollector {
             binder_index: ty::INNERMOST,
             parameters: BTreeMap::new(),
@@ -1001,17 +1001,17 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
 
 /// Used to substitute `Param`s with placeholders. We do this since Chalk
 /// have a notion of `Param`s.
-crate struct ParamsSubstitutor<'tcx> {
+pub(crate) struct ParamsSubstitutor<'tcx> {
     tcx: TyCtxt<'tcx>,
     binder_index: ty::DebruijnIndex,
     list: Vec<rustc_middle::ty::ParamTy>,
     next_ty_placeholder: usize,
-    crate params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
-    crate named_regions: BTreeMap<DefId, u32>,
+    pub(crate) params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
+    pub(crate) named_regions: BTreeMap<DefId, u32>,
 }
 
 impl<'tcx> ParamsSubstitutor<'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx>, next_ty_placeholder: usize) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, next_ty_placeholder: usize) -> Self {
         ParamsSubstitutor {
             tcx,
             binder_index: ty::INNERMOST,
@@ -1083,13 +1083,13 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     }
 }
 
-crate struct ReverseParamsSubstitutor<'tcx> {
+pub(crate) struct ReverseParamsSubstitutor<'tcx> {
     tcx: TyCtxt<'tcx>,
     params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
 }
 
 impl<'tcx> ReverseParamsSubstitutor<'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
     ) -> Self {
@@ -1117,14 +1117,14 @@ impl<'tcx> TypeFolder<'tcx> for ReverseParamsSubstitutor<'tcx> {
 }
 
 /// Used to collect `Placeholder`s.
-crate struct PlaceholdersCollector {
+pub(crate) struct PlaceholdersCollector {
     universe_index: ty::UniverseIndex,
-    crate next_ty_placeholder: usize,
-    crate next_anon_region_placeholder: u32,
+    pub(crate) next_ty_placeholder: usize,
+    pub(crate) next_anon_region_placeholder: u32,
 }
 
 impl PlaceholdersCollector {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         PlaceholdersCollector {
             universe_index: ty::UniverseIndex::ROOT,
             next_ty_placeholder: 0,

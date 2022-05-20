@@ -27,22 +27,22 @@ use rustc_span::{Span, Symbol};
 use std::cmp::Ordering;
 
 #[derive(Clone, Debug)]
-crate enum PatternError {
+pub(crate) enum PatternError {
     AssocConstInPattern(Span),
     ConstParamInPattern(Span),
     StaticInPattern(Span),
     NonConstPath(Span),
 }
 
-crate struct PatCtxt<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate typeck_results: &'a ty::TypeckResults<'tcx>,
-    crate errors: Vec<PatternError>,
+pub(crate) struct PatCtxt<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) typeck_results: &'a ty::TypeckResults<'tcx>,
+    pub(crate) errors: Vec<PatternError>,
     include_lint_checks: bool,
 }
 
-crate fn pat_from_hir<'a, 'tcx>(
+pub(crate) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -59,7 +59,7 @@ crate fn pat_from_hir<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -67,12 +67,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
     }
 
-    crate fn include_lint_checks(&mut self) -> &mut Self {
+    pub(crate) fn include_lint_checks(&mut self) -> &mut Self {
         self.include_lint_checks = true;
         self
     }
 
-    crate fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
+    pub(crate) fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -608,7 +608,7 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
     }
 }
 
-crate trait PatternFoldable<'tcx>: Sized {
+pub(crate) trait PatternFoldable<'tcx>: Sized {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
@@ -616,7 +616,7 @@ crate trait PatternFoldable<'tcx>: Sized {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
-crate trait PatternFolder<'tcx>: Sized {
+pub(crate) trait PatternFolder<'tcx>: Sized {
     fn fold_pattern(&mut self, pattern: &Pat<'tcx>) -> Pat<'tcx> {
         pattern.super_fold_with(self)
     }
@@ -746,7 +746,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
 }
 
 #[instrument(skip(tcx), level = "debug")]
-crate fn compare_const_vals<'tcx>(
+pub(crate) fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: mir::ConstantKind<'tcx>,
     b: mir::ConstantKind<'tcx>,

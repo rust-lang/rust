@@ -62,7 +62,7 @@ use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 use rustc_target::spec::PanicStrategy;
 
-crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
+pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
         .crate_types()
         .iter()
