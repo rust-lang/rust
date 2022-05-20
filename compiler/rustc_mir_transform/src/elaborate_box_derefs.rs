@@ -146,6 +146,37 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             }
 
             visitor.patch.apply(body);
+
+            for debug_info in body.var_debug_info.iter_mut() {
+                if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
+                    let mut new_projections: Option<Vec<_>> = None;
+                    let mut last_deref = 0;
+
+                    for (i, (base, elem)) in place.iter_projections().enumerate() {
+                        let base_ty = base.ty(&body.local_decls, tcx).ty;
+
+                        if elem == PlaceElem::Deref && base_ty.is_box() {
+                            let new_projections = new_projections.get_or_insert_default();
+
+                            let (unique_ty, nonnull_ty, ptr_ty) =
+                                build_ptr_tys(tcx, base_ty.boxed_ty(), unique_did, nonnull_did);
+
+                            new_projections.extend_from_slice(&base.projection[last_deref..]);
+                            new_projections.extend_from_slice(&build_projection(
+                                unique_ty, nonnull_ty, ptr_ty,
+                            ));
+                            new_projections.push(PlaceElem::Deref);
+
+                            last_deref = i;
+                        }
+                    }
+
+                    if let Some(mut new_projections) = new_projections {
+                        new_projections.extend_from_slice(&place.projection[last_deref..]);
+                        place.projection = tcx.intern_place_elems(&new_projections);
+                    }
+                }
+            }
         } else {
             // box is not present, this pass doesn't need to do anything
         }
