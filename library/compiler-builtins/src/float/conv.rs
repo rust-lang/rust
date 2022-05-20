@@ -239,83 +239,47 @@ intrinsics! {
 // use Win64 ABI rather than unadjusted ABI. Pick the correct ABI based on the
 // llvm14-builtins-abi target feature.
 
-#[cfg(target_feature = "llvm14-builtins-abi")]
 intrinsics! {
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         int_to_float(i)
     }
 
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
         int_to_float(i)
     }
 
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
         int_to_float(i)
     }
 
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         int_to_float(i)
     }
 
-    #[win64_128bit_abi_hack]
+    #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixsfti(f: f32) -> i128 {
         float_to_int(f)
     }
 
-    #[win64_128bit_abi_hack]
+    #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
         float_to_int(f)
     }
 
-    #[win64_128bit_abi_hack]
+    #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixunssfti(f: f32) -> u128 {
         float_to_int(f)
     }
 
-    #[win64_128bit_abi_hack]
-    pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
-        float_to_int(f)
-    }
-}
-
-#[cfg(not(target_feature = "llvm14-builtins-abi"))]
-intrinsics! {
-    #[unadjusted_on_win64]
-    pub extern "C" fn __floattisf(i: i128) -> f32 {
-        int_to_float(i)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __floattidf(i: i128) -> f64 {
-        int_to_float(i)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __floatuntisf(i: u128) -> f32 {
-        int_to_float(i)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __floatuntidf(i: u128) -> f64 {
-        int_to_float(i)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __fixsfti(f: f32) -> i128 {
-        float_to_int(f)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __fixdfti(f: f64) -> i128 {
-        float_to_int(f)
-    }
-
-    #[unadjusted_on_win64]
-    pub extern "C" fn __fixunssfti(f: f32) -> u128 {
-        float_to_int(f)
-    }
-
-    #[unadjusted_on_win64]
+    #[cfg_attr(target_feature = "llvm14-builtins-abi", win64_128bit_abi_hack)]
+    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
         float_to_int(f)
     }
