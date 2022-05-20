@@ -632,6 +632,19 @@ fn type_param_predicates(
                     }
                     generics
                 }
+                ItemKind::OpaqueTy(OpaqueTy {
+                    ref generics,
+                    origin: hir::OpaqueTyOrigin::FnReturn(..),
+                    ..
+                }) if tcx.sess.features_untracked().return_position_impl_trait_v2 => {
+                    // Implied `Self: Trait` and supertrait bounds.
+                    if param_id == item_hir_id {
+                        let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
+                        extend =
+                            Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
+                    }
+                    generics
+                }
                 _ => return result,
             }
         }
