@@ -1240,10 +1240,13 @@ fn create_cases<'tcx>(
 
                         let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
 
-                        let substs = tcx.intern_substs(&[box_ty.boxed_ty().into()]);
-                        let unique_ty = tcx.bound_type_of(unique_did).subst(tcx, substs);
-                        let nonnull_ty = tcx.bound_type_of(nonnull_did).subst(tcx, substs);
-                        let ptr_ty = tcx.mk_imm_ptr(box_ty.boxed_ty());
+                        let (unique_ty, nonnull_ty, ptr_ty) =
+                            crate::elaborate_box_derefs::build_ptr_tys(
+                                tcx,
+                                box_ty.boxed_ty(),
+                                unique_did,
+                                nonnull_did,
+                            );
 
                         let ptr_local = body.local_decls.push(LocalDecl::new(ptr_ty, body.span));
 
@@ -1257,11 +1260,9 @@ fn create_cases<'tcx>(
                             kind: StatementKind::Assign(Box::new((
                                 Place::from(ptr_local),
                                 Rvalue::Use(Operand::Copy(box_place.project_deeper(
-                                    &[
-                                        PlaceElem::Field(Field::new(0), unique_ty),
-                                        PlaceElem::Field(Field::new(0), nonnull_ty),
-                                        PlaceElem::Field(Field::new(0), ptr_ty),
-                                    ],
+                                    &crate::elaborate_box_derefs::build_projection(
+                                        unique_ty, nonnull_ty, ptr_ty,
+                                    ),
                                     tcx,
                                 ))),
                             ))),
