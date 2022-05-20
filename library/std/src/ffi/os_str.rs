@@ -45,10 +45,21 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// values, encoded in a less-strict variant of UTF-8. This is useful to
 /// understand when handling capacity and length values.
 ///
-/// # Capacity of OsString
+/// # Capacity of `OsString`
 ///
-/// Capacity means UTF-8 byte size for OS strings which created from
-/// valid unicode, and not otherwise specified for other contents.
+/// Capacity uses units of UTF-8 bytes for OS strings which were created from valid unicode, and
+/// uses units of bytes in an unspecified encoding for other contents. On a given target, all
+/// `OsString` and `OsStr` values use the same units for capacity, so the following will work:
+/// ```
+/// use std::ffi::{OsStr, OsString};
+///
+/// fn concat_os_strings(a: &OsStr, b: &OsStr) -> OsString {
+///     let mut ret = OsString::with_capacity(a.len() + b.len()); // This will allocate
+///     ret.push(a); // This will not allocate further
+///     ret.push(b); // This will not allocate further
+///     ret
+/// }
+/// ```
 ///
 /// # Creating an `OsString`
 ///
