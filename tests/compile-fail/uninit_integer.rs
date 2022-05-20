@@ -4,5 +4,5 @@
 
 fn main() {
     let _val = unsafe { std::mem::MaybeUninit::<usize>::uninit().assume_init() };
-    //~^ ERROR type validation failed at .value: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
+    //~^ ERROR type validation failed at .value: encountered uninitialized bytes, but expected initialized bytes
 }

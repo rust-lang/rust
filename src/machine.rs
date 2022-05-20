@@ -470,7 +470,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_number_validity(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn enforce_number_init(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+        ecx.machine.enforce_number_validity
+    }
+
+    #[inline(always)]
+    fn enforce_number_no_provenance(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
         ecx.machine.enforce_number_validity
     }
 
