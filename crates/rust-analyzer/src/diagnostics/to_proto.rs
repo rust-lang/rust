@@ -3,18 +3,13 @@
 use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
-use ide::TextRange;
 use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
-    from_proto,
-    global_state::GlobalStateSnapshot,
-    line_index::OffsetEncoding,
-    lsp_ext,
-    to_proto::{self, url_from_abs_path},
-    Result,
+    global_state::GlobalStateSnapshot, line_index::OffsetEncoding, lsp_ext,
+    to_proto::url_from_abs_path,
 };
 
 use super::{DiagnosticsMapConfig, Fix};
@@ -70,26 +65,14 @@ fn location(
     let file_name = resolve_path(config, workspace_root, &span.file_name);
     let uri = url_from_abs_path(&file_name);
 
-    let range = range(span, snap, &uri).unwrap_or_else(|_| {
+    let range = {
         let offset_encoding = snap.config.offset_encoding();
         lsp_types::Range::new(
             position(&offset_encoding, span, span.line_start, span.column_start),
             position(&offset_encoding, span, span.line_end, span.column_end),
         )
-    });
+    };
     lsp_types::Location::new(uri, range)
-}
-
-fn range(
-    span: &DiagnosticSpan,
-    snap: &GlobalStateSnapshot,
-    uri: &lsp_types::Url,
-) -> Result<lsp_types::Range> {
-    let file_id = from_proto::file_id(snap, &uri)?;
-    let line_index = snap.file_line_index(file_id)?;
-    let range =
-        to_proto::range(&line_index, TextRange::new(span.byte_start.into(), span.byte_end.into()));
-    Ok(range)
 }
 
 fn position(
@@ -103,7 +86,7 @@ fn position(
     let mut true_column_offset = column_offset;
     if let Some(line) = span.text.get(line_index) {
         if line.text.chars().count() == line.text.len() {
-            // all utf-8
+            // all one byte utf-8 char
             return lsp_types::Position {
                 line: (line_offset as u32).saturating_sub(1),
                 character: (column_offset as u32).saturating_sub(1),
