@@ -239,6 +239,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         run_early_pass!(self, check_generic_param, param);
+        self.check_id(param.id);
         ast_visit::walk_generic_param(self, param);
     }
 
@@ -272,7 +273,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         });
     }
 
-    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
+    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         run_early_pass!(self, check_lifetime, lt);
         self.check_id(lt.id);
     }

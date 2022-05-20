@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! "Late resolution" is the pass that resolves most of names in a crate beside imports and macros.
 //! It runs when the crate is fully expanded and its module structure is fully built.
 //! So it just walks through the crate and resolves all the expressions, types, etc.
@@ -19,7 +20,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::vec::Idx;
@@ -197,13 +198,19 @@ impl<'a, R> Rib<'a, R> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum LifetimeUseSet {
+    One { use_span: Span, use_ctxt: visit::LifetimeCtxt },
+    Many,
+}
+
 #[derive(Copy, Clone, Debug)]
 enum LifetimeRibKind {
     /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
     Item,
 
     /// This rib declares generic parameters.
-    Generics { parent: NodeId, span: Span, kind: LifetimeBinderKind },
+    Generics { binder: NodeId, span: Span, kind: LifetimeBinderKind },
 
     /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
     /// generics. We are disallowing this until we can decide on how we want to handle non-'static
@@ -230,7 +237,7 @@ enum LifetimeRibKind {
     AnonymousReportError,
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
-    AnonymousPassThrough(NodeId),
+    AnonymousPassThrough(NodeId, /* in_fn_return */ bool),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -519,6 +526,9 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// In most cases this will be `None`, in which case errors will always be reported.
     /// If it is `true`, then it will be updated when entering a nested function or trait body.
     in_func_body: bool,
+
+    /// Count the number of places a lifetime is used.
+    lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -594,26 +604,24 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.diagnostic_metadata.current_trait_object = Some(&bounds[..]);
             }
             TyKind::BareFn(ref bare_fn) => {
-                let span = if bare_fn.generic_params.is_empty() {
-                    ty.span.shrink_to_lo()
-                } else {
-                    ty.span
-                };
+                let span = ty.span.shrink_to_lo().to(bare_fn.decl_span.shrink_to_lo());
                 self.with_generic_param_rib(
                     &bare_fn.generic_params,
                     NormalRibKind,
                     LifetimeRibKind::Generics {
-                        parent: ty.id,
+                        binder: ty.id,
                         kind: LifetimeBinderKind::BareFnType,
                         span,
                     },
                     |this| {
+                        this.visit_generic_param_vec(&bare_fn.generic_params, false);
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(ty.id),
-                            |this| {
-                                this.visit_generic_param_vec(&bare_fn.generic_params, false);
-                                visit::walk_fn_decl(this, &bare_fn.decl);
-                            },
+                            LifetimeRibKind::AnonymousPassThrough(ty.id, false),
+                            |this| walk_list!(this, visit_param, &bare_fn.decl.inputs),
+                        );
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousPassThrough(ty.id, true),
+                            |this| this.visit_fn_ret_ty(&bare_fn.decl.output),
                         );
                     },
                 );
@@ -627,13 +635,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.diagnostic_metadata.current_type_path = prev_ty;
     }
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, _: &'ast TraitBoundModifier) {
-        let span =
-            if tref.bound_generic_params.is_empty() { tref.span.shrink_to_lo() } else { tref.span };
+        let span = tref.span.shrink_to_lo().to(tref.trait_ref.path.span.shrink_to_lo());
         self.with_generic_param_rib(
             &tref.bound_generic_params,
             NormalRibKind,
             LifetimeRibKind::Generics {
-                parent: tref.trait_ref.ref_id,
+                binder: tref.trait_ref.ref_id,
                 kind: LifetimeBinderKind::PolyTrait,
                 span,
             },
@@ -657,7 +664,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         &generics.params,
                         ItemRibKind(HasGenericParams::Yes),
                         LifetimeRibKind::Generics {
-                            parent: foreign_item.id,
+                            binder: foreign_item.id,
                             kind: LifetimeBinderKind::Item,
                             span: generics.span,
                         },
@@ -671,7 +678,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         &generics.params,
                         ItemRibKind(HasGenericParams::Yes),
                         LifetimeRibKind::Generics {
-                            parent: foreign_item.id,
+                            binder: foreign_item.id,
                             kind: LifetimeBinderKind::Function,
                             span: generics.span,
                         },
@@ -695,13 +702,20 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             // a body, or if there's no body for some other reason.
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
             | FnKind::Fn(_, _, sig, _, generics, None) => {
-                self.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(fn_id), |this| {
-                    // We don't need to deal with patterns in parameters, because
-                    // they are not possible for foreign or bodiless functions.
-                    this.visit_fn_header(&sig.header);
-                    this.visit_generics(generics);
-                    visit::walk_fn_decl(this, &sig.decl);
-                });
+                // We don't need to deal with patterns in parameters, because
+                // they are not possible for foreign or bodiless functions.
+                self.with_lifetime_rib(
+                    LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                    |this| {
+                        this.visit_fn_header(&sig.header);
+                        this.visit_generics(generics);
+                        walk_list!(this, visit_param, &sig.decl.inputs);
+                    },
+                );
+                self.with_lifetime_rib(
+                    LifetimeRibKind::AnonymousPassThrough(fn_id, true),
+                    |this| this.visit_fn_ret_ty(&sig.decl.output),
+                );
                 return;
             }
             FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
@@ -764,28 +778,32 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     this.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
 
                     this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(async_node_id),
+                        LifetimeRibKind::AnonymousPassThrough(async_node_id, true),
                         |this| visit::walk_fn_ret_ty(this, &declaration.output),
                     );
                 } else {
-                    this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(fn_id), |this| {
-                        // Add each argument to the rib.
-                        this.resolve_params(&declaration.inputs);
-
-                        visit::walk_fn_ret_ty(this, &declaration.output);
-                    });
+                    // Add each argument to the rib.
+                    this.with_lifetime_rib(
+                        LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                        |this| this.resolve_params(&declaration.inputs),
+                    );
+                    this.with_lifetime_rib(
+                        LifetimeRibKind::AnonymousPassThrough(fn_id, true),
+                        |this| visit::walk_fn_ret_ty(this, &declaration.output),
+                    );
                 };
 
                 // Ignore errors in function bodies if this is rustdoc
                 // Be sure not to set this until the function signature has been resolved.
                 let previous_state = replace(&mut this.in_func_body, true);
                 // Resolve the function body, potentially inside the body of an async closure
-                this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(fn_id), |this| {
-                    match fn_kind {
+                this.with_lifetime_rib(
+                    LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                    |this| match fn_kind {
                         FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
                         FnKind::Closure(_, body) => this.visit_expr(body),
-                    }
-                });
+                    },
+                );
 
                 debug!("(resolving function) leaving function");
                 this.in_func_body = previous_state;
@@ -793,8 +811,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         });
         self.diagnostic_metadata.current_function = previous_value;
     }
-    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
-        self.resolve_lifetime(lifetime)
+    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
+        self.resolve_lifetime(lifetime, use_ctxt)
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
@@ -859,7 +877,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 self.visit_ty(ty);
             }
-            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
+            GenericArg::Lifetime(lt) => self.visit_lifetime(lt, visit::LifetimeCtxt::GenericArg),
             GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
         self.diagnostic_metadata.currently_processing_generics = prev;
@@ -869,10 +887,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(ref args) = path_segment.args {
             match &**args {
                 GenericArgs::AngleBracketed(..) => visit::walk_generic_args(self, path_span, args),
-                GenericArgs::Parenthesized(..) => self.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousPassThrough(path_segment.id),
-                    |this| visit::walk_generic_args(this, path_span, args),
-                ),
+                GenericArgs::Parenthesized(ref data) => {
+                    self.with_lifetime_rib(
+                        LifetimeRibKind::AnonymousPassThrough(path_segment.id, false),
+                        |this| walk_list!(this, visit_ty, &data.inputs),
+                    );
+                    self.with_lifetime_rib(
+                        LifetimeRibKind::AnonymousPassThrough(path_segment.id, true),
+                        |this| visit::walk_fn_ret_ty(this, &data.output),
+                    )
+                }
             }
         }
     }
@@ -890,16 +914,12 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 ..
             }) = p
             {
-                let span = if bound_generic_params.is_empty() {
-                    predicate_span.shrink_to_lo()
-                } else {
-                    *predicate_span
-                };
+                let span = predicate_span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
                 this.with_generic_param_rib(
                     &bound_generic_params,
                     NormalRibKind,
                     LifetimeRibKind::Generics {
-                        parent: bounded_ty.id,
+                        binder: bounded_ty.id,
                         kind: LifetimeBinderKind::WhereBound,
                         span,
                     },
@@ -980,6 +1000,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             diagnostic_metadata: DiagnosticMetadata::default(),
             // errors at module scope should always be reported
             in_func_body: false,
+            lifetime_uses: Default::default(),
         }
     }
 
@@ -1187,7 +1208,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime) {
+    fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         let ident = lifetime.ident;
 
         if ident.name == kw::StaticLifetime {
@@ -1205,6 +1226,40 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, region)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, region);
+
+                if let LifetimeRes::Param { param, .. } = region {
+                    match self.lifetime_uses.entry(param) {
+                        Entry::Vacant(v) => {
+                            debug!("First use of {:?} at {:?}", region, ident.span);
+                            let use_set = self
+                                .lifetime_ribs
+                                .iter()
+                                .rev()
+                                .find_map(|rib| match rib.kind {
+                                    // Do not suggest eliding a lifetime where an anonymous
+                                    // lifetime would be illegal.
+                                    LifetimeRibKind::Item
+                                    | LifetimeRibKind::AnonymousPassThrough(_, true)
+                                    | LifetimeRibKind::AnonymousReportError => {
+                                        Some(LifetimeUseSet::Many)
+                                    }
+                                    // An anonymous lifetime is legal here, go ahead.
+                                    LifetimeRibKind::AnonymousPassThrough(_, false)
+                                    | LifetimeRibKind::AnonymousCreateParameter(_) => {
+                                        Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
+                                    }
+                                    _ => None,
+                                })
+                                .unwrap_or(LifetimeUseSet::Many);
+                            debug!(?use_ctxt, ?use_set);
+                            v.insert(use_set);
+                        }
+                        Entry::Occupied(mut o) => {
+                            debug!("Many uses of {:?} at {:?}", region, ident.span);
+                            *o.get_mut() = LifetimeUseSet::Many;
+                        }
+                    }
+                }
                 return;
             }
 
@@ -1271,7 +1326,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error);
                     return;
                 }
-                LifetimeRibKind::AnonymousPassThrough(node_id) => {
+                LifetimeRibKind::AnonymousPassThrough(node_id, _) => {
                     self.record_lifetime_res(
                         lifetime.id,
                         LifetimeRes::Anonymous { binder: node_id, elided },
@@ -1391,7 +1446,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // `PathSegment`, for which there is no associated `'_` or `&T` with no explicit
                     // lifetime. Instead, we simply create an implicit lifetime, which will be checked
                     // later, at which point a suitable error will be emitted.
-                    LifetimeRibKind::AnonymousPassThrough(binder) => {
+                    LifetimeRibKind::AnonymousPassThrough(binder, _) => {
                         res = LifetimeRes::Anonymous { binder, elided: true };
                         break;
                     }
@@ -1559,7 +1614,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 &generics.params,
                 ItemRibKind(HasGenericParams::Yes),
                 LifetimeRibKind::Generics {
-                    parent: item.id,
+                    binder: item.id,
                     kind: LifetimeBinderKind::Item,
                     span: generics.span,
                 },
@@ -1629,7 +1684,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &generics.params,
                     ItemRibKind(HasGenericParams::Yes),
                     LifetimeRibKind::Generics {
-                        parent: item.id,
+                        binder: item.id,
                         kind: LifetimeBinderKind::Item,
                         span: generics.span,
                     },
@@ -1642,7 +1697,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &generics.params,
                     ItemRibKind(HasGenericParams::Yes),
                     LifetimeRibKind::Generics {
-                        parent: item.id,
+                        binder: item.id,
                         kind: LifetimeBinderKind::Function,
                         span: generics.span,
                     },
@@ -1674,7 +1729,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &generics.params,
                     ItemRibKind(HasGenericParams::Yes),
                     LifetimeRibKind::Generics {
-                        parent: item.id,
+                        binder: item.id,
                         kind: LifetimeBinderKind::Item,
                         span: generics.span,
                     },
@@ -1695,7 +1750,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             &generics.params,
                                             AssocItemRibKind,
                                             LifetimeRibKind::Generics {
-                                                parent: item.id,
+                                                binder: item.id,
                                                 span: generics.span,
                                                 kind,
                                             },
@@ -1763,7 +1818,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &generics.params,
                     ItemRibKind(HasGenericParams::Yes),
                     LifetimeRibKind::Generics {
-                        parent: item.id,
+                        binder: item.id,
                         kind: LifetimeBinderKind::Item,
                         span: generics.span,
                     },
@@ -1833,6 +1888,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         F: FnOnce(&mut Self),
     {
         debug!("with_generic_param_rib");
+        let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. }
+            = lifetime_kind else { panic!() };
+
         let mut function_type_rib = Rib::new(kind);
         let mut function_value_rib = Rib::new(kind);
         let mut function_lifetime_rib = LifetimeRib::new(lifetime_kind);
@@ -1901,8 +1959,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 GenericParamKind::Type { .. } => (&mut function_type_rib, DefKind::TyParam),
                 GenericParamKind::Const { .. } => (&mut function_value_rib, DefKind::ConstParam),
                 GenericParamKind::Lifetime => {
-                    let LifetimeRibKind::Generics { parent, .. } = lifetime_kind else { panic!() };
-                    let res = LifetimeRes::Param { param: def_id, binder: parent };
+                    let res = LifetimeRes::Param { param: def_id, binder };
                     self.record_lifetime_res(param.id, res);
                     function_lifetime_rib.bindings.insert(ident, (param.id, res));
                     continue;
@@ -1922,6 +1979,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.ribs[TypeNS].pop();
         self.ribs[ValueNS].pop();
         self.lifetime_ribs.pop();
+
+        if let LifetimeBinderKind::BareFnType
+        | LifetimeBinderKind::WhereBound
+        | LifetimeBinderKind::Function
+        | LifetimeBinderKind::ImplBlock = generics_kind
+        {
+            self.maybe_report_lifetime_uses(generics_span, params)
+        }
     }
 
     fn with_label_rib(&mut self, kind: RibKind<'a>, f: impl FnOnce(&mut Self)) {
@@ -2048,7 +2113,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
-        self.with_generic_param_rib(&generics.params, ItemRibKind(HasGenericParams::Yes), LifetimeRibKind::Generics { span: generics.span, parent: item_id, kind: LifetimeBinderKind::ImplBlock }, |this| {
+        self.with_generic_param_rib(&generics.params, ItemRibKind(HasGenericParams::Yes), LifetimeRibKind::Generics { span: generics.span, binder: item_id, kind: LifetimeBinderKind::ImplBlock }, |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
             this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
                 this.with_lifetime_rib(LifetimeRibKind::AnonymousCreateParameter(item_id), |this| {
@@ -2075,7 +2140,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             this.visit_generics(generics);
 
                             // Resolve the items within the impl.
-                            this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id),
+                            this.with_lifetime_rib(LifetimeRibKind::AnonymousPassThrough(item_id,false),
                                 |this| {
                                     this.with_current_self_type(self_type, |this| {
                                         this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
@@ -2120,7 +2185,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                         this.with_generic_param_rib(
                                                             &generics.params,
                                                             AssocItemRibKind,
-                                                            LifetimeRibKind::Generics { parent: item.id, span: generics.span, kind: LifetimeBinderKind::Function },
+                                                            LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind: LifetimeBinderKind::Function },
                                                             |this| {
                                                                 // If this is a trait impl, ensure the method
                                                                 // exists in trait
@@ -2149,7 +2214,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                         this.with_generic_param_rib(
                                                             &generics.params,
                                                             AssocItemRibKind,
-                                                            LifetimeRibKind::Generics { parent: item.id, span: generics.span, kind: LifetimeBinderKind::Item },
+                                                            LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind: LifetimeBinderKind::Item },
                                                             |this| {
                                                                 // If this is a trait impl, ensure the type
                                                                 // exists in trait

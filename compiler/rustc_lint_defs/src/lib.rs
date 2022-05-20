@@ -423,7 +423,11 @@ pub enum BuiltinLintDiagnostics {
     DeprecatedMacro(Option<Symbol>, Span),
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
-    UnusedBuiltinAttribute { attr_name: Symbol, macro_name: String, invoc_span: Span },
+    UnusedBuiltinAttribute {
+        attr_name: Symbol,
+        macro_name: String,
+        invoc_span: Span,
+    },
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
     ProcMacroBackCompat(String),
@@ -435,6 +439,16 @@ pub enum BuiltinLintDiagnostics {
     UnicodeTextFlow(Span, String),
     UnexpectedCfg((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, String),
+    SingleUseLifetime {
+        /// Span of the parameter which declares this lifetime.
+        param_span: Span,
+        /// Span of the code that should be removed when eliding this lifetime.
+        /// This span should include leading or trailing comma.
+        deletion_span: Span,
+        /// Span of the single use, or None if the lifetime is never used.
+        /// If true, the lifetime will be fully elided.
+        use_span: Option<(Span, bool)>,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

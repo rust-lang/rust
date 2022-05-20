@@ -11,6 +11,11 @@ note: the lint level is defined here
    |
 LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL -   a: for<'a> fn(&'a u32),
+LL +   a: fn(&u32),
+   | 
 
 error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
   --> $DIR/fn-types.rs:12:22

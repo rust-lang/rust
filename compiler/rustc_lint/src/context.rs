@@ -819,6 +819,43 @@ pub trait LintContext: Sized {
                         "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
                     );
                 },
+                BuiltinLintDiagnostics::SingleUseLifetime {
+                    param_span,
+                    use_span: Some((use_span, elide)),
+                    deletion_span,
+                } => {
+                    debug!(?param_span, ?use_span, ?deletion_span);
+                    db.span_label(param_span, "this lifetime...");
+                    db.span_label(use_span, "...is used only here");
+                    let msg = "elide the single-use lifetime";
+                    let (use_span, replace_lt) = if elide {
+                        let use_span = sess.source_map().span_extend_while(
+                            use_span,
+                            char::is_whitespace,
+                        ).unwrap_or(use_span);
+                        (use_span, String::new())
+                    } else {
+                        (use_span, "'_".to_owned())
+                    };
+                    db.multipart_suggestion(
+                        msg,
+                        vec![(deletion_span, String::new()), (use_span, replace_lt)],
+                        Applicability::MachineApplicable,
+                    );
+                },
+                BuiltinLintDiagnostics::SingleUseLifetime {
+                    param_span: _,
+                    use_span: None,
+                    deletion_span,
+                } => {
+                    debug!(?deletion_span);
+                    db.span_suggestion(
+                        deletion_span,
+                        "elide the unused lifetime",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                },
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

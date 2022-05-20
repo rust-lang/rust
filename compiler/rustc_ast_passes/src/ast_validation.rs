@@ -1070,7 +1070,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_label(self, label);
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'a Lifetime, _: visit::LifetimeCtxt) {
         self.check_lifetime(lifetime.ident);
         visit::walk_lifetime(self, lifetime);
     }

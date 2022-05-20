@@ -14,4 +14,10 @@ fn b<'a>() -> &'a u32 {
     &22
 }
 
+pub trait Tfv<'a> {}
+impl Tfv<'_> for () {}
+
+// Do NOT lint if used in return type.
+pub fn i<'a>() -> impl Tfv<'a> {}
+
 fn main() {}

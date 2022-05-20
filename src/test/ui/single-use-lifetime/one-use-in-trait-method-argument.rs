@@ -18,4 +18,9 @@ impl<'f> Iterator for Foo<'f> {
     }
 }
 
-fn main() { }
+trait Bar<'a> {
+    // But we should not warn here.
+    fn bar(x: Foo<'a>);
+}
+
+fn main() {}
