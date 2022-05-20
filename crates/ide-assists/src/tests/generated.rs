@@ -3,26 +3,6 @@
 use super::check_doc_test;
 
 #[test]
-fn doctest_add_attribute() {
-    check_doc_test(
-        "add_derive",
-        r#####"
-struct Point {
-    x: u32,
-    y: u32,$0
-}
-"#####,
-        r#####"
-#[derive($0)]
-struct Point {
-    x: u32,
-    y: u32,
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_add_explicit_type() {
     check_doc_test(
         "add_explicit_type",
@@ -857,6 +837,26 @@ impl core::ops::Deref for B {
     fn deref(&self) -> &Self::Target {
         &self.a
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_derive() {
+    check_doc_test(
+        "generate_derive",
+        r#####"
+struct Point {
+    x: u32,
+    y: u32,$0
+}
+"#####,
+        r#####"
+#[derive($0)]
+struct Point {
+    x: u32,
+    y: u32,
 }
 "#####,
     )

@@ -251,7 +251,6 @@ pub fn test_some_range(a: int) -> bool {
         Extract into variable
         Extract into function
         Replace if let with match
-        Add attribute
     "#]]
     .assert_eq(&expected);
 }
