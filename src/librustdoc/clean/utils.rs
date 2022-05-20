@@ -80,23 +80,23 @@ pub(crate) fn substs_to_args(
     substs: &[ty::subst::GenericArg<'_>],
     mut skip_first: bool,
 ) -> Vec<GenericArg> {
-    substs
-        .iter()
-        .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => match *lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
-                    Some(GenericArg::Lifetime(Lifetime::elided()))
-                }
-                _ => lt.clean(cx).map(GenericArg::Lifetime),
-            },
-            GenericArgKind::Type(_) if skip_first => {
-                skip_first = false;
-                None
+    let mut ret_val =
+        Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
+    ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
+        GenericArgKind::Lifetime(lt) => match *lt {
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
+                Some(GenericArg::Lifetime(Lifetime::elided()))
             }
-            GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-            GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
-        })
-        .collect()
+            _ => lt.clean(cx).map(GenericArg::Lifetime),
+        },
+        GenericArgKind::Type(_) if skip_first => {
+            skip_first = false;
+            None
+        }
+        GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
+    }));
+    ret_val
 }
 
 fn external_generic_args(
