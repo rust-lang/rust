@@ -20,7 +20,7 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        WillRenameFiles,
+        WillRenameFiles, WorkspaceSymbol,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
@@ -1055,4 +1055,42 @@ fn main() {}
           ]
         }),
     );
+}
+
+#[test]
+fn test_exclude_config_works() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /foo/Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /foo/src/lib.rs
+pub fn foo() {}
+
+//- /bar/Cargo.toml
+[package]
+name = "bar"
+version = "0.0.0"
+
+//- /bar/src/lib.rs
+pub fn bar() {}
+"#,
+    )
+    .root("foo")
+    .root("bar")
+    .with_config(json!({
+       "files": {
+           "excludeDirs": ["foo", "bar"]
+        }
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<WorkspaceSymbol>(Default::default(), json!([]));
 }
