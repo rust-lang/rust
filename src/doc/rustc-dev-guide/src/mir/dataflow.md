@@ -18,7 +18,7 @@ If you're unfamiliar with these terms, or if you want a quick refresher,
 [*Static Program Analysis*] by Anders Møller and Michael I. Schwartzbach is an
 excellent, freely available textbook. For those who prefer audiovisual
 learning, we previously recommended a series of short lectures
-by the Goethe University Frankfurt on YouTube, but it has been deleted for some reasons.
+by the Goethe University Frankfurt on YouTube, but it has since been deleted.
 See [this PR][pr-1295] for the context and [this comment][pr-1295-comment]
 for the alternative lectures.
 
