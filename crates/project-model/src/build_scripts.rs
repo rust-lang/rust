@@ -7,6 +7,7 @@
 //! here, but it covers procedural macros as well.
 
 use std::{
+    cell::RefCell,
     io,
     path::PathBuf,
     process::{Command, Stdio},
@@ -107,15 +108,15 @@ impl WorkspaceBuildScripts {
             by_id.insert(workspace[package].id.clone(), package);
         }
 
-        let mut cfg_err = None;
-        let mut stderr = String::new();
+        let errors = RefCell::new(String::new());
+        let push_err = |err: &str| {
+            let mut e = errors.borrow_mut();
+            e.push_str(err);
+            e.push('\n');
+        };
         let output = stdx::process::streaming_output(
             cmd,
             &mut |line| {
-                if cfg_err.is_some() {
-                    return;
-                }
-
                 // Copy-pasted from existing cargo_metadata. It seems like we
                 // should be using serde_stacker here?
                 let mut deserializer = serde_json::Deserializer::from_str(line);
@@ -135,7 +136,7 @@ impl WorkspaceBuildScripts {
                                 match cfg.parse::<CfgFlag>() {
                                     Ok(it) => acc.push(it),
                                     Err(err) => {
-                                        cfg_err = Some(format!(
+                                        push_err(&format!(
                                             "invalid cfg from cargo-metadata: {}",
                                             err
                                         ));
@@ -177,6 +178,10 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerMessage(message) => {
                         progress(message.target.name);
+
+                        if let Some(diag) = message.message.rendered.as_deref() {
+                            push_err(diag);
+                        }
                     }
                     Message::BuildFinished(_) => {}
                     Message::TextLine(_) => {}
@@ -184,8 +189,7 @@ impl WorkspaceBuildScripts {
                 }
             },
             &mut |line| {
-                stderr.push_str(line);
-                stderr.push('\n');
+                push_err(line);
             },
         )?;
 
@@ -205,16 +209,12 @@ impl WorkspaceBuildScripts {
             }
         }
 
-        if let Some(cfg_err) = cfg_err {
-            stderr.push_str(&cfg_err);
-            stderr.push('\n');
-        }
-
+        let mut errors = errors.into_inner();
         if !output.status.success() {
-            if stderr.is_empty() {
-                stderr = "cargo check failed".to_string();
+            if errors.is_empty() {
+                errors = "cargo check failed".to_string();
             }
-            res.error = Some(stderr)
+            res.error = Some(errors);
         }
 
         Ok(res)
