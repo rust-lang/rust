@@ -1149,11 +1149,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Err(ptr) => ptr.into(),
                 Ok(bits) => {
                     let addr = u64::try_from(bits).unwrap();
-                    let ptr = M::ptr_from_addr_transmute(&self, addr);
-                    if addr == 0 {
-                        assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
-                    }
-                    ptr
+                    M::ptr_from_addr_transmute(&self, addr)
                 }
             },
         )

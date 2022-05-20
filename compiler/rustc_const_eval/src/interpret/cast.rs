@@ -225,9 +225,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let addr = u64::try_from(size.truncate(v)).unwrap();
 
                 let ptr = M::ptr_from_addr_cast(&self, addr);
-                if addr == 0 {
-                    assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
-                }
                 Scalar::from_maybe_pointer(ptr, self)
             }
 
