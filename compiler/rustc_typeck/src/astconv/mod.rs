@@ -2710,6 +2710,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
+            if tcx.sess.features_untracked().return_position_impl_trait_v2 {
+                return tcx.mk_param_from_def(param);
+            }
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
                 if let GenericParamDefKind::Lifetime = param.kind {
