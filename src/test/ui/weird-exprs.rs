@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(generators)]
-#![feature(destructuring_assignment)]
 #![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
@@ -118,7 +117,7 @@ fn union() {
 }
 
 fn special_characters() {
-    let val = !((|(..):(_,_),(|__@_|__)|__)((&*"\\",'#')/**/,{})=={&[..=..][..];})//
+    let val = !((|(..):(_,_),(|__@_|__)|__)((&*"\\",'🤔')/**/,{})=={&[..=..][..];})//
     ;
     assert!(!val);
 }
@@ -167,11 +166,15 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
-fn unicode() {
-    fn 𝚋𝚛𝚎𝚊𝚔() -> char { '🤔' }
+fn 𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎() {
+    type 𝚕𝚘𝚘𝚙 = i32;
+    fn 𝚋𝚛𝚎𝚊𝚔() -> 𝚕𝚘𝚘𝚙 {
+        let 𝚛𝚎𝚝𝚞𝚛𝚗 = 42;
+        return 𝚛𝚎𝚝𝚞𝚛𝚗;
+    }
     assert_eq!(loop {
         break 𝚋𝚛𝚎𝚊𝚔 ();
-    }, '🤔');
+    }, 42);
 }
 
 fn function() {
@@ -210,7 +213,7 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
-    unicode();
+    𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎();
     function();
     bathroom_stall();
 }
