@@ -236,7 +236,8 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see the
 [miri-flags]: #miri--z-flags-and-environment-variables
 
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
-environment variable:
+environment variable. Some of these are **unsound**, which means they can lead
+to Miri failing to detect cases of undefined behavior in a program.
 
 * `-Zmiri-check-number-validity` enables checking of integer and float validity
   (e.g., they must be initialized and not carry pointer provenance) as part of
