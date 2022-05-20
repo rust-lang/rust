@@ -814,7 +814,7 @@ impl Step for Src {
                 "library/backtrace/crates",
                 // these are 30MB combined and aren't necessary for building
                 // the standard library.
-                "library/stdarch/crates/Cargo.toml",
+                "library/stdarch/Cargo.toml",
                 "library/stdarch/crates/stdarch-verify",
                 "library/stdarch/crates/intrinsic-test",
             ],
