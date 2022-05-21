@@ -344,7 +344,12 @@ pub fn eval_entry<'tcx>(
     })();
 
     // Machine cleanup.
-    EnvVars::cleanup(&mut ecx).unwrap();
+    // Execution of the program has halted so any memory access we do here
+    // cannot produce a real data race. If we do not do something to disable
+    // data race detection here, some uncommon combination of errors will
+    // cause a data race to be detected:
+    // https://github.com/rust-lang/miri/issues/2020
+    ecx.allow_data_races_mut(|ecx| EnvVars::cleanup(ecx).unwrap());
 
     // Process the result.
     match res {
