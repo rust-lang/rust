@@ -410,8 +410,10 @@ pub(crate) fn associated_ty_data_query(
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
     let ctx = crate::TyLoweringContext::new(db, &resolver)
         .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
-    let self_ty =
-        TyKind::BoundVar(BoundVar::new(crate::DebruijnIndex::INNERMOST, 0)).intern(Interner);
+    let pro_ty = TyBuilder::assoc_type_projection(db, type_alias)
+        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
+        .build();
+    let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
     let mut bounds: Vec<_> = type_alias_data
         .bounds
         .iter()
