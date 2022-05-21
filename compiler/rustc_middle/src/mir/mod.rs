@@ -189,7 +189,7 @@ pub enum MirPhase {
     ///
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
-    /// * [`TerminatorKind::GeneratorDrop](terminator::TerminatorKind::GeneratorDrop)
+    /// * [`TerminatorKind::GeneratorDrop`](terminator::TerminatorKind::GeneratorDrop)
     GeneratorsLowered = 5,
     Optimized = 6,
 }
