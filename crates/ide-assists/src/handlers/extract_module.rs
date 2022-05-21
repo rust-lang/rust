@@ -180,6 +180,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             }
 
             for import_path_text_range in import_paths_to_be_removed {
+                println!("Deleting : {:?}", import_path_text_range);
                 builder.delete(import_path_text_range);
             }
 
@@ -439,7 +440,28 @@ impl Module {
                                         ctx,
                                     )
                                 {
-                                    import_paths_to_be_removed.push(import_path);
+                                    if import_paths_to_be_removed.len() > 0 {
+                                        // Text ranges recieved here for imports are extended to the
+                                        // next/previous comma which can cause intersections among them
+                                        // and later deletion of these can cause panics similar
+                                        // to reported in #11766. So to mitigate it, we
+                                        // check for intersection between all current members
+                                        // and if it exists we combine both text ranges into
+                                        // one
+                                        for i in 0..import_paths_to_be_removed.len() {
+                                            if let Some(_) =
+                                                import_paths_to_be_removed[i].intersect(import_path)
+                                            {
+                                                import_paths_to_be_removed[i] =
+                                                    import_paths_to_be_removed[i]
+                                                        .cover(import_path);
+                                            } else {
+                                                import_paths_to_be_removed.push(import_path);
+                                            }
+                                        }
+                                    } else {
+                                        import_paths_to_be_removed.push(import_path);
+                                    }
                                 }
                             }
                         }
@@ -1492,6 +1514,40 @@ mod modname {
         pub(crate) fn foo(x: B) {}
     }
 }
+        ",
+        )
+    }
+
+    #[test]
+    fn test_issue_11766() {
+        //https://github.com/rust-lang/rust-analyzer/issues/11766
+        check_assist(
+            extract_module,
+            r"
+            mod x {
+                pub struct Foo;
+                pub struct Bar;
+            }
+
+            use x::{Bar, Foo};
+
+            $0type A = (Foo, Bar);$0
+        ",
+            r"
+            mod x {
+                pub struct Foo;
+                pub struct Bar;
+            }
+
+            use x::{};
+
+            mod modname {
+                use super::x::Bar;
+
+                use super::x::Foo;
+
+                pub(crate) type A = (Foo, Bar);
+            }
         ",
         )
     }
