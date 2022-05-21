@@ -191,7 +191,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_ident(&mut self, ident: Ident) {
         let interned_name = ident.name.as_str();
         if interned_name.chars().any(char::is_uppercase) {

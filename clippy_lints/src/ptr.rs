@@ -514,7 +514,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,

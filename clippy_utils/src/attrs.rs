@@ -1,12 +1,11 @@
 use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_errors::Applicability;
 use rustc_session::Session;
-use rustc_ast::attr;
 use rustc_span::sym;
 use std::str::FromStr;
 
 /// Deprecation status of attributes known by Clippy.
-#[allow(dead_code)]
 pub enum DeprecationStatus {
     /// Attribute is deprecated
     Deprecated,
@@ -158,4 +157,3 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
         .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
-

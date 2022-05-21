@@ -147,5 +147,121 @@ LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 18 previous errors
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:341:5
+   |
+LL |     unsafe impl A for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:348:9
+   |
+LL |         unsafe impl B for (u32) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:369:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(());
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:394:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(());
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:402:5
+   |
+LL |     unsafe impl T for (i32) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:394:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(u32);
+   |     ----------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:408:5
+   |
+LL |     unsafe impl T for (bool) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:454:5
+   |
+LL |     unsafe impl NoComment for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:458:19
+   |
+LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:462:5
+   |
+LL |     unsafe impl TrailingComment for () {} // SAFETY:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:467:5
+   |
+LL |     unsafe impl Interference for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:474:5
+   |
+LL |     unsafe impl ImplInFn for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:483:1
+   |
+LL | unsafe impl CrateRoot for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 31 previous errors
 

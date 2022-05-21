@@ -62,7 +62,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
-    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
+    #[expect(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         use rustc_span::BytePos;
 

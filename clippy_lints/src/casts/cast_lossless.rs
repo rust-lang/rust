@@ -16,7 +16,7 @@ pub(super) fn check(
     cast_op: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
-    msrv: &Option<RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if !should_lint(cx, expr, cast_from, cast_to, msrv) {
         return;
@@ -68,7 +68,7 @@ fn should_lint(
     expr: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
-    msrv: &Option<RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if in_constant(cx, expr.hir_id) {
@@ -93,9 +93,9 @@ fn should_lint(
             } else {
                 64
             };
-            from_nbits < to_nbits
+            !is_isize_or_usize(cast_from) && from_nbits < to_nbits
         },
-        (false, true) if matches!(cast_from.kind(), ty::Bool) && meets_msrv(msrv.as_ref(), &msrvs::FROM_BOOL) => true,
+        (false, true) if matches!(cast_from.kind(), ty::Bool) && meets_msrv(msrv, msrvs::FROM_BOOL) => true,
         (_, _) => {
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },

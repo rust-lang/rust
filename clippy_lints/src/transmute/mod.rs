@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// architecture.
     ///
     /// ### Why is this bad?
-    /// It's basically guaranteed to be undefined behaviour.
+    /// It's basically guaranteed to be undefined behavior.
     ///
     /// ### Known problems
     /// When accessing C, users might want to store pointer
@@ -40,7 +40,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub WRONG_TRANSMUTE,
     correctness,
-    "transmutes that are confusing at best, undefined behaviour at worst and always useless"
+    "transmutes that are confusing at best, undefined behavior at worst and always useless"
 }
 
 // FIXME: Move this to `complexity` again, after #5343 is fixed

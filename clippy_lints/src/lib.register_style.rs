@@ -16,6 +16,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(comparison_chain::COMPARISON_CHAIN),
     LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
     LintId::of(dereference::NEEDLESS_BORROW),
+    LintId::of(derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ),
     LintId::of(disallowed_methods::DISALLOWED_METHODS),
     LintId::of(disallowed_types::DISALLOWED_TYPES),
     LintId::of(doc::MISSING_SAFETY_DOC),

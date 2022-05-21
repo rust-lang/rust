@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// ### Known problems
     /// Clippy cannot know for sure if `a op= a op b` should have
     /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
-    /// If `a op= a op b` is really the correct behaviour it should be
+    /// If `a op= a op b` is really the correct behavior it should be
     /// written as `a = a op a op b` as it's less confusing.
     ///
     /// ### Example
