@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 // Check that incorrect higher ranked subtyping
 // causes an error.
 struct Inv<'a>(fn(&'a ()) -> &'a ());
@@ -12,12 +16,12 @@ fn hr_subtype<'c>(f: for<'a, 'b> fn(Inv<'a>, Inv<'a>)) {
 
 fn simple1<'c>(x: (&'c i32,)) {
     let _x: (&'static i32,) = x;
-    //~^ ERROR mismatched types
+    //[base]~^ ERROR mismatched types
 }
 
 fn simple2<'c>(x: (&'c i32,)) {
     let _: (&'static i32,) = x;
-    //~^ ERROR mismatched types
+    //[base]~^ ERROR mismatched types
 }
 
 fn main() {

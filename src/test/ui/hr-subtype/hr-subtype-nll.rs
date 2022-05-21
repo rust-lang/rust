@@ -27,8 +27,9 @@
 //[bound_a_b_vs_bound_a] check-pass
 //[bound_contra_a_contra_b_ret_co_a] check-pass
 
+// compile-flags: -Z borrowck=mir
 // ignore-compare-mode-nll
-// FIXME(nll): When stabilizing, this test should be replaced with `hr-subtype-nll.rs`
+// FIXME(nll): When stabilizing, this test should be replace with `hr-subtype.rs`
 // The two would normally be just revisions, but this test uses revisions heavily, so splitting into
 // a separate test is just easier.
 
@@ -60,8 +61,9 @@ macro_rules! check {
             //[bound_a_vs_free_x]~^ ERROR
             //[free_x_vs_free_y]~^^ ERROR
             //[bound_inv_a_b_vs_bound_inv_a]~^^^ ERROR
-            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^ ERROR
-            //[free_inv_x_vs_free_inv_y]~^^^^^ ERROR
+            //[bound_inv_a_b_vs_bound_inv_a]~| ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^^ ERROR
+            //[free_inv_x_vs_free_inv_y]~^^^^^^ ERROR
         }
     };
 }
