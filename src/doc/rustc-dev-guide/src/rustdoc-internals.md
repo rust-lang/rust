@@ -32,7 +32,7 @@ is the `impl Clean<Crate> for visit_ast::RustdocVisitor`, which is called by
 `run_core` above.
 
 You see, I actually lied a little earlier: There's another AST transformation
-that happens before the events in `clean/mod.rs`.  In `visit_ast.rs` is the
+that happens before the events in `clean/mod.rs`. In `visit_ast.rs` is the
 type `RustdocVisitor`, which *actually* crawls a `rustc_hir::Crate` to get the first
 intermediate representation, defined in `doctree.rs`. This pass is mainly to
 get a few intermediate wrappers around the HIR types and to process visibility
@@ -52,10 +52,10 @@ which describe the publicly-documentable items in the target crate.
 
 Before moving on to the next major step, a few important "passes" occur over
 the documentation. These do things like combine the separate "attributes" into
-a single string and strip leading whitespace to make the document easier on the
-markdown parser, or drop items that are not public or deliberately hidden with
-`#[doc(hidden)]`. These are all implemented in the `passes/` directory, one
-file per pass. By default, all of these passes are run on a crate, but the ones
+a single string to make the document easier on the markdown parser,
+or drop items that are not public or deliberately hidden with `#[doc(hidden)]`.
+These are all implemented in the `passes/` directory, one file per pass.
+By default, all of these passes are run on a crate, but the ones
 regarding dropping private/hidden items can be bypassed by passing
 `--document-private-items` to rustdoc. Note that unlike the previous set of AST
 transformations, the passes are run on the _cleaned_ crate.
@@ -66,7 +66,7 @@ these passes, please let us know!)
 
 [44136]: https://github.com/rust-lang/rust/issues/44136
 
-Here is the list of passes as of <!-- date: 2021-10 --> October 2021:
+Here is the list of passes as of <!-- date: 2022-05 --> May 2022:
 
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
@@ -74,7 +74,7 @@ Here is the list of passes as of <!-- date: 2021-10 --> October 2021:
 - `check-bare-urls` detects links that are not linkified, e.g., in Markdown such as
   `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
   `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
-  date: 2021-10 --> `rustdoc::bare_urls` lint.
+  date: 2022-05 --> `rustdoc::bare_urls` lint.
 
 - `check-code-block-syntax` validates syntax inside Rust code blocks
   (<code>```rust</code>)
@@ -84,7 +84,7 @@ Here is the list of passes as of <!-- date: 2021-10 --> October 2021:
 - `check-invalid-html-tags` detects invalid HTML (like an unclosed `<span>`)
   in doc comments.
 
-- `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/rustdoc/linking-to-items-by-name.html).
+- `collect-intra-doc-links` resolves [intra-doc links](https://doc.rust-lang.org/nightly/rustdoc/write-documentation/linking-to-items-by-name.html).
 
 - `collect-trait-impls` collects trait impls for each item in the crate. For
   example, if we define a struct that implements a trait, this pass will note
@@ -101,23 +101,6 @@ Here is the list of passes as of <!-- date: 2021-10 --> October 2021:
 - `strip-hidden` and `strip-private` strip all `doc(hidden)` and private items
   from the output. `strip-private` implies `strip-priv-imports`. Basically, the
   goal is to remove items that are not relevant for public documentation.
-
-- `unindent-comments` removes excess indentation on comments in order for the
-  Markdown to be parsed correctly. This is necessary because the convention for
-  writing documentation is to provide a space between the `///` or `//!` marker
-  and the doc text, but Markdown is whitespace-sensitive. For example, a block
-  of text with four-space indentation is parsed as a code block, so if we didn't
-  unindent comments, these list items
-
-  ```rust,ignore
-  /// A list:
-  ///
-  ///    - Foo
-  ///    - Bar
-  ```
-
-  would be parsed as if they were in a code block, which is likely not what the
-  user intended.
 
 There is also a `stripper` module in `passes/`, but it is a collection of
 utility functions for the `strip-*` passes and is not a pass itself.
