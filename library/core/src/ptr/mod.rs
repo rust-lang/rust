@@ -555,7 +555,11 @@ pub const fn null_mut<T>() -> *mut T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    addr as *const T
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
 }
 
 /// Creates an invalid mutable pointer with the given address.
@@ -582,7 +586,11 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    addr as *mut T
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
 }
 
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
