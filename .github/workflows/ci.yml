@@ -56,7 +56,8 @@ jobs:
             ~/.cargo/git/db
             # contains package information of crates installed via `cargo install`.
             ~/.cargo/.crates.toml
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-xargo0.3.25
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master and xargo
