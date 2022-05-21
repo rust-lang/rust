@@ -1,3 +1,7 @@
+// ignore-compare-mode-nll
+// revisions: base nll
+// [nll]compile-flags: -Zborrowck=mir
+
 // edition:2018
 
 struct Xyz {
@@ -11,7 +15,9 @@ impl Xyz {
         &'a self, foo: &dyn Foo
     ) -> &dyn Foo
     {
-        foo  //~ ERROR lifetime mismatch
+        //[nll]~^ ERROR lifetime may not live long enough
+        foo
+        //[base]~^ ERROR lifetime mismatch
     }
 }
 

@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of associated function
-  --> $DIR/issue-72312.rs:13:24
+  --> $DIR/issue-72312.rs:20:24
    |
 LL |       pub async fn start(&self) {
    |                          -----
@@ -9,6 +9,10 @@ LL |       pub async fn start(&self) {
 ...
 LL |           require_static(async move {
    |  ________________________^
+LL | |
+LL | |
+LL | |
+LL | |
 LL | |             &self;
 LL | |         });
    | |         ^
