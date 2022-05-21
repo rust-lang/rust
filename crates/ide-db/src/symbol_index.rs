@@ -217,13 +217,6 @@ pub fn crate_symbols(db: &RootDatabase, krate: Crate, query: Query) -> Vec<FileS
     query.search(&indices)
 }
 
-pub fn index_resolve(db: &RootDatabase, name: &str) -> Vec<FileSymbol> {
-    let mut query = Query::new(name.to_string());
-    query.exact();
-    query.limit(4);
-    world_symbols(db, query)
-}
-
 #[derive(Default)]
 pub struct SymbolIndex {
     symbols: Vec<FileSymbol>,
