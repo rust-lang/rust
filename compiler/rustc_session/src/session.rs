@@ -714,7 +714,7 @@ impl Session {
     }
 
     pub fn is_wasi_reactor(&self) -> bool {
-        match self.target.options.os {
+        match self.target.options.os.as_ref() {
             "wasi" | "wasix" => matches!(
                 self.opts.debugging_opts.wasi_exec_model,
                 Some(config::WasiExecModel::Reactor)
