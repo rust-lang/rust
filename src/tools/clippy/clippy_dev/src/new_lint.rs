@@ -133,7 +133,7 @@ fn to_camel_case(name: &str) -> String {
         .collect()
 }
 
-fn get_stabilisation_version() -> String {
+fn get_stabilization_version() -> String {
     fn parse_manifest(contents: &str) -> Option<String> {
         let version = contents
             .lines()
@@ -199,7 +199,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         },
     };
 
-    let version = get_stabilisation_version();
+    let version = get_stabilization_version();
     let lint_name = lint.name;
     let category = lint.category;
     let name_camel = to_camel_case(lint.name);

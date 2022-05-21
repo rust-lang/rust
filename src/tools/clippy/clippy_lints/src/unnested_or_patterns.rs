@@ -61,13 +61,13 @@ impl_lint_pass!(UnnestedOrPatterns => [UNNESTED_OR_PATTERNS]);
 
 impl EarlyLintPass for UnnestedOrPatterns {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, a: &ast::Arm) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if meets_msrv(self.msrv, msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &a.pat);
         }
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if meets_msrv(self.msrv, msrvs::OR_PATTERNS) {
             if let ast::ExprKind::Let(pat, _, _) = &e.kind {
                 lint_unnested_or_patterns(cx, pat);
             }
@@ -75,13 +75,13 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &ast::Param) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if meets_msrv(self.msrv, msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &p.pat);
         }
     }
 
     fn check_local(&mut self, cx: &EarlyContext<'_>, l: &ast::Local) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if meets_msrv(self.msrv, msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &l.pat);
         }
     }

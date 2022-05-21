@@ -1,4 +1,43 @@
-error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of `avoid-breaking-exported-api`, `msrv`, `blacklisted-names`, `cognitive-complexity-threshold`, `cyclomatic-complexity-threshold`, `doc-valid-idents`, `too-many-arguments-threshold`, `type-complexity-threshold`, `single-char-binding-names-threshold`, `too-large-for-stack`, `enum-variant-name-threshold`, `enum-variant-size-threshold`, `verbose-bit-mask-threshold`, `literal-representation-threshold`, `trivial-copy-size-limit`, `pass-by-value-size-limit`, `too-many-lines-threshold`, `array-size-threshold`, `vec-box-size-threshold`, `max-trait-bounds`, `max-struct-bools`, `max-fn-params-bools`, `warn-on-all-wildcard-imports`, `disallowed-methods`, `disallowed-types`, `unreadable-literal-lint-fractions`, `upper-case-acronyms-aggressive`, `cargo-ignore-publish`, `standard-macro-braces`, `enforced-import-renames`, `allowed-scripts`, `enable-raw-pointer-heuristic-for-send`, `max-suggested-slice-pattern-length`, `await-holding-invalid-types`, `max-include-file-size`, `third-party` at line 5 column 1
+error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of
+           allow-expect-in-tests
+           allow-unwrap-in-tests
+           allowed-scripts
+           array-size-threshold
+           avoid-breaking-exported-api
+           await-holding-invalid-types
+           blacklisted-names
+           cargo-ignore-publish
+           cognitive-complexity-threshold
+           cyclomatic-complexity-threshold
+           disallowed-methods
+           disallowed-types
+           doc-valid-idents
+           enable-raw-pointer-heuristic-for-send
+           enforced-import-renames
+           enum-variant-name-threshold
+           enum-variant-size-threshold
+           literal-representation-threshold
+           max-fn-params-bools
+           max-include-file-size
+           max-struct-bools
+           max-suggested-slice-pattern-length
+           max-trait-bounds
+           msrv
+           pass-by-value-size-limit
+           single-char-binding-names-threshold
+           standard-macro-braces
+           third-party
+           too-large-for-stack
+           too-many-arguments-threshold
+           too-many-lines-threshold
+           trivial-copy-size-limit
+           type-complexity-threshold
+           unreadable-literal-lint-fractions
+           upper-case-acronyms-aggressive
+           vec-box-size-threshold
+           verbose-bit-mask-threshold
+           warn-on-all-wildcard-imports
+       at line 5 column 1
 
 error: aborting due to previous error
 

@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::eval_order_dependence)]
+#![allow(dead_code, clippy::mixed_read_write_in_expression)]
 #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
 // This tests valid if blocks that shouldn't trigger the lint

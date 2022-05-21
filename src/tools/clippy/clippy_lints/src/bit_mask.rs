@@ -1,7 +1,6 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::sugg::Sugg;
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -130,23 +129,24 @@ impl<'tcx> LateLintPass<'tcx> for BitMask {
                 }
             }
         }
-        if_chain! {
-            if let ExprKind::Binary(op, left, right) = &e.kind;
-            if BinOpKind::Eq == op.node;
-            if let ExprKind::Binary(op1, left1, right1) = &left.kind;
-            if BinOpKind::BitAnd == op1.node;
-            if let ExprKind::Lit(lit) = &right1.kind;
-            if let LitKind::Int(n, _) = lit.node;
-            if let ExprKind::Lit(lit1) = &right.kind;
-            if let LitKind::Int(0, _) = lit1.node;
-            if n.leading_zeros() == n.count_zeros();
-            if n > u128::from(self.verbose_bit_mask_threshold);
-            then {
-                span_lint_and_then(cx,
-                                   VERBOSE_BIT_MASK,
-                                   e.span,
-                                   "bit mask could be simplified with a call to `trailing_zeros`",
-                                   |diag| {
+
+        if let ExprKind::Binary(op, left, right) = &e.kind
+            && BinOpKind::Eq == op.node
+            && let ExprKind::Binary(op1, left1, right1) = &left.kind
+            && BinOpKind::BitAnd == op1.node
+            && let ExprKind::Lit(lit) = &right1.kind
+            && let LitKind::Int(n, _) = lit.node
+            && let ExprKind::Lit(lit1) = &right.kind
+            && let LitKind::Int(0, _) = lit1.node
+            && n.leading_zeros() == n.count_zeros()
+            && n > u128::from(self.verbose_bit_mask_threshold)
+        {
+            span_lint_and_then(
+                cx,
+                VERBOSE_BIT_MASK,
+                e.span,
+                "bit mask could be simplified with a call to `trailing_zeros`",
+                |diag| {
                     let sugg = Sugg::hir(cx, left1, "...").maybe_par();
                     diag.span_suggestion(
                         e.span,
@@ -154,8 +154,8 @@ impl<'tcx> LateLintPass<'tcx> for BitMask {
                         format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),
                         Applicability::MaybeIncorrect,
                     );
-                });
-            }
+                },
+            );
         }
     }
 }

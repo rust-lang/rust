@@ -28,7 +28,7 @@ because that's clearly a non-descriptive name.
   - [Debugging](#debugging)
   - [PR Checklist](#pr-checklist)
   - [Adding configuration to a lint](#adding-configuration-to-a-lint)
-  - [Cheatsheet](#cheatsheet)
+  - [Cheat Sheet](#cheat-sheet)
 
 ## Setup
 
@@ -432,7 +432,7 @@ The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `meets_msrv` utility function.
 
 ``` rust
-if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
+if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
@@ -649,14 +649,14 @@ in the following steps:
         with the configuration value and a rust file that should be linted by Clippy. The test can
         otherwise be written as usual.
 
-## Cheatsheet
+## Cheat Sheet
 
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
   is already in here ([`is_type_diagnostic_item`], [`implements_trait`], [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
-* [The `if_chain` macro][if_chain]
+* [Let chains][let-chains]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
@@ -684,7 +684,7 @@ don't hesitate to ask on [Zulip] or in the issue/PR.
 [`is_type_diagnostic_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.is_type_diagnostic_item.html
 [`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
 [`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
-[if_chain]: https://docs.rs/if_chain/*/if_chain/
+[let-chains]: https://github.com/rust-lang/rust/pull/94927
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html

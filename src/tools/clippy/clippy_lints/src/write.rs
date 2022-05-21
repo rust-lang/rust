@@ -342,8 +342,6 @@ impl EarlyLintPass for Write {
             if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == kw::Empty {
                     let mut applicability = Applicability::MachineApplicable;
-                    // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
-                    #[allow(clippy::option_if_let_else)]
                     let suggestion = if let Some(e) = expr {
                         snippet_with_applicability(cx, e.span, "v", &mut applicability)
                     } else {
@@ -528,7 +526,6 @@ impl Write {
     /// ```rust,ignore
     /// (Some("string to write: {}"), Some(buf))
     /// ```
-    #[allow(clippy::too_many_lines)]
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
         let mut parser = parser::Parser::new(&cx.sess().parse_sess, tts, false, None);
         let expr = if is_write {

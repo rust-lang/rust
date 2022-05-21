@@ -1,4 +1,4 @@
-use crate::path_to_local_id;
+use crate::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -434,5 +434,63 @@ pub fn for_each_value_source<'tcx, B>(
         },
         ExprKind::DropTemps(e) => for_each_value_source(e, f),
         _ => f(e),
+    }
+}
+
+/// Runs the given function for each path expression referencing the given local which occur after
+/// the given expression.
+pub fn for_each_local_use_after_expr<'tcx, B>(
+    cx: &LateContext<'tcx>,
+    local_id: HirId,
+    expr_id: HirId,
+    f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    struct V<'cx, 'tcx, F, B> {
+        cx: &'cx LateContext<'tcx>,
+        local_id: HirId,
+        expr_id: HirId,
+        found: bool,
+        res: ControlFlow<B>,
+        f: F,
+    }
+    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+            if !self.found {
+                if e.hir_id == self.expr_id {
+                    self.found = true;
+                } else {
+                    walk_expr(self, e);
+                }
+                return;
+            }
+            if self.res.is_break() {
+                return;
+            }
+            if path_to_local_id(e, self.local_id) {
+                self.res = (self.f)(e);
+            } else {
+                walk_expr(self, e);
+            }
+        }
+    }
+
+    if let Some(b) = get_enclosing_block(cx, local_id) {
+        let mut v = V {
+            cx,
+            local_id,
+            expr_id,
+            found: false,
+            res: ControlFlow::Continue(()),
+            f,
+        };
+        v.visit_block(b);
+        v.res
+    } else {
+        ControlFlow::Continue(())
     }
 }
