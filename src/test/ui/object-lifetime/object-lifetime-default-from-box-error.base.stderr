@@ -1,5 +1,5 @@
 error[E0759]: `ss` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
+  --> $DIR/object-lifetime-default-from-box-error.rs:22:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
    |             --------------- this data with an anonymous lifetime `'_`...
@@ -8,7 +8,7 @@ LL |     ss.r
    |     ^^^^ ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/object-lifetime-default-from-box-error.rs:14:37
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:37
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
    |                                     ^^^^^^^^^^^^^ `'static` requirement introduced here
@@ -21,7 +21,7 @@ LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
    |                                                   ++++
 
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:31:12
+  --> $DIR/object-lifetime-default-from-box-error.rs:38:12
    |
 LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<dyn SomeTrait+'b>) {
    |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
