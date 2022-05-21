@@ -74,7 +74,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
         self.update(cmt);
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 pub struct ParamBindingIdCollector {
