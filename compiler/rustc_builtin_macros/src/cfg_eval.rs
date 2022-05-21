@@ -3,7 +3,6 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
-use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::visit::Visitor;
 use rustc_ast::NodeId;
 use rustc_ast::{mut_visit, visit};
@@ -13,7 +12,6 @@ use rustc_expand::config::StripUnconfigured;
 use rustc_expand::configure;
 use rustc_feature::Features;
 use rustc_parse::parser::{ForceCollect, Parser};
-use rustc_session::utils::FlattenNonterminals;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -174,8 +172,6 @@ impl CfgEval<'_, '_> {
             _ => unreachable!(),
         };
 
-        let mut orig_tokens = annotatable.to_tokens(&self.cfg.sess.parse_sess);
-
         // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
         // to `None`-delimited groups containing the corresponding tokens. This
         // is normally delayed until the proc-macro server actually needs to
@@ -189,12 +185,7 @@ impl CfgEval<'_, '_> {
         // where `$item` is `#[cfg_attr] struct Foo {}`. We want to make
         // sure to evaluate *all* `#[cfg]` and `#[cfg_attr]` attributes - the simplest
         // way to do this is to do a single parse of a stream without any nonterminals.
-        let mut flatten = FlattenNonterminals {
-            nt_to_tokenstream: rustc_parse::nt_to_tokenstream,
-            parse_sess: &self.cfg.sess.parse_sess,
-            synthesize_tokens: CanSynthesizeMissingTokens::No,
-        };
-        orig_tokens = flatten.process_token_stream(orig_tokens);
+        let orig_tokens = annotatable.to_tokens().flattened();
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrAnnotatedTokenStream` (specifically, we capture

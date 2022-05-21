@@ -4,7 +4,7 @@ use crate::module::DirOwnership;
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
@@ -13,7 +13,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
-use rustc_parse::{self, parser, to_token_stream, MACRO_ARGUMENTS};
+use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
@@ -109,20 +109,18 @@ impl Annotatable {
         }
     }
 
-    pub fn to_tokens(&self, sess: &ParseSess) -> TokenStream {
+    pub fn to_tokens(&self) -> TokenStream {
         match self {
-            Annotatable::Item(node) => to_token_stream(node, sess, CanSynthesizeMissingTokens::No),
+            Annotatable::Item(node) => TokenStream::from_ast(node),
             Annotatable::TraitItem(node) | Annotatable::ImplItem(node) => {
-                to_token_stream(node, sess, CanSynthesizeMissingTokens::No)
+                TokenStream::from_ast(node)
             }
-            Annotatable::ForeignItem(node) => {
-                to_token_stream(node, sess, CanSynthesizeMissingTokens::No)
-            }
+            Annotatable::ForeignItem(node) => TokenStream::from_ast(node),
             Annotatable::Stmt(node) => {
                 assert!(!matches!(node.kind, ast::StmtKind::Empty));
-                to_token_stream(node, sess, CanSynthesizeMissingTokens::No)
+                TokenStream::from_ast(node)
             }
-            Annotatable::Expr(node) => to_token_stream(node, sess, CanSynthesizeMissingTokens::No),
+            Annotatable::Expr(node) => TokenStream::from_ast(node),
             Annotatable::Arm(..)
             | Annotatable::ExprField(..)
             | Annotatable::PatField(..)

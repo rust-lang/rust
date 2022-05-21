@@ -444,8 +444,7 @@ impl Default for Generics {
 pub struct WhereClause {
     /// `true` if we ate a `where` token: this can happen
     /// if we parsed no predicates (e.g. `struct Foo where {}`).
-    /// This allows us to accurately pretty-print
-    /// in `nt_to_tokenstream`
+    /// This allows us to pretty-print accurately.
     pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,

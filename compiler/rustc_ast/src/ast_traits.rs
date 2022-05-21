@@ -108,11 +108,17 @@ macro_rules! impl_has_span {
     };
 }
 
-impl_has_span!(AssocItem, Expr, ForeignItem, Item, Stmt);
+impl_has_span!(AssocItem, Block, Expr, ForeignItem, Item, Pat, Path, Stmt, Ty, Visibility);
 
 impl<T: AstDeref<Target: HasSpan>> HasSpan for T {
     fn span(&self) -> Span {
         self.ast_deref().span()
+    }
+}
+
+impl HasSpan for AttrItem {
+    fn span(&self) -> Span {
+        self.span()
     }
 }
 

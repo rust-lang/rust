@@ -96,7 +96,7 @@ impl MultiItemModifier for ProcMacroDerive {
             };
             TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
         } else {
-            item.to_tokens(&ecx.sess.parse_sess)
+            item.to_tokens()
         };
 
         let stream = {

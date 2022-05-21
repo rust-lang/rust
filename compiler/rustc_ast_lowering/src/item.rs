@@ -13,7 +13,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::utils::NtToTokenstream;
 use rustc_session::Session;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -27,7 +26,6 @@ use std::iter;
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) sess: &'a Session,
     pub(super) resolver: &'a mut dyn ResolverAstLowering,
-    pub(super) nt_to_tokenstream: NtToTokenstream,
     pub(super) arena: &'hir Arena<'hir>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
@@ -63,7 +61,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // Pseudo-globals.
             sess: &self.sess,
             resolver: self.resolver,
-            nt_to_tokenstream: self.nt_to_tokenstream,
             arena: self.arena,
 
             // HirId handling.
