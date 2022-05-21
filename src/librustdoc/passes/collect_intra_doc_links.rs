@@ -220,80 +220,40 @@ enum MalformedGenerics {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum UrlFragment {
-    Item(ItemFragment),
+    Item(DefId),
     UserWritten(String),
 }
 
 impl UrlFragment {
     /// Render the fragment, including the leading `#`.
     pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
+        s.push('#');
         match self {
-            UrlFragment::Item(frag) => frag.render(s, tcx),
-            UrlFragment::UserWritten(raw) => write!(s, "#{}", raw),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct ItemFragment(FragmentKind, DefId);
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum FragmentKind {
-    Method,
-    TyMethod,
-    AssociatedConstant,
-    AssociatedType,
-
-    StructField,
-    Variant,
-    VariantField,
-}
-
-impl FragmentKind {
-    fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> FragmentKind {
-        match tcx.def_kind(def_id) {
-            DefKind::AssocFn => {
-                if tcx.associated_item(def_id).defaultness.has_value() {
-                    FragmentKind::Method
-                } else {
-                    FragmentKind::TyMethod
-                }
-            }
-            DefKind::AssocConst => FragmentKind::AssociatedConstant,
-            DefKind::AssocTy => FragmentKind::AssociatedType,
-            DefKind::Variant => FragmentKind::Variant,
-            DefKind::Field => {
-                if tcx.def_kind(tcx.parent(def_id)) == DefKind::Variant {
-                    FragmentKind::VariantField
-                } else {
-                    FragmentKind::StructField
-                }
-            }
-            kind => bug!("unexpected associated item kind: {:?}", kind),
-        }
-    }
-}
-
-impl ItemFragment {
-    /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
-        write!(s, "#")?;
-        match *self {
-            ItemFragment(kind, def_id) => {
+            &UrlFragment::Item(def_id) => {
                 let name = tcx.item_name(def_id);
-                match kind {
-                    FragmentKind::Method => write!(s, "method.{}", name),
-                    FragmentKind::TyMethod => write!(s, "tymethod.{}", name),
-                    FragmentKind::AssociatedConstant => write!(s, "associatedconstant.{}", name),
-                    FragmentKind::AssociatedType => write!(s, "associatedtype.{}", name),
-                    FragmentKind::StructField => write!(s, "structfield.{}", name),
-                    FragmentKind::Variant => write!(s, "variant.{}", name),
-                    FragmentKind::VariantField => {
-                        let variant = tcx.item_name(tcx.parent(def_id));
-                        write!(s, "variant.{}.field.{}", variant, name)
+                match tcx.def_kind(def_id) {
+                    DefKind::AssocFn => {
+                        if tcx.associated_item(def_id).defaultness.has_value() {
+                            write!(s, "method.{}", name)
+                        } else {
+                            write!(s, "tymethod.{}", name)
+                        }
                     }
+                    DefKind::AssocConst => write!(s, "associatedconstant.{}", name),
+                    DefKind::AssocTy => write!(s, "associatedtype.{}", name),
+                    DefKind::Variant => write!(s, "variant.{}", name),
+                    DefKind::Field => {
+                        let parent_id = tcx.parent(def_id);
+                        if tcx.def_kind(parent_id) == DefKind::Variant {
+                            write!(s, "variant.{}.field.{}", tcx.item_name(parent_id), name)
+                        } else {
+                            write!(s, "structfield.{}", name)
+                        }
+                    }
+                    kind => bug!("unexpected associated item kind: {:?}", kind),
                 }
             }
+            UrlFragment::UserWritten(raw) => Ok(s.push_str(&raw)),
         }
     }
 }
@@ -1124,7 +1084,7 @@ impl LinkCollector<'_, '_> {
 
         match res {
             Res::Primitive(prim) => {
-                if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
+                if let Some(UrlFragment::Item(id)) = fragment {
                     // We're actually resolving an associated item of a primitive, so we need to
                     // verify the disambiguator (if any) matches the type of the associated item.
                     // This case should really follow the same flow as the `Res::Def` branch below,
@@ -1172,12 +1132,11 @@ impl LinkCollector<'_, '_> {
                 })
             }
             Res::Def(kind, id) => {
-                let (kind_for_dis, id_for_dis) =
-                    if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
-                        (self.cx.tcx.def_kind(id), id)
-                    } else {
-                        (kind, id)
-                    };
+                let (kind_for_dis, id_for_dis) = if let Some(UrlFragment::Item(id)) = fragment {
+                    (self.cx.tcx.def_kind(id), id)
+                } else {
+                    (kind, id)
+                };
                 self.verify_disambiguator(
                     path_str,
                     &ori_link,
@@ -1318,10 +1277,7 @@ impl LinkCollector<'_, '_> {
                     return None;
                 }
                 (Some(u_frag), None) => Some(UrlFragment::UserWritten(u_frag.clone())),
-                (None, Some(def_id)) => Some(UrlFragment::Item(ItemFragment(
-                    FragmentKind::from_def_id(self.cx.tcx, def_id),
-                    def_id,
-                ))),
+                (None, Some(def_id)) => Some(UrlFragment::Item(def_id)),
                 (None, None) => None,
             };
             Some((res, fragment))
