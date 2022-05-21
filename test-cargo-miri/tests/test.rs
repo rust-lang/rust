@@ -50,8 +50,8 @@ fn cargo_env() {
 
 #[test]
 #[should_panic(expected = "Explicit panic")]
-fn do_panic() {
-    // In large, friendly letters :)
+fn do_panic() // In large, friendly letters :)
+{
     panic!("Explicit panic from test!");
 }
 
