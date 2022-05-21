@@ -2705,7 +2705,7 @@ impl SymbolName {
 }
 
 impl ClashingExternDeclarations {
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         ClashingExternDeclarations { seen_decls: FxHashMap::default() }
     }
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists

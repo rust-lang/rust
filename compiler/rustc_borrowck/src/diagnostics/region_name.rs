@@ -15,18 +15,18 @@ use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
 #[derive(Debug, Clone)]
-crate struct RegionName {
+pub(crate) struct RegionName {
     /// The name of the region (interned).
-    crate name: Symbol,
+    pub(crate) name: Symbol,
     /// Where the region comes from.
-    crate source: RegionNameSource,
+    pub(crate) source: RegionNameSource,
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
 /// was named by the user would get `NamedFreeRegion` and `'static` lifetime would get `Static`.
 /// This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
-crate enum RegionNameSource {
+pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was substituted at the def site (not an HRTB).
     NamedEarlyBoundRegion(Span),
     /// A free region that the user has a name (`'a`) for.
@@ -50,7 +50,7 @@ crate enum RegionNameSource {
 /// Describes what to highlight to explain to the user that we're giving an anonymous region a
 /// synthesized name, and how to highlight it.
 #[derive(Debug, Clone)]
-crate enum RegionNameHighlight {
+pub(crate) enum RegionNameHighlight {
     /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
     MatchedHirTy(Span),
     /// The anonymous region corresponds to a `'_` in the generics list of a struct/enum/union.
@@ -65,7 +65,7 @@ crate enum RegionNameHighlight {
 }
 
 impl RegionName {
-    crate fn was_named(&self) -> bool {
+    pub(crate) fn was_named(&self) -> bool {
         match self.source {
             RegionNameSource::NamedEarlyBoundRegion(..)
             | RegionNameSource::NamedFreeRegion(..)
@@ -79,7 +79,7 @@ impl RegionName {
         }
     }
 
-    crate fn span(&self) -> Option<Span> {
+    pub(crate) fn span(&self) -> Option<Span> {
         match self.source {
             RegionNameSource::Static => None,
             RegionNameSource::NamedEarlyBoundRegion(span)
@@ -98,7 +98,7 @@ impl RegionName {
         }
     }
 
-    crate fn highlight_region_name(&self, diag: &mut Diagnostic) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diagnostic) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
             | RegionNameSource::NamedEarlyBoundRegion(span) => {
@@ -178,11 +178,11 @@ impl Display for RegionName {
 }
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
-    crate fn mir_def_id(&self) -> hir::def_id::LocalDefId {
+    pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
         self.body.source.def_id().as_local().unwrap()
     }
 
-    crate fn mir_hir_id(&self) -> hir::HirId {
+    pub(crate) fn mir_hir_id(&self) -> hir::HirId {
         self.infcx.tcx.hir().local_def_id_to_hir_id(self.mir_def_id())
     }
 
@@ -222,7 +222,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// ```
     ///
     /// and then return the name `'1` for us to use.
-    crate fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
+    pub(crate) fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
         debug!(
             "give_region_a_name(fr={:?}, counter={:?})",
             fr,

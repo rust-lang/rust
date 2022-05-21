@@ -90,7 +90,7 @@ pub trait AddSubdiagnostic {
 pub struct Diagnostic {
     // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
     // outside of what methods in this crate themselves allow.
-    crate level: Level,
+    pub(crate) level: Level,
 
     pub message: Vec<(DiagnosticMessage, Style)>,
     pub code: Option<DiagnosticId>,

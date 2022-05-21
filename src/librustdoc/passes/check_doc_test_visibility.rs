@@ -17,7 +17,7 @@ use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 
-crate const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
+pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
     run: check_doc_test_visibility,
     description: "run various visibility-related lints on doctests",
@@ -27,7 +27,7 @@ struct DocTestVisibilityLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let mut coll = DocTestVisibilityLinter { cx };
     coll.visit_crate(&krate);
     krate
@@ -55,7 +55,7 @@ impl crate::doctest::Tester for Tests {
     }
 }
 
-crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
+pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
     if !cx.cache.access_levels.is_public(item.item_id.expect_def_id())
         || matches!(
             *item.kind,
@@ -106,7 +106,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
-crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
+pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id)
     else {
         // If non-local, no need to check anything.

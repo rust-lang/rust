@@ -15,7 +15,11 @@ use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Builds the search index from the collected metadata
-crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<'tcx>) -> String {
+pub(crate) fn build_index<'tcx>(
+    krate: &clean::Crate,
+    cache: &mut Cache,
+    tcx: TyCtxt<'tcx>,
+) -> String {
     let mut defid_to_pathid = FxHashMap::default();
     let mut crate_paths = vec![];
 
@@ -185,7 +189,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     )
 }
 
-crate fn get_function_type_for_search<'tcx>(
+pub(crate) fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
     cache: &Cache,

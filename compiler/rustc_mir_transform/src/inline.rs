@@ -17,7 +17,7 @@ use crate::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
-crate mod cycle;
+pub(crate) mod cycle;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;

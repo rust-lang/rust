@@ -15,38 +15,38 @@ use std::path::{Path, PathBuf};
 use std::string::ToString;
 use std::sync::mpsc::Sender;
 
-crate trait PathError {
+pub(crate) trait PathError {
     fn new<S, P: AsRef<Path>>(e: S, path: P) -> Self
     where
         S: ToString + Sized;
 }
 
-crate struct DocFS {
+pub(crate) struct DocFS {
     sync_only: bool,
     errors: Option<Sender<String>>,
 }
 
 impl DocFS {
-    crate fn new(errors: Sender<String>) -> DocFS {
+    pub(crate) fn new(errors: Sender<String>) -> DocFS {
         DocFS { sync_only: false, errors: Some(errors) }
     }
 
-    crate fn set_sync_only(&mut self, sync_only: bool) {
+    pub(crate) fn set_sync_only(&mut self, sync_only: bool) {
         self.sync_only = sync_only;
     }
 
-    crate fn close(&mut self) {
+    pub(crate) fn close(&mut self) {
         self.errors = None;
     }
 
-    crate fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+    pub(crate) fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         // For now, dir creation isn't a huge time consideration, do it
         // synchronously, which avoids needing ordering between write() actions
         // and directory creation.
         fs::create_dir_all(path)
     }
 
-    crate fn write<E>(
+    pub(crate) fn write<E>(
         &self,
         path: PathBuf,
         contents: impl 'static + Send + AsRef<[u8]>,

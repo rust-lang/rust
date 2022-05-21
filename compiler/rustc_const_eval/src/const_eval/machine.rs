@@ -163,7 +163,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-crate type CompileTimeEvalContext<'mir, 'tcx> =
+pub(crate) type CompileTimeEvalContext<'mir, 'tcx> =
     InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

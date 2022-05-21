@@ -4,7 +4,6 @@
 
 #![feature(associated_type_defaults)]
 #![feature(const_btree_new)]
-#![feature(crate_visibility_modifier)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(min_specialization)]

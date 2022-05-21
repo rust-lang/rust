@@ -41,10 +41,10 @@ type Res = def::Res<NodeId>;
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
 pub struct MacroRulesBinding<'a> {
-    crate binding: &'a NameBinding<'a>,
+    pub(crate) binding: &'a NameBinding<'a>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
-    crate parent_macro_rules_scope: MacroRulesScopeRef<'a>,
-    crate ident: Ident,
+    pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'a>,
+    pub(crate) ident: Ident,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
@@ -74,7 +74,10 @@ pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
-crate fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKind>) -> bool {
+pub(crate) fn sub_namespace_match(
+    candidate: Option<MacroKind>,
+    requirement: Option<MacroKind>,
+) -> bool {
     #[derive(PartialEq)]
     enum SubNS {
         Bang,
@@ -140,7 +143,7 @@ fn registered_idents(
     registered
 }
 
-crate fn registered_attrs_and_tools(
+pub(crate) fn registered_attrs_and_tools(
     sess: &Session,
     attrs: &[ast::Attribute],
 ) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
@@ -651,7 +654,7 @@ impl<'a> Resolver<'a> {
         res.map(|res| (self.get_macro(res), res))
     }
 
-    crate fn finalize_macro_resolutions(&mut self) {
+    pub(crate) fn finalize_macro_resolutions(&mut self) {
         let check_consistency = |this: &mut Self,
                                  path: &[Segment],
                                  span,
@@ -839,7 +842,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
+    pub(crate) fn check_reserved_macro_name(&mut self, ident: Ident, res: Res) {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
@@ -856,7 +859,7 @@ impl<'a> Resolver<'a> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    crate fn compile_macro(
+    pub(crate) fn compile_macro(
         &mut self,
         item: &ast::Item,
         edition: Edition,

@@ -2,7 +2,6 @@
 
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
-#![feature(crate_visibility_modifier)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]

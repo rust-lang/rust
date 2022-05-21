@@ -151,8 +151,8 @@ struct NamedRegionMap {
     scope_for_path: Option<FxHashMap<LocalDefId, FxHashMap<ItemLocalId, LifetimeScopeForPath>>>,
 }
 
-crate struct LifetimeContext<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct LifetimeContext<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -169,7 +169,7 @@ crate struct LifetimeContext<'a, 'tcx> {
 
     /// When encountering an undefined named lifetime, we will suggest introducing it in these
     /// places.
-    crate missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
+    pub(crate) missing_named_lifetime_spots: Vec<MissingLifetimeSpot<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -335,14 +335,14 @@ enum Elide {
 }
 
 #[derive(Clone, Debug)]
-crate struct ElisionFailureInfo {
+pub(crate) struct ElisionFailureInfo {
     /// Where we can find the argument pattern.
-    crate parent: Option<hir::BodyId>,
+    pub(crate) parent: Option<hir::BodyId>,
     /// The index of the argument in the original definition.
-    crate index: usize,
-    crate lifetime_count: usize,
-    crate have_bound_regions: bool,
-    crate span: Span,
+    pub(crate) index: usize,
+    pub(crate) lifetime_count: usize,
+    pub(crate) have_bound_regions: bool,
+    pub(crate) span: Span,
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;

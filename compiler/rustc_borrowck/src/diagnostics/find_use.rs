@@ -11,7 +11,7 @@ use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
-crate fn find<'tcx>(
+pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'tcx>,

@@ -81,7 +81,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, LocalExpnId, IsMacroE
 impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    crate fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
+    pub(crate) fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
     where
         T: ToNameBinding<'a>,
     {
@@ -127,7 +127,7 @@ impl<'a> Resolver<'a> {
     /// If `def_id` refers to a module (in resolver's sense, i.e. a module item, crate root, enum,
     /// or trait), then this function returns that module's resolver representation, otherwise it
     /// returns `None`.
-    crate fn get_module(&mut self, def_id: DefId) -> Option<Module<'a>> {
+    pub(crate) fn get_module(&mut self, def_id: DefId) -> Option<Module<'a>> {
         if let module @ Some(..) = self.module_map.get(&def_id) {
             return module.copied();
         }
@@ -162,7 +162,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+    pub(crate) fn expn_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
         match expn_id.expn_data().macro_def_id {
             Some(def_id) => self.macro_def_scope(def_id),
             None => expn_id
@@ -172,7 +172,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn macro_def_scope(&mut self, def_id: DefId) -> Module<'a> {
+    pub(crate) fn macro_def_scope(&mut self, def_id: DefId) -> Module<'a> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
@@ -180,7 +180,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
+    pub(crate) fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
             Res::NonMacroAttr(_) => Some(self.non_macro_attr.clone()),
@@ -188,7 +188,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Lrc<SyntaxExtension> {
+    pub(crate) fn get_macro_by_def_id(&mut self, def_id: DefId) -> Lrc<SyntaxExtension> {
         if let Some(ext) = self.macro_map.get(&def_id) {
             return ext.clone();
         }
@@ -202,7 +202,7 @@ impl<'a> Resolver<'a> {
         ext
     }
 
-    crate fn build_reduced_graph(
+    pub(crate) fn build_reduced_graph(
         &mut self,
         fragment: &AstFragment,
         parent_scope: ParentScope<'a>,
@@ -213,7 +213,7 @@ impl<'a> Resolver<'a> {
         visitor.parent_scope.macro_rules
     }
 
-    crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
+    pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         for child in self.cstore().module_children_untracked(module.def_id(), self.session) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }

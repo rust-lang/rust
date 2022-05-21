@@ -42,13 +42,13 @@ use crate::try_err;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-crate struct Context<'tcx> {
+pub(crate) struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub(crate) current: Vec<Symbol>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
-    crate dst: PathBuf,
+    pub(crate) dst: PathBuf,
     /// A flag, which when `true`, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
@@ -63,11 +63,11 @@ crate struct Context<'tcx> {
     /// Issue for improving the situation: [#82381][]
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    crate shared: Rc<SharedContext<'tcx>>,
+    pub(crate) shared: Rc<SharedContext<'tcx>>,
     /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
-    crate include_sources: bool,
+    pub(crate) include_sources: bool,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
@@ -75,16 +75,16 @@ crate struct Context<'tcx> {
 rustc_data_structures::static_assert_size!(Context<'_>, 144);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
-crate struct SharedContext<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct SharedContext<'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
-    crate src_root: PathBuf,
+    pub(crate) src_root: PathBuf,
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
-    crate layout: layout::Layout,
+    pub(crate) layout: layout::Layout,
     /// The local file sources we've emitted and their respective url-paths.
-    crate local_sources: FxHashMap<PathBuf, String>,
+    pub(crate) local_sources: FxHashMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
     pub(super) show_type_layout: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
@@ -97,15 +97,15 @@ crate struct SharedContext<'tcx> {
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub(super) sort_modules_alphabetically: bool,
     /// Additional CSS files to be added to the generated docs.
-    crate style_files: Vec<StylePath>,
+    pub(crate) style_files: Vec<StylePath>,
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
-    crate resource_suffix: String,
+    pub(crate) resource_suffix: String,
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
-    crate static_root_path: Option<String>,
+    pub(crate) static_root_path: Option<String>,
     /// The fs handle we are working with.
-    crate fs: DocFS,
+    pub(crate) fs: DocFS,
     pub(super) codes: ErrorCodes,
     pub(super) playground: Option<markdown::Playground>,
     all: RefCell<AllTypes>,
@@ -119,15 +119,15 @@ crate struct SharedContext<'tcx> {
 
     /// Correspondance map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
-    crate cache: Cache,
+    pub(crate) cache: Cache,
 
-    crate call_locations: AllCallLocations,
+    pub(crate) call_locations: AllCallLocations,
 }
 
 impl SharedContext<'_> {
-    crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
+    pub(crate) fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
             try_err!(self.fs.create_dir_all(dst), dst);
@@ -137,7 +137,7 @@ impl SharedContext<'_> {
         Ok(())
     }
 
-    crate fn edition(&self) -> Edition {
+    pub(crate) fn edition(&self) -> Edition {
         self.tcx.sess.edition()
     }
 }
@@ -301,7 +301,7 @@ impl<'tcx> Context<'tcx> {
         self.href_from_span(item.span(self.tcx()), true)
     }
 
-    crate fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
+    pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         if span.is_dummy() {
             return None;
         }

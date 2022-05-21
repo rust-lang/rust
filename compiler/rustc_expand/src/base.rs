@@ -28,7 +28,7 @@ use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-crate use rustc_span::hygiene::MacroKind;
+pub(crate) use rustc_span::hygiene::MacroKind;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`

@@ -33,7 +33,7 @@ use crate::html::render::Context;
 use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
 
-crate trait Print {
+pub(crate) trait Print {
     fn print(self, buffer: &mut Buffer);
 }
 
@@ -59,7 +59,7 @@ impl Print for &'_ str {
 }
 
 #[derive(Debug, Clone)]
-crate struct Buffer {
+pub(crate) struct Buffer {
     for_html: bool,
     buffer: String,
 }
@@ -82,63 +82,63 @@ impl core::fmt::Write for Buffer {
 }
 
 impl Buffer {
-    crate fn empty_from(v: &Buffer) -> Buffer {
+    pub(crate) fn empty_from(v: &Buffer) -> Buffer {
         Buffer { for_html: v.for_html, buffer: String::new() }
     }
 
-    crate fn html() -> Buffer {
+    pub(crate) fn html() -> Buffer {
         Buffer { for_html: true, buffer: String::new() }
     }
 
-    crate fn new() -> Buffer {
+    pub(crate) fn new() -> Buffer {
         Buffer { for_html: false, buffer: String::new() }
     }
 
-    crate fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
 
-    crate fn into_inner(self) -> String {
+    pub(crate) fn into_inner(self) -> String {
         self.buffer
     }
 
-    crate fn insert_str(&mut self, idx: usize, s: &str) {
+    pub(crate) fn insert_str(&mut self, idx: usize, s: &str) {
         self.buffer.insert_str(idx, s);
     }
 
-    crate fn push_str(&mut self, s: &str) {
+    pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
 
-    crate fn push_buffer(&mut self, other: Buffer) {
+    pub(crate) fn push_buffer(&mut self, other: Buffer) {
         self.buffer.push_str(&other.buffer);
     }
 
     // Intended for consumption by write! and writeln! (std::fmt) but without
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
-    crate fn write_str(&mut self, s: &str) {
+    pub(crate) fn write_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
 
     // Intended for consumption by write! and writeln! (std::fmt) but without
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
-    crate fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
+    pub(crate) fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
         use fmt::Write;
         self.buffer.write_fmt(v).unwrap();
     }
 
-    crate fn to_display<T: Print>(mut self, t: T) -> String {
+    pub(crate) fn to_display<T: Print>(mut self, t: T) -> String {
         t.print(&mut self);
         self.into_inner()
     }
 
-    crate fn is_for_html(&self) -> bool {
+    pub(crate) fn is_for_html(&self) -> bool {
         self.for_html
     }
 
-    crate fn reserve(&mut self, additional: usize) {
+    pub(crate) fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
 }
@@ -158,7 +158,7 @@ fn comma_sep<T: fmt::Display>(
     })
 }
 
-crate fn print_generic_bounds<'a, 'tcx: 'a>(
+pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -176,7 +176,7 @@ crate fn print_generic_bounds<'a, 'tcx: 'a>(
 }
 
 impl clean::GenericParamDef {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -239,7 +239,7 @@ impl clean::GenericParamDef {
 }
 
 impl clean::Generics {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -262,7 +262,7 @@ impl clean::Generics {
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
-crate fn print_where_clause<'a, 'tcx: 'a>(
+pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
     cx: &'a Context<'tcx>,
     indent: usize,
@@ -372,13 +372,13 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
 }
 
 impl clean::Lifetime {
-    crate fn print(&self) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self) -> impl fmt::Display + '_ {
         self.0.as_str()
     }
 }
 
 impl clean::Constant {
-    crate fn print(&self, tcx: TyCtxt<'_>) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self, tcx: TyCtxt<'_>) -> impl fmt::Display + '_ {
         let expr = self.expr(tcx);
         display_fn(
             move |f| {
@@ -419,7 +419,7 @@ impl clean::PolyTrait {
 }
 
 impl clean::GenericBound {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -516,7 +516,7 @@ impl clean::GenericArgs {
 }
 
 // Possible errors when computing href link source for a `DefId`
-crate enum HrefError {
+pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
     /// This can only happen for non-local items.
@@ -543,7 +543,7 @@ crate enum HrefError {
 }
 
 // Panics if `syms` is empty.
-crate fn join_with_double_colon(syms: &[Symbol]) -> String {
+pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
     s.push_str(&syms[0].as_str());
     for sym in &syms[1..] {
@@ -553,7 +553,7 @@ crate fn join_with_double_colon(syms: &[Symbol]) -> String {
     s
 }
 
-crate fn href_with_root_path(
+pub(crate) fn href_with_root_path(
     did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
@@ -633,14 +633,17 @@ crate fn href_with_root_path(
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
 }
 
-crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+pub(crate) fn href(
+    did: DefId,
+    cx: &Context<'_>,
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     href_with_root_path(did, cx, None)
 }
 
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-crate fn href_relative_parts<'fqp>(
+pub(crate) fn href_relative_parts<'fqp>(
     fqp: &'fqp [Symbol],
     relative_to_fqp: &[Symbol],
 ) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
@@ -787,7 +790,7 @@ fn tybounds<'a, 'tcx: 'a>(
     })
 }
 
-crate fn anchor<'a, 'cx: 'a>(
+pub(crate) fn anchor<'a, 'cx: 'a>(
     did: DefId,
     text: Symbol,
     cx: &'cx Context<'_>,
@@ -1031,7 +1034,7 @@ fn fmt_type<'cx>(
 }
 
 impl clean::Type {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1040,7 +1043,7 @@ impl clean::Type {
 }
 
 impl clean::Path {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1049,7 +1052,7 @@ impl clean::Path {
 }
 
 impl clean::Impl {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         use_absolute: bool,
         cx: &'a Context<'tcx>,
@@ -1083,7 +1086,7 @@ impl clean::Impl {
 }
 
 impl clean::Arguments {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1107,7 +1110,7 @@ impl clean::Arguments {
 }
 
 impl clean::FnRetTy {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1142,7 +1145,7 @@ impl clean::BareFunctionDecl {
 }
 
 impl clean::FnDecl {
-    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
+    pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'b + Captures<'tcx> {
@@ -1174,7 +1177,7 @@ impl clean::FnDecl {
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     /// * `asyncness`: Whether the function is async or not.
-    crate fn full_print<'a, 'tcx: 'a>(
+    pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
@@ -1291,7 +1294,7 @@ impl clean::FnDecl {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space<'a, 'tcx: 'a>(
+    pub(crate) fn print_with_space<'a, 'tcx: 'a>(
         self,
         item_did: ItemId,
         cx: &'a Context<'tcx>,
@@ -1339,7 +1342,7 @@ impl clean::Visibility {
     /// This function is the same as print_with_space, except that it renders no links.
     /// It's used for macros' rendered source view, which is syntax highlighted and cannot have
     /// any HTML in it.
-    crate fn to_src_with_space<'a, 'tcx: 'a>(
+    pub(crate) fn to_src_with_space<'a, 'tcx: 'a>(
         self,
         tcx: TyCtxt<'tcx>,
         item_did: DefId,
@@ -1374,7 +1377,7 @@ impl clean::Visibility {
     }
 }
 
-crate trait PrintWithSpace {
+pub(crate) trait PrintWithSpace {
     fn print_with_space(&self) -> &str;
 }
 
@@ -1405,7 +1408,10 @@ impl PrintWithSpace for hir::Mutability {
     }
 }
 
-crate fn print_constness_with_space(c: &hir::Constness, s: Option<ConstStability>) -> &'static str {
+pub(crate) fn print_constness_with_space(
+    c: &hir::Constness,
+    s: Option<ConstStability>,
+) -> &'static str {
     match (c, s) {
         // const stable or when feature(staged_api) is not set
         (
@@ -1419,7 +1425,7 @@ crate fn print_constness_with_space(c: &hir::Constness, s: Option<ConstStability
 }
 
 impl clean::Import {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1443,7 +1449,7 @@ impl clean::Import {
 }
 
 impl clean::ImportSource {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1466,7 +1472,7 @@ impl clean::ImportSource {
 }
 
 impl clean::TypeBinding {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1500,7 +1506,7 @@ impl clean::TypeBinding {
     }
 }
 
-crate fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
+pub(crate) fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
     display_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match abi {
@@ -1510,12 +1516,12 @@ crate fn print_abi_with_space(abi: Abi) -> impl fmt::Display {
     })
 }
 
-crate fn print_default_space<'a>(v: bool) -> &'a str {
+pub(crate) fn print_default_space<'a>(v: bool) -> &'a str {
     if v { "default " } else { "" }
 }
 
 impl clean::GenericArg {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1529,7 +1535,7 @@ impl clean::GenericArg {
 }
 
 impl clean::types::Term {
-    crate fn print<'a, 'tcx: 'a>(
+    pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
@@ -1540,7 +1546,9 @@ impl clean::types::Term {
     }
 }
 
-crate fn display_fn(f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Display {
+pub(crate) fn display_fn(
+    f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+) -> impl fmt::Display {
     struct WithFormatter<F>(Cell<Option<F>>);
 
     impl<F> fmt::Display for WithFormatter<F>

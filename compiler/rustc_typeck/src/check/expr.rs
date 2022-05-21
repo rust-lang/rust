@@ -2430,7 +2430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    crate fn get_field_candidates(
+    pub(crate) fn get_field_candidates(
         &self,
         span: Span,
         base_t: Ty<'tcx>,
@@ -2455,7 +2455,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
-    crate fn check_for_nested_field_satisfying(
+    pub(crate) fn check_for_nested_field_satisfying(
         &self,
         span: Span,
         matches: &impl Fn(&ty::FieldDef, Ty<'tcx>) -> bool,

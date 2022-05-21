@@ -8,12 +8,12 @@ use rustc_span::DUMMY_SP;
 
 use super::*;
 
-crate struct BlanketImplFinder<'a, 'tcx> {
-    crate cx: &'a mut core::DocContext<'tcx>,
+pub(crate) struct BlanketImplFinder<'a, 'tcx> {
+    pub(crate) cx: &'a mut core::DocContext<'tcx>,
 }
 
 impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
-    crate fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
+    pub(crate) fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(item_def_id);
         let ty = self.cx.tcx.bound_type_of(item_def_id);
 

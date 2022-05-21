@@ -22,7 +22,7 @@ fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
-crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
+pub(crate) fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
 where
     F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
@@ -33,7 +33,7 @@ where
 }
 
 /// Maps a string to tts, using a made-up filename.
-crate fn string_to_stream(source_str: String) -> TokenStream {
+pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
     source_file_to_stream(
         &ps,
@@ -44,7 +44,7 @@ crate fn string_to_stream(source_str: String) -> TokenStream {
 }
 
 /// Parses a string, returns a crate.
-crate fn string_to_crate(source_str: String) -> ast::Crate {
+pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
 }
@@ -53,7 +53,7 @@ crate fn string_to_crate(source_str: String) -> ast::Crate {
 /// may be deleted or replaced with other whitespace to match the pattern.
 /// This function is relatively Unicode-ignorant; fortunately, the careful design
 /// of UTF-8 mitigates this ignorance. It doesn't do NKF-normalization(?).
-crate fn matches_codepattern(a: &str, b: &str) -> bool {
+pub(crate) fn matches_codepattern(a: &str, b: &str) -> bool {
     let mut a_iter = a.chars().peekable();
     let mut b_iter = b.chars().peekable();
 
@@ -109,7 +109,7 @@ struct SpanLabel {
     label: &'static str,
 }
 
-crate struct Shared<T: Write> {
+pub(crate) struct Shared<T: Write> {
     pub data: Arc<Mutex<T>>,
 }
 

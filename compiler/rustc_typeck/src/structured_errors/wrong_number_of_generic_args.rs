@@ -15,28 +15,28 @@ use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
 pub struct WrongNumberOfGenericArgs<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+    pub(crate) tcx: TyCtxt<'tcx>,
 
-    crate angle_brackets: AngleBrackets,
+    pub(crate) angle_brackets: AngleBrackets,
 
-    crate gen_args_info: GenericArgsInfo,
+    pub(crate) gen_args_info: GenericArgsInfo,
 
     /// Offending path segment
-    crate path_segment: &'a hir::PathSegment<'a>,
+    pub(crate) path_segment: &'a hir::PathSegment<'a>,
 
     /// Generic parameters as expected by type or trait
-    crate gen_params: &'a ty::Generics,
+    pub(crate) gen_params: &'a ty::Generics,
 
     /// Index offset into parameters. Depends on whether `Self` is included and on
     /// number of lifetime parameters in case we're processing missing or redundant
     /// type or constant arguments.
-    crate params_offset: usize,
+    pub(crate) params_offset: usize,
 
     /// Generic arguments as provided by user
-    crate gen_args: &'a hir::GenericArgs<'a>,
+    pub(crate) gen_args: &'a hir::GenericArgs<'a>,
 
     /// DefId of the generic type
-    crate def_id: DefId,
+    pub(crate) def_id: DefId,
 }
 
 // Provides information about the kind of arguments that were provided for

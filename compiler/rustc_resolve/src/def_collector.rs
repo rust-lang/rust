@@ -11,7 +11,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use tracing::debug;
 
-crate fn collect_definitions(
+pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_>,
     fragment: &AstFragment,
     expansion: LocalExpnId,

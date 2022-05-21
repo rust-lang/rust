@@ -2380,7 +2380,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::Loop(body, opt_label), attrs))
     }
 
-    crate fn eat_label(&mut self) -> Option<Label> {
+    pub(crate) fn eat_label(&mut self) -> Option<Label> {
         self.token.lifetime().map(|ident| {
             self.bump();
             Label { ident }
@@ -3049,7 +3049,7 @@ impl<'a> Parser<'a> {
         await_expr
     }
 
-    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
+    pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 

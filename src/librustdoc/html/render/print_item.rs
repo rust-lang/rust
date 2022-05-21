@@ -246,14 +246,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     // This call is to remove re-export duplicates in cases such as:
     //
     // ```
-    // crate mod foo {
-    //     crate mod bar {
-    //         crate trait Double { fn foo(); }
+    // pub(crate) mod foo {
+    //     pub(crate) mod bar {
+    //         pub(crate) trait Double { fn foo(); }
     //     }
     // }
     //
-    // crate use foo::bar::*;
-    // crate use foo::*;
+    // pub(crate) use foo::bar::*;
+    // pub(crate) use foo::*;
     // ```
     //
     // `Double` will appear twice in the generated docs.
@@ -1473,7 +1473,7 @@ fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
-crate fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
+pub(crate) fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
     /// Takes a non-numeric and a numeric part from the given &str.
     fn take_parts<'a>(s: &mut &'a str) -> (&'a str, &'a str) {
         let i = s.find(|c: char| c.is_ascii_digit());

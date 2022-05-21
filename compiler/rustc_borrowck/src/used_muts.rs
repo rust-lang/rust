@@ -22,7 +22,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///  been assigned to - this set is used as a proxy for locals that were not initialized due to
     ///  unreachable code. These locals are then considered "used" to silence the lint for them.
     ///  See #55344 for context.
-    crate fn gather_used_muts(
+    pub(crate) fn gather_used_muts(
         &mut self,
         temporary_used_locals: FxHashSet<Local>,
         mut never_initialized_mut_locals: FxHashSet<Local>,

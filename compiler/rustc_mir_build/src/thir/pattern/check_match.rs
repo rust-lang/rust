@@ -23,7 +23,7 @@ use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span};
 
-crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
         Some(id) => tcx.hir().body_owned_by(tcx.hir().local_def_id_to_hir_id(id)),
@@ -880,7 +880,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     err.emit();
 }
 
-crate fn joined_uncovered_patterns<'p, 'tcx>(
+pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) -> String {
@@ -901,7 +901,7 @@ crate fn joined_uncovered_patterns<'p, 'tcx>(
     }
 }
 
-crate fn pattern_not_covered_label(
+pub(crate) fn pattern_not_covered_label(
     witnesses: &[DeconstructedPat<'_, '_>],
     joined_patterns: &str,
 ) -> String {

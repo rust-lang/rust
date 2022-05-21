@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
     ///
     /// Matches `inner_attrs*`.
-    crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    crate fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
@@ -358,7 +358,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `COMMASEP(meta_item_inner)`.
-    crate fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
+    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
         // Presumably, the majority of the time there will only be one attr.
         let mut nmis = Vec::with_capacity(1);
         while self.token.kind != token::Eof {
@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
         Ok(ast::MetaItem { path, kind, span })
     }
 
-    crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
+    pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {

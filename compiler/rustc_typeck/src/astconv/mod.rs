@@ -640,7 +640,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_bindings
     }
 
-    crate fn create_substs_for_associated_item(
+    pub(crate) fn create_substs_for_associated_item(
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,

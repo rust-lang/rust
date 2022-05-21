@@ -33,9 +33,9 @@ use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
 mod early;
-crate use early::early_resolve_intra_doc_links;
+pub(crate) use early::early_resolve_intra_doc_links;
 
-crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
+pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
     run: collect_intra_doc_links,
     description: "resolves intra-doc links",
@@ -219,14 +219,14 @@ enum MalformedGenerics {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-crate enum UrlFragment {
+pub(crate) enum UrlFragment {
     Item(ItemFragment),
     UserWritten(String),
 }
 
 impl UrlFragment {
     /// Render the fragment, including the leading `#`.
-    crate fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
+    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
         match self {
             UrlFragment::Item(frag) => frag.render(s, tcx),
             UrlFragment::UserWritten(raw) => write!(s, "#{}", raw),
@@ -235,10 +235,10 @@ impl UrlFragment {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-crate struct ItemFragment(FragmentKind, DefId);
+pub(crate) struct ItemFragment(FragmentKind, DefId);
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-crate enum FragmentKind {
+pub(crate) enum FragmentKind {
     Method,
     TyMethod,
     AssociatedConstant,
@@ -276,7 +276,7 @@ impl FragmentKind {
 
 impl ItemFragment {
     /// Render the fragment, including the leading `#`.
-    crate fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
+    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
         write!(s, "#")?;
         match *self {
             ItemFragment(kind, def_id) => {
@@ -954,7 +954,10 @@ struct PreprocessingInfo {
 }
 
 // Not a typedef to avoid leaking several private structures from this module.
-crate struct PreprocessedMarkdownLink(Result<PreprocessingInfo, PreprocessingError>, MarkdownLink);
+pub(crate) struct PreprocessedMarkdownLink(
+    Result<PreprocessingInfo, PreprocessingError>,
+    MarkdownLink,
+);
 
 /// Returns:
 /// - `None` if the link should be ignored.

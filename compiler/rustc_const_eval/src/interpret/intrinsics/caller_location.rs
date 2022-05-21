@@ -15,7 +15,7 @@ use crate::interpret::{
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
     /// frame which is not `#[track_caller]`.
-    crate fn find_closest_untracked_caller_location(&self) -> Span {
+    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
         for frame in self.stack().iter().rev() {
             debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
 
@@ -74,7 +74,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
-    crate fn alloc_caller_location(
+    pub(crate) fn alloc_caller_location(
         &mut self,
         filename: Symbol,
         line: u32,
@@ -113,7 +113,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         location
     }
 
-    crate fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (

@@ -8,7 +8,7 @@ use rustc_middle::ty;
 use rustc_index::vec::Idx;
 
 impl<'tcx> Cx<'tcx> {
-    crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
+    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);

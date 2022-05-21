@@ -19,7 +19,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-crate fn expand(
+pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,
     _span: Span,
     meta_item: &ast::MetaItem,
@@ -30,7 +30,7 @@ crate fn expand(
     vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable, ecx.current_expansion.lint_node_id)]
 }
 
-crate fn cfg_eval(
+pub(crate) fn cfg_eval(
     sess: &Session,
     features: Option<&Features>,
     annotatable: Annotatable,

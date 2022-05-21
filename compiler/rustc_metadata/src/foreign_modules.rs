@@ -3,7 +3,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ForeignModule;
 
-crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
+pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut modules = Vec::new();
     for id in tcx.hir().items() {
         if !matches!(tcx.def_kind(id.def_id), DefKind::ForeignMod) {

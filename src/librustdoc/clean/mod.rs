@@ -3,12 +3,12 @@
 
 mod auto_trait;
 mod blanket_impl;
-crate mod cfg;
-crate mod inline;
+pub(crate) mod cfg;
+pub(crate) mod inline;
 mod render_macro_matchers;
 mod simplify;
-crate mod types;
-crate mod utils;
+pub(crate) mod types;
+pub(crate) mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -41,10 +41,10 @@ use crate::visit_ast::Module as DocModule;
 
 use utils::*;
 
-crate use self::types::*;
-crate use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
+pub(crate) use self::types::*;
+pub(crate) use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-crate trait Clean<T> {
+pub(crate) trait Clean<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> T;
 }
 

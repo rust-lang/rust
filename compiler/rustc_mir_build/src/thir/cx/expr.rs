@@ -22,12 +22,12 @@ use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
 impl<'tcx> Cx<'tcx> {
-    crate fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
+    pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
         ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
     }
 
-    crate fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
+    pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
         exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 

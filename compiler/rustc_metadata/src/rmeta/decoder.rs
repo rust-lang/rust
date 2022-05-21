@@ -57,7 +57,7 @@ mod cstore_impl;
 /// A `MetadataBlob` internally is just a reference counted pointer to
 /// the actual data, so cloning it is cheap.
 #[derive(Clone)]
-crate struct MetadataBlob(Lrc<MetadataRef>);
+pub(crate) struct MetadataBlob(Lrc<MetadataRef>);
 
 // This is needed so we can create an OwningRef into the blob.
 // The data behind a `MetadataBlob` has a stable address because it is
@@ -78,9 +78,9 @@ impl std::ops::Deref for MetadataBlob {
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-crate type CrateNumMap = IndexVec<CrateNum, CrateNum>;
+pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
-crate struct CrateMetadata {
+pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
 
@@ -744,20 +744,20 @@ where
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl<'tcx> MetadataBlob {
-    crate fn new(metadata_ref: MetadataRef) -> MetadataBlob {
+    pub(crate) fn new(metadata_ref: MetadataRef) -> MetadataBlob {
         MetadataBlob(Lrc::new(metadata_ref))
     }
 
-    crate fn is_compatible(&self) -> bool {
+    pub(crate) fn is_compatible(&self) -> bool {
         self.blob().starts_with(METADATA_HEADER)
     }
 
-    crate fn get_rustc_version(&self) -> String {
+    pub(crate) fn get_rustc_version(&self) -> String {
         Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
     }
 
-    crate fn get_root(&self) -> CrateRoot<'tcx> {
+    pub(crate) fn get_root(&self) -> CrateRoot<'tcx> {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
@@ -767,7 +767,7 @@ impl<'tcx> MetadataBlob {
         Lazy::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
-    crate fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
+    pub(crate) fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
         let root = self.get_root();
         writeln!(out, "Crate info:")?;
         writeln!(out, "name {}{}", root.name, root.extra_filename)?;
@@ -792,27 +792,27 @@ impl<'tcx> MetadataBlob {
 }
 
 impl CrateRoot<'_> {
-    crate fn is_proc_macro_crate(&self) -> bool {
+    pub(crate) fn is_proc_macro_crate(&self) -> bool {
         self.proc_macro_data.is_some()
     }
 
-    crate fn name(&self) -> Symbol {
+    pub(crate) fn name(&self) -> Symbol {
         self.name
     }
 
-    crate fn hash(&self) -> Svh {
+    pub(crate) fn hash(&self) -> Svh {
         self.hash
     }
 
-    crate fn stable_crate_id(&self) -> StableCrateId {
+    pub(crate) fn stable_crate_id(&self) -> StableCrateId {
         self.stable_crate_id
     }
 
-    crate fn triple(&self) -> &TargetTriple {
+    pub(crate) fn triple(&self) -> &TargetTriple {
         &self.triple
     }
 
-    crate fn decode_crate_deps<'a>(
+    pub(crate) fn decode_crate_deps<'a>(
         &self,
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
@@ -1759,7 +1759,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 }
 
 impl CrateMetadata {
-    crate fn new(
+    pub(crate) fn new(
         sess: &Session,
         cstore: &CStore,
         blob: MetadataBlob,
@@ -1819,15 +1819,15 @@ impl CrateMetadata {
         cdata
     }
 
-    crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
+    pub(crate) fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
         self.dependencies.borrow()
     }
 
-    crate fn add_dependency(&self, cnum: CrateNum) {
+    pub(crate) fn add_dependency(&self, cnum: CrateNum) {
         self.dependencies.borrow_mut().push(cnum);
     }
 
-    crate fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
+    pub(crate) fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
         let mut extern_crate = self.extern_crate.borrow_mut();
         let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
         if update {
@@ -1836,59 +1836,59 @@ impl CrateMetadata {
         update
     }
 
-    crate fn source(&self) -> &CrateSource {
+    pub(crate) fn source(&self) -> &CrateSource {
         &*self.source
     }
 
-    crate fn dep_kind(&self) -> CrateDepKind {
+    pub(crate) fn dep_kind(&self) -> CrateDepKind {
         *self.dep_kind.lock()
     }
 
-    crate fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
+    pub(crate) fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 
-    crate fn panic_strategy(&self) -> PanicStrategy {
+    pub(crate) fn panic_strategy(&self) -> PanicStrategy {
         self.root.panic_strategy
     }
 
-    crate fn needs_panic_runtime(&self) -> bool {
+    pub(crate) fn needs_panic_runtime(&self) -> bool {
         self.root.needs_panic_runtime
     }
 
-    crate fn is_panic_runtime(&self) -> bool {
+    pub(crate) fn is_panic_runtime(&self) -> bool {
         self.root.panic_runtime
     }
 
-    crate fn is_profiler_runtime(&self) -> bool {
+    pub(crate) fn is_profiler_runtime(&self) -> bool {
         self.root.profiler_runtime
     }
 
-    crate fn needs_allocator(&self) -> bool {
+    pub(crate) fn needs_allocator(&self) -> bool {
         self.root.needs_allocator
     }
 
-    crate fn has_global_allocator(&self) -> bool {
+    pub(crate) fn has_global_allocator(&self) -> bool {
         self.root.has_global_allocator
     }
 
-    crate fn has_default_lib_allocator(&self) -> bool {
+    pub(crate) fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
     }
 
-    crate fn is_proc_macro_crate(&self) -> bool {
+    pub(crate) fn is_proc_macro_crate(&self) -> bool {
         self.root.is_proc_macro_crate()
     }
 
-    crate fn name(&self) -> Symbol {
+    pub(crate) fn name(&self) -> Symbol {
         self.root.name
     }
 
-    crate fn stable_crate_id(&self) -> StableCrateId {
+    pub(crate) fn stable_crate_id(&self) -> StableCrateId {
         self.root.stable_crate_id
     }
 
-    crate fn hash(&self) -> Svh {
+    pub(crate) fn hash(&self) -> Svh {
         self.root.hash
     }
 

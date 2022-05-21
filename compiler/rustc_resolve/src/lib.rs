@@ -9,7 +9,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]

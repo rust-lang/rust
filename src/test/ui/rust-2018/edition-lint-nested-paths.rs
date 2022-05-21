@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![feature(rust_2018_preview, crate_visibility_modifier)]
+#![feature(rust_2018_preview)]
 #![deny(absolute_paths_not_starting_with_crate)]
 
 use foo::{a, b};
@@ -10,9 +10,9 @@ use foo::{a, b};
 //~| this is accepted in the current edition
 
 mod foo {
-    crate fn a() {}
-    crate fn b() {}
-    crate fn c() {}
+    pub(crate) fn a() {}
+    pub(crate) fn b() {}
+    pub(crate) fn c() {}
 }
 
 fn main() {

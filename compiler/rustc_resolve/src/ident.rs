@@ -28,7 +28,7 @@ impl<'a> Resolver<'a> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
     /// If the callback returns `Some` result, we stop visiting scopes and return it.
-    crate fn visit_scopes<T>(
+    pub(crate) fn visit_scopes<T>(
         &mut self,
         scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
@@ -274,7 +274,7 @@ impl<'a> Resolver<'a> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     #[tracing::instrument(level = "debug", skip(self, ribs))]
-    crate fn resolve_ident_in_lexical_scope(
+    pub(crate) fn resolve_ident_in_lexical_scope(
         &mut self,
         mut ident: Ident,
         ns: Namespace,
@@ -368,7 +368,7 @@ impl<'a> Resolver<'a> {
     /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
     /// `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
     #[tracing::instrument(level = "debug", skip(self, scope_set))]
-    crate fn early_resolve_ident_in_lexical_scope(
+    pub(crate) fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
         scope_set: ScopeSet<'a>,
@@ -717,7 +717,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    crate fn maybe_resolve_ident_in_module(
+    pub(crate) fn maybe_resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
@@ -729,7 +729,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    crate fn resolve_ident_in_module(
+    pub(crate) fn resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
@@ -1303,7 +1303,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    crate fn maybe_resolve_path(
+    pub(crate) fn maybe_resolve_path(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
@@ -1313,7 +1313,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    crate fn resolve_path(
+    pub(crate) fn resolve_path(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
@@ -1324,7 +1324,7 @@ impl<'a> Resolver<'a> {
         self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, ignore_binding)
     }
 
-    crate fn resolve_path_with_ribs(
+    pub(crate) fn resolve_path_with_ribs(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import

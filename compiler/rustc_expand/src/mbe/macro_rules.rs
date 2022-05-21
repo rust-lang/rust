@@ -33,7 +33,7 @@ use std::collections::hash_map::Entry;
 use std::{mem, slice};
 use tracing::debug;
 
-crate struct ParserAnyMacro<'a> {
+pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
 
     /// Span of the expansion site of the macro this parser is for
@@ -47,7 +47,7 @@ crate struct ParserAnyMacro<'a> {
     is_local: bool,
 }
 
-crate fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
+pub(crate) fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");
@@ -113,7 +113,7 @@ fn emit_frag_parse_err(
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
+    pub(crate) fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro {
             site_span,
             macro_ident,

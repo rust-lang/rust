@@ -88,7 +88,7 @@ mod sealed_level_is_error {
     use crate::Level;
 
     /// Sealed helper trait for statically checking that a `Level` is an error.
-    crate trait IsError<const L: Level> {}
+    pub(crate) trait IsError<const L: Level> {}
 
     impl IsError<{ Level::Bug }> for () {}
     impl IsError<{ Level::DelayedBug }> for () {}
@@ -101,7 +101,7 @@ mod sealed_level_is_error {
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
+    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
         handler: &'a Handler,
         message: M,
     ) -> Self
@@ -168,7 +168,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl<'a> DiagnosticBuilder<'a, ()> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new<M: Into<DiagnosticMessage>>(
+    pub(crate) fn new<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         level: Level,
         message: M,
@@ -179,7 +179,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
@@ -210,14 +210,14 @@ impl EmissionGuarantee for () {
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
+    pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
         Self::new_diagnostic_fatal(handler, diagnostic)
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
-    crate fn new_diagnostic_fatal(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic_fatal(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {

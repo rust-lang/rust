@@ -189,7 +189,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-crate fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
+pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
     tcx.intern_const_alloc(alloc)

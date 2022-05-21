@@ -1,7 +1,5 @@
 // compile-flags: --document-private-items
 
-#![feature(crate_visibility_modifier)]
-
 #![crate_name = "foo"]
 
 // @!has 'foo/index.html' '//a[@href="struct.FooPublic.html"]/..' 'FooPublic 🔒'
@@ -9,7 +7,7 @@
 pub struct FooPublic;
 // @has 'foo/index.html' '//a[@href="struct.FooJustCrate.html"]/..' 'FooJustCrate 🔒'
 // @has 'foo/struct.FooJustCrate.html' '//pre' 'pub(crate) struct FooJustCrate'
-crate struct FooJustCrate;
+pub(crate) struct FooJustCrate;
 // @has 'foo/index.html' '//a[@href="struct.FooPubCrate.html"]/..' 'FooPubCrate 🔒'
 // @has 'foo/struct.FooPubCrate.html' '//pre' 'pub(crate) struct FooPubCrate'
 pub(crate) struct FooPubCrate;

@@ -9,7 +9,7 @@ use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
 
     if let Some(fn_kind) = tcx.hir().get_by_def_id(def_id).fn_kind() {

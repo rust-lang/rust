@@ -18,7 +18,7 @@ use crate::{
     universal_regions::UniversalRegions,
 };
 
-crate struct ConstraintConversion<'a, 'tcx> {
+pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
@@ -32,7 +32,7 @@ crate struct ConstraintConversion<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,

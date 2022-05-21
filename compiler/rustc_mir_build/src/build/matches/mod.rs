@@ -151,7 +151,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// * From each pre-binding block to the next pre-binding block.
     /// * From each otherwise block to the next pre-binding block.
-    crate fn match_expr(
+    pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,
         span: Span,
@@ -577,7 +577,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn place_into_pattern(
+    pub(crate) fn place_into_pattern(
         &mut self,
         block: BasicBlock,
         irrefutable_pat: Pat<'tcx>,
@@ -653,7 +653,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope for the bindings in these patterns, if such a scope had to be
     /// created. NOTE: Declaring the bindings should always be done in their
     /// drop scope.
-    crate fn declare_bindings(
+    pub(crate) fn declare_bindings(
         &mut self,
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
@@ -690,7 +690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         visibility_scope
     }
 
-    crate fn storage_live_binding(
+    pub(crate) fn storage_live_binding(
         &mut self,
         block: BasicBlock,
         var: HirId,
@@ -709,7 +709,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Place::from(local_id)
     }
 
-    crate fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
+    pub(crate) fn schedule_drop_for_binding(
+        &mut self,
+        var: HirId,
+        span: Span,
+        for_guard: ForGuard,
+    ) {
         let local_id = self.var_local_id(var, for_guard);
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.local_id) {
             self.schedule_drop(span, region_scope, local_id, DropKind::Value);
@@ -934,7 +939,7 @@ struct Ascription<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-crate struct MatchPair<'pat, 'tcx> {
+pub(crate) struct MatchPair<'pat, 'tcx> {
     // this place...
     place: PlaceBuilder<'tcx>,
 
@@ -991,7 +996,7 @@ enum TestKind<'tcx> {
 /// [`Test`] is just the test to perform; it does not include the value
 /// to be tested.
 #[derive(Debug)]
-crate struct Test<'tcx> {
+pub(crate) struct Test<'tcx> {
     span: Span,
     kind: TestKind<'tcx>,
 }
@@ -999,7 +1004,7 @@ crate struct Test<'tcx> {
 /// `ArmHasGuard` is a wrapper around a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
-crate struct ArmHasGuard(crate bool);
+pub(crate) struct ArmHasGuard(pub(crate) bool);
 
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
@@ -1769,7 +1774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    crate fn lower_let_expr(
+    pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,

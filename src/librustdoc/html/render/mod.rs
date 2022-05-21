@@ -23,7 +23,7 @@
 //! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-crate mod search_index;
+pub(crate) mod search_index;
 
 #[cfg(test)]
 mod tests;
@@ -33,8 +33,8 @@ mod print_item;
 mod span_map;
 mod write_shared;
 
-crate use self::context::*;
-crate use self::span_map::{collect_spans_and_sources, LinkFromSrc};
+pub(crate) use self::context::*;
+pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
@@ -81,9 +81,9 @@ use crate::try_none;
 use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
 /// A pair of name and its optional document.
-crate type NameDoc = (String, Option<String>);
+pub(crate) type NameDoc = (String, Option<String>);
 
-crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
+pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { f.write_str(v) }
     })
@@ -95,27 +95,27 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
-crate struct IndexItem {
-    crate ty: ItemType,
-    crate name: String,
-    crate path: String,
-    crate desc: String,
-    crate parent: Option<DefId>,
-    crate parent_idx: Option<usize>,
-    crate search_type: Option<IndexItemFunctionType>,
-    crate aliases: Box<[Symbol]>,
+pub(crate) struct IndexItem {
+    pub(crate) ty: ItemType,
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) desc: String,
+    pub(crate) parent: Option<DefId>,
+    pub(crate) parent_idx: Option<usize>,
+    pub(crate) search_type: Option<IndexItemFunctionType>,
+    pub(crate) aliases: Box<[Symbol]>,
 }
 
 /// A type used for the search index.
 #[derive(Debug)]
-crate struct RenderType {
+pub(crate) struct RenderType {
     name: Option<String>,
     generics: Option<Vec<TypeWithKind>>,
 }
 
 /// Full type of functions/methods in the search index.
 #[derive(Debug)]
-crate struct IndexItemFunctionType {
+pub(crate) struct IndexItemFunctionType {
     inputs: Vec<TypeWithKind>,
     output: Vec<TypeWithKind>,
 }
@@ -143,7 +143,7 @@ impl Serialize for IndexItemFunctionType {
 }
 
 #[derive(Debug)]
-crate struct TypeWithKind {
+pub(crate) struct TypeWithKind {
     ty: RenderType,
     kind: ItemType,
 }
@@ -170,13 +170,13 @@ impl Serialize for TypeWithKind {
 }
 
 #[derive(Debug, Clone)]
-crate struct StylePath {
+pub(crate) struct StylePath {
     /// The path to the theme
-    crate path: PathBuf,
+    pub(crate) path: PathBuf,
 }
 
 impl StylePath {
-    crate fn basename(&self) -> Result<String, Error> {
+    pub(crate) fn basename(&self) -> Result<String, Error> {
         Ok(try_none!(try_none!(self.path.file_stem(), &self.path).to_str(), &self.path).to_string())
     }
 }
@@ -203,7 +203,7 @@ impl ItemEntry {
 }
 
 impl ItemEntry {
-    crate fn print(&self) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self) -> impl fmt::Display + '_ {
         crate::html::format::display_fn(move |f| {
             write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name))
         })
@@ -2580,7 +2580,7 @@ fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     }
 }
 
-crate const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
+pub(crate) const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
 
 /// Returns a list of all paths used in the type.
 /// This is used to help deduplicate imported impls

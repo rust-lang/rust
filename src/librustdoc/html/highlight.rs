@@ -22,21 +22,21 @@ use super::format::{self, Buffer};
 use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
-crate struct ContextInfo<'a, 'b, 'c> {
-    crate context: &'a Context<'b>,
+pub(crate) struct ContextInfo<'a, 'b, 'c> {
+    pub(crate) context: &'a Context<'b>,
     /// This span contains the current file we're going through.
-    crate file_span: Span,
+    pub(crate) file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
-    crate root_path: &'c str,
+    pub(crate) root_path: &'c str,
 }
 
 /// Decorations are represented as a map from CSS class to vector of character ranges.
 /// Each range will be wrapped in a span with that class.
-crate struct DecorationInfo(crate FxHashMap<&'static str, Vec<(u32, u32)>>);
+pub(crate) struct DecorationInfo(pub(crate) FxHashMap<&'static str, Vec<(u32, u32)>>);
 
 /// Highlights `src`, returning the HTML output.
-crate fn render_with_highlighting(
+pub(crate) fn render_with_highlighting(
     src: &str,
     out: &mut Buffer,
     class: Option<&str>,

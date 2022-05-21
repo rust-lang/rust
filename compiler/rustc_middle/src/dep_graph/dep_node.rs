@@ -195,13 +195,16 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
-crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
+pub(crate) fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
 }
 
 // WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
 // Be very careful changing this type signature!
-crate fn make_compile_mono_item<'tcx>(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
+pub(crate) fn make_compile_mono_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mono_item: &MonoItem<'tcx>,
+) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
 }
 

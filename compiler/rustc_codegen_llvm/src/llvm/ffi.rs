@@ -775,7 +775,7 @@ pub mod coverageinfo {
     }
 
     impl CounterMappingRegion {
-        crate fn code_region(
+        pub(crate) fn code_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -799,7 +799,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn branch_region(
+        pub(crate) fn branch_region(
             counter: coverage_map::Counter,
             false_counter: coverage_map::Counter,
             file_id: u32,
@@ -824,7 +824,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn expansion_region(
+        pub(crate) fn expansion_region(
             file_id: u32,
             expanded_file_id: u32,
             start_line: u32,
@@ -848,7 +848,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn skipped_region(
+        pub(crate) fn skipped_region(
             file_id: u32,
             start_line: u32,
             start_col: u32,
@@ -871,7 +871,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn gap_region(
+        pub(crate) fn gap_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,

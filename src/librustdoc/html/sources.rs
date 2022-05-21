@@ -16,7 +16,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
+pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
 
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
@@ -27,7 +27,7 @@ crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error>
     Ok(())
 }
 
-crate fn collect_local_sources<'tcx>(
+pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
@@ -231,7 +231,7 @@ impl SourceCollector<'_, '_> {
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-crate fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+pub(crate) fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
 where
     F: FnMut(&OsStr),
 {
@@ -253,14 +253,14 @@ where
     }
 }
 
-crate enum SourceContext {
+pub(crate) enum SourceContext {
     Standalone,
     Embedded { offset: usize },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-crate fn print_src(
+pub(crate) fn print_src(
     buf: &mut Buffer,
     s: &str,
     edition: Edition,

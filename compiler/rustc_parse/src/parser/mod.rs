@@ -1415,7 +1415,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-crate fn make_unclosed_delims_error(
+pub(crate) fn make_unclosed_delims_error(
     unmatched: UnmatchedBrace,
     sess: &ParseSess,
 ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {

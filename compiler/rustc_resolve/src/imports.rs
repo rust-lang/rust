@@ -64,7 +64,7 @@ pub enum ImportKind<'a> {
 
 /// One import.
 #[derive(Debug, Clone)]
-crate struct Import<'a> {
+pub(crate) struct Import<'a> {
     pub kind: ImportKind<'a>,
 
     /// The ID of the `extern crate`, `UseTree` etc that imported this `Import`.
@@ -125,7 +125,7 @@ impl<'a> Import<'a> {
 
 /// Records information about the resolution of a name in a namespace of a module.
 #[derive(Clone, Default, Debug)]
-crate struct NameResolution<'a> {
+pub(crate) struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
     pub single_imports: FxHashSet<Interned<'a, Import<'a>>>,
@@ -146,7 +146,7 @@ impl<'a> NameResolution<'a> {
         })
     }
 
-    crate fn add_single_import(&mut self, import: &'a Import<'a>) {
+    pub(crate) fn add_single_import(&mut self, import: &'a Import<'a>) {
         self.single_imports.insert(Interned::new_unchecked(import));
     }
 }
@@ -169,7 +169,7 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
 impl<'a> Resolver<'a> {
     // Given a binding and an import that resolves to it,
     // return the corresponding binding defined by the import.
-    crate fn import(
+    pub(crate) fn import(
         &self,
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
@@ -198,7 +198,7 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    crate fn try_define(
+    pub(crate) fn try_define(
         &mut self,
         module: Module<'a>,
         key: BindingKey,

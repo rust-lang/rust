@@ -91,11 +91,11 @@ impl JsonRenderer<'_> {
     }
 }
 
-crate trait FromWithTcx<T> {
+pub(crate) trait FromWithTcx<T> {
     fn from_tcx(f: T, tcx: TyCtxt<'_>) -> Self;
 }
 
-crate trait IntoWithTcx<T> {
+pub(crate) trait IntoWithTcx<T> {
     fn into_tcx(self, tcx: TyCtxt<'_>) -> T;
 }
 
@@ -108,7 +108,7 @@ where
     }
 }
 
-crate fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
+pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
     #[rustfmt::skip]
     let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
     Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
@@ -173,7 +173,7 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-crate fn from_item_id(item_id: ItemId) -> Id {
+pub(crate) fn from_item_id(item_id: ItemId) -> Id {
     struct DisplayDefId(DefId);
 
     impl fmt::Display for DisplayDefId {
@@ -272,7 +272,7 @@ impl FromWithTcx<clean::Union> for Union {
     }
 }
 
-crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
+pub(crate) fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     match struct_type {
         CtorKind::Fictive => StructType::Plain,
         CtorKind::Fn => StructType::Tuple,
@@ -280,7 +280,7 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-crate fn from_fn_header(header: &rustc_hir::FnHeader) -> Header {
+pub(crate) fn from_fn_header(header: &rustc_hir::FnHeader) -> Header {
     Header {
         async_: header.is_async(),
         const_: header.is_const(),
@@ -390,7 +390,9 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
     }
 }
 
-crate fn from_trait_bound_modifier(modifier: rustc_hir::TraitBoundModifier) -> TraitBoundModifier {
+pub(crate) fn from_trait_bound_modifier(
+    modifier: rustc_hir::TraitBoundModifier,
+) -> TraitBoundModifier {
     use rustc_hir::TraitBoundModifier::*;
     match modifier {
         None => TraitBoundModifier::None,
@@ -554,7 +556,7 @@ impl FromWithTcx<clean::Impl> for Impl {
     }
 }
 
-crate fn from_function(
+pub(crate) fn from_function(
     function: clean::Function,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
@@ -567,7 +569,7 @@ crate fn from_function(
     }
 }
 
-crate fn from_function_method(
+pub(crate) fn from_function_method(
     function: clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
@@ -658,7 +660,7 @@ impl FromWithTcx<clean::ProcMacro> for ProcMacro {
     }
 }
 
-crate fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind {
+pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind {
     use rustc_span::hygiene::MacroKind::*;
     match kind {
         Bang => MacroKind::Bang,

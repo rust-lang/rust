@@ -1,16 +1,16 @@
-crate mod cache;
-crate mod item_type;
-crate mod renderer;
+pub(crate) mod cache;
+pub(crate) mod item_type;
+pub(crate) mod renderer;
 
 use rustc_hir::def_id::DefId;
 
-crate use renderer::{run_format, FormatRenderer};
+pub(crate) use renderer::{run_format, FormatRenderer};
 
 use crate::clean::{self, ItemId};
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
-crate enum AssocItemRender<'a> {
+pub(crate) enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
 }
@@ -18,26 +18,26 @@ crate enum AssocItemRender<'a> {
 /// For different handling of associated items from the Deref target of a type rather than the type
 /// itself.
 #[derive(Copy, Clone, PartialEq)]
-crate enum RenderMode {
+pub(crate) enum RenderMode {
     Normal,
     ForDeref { mut_: bool },
 }
 
 /// Metadata about implementations for a type or trait.
 #[derive(Clone, Debug)]
-crate struct Impl {
-    crate impl_item: clean::Item,
+pub(crate) struct Impl {
+    pub(crate) impl_item: clean::Item,
 }
 
 impl Impl {
-    crate fn inner_impl(&self) -> &clean::Impl {
+    pub(crate) fn inner_impl(&self) -> &clean::Impl {
         match *self.impl_item.kind {
             clean::ImplItem(ref impl_) => impl_,
             _ => panic!("non-impl item found in impl"),
         }
     }
 
-    crate fn trait_did(&self) -> Option<DefId> {
+    pub(crate) fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.as_ref().map(|t| t.def_id())
     }
 
@@ -47,7 +47,7 @@ impl Impl {
     /// with blanket impls).
     ///
     /// It panics if `self` is a `ItemId::Primitive`.
-    crate fn def_id(&self) -> DefId {
+    pub(crate) fn def_id(&self) -> DefId {
         match self.impl_item.item_id {
             ItemId::Blanket { impl_id, .. } => impl_id,
             ItemId::Auto { trait_, .. } => trait_,

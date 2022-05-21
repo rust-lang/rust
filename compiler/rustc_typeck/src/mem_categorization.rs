@@ -65,7 +65,7 @@ use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 
-crate trait HirNode {
+pub(crate) trait HirNode {
     fn hir_id(&self) -> hir::HirId;
     fn span(&self) -> Span;
 }
@@ -89,19 +89,19 @@ impl HirNode for hir::Pat<'_> {
 }
 
 #[derive(Clone)]
-crate struct MemCategorizationContext<'a, 'tcx> {
-    crate typeck_results: &'a ty::TypeckResults<'tcx>,
+pub(crate) struct MemCategorizationContext<'a, 'tcx> {
+    pub(crate) typeck_results: &'a ty::TypeckResults<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: LocalDefId,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
 }
 
-crate type McResult<T> = Result<T, ()>;
+pub(crate) type McResult<T> = Result<T, ()>;
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Creates a `MemCategorizationContext`.
-    crate fn new(
+    pub(crate) fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_owner: LocalDefId,
@@ -116,11 +116,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    crate fn tcx(&self) -> TyCtxt<'tcx> {
+    pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    crate fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
+    pub(crate) fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 
@@ -162,7 +162,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    crate fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
+    pub(crate) fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(hir_id, self.typeck_results.node_type_opt(hir_id))
     }
 
@@ -170,7 +170,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_opt(expr))
     }
 
-    crate fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
+    pub(crate) fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_adjusted_opt(expr))
     }
 
@@ -184,7 +184,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
     ///   (e.g., `&Option<T>).
-    crate fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
+    pub(crate) fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
@@ -236,7 +236,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret_ty)
     }
 
-    crate fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
+    pub(crate) fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
         fn helper<'a, 'tcx>(
@@ -255,7 +255,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         helper(self, expr, self.typeck_results.expr_adjustments(expr))
     }
 
-    crate fn cat_expr_adjusted(
+    pub(crate) fn cat_expr_adjusted(
         &self,
         expr: &hir::Expr<'_>,
         previous: PlaceWithHirId<'tcx>,
@@ -298,7 +298,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    crate fn cat_expr_unadjusted(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
+    pub(crate) fn cat_expr_unadjusted(
+        &self,
+        expr: &hir::Expr<'_>,
+    ) -> McResult<PlaceWithHirId<'tcx>> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
@@ -383,7 +386,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    crate fn cat_res(
+    pub(crate) fn cat_res(
         &self,
         hir_id: hir::HirId,
         span: Span,
@@ -440,7 +443,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret)
     }
 
-    crate fn cat_rvalue(
+    pub(crate) fn cat_rvalue(
         &self,
         hir_id: hir::HirId,
         span: Span,
@@ -452,7 +455,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
-    crate fn cat_projection<N: HirNode>(
+    pub(crate) fn cat_projection<N: HirNode>(
         &self,
         node: &N,
         base_place: PlaceWithHirId<'tcx>,
@@ -521,7 +524,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret)
     }
 
-    crate fn cat_pattern<F>(
+    pub(crate) fn cat_pattern<F>(
         &self,
         place: PlaceWithHirId<'tcx>,
         pat: &hir::Pat<'_>,

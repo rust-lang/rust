@@ -15,7 +15,7 @@ use smallvec::smallvec;
 use tracing::debug;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_qpath(
+    pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
         qself: &Option<QSelf>,
@@ -142,7 +142,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    crate fn lower_path_extra(
+    pub(crate) fn lower_path_extra(
         &mut self,
         res: Res,
         p: &Path,
@@ -163,7 +163,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    crate fn lower_path(
+    pub(crate) fn lower_path(
         &mut self,
         id: NodeId,
         p: &Path,
@@ -174,7 +174,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_path_extra(res, p, param_mode)
     }
 
-    crate fn lower_path_segment(
+    pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,
         segment: &PathSegment,
@@ -381,7 +381,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// An associated type binding `Output = $ty`.
-    crate fn output_ty_binding(
+    pub(crate) fn output_ty_binding(
         &mut self,
         span: Span,
         ty: &'hir hir::Ty<'hir>,

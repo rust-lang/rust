@@ -1,4 +1,3 @@
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![cfg_attr(bootstrap, feature(derive_default_enum))]

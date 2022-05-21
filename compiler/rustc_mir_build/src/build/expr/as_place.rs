@@ -21,7 +21,7 @@ use std::iter;
 
 /// The "outermost" place that holds this value.
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate enum PlaceBase {
+pub(crate) enum PlaceBase {
     /// Denotes the start of a `Place`.
     Local(Local),
 
@@ -71,7 +71,7 @@ crate enum PlaceBase {
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone, Debug, PartialEq)]
-crate struct PlaceBuilder<'tcx> {
+pub(crate) struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
 }
@@ -283,7 +283,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    crate fn into_place<'a>(
+    pub(crate) fn into_place<'a>(
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -314,7 +314,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// not captured. This can happen because the final mir that will be
     /// generated doesn't require a read for this place. Failures will only
     /// happen inside closures.
-    crate fn try_upvars_resolved<'a>(
+    pub(crate) fn try_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -322,19 +322,19 @@ impl<'tcx> PlaceBuilder<'tcx> {
         to_upvars_resolved_place_builder(self, tcx, typeck_results)
     }
 
-    crate fn base(&self) -> PlaceBase {
+    pub(crate) fn base(&self) -> PlaceBase {
         self.base
     }
 
-    crate fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
+    pub(crate) fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
         self.project(PlaceElem::Field(f, ty))
     }
 
-    crate fn deref(self) -> Self {
+    pub(crate) fn deref(self) -> Self {
         self.project(PlaceElem::Deref)
     }
 
-    crate fn downcast(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx) -> Self {
+    pub(crate) fn downcast(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx) -> Self {
         self.project(PlaceElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index))
     }
 
@@ -342,7 +342,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.project(PlaceElem::Index(index))
     }
 
-    crate fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
+    pub(crate) fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
         self.projection.push(elem);
         self
     }
@@ -373,7 +373,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Extra care is needed if any user code is allowed to run between calling
     /// this method and using it, as is the case for `match` and index
     /// expressions.
-    crate fn as_place(
+    pub(crate) fn as_place(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -384,7 +384,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
-    crate fn as_place_builder(
+    pub(crate) fn as_place_builder(
         &mut self,
         block: BasicBlock,
         expr: &Expr<'tcx>,
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
     /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    crate fn as_read_only_place(
+    pub(crate) fn as_read_only_place(
         &mut self,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,

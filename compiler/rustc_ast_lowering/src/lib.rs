@@ -30,7 +30,6 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
-#![feature(crate_visibility_modifier)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(let_else)]

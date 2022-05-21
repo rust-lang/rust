@@ -2,7 +2,6 @@
 
 #![feature(array_windows)]
 #![feature(box_patterns)]
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
