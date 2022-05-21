@@ -443,6 +443,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 );
             }
         }
+        // Try Levenshtein algorithm.
+        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected);
         if path.len() == 1 && self.self_type_is_available() {
             if let Some(candidate) = self.lookup_assoc_candidate(ident, ns, is_expected) {
                 let self_is_available = self.self_value_is_available(path[0].ident.span);
@@ -452,18 +454,19 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             err.span_suggestion(
                                 span,
                                 "you might have meant to use the available field",
-                                format!("self.{}", path_str),
+                                format!("self.{path_str}"),
                                 Applicability::MachineApplicable,
                             );
                         } else {
                             err.span_label(span, "a field by this name exists in `Self`");
                         }
+                        self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
                     }
                     AssocSuggestion::MethodWithSelf if self_is_available => {
                         err.span_suggestion(
                             span,
                             "you might have meant to call the method",
-                            format!("self.{}", path_str),
+                            format!("self.{path_str}"),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -474,7 +477,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.span_suggestion(
                             span,
                             &format!("you might have meant to {}", candidate.action()),
-                            format!("Self::{}", path_str),
+                            format!("Self::{path_str}"),
                             Applicability::MachineApplicable,
                         );
                     }
@@ -493,16 +496,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
                 err.span_suggestion(
                     call_span,
-                    &format!("try calling `{}` as a method", ident),
-                    format!("self.{}({})", path_str, args_snippet),
+                    &format!("try calling `{ident}` as a method"),
+                    format!("self.{path_str}({args_snippet})"),
                     Applicability::MachineApplicable,
                 );
                 return (err, candidates);
             }
         }
 
-        // Try Levenshtein algorithm.
-        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected);
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
