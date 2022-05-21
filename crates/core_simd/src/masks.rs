@@ -578,7 +578,7 @@ macro_rules! impl_from {
             LaneCount<LANES>: SupportedLaneCount,
         {
             fn from(value: Mask<$from, LANES>) -> Self {
-                Self(value.0.convert())
+                value.cast()
             }
         }
         )*
