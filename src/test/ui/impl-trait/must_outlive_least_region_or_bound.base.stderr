@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:3:35
+  --> $DIR/must_outlive_least_region_or_bound.rs:7:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
    |              ----                 ^
@@ -12,7 +12,7 @@ LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ++++
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
+  --> $DIR/must_outlive_least_region_or_bound.rs:10:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             --                             ^
@@ -25,7 +25,7 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ++++
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:9:46
+  --> $DIR/must_outlive_least_region_or_bound.rs:13:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               ----                           ^ ...is used here...
@@ -33,7 +33,7 @@ LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               this data with an anonymous lifetime `'_`...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:9:24
+  --> $DIR/must_outlive_least_region_or_bound.rs:13:24
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
    |               ~~~~~~~~~~~~
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:11:55
+  --> $DIR/must_outlive_least_region_or_bound.rs:17:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                     -------                           ^ ...is used here...
@@ -55,7 +55,7 @@ LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                     this data with lifetime `'a`...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:11:33
+  --> $DIR/must_outlive_least_region_or_bound.rs:17:33
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                                 ^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL | fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
    |                     ~~~~~~~~~~~~
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/must_outlive_least_region_or_bound.rs:13:24
+  --> $DIR/must_outlive_least_region_or_bound.rs:21:24
    |
 LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               ----     ^^^^^^^^^^^^^^ lifetime `'a` required
@@ -77,7 +77,7 @@ LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:24:65
+  --> $DIR/must_outlive_least_region_or_bound.rs:36:65
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |               ---- this data with an anonymous lifetime `'_`... ^ ...is used and required to live as long as `'static` here
@@ -92,13 +92,13 @@ LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x)
    |                                                    ++++
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:29:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:43:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      ------- this data with lifetime `'a`...        ^ ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:29:34
+  --> $DIR/must_outlive_least_region_or_bound.rs:43:34
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,10 +112,10 @@ LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x 
    |                      ~~~~~~~~~~~~
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/must_outlive_least_region_or_bound.rs:34:5
+  --> $DIR/must_outlive_least_region_or_bound.rs:50:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
-   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:34:5: 34:31]` captures the lifetime `'b` as defined here
+   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:50:5: 50:31]` captures the lifetime `'b` as defined here
 LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -125,7 +125,7 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                                              ++++
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:38:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:54:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                                   ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
@@ -136,7 +136,7 @@ LL | fn ty_param_wont_outlive_static<T:Debug + 'static>(x: T) -> impl Debug + 's
    |                                         +++++++++
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:50
+  --> $DIR/must_outlive_least_region_or_bound.rs:24:50
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
    |               ----                               ^ ...is used and required to live as long as `'static` here
@@ -144,7 +144,7 @@ LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
    |               this data with an anonymous lifetime `'_`...
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/must_outlive_least_region_or_bound.rs:16:28
+  --> $DIR/must_outlive_least_region_or_bound.rs:24:28
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
    |                            ^^^^^^^^^    ----------- because of this returned expression
@@ -156,7 +156,7 @@ LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |                                      ++++
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:18:59
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:59
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
    |                     -------                               ^ ...is used and required to live as long as `'static` here
@@ -164,7 +164,7 @@ LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
    |                     this data with lifetime `'a`...
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/must_outlive_least_region_or_bound.rs:18:37
+  --> $DIR/must_outlive_least_region_or_bound.rs:27:37
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
    |                                     ^^^^^^^^^    ----------- because of this returned expression
@@ -176,7 +176,7 @@ LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
    |                                               ++++
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:20:60
+  --> $DIR/must_outlive_least_region_or_bound.rs:30:60
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ----                                         ^ ...is used and required to live as long as `'static` here
@@ -184,7 +184,7 @@ LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               this data with an anonymous lifetime `'_`...
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/must_outlive_least_region_or_bound.rs:20:40
+  --> $DIR/must_outlive_least_region_or_bound.rs:30:40
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                                        ^^^^^^^    ----------- because of this returned expression
@@ -200,13 +200,13 @@ LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ~~~~~~~~~~~~
 
 error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                     ------- this data with lifetime `'a`...         ^ ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:49
+  --> $DIR/must_outlive_least_region_or_bound.rs:33:49
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                                                 ^^^^^^^    ----------- because of this returned expression
