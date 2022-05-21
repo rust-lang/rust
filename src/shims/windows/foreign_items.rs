@@ -8,6 +8,7 @@ use rustc_target::spec::abi::Abi;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::windows::sync::EvalContextExt as _;
+use smallvec::SmallVec;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -122,11 +123,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
                 )?;
                 // Set selected fields.
+                let word_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::U16));
                 let dword_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::U32));
+                let usize_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::Usize));
+                let word_layout = this.layout_of(word_ty)?;
                 let dword_layout = this.layout_of(dword_ty)?;
+                let usize_layout = this.layout_of(usize_ty)?;
+
+                // Using `mplace_field` is error-prone, see: https://github.com/rust-lang/miri/issues/2136.
+                // Pointer fields have different sizes on different targets.
+                // To avoid all these issue we calculate the offsets dynamically.
+                let field_sizes = [
+                    word_layout.size,  // 0,  wProcessorArchitecture      : WORD
+                    word_layout.size,  // 1,  wReserved                   : WORD
+                    dword_layout.size, // 2,  dwPageSize                  : DWORD
+                    usize_layout.size, // 3,  lpMinimumApplicationAddress : LPVOID
+                    usize_layout.size, // 4,  lpMaximumApplicationAddress : LPVOID
+                    usize_layout.size, // 5,  dwActiveProcessorMask       : DWORD_PTR
+                    dword_layout.size, // 6,  dwNumberOfProcessors        : DWORD
+                    dword_layout.size, // 7,  dwProcessorType             : DWORD
+                    dword_layout.size, // 8,  dwAllocationGranularity     : DWORD
+                    word_layout.size,  // 9,  wProcessorLevel             : WORD
+                    word_layout.size,  // 10, wProcessorRevision          : WORD
+                ];
+                let field_offsets: SmallVec<[Size; 11]> = field_sizes
+                    .iter()
+                    .copied()
+                    .scan(Size::ZERO, |a, x| {
+                        let res = Some(*a);
+                        *a += x;
+                        res
+                    })
+                    .collect();
+
                 // Set page size.
                 let page_size = system_info.offset(
-                    Size::from_bytes(4),
+                    field_offsets[2],
                     MemPlaceMeta::None,
                     dword_layout,
                     &this.tcx,
@@ -137,7 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
                 // Set number of processors.
                 let num_cpus = system_info.offset(
-                    Size::from_bytes(32),
+                    field_offsets[6],
                     MemPlaceMeta::None,
                     dword_layout,
                     &this.tcx,
