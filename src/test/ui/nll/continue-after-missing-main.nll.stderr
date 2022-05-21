@@ -1,5 +1,5 @@
 error[E0601]: `main` function not found in crate `continue_after_missing_main`
-  --> $DIR/continue-after-missing-main.rs:30:2
+  --> $DIR/continue-after-missing-main.rs:34:2
    |
 LL | }
    |  ^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`

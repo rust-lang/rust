@@ -1,28 +1,28 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/issue-52213.rs:2:11
+  --> $DIR/issue-52213.rs:6:11
    |
 LL |     match (&t,) {
    |           ^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/issue-52213.rs:1:23
+  --> $DIR/issue-52213.rs:5:23
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
    |                       ^^
 note: ...so that the types are compatible
-  --> $DIR/issue-52213.rs:2:11
+  --> $DIR/issue-52213.rs:6:11
    |
 LL |     match (&t,) {
    |           ^^^^^
    = note: expected `(&&(T,),)`
               found `(&&'a (T,),)`
 note: but, the lifetime must be valid for the lifetime `'b` as defined here...
-  --> $DIR/issue-52213.rs:1:27
+  --> $DIR/issue-52213.rs:5:27
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
    |                           ^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/issue-52213.rs:3:20
+  --> $DIR/issue-52213.rs:8:20
    |
 LL |         ((u,),) => u,
    |                    ^

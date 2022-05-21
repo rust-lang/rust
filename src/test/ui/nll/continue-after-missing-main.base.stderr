@@ -1,11 +1,11 @@
 error[E0601]: `main` function not found in crate `continue_after_missing_main`
-  --> $DIR/continue-after-missing-main.rs:30:2
+  --> $DIR/continue-after-missing-main.rs:34:2
    |
 LL | }
    |  ^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
 
 error[E0623]: lifetime mismatch
-  --> $DIR/continue-after-missing-main.rs:28:56
+  --> $DIR/continue-after-missing-main.rs:32:56
    |
 LL |     tableau: Tableau<'data_provider, AdaptedMatrixProvider<'original_data, MP>>,
    |              ------------------------------------------------------------------ these two types are declared with different lifetimes...
