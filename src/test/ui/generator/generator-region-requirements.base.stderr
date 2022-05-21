@@ -1,5 +1,5 @@
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/generator-region-requirements.rs:8:9
+  --> $DIR/generator-region-requirements.rs:12:9
    |
 LL | fn dangle(x: &mut i32) -> &'static mut i32 {
    |              -------- this data with an anonymous lifetime `'_`...
