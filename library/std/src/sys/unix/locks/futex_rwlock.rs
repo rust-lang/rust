@@ -208,9 +208,8 @@ impl RwLock {
 
             // Don't go to sleep if the lock has become available,
             // or if the writers waiting bit is no longer set.
-            let s = self.state.load(Relaxed);
-            if is_unlocked(state) || !has_writers_waiting(s) {
-                state = s;
+            state = self.state.load(Relaxed);
+            if is_unlocked(state) || !has_writers_waiting(state) {
                 continue;
             }
 
