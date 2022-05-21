@@ -28,10 +28,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         dlsym: Dlsym,
         args: &[OpTy<'tcx, Tag>],
-        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        dest: &PlaceTy<'tcx, Tag>,
+        ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (dest, ret) = ret.expect("we don't support any diverging dlsym");
+        let ret = ret.expect("we don't support any diverging dlsym");
         assert!(this.tcx.sess.target.os == "macos");
 
         match dlsym {

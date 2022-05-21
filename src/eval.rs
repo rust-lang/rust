@@ -277,7 +277,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 start_instance,
                 Abi::Rust,
                 &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv],
-                Some(&ret_place.into()),
+                &ret_place.into(),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
@@ -286,7 +286,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 entry_instance,
                 Abi::Rust,
                 &[argc.into(), argv],
-                Some(&ret_place.into()),
+                &ret_place.into(),
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }

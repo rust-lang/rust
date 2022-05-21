@@ -930,12 +930,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// explicit. Also see https://github.com/rust-lang/rust/issues/71117.
     fn retag_return_place(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let return_place = if let Some(return_place) = this.frame_mut().return_place {
-            return_place
-        } else {
-            // No return place, nothing to do.
-            return Ok(());
-        };
+        let return_place = this.frame_mut().return_place;
         if return_place.layout.is_zst() {
             // There may not be any memory here, nothing to do.
             return Ok(());
@@ -955,7 +950,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
-        this.frame_mut().return_place = Some(return_place.into());
+        this.frame_mut().return_place = return_place.into();
 
         Ok(())
     }
