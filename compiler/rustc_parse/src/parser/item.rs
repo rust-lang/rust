@@ -302,8 +302,7 @@ impl<'a> Parser<'a> {
 
     /// When parsing a statement, would the start of a path be an item?
     pub(super) fn is_path_start_item(&mut self) -> bool {
-        self.is_crate_vis() // no: `crate::b`, yes: `crate $item`
-        || self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
+        self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
         || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`

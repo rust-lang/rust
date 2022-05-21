@@ -2566,15 +2566,6 @@ impl PolyTraitRef {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum CrateSugar {
-    /// Source is `pub(crate)`.
-    PubCrate,
-
-    /// Source is (just) `crate`.
-    JustCrate,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Visibility {
     pub kind: VisibilityKind,
@@ -2585,7 +2576,7 @@ pub struct Visibility {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {
     Public,
-    Crate(CrateSugar),
+    Crate,
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
