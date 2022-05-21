@@ -1,0 +1,23 @@
+// This ensures that the `<details>`/`<summary>` elements are displayed as expected.
+goto: file://|DOC_PATH|/test_docs/details/struct.Details.html
+show-text: true
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+
+// We first check that the headers in the `.top-doc` doc block still have their
+// bottom border.
+assert-text: (".top-doc .docblock > h3", "Hello")
+assert-css: (
+    ".top-doc .docblock > h3",
+    {"border-bottom": "1px solid rgb(221, 221, 221)"},
+)
+// We now check that the `<summary>` doesn't have a bottom border and has the correct display.
+assert-css: (
+    ".top-doc .docblock summary h4",
+    {"border-bottom": "0px none rgb(221, 221, 221)"},
+)
+// This allows to ensure that summary is on one line only!
+assert-property: (".top-doc .docblock summary h4", {"offsetHeight": "33"})
+assert-css: (".top-doc .docblock summary h4", {"margin-top": "15px", "margin-bottom": "5px"})
+// So `33 + 15 + 5` == `53`
+assert-property: (".top-doc .docblock summary", {"offsetHeight": "53"})

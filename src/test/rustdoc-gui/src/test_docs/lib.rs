@@ -277,3 +277,15 @@ pub use macros::*;
 
 #[doc(alias = "AliasForTheStdReexport")]
 pub use ::std as TheStdReexport;
+
+pub mod details {
+    /// We check the appearance of the `<details>`/`<summary>` in here.
+    ///
+    /// ## Hello
+    ///
+    /// <details>
+    /// <summary><h4>I'm a summary</h4></summary>
+    /// <div>I'm the content of the details!</div>
+    /// </details>
+    pub struct Details;
+}
