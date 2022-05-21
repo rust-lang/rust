@@ -20,7 +20,6 @@ use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
-use std::fmt::Write;
 use std::mem;
 use std::ops::Range;
 
@@ -226,34 +225,37 @@ pub(crate) enum UrlFragment {
 
 impl UrlFragment {
     /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) -> std::fmt::Result {
+    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) {
         s.push('#');
         match self {
             &UrlFragment::Item(def_id) => {
-                let name = tcx.item_name(def_id);
-                match tcx.def_kind(def_id) {
+                let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
                         if tcx.associated_item(def_id).defaultness.has_value() {
-                            write!(s, "method.{}", name)
+                            "method."
                         } else {
-                            write!(s, "tymethod.{}", name)
+                            "tymethod."
                         }
                     }
-                    DefKind::AssocConst => write!(s, "associatedconstant.{}", name),
-                    DefKind::AssocTy => write!(s, "associatedtype.{}", name),
-                    DefKind::Variant => write!(s, "variant.{}", name),
+                    DefKind::AssocConst => "associatedconstant.",
+                    DefKind::AssocTy => "associatedtype.",
+                    DefKind::Variant => "variant.",
                     DefKind::Field => {
                         let parent_id = tcx.parent(def_id);
                         if tcx.def_kind(parent_id) == DefKind::Variant {
-                            write!(s, "variant.{}.field.{}", tcx.item_name(parent_id), name)
+                            s.push_str("variant.");
+                            s.push_str(tcx.item_name(parent_id).as_str());
+                            ".field."
                         } else {
-                            write!(s, "structfield.{}", name)
+                            "structfield."
                         }
                     }
                     kind => bug!("unexpected associated item kind: {:?}", kind),
-                }
+                };
+                s.push_str(kind);
+                s.push_str(tcx.item_name(def_id).as_str());
             }
-            UrlFragment::UserWritten(raw) => Ok(s.push_str(&raw)),
+            UrlFragment::UserWritten(raw) => s.push_str(&raw),
         }
     }
 }
