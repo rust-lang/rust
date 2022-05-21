@@ -1,4 +1,17 @@
-//! Project loading & configuration updates
+//! Project loading & configuration updates.
+//!
+//! This is quite tricky. The main problem is time and changes -- there's no
+//! fixed "project" rust-analyzer is working with, "current project" is itself
+//! mutable state. For example, when the user edits `Cargo.toml` by adding a new
+//! dependency, project model changes. What's more, switching project model is
+//! not instantaneous -- it takes time to run `cargo metadata` and (for proc
+//! macros) `cargo check`.
+//!
+//! The main guiding principle here is, as elsewhere in rust-analyzer, is
+//! robustness. We try not to assume that the project model exists or is
+//! correct. Instead, we try to provide a best-effort service. Even if the
+//! project is currently loading and we don't have a full project model, we
+//! still want to respond to various  requests.
 use std::{mem, sync::Arc};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
