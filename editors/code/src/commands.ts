@@ -125,8 +125,9 @@ export function joinLines(ctx: Ctx): Cmd {
                 editor.document
             ),
         });
-        await editor.edit(async (builder) => {
-            (await client.protocol2CodeConverter.asTextEdits(items)).forEach((edit: any) => {
+        const textEdits = await client.protocol2CodeConverter.asTextEdits(items);
+        await editor.edit((builder) => {
+            textEdits.forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
         });
