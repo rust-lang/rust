@@ -243,6 +243,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "vcpkg",
     "version_check",
     "wasi",
+    "wasix",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",

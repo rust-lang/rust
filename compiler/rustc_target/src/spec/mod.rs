@@ -957,7 +957,9 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
+    ("wasm32-wasix", wasm32_wasix),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
+    ("wasm64-wasix", wasm64_wasix),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),

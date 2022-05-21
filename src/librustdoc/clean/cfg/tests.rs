@@ -369,6 +369,10 @@ fn test_render_long_html() {
             "Available on <strong>WASI</strong> only."
         );
         assert_eq!(
+            name_value_cfg("target_os", "wasix").render_long_html(),
+            "Available on <strong>WASIX</strong> only."
+        );
+        assert_eq!(
             name_value_cfg("target_pointer_width", "16").render_long_html(),
             "Available on <strong>16-bit</strong> only."
         );

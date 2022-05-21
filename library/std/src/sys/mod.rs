@@ -40,6 +40,10 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         mod wasi;
         pub use self::wasi::*;
+    } else if #[cfg(target_os = "wasix")] {
+        #[path = "wasix/mod.rs"]
+        mod wasi;
+        pub use self::wasi::*;
     } else if #[cfg(target_family = "wasm")] {
         mod wasm;
         pub use self::wasm::*;
@@ -60,7 +64,7 @@ cfg_if::cfg_if! {
 
 #[cfg(doc)]
 #[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_arch = "wasm32", not(any(target_os = "wasi", target_os = "wasix"))),
     all(target_vendor = "fortanix", target_env = "sgx")
 )))]
 cfg_if::cfg_if! {

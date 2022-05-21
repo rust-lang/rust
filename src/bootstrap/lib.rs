@@ -1169,6 +1169,11 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p)
     }
 
+    /// Returns the sysroot for the wasix target, if defined
+    fn wasix_root(&self, target: TargetSelection) -> Option<&Path> {
+        self.config.target_config.get(&target).and_then(|t| t.wasix_root.as_ref()).map(|p| &**p)
+    }
+
     /// Returns `true` if this is a no-std `target`, if defined
     fn no_std(&self, target: TargetSelection) -> Option<bool> {
         self.config.target_config.get(&target).map(|t| t.no_std)

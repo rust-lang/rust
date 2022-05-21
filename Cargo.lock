@@ -4943,6 +4943,7 @@ dependencies = [
  "std_detect",
  "unwind",
  "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasix",
 ]
 
 [[package]]
@@ -5755,6 +5756,17 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "wasix"
+version = "0.11.8+wasix-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a494046dcdebe8bf0a2dd9ac1c16b9b0e3360e847d7a2572699a1e62093622a"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",

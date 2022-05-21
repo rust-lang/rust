@@ -6,14 +6,14 @@
 #[cfg(target_os = "hermit")]
 fn hermit() {}
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "wasix"))]
 fn wasi() {}
 
 #[cfg(target_os = "none")]
 fn none() {}
 
 // list with conditions
-#[cfg(all(not(windows), target_os = "wasi"))]
+#[cfg(all(not(windows), any(target_os = "wasi", target_os = "wasix")))]
 fn list() {}
 
 // windows is a valid target family, should be ignored
