@@ -1,12 +1,13 @@
 
-running 7 tests
+running 8 tests
 test cargo_env ... ok
 test do_panic - should panic ... ok
 test does_not_work_on_miri ... ignored
 test entropy_rng ... ok
 test fail_index_check - should panic ... ok
+test page_size ... ok
 test simple1 ... ok
 test simple2 ... ok
 
-test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
+test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
 
