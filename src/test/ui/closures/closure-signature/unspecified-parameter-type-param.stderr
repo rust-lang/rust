@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed for the closure `fn(i32, Vec<_>) -> Vec<i32>`
+  --> $DIR/unspecified-parameter-type-param.rs:2:13
+   |
+LL |     let a = |a: i32, b: Vec<_>| -> Vec<i32> { Vec::new() };
+   |             ^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             |
+   |                             give this closure parameter an explicit type instead of `_`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

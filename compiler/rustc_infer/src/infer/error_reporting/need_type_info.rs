@@ -617,6 +617,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     });
 
                 if let Some((decl, body_id)) = closure_decl_and_body_id {
+                    for arg in fn_sig.inputs().skip_binder().iter() {
+                        if let Some((ty, ty_span)) = self.unresolved_type_vars(arg) {
+                            let ty_span = match ty_span {
+                                Some(ty_span) => ty_span,
+                                None => match ty.ty_vid() {
+                                    Some(ty_vid) => {
+                                        self.inner
+                                            .borrow_mut()
+                                            .type_variables()
+                                            .var_origin(ty_vid)
+                                            .span
+                                    }
+                                    None => continue,
+                                },
+                            };
+                            err.span_label(
+                                ty_span,
+                                "give this closure parameter an explicit type instead of `_`",
+                            );
+                            // We don't want to give the other suggestions when the problem is
+                            // a closure parameter type.
+                            return err;
+                        }
+                    }
+
+                    // Parameters were all fine, assume there was an issue with the return type
                     closure_return_type_suggestion(
                         &mut err,
                         &decl.output,

@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/unspecified-parameter.rs:2:14
+   |
+LL |     let a = |a: _, b: &i32| -> Vec<i32> { Vec::new() };
+   |              ^ consider giving this closure parameter a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
