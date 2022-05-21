@@ -10,9 +10,8 @@
 //[oneuse] check-pass
 
 // ignore-compare-mode-nll
-// FIXME(nll): When stabilizing, this test should be replaced with
-// `project-fn-ret-contravariant-nll.rs` The two would normally be just
-// revisions, but this test uses revisions heavily, so splitting into
+// FIXME(nll): When stabilizing, this test should replace `project-fn-ret-contravariant.rs`
+// The two would normally be just revisions, but this test uses revisions heavily, so splitting into
 // a separate test is just easier.
 
 #![allow(dead_code, unused_variables)]
