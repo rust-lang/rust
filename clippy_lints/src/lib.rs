@@ -402,6 +402,7 @@ mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_async;
 mod unused_io_amount;
+mod unused_rounding;
 mod unused_self;
 mod unused_unit;
 mod unwrap;
@@ -906,6 +907,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(rc_clone_in_vec_init::RcCloneInVecInit));
     store.register_early_pass(|| Box::new(duplicate_mod::DuplicateMod::default()));
     store.register_late_pass(|| Box::new(get_first::GetFirst));
+    store.register_early_pass(|| Box::new(unused_rounding::UnusedRounding));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

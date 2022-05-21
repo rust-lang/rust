@@ -3821,6 +3821,7 @@ Released 2018-09-13
 [`unused_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_collect
 [`unused_io_amount`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_io_amount
 [`unused_label`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_label
+[`unused_rounding`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_rounding
 [`unused_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
 [`unused_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_unit
 [`unusual_byte_groupings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unusual_byte_groupings
