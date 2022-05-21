@@ -379,18 +379,39 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
     }
 }
 
+fn clean_projection<'tcx>(
+    ty: ty::ProjectionTy<'tcx>,
+    cx: &mut DocContext<'_>,
+    def_id: Option<DefId>,
+) -> Type {
+    let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
+    let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
+    let self_type = ty.self_ty().clean(cx);
+    let self_def_id = if let Some(def_id) = def_id {
+        cx.tcx.opt_parent(def_id).or(Some(def_id))
+    } else {
+        self_type.def_id(&cx.cache)
+    };
+    let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
+    Type::QPath {
+        assoc: Box::new(projection_to_path_segment(ty, cx)),
+        should_show_cast,
+        self_type: box self_type,
+        trait_,
+    }
+}
+
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
-        let lifted = self.lift_to_tcx(cx.tcx).unwrap();
-        let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
-        let self_type = self.self_ty().clean(cx);
-        Type::QPath {
-            assoc: Box::new(projection_to_path_segment(*self, cx)),
-            self_def_id: self_type.def_id(&cx.cache),
-            self_type: box self_type,
-            trait_,
-        }
+        clean_projection(*self, cx, None)
     }
+}
+
+fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
+    !trait_.segments.is_empty()
+        && self_def_id
+            .zip(Some(trait_.def_id()))
+            .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_)
 }
 
 fn projection_to_path_segment(ty: ty::ProjectionTy<'_>, cx: &mut DocContext<'_>) -> PathSegment {
@@ -413,19 +434,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
             }
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
                 let default = if has_default {
-                    let mut default = cx.tcx.type_of(self.def_id).clean(cx);
-
-                    // We need to reassign the `self_def_id`, if there's a parent (which is the
-                    // `Self` type), so we can properly render `<Self as X>` casts, because the
-                    // information about which type `Self` is, is only present here, but not in
-                    // the cleaning process of the type itself. To resolve this and have the
-                    // `self_def_id` set, we override it here.
-                    // See https://github.com/rust-lang/rust/issues/85454
-                    if let QPath { ref mut self_def_id, .. } = default {
-                        *self_def_id = Some(cx.tcx.parent(self.def_id));
-                    }
-
-                    Some(default)
+                    Some(clean_ty(cx.tcx.type_of(self.def_id), cx, Some(self.def_id)))
                 } else {
                     None
                 };
@@ -1309,10 +1318,13 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 segments: trait_segments.iter().map(|x| x.clean(cx)).collect(),
             };
             register_res(cx, trait_.res);
+            let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
+            let self_type = qself.clean(cx);
+            let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
-                self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
-                self_type: box qself.clean(cx),
+                should_show_cast,
+                self_type: box self_type,
                 trait_,
             }
         }
@@ -1326,10 +1338,13 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             };
             let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
             register_res(cx, trait_.res);
+            let self_def_id = res.opt_def_id();
+            let self_type = qself.clean(cx);
+            let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(segment.clean(cx)),
-                self_def_id: res.opt_def_id(),
-                self_type: box qself.clean(cx),
+                should_show_cast,
+                self_type: box self_type,
                 trait_,
             }
         }
@@ -1515,196 +1530,194 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Clean<Type> for Ty<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
-        trace!("cleaning type: {:?}", self);
-        let ty = normalize(cx, *self).unwrap_or(*self);
-        match *ty.kind() {
-            ty::Never => Primitive(PrimitiveType::Never),
-            ty::Bool => Primitive(PrimitiveType::Bool),
-            ty::Char => Primitive(PrimitiveType::Char),
-            ty::Int(int_ty) => Primitive(int_ty.into()),
-            ty::Uint(uint_ty) => Primitive(uint_ty.into()),
-            ty::Float(float_ty) => Primitive(float_ty.into()),
-            ty::Str => Primitive(PrimitiveType::Str),
-            ty::Slice(ty) => Slice(box ty.clean(cx)),
-            ty::Array(ty, n) => {
-                let mut n = cx.tcx.lift(n).expect("array lift failed");
-                n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
-                let n = print_const(cx, n);
-                Array(box ty.clean(cx), n)
-            }
-            ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
-            ty::Ref(r, ty, mutbl) => {
-                BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
-            }
-            ty::FnDef(..) | ty::FnPtr(_) => {
-                let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
-                let sig = ty.fn_sig(cx.tcx);
-                let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
-                BareFunction(box BareFunctionDecl {
-                    unsafety: sig.unsafety(),
-                    generic_params: Vec::new(),
-                    decl,
-                    abi: sig.abi(),
-                })
-            }
-            ty::Adt(def, substs) => {
-                let did = def.did();
-                let kind = match def.adt_kind() {
-                    AdtKind::Struct => ItemType::Struct,
-                    AdtKind::Union => ItemType::Union,
-                    AdtKind::Enum => ItemType::Enum,
-                };
-                inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, did, false, vec![], substs);
-                Type::Path { path }
-            }
-            ty::Foreign(did) => {
-                inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-                let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
-                Type::Path { path }
-            }
-            ty::Dynamic(obj, ref reg) => {
-                // HACK: pick the first `did` as the `did` of the trait object. Someone
-                // might want to implement "native" support for marker-trait-only
-                // trait objects.
-                let mut dids = obj.principal_def_id().into_iter().chain(obj.auto_traits());
-                let did = dids
-                    .next()
-                    .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", self));
-                let substs = match obj.principal() {
-                    Some(principal) => principal.skip_binder().substs,
-                    // marker traits have no substs.
-                    _ => cx.tcx.intern_substs(&[]),
-                };
+fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'_>, def_id: Option<DefId>) -> Type {
+    trace!("cleaning type: {:?}", this);
+    let ty = normalize(cx, this).unwrap_or(this);
+    match *ty.kind() {
+        ty::Never => Primitive(PrimitiveType::Never),
+        ty::Bool => Primitive(PrimitiveType::Bool),
+        ty::Char => Primitive(PrimitiveType::Char),
+        ty::Int(int_ty) => Primitive(int_ty.into()),
+        ty::Uint(uint_ty) => Primitive(uint_ty.into()),
+        ty::Float(float_ty) => Primitive(float_ty.into()),
+        ty::Str => Primitive(PrimitiveType::Str),
+        ty::Slice(ty) => Slice(box ty.clean(cx)),
+        ty::Array(ty, n) => {
+            let mut n = cx.tcx.lift(n).expect("array lift failed");
+            n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
+            let n = print_const(cx, n);
+            Array(box ty.clean(cx), n)
+        }
+        ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
+        ty::Ref(r, ty, mutbl) => {
+            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
+        }
+        ty::FnDef(..) | ty::FnPtr(_) => {
+            let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
+            let sig = ty.fn_sig(cx.tcx);
+            let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
+            BareFunction(box BareFunctionDecl {
+                unsafety: sig.unsafety(),
+                generic_params: Vec::new(),
+                decl,
+                abi: sig.abi(),
+            })
+        }
+        ty::Adt(def, substs) => {
+            let did = def.did();
+            let kind = match def.adt_kind() {
+                AdtKind::Struct => ItemType::Struct,
+                AdtKind::Union => ItemType::Union,
+                AdtKind::Enum => ItemType::Enum,
+            };
+            inline::record_extern_fqn(cx, did, kind);
+            let path = external_path(cx, did, false, vec![], substs);
+            Type::Path { path }
+        }
+        ty::Foreign(did) => {
+            inline::record_extern_fqn(cx, did, ItemType::ForeignType);
+            let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
+            Type::Path { path }
+        }
+        ty::Dynamic(obj, ref reg) => {
+            // HACK: pick the first `did` as the `did` of the trait object. Someone
+            // might want to implement "native" support for marker-trait-only
+            // trait objects.
+            let mut dids = obj.principal_def_id().into_iter().chain(obj.auto_traits());
+            let did = dids
+                .next()
+                .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", this));
+            let substs = match obj.principal() {
+                Some(principal) => principal.skip_binder().substs,
+                // marker traits have no substs.
+                _ => cx.tcx.intern_substs(&[]),
+            };
 
+            inline::record_extern_fqn(cx, did, ItemType::Trait);
+
+            let lifetime = reg.clean(cx);
+            let mut bounds = vec![];
+
+            for did in dids {
+                let empty = cx.tcx.intern_substs(&[]);
+                let path = external_path(cx, did, false, vec![], empty);
                 inline::record_extern_fqn(cx, did, ItemType::Trait);
-
-                let lifetime = reg.clean(cx);
-                let mut bounds = vec![];
-
-                for did in dids {
-                    let empty = cx.tcx.intern_substs(&[]);
-                    let path = external_path(cx, did, false, vec![], empty);
-                    inline::record_extern_fqn(cx, did, ItemType::Trait);
-                    let bound = PolyTrait { trait_: path, generic_params: Vec::new() };
-                    bounds.push(bound);
-                }
-
-                let mut bindings = vec![];
-                for pb in obj.projection_bounds() {
-                    bindings.push(TypeBinding {
-                        assoc: projection_to_path_segment(
-                            pb.skip_binder()
-                                .lift_to_tcx(cx.tcx)
-                                .unwrap()
-                                // HACK(compiler-errors): Doesn't actually matter what self
-                                // type we put here, because we're only using the GAT's substs.
-                                .with_self_ty(cx.tcx, cx.tcx.types.self_param)
-                                .projection_ty,
-                            cx,
-                        ),
-                        kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
-                    });
-                }
-
-                let path = external_path(cx, did, false, bindings, substs);
-                bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
-
-                DynTrait(bounds, lifetime)
-            }
-            ty::Tuple(t) => Tuple(t.iter().map(|t| t.clean(cx)).collect()),
-
-            ty::Projection(ref data) => data.clean(cx),
-
-            ty::Param(ref p) => {
-                if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
-                    ImplTrait(bounds)
-                } else {
-                    Generic(p.name)
-                }
+                let bound = PolyTrait { trait_: path, generic_params: Vec::new() };
+                bounds.push(bound);
             }
 
-            ty::Opaque(def_id, substs) => {
-                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                // by looking up the bounds associated with the def_id.
-                let substs = cx.tcx.lift(substs).expect("Opaque lift failed");
-                let bounds = cx
-                    .tcx
-                    .explicit_item_bounds(def_id)
-                    .iter()
-                    .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
-                    .collect::<Vec<_>>();
-                let mut regions = vec![];
-                let mut has_sized = false;
-                let mut bounds = bounds
-                    .iter()
-                    .filter_map(|bound| {
-                        let bound_predicate = bound.kind();
-                        let trait_ref = match bound_predicate.skip_binder() {
-                            ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
-                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
-                                if let Some(r) = reg.clean(cx) {
-                                    regions.push(GenericBound::Outlives(r));
-                                }
-                                return None;
-                            }
-                            _ => return None,
-                        };
+            let mut bindings = vec![];
+            for pb in obj.projection_bounds() {
+                bindings.push(TypeBinding {
+                    assoc: projection_to_path_segment(
+                        pb.skip_binder()
+                            .lift_to_tcx(cx.tcx)
+                            .unwrap()
+                            // HACK(compiler-errors): Doesn't actually matter what self
+                            // type we put here, because we're only using the GAT's substs.
+                            .with_self_ty(cx.tcx, cx.tcx.types.self_param)
+                            .projection_ty,
+                        cx,
+                    ),
+                    kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
+                });
+            }
 
-                        if let Some(sized) = cx.tcx.lang_items().sized_trait() {
-                            if trait_ref.def_id() == sized {
-                                has_sized = true;
-                                return None;
+            let path = external_path(cx, did, false, bindings, substs);
+            bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
+
+            DynTrait(bounds, lifetime)
+        }
+        ty::Tuple(t) => Tuple(t.iter().map(|t| t.clean(cx)).collect()),
+
+        ty::Projection(ref data) => clean_projection(*data, cx, def_id),
+
+        ty::Param(ref p) => {
+            if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
+                ImplTrait(bounds)
+            } else {
+                Generic(p.name)
+            }
+        }
+
+        ty::Opaque(def_id, substs) => {
+            // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+            // by looking up the bounds associated with the def_id.
+            let substs = cx.tcx.lift(substs).expect("Opaque lift failed");
+            let bounds = cx
+                .tcx
+                .explicit_item_bounds(def_id)
+                .iter()
+                .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
+                .collect::<Vec<_>>();
+            let mut regions = vec![];
+            let mut has_sized = false;
+            let mut bounds = bounds
+                .iter()
+                .filter_map(|bound| {
+                    let bound_predicate = bound.kind();
+                    let trait_ref = match bound_predicate.skip_binder() {
+                        ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
+                        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                            if let Some(r) = reg.clean(cx) {
+                                regions.push(GenericBound::Outlives(r));
                             }
+                            return None;
                         }
+                        _ => return None,
+                    };
 
-                        let bindings: Vec<_> = bounds
-                            .iter()
-                            .filter_map(|bound| {
-                                if let ty::PredicateKind::Projection(proj) =
-                                    bound.kind().skip_binder()
-                                {
-                                    if proj.projection_ty.trait_ref(cx.tcx)
-                                        == trait_ref.skip_binder()
-                                    {
-                                        Some(TypeBinding {
-                                            assoc: projection_to_path_segment(
-                                                proj.projection_ty,
-                                                cx,
-                                            ),
-                                            kind: TypeBindingKind::Equality {
-                                                term: proj.term.clean(cx),
-                                            },
-                                        })
-                                    } else {
-                                        None
-                                    }
+                    if let Some(sized) = cx.tcx.lang_items().sized_trait() {
+                        if trait_ref.def_id() == sized {
+                            has_sized = true;
+                            return None;
+                        }
+                    }
+
+                    let bindings: Vec<_> = bounds
+                        .iter()
+                        .filter_map(|bound| {
+                            if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder()
+                            {
+                                if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
+                                    Some(TypeBinding {
+                                        assoc: projection_to_path_segment(proj.projection_ty, cx),
+                                        kind: TypeBindingKind::Equality {
+                                            term: proj.term.clean(cx),
+                                        },
+                                    })
                                 } else {
                                     None
                                 }
-                            })
-                            .collect();
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
-                        Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, &bindings))
-                    })
-                    .collect::<Vec<_>>();
-                bounds.extend(regions);
-                if !has_sized && !bounds.is_empty() {
-                    bounds.insert(0, GenericBound::maybe_sized(cx));
-                }
-                ImplTrait(bounds)
+                    Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, &bindings))
+                })
+                .collect::<Vec<_>>();
+            bounds.extend(regions);
+            if !has_sized && !bounds.is_empty() {
+                bounds.insert(0, GenericBound::maybe_sized(cx));
             }
-
-            ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
-
-            ty::Bound(..) => panic!("Bound"),
-            ty::Placeholder(..) => panic!("Placeholder"),
-            ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
-            ty::Infer(..) => panic!("Infer"),
-            ty::Error(_) => panic!("Error"),
+            ImplTrait(bounds)
         }
+
+        ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
+
+        ty::Bound(..) => panic!("Bound"),
+        ty::Placeholder(..) => panic!("Placeholder"),
+        ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
+        ty::Infer(..) => panic!("Infer"),
+        ty::Error(_) => panic!("Error"),
+    }
+}
+
+impl<'tcx> Clean<Type> for Ty<'tcx> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Type {
+        clean_ty(*self, cx, None)
     }
 }
 

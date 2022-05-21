@@ -1560,10 +1560,8 @@ pub(crate) enum Type {
     QPath {
         assoc: Box<PathSegment>,
         self_type: Box<Type>,
-        /// FIXME: This is a hack that should be removed; see [this discussion][1].
-        ///
-        /// [1]: https://github.com/rust-lang/rust/pull/85479#discussion_r635729093
-        self_def_id: Option<DefId>,
+        /// FIXME: compute this field on demand.
+        should_show_cast: bool,
         trait_: Path,
     },
 
@@ -1576,7 +1574,7 @@ pub(crate) enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 80);
+rustc_data_structures::static_assert_size!(Type, 72);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -2180,7 +2178,7 @@ pub(crate) enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 88);
+rustc_data_structures::static_assert_size!(GenericArg, 80);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {

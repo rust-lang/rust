@@ -985,11 +985,7 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, ref self_def_id } => {
-            let should_show_cast = !trait_.segments.is_empty()
-                && self_def_id
-                    .zip(Some(trait_.def_id()))
-                    .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_);
+        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
