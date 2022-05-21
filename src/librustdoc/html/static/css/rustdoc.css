@@ -158,8 +158,8 @@ h1.fqn {
 	Underlines elsewhere in the documentation break up visual flow and tend to invert
 	section hierarchies. */
 h2,
-.top-doc h3,
-.top-doc h4 {
+.top-doc .docblock > h3,
+.top-doc .docblock > h4 {
 	border-bottom: 1px solid;
 }
 h3.code-header {
@@ -1667,6 +1667,18 @@ details.rustdoc-toggle[open] > summary.hideme::before {
 details.rustdoc-toggle[open] > summary::after,
 details.rustdoc-toggle[open] > summary.hideme::after {
 	content: "Collapse";
+}
+
+.docblock details summary {
+	display: flex;
+	list-style: none;
+	align-items: center;
+}
+.docblock details[open] summary::before {
+	content: "► ";
+}
+.docblock details[open] summary::before {
+	content: "▼ ";
 }
 
 /* Media Queries */
