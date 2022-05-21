@@ -99,6 +99,29 @@ macro_rules! test_mask_api {
                 assert_eq!(bitmask, 0b01);
                 assert_eq!(core_simd::Mask::<$type, 2>::from_bitmask(bitmask), mask);
             }
+
+            #[test]
+            fn cast() {
+                fn cast_impl<T: core_simd::MaskElement>()
+                where
+                    core_simd::Mask<$type, 8>: Into<core_simd::Mask<T, 8>>,
+                {
+                    let values = [true, false, false, true, false, false, true, false];
+                    let mask = core_simd::Mask::<$type, 8>::from_array(values);
+
+                    let cast_mask = mask.cast::<T>();
+                    assert_eq!(values, cast_mask.to_array());
+
+                    let into_mask: core_simd::Mask<T, 8> = mask.into();
+                    assert_eq!(values, into_mask.to_array());
+                }
+
+                cast_impl::<i8>();
+                cast_impl::<i16>();
+                cast_impl::<i32>();
+                cast_impl::<i64>();
+                cast_impl::<isize>();
+            }
         }
     }
 }
