@@ -111,6 +111,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "GetSystemInfo" => {
+                use crate::rustc_middle::ty::{layout::LayoutOf, TyKind, UintTy};
+
                 let [system_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info = this.deref_operand(system_info)?;
@@ -119,21 +121,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     system_info.ptr,
                     iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
                 )?;
-                let dword_size = Size::from_bytes(4);
-
-                // In WinApi SYSTEM_INFO's first field is a 4-byte union, but num_cpus
-                // inlines it as two 2-byte fields. In num_cpus case all fields are offset by 1
-                // compared to WinApi. See https://github.com/rust-lang/miri/issues/2136#issuecomment-1133661262.
-                let first_field = this.mplace_field(&system_info, 0)?;
-                let offset = if first_field.layout.size.bytes() == 2 { 1 } else { 0 };
-
-                let page_size = this.mplace_field(&system_info, 1 + offset)?;
-                let num_cpus = this.mplace_field(&system_info, 5 + offset)?;
-
+                // Set selected fields.
+                let dword_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::U32));
+                let dword_layout = this.layout_of(dword_ty)?;
                 // Set page size.
-                this.write_scalar(Scalar::from_int(PAGE_SIZE, dword_size), &page_size.into())?;
+                let page_size = system_info.offset(
+                    Size::from_bytes(4),
+                    MemPlaceMeta::None,
+                    dword_layout,
+                    &this.tcx,
+                )?;
+                this.write_scalar(
+                    Scalar::from_int(PAGE_SIZE, dword_layout.size),
+                    &page_size.into(),
+                )?;
                 // Set number of processors.
-                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), &num_cpus.into())?;
+                let num_cpus = system_info.offset(
+                    Size::from_bytes(32),
+                    MemPlaceMeta::None,
+                    dword_layout,
+                    &this.tcx,
+                )?;
+                this.write_scalar(Scalar::from_int(NUM_CPUS, dword_layout.size), &num_cpus.into())?;
             }
 
             // Thread-local storage
