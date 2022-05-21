@@ -4,7 +4,7 @@
 #![warn(clippy::manual_str_repeat)]
 
 use std::borrow::Cow;
-use std::iter::{repeat, FromIterator};
+use std::iter::repeat;
 
 fn main() {
     let _: String = std::iter::repeat("test").take(10).collect();

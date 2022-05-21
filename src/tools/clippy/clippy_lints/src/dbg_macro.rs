@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_in_test_function;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -37,7 +37,7 @@ impl LateLintPass<'_> for DbgMacro {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
         if cx.tcx.is_diagnostic_item(sym::dbg_macro, macro_call.def_id) {
             // we make an exception for test code
-            if is_in_test_function(cx.tcx, expr.hir_id) {
+            if is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id) {
                 return;
             }
             let mut applicability = Applicability::MachineApplicable;

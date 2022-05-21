@@ -84,5 +84,17 @@ error: manual `!RangeInclusive::contains` implementation
 LL |     y < 0. || y > 1.;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(0. ..=1.).contains(&y)`
 
-error: aborting due to 14 previous errors
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:48:5
+   |
+LL |     x >= -10 && x <= 10;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-10..=10).contains(&x)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:50:5
+   |
+LL |     y >= -3. && y <= 3.;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-3. ..=3.).contains(&y)`
+
+error: aborting due to 16 previous errors
 

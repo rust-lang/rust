@@ -46,6 +46,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
     LintId::of(missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES),
     LintId::of(missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
+    LintId::of(mixed_read_write_in_expression::MIXED_READ_WRITE_IN_EXPRESSION),
     LintId::of(module_style::MOD_MODULE_FILES),
     LintId::of(module_style::SELF_NAMED_MODULE_FILES),
     LintId::of(modulo_arithmetic::MODULO_ARITHMETIC),

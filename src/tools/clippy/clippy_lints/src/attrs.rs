@@ -6,7 +6,7 @@ use clippy_utils::msrvs;
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use clippy_utils::{extract_msrv_attr, meets_msrv};
 use if_chain::if_chain;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MacArgs, MacArgsEq, MetaItemKind, NestedMetaItem};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -586,21 +586,10 @@ impl EarlyLintPass for EarlyAttributes {
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
-        let attr_item = if let AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
-        } else {
-            return;
-        };
-
-        if attr.style == AttrStyle::Outer {
-            if let MacArgs::Eq(_, MacArgsEq::Ast(expr)) = &attr_item.args
-                && !matches!(expr.kind, rustc_ast::ExprKind::Lit(..)) {
-                return;
-            }
-            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
-                return;
-            }
-
+        if matches!(attr.kind, AttrKind::Normal(..))
+            && attr.style == AttrStyle::Outer
+            && is_present_in_source(cx, attr.span)
+        {
             let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt(), item.span.parent());
             let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt(), item.span.parent());
 
@@ -624,7 +613,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
-        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
+        if meets_msrv(msrv, msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();

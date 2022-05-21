@@ -34,7 +34,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 
-#[allow(clippy::match_same_arms)]
 impl<'tcx> LateLintPass<'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, left, right) = e.kind {

@@ -51,7 +51,7 @@ impl_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::FIELD_INIT_SHORTHAND) {
+        if !meets_msrv(self.msrv, msrvs::FIELD_INIT_SHORTHAND) {
             return;
         }
 

@@ -54,13 +54,12 @@ impl EarlyLintPass for DerefAddrOf {
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if e.span.from_expansion() {
-                    #[allow(clippy::option_if_let_else)]
                     if let Some(macro_source) = snippet_opt(cx, e.span) {
                         // Remove leading whitespace from the given span
                         // e.g: ` $visitor` turns into `$visitor`
                         let trim_leading_whitespaces = |span| {
                             snippet_opt(cx, span).and_then(|snip| {
-                                #[allow(clippy::cast_possible_truncation)]
+                                #[expect(clippy::cast_possible_truncation)]
                                 snip.find(|c: char| !c.is_whitespace()).map(|pos| {
                                     span.lo() + BytePos(pos as u32)
                                 })
@@ -68,7 +67,7 @@ impl EarlyLintPass for DerefAddrOf {
                         };
 
                         let mut generate_snippet = |pattern: &str| {
-                            #[allow(clippy::cast_possible_truncation)]
+                            #[expect(clippy::cast_possible_truncation)]
                             macro_source.rfind(pattern).map(|pattern_pos| {
                                 let rpos = pattern_pos + pattern.len();
                                 let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));

@@ -24,7 +24,7 @@ fn main() {
 
 use std::ops::{Mul, MulAssign};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Wrap(i64);
 
 impl Mul<i64> for Wrap {

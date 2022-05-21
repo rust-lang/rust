@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
+use rustc_typeck::hir_ty_to_ty;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
@@ -54,8 +55,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {
-            // Box<Box<dyn T>> is smaller than Box<dyn T> because of wide pointers
-            if matches!(ty.kind, TyKind::TraitObject(..)) {
+            // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
+            // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
+            // is not run on locals.
+            if !hir_ty_to_ty(cx.tcx, ty).is_sized(cx.tcx.at(ty.span), cx.param_env) {
                 return false;
             }
             ty.span

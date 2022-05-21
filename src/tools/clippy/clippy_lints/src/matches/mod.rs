@@ -658,7 +658,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             }
             if !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
-                    if !(meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO)
+                    if !(meets_msrv(self.msrv, msrvs::MATCHES_MACRO)
                         && match_like_matches::check_match(cx, expr, ex, arms))
                     {
                         match_same_arms::check(cx, arms);
@@ -685,7 +685,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             match_wild_err_arm::check(cx, ex, arms);
             wild_in_or_pats::check(cx, arms);
         } else {
-            if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
+            if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
                 match_like_matches::check(cx, expr);
             }
             redundant_pattern_match::check(cx, expr);

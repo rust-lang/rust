@@ -14,7 +14,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(drop_forget_ref::DROP_NON_DROP),
     LintId::of(drop_forget_ref::FORGET_NON_DROP),
-    LintId::of(eval_order_dependence::EVAL_ORDER_DEPENDENCE),
+    LintId::of(duplicate_mod::DUPLICATE_MOD),
     LintId::of(float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
     LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),
     LintId::of(formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
@@ -26,6 +26,8 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(methods::SUSPICIOUS_MAP),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
+    LintId::of(rc_clone_in_vec_init::RC_CLONE_IN_VEC_INIT),
+    LintId::of(significant_drop_in_scrutinee::SIGNIFICANT_DROP_IN_SCRUTINEE),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
 ])

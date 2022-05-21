@@ -53,7 +53,7 @@ fn is_bitwise_operation(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     false
 }
 
-fn suggesstion_snippet(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
+fn suggestion_snippet(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     if let ExprKind::Binary(ref op, left, right) = expr.kind {
         if let (Some(l_snippet), Some(r_snippet)) = (snippet_opt(cx, left.span), snippet_opt(cx, right.span)) {
             let op_snippet = match op.node {
@@ -75,7 +75,7 @@ impl LateLintPass<'_> for NeedlessBitwiseBool {
                 expr.span,
                 "use of bitwise operator instead of lazy operator between booleans",
                 |diag| {
-                    if let Some(sugg) = suggesstion_snippet(cx, expr) {
+                    if let Some(sugg) = suggestion_snippet(cx, expr) {
                         diag.span_suggestion(expr.span, "try", sugg, Applicability::MachineApplicable);
                     }
                 },

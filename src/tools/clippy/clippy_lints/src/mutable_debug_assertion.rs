@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// In release builds `debug_assert!` macros are optimized out by the
     /// compiler.
-    /// Therefore mutating something in a `debug_assert!` macro results in different behaviour
+    /// Therefore mutating something in a `debug_assert!` macro results in different behavior
     /// between a release and debug build.
     ///
     /// ### Example

@@ -24,7 +24,7 @@ pub(super) fn check(
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
     count: u128,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if count < 2 || !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
         return;
@@ -34,7 +34,7 @@ pub(super) fn check(
         IterUsageKind::Nth(n) => count > n + 1,
         IterUsageKind::NextTuple => count > 2,
     };
-    let manual = count == 2 && meets_msrv(msrv, &msrvs::STR_SPLIT_ONCE);
+    let manual = count == 2 && meets_msrv(msrv, msrvs::STR_SPLIT_ONCE);
 
     match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir().parent_iter(expr.hir_id)) {
         Some(usage) if needless(usage.kind) => lint_needless(cx, method_name, expr, self_arg, pat_arg),
@@ -271,7 +271,7 @@ enum IterUsageKind {
     NextTuple,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum UnwrapKind {
     Unwrap,
     QuestionMark,

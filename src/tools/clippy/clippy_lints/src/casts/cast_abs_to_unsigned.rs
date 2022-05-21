@@ -16,10 +16,10 @@ pub(super) fn check(
     cast_expr: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
-    msrv: &Option<RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
     if_chain! {
-        if meets_msrv(msrv.as_ref(), &msrvs::UNSIGNED_ABS);
+        if meets_msrv(msrv, msrvs::UNSIGNED_ABS);
         if cast_from.is_integral();
         if cast_to.is_integral();
         if cast_from.is_signed();
