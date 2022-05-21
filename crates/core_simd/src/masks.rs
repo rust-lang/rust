@@ -68,6 +68,7 @@ macro_rules! impl_element {
             const FALSE: Self = 0;
         }
 
+        // Safety: this is a valid mask element type
         unsafe impl MaskElement for $ty {}
     }
 }

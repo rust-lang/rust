@@ -30,6 +30,8 @@ macro_rules! implement {
                 $type: FloatToInt<I>,
                 I: SimdElement,
             {
+                // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
+                // an integer.
                 unsafe { intrinsics::simd_cast(self) }
             }
         }
