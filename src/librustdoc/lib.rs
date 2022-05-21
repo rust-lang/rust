@@ -13,7 +13,6 @@
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
-#![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
@@ -121,7 +120,7 @@ mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
-crate mod lint;
+pub(crate) mod lint;
 mod markdown;
 mod passes;
 mod scrape_examples;

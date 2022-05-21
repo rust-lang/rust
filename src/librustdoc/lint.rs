@@ -169,7 +169,7 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
-crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
+pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
         PRIVATE_INTRA_DOC_LINKS,
@@ -183,7 +183,7 @@ crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     ]
 });
 
-crate fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
+pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
     lint_store.register_lints(&**RUSTDOC_LINTS);
     lint_store.register_group(
         true,

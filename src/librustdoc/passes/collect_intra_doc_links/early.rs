@@ -21,7 +21,7 @@ use rustc_span::{Symbol, SyntaxContext};
 use std::collections::hash_map::Entry;
 use std::mem;
 
-crate fn early_resolve_intra_doc_links(
+pub(crate) fn early_resolve_intra_doc_links(
     resolver: &mut Resolver<'_>,
     sess: &Session,
     krate: &ast::Crate,

@@ -38,7 +38,7 @@ type Attrs<'hir> = &'hir [ast::Attribute];
 /// and `Some` of a vector of items if it was successfully expanded.
 ///
 /// `parent_module` refers to the parent of the *re-export*, not the original item.
-crate fn try_inline(
+pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     parent_module: DefId,
     import_def_id: Option<DefId>,
@@ -134,7 +134,7 @@ crate fn try_inline(
     Some(ret)
 }
 
-crate fn try_inline_glob(
+pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
     visited: &mut FxHashSet<DefId>,
@@ -154,7 +154,7 @@ crate fn try_inline_glob(
     }
 }
 
-crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
+pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
     cx.tcx.get_attrs_unchecked(did)
 }
 
@@ -162,7 +162,7 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
-crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
+pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
     let crate_name = cx.tcx.crate_name(did.krate);
 
     let relative =
@@ -190,7 +190,7 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
     }
 }
 
-crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
+pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     let trait_items = cx
         .tcx
         .associated_items(did)
@@ -274,7 +274,7 @@ fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
-crate fn build_impls(
+pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     did: DefId,
@@ -318,7 +318,7 @@ fn merge_attrs(
 }
 
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
-crate fn build_impl(
+pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     did: DefId,
@@ -565,7 +565,7 @@ fn build_module(
     clean::Module { items, span }
 }
 
-crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
+pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
         let hir_id = tcx.hir().local_def_id_to_hir_id(did);
         rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
@@ -670,7 +670,7 @@ fn separate_supertrait_bounds(
     (g, ty_bounds)
 }
 
-crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
+pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     if did.is_local() {
         return;
     }

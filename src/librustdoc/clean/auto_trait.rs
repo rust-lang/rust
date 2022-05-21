@@ -20,12 +20,12 @@ struct RegionDeps<'tcx> {
     smaller: FxHashSet<RegionTarget<'tcx>>,
 }
 
-crate struct AutoTraitFinder<'a, 'tcx> {
-    crate cx: &'a mut core::DocContext<'tcx>,
+pub(crate) struct AutoTraitFinder<'a, 'tcx> {
+    pub(crate) cx: &'a mut core::DocContext<'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    crate fn new(cx: &'a mut core::DocContext<'tcx>) -> Self {
+    pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> Self {
         AutoTraitFinder { cx }
     }
 
@@ -130,7 +130,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         })
     }
 
-    crate fn get_auto_trait_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
+    pub(crate) fn get_auto_trait_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let tcx = self.cx.tcx;
         let param_env = tcx.param_env(item_def_id);
         let ty = tcx.type_of(item_def_id);

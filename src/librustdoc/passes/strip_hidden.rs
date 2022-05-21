@@ -8,14 +8,14 @@ use crate::core::DocContext;
 use crate::fold::{strip_item, DocFolder};
 use crate::passes::{ImplStripper, Pass};
 
-crate const STRIP_HIDDEN: Pass = Pass {
+pub(crate) const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
     run: strip_hidden,
     description: "strips all `#[doc(hidden)]` items from the output",
 };
 
 /// Strip items marked `#[doc(hidden)]`
-crate fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let mut retained = ItemIdSet::default();
 
     // strip all #[doc(hidden)] items

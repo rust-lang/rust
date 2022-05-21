@@ -12,13 +12,13 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
-crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
+pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
     run: collect_trait_impls,
     description: "retrieves trait impls for items in the crate",
 };
 
-crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let synth_impls = cx.sess().time("collect_synthetic_impls", || {
         let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
         synth.visit_crate(&krate);

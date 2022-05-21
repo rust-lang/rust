@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(crate_visibility_modifier)]
-
 #![allow(unused)]
 #![warn(unreachable_pub)]
 
@@ -15,12 +13,12 @@ mod private_mod {
         // `pub` struct fields, too
         pub neutrons: usize, //~ WARNING unreachable_pub
         // (... but not more-restricted fields)
-        crate electrons: usize
+        pub(crate) electrons: usize
     }
     impl Hydrogen {
         // impls, too
         pub fn count_neutrons(&self) -> usize { self.neutrons } //~ WARNING unreachable_pub
-        crate fn count_electrons(&self) -> usize { self.electrons }
+        pub(crate) fn count_electrons(&self) -> usize { self.electrons }
     }
     impl Clone for Hydrogen {
         fn clone(&self) -> Hydrogen {
@@ -50,13 +48,13 @@ mod private_mod {
     pub struct Neon {}
 
     // crate-visible items are OK
-    crate struct Sodium {}
+    pub(crate) struct Sodium {}
 }
 
 pub mod public_mod {
     // module is public: these are OK, too
     pub struct Magnesium {}
-    crate struct Aluminum {}
+    pub(crate) struct Aluminum {}
 }
 
 pub fn get_neon() -> private_mod::Neon {

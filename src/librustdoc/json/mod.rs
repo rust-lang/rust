@@ -29,7 +29,7 @@ use crate::json::conversions::{from_item_id, IntoWithTcx};
 use crate::{clean, try_err};
 
 #[derive(Clone)]
-crate struct JsonRenderer<'tcx> {
+pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.

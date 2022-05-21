@@ -1,6 +1,6 @@
 use crate::clean::*;
 
-crate trait DocVisitor: Sized {
+pub(crate) trait DocVisitor: Sized {
     fn visit_item(&mut self, item: &Item) {
         self.visit_item_recur(item)
     }

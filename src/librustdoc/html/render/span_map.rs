@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// Otherwise, we store the definition `DefId` and will generate a link to the documentation page
 /// instead of the source code directly.
 #[derive(Debug)]
-crate enum LinkFromSrc {
+pub(crate) enum LinkFromSrc {
     Local(clean::Span),
     External(DefId),
     Primitive(PrimitiveType),
@@ -36,7 +36,7 @@ crate enum LinkFromSrc {
 /// Note about the `span` correspondance map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keep a whole `Span`, we
 /// only keep the `lo` and `hi`.
-crate fn collect_spans_and_sources(
+pub(crate) fn collect_spans_and_sources(
     tcx: TyCtxt<'_>,
     krate: &clean::Crate,
     src_root: &Path,
@@ -57,8 +57,8 @@ crate fn collect_spans_and_sources(
 }
 
 struct SpanMapVisitor<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    crate matches: FxHashMap<Span, LinkFromSrc>,
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
