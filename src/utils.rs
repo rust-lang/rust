@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use rustc_ast::ptr;
@@ -46,12 +46,8 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
         (VisibilityKind::Public, VisibilityKind::Public)
         | (VisibilityKind::Inherited, VisibilityKind::Inherited)
         | (
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-        )
-        | (
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-            VisibilityKind::Crate(CrateSugar::JustCrate),
+            VisibilityKind::Crate,
+            VisibilityKind::Crate,
         ) => true,
         _ => false,
     }
@@ -65,8 +61,7 @@ pub(crate) fn format_visibility(
     match vis.kind {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
-        VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),
-        VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
+        VisibilityKind::Crate => Cow::from("pub(crate) "),
         VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
