@@ -195,6 +195,31 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
 
             (generics, arg_index)
         }
+
+        Node::Ty(&Ty { kind: TyKind::OpaqueDef(id, generics), .. })
+            if tcx.sess.features_untracked().return_position_impl_trait_v2 =>
+        {
+            let parent_generics = tcx.generics_of(id.def_id.to_def_id());
+
+            generics
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, arg)| match arg {
+                    hir::GenericArg::Const(ConstArg {
+                        value: hir::AnonConst { hir_id: inner_hir_id, .. },
+                        ..
+                    }) => {
+                        if *inner_hir_id == hir_id {
+                            Some((parent_generics, idx))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .next()?
+        }
+
         _ => return None,
     };
 
