@@ -119,9 +119,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     system_info.ptr,
                     iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
                 )?;
-                // Set number of processors.
                 let dword_size = Size::from_bytes(4);
-                let num_cpus = this.mplace_field(&system_info, 6)?;
+
+                // In WinApi SYSTEM_INFO's first field is a 4-byte union, but num_cpus
+                // inlines it as two 2-byte fields. In num_cpus case all fields are offset by 1
+                // compared to WinApi. See https://github.com/rust-lang/miri/issues/2136#issuecomment-1133661262.
+                let first_field = this.mplace_field(&system_info, 0)?;
+                let offset = if first_field.layout.size.bytes() == 2 { 1 } else { 0 };
+
+                let page_size = this.mplace_field(&system_info, 1 + offset)?;
+                let num_cpus = this.mplace_field(&system_info, 5 + offset)?;
+
+                // Set page size.
+                this.write_scalar(Scalar::from_int(PAGE_SIZE, dword_size), &page_size.into())?;
+                // Set number of processors.
                 this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), &num_cpus.into())?;
             }
 
