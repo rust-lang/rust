@@ -181,6 +181,13 @@ where
         self.0.to_int()
     }
 
+    /// Converts the mask to a mask of any other lane size.
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn cast<U: MaskElement>(self) -> Mask<U, LANES> {
+        Mask(self.0.convert())
+    }
+
     /// Tests the value of the specified lane.
     ///
     /// # Safety
@@ -571,7 +578,7 @@ macro_rules! impl_from {
             LaneCount<LANES>: SupportedLaneCount,
         {
             fn from(value: Mask<$from, LANES>) -> Self {
-                Self(value.0.convert())
+                value.cast()
             }
         }
         )*
