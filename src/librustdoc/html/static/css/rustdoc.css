@@ -1669,16 +1669,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	content: "Collapse";
 }
 
-.docblock details summary {
-	display: flex;
-	list-style: none;
-	align-items: center;
-}
-.docblock details[open] summary::before {
-	content: "► ";
-}
-.docblock details[open] summary::before {
-	content: "▼ ";
+/* This is needed in docblocks to have the "▶" element to be on the same line. */
+.docblock summary > * {
+	display: inline-block;
 }
 
 /* Media Queries */
