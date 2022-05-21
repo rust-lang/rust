@@ -10,7 +10,7 @@
 //!
 //! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
 //!   (unless it contains an `Unsafe` interior, but that may be denied later).
-//!   This mainly prevents mistakes, but can also enforces a kind of "purity".
+//!   This mainly prevents mistakes, but also enforces a kind of "purity".
 //!
 //! * **Efficiency**: folding can reuse allocation space for `P<T>` and `Vec<T>`,
 //!   the latter even when the input and output types differ (as it would be the
