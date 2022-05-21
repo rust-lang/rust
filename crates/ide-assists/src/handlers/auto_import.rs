@@ -189,10 +189,12 @@ fn relevance_score(ctx: &AssistContext, import: &LocatedImport) -> i32 {
         }
     }
 
-    match item_module.zip(current_node) {
+    let current_scope = current_node.as_ref().and_then(|node| ctx.sema.scope(node));
+
+    match item_module.zip(current_scope) {
         // get the distance between the modules (prefer items that are more local)
-        Some((item_module, current_node)) => {
-            let current_module = ctx.sema.scope(&current_node).unwrap().module();
+        Some((item_module, current_scope)) => {
+            let current_module = current_scope.module();
             score -= module_distance_hueristic(&current_module, &item_module, db) as i32;
         }
 
