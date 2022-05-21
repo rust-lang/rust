@@ -694,7 +694,22 @@ impl Config {
         match self.data.linkedProjects.as_slice() {
             [] => match self.discovered_projects.as_ref() {
                 Some(discovered_projects) => {
-                    discovered_projects.iter().cloned().map(LinkedProject::from).collect()
+                    let exclude_dirs: Vec<_> = self
+                        .data
+                        .files_excludeDirs
+                        .iter()
+                        .map(|p| self.root_path.join(p))
+                        .collect();
+                    discovered_projects
+                        .iter()
+                        .filter(|p| {
+                            let (ProjectManifest::ProjectJson(path)
+                            | ProjectManifest::CargoToml(path)) = p;
+                            !exclude_dirs.iter().any(|p| path.starts_with(p))
+                        })
+                        .cloned()
+                        .map(LinkedProject::from)
+                        .collect()
                 }
                 None => Vec::new(),
             },
