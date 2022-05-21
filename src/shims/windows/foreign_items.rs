@@ -112,8 +112,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "GetSystemInfo" => {
-                use crate::rustc_middle::ty::{layout::LayoutOf, TyKind, UintTy};
-
                 let [system_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info = this.deref_operand(system_info)?;
@@ -123,16 +121,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
                 )?;
                 // Set selected fields.
-                let word_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::U16));
-                let dword_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::U32));
-                let usize_ty = this.tcx.mk_ty(TyKind::Uint(UintTy::Usize));
-                let word_layout = this.layout_of(word_ty)?;
-                let dword_layout = this.layout_of(dword_ty)?;
-                let usize_layout = this.layout_of(usize_ty)?;
+                let word_layout = this.machine.layouts.u16;
+                let dword_layout = this.machine.layouts.u32;
+                let usize_layout = this.machine.layouts.usize;
 
                 // Using `mplace_field` is error-prone, see: https://github.com/rust-lang/miri/issues/2136.
                 // Pointer fields have different sizes on different targets.
-                // To avoid all these issue we calculate the offsets dynamically.
+                // To avoid all these issue we calculate the offsets ourselves.
                 let field_sizes = [
                     word_layout.size,  // 0,  wProcessorArchitecture      : WORD
                     word_layout.size,  // 1,  wReserved                   : WORD
