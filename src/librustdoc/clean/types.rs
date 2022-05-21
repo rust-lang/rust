@@ -880,7 +880,7 @@ impl AttributesExt for [ast::Attribute] {
             let mut doc_cfg = self
                 .iter()
                 .filter(|attr| attr.has_name(sym::doc))
-                .flat_map(|attr| attr.meta_item_list().unwrap_or_else(Vec::new))
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
                 .filter(|attr| attr.has_name(sym::cfg))
                 .peekable();
             if doc_cfg.peek().is_some() && doc_cfg_active {
@@ -1011,7 +1011,7 @@ pub(crate) enum DocFragmentKind {
 fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     let s = frag.doc.as_str();
     let mut iter = s.lines();
-    if s == "" {
+    if s.is_empty() {
         out.push('\n');
         return;
     }
@@ -1594,17 +1594,17 @@ impl Type {
         match (self, other) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(&b, cache))
+                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_same(b, cache))
             }
-            (Type::Slice(a), Type::Slice(b)) => a.is_same(&b, cache),
-            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(&b, cache),
+            (Type::Slice(a), Type::Slice(b)) => a.is_same(b, cache),
+            (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(b, cache),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_same(&b_type_, cache)
+                mutability == b_mutability && type_.is_same(b_type_, cache)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_same(&b_type_, cache),
+            ) => mutability == b_mutability && type_.is_same(b_type_, cache),
             // Placeholders and generics are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             (Type::Generic(_), _) | (_, Type::Generic(_)) => true,
@@ -1667,7 +1667,7 @@ impl Type {
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
         if let QPath { self_type, trait_, assoc, .. } = self {
-            Some((&self_type, trait_.def_id(), *assoc.clone()))
+            Some((self_type, trait_.def_id(), *assoc.clone()))
         } else {
             None
         }

@@ -840,7 +840,7 @@ fn render_stability_since_raw(
     let mut stability = String::new();
 
     if let Some(ver) = stable_version {
-        stability.push_str(&ver.as_str());
+        stability.push_str(ver.as_str());
         title.push_str(&format!("Stable since Rust version {}", ver));
     }
 
@@ -2299,7 +2299,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
                 buf,
                 "foreign-impls",
                 "Implementations on Foreign Types",
-                res.iter().map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name))),
+                res.iter().map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(name))),
             );
         }
     }
@@ -2798,7 +2798,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
             hi - lo
         };
 
-        let mut locs = call_locations.into_iter().collect::<Vec<_>>();
+        let mut locs = call_locations.iter().collect::<Vec<_>>();
         locs.sort_by_key(sort_criterion);
         locs
     };
@@ -2842,7 +2842,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         if it.peek().is_some() {
             write!(w, r#"<div class="example-links">Additional examples can be found in:<br><ul>"#);
             it.for_each(|(_, call_data)| {
-                let (url, _) = link_to_loc(&call_data, &call_data.locations[0]);
+                let (url, _) = link_to_loc(call_data, &call_data.locations[0]);
                 write!(
                     w,
                     r#"<li><a href="{url}">{name}</a></li>"#,

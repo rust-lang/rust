@@ -643,11 +643,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     /// both for visual consistency between 'rustdoc' runs, and to
     /// make writing tests much easier
     #[inline]
-    fn sort_where_predicates(&self, mut predicates: &mut Vec<WherePredicate>) {
+    fn sort_where_predicates(&self, predicates: &mut Vec<WherePredicate>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
-        self.unstable_debug_sort(&mut predicates);
+        self.unstable_debug_sort(predicates);
     }
 
     /// Ensure that the bounds are in a consistent order. The precise
@@ -656,11 +656,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     /// both for visual consistency between 'rustdoc' runs, and to
     /// make writing tests much easier
     #[inline]
-    fn sort_where_bounds(&self, mut bounds: &mut Vec<GenericBound>) {
+    fn sort_where_bounds(&self, bounds: &mut Vec<GenericBound>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
-        self.unstable_debug_sort(&mut bounds);
+        self.unstable_debug_sort(bounds);
     }
 
     /// This might look horrendously hacky, but it's actually not that bad.

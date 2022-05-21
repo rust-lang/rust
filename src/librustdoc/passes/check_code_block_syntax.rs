@@ -160,7 +160,7 @@ impl<'a, 'tcx> DocVisitor for SyntaxChecker<'a, 'tcx> {
                 sp,
             );
             for code_block in markdown::rust_code_blocks(dox, &extra) {
-                self.check_rust_syntax(&item, dox, code_block);
+                self.check_rust_syntax(item, dox, code_block);
             }
         }
 

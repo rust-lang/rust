@@ -171,7 +171,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
         if state != Start && needs_space {
             printer.space();
         }
-        print_tt(printer, &tt);
+        print_tt(printer, tt);
         state = next_state;
     }
 }

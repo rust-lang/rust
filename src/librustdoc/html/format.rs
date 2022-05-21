@@ -545,10 +545,10 @@ pub(crate) enum HrefError {
 // Panics if `syms` is empty.
 pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
-    s.push_str(&syms[0].as_str());
+    s.push_str(syms[0].as_str());
     for sym in &syms[1..] {
         s.push_str("::");
-        s.push_str(&sym.as_str());
+        s.push_str(sym.as_str());
     }
     s
 }
@@ -1069,7 +1069,7 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ref ty) = self.kind.as_blanket_ty() {
+            if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
@@ -1311,8 +1311,7 @@ impl clean::Visibility {
                     // is the same as no visibility modifier
                     String::new()
                 } else if parent_module
-                    .map(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    .flatten()
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
                     == Some(vis_did)
                 {
                     "pub(super) ".to_owned()
@@ -1358,9 +1357,7 @@ impl clean::Visibility {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
                     String::new()
-                } else if parent_module
-                    .map(|parent| find_nearest_parent_module(tcx, parent))
-                    .flatten()
+                } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
                     == Some(vis_did)
                 {
                     "pub(super) ".to_owned()

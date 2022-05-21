@@ -37,7 +37,7 @@ pub(crate) fn build_index<'tcx>(
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_function_type_for_search(item, tcx, &cache),
+                search_type: get_function_type_for_search(item, tcx, cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
