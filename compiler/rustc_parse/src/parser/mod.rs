@@ -1245,8 +1245,8 @@ impl<'a> Parser<'a> {
         res
     }
 
-    /// Parses `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `pub(self)` for `pub(in self)`
-    /// and `pub(super)` for `pub(in super)`.
+    /// Parses `pub` and `pub(in path)` plus shortcuts `pub(crate)` for `pub(in crate)`, `pub(self)`
+    /// for `pub(in self)` and `pub(super)` for `pub(in super)`.
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses aren't valid,
     /// so emit a proper diagnostic.
@@ -1271,19 +1271,7 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.is_keyword_ahead(1, &[kw::Crate]) && self.look_ahead(2, |t| t != &token::ModSep)
-            // account for `pub(crate::foo)`
-            {
-                // Parse `pub(crate)`.
-                self.bump(); // `(`
-                self.bump(); // `crate`
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: VisibilityKind::Crate,
-                    tokens: None,
-                });
-            } else if self.is_keyword_ahead(1, &[kw::In]) {
+            if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
                 self.bump(); // `in`
@@ -1296,11 +1284,11 @@ impl<'a> Parser<'a> {
                     tokens: None,
                 });
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-                && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
+                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
             {
-                // Parse `pub(self)` or `pub(super)`.
+                // Parse `pub(crate)`, `pub(self)`, or `pub(super)`.
                 self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 return Ok(Visibility {
