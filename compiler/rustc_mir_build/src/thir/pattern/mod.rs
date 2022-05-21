@@ -19,8 +19,9 @@ use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
+use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
@@ -227,7 +228,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 for end in &[lo, hi] {
                     if let Some((_, Some(ascription))) = end {
                         let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
-                        kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
+                        kind =
+                            PatKind::AscribeUserType { ascription: ascription.clone(), subpattern };
                     }
                 }
 
@@ -432,13 +434,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
+            let annotation = CanonicalUserTypeAnnotation {
+                user_ty,
+                span,
+                inferred_ty: self.typeck_results.node_type(hir_id),
+            };
             kind = PatKind::AscribeUserType {
                 subpattern: Pat { span, ty, kind: Box::new(kind) },
-                ascription: Ascription {
-                    user_ty: PatTyProj::from_user_type(user_ty),
-                    user_ty_span: span,
-                    variance: ty::Variance::Covariant,
-                },
+                ascription: Ascription { annotation, variance: ty::Variance::Covariant },
             };
         }
 
@@ -499,18 +502,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
 
                 let user_provided_types = self.typeck_results().user_provided_types();
-                if let Some(u_ty) = user_provided_types.get(id) {
-                    let user_ty = PatTyProj::from_user_type(*u_ty);
+                if let Some(&user_ty) = user_provided_types.get(id) {
+                    let annotation = CanonicalUserTypeAnnotation {
+                        user_ty,
+                        span,
+                        inferred_ty: self.typeck_results().node_type(id),
+                    };
                     Pat {
                         span,
                         kind: Box::new(PatKind::AscribeUserType {
                             subpattern: pattern,
                             ascription: Ascription {
+                                annotation,
                                 /// Note that use `Contravariant` here. See the
                                 /// `variance` field documentation for details.
                                 variance: ty::Variance::Contravariant,
-                                user_ty,
-                                user_ty_span: span,
                             },
                         }),
                         ty: const_.ty(),
@@ -645,7 +651,7 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
     }
 }
 
-macro_rules! CloneImpls {
+macro_rules! ClonePatternFoldableImpls {
     (<$lt_tcx:tt> $($ty:ty),+) => {
         $(
             impl<$lt_tcx> PatternFoldable<$lt_tcx> for $ty {
@@ -657,11 +663,11 @@ macro_rules! CloneImpls {
     }
 }
 
-CloneImpls! { <'tcx>
+ClonePatternFoldableImpls! { <'tcx>
     Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
-    UserTypeProjection, PatTyProj<'tcx>
+    UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPat<'tcx> {
@@ -694,14 +700,10 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
             PatKind::Wild => PatKind::Wild,
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: Ascription { variance, ref user_ty, user_ty_span },
+                ascription: Ascription { ref annotation, variance },
             } => PatKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
-                ascription: Ascription {
-                    user_ty: user_ty.fold_with(folder),
-                    variance,
-                    user_ty_span,
-                },
+                ascription: Ascription { annotation: annotation.fold_with(folder), variance },
             },
             PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, is_primary } => {
                 PatKind::Binding {

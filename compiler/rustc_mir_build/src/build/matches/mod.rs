@@ -523,8 +523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         ..
                     },
-                ascription:
-                    thir::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
+                ascription: thir::Ascription { annotation, variance: _ },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -535,18 +534,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause_let = FakeReadCause::ForLet(None);
                 self.cfg.push_fake_read(block, pattern_source_info, cause_let, place);
 
-                let ty_source_info = self.source_info(user_ty_span);
-                let user_ty = pat_ascription_ty.user_ty(
-                    &mut self.canonical_user_type_annotations,
-                    place.ty(&self.local_decls, self.tcx).ty,
-                    ty_source_info.span,
-                );
+                let ty_source_info = self.source_info(annotation.span);
+
+                let base = self.canonical_user_type_annotations.push(annotation);
                 self.cfg.push(
                     block,
                     Statement {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
-                            Box::new((place, user_ty)),
+                            Box::new((place, UserTypeProjection { base, projs: Vec::new() })),
                             // We always use invariant as the variance here. This is because the
                             // variance field from the ascription refers to the variance to use
                             // when applying the type to the value being matched, but this
@@ -789,7 +785,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::Ascription { ref user_ty, user_ty_span, variance: _ },
+                ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
                 // This corresponds to something like
                 //
@@ -799,16 +795,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
-                let annotation = CanonicalUserTypeAnnotation {
-                    span: user_ty_span,
-                    user_ty: user_ty.user_ty,
-                    inferred_ty: subpattern.ty,
-                };
+
                 let projection = UserTypeProjection {
-                    base: self.canonical_user_type_annotations.push(annotation),
+                    base: self.canonical_user_type_annotations.push(annotation.clone()),
                     projs: Vec::new(),
                 };
-                let subpattern_user_ty = pattern_user_ty.push_projection(&projection, user_ty_span);
+                let subpattern_user_ty =
+                    pattern_user_ty.push_projection(&projection, annotation.span);
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
@@ -932,9 +925,8 @@ struct Binding<'tcx> {
 /// influence region inference.
 #[derive(Clone, Debug)]
 struct Ascription<'tcx> {
-    span: Span,
     source: Place<'tcx>,
-    user_ty: PatTyProj<'tcx>,
+    annotation: CanonicalUserTypeAnnotation<'tcx>,
     variance: ty::Variance,
 }
 
@@ -1863,7 +1855,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             parent_bindings
                 .iter()
                 .flat_map(|(_, ascriptions)| ascriptions)
-                .chain(&candidate.ascriptions),
+                .cloned()
+                .chain(candidate.ascriptions),
         );
 
         // rust-lang/rust#27282: The `autoref` business deserves some
@@ -2067,32 +2060,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Append `AscribeUserType` statements onto the end of `block`
     /// for each ascription
-    fn ascribe_types<'b>(
+    fn ascribe_types(
         &mut self,
         block: BasicBlock,
-        ascriptions: impl IntoIterator<Item = &'b Ascription<'tcx>>,
-    ) where
-        'tcx: 'b,
-    {
+        ascriptions: impl IntoIterator<Item = Ascription<'tcx>>,
+    ) {
         for ascription in ascriptions {
-            let source_info = self.source_info(ascription.span);
+            let source_info = self.source_info(ascription.annotation.span);
 
-            debug!(
-                "adding user ascription at span {:?} of place {:?} and {:?}",
-                source_info.span, ascription.source, ascription.user_ty,
-            );
-
-            let user_ty = ascription.user_ty.user_ty(
-                &mut self.canonical_user_type_annotations,
-                ascription.source.ty(&self.local_decls, self.tcx).ty,
-                source_info.span,
-            );
+            let base = self.canonical_user_type_annotations.push(ascription.annotation);
             self.cfg.push(
                 block,
                 Statement {
                     source_info,
                     kind: StatementKind::AscribeUserType(
-                        Box::new((ascription.source, user_ty)),
+                        Box::new((
+                            ascription.source,
+                            UserTypeProjection { base, projs: Vec::new() },
+                        )),
                         ascription.variance,
                     ),
                 },

@@ -152,15 +152,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::Ascription { variance, user_ty, user_ty_span },
+                ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 if let Ok(place_resolved) =
                     match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
                 {
                     candidate.ascriptions.push(Ascription {
-                        span: user_ty_span,
-                        user_ty,
+                        annotation: annotation.clone(),
                         source: place_resolved.into_place(self.tcx, self.typeck_results),
                         variance,
                     });
