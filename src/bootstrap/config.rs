@@ -50,7 +50,6 @@ pub struct Config {
     pub ninja_in_file: bool,
     pub verbose: usize,
     pub submodules: Option<bool>,
-    pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs_minification: bool,
     pub docs: bool,
@@ -517,7 +516,6 @@ define_config! {
         compiler_docs: Option<bool> = "compiler-docs",
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
-        fast_submodules: Option<bool> = "fast-submodules",
         gdb: Option<String> = "gdb",
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm",
@@ -705,7 +703,6 @@ impl Config {
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = None;
-        config.fast_submodules = true;
         config.docs = true;
         config.docs_minification = true;
         config.rust_rpath = true;
@@ -847,7 +844,6 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
-        set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);

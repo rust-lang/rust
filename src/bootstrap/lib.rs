@@ -556,27 +556,24 @@ impl Build {
         }
 
         // check_submodule
-        if self.config.fast_submodules {
-            let checked_out_hash = output(
-                Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path),
-            );
-            // update_submodules
-            let recorded = output(
-                Command::new("git")
-                    .args(&["ls-tree", "HEAD"])
-                    .arg(relative_path)
-                    .current_dir(&self.config.src),
-            );
-            let actual_hash = recorded
-                .split_whitespace()
-                .nth(2)
-                .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+        let checked_out_hash =
+            output(Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path));
+        // update_submodules
+        let recorded = output(
+            Command::new("git")
+                .args(&["ls-tree", "HEAD"])
+                .arg(relative_path)
+                .current_dir(&self.config.src),
+        );
+        let actual_hash = recorded
+            .split_whitespace()
+            .nth(2)
+            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
-            // update_submodule
-            if actual_hash == checked_out_hash.trim_end() {
-                // already checked out
-                return;
-            }
+        // update_submodule
+        if actual_hash == checked_out_hash.trim_end() {
+            // already checked out
+            return;
         }
 
         println!("Updating submodule {}", relative_path.display());
