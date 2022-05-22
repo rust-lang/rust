@@ -3796,6 +3796,7 @@ cosnt _: &str$0 = ""; }
 
 //- /libstd.rs crate:std
 /// Docs for prim_str
+/// [`foo`](../std/keyword.foo.html)
 mod prim_str {}
 "#,
         expect![[r#"
@@ -3808,6 +3809,7 @@ mod prim_str {}
                 ---
 
                 Docs for prim_str
+                [`foo`](https://doc.rust-lang.org/nightly/std/keyword.foo.html)
             "#]],
     );
 }

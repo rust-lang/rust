@@ -10,7 +10,7 @@ use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions
 use stdx::format_to;
 use url::Url;
 
-use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasAttrs};
+use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
@@ -293,8 +293,7 @@ fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<
 fn get_doc_link(db: &RootDatabase, def: Definition) -> Option<String> {
     let (target, file, frag) = filename_and_frag_for_def(db, def)?;
 
-    let krate = target.krate(db)?;
-    let mut url = get_doc_base_url(db, krate)?;
+    let mut url = get_doc_base_url(db, target)?;
 
     if let Some(path) = mod_path_of_def(db, target) {
         url = url.join(&path).ok()?;
@@ -315,8 +314,7 @@ fn rewrite_intra_doc_link(
     let (link, ns) = parse_intra_doc_link(target);
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let krate = resolved.krate(db)?;
-    let mut url = get_doc_base_url(db, krate)?;
+    let mut url = get_doc_base_url(db, resolved)?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
@@ -335,8 +333,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
         return None;
     }
 
-    let krate = def.krate(db)?;
-    let mut url = get_doc_base_url(db, krate)?;
+    let mut url = get_doc_base_url(db, def)?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
     if let Some(path) = mod_path_of_def(db, def) {
@@ -401,13 +398,20 @@ fn map_links<'e>(
     })
 }
 
-/// Get the root URL for the documentation of a crate.
+/// Get the root URL for the documentation of a definition.
 ///
 /// ```ignore
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-fn get_doc_base_url(db: &RootDatabase, krate: Crate) -> Option<Url> {
+fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
+    // special case base url of `BuiltinType` to core
+    // https://github.com/rust-lang/rust-analyzer/issues/12250
+    if let Definition::BuiltinType(..) = def {
+        return Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
+    };
+
+    let krate = def.krate(db)?;
     let display_name = krate.display_name(db)?;
 
     let base = match db.crate_graph()[krate.into()].origin {
