@@ -424,10 +424,25 @@ pub fn check_ast_node<'a>(
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
-    if !sess.opts.debugging_opts.no_interleave_lints {
+    if sess.opts.debugging_opts.no_interleave_lints {
+        for (i, pass) in passes.iter_mut().enumerate() {
+            buffered =
+                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
+                    early_lint_node(
+                        sess,
+                        !pre_expansion && i == 0,
+                        lint_store,
+                        registered_tools,
+                        buffered,
+                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
+                        check_node,
+                    )
+                });
+        }
+    } else {
         buffered = early_lint_node(
             sess,
-            pre_expansion,
+            !pre_expansion,
             lint_store,
             registered_tools,
             buffered,
@@ -445,21 +460,6 @@ pub fn check_ast_node<'a>(
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 check_node,
             );
-        }
-    } else {
-        for (i, pass) in passes.iter_mut().enumerate() {
-            buffered =
-                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
-                    early_lint_node(
-                        sess,
-                        pre_expansion && i == 0,
-                        lint_store,
-                        registered_tools,
-                        buffered,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        check_node,
-                    )
-                });
         }
     }
 

@@ -18,14 +18,6 @@ warning: lint name `test_group` is deprecated and may not have an effect in the 
 LL | #[allow(test_group)]
    |         ^^^^^^^^^^ help: change it to: `clippy::test_group`
 
-warning: unknown lint: `this_lint_does_not_exist`
-  --> $DIR/lint-tool-test.rs:36:8
-   |
-LL | #[deny(this_lint_does_not_exist)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unknown_lints)]` on by default
-
 warning: lint name `test_lint` is deprecated and may not have an effect in the future.
   --> $DIR/lint-tool-test.rs:9:23
    |
@@ -43,6 +35,14 @@ warning: lint name `test_group` is deprecated and may not have an effect in the 
    |
 LL | #[allow(test_group)]
    |         ^^^^^^^^^^ help: change it to: `clippy::test_group`
+
+warning: unknown lint: `this_lint_does_not_exist`
+  --> $DIR/lint-tool-test.rs:36:8
+   |
+LL | #[deny(this_lint_does_not_exist)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-tool-test.rs:6:1
