@@ -64,23 +64,26 @@ fn add_variant_to_accumulator(
     name_ref: &ast::NameRef,
 ) -> Option<()> {
     let adt_ast = adt.source(ctx.db())?.original_ast_node(ctx.db())?.value;
+    let enum_indent = IndentLevel::from_node(&adt_ast.syntax());
 
-    let enum_indent_level = IndentLevel::from_node(&adt_ast.syntax());
-
-    let offset = adt_ast.variant_list()?.syntax().text_range().end() - TextSize::of('}');
-
-    let prefix = if adt_ast.variant_list()?.variants().next().is_none() {
-        format!("\n{}", IndentLevel(1))
-    } else {
-        format!("{}", IndentLevel(1))
-    };
-    let text = format!("{}{},\n{}", prefix, name_ref, enum_indent_level);
+    let variant_list = adt_ast.variant_list()?;
+    let offset = variant_list.syntax().text_range().end() - TextSize::of('}');
+    let empty_enum = variant_list.variants().next().is_none();
 
     acc.add(
         AssistId("generate_enum_variant", AssistKind::Generate),
         "Generate variant",
         target,
-        |builder| builder.insert(offset, text),
+        |builder| {
+            let text = format!(
+                "{maybe_newline}{indent_1}{name},\n{enum_indent}",
+                maybe_newline = if empty_enum { "\n" } else { "" },
+                indent_1 = IndentLevel(1),
+                name = name_ref,
+                enum_indent = enum_indent
+            );
+            builder.insert(offset, text)
+        },
     )
 }
 
