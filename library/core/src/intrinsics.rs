@@ -1141,7 +1141,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
+    #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
 
