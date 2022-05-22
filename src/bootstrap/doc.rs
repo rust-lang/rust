@@ -881,6 +881,10 @@ impl Step for RustcBook {
         if self.validate {
             cmd.arg("--validate");
         }
+        if !builder.unstable_features() {
+            // We need to validate nightly features, even on the stable channel.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+        }
         // If the lib directories are in an unusual location (changed in
         // config.toml), then this needs to explicitly update the dylib search
         // path.

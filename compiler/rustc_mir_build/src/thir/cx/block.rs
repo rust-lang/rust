@@ -75,6 +75,7 @@ impl<'tcx> Cx<'tcx> {
                         };
 
                         let mut pattern = self.pattern_from_hir(local.pat);
+                        debug!(?pattern);
 
                         if let Some(ty) = &local.ty {
                             if let Some(&user_ty) =

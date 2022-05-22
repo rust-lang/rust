@@ -1192,7 +1192,6 @@ def bootstrap(help_triggered):
     env = os.environ.copy()
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
-    env["RUSTC_BOOTSTRAP"] = '1'
     if build.rustc_commit is not None:
         env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)
