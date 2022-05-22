@@ -1,5 +1,5 @@
 error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/trait-object-nested-in-impl-trait.rs:30:31
+  --> $DIR/trait-object-nested-in-impl-trait.rs:35:31
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
    |             ----- this data with an anonymous lifetime `'_`...
@@ -10,7 +10,7 @@ LL |             remaining: self.0.iter(),
    |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/trait-object-nested-in-impl-trait.rs:27:23
+  --> $DIR/trait-object-nested-in-impl-trait.rs:31:23
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> {
    |                                                        ++++
 
 error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/trait-object-nested-in-impl-trait.rs:41:31
+  --> $DIR/trait-object-nested-in-impl-trait.rs:48:31
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
    |             ----- this data with an anonymous lifetime `'_`...
@@ -35,7 +35,7 @@ LL |             remaining: self.0.iter(),
    |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/trait-object-nested-in-impl-trait.rs:38:23
+  --> $DIR/trait-object-nested-in-impl-trait.rs:44:23
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> + '_ {
    |                                                        ++++
 
 error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/trait-object-nested-in-impl-trait.rs:52:31
+  --> $DIR/trait-object-nested-in-impl-trait.rs:61:31
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
    |                 -------- this data with lifetime `'a`...
@@ -56,7 +56,7 @@ LL |             remaining: self.0.iter(),
    |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/trait-object-nested-in-impl-trait.rs:49:30
+  --> $DIR/trait-object-nested-in-impl-trait.rs:57:30
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo + 'a>> + 'a {
    |                                                               ++++
 
 error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/trait-object-nested-in-impl-trait.rs:63:31
+  --> $DIR/trait-object-nested-in-impl-trait.rs:74:31
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
    |                 -------- this data with lifetime `'a`...
@@ -77,7 +77,7 @@ LL |             remaining: self.0.iter(),
    |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/trait-object-nested-in-impl-trait.rs:60:30
+  --> $DIR/trait-object-nested-in-impl-trait.rs:70:30
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

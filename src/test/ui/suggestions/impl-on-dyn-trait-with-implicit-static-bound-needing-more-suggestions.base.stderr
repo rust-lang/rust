@@ -1,23 +1,23 @@
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:21:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:25:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:47:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:113:9
    |
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:70:13
    |
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
    |                        -------------------------------------- this data with lifetime `'a`...
@@ -25,7 +25,7 @@ LL |         val.use_self()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:60:30
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:64:30
    |
 LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement

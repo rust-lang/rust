@@ -1,5 +1,5 @@
 error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:20:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:25:13
    |
 LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
    |                           ---------------------- this data with lifetime `'a`...
@@ -7,7 +7,7 @@ LL |         val.use_self::<T>()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:14:32
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:19:32
    |
 LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> {
    |                                ^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
@@ -19,7 +19,7 @@ LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> + '_ {
    |                                               ++++
 
 error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:69:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:74:13
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |                        ------------------- this data with lifetime `'a`...
@@ -27,7 +27,7 @@ LL |         val.use_self()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here because of an implicit lifetime bound on the inherent `impl`
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:64:14
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:69:14
    |
 LL |     impl dyn ObjectTrait {
    |              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
@@ -39,7 +39,7 @@ LL |     impl dyn ObjectTrait + '_ {
    |                          ++++
 
 error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:88:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:93:13
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
    |                        ------------------- this data with lifetime `'a`...
@@ -47,7 +47,7 @@ LL |         val.use_self()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:85:26
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:90:26
    |
 LL |         fn use_self(&self) -> &() { panic!() }
    |            -------- calling this method introduces the `impl`'s 'static` requirement
@@ -64,7 +64,7 @@ LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |                                                                    ++++
 
 error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:27
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:113:27
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |                        ------------------- this data with lifetime `'a`...
@@ -72,12 +72,12 @@ LL |         MyTrait::use_self(val)
    |                           ^^^ ...is used here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:113:9
    |
 LL |         MyTrait::use_self(val)
    |         ^^^^^^^^^^^^^^^^^
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:104:26
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:109:26
    |
 LL |         fn use_self(&self) -> &() { panic!() }
    |            -------- calling this method introduces the `impl`'s 'static` requirement
@@ -90,7 +90,7 @@ LL |     impl MyTrait for dyn ObjectTrait + '_ {}
    |                                      ++++
 
 error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:37:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:42:13
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
    |                        ------------------- this data with lifetime `'a`...
@@ -98,7 +98,7 @@ LL |         val.use_self()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:31:26
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:36:26
    |
 LL |     impl MyTrait for dyn ObjectTrait {
    |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
@@ -110,7 +110,7 @@ LL |     impl MyTrait for dyn ObjectTrait + '_ {
    |                                      ++++
 
 error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:54:13
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:59:13
    |
 LL |     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
    |                        ----------------------------- this data with lifetime `'a`...
@@ -118,7 +118,7 @@ LL |         val.use_self()
    |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:48:30
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:53:30
    |
 LL |     impl MyTrait for Box<dyn ObjectTrait> {
    |                              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement

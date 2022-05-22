@@ -1,9 +1,9 @@
-// FIXME(nll): On NLL stabilization, this should be replaced by
-// `impl-on-dyn-trait-with-implicit-static-bound-nll.rs`. Compiletest has
+// FIXME(nll): On NLL stabilization, this should replace
+// `impl-on-dyn-trait-with-implicit-static-bound.rs`. Compiletest has
 // problems with rustfix and revisions.
 // ignore-compare-mode-nll
+// compile-flags: -Zborrowck=mir
 
-// run-rustfix
 #![allow(dead_code)]
 
 mod foo {
@@ -16,13 +16,13 @@ mod foo {
     }
     trait Irrelevant {}
 
-    impl<T> MyTrait<T> for dyn ObjectTrait<T> + '_ {
+    impl<T> MyTrait<T> for dyn ObjectTrait<T> {
         fn use_self<K>(&self) -> &() { panic!() }
     }
     impl<T> Irrelevant for dyn ObjectTrait<T> {}
 
     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
-        val.use_self::<T>() //~ ERROR E0759
+        val.use_self::<T>() //~ ERROR borrowed data escapes
     }
 }
 
@@ -33,13 +33,13 @@ mod bar {
     }
     trait Irrelevant {}
 
-    impl MyTrait for dyn ObjectTrait + '_ {
+    impl MyTrait for dyn ObjectTrait {
         fn use_self(&self) -> &() { panic!() }
     }
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
     }
 }
 
@@ -50,13 +50,13 @@ mod baz {
     }
     trait Irrelevant {}
 
-    impl MyTrait for Box<dyn ObjectTrait + '_> {
+    impl MyTrait for Box<dyn ObjectTrait> {
         fn use_self(&self) -> &() { panic!() }
     }
     impl Irrelevant for Box<dyn ObjectTrait> {}
 
     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
     }
 }
 
@@ -66,12 +66,13 @@ mod bat {
 
     trait ObjectTrait {}
 
-    impl dyn ObjectTrait + '_ {
+    impl dyn ObjectTrait {
         fn use_self(&self) -> &() { panic!() }
     }
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
+        //~^ ERROR borrowed data escapes
     }
 }
 
@@ -87,10 +88,10 @@ mod ban {
         fn use_self(&self) -> &() { panic!() }
     }
 
-    impl MyTrait for dyn ObjectTrait + '_ {}
+    impl MyTrait for dyn ObjectTrait {}
 
-    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        val.use_self() //~ ERROR E0759
+    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
+        val.use_self() //~ ERROR borrowed data escapes
     }
 }
 
@@ -106,11 +107,11 @@ mod bal {
         fn use_self(&self) -> &() { panic!() }
     }
 
-    impl MyTrait for dyn ObjectTrait + '_ {}
+    impl MyTrait for dyn ObjectTrait {}
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        MyTrait::use_self(val) //~ ERROR E0759
+        MyTrait::use_self(val) //~ ERROR borrowed data escapes
     }
 }
 
