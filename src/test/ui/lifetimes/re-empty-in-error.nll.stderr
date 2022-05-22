@@ -1,5 +1,5 @@
 error: higher-ranked lifetime error
-  --> $DIR/re-empty-in-error.rs:8:5
+  --> $DIR/re-empty-in-error.rs:12:5
    |
 LL |     foo(&10);
    |     ^^^^^^^^

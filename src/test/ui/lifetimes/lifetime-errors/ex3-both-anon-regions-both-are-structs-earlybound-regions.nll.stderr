@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ex3-both-anon-regions-both-are-structs-earlybound-regions.rs:9:5
+  --> $DIR/ex3-both-anon-regions-both-are-structs-earlybound-regions.rs:13:5
    |
 LL | fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>)
    |        --  -- lifetime `'b` defined here
