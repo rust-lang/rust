@@ -786,8 +786,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn mark_immutable(&mut self, mplace: &MemPlace<Tag>) {
         let this = self.eval_context_mut();
         // This got just allocated, so there definitely is a pointer here.
-        this.alloc_mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
-            .unwrap();
+        let provenance = mplace.ptr.into_pointer_or_addr().unwrap().provenance;
+        this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
     }
 
     fn item_link_name(&self, def_id: DefId) -> Symbol {

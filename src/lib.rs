@@ -78,9 +78,10 @@ pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
 pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
+pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, Tag,
-    NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, ConcreteTag, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt,
+    MiriMemoryKind, Tag, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;

@@ -30,7 +30,7 @@ use rustc_middle::{
 };
 use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
 
-use miri::BacktraceStyle;
+use miri::{BacktraceStyle, ProvenanceMode};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -384,9 +384,13 @@ fn main() {
                     miri_config.tag_raw = true;
                 }
                 "-Zmiri-strict-provenance" => {
-                    miri_config.strict_provenance = true;
+                    miri_config.provenance_mode = ProvenanceMode::Strict;
                     miri_config.tag_raw = true;
                     miri_config.check_number_validity = true;
+                }
+                "-Zmiri-permissive-provenance" => {
+                    miri_config.provenance_mode = ProvenanceMode::Permissive;
+                    miri_config.tag_raw = true;
                 }
                 "-Zmiri-mute-stdout-stderr" => {
                     miri_config.mute_stdout_stderr = true;

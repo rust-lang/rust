@@ -867,7 +867,16 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.reborrow(&place, size, kind, new_tag, protect)?;
 
         // Adjust pointer.
-        let new_place = place.map_provenance(|p| p.map(|t| Tag { sb: new_tag, ..t }));
+        let new_place = place.map_provenance(|p| {
+            p.map(|t| {
+                // TODO: Fix this eventually
+                if let Tag::Concrete(t) = t {
+                    Tag::Concrete(ConcreteTag { sb: new_tag, ..t })
+                } else {
+                    t
+                }
+            })
+        });
 
         // Return new pointer.
         Ok(ImmTy::from_immediate(new_place.to_ref(this), val.layout))
