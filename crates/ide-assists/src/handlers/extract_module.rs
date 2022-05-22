@@ -180,7 +180,6 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             }
 
             for import_path_text_range in import_paths_to_be_removed {
-                println!("Deleting : {:?}", import_path_text_range);
                 builder.delete(import_path_text_range);
             }
 
@@ -565,12 +564,23 @@ impl Module {
         } else if exists_inside_sel && !exists_outside_sel {
             //Changes to be made inside new module, and remove import from outside
 
-            if let Some((use_tree_str, text_range_opt)) =
+            if let Some((mut use_tree_str, text_range_opt)) =
                 self.process_use_stmt_for_import_resolve(use_stmt_opt, node_syntax)
             {
                 if let Some(text_range) = text_range_opt {
                     import_path_to_be_removed = Some(text_range);
                 }
+
+                if source_exists_outside_sel_in_same_mod {
+                    let first_path_in_use_tree = use_tree_str[use_tree_str.len() - 1].to_string();
+                    if !first_path_in_use_tree.contains("super")
+                        && !first_path_in_use_tree.contains("crate")
+                    {
+                        let super_path = make::ext::ident_path("super");
+                        use_tree_str.push(super_path);
+                    }
+                }
+
                 use_tree_str_opt = Some(use_tree_str);
             } else if source_exists_outside_sel_in_same_mod {
                 self.make_use_stmt_of_node_with_super(node_syntax);
@@ -580,9 +590,14 @@ impl Module {
         if let Some(use_tree_str) = use_tree_str_opt {
             let mut use_tree_str = use_tree_str;
             use_tree_str.reverse();
-            if use_tree_str[0].to_string().contains("super") {
-                let super_path = make::ext::ident_path("super");
-                use_tree_str.insert(0, super_path)
+
+            if !(!exists_outside_sel && exists_inside_sel && source_exists_outside_sel_in_same_mod)
+            {
+                let first_path_in_use_tree = use_tree_str[0].to_string();
+                if first_path_in_use_tree.contains("super") {
+                    let super_path = make::ext::ident_path("super");
+                    use_tree_str.insert(0, super_path)
+                }
             }
 
             let use_ =
