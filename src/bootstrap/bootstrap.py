@@ -518,6 +518,8 @@ class RustBuild(object):
         rustc_channel = self.stage0_compiler.version
         bin_root = self.bin_root()
 
+        tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
+
         key = self.stage0_compiler.date
         if self.rustc().startswith(bin_root) and \
                 (not os.path.exists(self.rustc()) or
@@ -601,22 +603,6 @@ class RustBuild(object):
 
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
-
-    def _download_component_helper(
-        self, filename, pattern, tarball_suffix, rustc_cache,
-    ):
-        key = self.stage0_compiler.date
-
-        tarball = os.path.join(rustc_cache, filename)
-        if not os.path.exists(tarball):
-            get(
-                self.download_url,
-                "dist/{}/{}".format(key, filename),
-                tarball,
-                self.checksums_sha256,
-                verbose=self.verbose,
-            )
-        unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
@@ -740,6 +726,27 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
+    def rustfmt_stamp(self):
+        """Return the path for .rustfmt-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
+        True
+        """
+        return os.path.join(self.bin_root(), '.rustfmt-stamp')
+
+    def clippy_stamp(self):
+        """Return the path for .clippy-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.clippy_stamp() == os.path.join("build", "stage0", ".clippy-stamp")
+        True
+        """
+        return os.path.join(self.bin_root(), '.clippy-stamp')
+
+
     def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
@@ -809,6 +816,10 @@ class RustBuild(object):
     def rustc(self):
         """Return config path for rustc"""
         return self.program_config('rustc')
+
+    def clippy(self):
+        """Return config path for clippy"""
+        return self.program_config('cargo-clippy')
 
     def program_config(self, program):
         """Return config path for the given program at the given stage

@@ -37,14 +37,25 @@ fn main() {
         Err(_) => 0,
     };
 
+    if verbose > 1 {
+        eprintln!("target: {target:?}");
+        eprintln!("version: {version:?}");
+    }
+
     // Use a different compiler for build scripts, since there may not yet be a
     // libstd for the real compiler to use. However, if Cargo is attempting to
     // determine the version of the compiler, the real compiler needs to be
     // used. Currently, these two states are differentiated based on whether
     // --target and -vV is/isn't passed.
     let (rustc, libdir) = if target.is_none() && version.is_none() {
+        if verbose > 1 {
+            eprintln!("Using snapshot complier");
+        }
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
+        if verbose > 1 {
+            eprintln!("Using real complier");
+        }
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
     let stage = env::var("RUSTC_STAGE").unwrap_or_else(|_| {
@@ -74,6 +85,10 @@ fn main() {
             {
                 cmd.arg("-Ztime-passes");
             }
+        }
+
+        if crate_name == "build_script_build" {
+            eprintln!("building build scripts using sysroot {:?}", sysroot);
         }
     }
 
@@ -145,6 +160,15 @@ fn main() {
         }
         cmd.arg("-Zunstable-options");
         cmd.arg("--check-cfg=values(bootstrap)");
+    }
+
+    if let Ok(command) = env::var("RUSTC_COMMAND") {
+        if command == "clippy" && target.is_none() {
+            let libdir_string = libdir.to_string_lossy();
+            let (sysroot, _) = libdir_string.rsplit_once('/').unwrap();
+            eprintln!("passing clippy --sysroot {}", sysroot);
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
     }
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
@@ -220,6 +244,7 @@ fn main() {
             env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
+        eprintln!("{} SYSROOT: {:?}", prefix, env::var("SYSROOT"));
         eprintln!("{} sysroot: {:?}", prefix, sysroot);
         eprintln!("{} libdir: {:?}", prefix, libdir);
     }
