@@ -2,7 +2,10 @@
 
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask, ToBitMaskArray};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
+
+#[cfg(feature = "generic_const_exprs")]
+use crate::simd::ToBitMaskArray;
 
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
@@ -139,6 +142,7 @@ where
         unsafe { Mask(intrinsics::simd_cast(self.0)) }
     }
 
+    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new array and does not mutate the original value"]
     pub fn to_bitmask_array<const N: usize>(self) -> [u8; N]
@@ -171,6 +175,7 @@ where
         }
     }
 
+    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_bitmask_array<const N: usize>(mut bitmask: [u8; N]) -> Self

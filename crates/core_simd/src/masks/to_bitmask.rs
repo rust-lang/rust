@@ -38,6 +38,7 @@ pub unsafe trait ToBitMask: Sealed {
 /// # Safety
 /// This trait is `unsafe` and sealed, since the `BYTES` value must match the number of lanes in
 /// the mask.
+#[cfg(feature = "generic_const_exprs")]
 pub unsafe trait ToBitMaskArray: Sealed {
     /// The length of the bitmask array.
     const BYTES: usize;
@@ -78,10 +79,12 @@ impl_integer_intrinsic! {
 }
 
 /// Returns the minimum numnber of bytes in a bitmask with `lanes` lanes.
+#[cfg(feature = "generic_const_exprs")]
 pub const fn bitmask_len(lanes: usize) -> usize {
     (lanes + 7) / 8
 }
 
+#[cfg(feature = "generic_const_exprs")]
 unsafe impl<T: MaskElement, const LANES: usize> ToBitMaskArray for Mask<T, LANES>
 where
     LaneCount<LANES>: SupportedLaneCount,
