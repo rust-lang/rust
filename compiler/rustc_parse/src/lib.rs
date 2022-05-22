@@ -12,20 +12,16 @@
 extern crate tracing;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
-use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
-use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::Attribute;
 use rustc_ast::{AttrItem, MetaItem};
-use rustc_ast::{HasAttrs, HasSpan, HasTokens};
-use rustc_ast_pretty::pprust::{self, AstPrettyPrint};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
-use std::fmt;
 use std::path::Path;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
@@ -240,111 +236,10 @@ pub fn parse_in<'a, T>(
     Ok(result)
 }
 
-// NOTE(Centril): The following probably shouldn't be here but it acknowledges the
-// fact that architecturally, we are using parsing (read on below to understand why).
-
-pub fn to_token_stream(
-    node: &(impl HasAttrs + HasSpan + HasTokens + AstPrettyPrint + fmt::Debug),
-    sess: &ParseSess,
-    synthesize_tokens: CanSynthesizeMissingTokens,
-) -> TokenStream {
-    if let Some(tokens) = prepend_attrs(&node.attrs(), node.tokens()) {
-        return tokens;
-    } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
-        return fake_token_stream(sess, node);
-    } else {
-        panic!("Missing tokens for nt {:?} at {:?}: {:?}", node, node.span(), node.pretty_print());
-    }
-}
-
-pub fn nt_to_tokenstream(
-    nt: &Nonterminal,
-    sess: &ParseSess,
-    synthesize_tokens: CanSynthesizeMissingTokens,
-) -> TokenStream {
-    // A `Nonterminal` is often a parsed AST item. At this point we now
-    // need to convert the parsed AST to an actual token stream, e.g.
-    // un-parse it basically.
-    //
-    // Unfortunately there's not really a great way to do that in a
-    // guaranteed lossless fashion right now. The fallback here is to just
-    // stringify the AST node and reparse it, but this loses all span
-    // information.
-    //
-    // As a result, some AST nodes are annotated with the token stream they
-    // came from. Here we attempt to extract these lossless token streams
-    // before we fall back to the stringification.
-
-    let convert_tokens =
-        |tokens: Option<&LazyTokenStream>| Some(tokens?.create_token_stream().to_tokenstream());
-
-    let tokens = match *nt {
-        Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
-        Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
-        Nonterminal::NtStmt(ref stmt) if let ast::StmtKind::Empty = stmt.kind => {
-            let tokens = AttrAnnotatedTokenStream::new(vec![(
-                tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
-                    TokenKind::Semi,
-                    stmt.span,
-                )),
-                Spacing::Alone,
-            )]);
-            prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))
-        }
-        Nonterminal::NtStmt(ref stmt) => prepend_attrs(&stmt.attrs(), stmt.tokens()),
-        Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
-        Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
-        Nonterminal::NtIdent(ident, is_raw) => {
-            Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
-        }
-        Nonterminal::NtLifetime(ident) => {
-            Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
-        }
-        Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.as_ref()),
-        Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
-        Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
-        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
-            prepend_attrs(&expr.attrs, expr.tokens.as_ref())
-        }
-    };
-
-    if let Some(tokens) = tokens {
-        return tokens;
-    } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
-        return nt_fake_token_stream(sess, nt);
-    } else {
-        panic!(
-            "Missing tokens for nt {:?} at {:?}: {:?}",
-            nt,
-            nt.span(),
-            pprust::nonterminal_to_string(nt)
-        );
-    }
-}
-
-fn prepend_attrs(attrs: &[Attribute], tokens: Option<&LazyTokenStream>) -> Option<TokenStream> {
-    let tokens = tokens?;
-    if attrs.is_empty() {
-        return Some(tokens.create_token_stream().to_tokenstream());
-    }
-    let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
-    let wrapped = AttrAnnotatedTokenStream::new(vec![(
-        AttrAnnotatedTokenTree::Attributes(attr_data),
-        Spacing::Alone,
-    )]);
-    Some(wrapped.to_tokenstream())
-}
-
-pub fn fake_token_stream(sess: &ParseSess, node: &(impl AstPrettyPrint + HasSpan)) -> TokenStream {
-    let source = node.pretty_print();
+pub fn fake_token_stream_for_item(sess: &ParseSess, item: &ast::Item) -> TokenStream {
+    let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, sess, Some(node.span()))
-}
-
-fn nt_fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
-    let source = pprust::nonterminal_to_string(nt);
-    let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, sess, Some(nt.span()))
+    parse_stream_from_source_str(filename, source, sess, Some(item.span))
 }
 
 pub fn fake_token_stream_for_crate(sess: &ParseSess, krate: &ast::Crate) -> TokenStream {

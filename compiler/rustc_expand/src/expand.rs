@@ -679,9 +679,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream(&self.cx.sess.parse_sess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.parse_sess,
+                                item_inner,
+                            )
                         }
-                        _ => item.to_tokens(&self.cx.sess.parse_sess),
+                        _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let MacArgs::Eq(..) = attr_item.args {
