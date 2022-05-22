@@ -454,13 +454,14 @@ class RustBuild(object):
         rustc_channel = self.stage0_compiler.version
         bin_root = self.bin_root()
 
+        tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+
         key = self.stage0_compiler.date
         if self.rustc().startswith(bin_root) and \
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp(), key)):
             if os.path.exists(bin_root):
                 shutil.rmtree(bin_root)
-            tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
@@ -481,6 +482,28 @@ class RustBuild(object):
                     self.fix_bin_or_dylib(os.path.join(lib_dir, lib))
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
+
+        clippy_path = self.clippy()
+        clippy_needs_download = not os.path.exists(clippy_path) \
+            or self.program_out_of_date(self.clippy_stamp(), key)
+        if clippy_path.startswith(bin_root) and clippy_needs_download:
+            # download Clippy
+            # the component name is clippy, but the bin containing folder name is clippy-preview
+            filename = self._format_component_filename(
+                "clippy",
+                rustc_channel,
+                self.build,
+                tarball_suffix
+            )
+            self._download_component_helper(filename, "clippy-preview", tarball_suffix)
+            self.fix_bin_or_dylib("{}/bin/clippy-driver".format(bin_root))
+            self.fix_bin_or_dylib("{}/bin/cargo-clippy".format(bin_root))
+
+            with output(self.clippy_stamp()) as clippy_stamp:
+                clippy_stamp.write(key)
+
+    def _format_component_filename(self, component_name, version, build, tarball_suffix):
+        return "{}-{}-{}{}".format(component_name, version, build, tarball_suffix)
 
     def _download_component_helper(
         self, filename, pattern, tarball_suffix,
@@ -610,6 +633,27 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
+    def rustfmt_stamp(self):
+        """Return the path for .rustfmt-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
+        True
+        """
+        return os.path.join(self.bin_root(), '.rustfmt-stamp')
+
+    def clippy_stamp(self):
+        """Return the path for .clippy-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.clippy_stamp() == os.path.join("build", "stage0", ".clippy-stamp")
+        True
+        """
+        return os.path.join(self.bin_root(), '.clippy-stamp')
+
+
     def program_out_of_date(self, stamp_path, key):
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
@@ -682,6 +726,10 @@ class RustBuild(object):
     def rustc(self):
         """Return config path for rustc"""
         return self.program_config('rustc')
+
+    def clippy(self):
+        """Return config path for clippy"""
+        return self.program_config('cargo-clippy')
 
     def program_config(self, program):
         """Return config path for the given program at the given stage

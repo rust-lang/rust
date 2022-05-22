@@ -81,6 +81,7 @@ pub struct Flags {
 }
 
 #[cfg_attr(test, derive(Clone))]
+#[derive(Debug)]
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,

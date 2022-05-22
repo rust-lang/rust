@@ -1310,7 +1310,12 @@ impl<'a> Builder<'a> {
         target: TargetSelection,
         cmd: &str,
     ) -> Cargo {
-        let mut cargo = Command::new(&self.initial_cargo);
+        let mut cargo = if cmd == "clippy" {
+            Command::new(self.initial_rustc.parent().unwrap().join("cargo-clippy"))
+        } else {
+            Command::new(&self.initial_cargo)
+        };
+
         let out_dir = self.stage_out(compiler, mode);
 
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
@@ -1391,6 +1396,22 @@ impl<'a> Builder<'a> {
             compiler.stage
         };
 
+        // We synthetically interpret a stage0 compiler used to build tools as a
+        // "raw" compiler in that it's the exact snapshot we download. Normally
+        // the stage0 build means it uses libraries build by the stage0
+        // compiler, but for tools we just use the precompiled libraries that
+        // we've downloaded
+        let use_snapshot = mode == Mode::ToolBootstrap;
+        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
+
+        let maybe_sysroot = self.sysroot(compiler);
+        let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
+        let libdir = self.rustc_libdir(compiler);
+
+        let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
+        self.verbose_than(0, &format!("using sysroot {sysroot_str}"));
+        self.verbose_than(1, &format!("running cargo with mode {mode:?}"));
+
         let mut rustflags = Rustflags::new(target);
         if stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
@@ -1408,35 +1429,12 @@ impl<'a> Builder<'a> {
                 // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
                 // so it has no way of knowing the sysroot.
                 rustflags.arg("--sysroot");
-                rustflags.arg(
-                    self.sysroot(compiler)
-                        .as_os_str()
-                        .to_str()
-                        .expect("sysroot must be valid UTF-8"),
-                );
+                rustflags.arg(sysroot_str);
                 // Only run clippy on a very limited subset of crates (in particular, not build scripts).
                 cargo.arg("-Zunstable-options");
-                // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
-                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
-                let output = host_version.and_then(|output| {
-                    if output.status.success() {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }).unwrap_or_else(|_| {
-                    eprintln!(
-                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
-                    );
-                    eprintln!("help: try `rustup component add clippy`");
-                    std::process::exit(1);
-                });
-                if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
-                    rustflags.arg("--cfg=bootstrap");
-                }
-            } else {
-                rustflags.arg("--cfg=bootstrap");
             }
+
+            rustflags.arg("--cfg=bootstrap");
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
@@ -1556,6 +1554,10 @@ impl<'a> Builder<'a> {
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
         }
 
+        if self.jobs() > 1 {
+            //panic!("TESTING: Run with one job only!");
+        }
+
         cargo.arg("-j").arg(self.jobs().to_string());
         // Remove make-related flags to ensure Cargo can correctly set things up
         cargo.env_remove("MAKEFLAGS");
@@ -1609,18 +1611,6 @@ impl<'a> Builder<'a> {
 
         let want_rustdoc = self.doc_tests != DocTests::No;
 
-        // We synthetically interpret a stage0 compiler used to build tools as a
-        // "raw" compiler in that it's the exact snapshot we download. Normally
-        // the stage0 build means it uses libraries build by the stage0
-        // compiler, but for tools we just use the precompiled libraries that
-        // we've downloaded
-        let use_snapshot = mode == Mode::ToolBootstrap;
-        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
-
-        let maybe_sysroot = self.sysroot(compiler);
-        let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
-        let libdir = self.rustc_libdir(compiler);
-
         // Clear the output directory if the real rustc we're using has changed;
         // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
         //
@@ -1643,6 +1633,10 @@ impl<'a> Builder<'a> {
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
+
+            // set for clippy to know the sysroot
+            .env("SYSROOT", &sysroot)
+
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
@@ -1656,11 +1650,8 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
-        // Clippy support is a hack and uses the default `cargo-clippy` in path.
-        // Don't override RUSTC so that the `cargo-clippy` in path will be run.
-        if cmd != "clippy" {
-            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
-        }
+
+        cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
 
         // Dealing with rpath here is a little special, so let's go into some
         // detail. First off, `-rpath` is a linker option on Unix platforms

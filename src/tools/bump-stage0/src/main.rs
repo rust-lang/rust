@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 
 const PATH: &str = "src/stage0.json";
-const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];
+const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo", "clippy-preview"];
 const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview"];
 
 struct Tool {

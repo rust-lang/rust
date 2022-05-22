@@ -359,7 +359,6 @@ dependencies = [
  "libgit2-sys",
  "log",
  "memchr",
- "num_cpus",
  "opener",
  "openssl",
  "os_info",
@@ -471,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.1.4"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -5556,8 +5555,6 @@ dependencies = [
  "pretty_assertions 1.2.1",
  "regex",
  "rustc_version",
- "serde",
- "serde_json",
 ]
 
 [[package]]
