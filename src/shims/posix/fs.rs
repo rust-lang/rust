@@ -31,16 +31,19 @@ trait FileDescriptor: std::fmt::Debug {
         communicate_allowed: bool,
         bytes: &mut [u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
+
     fn write<'tcx>(
         &self,
         communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
+
     fn seek<'tcx>(
         &mut self,
         communicate_allowed: bool,
         offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>>;
+
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
