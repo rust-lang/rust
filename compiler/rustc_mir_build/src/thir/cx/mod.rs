@@ -16,7 +16,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::mir::ConstantKind;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub(crate) fn thir_body<'tcx>(
@@ -51,6 +51,7 @@ struct Cx<'tcx> {
 
     pub(crate) region_scope_tree: &'tcx region::ScopeTree,
     pub(crate) typeck_results: &'tcx ty::TypeckResults<'tcx>,
+    pub(crate) rvalue_scopes: &'tcx RvalueScopes,
 
     /// When applying adjustments to the expression
     /// with the given `HirId`, use the given `Span`,
@@ -71,8 +72,9 @@ impl<'tcx> Cx<'tcx> {
             tcx,
             thir: Thir::new(),
             param_env: tcx.param_env(def.did),
-            region_scope_tree: tcx.region_scope_tree(def.did),
+            region_scope_tree: &typeck_results.region_scope_tree,
             typeck_results,
+            rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.did.to_def_id(),
             adjustment_span: None,
         }

@@ -33,7 +33,6 @@ macro_rules! arena_types {
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             // Required for the incremental on-disk cache
             [] mir_keys: rustc_hir::def_id::DefIdSet,
-            [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             [] dropck_outlives:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx,

@@ -1370,7 +1370,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 pub struct BodyId {
     pub hir_id: HirId,
 }

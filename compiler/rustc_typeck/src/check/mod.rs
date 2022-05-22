@@ -85,7 +85,9 @@ pub mod method;
 mod op;
 mod pat;
 mod place_op;
+mod region;
 mod regionck;
+pub mod rvalue_scopes;
 mod upvar;
 mod wfcheck;
 pub mod writeback;
@@ -473,6 +475,9 @@ fn typeck_with_fallback<'tcx>(
         // because they don't constrain other type variables.
         fcx.closure_analyze(body);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
+        // Before the generator analysis, temporary scopes shall be marked to provide more
+        // precise information on types to be captured.
+        fcx.resolve_rvalue_scopes(def_id.to_def_id());
         fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {

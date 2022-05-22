@@ -6,7 +6,6 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
-use crate::middle::region;
 use crate::middle::resolve_lifetime::{
     LifetimeScopeForPath, ObjectLifetimeDefault, Region, ResolveLifetimes,
 };
