@@ -2108,7 +2108,7 @@ pub fn id() -> u32 {
 
 /// A trait for implementing arbitrary return types in the `main` function.
 ///
-/// The C-main function only supports to return integers as return type.
+/// The C-main function only supports returning integers.
 /// So, every type implementing the `Termination` trait has to be converted
 /// to an integer.
 ///
