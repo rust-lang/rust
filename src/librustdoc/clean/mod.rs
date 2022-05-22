@@ -1205,7 +1205,7 @@ impl Clean<Item> for ty::AssocItem {
                                             || generics
                                                 .params
                                                 .iter()
-                                                .zip(&args[..])
+                                                .zip(args.iter())
                                                 .any(|(param, arg)| !param_eq_arg(param, arg))
                                         {
                                             return false;
