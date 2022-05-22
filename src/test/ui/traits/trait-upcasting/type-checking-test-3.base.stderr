@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-checking-test-3.rs:13:13
+  --> $DIR/type-checking-test-3.rs:16:13
    |
 LL |     let _ = x as &dyn Bar<'a>; // Error
    |             ^ lifetime mismatch
@@ -7,14 +7,14 @@ LL |     let _ = x as &dyn Bar<'a>; // Error
    = note: expected trait object `dyn Bar<'a>`
               found trait object `dyn Bar<'static>`
 note: the lifetime `'a` as defined here...
-  --> $DIR/type-checking-test-3.rs:12:16
+  --> $DIR/type-checking-test-3.rs:15:16
    |
 LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
    |                ^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/type-checking-test-3.rs:18:13
+  --> $DIR/type-checking-test-3.rs:22:13
    |
 LL |     let _ = x as &dyn Bar<'static>; // Error
    |             ^ lifetime mismatch
@@ -22,7 +22,7 @@ LL |     let _ = x as &dyn Bar<'static>; // Error
    = note: expected trait object `dyn Bar<'static>`
               found trait object `dyn Bar<'a>`
 note: the lifetime `'a` as defined here...
-  --> $DIR/type-checking-test-3.rs:17:16
+  --> $DIR/type-checking-test-3.rs:21:16
    |
 LL | fn test_wrong2<'a>(x: &dyn Foo<'a>) {
    |                ^^
