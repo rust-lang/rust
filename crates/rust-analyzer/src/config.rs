@@ -1070,6 +1070,10 @@ impl Config {
         }
     }
 
+    pub fn snippet_cap(&self) -> bool {
+        self.experimental("snippetTextEdit")
+    }
+
     pub fn assist(&self) -> AssistConfig {
         AssistConfig {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),

@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 44e8238e4fbd4128
+lsp_ext.rs hash: 2a188defec26cc7c
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -47,7 +47,7 @@ If a language client does not know about `rust-analyzer`'s configuration options
 
 **Experimental Client Capability:** `{ "snippetTextEdit": boolean }`
 
-If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests might contain `SnippetTextEdit`s instead of usual `TextEdit`s:
+If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests and `TextEdit`s returned from `textDocument/onTypeFormatting` requests might contain `SnippetTextEdit`s instead of usual `TextEdit`s:
 
 ```typescript
 interface SnippetTextEdit extends TextEdit {
@@ -63,7 +63,7 @@ export interface TextDocumentEdit {
 }
 ```
 
-When applying such code action, the editor should insert snippet, with tab stops and placeholder.
+When applying such code action or text edit, the editor should insert snippet, with tab stops and placeholder.
 At the moment, rust-analyzer guarantees that only a single edit will have `InsertTextFormat.Snippet`.
 
 ### Example
