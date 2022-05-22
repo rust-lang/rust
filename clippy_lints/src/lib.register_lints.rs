@@ -10,6 +10,8 @@ store.register_lints(&[
     #[cfg(feature = "internal")]
     utils::internal_lints::COMPILER_LINT_FUNCTIONS,
     #[cfg(feature = "internal")]
+    utils::internal_lints::DEFAULT_DEPRECATION_REASON,
+    #[cfg(feature = "internal")]
     utils::internal_lints::DEFAULT_LINT,
     #[cfg(feature = "internal")]
     utils::internal_lints::IF_CHAIN_STYLE,
