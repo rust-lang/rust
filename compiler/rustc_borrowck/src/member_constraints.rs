@@ -1,3 +1,4 @@
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::MemberConstraint;
@@ -140,11 +141,13 @@ where
     }
 }
 
-impl<R> MemberConstraintSet<'_, R>
+impl<'tcx, R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    pub(crate) fn all_indices(&self) -> impl Iterator<Item = NllMemberConstraintIndex> + '_ {
+    pub(crate) fn all_indices(
+        &self,
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
         self.constraints.indices()
     }
 
@@ -154,7 +157,7 @@ where
     pub(crate) fn indices(
         &self,
         member_region_vid: R,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> + '_ {
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> + Captures<'tcx> + '_ {
         let mut next = self.first_constraints.get(&member_region_vid).cloned();
         std::iter::from_fn(move || -> Option<NllMemberConstraintIndex> {
             if let Some(current) = next {

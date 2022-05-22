@@ -304,8 +304,8 @@ impl Direction for Backward {
     }
 }
 
-struct BackwardSwitchIntEdgeEffectsApplier<'a, D, F> {
-    body: &'a mir::Body<'a>,
+struct BackwardSwitchIntEdgeEffectsApplier<'a, 'tcx, D, F> {
+    body: &'a mir::Body<'tcx>,
     pred: BasicBlock,
     exit_state: &'a mut D,
     bb: BasicBlock,
@@ -314,7 +314,7 @@ struct BackwardSwitchIntEdgeEffectsApplier<'a, D, F> {
     effects_applied: bool,
 }
 
-impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, D, F>
+impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, '_, D, F>
 where
     D: Clone,
     F: FnMut(BasicBlock, &D),
