@@ -2010,6 +2010,12 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 
+    /// Parse a block which takes no attributes and has no label
+    fn parse_simple_block(&mut self) -> PResult<'a, P<Expr>> {
+        let blk = self.parse_block()?;
+        Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
+    }
+
     /// Recover on an explicitly quantified closure expression, e.g., `for<'a> |x: &'a u8| *x + 1`.
     fn recover_quantified_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
@@ -2157,6 +2163,15 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let cond = self.parse_cond_expr()?;
 
+        self.parse_if_after_cond(attrs, lo, cond)
+    }
+
+    fn parse_if_after_cond(
+        &mut self,
+        attrs: AttrVec,
+        lo: Span,
+        cond: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
         let missing_then_block_binop_span = || {
             match cond.kind {
                 ExprKind::Binary(Spanned { span: binop_span, .. }, _, ref right)
@@ -2164,7 +2179,6 @@ impl<'a> Parser<'a> {
                 _ => None
             }
         };
-
         // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
         // verify that the last statement is either an implicit return (no `;`) or an explicit
         // return. This won't catch blocks with an explicit `return`, but that would be caught by
@@ -2256,15 +2270,53 @@ impl<'a> Parser<'a> {
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
-        let ctx_span = self.prev_token.span; // `else`
+        let else_span = self.prev_token.span; // `else`
         let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
         let expr = if self.eat_keyword(kw::If) {
             self.parse_if_expr(AttrVec::new())?
+        } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
+            self.parse_simple_block()?
         } else {
-            let blk = self.parse_block()?;
-            self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new())
+            let snapshot = self.create_snapshot_for_diagnostic();
+            let first_tok = super::token_descr(&self.token);
+            let first_tok_span = self.token.span;
+            match self.parse_expr() {
+                Ok(cond)
+                // If it's not a free-standing expression, and is followed by a block,
+                // then it's very likely the condition to an `else if`.
+                    if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
+                        && classify::expr_requires_semi_to_be_stmt(&cond) =>
+                {
+                    self.struct_span_err(first_tok_span, format!("expected `{{`, found {first_tok}"))
+                        .span_label(else_span, "expected an `if` or a block after this `else`")
+                        .span_suggestion(
+                            cond.span.shrink_to_lo(),
+                            "add an `if` if this is the condition to an chained `if` statement after the `else`",
+                            "if ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        ).multipart_suggestion(
+                            "... otherwise, place this expression inside of a block if it is not an `if` condition",
+                            vec![
+                                (cond.span.shrink_to_lo(), "{ ".to_string()),
+                                (cond.span.shrink_to_hi(), " }".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                    self.parse_if_after_cond(AttrVec::new(), cond.span.shrink_to_lo(), cond)?
+                }
+                Err(e) => {
+                    e.cancel();
+                    self.restore_snapshot(snapshot);
+                    self.parse_simple_block()?
+                },
+                Ok(_) => {
+                    self.restore_snapshot(snapshot);
+                    self.parse_simple_block()?
+                },
+            }
         };
-        self.error_on_if_block_attrs(ctx_span, true, expr.span, &attrs);
+        self.error_on_if_block_attrs(else_span, true, expr.span, &attrs);
         Ok(expr)
     }
 
