@@ -10,7 +10,7 @@ reorder_imports = false
 ```
 
 Each configuration option is either stable or unstable.
-Stable options can be used directly, while unstable options are opt-in.
+Stable options can always be used, while unstable ones are only available on a nightly toolchain, and opt-in.
 To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-features` to rustfmt.
 
 # Configuration Options
