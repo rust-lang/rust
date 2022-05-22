@@ -66,6 +66,7 @@ fn fail_index_check() {
 fn page_size() {
     let page_size = page_size::get();
 
+    // In particular, this checks that it is not 0.
     assert!(
         page_size.next_power_of_two() == page_size,
         "page size not a power of two: {}",
