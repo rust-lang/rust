@@ -192,12 +192,12 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
         statements.push(Statement {
             source_info: terminator.source_info,
-            kind: StatementKind::Assign(box (
+            kind: StatementKind::Assign(Box::new((
                 destination_place,
                 Rvalue::Use(Operand::Copy(
                     arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
                 )),
-            )),
+            ))),
         });
         terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
