@@ -37,7 +37,8 @@ pub fn target() -> Target {
             pre_link_args,
             exe_suffix: ".elf".into(),
             no_default_libraries: false,
-            has_thread_local: true,
+            // There are some issues in debug builds with this enabled in certain programs.
+            has_thread_local: false,
             ..Default::default()
         },
     }
