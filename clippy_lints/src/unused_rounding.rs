@@ -42,7 +42,7 @@ fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
             } else {
                 ""
             };
-            if f.fract() < f64::EPSILON {
+            if f.fract() == 0.0 {
                 Some((method_name, f_str))
             } else {
                 None
