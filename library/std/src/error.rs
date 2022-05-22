@@ -863,12 +863,12 @@ impl dyn Error + Send + Sync {
     }
 }
 
-/// An error reporter that print's an error and its sources.
+/// An error reporter that prints an error and its sources.
 ///
 /// Report also exposes configuration options for formatting the error chain, either entirely on a
 /// single line, or in multi-line format with each cause in the error chain on a new line.
 ///
-/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
+/// `Report` only requires that the wrapped error implement `Error`. It doesn't require that the
 /// wrapped error be `Send`, `Sync`, or `'static`.
 ///
 /// # Examples
@@ -972,7 +972,7 @@ impl dyn Error + Send + Sync {
 ///
 /// ## Return from `main`
 ///
-/// `Report` also implements `From` for all types that implement [`Error`], this when combined with
+/// `Report` also implements `From` for all types that implement [`Error`]; this when combined with
 /// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
 /// from `main`.
 ///
@@ -1020,7 +1020,7 @@ impl dyn Error + Send + Sync {
 /// ```
 ///
 /// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
-/// output format, if you want to make sure your `Report`s are pretty printed and include backtrace
+/// output format. If you want to make sure your `Report`s are pretty printed and include backtrace
 /// you will need to manually convert and enable those flags.
 ///
 /// ```should_panic
