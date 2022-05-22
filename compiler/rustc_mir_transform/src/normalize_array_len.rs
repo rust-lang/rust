@@ -125,7 +125,7 @@ impl<'tcx> Patcher<'_, 'tcx> {
                             let assign_to = Place::from(local);
                             let rvalue = Rvalue::Use(operand);
                             make_copy_statement.kind =
-                                StatementKind::Assign(box (assign_to, rvalue));
+                                StatementKind::Assign(Box::new((assign_to, rvalue)));
                             statements.push(make_copy_statement);
 
                             // to reorder we have to copy and make NOP
@@ -165,7 +165,8 @@ impl<'tcx> Patcher<'_, 'tcx> {
                     if add_deref {
                         place = self.tcx.mk_place_deref(place);
                     }
-                    len_statement.kind = StatementKind::Assign(box (*into, Rvalue::Len(place)));
+                    len_statement.kind =
+                        StatementKind::Assign(Box::new((*into, Rvalue::Len(place))));
                     statements.push(len_statement);
 
                     // make temporary dead
