@@ -475,6 +475,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
+                if suggestions.is_empty() {
+                    diag.help(&msg);
+                    continue;
+                }
                 diag.multipart_suggestion(&msg, suggestions, applicability);
             }
         }
