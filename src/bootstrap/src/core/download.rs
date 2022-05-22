@@ -378,6 +378,32 @@ enum DownloadSource {
 
 /// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
 impl Config {
+    pub(crate) fn download_clippy(&self) -> PathBuf {
+        self.verbose("downloading stage0 clippy artifacts");
+
+        let date = &self.stage0_metadata.compiler.date;
+        let version = &self.stage0_metadata.compiler.version;
+        let host = self.build;
+
+        let bin_root = self.out.join(host.triple).join("stage0");
+        let clippy_stamp = bin_root.join(".clippy-stamp");
+        let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
+        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, &date) {
+            return cargo_clippy;
+        }
+
+        let filename = format!("clippy-{version}-{host}.tar.xz");
+        self.download_component(DownloadSource::Dist, filename, "clippy-preview", date, "stage0");
+        if self.should_fix_bins_and_dylibs() {
+            self.fix_bin_or_dylib(&cargo_clippy);
+            self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
+        }
+
+        cargo_clippy
+    }
+
+    /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
+    /// reuse target directories or artifacts
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         let RustfmtMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");

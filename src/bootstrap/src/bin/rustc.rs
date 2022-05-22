@@ -47,7 +47,8 @@ fn main() {
     // determine the version of the compiler, the real compiler needs to be
     // used. Currently, these two states are differentiated based on whether
     // --target and -vV is/isn't passed.
-    let (rustc, libdir) = if target.is_none() && version.is_none() {
+    let is_build_script = target.is_none() && version.is_none();
+    let (rustc, libdir) = if is_build_script {
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
@@ -65,19 +66,24 @@ fn main() {
     // otherwise, substitute whatever cargo thinks rustc should be with RUSTC_REAL.
     // NOTE: this means we ignore RUSTC in the environment.
     // FIXME: We might want to consider removing RUSTC_REAL and setting RUSTC directly?
-    let target_name = target
-        .map(|s| s.to_owned())
-        .unwrap_or_else(|| env::var("CFG_COMPILER_HOST_TRIPLE").unwrap());
-    let is_clippy = args[0].to_string_lossy().ends_with(&exe("clippy-driver", &target_name));
+    // NOTE: we intentionally pass the name of the host, not the target.
+    let host = env::var("CFG_COMPILER_BUILD_TRIPLE").unwrap();
+    let is_clippy = args[0].to_string_lossy().ends_with(&exe("clippy-driver", &host));
     let rustc_driver = if is_clippy {
-        args.remove(0)
+        if is_build_script {
+            // Don't run clippy on build scripts (for one thing, we may not have libstd built with
+            // the appropriate version yet, e.g. for stage 1 std).
+            // Also remove the `clippy-driver` param in addition to the RUSTC param.
+            args.drain(..2);
+            rustc_real
+        } else {
+            args.remove(0)
+        }
     } else {
         // Cargo doesn't respect RUSTC_WRAPPER for version information >:(
         // don't remove the first arg if we're being run as RUSTC instead of RUSTC_WRAPPER.
         // Cargo also sometimes doesn't pass the `.exe` suffix on Windows - add it manually.
         let current_exe = env::current_exe().expect("couldn't get path to rustc shim");
-        // NOTE: we intentionally pass the name of the host, not the target.
-        let host = env::var("CFG_COMPILER_BUILD_TRIPLE").unwrap();
         let arg0 = exe(args[0].to_str().expect("only utf8 paths are supported"), &host);
         if Path::new(&arg0) == current_exe {
             args.remove(0);
