@@ -7,7 +7,6 @@
 #![feature(const_convert)]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_heap)]
-#![feature(const_intrinsic_copy)]
 #![feature(const_mut_refs)]
 #![feature(const_nonnull_slice_from_raw_parts)]
 #![feature(const_ptr_write)]
