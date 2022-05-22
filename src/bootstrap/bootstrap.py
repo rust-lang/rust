@@ -444,9 +444,8 @@ class RustBuild(object):
         self.verbose = False
         self.git_version = None
         self.nix_deps_dir = None
-        self.rustc_commit = None
 
-    def download_toolchain(self, rustc_channel=None):
+    def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
 
         This method will build a cache directory, then it will fetch the
@@ -456,8 +455,7 @@ class RustBuild(object):
         Each downloaded tarball is extracted, after that, the script
         will move all the content to the right place.
         """
-        if rustc_channel is None:
-            rustc_channel = self.stage0_compiler.version
+        rustc_channel = self.stage0_compiler.version
         bin_root = self.bin_root()
 
         key = self.stage0_compiler.date
@@ -627,51 +625,6 @@ class RustBuild(object):
         except subprocess.CalledProcessError as reason:
             print("warning: failed to call patchelf:", reason)
             return
-
-    # If `download-rustc` is set, download the most recent commit with CI artifacts
-    def maybe_download_ci_toolchain(self):
-        # If `download-rustc` is not set, default to rebuilding.
-        download_rustc = self.get_toml("download-rustc", section="rust")
-        if download_rustc is None or download_rustc == "false":
-            return None
-        assert download_rustc == "true" or download_rustc == "if-unchanged", download_rustc
-
-        # Handle running from a directory other than the top level
-        rev_parse = ["git", "rev-parse", "--show-toplevel"]
-        top_level = subprocess.check_output(rev_parse, universal_newlines=True).strip()
-        compiler = "{}/compiler/".format(top_level)
-        library = "{}/library/".format(top_level)
-
-        # Look for a version to compare to based on the current commit.
-        # Only commits merged by bors will have CI artifacts.
-        merge_base = [
-            "git", "rev-list", "--author=bors@rust-lang.org", "-n1",
-            "--first-parent", "HEAD"
-        ]
-        commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
-        if not commit:
-            print("error: could not find commit hash for downloading rustc")
-            print("help: maybe your repository history is too shallow?")
-            print("help: consider disabling `download-rustc`")
-            print("help: or fetch enough history to include one upstream commit")
-            exit(1)
-
-        # Warn if there were changes to the compiler or standard library since the ancestor commit.
-        status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
-        if status != 0:
-            if download_rustc == "if-unchanged":
-                if self.verbose:
-                    print("warning: saw changes to compiler/ or library/ since {}; " \
-                          "ignoring `download-rustc`".format(commit))
-                return None
-            print("warning: `download-rustc` is enabled, but there are changes to " \
-                  "compiler/ or library/")
-
-        if self.verbose:
-            print("using downloaded stage2 artifacts from CI (commit {})".format(commit))
-        self.rustc_commit = commit
-        # FIXME: support downloading artifacts from the beta channel
-        self.download_toolchain(False, "nightly")
 
     def rustc_stamp(self):
         """Return the path for .rustc-stamp at the given stage
@@ -1144,8 +1097,6 @@ def bootstrap(help_triggered):
 
     # Fetch/build the bootstrap
     build.download_toolchain()
-    # Download the master compiler if `download-rustc` is set
-    # build.maybe_download_ci_toolchain()
     sys.stdout.flush()
     build.ensure_vendored()
     build.build_bootstrap()
@@ -1157,8 +1108,6 @@ def bootstrap(help_triggered):
     env = os.environ.copy()
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
-    if build.rustc_commit is not None:
-        env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)
 
 
