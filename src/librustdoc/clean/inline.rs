@@ -218,7 +218,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     }
 }
 
-fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Function {
+fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
     let predicates = cx.tcx.predicates_of(did);
