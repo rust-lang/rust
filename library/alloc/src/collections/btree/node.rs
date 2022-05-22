@@ -626,16 +626,16 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
-    /// Adds a key-value pair to the end of the node, and returns
-    /// the mutable reference of the inserted value.
-    pub fn push(&mut self, key: K, val: V) -> &mut V {
+    /// Adds a key to the end of the node, and returns an exclusive reference
+    /// to the space for the corresponding value.
+    pub fn push(&mut self, key: K) -> &mut MaybeUninit<V> {
         let len = self.len_mut();
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
             self.key_area_mut(idx).write(key);
-            self.val_area_mut(idx).write(val)
+            self.val_area_mut(idx)
         }
     }
 }
@@ -845,39 +845,35 @@ fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Inserts a new key-value pair between the key-value pairs to the right and left of
-    /// this edge. This method assumes that there is enough space in the node for the new
-    /// pair to fit.
+    /// Inserts a new key between the keys to the left and right of this edge.
+    /// This method assumes that the node is not yet filled to capacity.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert_fit(&mut self, key: K, val: V) -> *mut V {
+    fn insert_fit(&mut self, key: K) -> &mut MaybeUninit<V> {
         debug_assert!(self.node.len() < CAPACITY);
         let new_len = self.node.len() + 1;
 
         unsafe {
-            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
             *self.node.len_mut() = new_len as u16;
-
-            self.node.val_area_mut(self.idx).assume_init_mut()
+            slice_insert(self.node.key_area_mut(..new_len), self.idx).write(key);
+            slice_insert(self.node.val_area_mut(..new_len), self.idx)
         }
     }
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Inserts a new key-value pair between the key-value pairs to the right and left of
-    /// this edge. This method splits the node if there isn't enough room.
+    /// Inserts a new key between the keys to the right and left of this edge.
+    /// This method splits the node if there isn't enough room.
     ///
-    /// The returned pointer points to the inserted value.
+    /// The returned pointer points to the space for the value paired with the key.
     fn insert<A: Allocator>(
         mut self,
         key: K,
-        val: V,
         alloc: &A,
-    ) -> (Option<SplitResult<'a, K, V, marker::Leaf>>, *mut V) {
+    ) -> (*mut MaybeUninit<V>, Option<SplitResult<'a, K, V, marker::Leaf>>) {
         if self.node.len() < CAPACITY {
-            let val_ptr = self.insert_fit(key, val);
-            (None, val_ptr)
+            let val_ptr = self.insert_fit(key);
+            (val_ptr, None)
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
@@ -890,8 +886,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                     Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
             };
-            let val_ptr = insertion_edge.insert_fit(key, val);
-            (Some(result), val_ptr)
+            let val_ptr = insertion_edge.insert_fit(key);
+            (val_ptr, Some(result))
         }
     }
 }
@@ -918,11 +914,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         let new_len = self.node.len() + 1;
 
         unsafe {
-            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
-            slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1, edge.node);
             *self.node.len_mut() = new_len as u16;
-
+            slice_insert(self.node.key_area_mut(..new_len), self.idx).write(key);
+            slice_insert(self.node.val_area_mut(..new_len), self.idx).write(val);
+            slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1).write(edge.node);
             self.node.correct_childrens_parent_links(self.idx + 1..new_len + 1);
         }
     }
@@ -961,31 +956,30 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Inserts a new key-value pair between the key-value pairs to the right and left of
-    /// this edge. This method splits the node if there isn't enough room, and tries to
+    /// Inserts a new key between the keys to the left and right of this edge.
+    /// This method splits the node if there isn't enough room, and tries to
     /// insert the split off portion into the parent node recursively, until the root is reached.
     ///
     /// If the returned result is some `SplitResult`, the `left` field will be the root node.
-    /// The returned pointer points to the inserted value, which in the case of `SplitResult`
-    /// is in the `left` or `right` tree.
+    /// The returned pointer points to the space for the value paired with the key,
+    /// which in the case of `SplitResult` is either in the `left` or `right` tree.
     pub fn insert_recursing<A: Allocator>(
         self,
         key: K,
-        value: V,
         alloc: &A,
-    ) -> (Option<SplitResult<'a, K, V, marker::LeafOrInternal>>, *mut V) {
-        let (mut split, val_ptr) = match self.insert(key, value, alloc) {
-            (None, val_ptr) => return (None, val_ptr),
-            (Some(split), val_ptr) => (split.forget_node_type(), val_ptr),
+    ) -> (*mut MaybeUninit<V>, Option<SplitResult<'a, K, V, marker::LeafOrInternal>>) {
+        let (val_ptr, mut split) = match self.insert(key, alloc) {
+            (val_ptr, None) => return (val_ptr, None),
+            (val_ptr, Some(split)) => (val_ptr, split.forget_node_type()),
         };
 
         loop {
             split = match split.left.ascend() {
                 Ok(parent) => match parent.insert(split.kv.0, split.kv.1, split.right, alloc) {
-                    None => return (None, val_ptr),
                     Some(split) => split.forget_node_type(),
+                    None => return (val_ptr, None),
                 },
-                Err(root) => return (Some(SplitResult { left: root, ..split }), val_ptr),
+                Err(root) => return (val_ptr, Some(SplitResult { left: root, ..split })),
             };
         }
     }
@@ -1680,19 +1674,18 @@ pub mod marker {
     pub enum Edge {}
 }
 
-/// Inserts a value into a slice of initialized elements followed by one uninitialized element.
+/// Shifts values in a slice, where all elements but the last are initialized,
+/// to make room for a new value, and returns that room.
 ///
 /// # Safety
 /// The slice has more than `idx` elements.
-unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
+unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> &mut MaybeUninit<T> {
     unsafe {
         let len = slice.len();
-        debug_assert!(len > idx);
-        let slice_ptr = slice.as_mut_ptr();
-        if len > idx + 1 {
-            ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
-        }
-        (*slice_ptr.add(idx)).write(val);
+        debug_assert!(idx < len);
+        let slice_ptr = slice.as_mut_ptr().add(idx);
+        ptr::copy(slice_ptr, slice_ptr.add(1), len - idx - 1);
+        &mut *slice_ptr
     }
 }
 
@@ -1705,9 +1698,9 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
     unsafe {
         let len = slice.len();
         debug_assert!(idx < len);
-        let slice_ptr = slice.as_mut_ptr();
-        let ret = (*slice_ptr.add(idx)).assume_init_read();
-        ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
+        let slice_ptr = slice.as_mut_ptr().add(idx);
+        let ret = (*slice_ptr).assume_init_read();
+        ptr::copy(slice_ptr.add(1), slice_ptr, len - idx - 1);
         ret
     }
 }

@@ -5,7 +5,7 @@ use core::mem;
 use crate::alloc::{Allocator, Global};
 
 use super::super::borrow::DormantMutRef;
-use super::super::node::{marker, Handle, NodeRef};
+use super::super::node::{marker, Handle, NodeRef, SplitResult};
 use super::BTreeMap;
 
 use Entry::*;
@@ -334,30 +334,30 @@ impl<'a, K: Ord, V, A: Allocator> VacantEntry<'a, K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
-        let out_ptr = match self.handle {
+        let val_ptr = match self.handle {
             None => {
                 // SAFETY: There is no tree yet so no reference to it exists.
                 let map = unsafe { self.dormant_map.awaken() };
                 let mut root = NodeRef::new_leaf(self.alloc);
-                let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
+                let val_ptr = root.borrow_mut().push(self.key) as *mut _;
                 map.root = Some(root.forget_type());
                 map.length = 1;
                 val_ptr
             }
-            Some(handle) => match handle.insert_recursing(self.key, value, self.alloc) {
-                (None, val_ptr) => {
+            Some(handle) => match handle.insert_recursing(self.key, self.alloc) {
+                (val_ptr, None) => {
                     // SAFETY: We have consumed self.handle.
                     let map = unsafe { self.dormant_map.awaken() };
                     map.length += 1;
                     val_ptr
                 }
-                (Some(ins), val_ptr) => {
-                    drop(ins.left);
+                (val_ptr, Some(SplitResult { left, kv, right })) => {
+                    drop(left);
                     // SAFETY: We have consumed self.handle and dropped the
-                    // remaining reference to the tree, ins.left.
+                    // remaining reference to the tree, `left`.
                     let map = unsafe { self.dormant_map.awaken() };
-                    let root = map.root.as_mut().unwrap(); // same as ins.left
-                    root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right);
+                    let root = map.root.as_mut().unwrap(); // same as `left`
+                    root.push_internal_level(self.alloc).push(kv.0, kv.1, right);
                     map.length += 1;
                     val_ptr
                 }
@@ -365,7 +365,7 @@ impl<'a, K: Ord, V, A: Allocator> VacantEntry<'a, K, V, A> {
         };
         // Now that we have finished growing the tree using borrowed references,
         // dereference the pointer to a part of it, that we picked up along the way.
-        unsafe { &mut *out_ptr }
+        unsafe { (*val_ptr).write(value) }
     }
 }
 

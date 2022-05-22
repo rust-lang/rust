@@ -216,7 +216,7 @@ impl<K: Clone, V: Clone, A: Clone + Allocator> Clone for BTreeMap<K, V, A> {
                             let (k, v) = kv.into_kv();
                             in_edge = kv.right_edge();
 
-                            out_node.push(k.clone(), v.clone());
+                            out_node.push(k.clone()).write(v.clone());
                             out_tree.length += 1;
                         }
                     }

@@ -44,7 +44,7 @@ impl<K, V> Root<K, V> {
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
             if cur_node.len() < node::CAPACITY {
-                cur_node.push(key, value);
+                cur_node.push(key).write(value);
             } else {
                 // No space left, go up and push there.
                 let mut open_node;
