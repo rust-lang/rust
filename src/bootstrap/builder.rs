@@ -1226,6 +1226,14 @@ impl<'a> Builder<'a> {
         // this), as well as #63012 which is the tracking issue for this
         // feature on the rustc side.
         cargo.arg("-Zbinary-dep-depinfo");
+        match mode {
+            Mode::ToolBootstrap => {
+                // Restrict the allowed features to those passed by rustbuild, so we don't depend on nightly accidentally.
+                // HACK: because anyhow does feature detection in build.rs, we need to allow the backtrace feature too.
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,backtrace");
+            }
+            Mode::Std | Mode::Rustc | Mode::ToolStd | Mode::Codegen | Mode::ToolRustc => {}
+        }
 
         cargo.arg("-j").arg(self.jobs().to_string());
         // Remove make-related flags to ensure Cargo can correctly set things up
