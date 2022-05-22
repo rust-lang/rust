@@ -3,6 +3,7 @@ use crate::rmeta::*;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
+use rustc_middle::ty::ParameterizedOverTcx;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
@@ -296,7 +297,7 @@ where
     }
 }
 
-impl<I: Idx, T> LazyTable<I, T>
+impl<I: Idx, T: ParameterizedOverTcx> LazyTable<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -306,9 +307,9 @@ where
         &self,
         metadata: M,
         i: I,
-    ) -> Option<T>
+    ) -> Option<T::Value<'tcx>>
     where
-        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+        Option<T::Value<'tcx>>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
         debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
@@ -322,7 +323,7 @@ where
     /// Size of the table in entries, including possible gaps.
     pub(super) fn size<const N: usize>(&self) -> usize
     where
-        Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+        for<'tcx> Option<T::Value<'tcx>>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
         self.encoded_size / N
     }

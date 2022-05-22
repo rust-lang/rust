@@ -21,7 +21,7 @@ use rustc_middle::thir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
-use rustc_middle::ty::{GeneratorDiagnosticData, TyCtxt};
+use rustc_middle::ty::{GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -83,6 +83,10 @@ struct LazyValue<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyValue<T> {
+    type Value<'tcx> = LazyValue<T::Value<'tcx>>;
+}
+
 impl<T> LazyValue<T> {
     fn from_position(position: NonZeroUsize) -> LazyValue<T> {
         LazyValue { position, _marker: PhantomData }
@@ -105,6 +109,10 @@ struct LazyArray<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
+impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
+    type Value<'tcx> = LazyArray<T::Value<'tcx>>;
+}
+
 impl<T> LazyArray<T> {
     fn from_position_and_num_elems(position: NonZeroUsize, num_elems: usize) -> LazyArray<T> {
         LazyArray { position, num_elems, _marker: PhantomData }
@@ -124,6 +132,10 @@ struct LazyTable<I, T> {
     position: NonZeroUsize,
     encoded_size: usize,
     _marker: PhantomData<fn(I) -> T>,
+}
+
+impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, T> {
+    type Value<'tcx> = LazyTable<I, T::Value<'tcx>>;
 }
 
 impl<I, T> LazyTable<I, T> {
@@ -199,7 +211,7 @@ pub(crate) struct ProcMacroData {
 /// a normal crate, much of what we serialized would be unusable in addition
 /// to being unused.
 #[derive(MetadataEncodable, MetadataDecodable)]
-pub(crate) struct CrateRoot<'tcx> {
+pub(crate) struct CrateRoot {
     name: Symbol,
     triple: TargetTriple,
     extra_filename: String,
@@ -226,16 +238,16 @@ pub(crate) struct CrateRoot<'tcx> {
     interpret_alloc_index: LazyArray<u32>,
     proc_macro_data: Option<ProcMacroData>,
 
-    tables: LazyTables<'tcx>,
+    tables: LazyTables,
     debugger_visualizers: LazyArray<rustc_span::DebuggerVisualizerFile>,
 
-    exported_symbols: LazyArray<(ExportedSymbol<'tcx>, SymbolExportInfo)>,
+    exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
     expn_hashes: ExpnHashTable,
 
-    def_path_hash_map: LazyValue<DefPathHashMapRef<'tcx>>,
+    def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
     source_map: LazyArray<rustc_span::SourceFile>,
 
@@ -301,17 +313,17 @@ pub(crate) struct IncoherentImpls {
 macro_rules! define_tables {
     ($($name:ident: Table<$IDX:ty, $T:ty>),+ $(,)?) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
-        pub(crate) struct LazyTables<'tcx> {
+        pub(crate) struct LazyTables {
             $($name: LazyTable<$IDX, $T>),+
         }
 
         #[derive(Default)]
-        struct TableBuilders<'tcx> {
+        struct TableBuilders {
             $($name: TableBuilder<$IDX, $T>),+
         }
 
-        impl<'tcx> TableBuilders<'tcx> {
-            fn encode(&self, buf: &mut Encoder) -> LazyTables<'tcx> {
+        impl TableBuilders {
+            fn encode(&self, buf: &mut Encoder) -> LazyTables {
                 LazyTables {
                     $($name: self.$name.encode(buf)),+
                 }
@@ -333,23 +345,23 @@ define_tables! {
     lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
     lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
-    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'tcx>, Span)>>,
-    explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'tcx>>>,
+    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Predicate<'tcx>, Span)>>,
-    super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'tcx>>>,
-    type_of: Table<DefIndex, LazyValue<Ty<'tcx>>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
-    fn_sig: Table<DefIndex, LazyValue<ty::PolyFnSig<'tcx>>>,
+    fn_sig: Table<DefIndex, LazyValue<ty::PolyFnSig<'static>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
-    impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'tcx>>>,
-    const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'tcx>>>,
-    optimized_mir: Table<DefIndex, LazyValue<mir::Body<'tcx>>>,
-    mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'tcx>>>,
-    promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
+    impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
+    const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,
+    optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
+    mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
+    promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     // FIXME(compiler-errors): Why isn't this a LazyArray?
-    thir_abstract_const: Table<DefIndex, LazyValue<&'tcx [thir::abstract_const::Node<'tcx>]>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<&'static [thir::abstract_const::Node<'static>]>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     impl_constness: Table<DefIndex, hir::Constness>,
@@ -376,7 +388,7 @@ define_tables! {
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
     def_path_hashes: Table<DefIndex, DefPathHash>,
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
-    generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'tcx>>>,
+    generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     may_have_doc_links: Table<DefIndex, ()>,
 }
 
@@ -476,4 +488,15 @@ const TAG_PARTIAL_SPAN: u8 = 2;
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);
     decoder::provide(providers);
+}
+
+trivially_parameterized_over_tcx! {
+    VariantData,
+    AssocFnData,
+    EntryKind,
+    RawDefId,
+    TraitImpls,
+    IncoherentImpls,
+    CrateRoot,
+    CrateDep,
 }

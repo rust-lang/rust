@@ -47,7 +47,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
 
-    tables: TableBuilders<'tcx>,
+    tables: TableBuilders,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -388,10 +388,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.emit_usize(distance)
     }
 
-    fn lazy<T: Encodable<EncodeContext<'a, 'tcx>>, B: Borrow<T>>(
-        &mut self,
-        value: B,
-    ) -> LazyValue<T> {
+    fn lazy<T: ParameterizedOverTcx, B: Borrow<T::Value<'tcx>>>(&mut self, value: B) -> LazyValue<T>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+    {
         let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -404,14 +404,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         LazyValue::from_position(pos)
     }
 
-    fn lazy_array<
-        T: Encodable<EncodeContext<'a, 'tcx>>,
-        I: IntoIterator<Item = B>,
-        B: Borrow<T>,
-    >(
+    fn lazy_array<T: ParameterizedOverTcx, I: IntoIterator<Item = B>, B: Borrow<T::Value<'tcx>>>(
         &mut self,
         values: I,
-    ) -> LazyArray<T> {
+    ) -> LazyArray<T>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+    {
         let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -456,7 +455,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'tcx>> {
+    fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'static>> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(
             self.tcx.resolutions(()).definitions.def_path_hash_to_def_index_map(),
         ))
@@ -535,7 +534,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(adapted.iter().map(|rc| &**rc))
     }
 
-    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot<'tcx>> {
+    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
         let tcx = self.tcx;
         let mut i = self.position();
 
@@ -1859,7 +1858,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-    ) -> LazyArray<(ExportedSymbol<'tcx>, SymbolExportInfo)> {
+    ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
         empty_proc_macro!(self);
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
