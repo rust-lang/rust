@@ -25,7 +25,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.62.0"]
     pub UNUSED_ROUNDING,
     nursery,
-    "Rounding a whole number literal, which is useless"
+    "Uselessly rounding a whole number floating-point literal"
 }
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
