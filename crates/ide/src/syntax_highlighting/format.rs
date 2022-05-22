@@ -45,5 +45,6 @@ fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HlTag> {
         FormatSpecifier::Integer | FormatSpecifier::Zero => HlTag::NumericLiteral,
 
         FormatSpecifier::Identifier => HlTag::Symbol(SymbolKind::Local),
+        FormatSpecifier::Escape => HlTag::EscapeSequence,
     })
 }
