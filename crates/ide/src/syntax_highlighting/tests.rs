@@ -421,6 +421,7 @@ macro_rules! toho {
 }
 
 fn main() {
+    println!("Hello {{Hello}}");
     // from https://doc.rust-lang.org/std/fmt/index.html
     println!("Hello");                 // => "Hello"
     println!("Hello, {}!", "world");   // => "Hello, world!"
@@ -456,8 +457,17 @@ fn main() {
     println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
     println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
     println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
+
+    let _ = "{}"
+    let _ = "{{}}";
+
     println!("Hello {{}}");
     println!("{{ Hello");
+    println!("Hello }}");
+    println!("{{Hello}}");
+    println!("{{ Hello }}");
+    println!("{{Hello }}");
+    println!("{{ Hello}}");
 
     println!(r"Hello, {}!", "world");
 

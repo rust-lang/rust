@@ -1,7 +1,7 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
 use syntax::{
     ast::{self, IsString},
-    AstNode, AstToken, TextRange,
+    AstNode, AstToken, TextRange, TextSize,
 };
 
 pub fn is_format_string(string: &ast::String) -> bool {
@@ -48,6 +48,7 @@ pub enum FormatSpecifier {
     Dot,
     Asterisk,
     QuestionMark,
+    Escape,
 }
 
 pub fn lex_format_specifiers(
@@ -66,7 +67,7 @@ pub fn lex_format_specifiers(
             // Format specifier, see syntax at https://doc.rust-lang.org/std/fmt/index.html#syntax
             if let Some((_, '{')) = chars.peek() {
                 // Escaped format specifier, `{{`
-                chars.next();
+                read_escaped_format_specifier(&mut chars, &mut callback);
                 continue;
             }
 
@@ -238,6 +239,11 @@ pub fn lex_format_specifiers(
                 skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
             }
             continue;
+        } else if let '}' = first_char {
+            if let Some((_, '}')) = chars.peek() {
+                // Escaped format specifier, `}}`
+                read_escaped_format_specifier(&mut chars, &mut callback);
+            }
         }
     }
 
@@ -287,5 +293,16 @@ pub fn lex_format_specifiers(
             }
         }
         callback(range, FormatSpecifier::Identifier);
+    }
+
+    fn read_escaped_format_specifier<I, F>(chars: &mut std::iter::Peekable<I>, callback: &mut F)
+    where
+        I: Iterator<Item = (TextRange, char)>,
+        F: FnMut(TextRange, FormatSpecifier),
+    {
+        let (range, _) = chars.peek().unwrap();
+        let offset = TextSize::from(1);
+        callback(TextRange::new(range.start() - offset, range.end()), FormatSpecifier::Escape);
+        chars.next();
     }
 }
