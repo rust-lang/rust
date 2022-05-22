@@ -71,6 +71,13 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 get_fn_target(ctx, &target_module, call.clone())?
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
+                if let hir::Adt::Enum(_) = adt {
+                    // Don't suggest generating function if the name starts with an uppercase letter
+                    if name_ref.text().starts_with(char::is_uppercase) {
+                        return None;
+                    }
+                }
+
                 let current_module = ctx.sema.scope(call.syntax())?.module();
                 let module = adt.module(ctx.sema.db);
                 target_module = if current_module == module { None } else { Some(module) };
@@ -1734,6 +1741,45 @@ fn main() {
 
 fn foo(value: usize) ${0:-> _} {
     todo!()
+}
+",
+        )
+    }
+
+    #[test]
+    fn not_applicable_for_enum_variant() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+enum Foo {}
+fn main() {
+    Foo::Bar$0(true)
+}
+",
+        );
+    }
+
+    #[test]
+    fn applicable_for_enum_method() {
+        check_assist(
+            generate_function,
+            r"
+enum Foo {}
+fn main() {
+    Foo::new$0();
+}
+",
+            r"
+enum Foo {}
+fn main() {
+    Foo::new();
+}
+impl Foo {
+
+
+fn new() ${0:-> _} {
+    todo!()
+}
 }
 ",
         )
