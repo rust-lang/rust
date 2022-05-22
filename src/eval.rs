@@ -171,7 +171,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Capture the current interpreter stack state (which should be empty) so that we can emit
     // allocation-tracking and tag-tracking diagnostics for allocations which are part of the
-    // runtime.
+    // early runtime setup.
     let info = ecx.preprocess_diagnostics();
 
     // Some parts of initialization require a full `InterpCx`.
