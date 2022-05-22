@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `&[]` not covered
-  --> $DIR/slice.rs:4:11
+  --> $DIR/slice-1.rs:4:11
    |
 LL |     match sl {
    |           ^^ pattern `&[]` not covered
