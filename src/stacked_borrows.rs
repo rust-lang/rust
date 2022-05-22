@@ -706,7 +706,26 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if size == Size::ZERO {
-            // Nothing to do for zero-sized accesses.
+            // Don't update any stacks for a zero-sized access; borrow stacks are per-byte and this
+            // touches no bytes so there is no stack to put this tag in.
+            // However, if the pointer for this operation points at a real allocation we still
+            // record where it was created so that we can issue a helpful diagnostic if there is an
+            // attempt to use it for a non-zero-sized access.
+            // Dangling slices are a common case here; it's valid to get their length but with raw
+            // pointer tagging for example all calls to get_unchecked on them are invalid.
+            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
+                let extra = this.get_alloc_extra(alloc_id)?;
+                let stacked_borrows =
+                    extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+                let mut alloc_history = stacked_borrows.history.borrow_mut();
+                alloc_history.log_creation(
+                    Some(orig_tag),
+                    new_tag,
+                    alloc_range(base_offset, Size::ZERO),
+                    &mut this.machine.current_span(),
+                );
+            }
+
             trace!(
                 "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
                 kind,
