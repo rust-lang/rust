@@ -72,14 +72,15 @@ LL | | }
 error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26
    |
-LL |     let cell = Cell::new(&a);
-   |                ----------^^-
-   |                |         |
-   |                |         borrowed value does not live long enough
-   |                argument requires that `a` is borrowed for `'static`
+LL |       let cell = Cell::new(&a);
+   |                            ^^ borrowed value does not live long enough
 ...
-LL | }
-   | - `a` dropped here while still borrowed
+LL | /     foo(cell, |cell_a, cell_x| {
+LL | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
+LL | |     })
+   | |______- argument requires that `a` is borrowed for `'static`
+LL |   }
+   |   - `a` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 
