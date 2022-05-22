@@ -938,7 +938,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 
     pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
-    crate closure_bounds_mapping:
+    pub(crate) closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>>,
 
     pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,

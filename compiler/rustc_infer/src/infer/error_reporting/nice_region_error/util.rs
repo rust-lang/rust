@@ -34,6 +34,7 @@ pub struct AnonymousParamInfo<'tcx> {
 // i32, which is the type of y but with the anonymous region replaced
 // with 'a, the corresponding bound region and is_first which is true if
 // the hir::Param is the first parameter in the function declaration.
+#[instrument(skip(tcx), level = "debug")]
 pub fn find_param_with_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     anon_region: Region<'tcx>,
@@ -51,9 +52,19 @@ pub fn find_param_with_region<'tcx>(
     let hir_id = hir.local_def_id_to_hir_id(id.as_local()?);
     let body_id = hir.maybe_body_owned_by(hir_id)?;
     let body = hir.body(body_id);
+
+    // Don't perform this on closures
+    match hir.get(hir_id) {
+        hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
+            return None;
+        }
+        _ => {}
+    }
+
     let owner_id = hir.body_owner(body_id);
     let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
     let poly_fn_sig = tcx.fn_sig(id);
+
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
     body.params
         .iter()
