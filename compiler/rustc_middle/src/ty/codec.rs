@@ -17,8 +17,8 @@ use crate::traits;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtDef, Ty};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_serialize::{Decodable, Encodable};
 use rustc_middle::ty::TyInterner;
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use std::hash::Hash;
@@ -165,25 +165,6 @@ impl<'tcx, E: TyEncoder<I = TyInterner<'tcx>>> Encodable<E> for AllocId {
     }
 }
 
-macro_rules! encodable_via_deref {
-    ($($t:ty),+) => {
-        $(impl<'tcx, E: TyEncoder<I = TyInterner<'tcx>>> Encodable<E> for $t {
-            fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                (**self).encode(e)
-            }
-        })*
-    }
-}
-
-encodable_via_deref! {
-    &'tcx ty::TypeckResults<'tcx>,
-    &'tcx traits::ImplSource<'tcx, ()>,
-    &'tcx mir::Body<'tcx>,
-    &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
-}
-
 #[inline]
 fn decode_arena_allocable<
     'tcx,
@@ -231,7 +212,9 @@ impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> Decodable<D> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> Decodable<D>
+    for ty::Binder<'tcx, ty::PredicateKind<'tcx>>
+{
     fn decode(decoder: &mut D) -> ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
         let bound_vars = Decodable::decode(decoder);
         // Handle shorthands first, if we have a usize > 0x80.
@@ -318,7 +301,10 @@ macro_rules! impl_decodable_via_ref {
 impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
-        decoder.interner().tcx.mk_type_list((0..len).map::<Ty<'tcx>, _>(|_| Decodable::decode(decoder)))
+        decoder
+            .interner()
+            .tcx
+            .mk_type_list((0..len).map::<Ty<'tcx>, _>(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -359,7 +345,9 @@ impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> Decodable<D> for AdtDef<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [(ty::Predicate<'tcx>, Span)] {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D>
+    for [(ty::Predicate<'tcx>, Span)]
+{
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().tcx.arena.alloc_from_iter(
             (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
@@ -367,7 +355,9 @@ impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [(ty::P
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [thir::abstract_const::Node<'tcx>] {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D>
+    for [thir::abstract_const::Node<'tcx>]
+{
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().tcx.arena.alloc_from_iter(
             (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
@@ -375,7 +365,9 @@ impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [thir::
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [thir::abstract_const::NodeId] {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D>
+    for [thir::abstract_const::NodeId]
+{
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().tcx.arena.alloc_from_iter(
             (0..decoder.read_usize()).map(|_| Decodable::decode(decoder)).collect::<Vec<_>>(),
@@ -383,7 +375,9 @@ impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [thir::
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind> {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D>
+    for ty::List<ty::BoundVariableKind>
+{
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().tcx.mk_bound_variable_kinds(
@@ -449,17 +443,17 @@ arena_types!(impl_arena_allocatable_decoders);
 
 macro_rules! impl_arena_copy_decoder {
     (<$tcx:tt> $($ty:ty,)*) => {
-        $(impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+        $(impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for $ty {
             #[inline]
             fn decode(decoder: &mut D) -> &'tcx Self {
-                decoder.tcx().arena.alloc(Decodable::decode(decoder))
+                decoder.interner().tcx.arena.alloc(Decodable::decode(decoder))
             }
         }
 
-        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+        impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> RefDecodable<'tcx, D> for [$ty] {
             #[inline]
             fn decode(decoder: &mut D) -> &'tcx Self {
-                decoder.tcx().arena.alloc_from_iter(<Vec<_> as Decodable<D>>::decode(decoder))
+                decoder.interner().tcx.arena.alloc_from_iter(<Vec<_> as Decodable<D>>::decode(decoder))
             }
         })*
     };

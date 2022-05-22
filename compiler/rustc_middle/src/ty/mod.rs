@@ -68,8 +68,8 @@ pub use self::consts::{
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
-    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyInterner, TypeckResults, UserType,
-    UserTypeAnnotationIndex,
+    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyInterner, TypeckResults,
+    UserType, UserTypeAnnotationIndex,
 };
 pub use self::instance::{Instance, InstanceDef};
 pub use self::list::List;
@@ -78,13 +78,13 @@ pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::{
-    Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, BoundVariableKind,
-    CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBinder, EarlyBoundRegion,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig,
-    GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts, InlineConstSubstsParts, ParamConst,
-    ParamTy, PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig,
-    PolyTraitRef, ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut,
-    UpvarSubsts, VarianceDiagInfo,
+    Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
+    EarlyBinder, EarlyBoundRegion, ExistentialPredicate, ExistentialProjection,
+    ExistentialTraitRef, FnSig, FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts,
+    InlineConstSubsts, InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind,
+    RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 
@@ -463,16 +463,31 @@ pub(crate) struct TyS<'tcx> {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
 
-// Statics only used for internal testing.
-pub static BOOL_TY: Ty<'static> = Ty(Interned::new_unchecked(&WithStableHash {
-    internee: BOOL_TYS,
-    stable_hash: Fingerprint::ZERO,
-}));
-const BOOL_TYS: TyS<'static> = TyS {
-    kind: ty::Bool,
-    flags: TypeFlags::empty(),
-    outer_exclusive_binder: DebruijnIndex::from_usize(0),
-};
+const LEAKED_BOOL_TY_ALREADY: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// "Static" bool only used for internal testing.
+///
+/// FIXME(rustc_type_ir): This really should be replaced with something that doesn't leak.
+/// however, since it's used for testing, it's not _that_ bad.
+pub fn leak_bool_ty_for_unit_testing<'tcx>() -> Ty<'tcx> {
+    use std::sync::atomic::*;
+
+    if LEAKED_BOOL_TY_ALREADY.load(Ordering::Acquire) {
+        panic!("Can only leak one bool type, since its equality depends on its address");
+    } else {
+        LEAKED_BOOL_TY_ALREADY.store(true, Ordering::Release);
+    }
+
+    Ty(Interned::new_unchecked(Box::leak(Box::new(WithStableHash {
+        internee: TyS {
+            kind: ty::Bool,
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: DebruijnIndex::from_usize(0),
+        },
+        stable_hash: Fingerprint::ZERO,
+    }))))
+}
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
     #[inline]

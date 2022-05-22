@@ -13,7 +13,7 @@ use rustc_serialize::{Decodable, Encodable};
 /// Types written by the user start out as [hir::TyKind](rustc_hir::TyKind) and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
 #[allow(rustc::usage_of_ty_tykind)]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 //#[derive(TyEncodable, TyDecodable)]
 //#[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
@@ -184,6 +184,42 @@ pub enum TyKind<I: Interner> {
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(I::DelaySpanBugEmitted),
+}
+
+#[allow(rustc::usage_of_ty_tykind)]
+impl<I: Interner> Clone for TyKind<I> {
+    fn clone(&self) -> Self {
+        use crate::TyKind::*;
+        match self {
+            Bool => Bool,
+            Char => Char,
+            Int(i) => Int(i.clone()),
+            Uint(u) => Uint(u.clone()),
+            Float(f) => Float(f.clone()),
+            Adt(d, s) => Adt(d.clone(), s.clone()),
+            Foreign(d) => Foreign(d.clone()),
+            Str => Str,
+            Array(t, c) => Array(t.clone(), c.clone()),
+            Slice(t) => Slice(t.clone()),
+            RawPtr(t) => RawPtr(t.clone()),
+            Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
+            FnDef(d, s) => FnDef(d.clone(), s.clone()),
+            FnPtr(s) => FnPtr(s.clone()),
+            Dynamic(p, r) => Dynamic(p.clone(), r.clone()),
+            Closure(d, s) => Closure(d.clone(), s.clone()),
+            Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
+            GeneratorWitness(g) => GeneratorWitness(g.clone()),
+            Never => Never,
+            Tuple(t) => Tuple(t.clone()),
+            Projection(p) => Projection(p.clone()),
+            Opaque(d, s) => Opaque(d.clone(), s.clone()),
+            Param(p) => Param(p.clone()),
+            Bound(d, b) => Bound(d.clone(), b.clone()),
+            Placeholder(p) => Placeholder(p.clone()),
+            Infer(t) => Infer(t.clone()),
+            Error(e) => Error(e.clone()),
+        }
+    }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -383,9 +419,7 @@ where
                 rustc_serialize::Decodable::decode(__decoder),
             ),
             9 => Slice(rustc_serialize::Decodable::decode(__decoder)),
-            10 => RawPtr(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
+            10 => RawPtr(rustc_serialize::Decodable::decode(__decoder)),
             11 => Ref(
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
@@ -395,9 +429,7 @@ where
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
             ),
-            13 => FnPtr(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
+            13 => FnPtr(rustc_serialize::Decodable::decode(__decoder)),
             14 => Dynamic(
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
@@ -411,44 +443,29 @@ where
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
             ),
-            17 => GeneratorWitness(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
+            17 => GeneratorWitness(rustc_serialize::Decodable::decode(__decoder)),
             18 => Never,
-            19 => Tuple(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            20 => Projection(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
+            19 => Tuple(rustc_serialize::Decodable::decode(__decoder)),
+            20 => Projection(rustc_serialize::Decodable::decode(__decoder)),
             21 => Opaque(
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
             ),
-            22 => Param(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
+            22 => Param(rustc_serialize::Decodable::decode(__decoder)),
             23 => Bound(
                 rustc_serialize::Decodable::decode(__decoder),
                 rustc_serialize::Decodable::decode(__decoder),
             ),
-            24 => Placeholder(
-                rustc_serialize::Decodable::decode(__decoder),
+            24 => Placeholder(rustc_serialize::Decodable::decode(__decoder)),
+            25 => Infer(rustc_serialize::Decodable::decode(__decoder)),
+            26 => Error(rustc_serialize::Decodable::decode(__decoder)),
+            _ => panic!(
+                "{}",
+                format!(
+                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
+                    "TyKind", 27,
+                )
             ),
-            25 => Infer(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            26 => Error(
-                rustc_serialize::Decodable::decode(__decoder),
-            ),
-            _ => 
-                panic!(
-                    "{}",
-                    format!(
-                        "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                        "TyKind", 27,
-                    )
-                ),
         }
     }
 }

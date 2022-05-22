@@ -834,7 +834,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             move |segment| {
                 match segment {
                     VtblSegment::MetadataDSA => {
-                        vptr_offset += ty::COMMON_VTABLE_ENTRIES.len();
+                        vptr_offset += ty::common_vtable_entries().len();
                     }
                     VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
                         vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);

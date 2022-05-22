@@ -3676,6 +3676,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_type_ir",
  "tracing",
 ]
 
@@ -3969,6 +3970,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_type_ir",
  "tracing",
  "unicode-security",
 ]
@@ -4041,6 +4043,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_type_ir",
  "smallvec",
  "snap",
  "tracing",
@@ -4474,6 +4477,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_type_ir",
  "tracing",
 ]
 
@@ -4512,6 +4516,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_ty_utils",
+ "rustc_type_ir",
  "smallvec",
  "tracing",
 ]

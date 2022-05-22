@@ -47,7 +47,11 @@ pub trait TyDecoder: Decoder {
 
     fn position(&self) -> usize;
 
-    fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> <Self::I as Interner>::Ty
+    fn cached_ty_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> <Self::I as Interner>::Ty
     where
         F: FnOnce(&mut Self) -> <Self::I as Interner>::Ty;
 

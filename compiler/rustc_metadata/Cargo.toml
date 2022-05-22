@@ -27,3 +27,4 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
 rustc_session = { path = "../rustc_session" }
+rustc_type_ir = { path = "../rustc_type_ir" }
