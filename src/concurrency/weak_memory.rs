@@ -102,6 +102,9 @@ struct StoreElement {
     /// The timestamp of the storing thread when it performed the store
     timestamp: VTimestamp,
     /// The value of this store
+    // FIXME: this means the store is either fully initialized or fully uninitialized;
+    // we will have to change this if we want to support atomics on
+    // partially initialized data.
     val: ScalarMaybeUninit<Tag>,
 
     /// Timestamp of first loads from this store element by each thread
