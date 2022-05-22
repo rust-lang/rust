@@ -1,3 +1,7 @@
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn foo<T: 'static>() { }
 
 fn boo<'a>() {

@@ -1,5 +1,5 @@
 error[E0759]: `value` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/issue-16922.rs:4:14
+  --> $DIR/issue-16922.rs:8:14
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
    |                       -- this data with an anonymous lifetime `'_`...
