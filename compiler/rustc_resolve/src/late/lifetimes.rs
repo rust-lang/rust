@@ -819,7 +819,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // `Box<dyn Debug + 'static>`.
                         self.resolve_object_lifetime_default(lifetime)
                     }
-                    LifetimeName::Implicit | LifetimeName::Underscore => {
+                    LifetimeName::Underscore => {
                         // If the user writes `'_`, we use the *ordinary* elision
                         // rules. So the `'_` in e.g., `Box<dyn Debug + '_>` will be
                         // resolved the same as the `'_` in `&'_ Foo`.
@@ -1135,9 +1135,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self))]
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         match lifetime_ref.name {
-            hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Implicit
-            | hir::LifetimeName::Underscore => self.resolve_elided_lifetimes(&[lifetime_ref]),
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Underscore => {
+                self.resolve_elided_lifetimes(&[lifetime_ref])
+            }
             hir::LifetimeName::Static => self.insert_lifetime(lifetime_ref, Region::Static),
             hir::LifetimeName::Param(param_def_id, _) => {
                 self.resolve_lifetime_ref(param_def_id, lifetime_ref)

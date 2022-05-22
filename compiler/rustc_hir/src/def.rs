@@ -742,8 +742,6 @@ pub enum LifetimeRes {
     Anonymous {
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
-        /// Whether this lifetime was spelled or elided.
-        elided: bool,
     },
     /// Explicit `'static` lifetime.
     Static,

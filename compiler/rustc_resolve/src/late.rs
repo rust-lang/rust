@@ -262,9 +262,6 @@ enum LifetimeRibKind {
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Pass responsibility to `resolve_lifetime` code for all cases.
-    AnonymousPassThrough(NodeId),
-
     /// Replace all anonymous lifetimes by provided lifetime.
     Elided(LifetimeRes),
 
@@ -868,7 +865,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             let previous_state = replace(&mut this.in_func_body, true);
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
-                                LifetimeRibKind::AnonymousPassThrough(fn_id),
+                                LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: fn_id }),
                                 |this| this.visit_block(body),
                             );
 
@@ -896,7 +893,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         this.with_lifetime_rib(
                             match binder {
                                 ClosureBinder::NotPresent => {
-                                    LifetimeRibKind::AnonymousPassThrough(fn_id)
+                                    LifetimeRibKind::Elided(LifetimeRes::Anonymous {
+                                        binder: fn_id,
+                                    })
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
@@ -908,7 +907,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let previous_state = replace(&mut this.in_func_body, true);
                         // Resolve the function body, potentially inside the body of an async closure
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(fn_id),
+                            LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: fn_id }),
                             |this| this.visit_expr(body),
                         );
 
@@ -1053,8 +1052,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 visit::walk_generic_args(self, path_span, args);
                                 break;
                             }
-                            LifetimeRibKind::AnonymousPassThrough(..)
-                            | LifetimeRibKind::AnonymousCreateParameter { .. }
+                            LifetimeRibKind::AnonymousCreateParameter { .. }
                             | LifetimeRibKind::AnonymousReportError
                             | LifetimeRibKind::Elided(_)
                             | LifetimeRibKind::ElisionFailure
@@ -1415,8 +1413,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     | LifetimeRibKind::AnonymousReportError
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
                                     // An anonymous lifetime is legal here, go ahead.
-                                    LifetimeRibKind::AnonymousPassThrough(_)
-                                    | LifetimeRibKind::AnonymousCreateParameter { .. } => {
+                                    LifetimeRibKind::AnonymousCreateParameter { .. } => {
                                         Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
                                     }
                                     // Only report if eliding the lifetime would have the same
@@ -1525,14 +1522,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     .emit();
 
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
-                    return;
-                }
-                LifetimeRibKind::AnonymousPassThrough(node_id) => {
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Anonymous { binder: node_id, elided },
-                        elision_candidate,
-                    );
                     return;
                 }
                 LifetimeRibKind::Elided(res) => {
@@ -1658,8 +1647,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Do not create a parameter for patterns and expressions.
                 for rib in self.lifetime_ribs.iter().rev() {
                     match rib.kind {
-                        LifetimeRibKind::AnonymousPassThrough(binder) => {
-                            let res = LifetimeRes::Anonymous { binder, elided: true };
+                        LifetimeRibKind::Elided(res @ LifetimeRes::Anonymous { .. }) => {
                             for id in node_ids {
                                 self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
                             }
@@ -1673,8 +1661,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             // FIXME(cjgillot) This resolution is wrong, but this does not matter
                             // since these cases are erroneous anyway.  Lifetime resolution should
                             // emit a "missing lifetime specifier" diagnostic.
-                            let res =
-                                LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
+                            let res = LifetimeRes::Anonymous { binder: DUMMY_NODE_ID };
                             for id in node_ids {
                                 self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
                             }
@@ -1749,19 +1736,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 id,
                                 res,
                                 replace(&mut candidate, LifetimeElisionCandidate::Named),
-                            );
-                        }
-                        break;
-                    }
-                    // `PassThrough` is the normal case.
-                    LifetimeRibKind::AnonymousPassThrough(binder) => {
-                        let res = LifetimeRes::Anonymous { binder, elided: true };
-                        let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-                        for id in node_ids {
-                            self.record_lifetime_res(
-                                id,
-                                res,
-                                replace(&mut candidate, LifetimeElisionCandidate::Ignore),
                             );
                         }
                         break;
@@ -2272,7 +2246,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         this.visit_ty(ty);
                     });
                     this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(item.id),
+                        LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
                         |this| {
                             if let Some(expr) = expr {
                                 let constant_item_kind = match item.kind {
@@ -2547,7 +2521,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         // Type parameters can already be used and as associated consts are
                         // not used as part of the type system, this is far less surprising.
                         self.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(item.id),
+                            LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
@@ -2721,7 +2695,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // Type parameters can already be used and as associated consts are
                     // not used as part of the type system, this is far less surprising.
                     self.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(item.id),
+                        LifetimeRibKind::Elided(LifetimeRes::Anonymous { binder: item.id }),
                         |this| {
                             this.with_constant_rib(
                                 IsRepeatExpr::No,
