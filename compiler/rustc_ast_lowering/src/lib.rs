@@ -1168,15 +1168,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
                 let region = region.unwrap_or_else(|| {
-                    let Some(LifetimeRes::ElidedAnchor { start, end }) = self.resolver.get_lifetime_res(t.id) else {
-                        panic!()
+                    let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+                        self.resolver.get_lifetime_res(t.id)
+                    {
+                        debug_assert_eq!(start.plus(1), end);
+                        start
+                    } else {
+                        self.resolver.next_node_id()
                     };
-                    debug_assert_eq!(start.plus(1), end);
                     let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
-                    Lifetime {
-                        ident: Ident::new(kw::UnderscoreLifetime, span),
-                        id: start,
-                    }
+                    Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
@@ -1835,10 +1836,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = self.lower_span(l.ident.span);
         let ident = self.lower_ident(l.ident);
-        let res = self
-            .resolver
-            .get_lifetime_res(l.id)
-            .unwrap_or_else(|| panic!("Missing resolution for lifetime {:?} at {:?}", l, span));
+        let res = self.resolver.get_lifetime_res(l.id).unwrap_or(LifetimeRes::Error);
         self.new_named_lifetime_with_res(l.id, span, ident, res)
     }
 
